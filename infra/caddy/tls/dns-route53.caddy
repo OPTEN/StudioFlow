@@ -1,0 +1,6 @@
+# dns-route53: Let's Encrypt DNS-01 via AWS Route 53. The module reads AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
+# AWS_REGION from the environment (IAM policy: route53:ListHostedZones*, GetChange, ChangeResourceRecordSets).
+tls {$FLOWSTUDIO_ACME_EMAIL} {
+	dns route53
+	import /etc/caddy/snippets/dns-challenge.caddy
+}

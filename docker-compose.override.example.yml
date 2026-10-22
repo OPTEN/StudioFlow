@@ -1,0 +1,41 @@
+# Lokale Entwicklung (Beispiel). Als docker-compose.override.yml kopieren: docker compose lädt die Datei
+# automatisch zusätzlich zu docker-compose.yml. Nicht committen. Auf einem Server nur den caddy-Block für den
+# TLS-Modus custom (ganz unten) übernehmen, nie die veröffentlichten Ports von api, livekit und postgres.
+#
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#   ./setup.sh --domain localhost --node-ip 127.0.0.1 --tls-mode internal --plain-password   # oder setup.ps1
+#   docker compose up -d --build
+#   npm run start:studio      # http://localhost:4200, Proxy laut proxy.conf.json
+#
+# API, LiveKit und PostgreSQL laufen dann im Container und sind nur auf diesem Rechner (127.0.0.1) erreichbar;
+# die Frontends laufen mit ng serve / vite und dem Proxy aus proxy.conf.json (/api, /hubs -> 5298, /rtc -> 7880).
+# --plain-password schreibt ADMIN__PASSWORD statt des Hashes: bequem lokal, nie auf einer VPS.
+
+services:
+  api:
+    environment:
+      # Development: Cookie Secure = SameAsRequest (ng serve läuft über http), ausführliche Fehler.
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "127.0.0.1:5298:8080"
+
+  livekit:
+    ports:
+      # Signalling für ng serve / vite (/rtc). Medien weiterhin über 7881/tcp und 7882/udp.
+      - "127.0.0.1:7880:7880"
+
+  postgres:
+    ports:
+      # psql, EF-Core-Werkzeuge oder ein DB-Client vom Rechner aus.
+      - "127.0.0.1:5432:5432"
+
+  # Weitere Möglichkeiten (bei Bedarf einkommentieren):
+  # caddy:
+  #   # Andere Host-Ports, wenn 80/443 belegt sind. HTTP/3 (Alt-Svc) und die HTTP->HTTPS-Umleitung gehen von 443
+  #   # aus; dazu in .env FLOWSTUDIO_PUBLIC_BASE_URL=https://localhost:8443 setzen.
+  #   ports: !override
+  #     - "8080:80"
+  #     - "8443:443"
+  #   # TLS-Modus custom: eigenes Zertifikat (lesbar für UID 10001, z. B. chmod 644 fullchain.pem privkey.pem).
+  #   volumes:
+  #     - ./certs:/certs:ro

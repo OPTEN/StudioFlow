@@ -1,0 +1,39 @@
+# Build context of infra/caddy/Dockerfile (repository root). The API image has its own context (apps/api) and its
+# own apps/api/.dockerignore. The Dockerfile copies only what the web build and Caddy need; this file keeps the
+# context small and keeps secrets and local artefacts out of it.
+
+# Secrets and local data
+.env
+.env.*
+backups
+data
+certs
+
+# Dependencies, build output and caches (npm ci and the build run inside the image)
+**/node_modules
+dist
+.angular
+out-tsc
+tmp
+coverage
+**/bin
+**/obj
+**/.sass-cache
+
+# Not part of the web build
+.git
+apps/api
+tests
+test-results
+playwright-report
+**/TestResults
+plan
+prototype
+docs
+tools
+.impeccable
+.vscode
+.vs
+.idea
+.history
+*.log

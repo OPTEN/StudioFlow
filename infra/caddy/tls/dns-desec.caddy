@@ -1,0 +1,7 @@
+# dns-desec: Let's Encrypt DNS-01 via deSEC (free, also the usual target for a delegated _acme-challenge).
+tls {$FLOWSTUDIO_ACME_EMAIL} {
+	dns desec {
+		token {env.DESEC_TOKEN}
+	}
+	import /etc/caddy/snippets/dns-challenge.caddy
+}

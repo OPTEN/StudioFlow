@@ -1,0 +1,203 @@
+# FlowStudio edge proxy (Caddy 2.11): TLS, security headers, the three frontends and the reverse proxy for the API,
+# the SignalR hubs and LiveKit signalling. WebRTC media never passes through Caddy (LiveKit 7881/tcp, 7882/udp).
+#
+# Every {$VAR} is set by docker-compose.yml, which also holds the defaults (documented in .env.example).
+# {$VAR} is substituted before parsing (a value with spaces becomes several tokens); {env.VAR} is read at runtime
+# and is used for secrets in tls/*.caddy.
+{
+	# Browsers send no SNI when they connect to an IP address; this name selects the certificate then.
+	default_sni {$FLOWSTUDIO_DEFAULT_SNI}
+	# Internal mode: devices download the root from /ca.crt; never touch the container's own trust store.
+	skip_install_trust
+
+	# Runtime and error logs also contain request URIs (for example a failed /rtc upgrade with its token).
+	log default {
+		output stderr
+		format filter {
+			wrap json
+			import /etc/caddy/snippets/log-redact.caddy
+		}
+	}
+
+	servers {
+		# Only these peers may set X-Forwarded-For. The default (loopback) trusts nobody, so LAN clients cannot
+		# spoof their address for the output IP restriction.
+		trusted_proxies static {$FLOWSTUDIO_TRUSTED_PROXIES}
+
+		timeouts {
+			# Caddy's defaults are 1m. A phone upload may stall during a WLAN handover; only stalls count,
+			# the total duration of an upload is not limited.
+			read_body_idle 5m
+			write_idle 2m
+		}
+	}
+}
+
+# Headers for every response of the site (static files, proxied responses, redirects and errors).
+(base_headers) {
+	header {
+		Strict-Transport-Security "max-age={$FLOWSTUDIO_HSTS_MAX_AGE}; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		X-Robots-Tag "noindex, nofollow"
+	}
+	# Deletions are deferred until the response is written. Inside the block above they would make the whole block
+	# deferred, and a deferred block is lost when a handler hands over to handle_errors.
+	header -Server
+}
+
+# Headers of an HTML application. args[0] = CSP frame-ancestors sources, args[1] = Permissions-Policy.
+# style-src needs 'unsafe-inline': Angular adds component styles as <style> elements at runtime (a per-request nonce
+# would break the sender's service worker hash check). Scripts stay strictly 'self'.
+(page_headers) {
+	header {
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://{hostport} wss://{hostport}; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors {args[0]}; upgrade-insecure-requests"
+		Permissions-Policy "{args[1]}"
+	}
+}
+
+# A single-page application served from the current root. args[0] = regexp for content-hashed file names.
+(spa) {
+	encode zstd gzip
+
+	@hashed path_regexp {args[0]}
+	@unhashed not path_regexp {args[0]}
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	# index.html, ngsw.json, ngsw-worker.js, the manifest and every other unhashed file are revalidated.
+	header @unhashed Cache-Control "no-cache"
+
+	# Client-side routes have no file extension and get index.html. A missing asset stays a real 404 instead of
+	# HTML with status 200 (deploy skew must not be cached as JavaScript).
+	@route not path_regexp \.[A-Za-z0-9]+$
+	rewrite @route /index.html
+	file_server
+}
+
+# ASP.NET Core API. args[0] = how long the API may take to send response headers after the whole request body
+# has arrived (uploads are written and checked before the API answers).
+(api_proxy) {
+	reverse_proxy api:8080 {
+		# Keep long uploads alive across a config reload.
+		stream_close_delay 5m
+		transport http {
+			dial_timeout 5s
+			response_header_timeout {args[0]}
+		}
+	}
+	# JSON and media answers are never rendered as a page; keep the API's own policy if it sets one.
+	header ?Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+}
+
+# Loopback-only health endpoint for the container healthcheck (plain HTTP, not published).
+http://127.0.0.1:2020 {
+	bind 127.0.0.1
+	respond /healthz 200
+	respond 404
+}
+
+{$FLOWSTUDIO_DOMAIN} {$FLOWSTUDIO_EXTRA_HOSTS} {
+	import /etc/caddy/tls/{$FLOWSTUDIO_TLS_MODE}.caddy
+	import base_headers
+
+	log {
+		output stdout
+		format filter {
+			wrap json
+			import /etc/caddy/snippets/log-redact.caddy
+		}
+	}
+
+	# Short invite links for laptops: /j/{token} -> /join/i/{token}. Temporary, so no browser caches a redirect for a
+	# single-use token; the token is redacted in the access log (also in the Location header).
+	@invite_link path_regexp invite ^/j/([A-Za-z0-9_-]+)$
+	redir @invite_link /join/i/{re.invite.1} 302
+
+	# Bare app paths get their trailing slash, keeping the query (/o?k=... -> /o/?k=...).
+	@join_bare path /join
+	redir @join_bare /join/{?query} 308
+	@output_bare path /o
+	redir @output_bare /o/{?query} 308
+
+	# handle blocks are mutually exclusive; Caddy tries those with the longer path first, the catch-all last.
+
+	handle /api/* {
+		# LiveKit posts its webhooks to api:8080 inside the network; from outside the endpoint is never needed.
+		handle /api/livekit/* {
+			respond 404
+		}
+
+		# Asset upload (multipart): videos up to MEDIA__MAXVIDEOBYTES. The API checks the exact limits as well.
+		@asset_upload {
+			method POST
+			path_regexp ^/api/productions/[^/]+/assets/?$
+		}
+		handle @asset_upload {
+			request_body {
+				max_size {$FLOWSTUDIO_MAX_UPLOAD}
+			}
+			import api_proxy 15m
+		}
+		handle {
+			request_body {
+				max_size {$FLOWSTUDIO_MAX_BODY}
+			}
+			import api_proxy 60s
+		}
+	}
+
+	# SignalR (WebSockets, with SSE / long polling as fallback). No response header timeout: long polling waits.
+	handle /hubs/* {
+		reverse_proxy api:8080 {
+			stream_close_delay 5m
+			transport http {
+				dial_timeout 5s
+			}
+		}
+	}
+
+	# LiveKit signalling: livekit-client uses /rtc/v1, falls back to /rtc and probes .../validate.
+	@livekit path /rtc /rtc/*
+	handle @livekit {
+		reverse_proxy livekit:7880 {
+			stream_close_delay 5m
+			transport http {
+				dial_timeout 5s
+			}
+		}
+	}
+
+	# LiveKit's server API (Twirp) is reachable for the API container only, never from outside.
+	@twirp path /twirp /twirp/*
+	handle @twirp {
+		respond 404
+	}
+
+	# Sender PWA (Angular, base href /join/). Its service worker has the scope /join/.
+	handle_path /join/* {
+		import page_headers "'none'" "camera=(self), microphone=(self), display-capture=(self), screen-wake-lock=(self), fullscreen=(self), clipboard-write=(self), geolocation=(), payment=(), usb=()"
+		root * /srv/join
+		import spa -[A-Z0-9]{8}\.[A-Za-z0-9]+$
+	}
+
+	# Output page (Vite, base /o/), one index.html for every /o/{slug}. Embedding only by the allowed origins.
+	handle_path /o/* {
+		import page_headers "'self' {$FLOWSTUDIO_FRAME_ANCESTORS}" "camera=(), microphone=(), display-capture=(), autoplay=(self), fullscreen=(self), geolocation=(), payment=(), usb=()"
+		root * /srv/o
+		import spa ^/assets/
+	}
+
+	# Regie (Angular, base href /). It has no service worker (only the sender has one), so no navigationUrls
+	# exclusions for /join, /o, /api, /hubs or /rtc are needed. Adding one to the studio later requires them.
+	handle {
+		import page_headers "'none'" "camera=(), microphone=(), display-capture=(), clipboard-write=(self), screen-wake-lock=(self), fullscreen=(self), autoplay=(self), geolocation=(), payment=(), usb=()"
+		root * /srv/studio
+		import spa -[A-Z0-9]{8}\.[A-Za-z0-9]+$
+	}
+
+	handle_errors {
+		# Overrides an "immutable" set before the error (a missing hashed file must not be cached for a year).
+		header Cache-Control "no-store"
+		header -Server
+		respond "{err.status_code} {err.status_text}" {err.status_code}
+	}
+}

@@ -41,3 +41,7 @@ __screenshots__/
 .history/
 .DS_Store
 Thumbs.db
+
+# Local compose overrides and own certificates (custom TLS mode)
+docker-compose.override.yml
+/certs

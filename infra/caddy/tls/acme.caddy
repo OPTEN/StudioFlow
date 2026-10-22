@@ -1,0 +1,7 @@
+# acme: public certificate from Let's Encrypt (ZeroSSL as fallback) via HTTP-01 / TLS-ALPN-01.
+# Only for a server reachable from the internet on 80/tcp and 443/tcp (VPS); in the LAN use a dns-* mode.
+# The block keeps the directive valid when FLOWSTUDIO_ACME_EMAIL is empty (a bare `tls` line is rejected);
+# the protocols line states Caddy's default (TLS 1.2 and 1.3).
+tls {$FLOWSTUDIO_ACME_EMAIL} {
+	protocols tls1.2 tls1.3
+}

@@ -1,0 +1,13 @@
+# Field filters for the log encoder (imported inside `format filter { ... }`).
+# Secrets that travel in URLs: hub and LiveKit tokens (?access_token=), the output key (?k=), invite tokens
+# (/j/{token}, /join/i/{token}, /api/pairing/invites/{token}/redeem) and any ?token=.
+# Cookie and Authorization headers are redacted by Caddy itself; the custom secret headers are dropped here.
+request>uri multi_regexp {
+	regexp ([?&])(access_token|token|k)=[^&#]* ${1}${2}=REDACTED
+	regexp ^/j/[^/?#]+ /j/REDACTED
+	regexp ^/join/i/[^/?#]+ /join/i/REDACTED
+	regexp ^/api/pairing/invites/[^/?#]+ /api/pairing/invites/REDACTED
+}
+request>headers>X-Output-Key delete
+request>headers>X-Pairing-Token delete
+resp_headers>Location delete

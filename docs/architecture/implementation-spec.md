@@ -39,7 +39,7 @@ packages/realtime-client/  SignalR wrapper with endless reconnect + revisioned s
 packages/scene-renderer/   framework-free DOM renderer for monitors, thumbnails and output
 packages/media-client/     livekit-client wrapper: sessions with endless reconnect, source provider, publisher, stats
 infra/caddy/         Dockerfile (xcaddy + DNS module + built frontends), Caddyfile, TLS snippets
-infra/livekit/       livekit.yaml template (rendered via env by compose)
+(LiveKit is configured inline in docker-compose.yml via LIVEKIT_CONFIG)
 tests/e2e/           Playwright end-to-end tests against the compose stack
 docs/                architecture, runbook, security review, testing report
 docker-compose.yml, .env.example, setup.sh, setup.ps1, backup.sh, restore.sh, update.sh
@@ -540,48 +540,156 @@ estimated latency). Reports `OutputReport` every 2 s. Bundle target: < 350 KB gz
 
 ## 10. Infrastructure
 
-`docker-compose.yml` services: `caddy` (build `infra/caddy`, ports 80/443, volumes caddy_data, caddy_config),
-`api` (build `apps/api`, volumes media → /data/media, keys → /data/keys), `livekit` (image pinned, config via
-`LIVEKIT_CONFIG` env rendered from `.env`, ports 7881/tcp and 7882/udp, `--node-ip ${FLOWSTUDIO_NODE_IP}`),
-`postgres` (postgres:17-alpine pinned, pgdata). All `restart: unless-stopped`, healthchecks on every service,
-`depends_on` with `condition: service_healthy`. The API image is non-root.
+Operations (German): `docs/runbook.md`. Every variable is documented in `.env.example`.
 
-Caddy: site `{$FLOWSTUDIO_DOMAIN}`; TLS mode from `FLOWSTUDIO_TLS_MODE` = `dns` (Let's Encrypt DNS challenge with
-the provider module selected at build time, default cloudflare; token from env) | `internal` (Caddy local CA; root
-certificate exported for devices) | `public` (HTTP-01, only with public reachability). Routes: `/api/*`, `/hubs/*`
-→ api:8080; `/rtc*` → livekit:7880; `/join*` → sender SPA; `/j/*` → redirect `/join/i/*`; `/o/*` → output; `/` →
-studio SPA. Headers: HSTS, strict CSP (see security review), `X-Content-Type-Options`, `Referrer-Policy
-no-referrer`, `Permissions-Policy` (camera/display-capture only on `/join`), `frame-ancestors 'none'` except `/o/*`
-(`FLOWSTUDIO_FRAME_ANCESTORS`). Hashed assets `immutable`, `index.html`/`ngsw*.json` `no-cache`. Upload body limit
-1 GB on the asset route only.
+`docker-compose.yml` (project `flowstudio`, network `flowstudio` with subnet `${FLOWSTUDIO_SUBNET:-172.30.0.0/24}`).
+All services: `restart: unless-stopped`, `no-new-privileges`, json-file logs 5 × 10 MB, a healthcheck, `depends_on`
+with `condition: service_healthy` (caddy waits for api and livekit, api waits for postgres). Required variables fail
+fast (`${VAR:?…}`); optional variables have their default in `docker-compose.yml` and nowhere else.
 
-Configuration contract (`.env` → compose → containers). The API reads ASP.NET Core configuration; compose passes
-these variables to the `api` service (double underscore = section separator):
+- `caddy`: build context = repository root, `infra/caddy/Dockerfile`: stage 1 `node:22.22.3-alpine` (`npm ci`,
+  `npm run build:web`), stage 2 `caddy:2.11.7-builder-alpine` + xcaddy with the DNS modules cloudflare v0.2.4,
+  infomaniak v1.0.2, hetzner/v2 v2.0.1, desec v1.1.0, route53 v1.6.2, gandi v1.2.1, ovh v1.1.0, stage 3
+  `caddy:2.11.7-alpine` with `dist/studio/browser` → `/srv/studio`, `dist/sender/browser` → `/srv/join`,
+  `dist/output` → `/srv/o`. The build runs `caddy validate` for every TLS mode (except `custom`, which needs mounted
+  files) with a throwaway data directory, so no CA is baked into the image. Runs as uid 10001 without capabilities
+  (`cap_drop: ALL`, sysctl `net.ipv4.ip_unprivileged_port_start=0`). Ports 80/tcp, 443/tcp, 443/udp. Volumes
+  `caddy_data:/data` (certificates, local CA – must survive), `caddy_config:/config`. Healthcheck in the image:
+  `wget --spider http://127.0.0.1:2020/healthz` (loopback-only listener).
+- `api`: build `apps/api` (own Dockerfile and `.dockerignore`), non-root, `cap_drop: ALL`, port 8080 inside the
+  network only. Volumes `media:/data/media`, `keys:/data/keys`. Healthcheck
+  `wget -q -O /dev/null http://127.0.0.1:8080/health/live`.
+- `livekit`: `livekit/livekit-server:v1.13.10`, `cap_drop: ALL`, config as `LIVEKIT_CONFIG` YAML inside
+  `docker-compose.yml` (interpolated from `.env`; `infra/livekit/` is not used): `port 7880`, `rtc.tcp_port 7881`,
+  `rtc.udp_port 7882`, `rtc.use_external_ip false`, `room.auto_create true`, `room.empty_timeout 300`,
+  `room.departure_timeout 20`, `webhook.api_key` = the key, `webhook.urls [http://api:8080/api/livekit/webhook]`.
+  `LIVEKIT_KEYS: "{key}: {secret}"`, `NODE_IP` = `FLOWSTUDIO_NODE_IP`. Ports 7881/tcp and 7882/udp only. Healthcheck
+  `wget -q -O /dev/null http://127.0.0.1:7880/`.
+- `postgres`: `postgres:17.11-alpine`, database and user `flowstudio`, volume `pgdata`, healthcheck
+  `pg_isready -h 127.0.0.1 -U flowstudio -d flowstudio` (TCP: during the first initialisation only the socket
+  listens), `stop_grace_period: 30s`.
+- Profile `chaos`: `netem` (built from `infra/netem`, `network_mode: service:livekit`, `cap_add: NET_ADMIN`):
+  `docker compose --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate] | clear | show`
+  (egress and ingress via ifb; affects media, signalling and API ↔ LiveKit).
+- Profile `tools`: `toolbox` (the postgres image, no network, volumes media/keys/caddy_data at `/volumes/<name>`),
+  started on demand by the backup and restore scripts.
+- `docker-compose.override.example.yml`: local development (API on 127.0.0.1:5298, LiveKit signalling 127.0.0.1:7880,
+  PostgreSQL 127.0.0.1:5432, `ASPNETCORE_ENVIRONMENT=Development`) and the certificate mount for TLS mode `custom`.
 
-| Variable | Used by | Meaning / default |
+Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS modes in `infra/caddy/tls/`):
+
+- Site `{$FLOWSTUDIO_DOMAIN} {$FLOWSTUDIO_EXTRA_HOSTS}`, `default_sni {$FLOWSTUDIO_DEFAULT_SNI}` (clients without
+  SNI, i.e. access by IP), `trusted_proxies static {$FLOWSTUDIO_TRUSTED_PROXIES}` (default `127.0.0.1/32` = nobody,
+  so LAN clients cannot spoof `X-Forwarded-For`), server timeouts `read_body_idle 5m`, `write_idle 2m`.
+- TLS: `import /etc/caddy/tls/{$FLOWSTUDIO_TLS_MODE}.caddy` (an unknown mode fails at startup).
+  `internal` = Caddy's local CA (`skip_install_trust`; the root is served at `/ca.crt` as
+  `application/x-x509-ca-cert`, only in this mode); `acme` = Let's Encrypt HTTP-01/TLS-ALPN (public reachability);
+  `custom` = `/certs/fullchain.pem` + `/certs/privkey.pem`; `dns-cloudflare | dns-infomaniak | dns-hetzner |
+  dns-desec | dns-route53 | dns-gandi | dns-ovh` = Let's Encrypt DNS-01 with `resolvers {$FLOWSTUDIO_DNS_RESOLVERS}`
+  and `dns_challenge_override_domain {$FLOWSTUDIO_DNS_CHALLENGE_DOMAIN}`. The override defaults to
+  `_acme-challenge.{domain}`, which is exactly Caddy's own record name; set it to the CNAME target when
+  `_acme-challenge` is delegated (providers without a module, e.g. Hostpoint or cyon → deSEC or Cloudflare).
+  Provider secrets are read at runtime (`{env.…}`); certificates renew automatically.
+- Routes: `POST /api/productions/{id}/assets[/]` → api with body ≤ `FLOWSTUDIO_MAX_UPLOAD` and response header timeout
+  15 min; all other `/api/*` → api with body ≤ `FLOWSTUDIO_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
+  timeout: long polling); `/rtc`, `/rtc/*` → livekit:7880; `/twirp`, `/twirp/*` and `/api/livekit/*` (webhooks arrive
+  inside the network) → 404;
+  `/j/{token}` → 302 `/join/i/{token}`; `/join` → 308 `/join/`, `/o` → 308 `/o/` (query kept); `/join/*` sender SPA
+  (`/srv/join`), `/o/*` output SPA (`/srv/o`), everything else studio SPA (`/srv/studio`). SPA fallback: paths without
+  a file extension get `index.html`, missing files stay 404. Proxies use `dial_timeout 5s` and `stream_close_delay 5m`
+  (WebSockets survive a config reload). The API's `/health/*` is not reachable through Caddy.
+- Headers on every response: `Strict-Transport-Security: max-age={FLOWSTUDIO_HSTS_MAX_AGE}; includeSubDomains`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no `Server`.
+  HTML areas: `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://{host}
+  wss://{host}; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self';
+  form-action 'self'; frame-ancestors …; upgrade-insecure-requests` with `frame-ancestors 'none'` for `/` and `/join/`
+  and `'self' {FLOWSTUDIO_FRAME_ANCESTORS}` for `/o/`. `'unsafe-inline'` for styles only, because Angular injects
+  component styles at runtime. `Permissions-Policy`: studio `camera=(), microphone=(), display-capture=(),
+  clipboard-write=(self), screen-wake-lock=(self), fullscreen=(self), autoplay=(self)`; sender `camera=(self),
+  microphone=(self), display-capture=(self), screen-wake-lock=(self), fullscreen=(self), clipboard-write=(self)`; output
+  `camera=(), microphone=(), display-capture=(), autoplay=(self), fullscreen=(self)` (all deny geolocation, payment,
+  usb). API responses get `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox` unless the
+  API sets its own.
+- Cache: Angular files with `-[A-Z0-9]{8}.ext` and Vite `/o/assets/*` → `public, max-age=31536000, immutable`; all
+  other files (`index.html`, `ngsw.json`, `ngsw-worker.js`, manifest) → `no-cache`; error responses → `no-store`;
+  zstd/gzip for the SPAs.
+- Logs (JSON; access log on stdout, runtime/error log on stderr, both filtered): the query values `access_token`,
+  `token` and `k` and the path tokens of `/j/…`, `/join/i/…` and `/api/pairing/invites/…` become `REDACTED`;
+  `X-Output-Key`, `X-Pairing-Token` and the response `Location` are dropped; Caddy redacts `Cookie` and
+  `Authorization` itself.
+- The studio has no service worker (only the sender, scope `/join/`). Adding one to the studio requires
+  `navigationUrls` exclusions for `/join`, `/o`, `/api`, `/hubs` and `/rtc`.
+
+Configuration contract (`.env` → compose → containers). Compose passes only the variables a service needs; the API
+reads ASP.NET Core configuration (double underscore = section separator, names case-insensitive):
+
+| Variable (`.env`) | Used by | Meaning / default |
 |---|---|---|
-| `FLOWSTUDIO_DOMAIN` | caddy, api | Public host name, e.g. `flowstudio.opten.ch` (tests: `localhost`) |
-| `FLOWSTUDIO__PUBLICBASEURL` | api | `https://${FLOWSTUDIO_DOMAIN}` – used in invite, QR and output URLs |
-| `FLOWSTUDIO_NODE_IP` | livekit | LAN IPv4 advertised for media (`NODE_IP`) |
-| `FLOWSTUDIO_TLS_MODE` | caddy | `dns` \| `internal` \| `public` |
-| `FLOWSTUDIO_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (dns/public) |
-| `FLOWSTUDIO_DNS_PROVIDER`, `FLOWSTUDIO_DNS_API_TOKEN` | caddy | DNS challenge provider (build arg selects the module; default `cloudflare`) and token |
-| `FLOWSTUDIO_FRAME_ANCESTORS` | caddy, api | Space-separated CSP sources allowed to embed `/o/*`, default `'self'`; the API exposes it read-only (`FLOWSTUDIO__FRAMEANCESTORS`) |
-| `ADMIN__USERNAME` | api | Admin user name |
-| `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` | api | Identity v3 hash (preferred) or plain password (local only) |
-| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api | Key pair; the API gets them as `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET`; `LIVEKIT__INTERNALURL=http://livekit:7880` |
-| `POSTGRES_PASSWORD` | postgres, api | DB password; the API gets `CONNECTIONSTRINGS__FLOWSTUDIO=Host=postgres;Database=flowstudio;Username=flowstudio;Password=…` |
-| `MEDIA__PATH`, `DATAPROTECTION__KEYSPATH` | api | `/data/media`, `/data/keys` (volumes) |
-| `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | 26214400, 1073741824 |
-| `FORWARDEDHEADERS__KNOWNNETWORKS__0` | api | Compose network subnet `172.30.0.0/24` (only Caddy can reach the API) |
+| `FLOWSTUDIO_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `flowstudio.opten.ch` (tests: `localhost`; in mode `internal` also an IP) |
+| `FLOWSTUDIO_NODE_IP` | livekit | **Required.** IPv4 that LiveKit announces for media (`NODE_IP`): the server's LAN IP (VPS: public IP); `127.0.0.1` only for single-machine tests |
+| `FLOWSTUDIO_TLS_MODE` | caddy | **Required.** `internal` \| `acme` \| `custom` \| `dns-cloudflare` \| `dns-infomaniak` \| `dns-hetzner` \| `dns-desec` \| `dns-route53` \| `dns-gandi` \| `dns-ovh` |
+| `FLOWSTUDIO_EXTRA_HOSTS` | caddy | Further site addresses, space-separated (mode `internal`, e.g. the IP); default empty |
+| `FLOWSTUDIO_DEFAULT_SNI` | caddy | Certificate for clients without SNI; default `FLOWSTUDIO_DOMAIN` (setup sets the first IP of the extra hosts) |
+| `FLOWSTUDIO_PUBLIC_BASE_URL` | api → `FLOWSTUDIO__PUBLICBASEURL` | Base of invite, QR and output URLs; default `https://${FLOWSTUDIO_DOMAIN}` (override only for a non-443 port) |
+| `FLOWSTUDIO_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (`acme`, `dns-*`); default empty |
+| `CF_API_TOKEN` | caddy | `dns-cloudflare` (Zone:Read, DNS:Edit) |
+| `INFOMANIAK_API_TOKEN` | caddy | `dns-infomaniak` (scopes `domain:read dns:read dns:write`) |
+| `HETZNER_API_TOKEN` | caddy | `dns-hetzner` (Hetzner Cloud DNS API) |
+| `DESEC_TOKEN` | caddy | `dns-desec` |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | caddy | `dns-route53` |
+| `GANDI_BEARER_TOKEN` | caddy | `dns-gandi` (personal access token) |
+| `OVH_ENDPOINT`, `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | caddy | `dns-ovh` |
+| `FLOWSTUDIO_DNS_CHALLENGE_DOMAIN` | caddy | `dns-*`: where the TXT record is written; default `_acme-challenge.${FLOWSTUDIO_DOMAIN}`; the CNAME target when delegated |
+| `FLOWSTUDIO_DNS_RESOLVERS` | caddy | `dns-*`: resolvers for the propagation check; default `1.1.1.1 9.9.9.9` |
+| `FLOWSTUDIO_HSTS_MAX_AGE` | caddy | Seconds; default `31536000` (setup writes `3600` for `internal`) |
+| `FLOWSTUDIO_FRAME_ANCESTORS` | caddy, api → `FLOWSTUDIO__FRAMEANCESTORS` | Additional origins allowed to embed `/o/*`, space-separated (`'self'` is always allowed and not part of the value); default empty. The API gets the effective list (`'self' …`) and shows it read-only |
+| `FLOWSTUDIO_TRUSTED_PROXIES` | caddy | CIDRs of proxies in front of Caddy whose `X-Forwarded-For` is trusted; default `127.0.0.1/32` (nobody) |
+| `FLOWSTUDIO_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
+| `FLOWSTUDIO_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
+| `FLOWSTUDIO_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `flowstudio`; default `172.30.0.0/24` (only Caddy can reach the API) |
+| `ADMIN__USERNAME` | api | **Required.** Admin user name |
+| `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` | api | One of them is required by the API: ASP.NET Identity v3 hash (setup writes it) or plain password (local development, `--plain-password`, or setup's fallback). Compose passes the unset one as an empty string |
+| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `flowstudio`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
+| `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__FLOWSTUDIO` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=flowstudio;Username=flowstudio;Password=…` |
+| `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | Default `26214400`, `1073741824` |
+| – | api | Fixed: `MEDIA__PATH=/data/media`, `DATAPROTECTION__KEYSPATH=/data/keys` |
 
-The compose network `flowstudio` has the fixed subnet `172.30.0.0/24`. The API listens on 8080 inside the network
-only; nothing but Caddy (80/443) and LiveKit media (7881/tcp, 7882/udp) is published.
+Nothing but Caddy (80/tcp, 443/tcp+udp) and LiveKit media (7881/tcp, 7882/udp) is published.
 
-Scripts (bash for Linux, PowerShell equivalents where marked): `setup.sh`/`setup.ps1` (asks domain, node IP
-(auto-detected), TLS mode + DNS token, admin user and password; writes `.env` with random secrets; hashes the password
-via the API image), `backup.sh` (pg_dump + media volume to `backups/YYYY-MM-DD_HHMM/`), `restore.sh`, `update.sh`
-(refuses while a broadcast is live; `git pull`, `docker compose up -d --build`, health wait).
+Scripts (repository root; bash and PowerShell 7.4+ with the same options and behaviour; shared code in
+`infra/scripts/common.sh` and `infra/scripts/FlowStudio.psm1`; messages in German; `--help` / `Get-Help -Full`):
+
+- `setup.sh` / `setup.ps1`: interactive or `--non-interactive` (`--domain`, `--node-ip` (default: source address of the
+  default route, confirmed interactively), `--tls-mode`, `--acme-email`, `--dns-challenge-domain`, `--extra-hosts`,
+  `--frame-ancestors`, `--admin-user`, `--admin-password-stdin`, `--generate-password`, `--plain-password`,
+  `--env-file`, `--force`; PowerShell: `-Domain`, `-NodeIp`, …). Provider credentials come from the environment, the
+  existing `.env` or a hidden prompt. Generates the LiveKit secret and the PostgreSQL password, builds the API image
+  and stores `ADMIN__PASSWORDHASH` from
+  `docker compose run --rm --no-deps -T --entrypoint dotnet api Opten.FlowStudio.Web.dll hash-password` (falls back to
+  `ADMIN__PASSWORD` with a warning). Writes `.env` atomically with mode 600; refuses to overwrite it without
+  `--force`, then keeps `.env.backup-<time>` and reuses the PostgreSQL password, the LiveKit key pair and (if wanted)
+  the admin credentials.
+- `backup.sh` / `backup.ps1` (`--dir`, `--keep N`, `--label`): `pg_dump -Fc` via `docker compose exec`, the volumes
+  media, keys and caddy_data as `.tar.gz` (via `toolbox`), `backup-info.txt` and `SHA256SUMS` into
+  `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time.
+- `restore.sh` / `restore.ps1` (`<dir>`, `--yes`, `--no-safety-backup`, `--force`): verifies the checksums, asks for
+  confirmation, refuses while live, takes a safety backup (`…_vor-restore`), stops api and caddy, restores the dump into
+  a new database with `pg_restore --no-owner --no-privileges --exit-on-error` and swaps it in by renaming (the old
+  database stays intact if the restore fails, and no objects of a newer schema survive), replaces the volumes, starts
+  the stack and waits until it is healthy.
+- `update.sh` / `update.ps1` (`--backup`, `--no-pull`, `--force`): refuses while a broadcast is live or its state is
+  unknown, `git pull --ff-only`, `docker compose up -d --build --remove-orphans --wait`, prints the status.
+
+What the scripts and Caddy require from the API image:
+- `ENTRYPOINT`/`WORKDIR` such that `dotnet Opten.FlowStudio.Web.dll` works in the working directory, BusyBox `wget`
+  for the healthcheck, `/health/live` on port 8080.
+- `hash-password`: reads the password from stdin (sent **without** a trailing newline; tolerate one), prints the
+  Identity v3 hash as the last stdout line, exit 0.
+- `broadcast-status`: exit code 3 if any production is live, 0 if none, any other code on error (`update` and
+  `restore` then refuse unless forced).
+- Treat empty `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` as unset; trust `X-Forwarded-*` only from
+  `FORWARDEDHEADERS__KNOWNNETWORKS__0` (ForwardLimit 1: Caddy replaces any client-sent `X-Forwarded-For`).
 
 ## 11. Testing (minimum)
 
