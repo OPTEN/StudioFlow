@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FlowStudio Architekturplan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: ein Signalfluss-Blatt von 1160px Breite; Fliesstext max. 68ch, Abbildungen über die ganze Spalte */
+:root {
+  --bg: #f2f4f6;
+  --surface: #fbfcfd;
+  --surface-2: #e8ecf0;
+  --ink: #111720;
+  --ink-2: #46505d;
+  --muted: #616c7a;
+  --line: #d5dbe2;
+  --line-strong: #aab4c0;
+  --accent: #1f62c4;
+  --accent-wash: #e2ebf8;
+  --pgm: #d12d2d;
+  --pgm-wash: #fbe6e5;
+  --on-pgm: #ffffff;
+  --pvw: #0e7f3f;
+  --pvw-wash: #e1f2e7;
+  --amber: #9a5c00;
+  --amber-dot: #e39b00;
+  --on-amber: #1a1200;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --shadow: 0 6px 24px rgba(17, 23, 32, .14);
+  --font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1c242d;
+    --ink: #e6ebf1;
+    --ink-2: #a6b1be;
+    --muted: #7f8a98;
+    --line: #27313b;
+    --line-strong: #3b4753;
+    --accent: #5d9ef0;
+    --accent-wash: #15253a;
+    --pgm: #f0605c;
+    --pgm-wash: #2d1617;
+    --on-pgm: #1c0707;
+    --pvw: #3dbd72;
+    --pvw-wash: #12291c;
+    --amber: #e8a83c;
+    --amber-dot: #f0b429;
+    --on-amber: #1a1200;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1c242d;
+  --ink: #e6ebf1;
+  --ink-2: #a6b1be;
+  --muted: #7f8a98;
+  --line: #27313b;
+  --line-strong: #3b4753;
+  --accent: #5d9ef0;
+  --accent-wash: #15253a;
+  --pgm: #f0605c;
+  --pgm-wash: #2d1617;
+  --on-pgm: #1c0707;
+  --pvw: #3dbd72;
+  --pvw-wash: #12291c;
+  --amber: #e8a83c;
+  --amber-dot: #f0b429;
+  --on-amber: #1a1200;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  overflow-wrap: break-word;
+}
+.wrap { max-width: 1160px; margin-inline: auto; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+strong { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: .9em; }
+:not(pre) > code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+/* Kopf */
+.masthead { padding-block: 56px 28px; }
+.eyebrow { font: 500 12px/1.4 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; }
+h1 { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: clamp(40px, 8.4vw, 92px); line-height: .95; letter-spacing: -.02em; margin: 0 0 22px; }
+.lead { font-size: clamp(18px, 2.1vw, 21px); line-height: 1.5; color: var(--ink-2); max-width: 60ch; margin: 0 0 30px; text-wrap: pretty; }
+.specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin: 0 0 22px; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line); }
+.specs div { padding: 12px 16px 12px 0; min-width: 0; }
+.specs dt { font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.specs dd { margin: 3px 0 0; font-weight: 600; font-size: 17px; }
+.keyline { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13.5px; color: var(--ink-2); margin: 0; padding: 0; list-style: none; }
+.keyline li { display: flex; align-items: center; gap: 8px; }
+.keyline .lbl { font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.k { display: inline-block; width: 26px; height: 0; border-top: 2px solid var(--ink-2); }
+.k-media { border-top-color: var(--accent); }
+.k-pgm { border-top-color: var(--pgm); }
+.k-pvw { border-top-color: var(--pvw); }
+.k-ctl { border-top-style: dashed; }
+.changes { margin: 26px 0 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 15px; color: var(--ink-2); max-width: 90ch; }
+.changes strong { color: var(--ink); }
+
+/* Inhalt */
+.toc { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-block: 14px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; counter-reset: toc; }
+.toc li { counter-increment: toc; font-size: 14.5px; }
+.toc li::before { content: counter(toc); font: 500 11px var(--font-mono); color: var(--muted); margin-right: 6px; }
+.toc a { color: var(--ink); text-decoration: none; }
+.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+/* Abschnitte */
+.sec { padding-block: 60px 12px; }
+.sec + .sec { border-top: 1px solid var(--line); }
+h2 { font-family: var(--font-display); font-stretch: 112%; font-weight: 750; font-size: clamp(26px, 3.4vw, 36px); line-height: 1.12; letter-spacing: -.01em; margin: 0 0 16px; text-wrap: balance; display: flex; gap: 14px; align-items: baseline; }
+h2 .num { font: 500 14px var(--font-mono); color: var(--muted); letter-spacing: 0; flex: none; }
+h3 { font-size: 19px; font-weight: 600; line-height: 1.3; margin: 44px 0 12px; text-wrap: balance; }
+.intro { font-size: 17.5px; color: var(--ink-2); max-width: 66ch; margin: 0 0 8px; text-wrap: pretty; }
+.prose { max-width: 68ch; }
+.prose p { margin: 0 0 14px; }
+.note { font-size: 14px; color: var(--ink-2); max-width: 82ch; margin: 14px 0 0; }
+.bullets { max-width: 74ch; margin: 0; padding-left: 20px; }
+.bullets li { margin-bottom: 8px; }
+.bullets li::marker { color: var(--muted); }
+
+/* Kernentscheide */
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 30px 40px; margin-top: 26px; }
+.decision { border-top: 2px solid var(--ink); padding-top: 14px; min-width: 0; }
+.dtag { font: 500 11.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.decision h3 { font-size: 18px; margin: 6px 0 6px; }
+.decision p:last-child { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+
+/* Abbildungen */
+.fig { margin: 28px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+.fig-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fig-scroll > svg { display: block; width: 100%; height: auto; }
+.swipe-hint { display: none; font: 12px var(--font-mono); color: var(--muted); margin: 8px 0 0; }
+.fig figcaption { margin-top: 16px; font-size: 14.5px; color: var(--ink-2); max-width: 84ch; }
+.fig figcaption strong { color: var(--ink); }
+@media (max-width: 760px) {
+  .fig { padding: 14px; }
+  .fig-scroll > svg { min-width: 860px; }
+  .swipe-hint { display: block; }
+}
+.shot { display: block; margin: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+.shot img { display: block; width: 100%; height: auto; }
+.shot-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-weight: 600; }
+.shot-label { margin: 0 0 8px; font: 600 12.5px var(--font-mono); color: var(--muted); }
+.shot + .shot-label { margin-top: 20px; }
+
+/* SVG-Diagramme */
+.diagram { fill: var(--ink); font-family: var(--font-body); }
+.d-col { font: 500 11px var(--font-mono); letter-spacing: .08em; fill: var(--muted); }
+.d-t { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.d-s { font-size: 11.5px; fill: var(--ink-2); }
+.d-k { font: 11px var(--font-mono); fill: var(--ink-2); }
+.d-k2 { fill: var(--muted); }
+.d-rt { font-family: var(--font-display); font-stretch: 112%; font-size: 17px; font-weight: 750; fill: var(--ink); }
+.d-node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.25; }
+.d-later { opacity: .5; }
+.d-good rect { stroke: var(--pvw); stroke-width: 2; }
+.d-soft rect, .d-store rect { fill: var(--surface-2); }
+.d-stop rect { stroke: var(--muted); }
+.d-room { stroke-width: 1.5; }
+.d-room-bs { fill: var(--accent-wash); stroke: var(--accent); }
+.d-room-air { fill: var(--pgm-wash); stroke: var(--pgm); }
+.d-host { fill: none; stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 1 0; }
+.d-hub { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 1.5; }
+.d-layer { fill: var(--accent); fill-opacity: .6; }
+.d-chip { fill: var(--surface-2); stroke: var(--line-strong); }
+.d-chip-t { font: 11px var(--font-mono); fill: var(--ink-2); }
+.d-port { fill: var(--ink); }
+.d-port-t { font: 600 11px var(--font-mono); fill: var(--surface); }
+.d-media, .d-accent { stroke: var(--accent); stroke-width: 2; fill: none; }
+.d-pgm { stroke: var(--pgm); stroke-width: 2; fill: none; }
+.d-ctl { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 6 5; fill: none; }
+.d-neutral { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.d-good-line { stroke: var(--pvw); stroke-width: 2; fill: none; }
+.d-boundary { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 4; }
+.d-legend-box { fill: var(--surface); stroke: var(--line-strong); }
+.ah-media { fill: var(--accent); }
+.ah-pgm { fill: var(--pgm); }
+.ah-ctl { fill: var(--ink-2); }
+.ah-good { fill: var(--pvw); }
+
+/* Latenz-Diagramm */
+.lat { position: relative; }
+.lat-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; margin: 0 0 20px; padding: 0; font-size: 13.5px; color: var(--ink-2); }
+.lat-legend li { display: flex; align-items: center; gap: 8px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; flex: none; vertical-align: -1px; }
+.s1 { background: var(--s1); }
+.s2 { background: var(--s2); }
+.s3 { background: var(--s3); }
+.s4 { background: var(--s4); }
+.lat-rows { display: grid; gap: 16px; }
+.lat-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr); align-items: center; gap: 16px; }
+.lat-name { font-weight: 600; font-size: 15px; line-height: 1.25; }
+.lat-name small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.lat-track { position: relative; height: 36px; }
+.lat-grid { position: absolute; inset: 0; pointer-events: none; }
+.lat-grid span { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.lat-grid .base { background: var(--line-strong); }
+.lat-bar { position: absolute; left: 0; top: 7px; height: 22px; width: 100%; display: flex; }
+.lat-seg { position: relative; height: 100%; width: calc(var(--w) - 2px); min-width: 1px; margin-right: 2px; }
+.lat-seg:last-child { width: var(--w); margin-right: 0; border-radius: 0 4px 4px 0; }
+.lat-seg::after { content: ""; position: absolute; inset: -7px 0; }
+.lat-seg:hover, .lat-seg:focus-visible { filter: brightness(1.12); outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 2px; }
+.lat-total { position: absolute; top: 50%; left: calc(var(--t) + 10px); transform: translateY(-50%); font-weight: 600; font-size: 13.5px; white-space: nowrap; }
+.lat-axis { position: relative; height: 22px; margin-left: calc(11rem + 16px); font: 11.5px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lat-axis span { position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; }
+.lat-axis span:first-child { transform: none; }
+.lat-axis span:last-child { transform: translateX(-100%); }
+.lat-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 11px; box-shadow: var(--shadow); font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.lat-tip strong { display: block; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .lat-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .lat-axis { margin-left: 0; }
+}
+
+/* Tabellen und Code */
+.table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.t-min { min-width: 680px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+th { font: 500 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: var(--surface-2); border-bottom-color: var(--line-strong); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; }
+td { hyphens: auto; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.t-sum td { font-weight: 600; background: var(--surface-2); }
+.t-sum td:nth-child(2) { font-weight: 400; color: var(--ink-2); }
+pre { margin: 18px 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; font: 13.5px/1.6 var(--font-mono); color: var(--ink); tab-size: 2; }
+pre code { font-size: inherit; }
+pre .c { color: var(--muted); }
+
+/* Hebel, Karten, Ideen */
+.levers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 0 44px; list-style: none; padding: 0; margin: 18px 0 0; }
+.levers li { min-width: 0; padding-block: 13px; border-top: 1px solid var(--line); }
+.levers strong { display: block; margin-bottom: 2px; }
+.levers span { display: block; color: var(--ink-2); font-size: 15px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; margin-top: 24px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 12px; min-width: 0; hyphens: auto; }
+.card h3 { margin: 0 0 10px; font-size: 17px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.card ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.card li { margin-bottom: 7px; }
+.chip { font: 500 11px/1.6 var(--font-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-2); white-space: nowrap; flex: none; letter-spacing: .02em; }
+.chip-acc { border-color: var(--accent); color: var(--accent); }
+.presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 18px; margin: 22px 0 10px; }
+@media (max-width: 680px) { .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.preset { margin: 0; min-width: 0; }
+.pv { position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.pv i { position: absolute; border-radius: 3px; }
+.pv .cam { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.pv .scr { background: var(--accent-wash); box-shadow: inset 0 0 0 1px var(--accent); }
+.preset figcaption { margin-top: 9px; font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.preset figcaption span { display: block; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+.presets-key { display: flex; gap: 18px; align-items: center; font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
+.presets-key span { display: inline-flex; align-items: center; gap: 7px; }
+.sw-scr { background: var(--accent-wash); box-shadow: inset 0 0 0 1px var(--accent); }
+.sw-cam { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr)); gap: 0 30px; margin-top: 20px; }
+.idea { padding-block: 14px; border-top: 1px solid var(--line); min-width: 0; }
+.idea-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.idea h3 { font-size: 16px; margin: 0; }
+.idea p { margin: 5px 0 0; color: var(--ink-2); font-size: 14.5px; }
+
+/* Koppeln in vier Schritten */
+.steps { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; counter-reset: st; }
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.step { counter-increment: st; min-width: 0; }
+.mock { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.mock-regie { border-color: var(--pvw); box-shadow: inset 0 0 0 1px var(--pvw); }
+.mock-bar { font: 11px var(--font-mono); color: var(--muted); background: var(--surface-2); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mock-body { padding: 16px 12px 18px; display: grid; justify-items: center; gap: 8px; text-align: center; min-height: 150px; align-content: center; }
+.mock-h { margin: 0; font-weight: 600; font-size: 14px; }
+.mock-s { margin: 0; font-size: 12px; color: var(--ink-2); }
+.mock-field { font-size: 13px; padding: 5px 12px; border: 1px solid var(--line-strong); border-radius: 6px; min-width: 70%; text-align: left; background: var(--bg); }
+.mock-btn { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 6px; background: var(--ink); color: var(--surface); }
+.mock-btn-go { background: var(--pvw); color: var(--surface); }
+.mock-code { font: 600 26px/1 var(--font-mono); letter-spacing: .12em; }
+.step-t { margin: 12px 0 0; font-size: 14.5px; color: var(--ink-2); }
+.step-t b { display: block; color: var(--ink); font-weight: 600; }
+.step-t b::before { content: counter(st) " · "; font: 500 12px var(--font-mono); color: var(--muted); }
+
+/* Roadmap */
+.phases { list-style: none; margin: 24px 0 0; padding: 0; }
+.phase { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 8px 28px; padding-block: 22px; border-top: 1px solid var(--line); }
+.phase:first-child { border-top: 2px solid var(--ink); }
+.phase-k { font: 500 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.phase-k b { display: block; font-family: var(--font-display); font-stretch: 112%; font-size: 24px; font-weight: 750; letter-spacing: -.01em; text-transform: none; color: var(--ink); margin: 2px 0 8px; }
+.phase h3 { margin: 0 0 8px; }
+.phase ul { margin: 0 0 12px; padding-left: 18px; color: var(--ink-2); max-width: 76ch; }
+.phase li { margin-bottom: 4px; }
+.done { margin: 0; font-size: 15px; max-width: 76ch; }
+.done strong { font: 600 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--pvw); margin-right: 6px; }
+@media (max-width: 640px) { .phase { grid-template-columns: minmax(0, 1fr); } .phase-k b { margin-bottom: 0; } }
+
+/* Fragen und Fuss */
+.questions { list-style: none; margin: 20px 0 0; padding: 0; counter-reset: q; max-width: 82ch; }
+.questions li { counter-increment: q; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); padding-block: 14px; border-top: 1px solid var(--line); }
+.questions li::before { content: counter(q); font: 500 13px var(--font-mono); color: var(--muted); padding-top: 2px; }
+.questions strong { display: block; }
+.questions span { color: var(--ink-2); font-size: 15px; }
+.foot { margin-top: 56px; padding-block: 28px 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header class="wrap masthead" lang="de-CH">
+  <p class="eyebrow">Architektur &amp; Plan · Entwurf 2 · 22. Oktober 2026</p>
+  <h1>FlowStudio</h1>
+  <p class="lead">Eine Web-Regie nach dem Vorbild von OBS: Handys und Laptops senden Kamera und Bildschirm direkt aus dem Browser. Im Studio stellst du daraus Szenen zusammen, und ein 16:9-Output läuft als iframe beim Proxy, der das Bild verteilt. Alles läuft in einem Docker-Compose-Stack auf eurem eigenen Server.</p>
+  <dl class="specs">
+    <div><dt>Latenz Output (Ziel)</dt><dd>≈ 0,15 s</dd></div>
+    <div><dt>Betrieb</dt><dd>1 Server, Docker Compose</dd></div>
+    <div><dt>Output</dt><dd>16:9 · 1920 × 1080</dd></div>
+    <div><dt>Reconnect</dt><dd>automatisch, ohne Limit</dd></div>
+  </dl>
+  <ul class="keyline" aria-label="Farbcode der Diagramme">
+    <li class="lbl">Farbcode</li>
+    <li><i class="k k-media"></i>Medien im Backstage</li>
+    <li><i class="k k-pgm"></i>Program, on air</li>
+    <li><i class="k k-pvw"></i>Preview, ok</li>
+    <li><i class="k k-ctl"></i>Steuerung und HTTPS</li>
+  </ul>
+  <p class="changes"><strong>Neu in Entwurf 2:</strong> alles in einem Docker-Compose-Stack mit Volumes statt Azure, Login über ein Admin-Konto aus appsettings, Laptops koppeln per Kurz-URL und Freigabe, Output an einen Proxy statt direkt ans Publikum, Ton bleibt extern. Die Regie-Oberfläche ist mit Impeccable als klickbarer Prototyp entworfen und nach deinem Feedback überarbeitet: Studio-Modus zum Ein- und Ausschalten wie bei OBS, Szenen unten neben den Quellen, eine durchgehende Fläche ohne Kästen und Rahmen, kein T-Bar, und alle Docks lassen sich frei anordnen und in der Grösse ändern (<a href="#regie">Abschnitt 3</a>).</p>
+</header>
+
+<nav class="wrap toc" aria-label="Inhalt" lang="de-CH">
+  <ol>
+    <li><a href="#infra">Infrastruktur</a></li>
+    <li><a href="#latenz">Latenz</a></li>
+    <li><a href="#szenen">Szenen &amp; Regie</a></li>
+    <li><a href="#sender">Sender &amp; Koppeln</a></li>
+    <li><a href="#output">Output</a></li>
+    <li><a href="#stabil">Stabilität</a></li>
+    <li><a href="#sicher">Sicherheit</a></li>
+    <li><a href="#stack">Tech-Stack</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#ideen">Ideen</a></li>
+    <li><a href="#fragen">Geklärt &amp; offen</a></li>
+  </ol>
+</nav>
+
+<main lang="de-CH">
+
+<section class="wrap sec" id="entscheide" aria-labelledby="h-entscheide">
+  <h2 id="h-entscheide">Sechs Entscheide tragen das Ganze</h2>
+  <div class="decisions">
+    <article class="decision">
+      <p class="dtag">Medien</p>
+      <h3>WebRTC von der Kamera bis zum Output</h3>
+      <p>Nur WebRTC bringt Bild im Browser deutlich unter eine Sekunde. HLS und RTMP kommen höchstens später dazu, für Restreams.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Betrieb</p>
+      <h3>Ein Docker-Compose-Stack, sonst nichts</h3>
+      <p><code>docker compose up -d</code> startet HTTPS-Proxy, API, LiveKit und Datenbank. Alle Daten liegen in Volumes, es gibt keine Cloud-Dienste.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Server</p>
+      <h3>LiveKit als SFU im eigenen Stack</h3>
+      <p>Leitet Pakete nur weiter, statt sie neu zu kodieren. Simulcast, Reconnect und Token-Rechte sind eingebaut. Open Source unter Apache 2.0.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Rendering</p>
+      <h3>Ein Renderer für alle Ansichten</h3>
+      <p>Regie-Monitore und Output-Seite nutzen denselben Szenen-Renderer. Was der Program-Monitor zeigt, kommt genau so raus.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Sicherheit</p>
+      <h3>Geschützter Output, Air-Modus als Reserve</h3>
+      <p>Der Output geht an einen Abnehmer, den Proxy, über einen geheimen, sperrbaren Link. Öffnen Zuschauer die Seite später selbst, kommt der Air-Modus dazu: Dann sehen sie nur den fertigen Program-Stream.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Stabilität</p>
+      <h3>Reconnect in drei Stufen, ohne aufzugeben</h3>
+      <p>Resume, Rejoin, Warten mit Backoff. Jedes Gerät behält seine Identität und landet nach einem Unterbruch wieder im selben Slot der Szene.</p>
+    </article>
+  </div>
+</section>
+
+<section class="wrap sec" id="infra">
+  <h2><span class="num">1</span>Infrastruktur</h2>
+  <p class="intro">Zwei Ebenen, sauber getrennt. Die <strong>Media-Plane</strong> transportiert Bild und Ton über LiveKit. Die <strong>Control-Plane</strong>, also die FlowStudio-API, entscheidet, wer was darf und welche Szene läuft. Beides läuft im selben Docker-Compose-Stack, im selben WLAN wie die Geräte.</p>
+
+  <figure class="fig" id="abb-medien">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 600" role="img" aria-label="Medienfluss: Handys und Laptops senden per WebRTC in den privaten Backstage-Raum. Die Regie und die Output-Seite empfangen von dort. Die Output-Seite liefert das 16:9-Program an den Proxy, der es an rund 30 Personen verteilt. Optional für später: Ein Renderer schickt einen fertigen Program-Track in einen Air-Raum, aus dem Zuschauer direkt schauen, sowie Restream und Aufnahme.">
+        <defs>
+          <marker id="f1-am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-media"/></marker>
+          <marker id="f1-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-pgm"/></marker>
+        </defs>
+
+        <text x="20" y="24" class="d-col">SENDER · BROWSER</text>
+        <text x="330" y="24" class="d-col">FLOWSTUDIO-SERVER · DOCKER</text>
+        <text x="760" y="24" class="d-col">EMPFÄNGER</text>
+
+        <g class="d-node">
+          <rect x="20" y="40" width="220" height="56" rx="6"/>
+          <text x="34" y="64" class="d-t">Handy-Kameras</text>
+          <text x="34" y="82" class="d-s">Sender-PWA · 1080p · Simulcast</text>
+        </g>
+        <g class="d-node">
+          <rect x="20" y="108" width="220" height="56" rx="6"/>
+          <text x="34" y="132" class="d-t">Laptops</text>
+          <text x="34" y="150" class="d-s">Screen 1…n · optional Kamera</text>
+        </g>
+        <g class="d-node d-later">
+          <rect x="20" y="176" width="220" height="56" rx="6"/>
+          <text x="34" y="200" class="d-t">Audio-Client</text>
+          <text x="34" y="218" class="d-s">später · Ton läuft heute extern</text>
+        </g>
+        <g class="d-node d-later">
+          <rect x="20" y="244" width="220" height="56" rx="6"/>
+          <text x="34" y="268" class="d-t">Pro-Quellen</text>
+          <text x="34" y="286" class="d-s">OBS, vMix · WHIP/RTMP · später</text>
+        </g>
+
+        <line x1="240" y1="68" x2="328" y2="68" class="d-media" marker-end="url(#f1-am)"/>
+        <line x1="240" y1="136" x2="328" y2="136" class="d-media" marker-end="url(#f1-am)"/>
+        <g class="d-later">
+          <line x1="240" y1="204" x2="328" y2="204" class="d-media" marker-end="url(#f1-am)"/>
+          <line x1="240" y1="272" x2="328" y2="272" class="d-media" marker-end="url(#f1-am)"/>
+        </g>
+        <text x="284" y="59" class="d-k" text-anchor="middle">WebRTC</text>
+
+        <rect x="330" y="40" width="320" height="260" rx="10" class="d-room d-room-bs"/>
+        <text x="352" y="70" class="d-rt">Backstage-Raum</text>
+        <text x="352" y="90" class="d-s">LiveKit · privat · alle Quellen</text>
+        <text x="352" y="128" class="d-k">je Quelle bis zu 3 Stufen</text>
+        <rect x="352" y="138" width="156" height="10" rx="2" class="d-layer"/>
+        <text x="518" y="147" class="d-k">1080p</text>
+        <rect x="352" y="156" width="104" height="10" rx="2" class="d-layer"/>
+        <text x="466" y="165" class="d-k">540p</text>
+        <rect x="352" y="174" width="52" height="10" rx="2" class="d-layer"/>
+        <text x="414" y="183" class="d-k">270p</text>
+        <text x="352" y="222" class="d-s">leitet weiter, kodiert nicht um</text>
+        <text x="352" y="242" class="d-s">Zugang: Regie und Output-Seite</text>
+
+        <line x1="650" y1="78" x2="758" y2="78" class="d-media" marker-end="url(#f1-am)"/>
+        <text x="704" y="69" class="d-k" text-anchor="middle">alle Quellen</text>
+        <line x1="650" y1="158" x2="758" y2="158" class="d-media" marker-end="url(#f1-am)"/>
+        <text x="704" y="149" class="d-k" text-anchor="middle">Program-Quellen</text>
+        <g class="d-node">
+          <rect x="760" y="50" width="250" height="56" rx="6"/>
+          <text x="774" y="74" class="d-t">Regie (Studio)</text>
+          <text x="774" y="92" class="d-s">Preview · Program · Stationen</text>
+        </g>
+        <g class="d-node">
+          <rect x="760" y="130" width="250" height="56" rx="6"/>
+          <text x="774" y="154" class="d-t">Output-Seite</text>
+          <text x="774" y="172" class="d-s">16:9 · iframe · geheimer Link</text>
+        </g>
+        <line x1="1010" y1="158" x2="1058" y2="158" class="d-pgm" marker-end="url(#f1-ap)"/>
+        <g class="d-node">
+          <rect x="1060" y="130" width="120" height="56" rx="6"/>
+          <text x="1074" y="154" class="d-t">Proxy</text>
+          <text x="1074" y="172" class="d-s">≈ 30 Personen</text>
+        </g>
+
+        <g>
+          <line x1="1046" y1="56" x2="1076" y2="56" class="d-media"/>
+          <text x="1084" y="60" class="d-k">Backstage</text>
+          <line x1="1046" y1="78" x2="1076" y2="78" class="d-pgm"/>
+          <text x="1084" y="82" class="d-k">Program</text>
+          <g class="d-later"><rect x="1046" y="92" width="30" height="16" rx="3" class="d-legend-box"/></g>
+          <text x="1084" y="104" class="d-k">später</text>
+        </g>
+
+        <line x1="20" y1="372" x2="1180" y2="372" class="d-boundary"/>
+        <text x="20" y="364" class="d-col">HEUTE</text>
+        <text x="20" y="392" class="d-col">AIR-MODUS · OPTIONAL</text>
+        <text x="1180" y="364" class="d-col" text-anchor="end">ERST WENN ZUSCHAUER DIE SEITE SELBST ÖFFNEN</text>
+
+        <g class="d-later">
+          <line x1="490" y1="300" x2="490" y2="408" class="d-media" marker-end="url(#f1-am)"/>
+          <text x="502" y="338" class="d-k">Program-Quellen</text>
+          <g class="d-node">
+            <rect x="380" y="410" width="220" height="56" rx="6"/>
+            <text x="394" y="434" class="d-t">Renderer</text>
+            <text x="394" y="452" class="d-s">rendert die Program-Szene</text>
+          </g>
+          <line x1="490" y1="466" x2="490" y2="498" class="d-pgm" marker-end="url(#f1-ap)"/>
+          <text x="502" y="487" class="d-k">1 Program-Track</text>
+          <rect x="330" y="500" width="320" height="86" rx="10" class="d-room d-room-air"/>
+          <text x="352" y="530" class="d-rt">Air-Raum</text>
+          <text x="352" y="550" class="d-s">LiveKit · nur der fertige Program-Stream</text>
+          <text x="352" y="570" class="d-k">Simulcast 1080p / 720p / 360p</text>
+          <line x1="650" y1="528" x2="758" y2="528" class="d-pgm" marker-end="url(#f1-ap)"/>
+          <g class="d-node">
+            <rect x="760" y="500" width="250" height="40" rx="6"/>
+            <text x="774" y="525" class="d-t">Zuschauer direkt</text>
+          </g>
+          <line x1="650" y1="566" x2="758" y2="566" class="d-pgm" marker-end="url(#f1-ap)"/>
+          <g class="d-node">
+            <rect x="760" y="548" width="250" height="40" rx="6"/>
+            <text x="774" y="573" class="d-t">Restream &amp; Aufnahme</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 1 · Medienfluss.</strong> Kameras und Screens landen verschlüsselt (DTLS-SRTP) im privaten Backstage-Raum. Die Regie sieht dort alles, die Output-Seite holt die Quellen der Program-Szene und liefert das 16:9-Bild an den Proxy. Der untere Teil ist vorbereitet, wird aber erst gebaut, wenn Zuschauer die Seite selbst öffnen.</figcaption>
+  </figure>
+
+  <figure class="fig" id="abb-docker">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 400" role="img" aria-label="Docker-Stack: Browser im WLAN erreichen den Server über Port 443 (Caddy, HTTPS) und für Medien direkt über die Ports 7881 und 7882 (LiveKit). Caddy leitet /api und /hubs an die API und /rtc an LiveKit weiter. Die API nutzt PostgreSQL und steuert LiveKit. Volumes: caddy_data, media, keys, pgdata. Egress und Renderer kommen später dazu.">
+        <defs>
+          <marker id="f2-am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-media"/></marker>
+          <marker id="f2-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-ctl"/></marker>
+        </defs>
+
+        <g class="d-node">
+          <rect x="20" y="70" width="210" height="290" rx="8"/>
+          <text x="38" y="100" class="d-t">Browser im WLAN</text>
+          <text x="38" y="138" class="d-s">Regie · Laptop</text>
+          <text x="38" y="162" class="d-s">Sender · Handys, Laptops</text>
+          <text x="38" y="186" class="d-s">Output · beim Proxy</text>
+          <text x="38" y="334" class="d-k d-k2">keine App nötig</text>
+        </g>
+
+        <rect x="300" y="24" width="880" height="356" rx="12" class="d-host"/>
+        <text x="324" y="50" class="d-col">LINUX-SERVER ODER PC · DOCKER COMPOSE</text>
+
+        <line x1="230" y1="125" x2="276" y2="125" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <text x="253" y="116" class="d-k" text-anchor="middle">HTTPS</text>
+        <rect x="278" y="113" width="44" height="24" rx="4" class="d-port"/>
+        <text x="300" y="129.5" class="d-port-t" text-anchor="middle">443</text>
+        <line x1="322" y1="125" x2="356" y2="125" class="d-ctl" marker-end="url(#f2-ac)"/>
+
+        <line x1="230" y1="305" x2="268" y2="305" class="d-media" marker-end="url(#f2-am)"/>
+        <text x="249" y="296" class="d-k" text-anchor="middle">Bild</text>
+        <rect x="270" y="293" width="60" height="24" rx="4" class="d-port"/>
+        <text x="300" y="309.5" class="d-port-t" text-anchor="middle">7881·82</text>
+        <line x1="330" y1="305" x2="356" y2="305" class="d-media" marker-end="url(#f2-am)"/>
+
+        <g class="d-node">
+          <rect x="360" y="70" width="220" height="110" rx="8"/>
+          <text x="378" y="98" class="d-t">caddy</text>
+          <text x="378" y="117" class="d-s">HTTPS, Zertifikate, Frontends</text>
+        </g>
+        <rect x="378" y="140" width="112" height="24" rx="4" class="d-chip"/>
+        <text x="434" y="156" class="d-chip-t" text-anchor="middle">caddy_data</text>
+
+        <line x1="580" y1="125" x2="678" y2="125" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <text x="629" y="116" class="d-k" text-anchor="middle">/api · /hubs</text>
+
+        <g class="d-node">
+          <rect x="680" y="70" width="220" height="110" rx="8"/>
+          <text x="698" y="98" class="d-t">api</text>
+          <text x="698" y="117" class="d-s">ASP.NET Core · SignalR</text>
+        </g>
+        <rect x="698" y="140" width="72" height="24" rx="4" class="d-chip"/>
+        <text x="734" y="156" class="d-chip-t" text-anchor="middle">media</text>
+        <rect x="778" y="140" width="64" height="24" rx="4" class="d-chip"/>
+        <text x="810" y="156" class="d-chip-t" text-anchor="middle">keys</text>
+
+        <line x1="900" y1="125" x2="968" y2="125" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <text x="934" y="116" class="d-k" text-anchor="middle">SQL</text>
+
+        <g class="d-node">
+          <rect x="970" y="70" width="190" height="110" rx="8"/>
+          <text x="988" y="98" class="d-t">postgres</text>
+          <text x="988" y="117" class="d-s">Szenen, Geräte, Audit</text>
+        </g>
+        <rect x="988" y="140" width="80" height="24" rx="4" class="d-chip"/>
+        <text x="1028" y="156" class="d-chip-t" text-anchor="middle">pgdata</text>
+
+        <line x1="470" y1="180" x2="470" y2="258" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <text x="482" y="224" class="d-k">/rtc · Signalisierung</text>
+
+        <g class="d-node">
+          <rect x="360" y="260" width="220" height="90" rx="8"/>
+          <text x="378" y="288" class="d-t">livekit</text>
+          <text x="378" y="307" class="d-s">SFU · WebRTC · Simulcast</text>
+          <text x="378" y="330" class="d-k d-k2">livekit.yaml</text>
+        </g>
+
+        <path d="M760,180 L760,305 L584,305" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <text x="772" y="250" class="d-k">Server-API · Webhooks</text>
+
+        <g class="d-node d-later">
+          <rect x="970" y="260" width="190" height="90" rx="8"/>
+          <text x="988" y="288" class="d-t">egress · renderer</text>
+          <text x="988" y="307" class="d-s">später: Aufnahme, Air-Modus</text>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 2 · Docker-Stack.</strong> Vier Container auf einem Rechner. Seiten, API und Signalisierung laufen über Port 443 durch Caddy; das Bild geht direkt an LiveKit, ohne Umweg. Die grauen Chips sind Volumes: Zertifikate, hochgeladene Medien, Login-Schlüssel und die Datenbank überstehen jeden Neustart und jedes Update.</figcaption>
+  </figure>
+
+  <figure class="fig" id="abb-steuerung">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 450" role="img" aria-label="Steuerung: Die FlowStudio-API ist der Knoten. Sender holen Pairing, Token und Tally, die Regie schickt Szenen und Take, die Output-Seite holt Token und Szenen-Zustand, ein Renderer kommt erst im Air-Modus dazu. Die API steuert LiveKit und nutzt PostgreSQL, Medien- und Schlüssel-Volumes sowie die Einstellungen aus der .env-Datei.">
+        <defs>
+          <marker id="f3-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-ctl"/></marker>
+        </defs>
+
+        <g class="d-node">
+          <rect x="490" y="16" width="220" height="56" rx="6"/>
+          <text x="600" y="40" class="d-t" text-anchor="middle">LiveKit SFU</text>
+          <text x="600" y="58" class="d-s" text-anchor="middle">Server-API · Webhooks</text>
+        </g>
+        <line x1="600" y1="74" x2="600" y2="118" class="d-ctl" marker-start="url(#f3-ac)" marker-end="url(#f3-ac)"/>
+        <text x="614" y="101" class="d-k">Kick · Rechte · Join/Leave</text>
+
+        <rect x="465" y="120" width="270" height="200" rx="10" class="d-hub"/>
+        <text x="600" y="186" class="d-rt" text-anchor="middle">FlowStudio-API</text>
+        <text x="600" y="208" class="d-s" text-anchor="middle">ASP.NET Core · SignalR</text>
+        <text x="600" y="226" class="d-s" text-anchor="middle">Token-Dienst (JWT)</text>
+        <text x="600" y="262" class="d-k" text-anchor="middle">Szenen · Geräte · Rechte</text>
+
+        <g class="d-node">
+          <rect x="30" y="130" width="240" height="56" rx="6"/>
+          <text x="44" y="154" class="d-t">Sender-PWA</text>
+          <text x="44" y="172" class="d-s">Handys, Laptops</text>
+        </g>
+        <line x1="272" y1="158" x2="463" y2="158" class="d-ctl" marker-start="url(#f3-ac)" marker-end="url(#f3-ac)"/>
+        <text x="368" y="149" class="d-k" text-anchor="middle">Pairing · Token · Tally</text>
+        <text x="368" y="177" class="d-k d-k2" text-anchor="middle">HTTPS + SignalR</text>
+
+        <g class="d-node">
+          <rect x="30" y="264" width="240" height="56" rx="6"/>
+          <text x="44" y="288" class="d-t">Output-Seite</text>
+          <text x="44" y="306" class="d-s">beim Proxy</text>
+        </g>
+        <line x1="272" y1="292" x2="463" y2="292" class="d-ctl" marker-start="url(#f3-ac)" marker-end="url(#f3-ac)"/>
+        <text x="368" y="283" class="d-k" text-anchor="middle">Output-Token · Szenen</text>
+        <text x="368" y="311" class="d-k d-k2" text-anchor="middle">geheimer Link, sperrbar</text>
+
+        <line x1="737" y1="158" x2="928" y2="158" class="d-ctl" marker-start="url(#f3-ac)" marker-end="url(#f3-ac)"/>
+        <text x="832" y="149" class="d-k" text-anchor="middle">Szenen · Take · Status</text>
+        <text x="832" y="177" class="d-k d-k2" text-anchor="middle">SignalR über WSS</text>
+        <g class="d-node">
+          <rect x="930" y="130" width="240" height="56" rx="6"/>
+          <text x="944" y="154" class="d-t">Regie (Studio)</text>
+          <text x="944" y="172" class="d-s">Login: Admin aus .env</text>
+        </g>
+
+        <g class="d-later">
+          <line x1="737" y1="292" x2="928" y2="292" class="d-ctl" marker-start="url(#f3-ac)" marker-end="url(#f3-ac)"/>
+          <text x="832" y="283" class="d-k" text-anchor="middle">Szenen-Zustand live</text>
+          <g class="d-node">
+            <rect x="930" y="264" width="240" height="56" rx="6"/>
+            <text x="944" y="288" class="d-t">Renderer</text>
+            <text x="944" y="306" class="d-s">nur im Air-Modus</text>
+          </g>
+        </g>
+
+        <line x1="600" y1="320" x2="600" y2="352" class="d-ctl"/>
+        <line x1="330" y1="352" x2="870" y2="352" class="d-ctl"/>
+        <line x1="330" y1="352" x2="330" y2="376" class="d-ctl" marker-end="url(#f3-ac)"/>
+        <line x1="510" y1="352" x2="510" y2="376" class="d-ctl" marker-end="url(#f3-ac)"/>
+        <line x1="690" y1="352" x2="690" y2="376" class="d-ctl" marker-end="url(#f3-ac)"/>
+        <line x1="870" y1="352" x2="870" y2="376" class="d-ctl" marker-end="url(#f3-ac)"/>
+        <g class="d-node d-store">
+          <rect x="250" y="378" width="160" height="56" rx="6"/>
+          <text x="330" y="402" class="d-t" text-anchor="middle">PostgreSQL</text>
+          <text x="330" y="420" class="d-s" text-anchor="middle">Szenen, Geräte, Audit</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="430" y="378" width="160" height="56" rx="6"/>
+          <text x="510" y="402" class="d-t" text-anchor="middle">Medien</text>
+          <text x="510" y="420" class="d-s" text-anchor="middle">Bilder, Videos</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="610" y="378" width="160" height="56" rx="6"/>
+          <text x="690" y="402" class="d-t" text-anchor="middle">Schlüssel</text>
+          <text x="690" y="420" class="d-s" text-anchor="middle">Login-Cookies</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="790" y="378" width="160" height="56" rx="6"/>
+          <text x="870" y="402" class="d-t" text-anchor="middle">.env</text>
+          <text x="870" y="420" class="d-s" text-anchor="middle">Admin, Secrets</text>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 3 · Steuerung.</strong> Alles, was nicht Bild oder Ton ist, läuft über die API: Pairing, Tokens, Szenen-Änderungen, Take und Tally. Jeder Client holt zuerst ein Token mit genau seinen Rechten und verbindet sich damit direkt mit LiveKit. Fällt die API kurz aus, laufen Bild und Output weiter.</figcaption>
+  </figure>
+
+  <h3>Komponenten</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Container / Teil</th><th>Aufgabe</th><th>Technik</th></tr></thead>
+      <tbody>
+        <tr><td>caddy</td><td>HTTPS mit Zertifikat, liefert Regie, Sender und Output aus, leitet an API und LiveKit weiter</td><td>Caddy mit DNS-Modul, Frontends beim Build eingebaut</td></tr>
+        <tr><td>api</td><td>Login, Pairing, Tokens, Szenen-Zustand, Uploads, Webhooks</td><td>ASP.NET Core (.NET 10), SignalR, EF Core</td></tr>
+        <tr><td>livekit</td><td>Medien weiterleiten, Simulcast</td><td>LiveKit (Open Source)</td></tr>
+        <tr><td>postgres</td><td>Szenen, Geräte, Produktionen, Audit-Log</td><td>PostgreSQL 17</td></tr>
+        <tr><td>Regie</td><td>Szenen bauen und schalten, Studio-Modus mit Preview und Take, Stationen, Geräte koppeln</td><td>Angular (Signals, OnPush), gemeinsamer Renderer</td></tr>
+        <tr><td>Sender-PWA</td><td>Kamera und Screens senden, Tally anzeigen</td><td>Angular-PWA, livekit-client, Wake-Lock</td></tr>
+        <tr><td>Output-Seite</td><td>16:9-Program für den Proxy, ohne Bedienelemente</td><td>Vanilla TypeScript mit Vite, ohne Framework</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Betrieb mit Docker Compose</h3>
+  <div class="prose">
+    <p>Gestartet wird mit zwei Schritten: <code>./setup.sh</code> legt die <code>.env</code> mit zufälligen Secrets an und fragt Domain, Server-IP und Admin-Konto ab, danach startet <code>docker compose up -d</code> alles. Beim ersten Start legt die API die Datenbank an und erstellt die Standard-Produktion. Danach ist die Regie unter der Domain erreichbar.</p>
+  </div>
+<pre><code><span class="c"># docker-compose.yml (Skizze)</span>
+services:
+  caddy:
+    build: ./infra/caddy                 <span class="c"># Caddy + DNS-Modul + gebaute Frontends</span>
+    ports: ["80:80", "443:443"]
+    env_file: .env
+    volumes: [caddy_data:/data, caddy_config:/config]
+    restart: unless-stopped
+  api:
+    build: ./apps/api
+    env_file: .env                       <span class="c"># ADMIN__USERNAME, ADMIN__PASSWORD, Secrets</span>
+    volumes: [media:/data/media, keys:/data/keys]
+    depends_on: [postgres]
+    restart: unless-stopped
+  livekit:
+    image: livekit/livekit-server
+    command: --config /etc/livekit.yaml --node-ip ${FLOWSTUDIO_NODE_IP}
+    ports: ["7881:7881", "7882:7882/udp"]   <span class="c"># Medien direkt, nicht über Caddy</span>
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes: [./infra/livekit.yaml:/etc/livekit.yaml:ro]
+    restart: unless-stopped
+  postgres:
+    image: postgres:17
+    env_file: .env
+    volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped
+
+volumes: { caddy_data: {}, caddy_config: {}, media: {}, keys: {}, pgdata: {} }</code></pre>
+  <ul class="bullets">
+    <li><strong>Lokal oder VPS:</strong> derselbe Stack läuft auf dem eigenen PC (Docker Desktop) und auf einem Linux-Server im Betrieb. <code>FLOWSTUDIO_NODE_IP</code> ist die Adresse des Rechners im WLAN; die gibt LiveKit den Geräten für das Bild weiter.</li>
+    <li><strong>HTTPS ist Pflicht, auch im WLAN.</strong> Browser geben Kamera und Bildschirm nur über HTTPS frei. Empfohlen: eine Subdomain wie <code>flowstudio.opten.ch</code>, die per DNS auf die interne IP zeigt; Caddy holt das Zertifikat per DNS-Challenge bei Let's Encrypt. Dann vertrauen alle Handys und Laptops dem Zertifikat ohne Installation. Für einen schnellen Test geht ein lokales Zertifikat, das muss aber auf jedem Gerät installiert werden.</li>
+    <li><strong>Backup:</strong> <code>./backup.sh</code> sichert die Datenbank (<code>pg_dump</code>) und das Medien-Volume in einen Ordner mit Datum.</li>
+    <li><strong>Update:</strong> <code>git pull</code> und <code>docker compose up -d --build</code>, nie während einer Produktion. Volumes bleiben erhalten.</li>
+    <li><strong>Später:</strong> Für Aufnahme und Restream kommen die Container <code>egress</code> und <code>redis</code> dazu, für den Air-Modus der <code>renderer</code>.</li>
+  </ul>
+</section>
+
+<section class="wrap sec" id="latenz">
+  <h2><span class="num">2</span>Latenz: rund 0,15 s von der Kamera zum Output</h2>
+  <p class="intro">Glass-to-Glass heisst: vom Licht auf dem Kamerasensor bis zum Pixel beim Abnehmer. Vor Ort im eigenen WLAN fällt der Weg übers Internet weg. Die Zeit steckt dann fast nur noch in Aufnahme und Puffern.</p>
+
+  <figure class="fig lat" id="lat-chart">
+    <ul class="lat-legend" aria-label="Legende">
+      <li><span class="sw s1"></span>Aufnahme &amp; Encode</li>
+      <li><span class="sw s2"></span>Netzwerk</li>
+      <li><span class="sw s3"></span>Server (SFU, Renderer)</li>
+      <li><span class="sw s4"></span>Wiedergabe</li>
+    </ul>
+    <div class="lat-rows">
+      <div class="lat-row">
+        <div class="lat-name">Output vor Ort<small>Regie und Proxy im WLAN</small><small>≈&nbsp;5&nbsp;Frames</small></div>
+        <div class="lat-track" style="--t: 37.5%">
+          <div class="lat-grid" aria-hidden="true"><span class="base" style="left:0"></span><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span><span style="left:calc(100% - 1px)"></span></div>
+          <div class="lat-bar">
+            <span class="lat-seg s1" style="--w:11.25%" tabindex="0" role="img" aria-label="Output vor Ort, Aufnahme und Encode: 45 ms" data-ms="45" data-label="Aufnahme &amp; Encode" data-path="Output vor Ort"></span>
+            <span class="lat-seg s2" style="--w:6.25%" tabindex="0" role="img" aria-label="Output vor Ort, Netzwerk: 25 ms" data-ms="25" data-label="Netzwerk (WLAN)" data-path="Output vor Ort"></span>
+            <span class="lat-seg s3" style="--w:1.25%" tabindex="0" role="img" aria-label="Output vor Ort, Server: 5 ms" data-ms="5" data-label="Server (SFU)" data-path="Output vor Ort"></span>
+            <span class="lat-seg s4" style="--w:18.75%" tabindex="0" role="img" aria-label="Output vor Ort, Wiedergabe: 75 ms" data-ms="75" data-label="Wiedergabe" data-path="Output vor Ort"></span>
+          </div>
+          <span class="lat-total">≈ 150 ms</span>
+        </div>
+      </div>
+      <div class="lat-row">
+        <div class="lat-name">Air-Modus<small>optional, mit Renderer</small><small>≈&nbsp;7&nbsp;Frames</small></div>
+        <div class="lat-track" style="--t: 60%">
+          <div class="lat-grid" aria-hidden="true"><span class="base" style="left:0"></span><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span><span style="left:calc(100% - 1px)"></span></div>
+          <div class="lat-bar">
+            <span class="lat-seg s1" style="--w:11.25%" tabindex="0" role="img" aria-label="Air-Modus, Aufnahme und Encode: 45 ms" data-ms="45" data-label="Aufnahme &amp; Encode" data-path="Air-Modus"></span>
+            <span class="lat-seg s2" style="--w:7.5%" tabindex="0" role="img" aria-label="Air-Modus, Netzwerk: 30 ms" data-ms="30" data-label="Netzwerk (WLAN)" data-path="Air-Modus"></span>
+            <span class="lat-seg s3" style="--w:22.5%" tabindex="0" role="img" aria-label="Air-Modus, Server mit Renderer: 90 ms" data-ms="90" data-label="Server (SFU + Renderer)" data-path="Air-Modus"></span>
+            <span class="lat-seg s4" style="--w:18.75%" tabindex="0" role="img" aria-label="Air-Modus, Wiedergabe: 75 ms" data-ms="75" data-label="Wiedergabe" data-path="Air-Modus"></span>
+          </div>
+          <span class="lat-total">≈ 240 ms</span>
+        </div>
+      </div>
+    </div>
+    <div class="lat-axis" aria-hidden="true"><span style="left:0">0</span><span style="left:25%">100</span><span style="left:50%">200</span><span style="left:75%">300</span><span style="left:100%">400 ms</span></div>
+    <div class="lat-tip" hidden aria-hidden="true"><strong class="tv"></strong><span class="tl"></span></div>
+    <figcaption><strong>Abb. 4 · Latenz-Budget vor Ort (Schätzung).</strong> Der heutige Weg über die Output-Seite gegen den optionalen Air-Modus. Den grössten Anteil haben Kamera-Frame und Jitter-Buffer; die SFU selbst kostet fast nichts.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Abschnitt</th><th>Was passiert</th><th class="num">Output vor Ort</th><th class="num">Air-Modus</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sw s1"></span> Aufnahme &amp; Encode</td><td>ein Kamera-Frame (33 ms bei 30 fps) plus Hardware-Encoder</td><td class="num">45 ms</td><td class="num">45 ms</td></tr>
+        <tr><td><span class="sw s2"></span> Netzwerk</td><td>WLAN vor Ort: Upload zur SFU und Download zum Abnehmer</td><td class="num">25 ms</td><td class="num">30 ms</td></tr>
+        <tr><td><span class="sw s3"></span> Server</td><td>SFU leitet weiter; im Air-Modus zusätzlich der Renderer (Puffer, Mischen, Encode)</td><td class="num">5 ms</td><td class="num">90 ms</td></tr>
+        <tr><td><span class="sw s4"></span> Wiedergabe</td><td>Jitter-Buffer (im WLAN etwas grösser), Decode, Anzeige</td><td class="num">75 ms</td><td class="num">75 ms</td></tr>
+        <tr class="t-sum"><td>Total</td><td>Glass-to-Glass</td><td class="num">≈ 150 ms</td><td class="num">≈ 240 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Schätzwerte im eigenen WLAN bei 30 fps (1 Frame = 33 ms). Phase 0 misst sie echt. Was der Proxy danach an Verzögerung dazufügt, liegt ausserhalb von FlowStudio.</p>
+
+  <h3>Die Hebel für Tempo</h3>
+  <ul class="levers">
+    <li><strong>Weiterleiten statt umkodieren</strong><span>Die SFU fasst das Video nicht an. Ein Hop kostet wenige Millisekunden.</span></li>
+    <li><strong>Simulcast und Dynacast</strong><span>Jeder Sender liefert bis zu drei Qualitätsstufen, jede Kachel holt die passende. Stufen, die niemand braucht, kodiert das Handy gar nicht erst; das spart Akku und WLAN.</span></li>
+    <li><strong>Stufe aus der Szene ableiten</strong><span>Die Output-Seite kennt die Kachelgrösse aus dem Szenenmodell und fordert direkt die richtige Auflösung an, statt zu raten.</span></li>
+    <li><strong>Vorladen fürs Umschalten</strong><span>Die Output-Seite hält die Quellen aller Szenen abonniert, unsichtbare in der kleinsten Stufe. Beim Umschalten ist sofort Bild da, kein Schwarzbild; die volle Auflösung folgt nach wenigen Frames mit dem nächsten Keyframe. Im Studio-Modus holt sie die Quellen der Preview-Szene schon vorher in voller Stufe.</span></li>
+    <li><strong>Kleiner Puffer in der Regie</strong><span>Im Studio steht der Jitter-Buffer auf Minimum (<code>jitterBufferTarget</code> in Chromium). Für den Output etwas grösser, damit das Bild ruhig bleibt.</span></li>
+    <li><strong>Hardware-Codecs</strong><span>H.264 auf Handys, weil der Hardware-Encoder Akku und Wärme spart. Screens mit VP9 oder AV1 für scharfe Schrift bei wenig Bitrate, mit Fallback für ältere Geräte.</span></li>
+    <li><strong>Inhalt passend kodieren</strong><span>Screens mit <code>contentHint = "detail"</code>: Schärfe vor Bildrate. Kameras mit <code>"motion"</code>: flüssig vor scharf.</span></li>
+    <li><strong>Rendern auf der GPU</strong><span>Videos sind echte <code>&lt;video&gt;</code>-Elemente, platziert per CSS-Transform. Kein Kopieren von Frames in ein Canvas.</span></li>
+    <li><strong>Server im selben Netz</strong><span>Alles bleibt im WLAN oder LAN, kein Umweg übers Internet. Server und Regie-Laptop am besten per Kabel, Handys auf einem eigenen 5-GHz-Netz.</span></li>
+    <li><strong>Leichte Output-Seite</strong><span>Vanilla TypeScript ohne Framework. Die Seite steht in Sekundenbruchteilen, auch im iframe des Proxys.</span></li>
+  </ul>
+</section>
+
+<section class="wrap sec" id="szenen">
+  <h2><span class="num">3</span>Szenen, Quellen und die Regie</h2>
+  <p class="intro">Die Begriffe kommen von OBS, damit sich alle sofort zurechtfinden. Eine Szene ist eine geordnete Liste von Elementen auf einem festen Canvas von 1920 × 1080 Pixeln, und jedes Element zeigt eine Quelle.</p>
+
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>In OBS</th><th>In FlowStudio</th><th>Was es kann</th></tr></thead>
+      <tbody>
+        <tr><td>Szene</td><td>Szene</td><td>geordnete Elemente auf festem 1920 × 1080-Canvas</td></tr>
+        <tr><td>Quelle</td><td>Quelle</td><td>Kamera oder Screen eines Geräts, Bild, Video; später Text, Ton, Webseite, andere Szene</td></tr>
+        <tr><td>Szenenelement</td><td>Element</td><td>Position, Grösse, Crop, Fit, Ecken, Rahmen, Ebene, Fallback</td></tr>
+        <tr><td>Studio-Modus</td><td>Studio-Modus</td><td>ein- und ausschaltbar: aus geht eine Szene mit einem Klick live, an kommen Preview und Take dazu</td></tr>
+        <tr><td>Übergänge</td><td>Übergang</td><td>Schnitt oder Blende mit fester Dauer, die immer ganz durchläuft; kein T-Bar, Stinger später</td></tr>
+        <tr><td>Docks</td><td>Docks</td><td>frei anordnen (unten, links, rechts), Grösse an den Trennlinien ziehen, ein- und ausblenden; das Layout bleibt gespeichert</td></tr>
+        <tr><td>Basis-Auflösung</td><td>Canvas</td><td>fix 1920 × 1080, der Output skaliert verlustfrei auf jede 16:9-Fläche</td></tr>
+        <tr><td>Szenensammlung</td><td>Produktion</td><td>ein Event mit eigenen Geräten, Szenen und Outputs</td></tr>
+        <tr><td>Audio-Mixer</td><td>später</td><td>Ton läuft heute extern; Pegel, Mute und Sync-Versatz sind vorbereitet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Layout-Vorlagen</h3>
+  <p class="prose">Eine Vorlage legt Slots an, und du ziehst Quellen per Drag &amp; Drop hinein. Danach ist jedes Element frei veränderbar.</p>
+  <div class="presets">
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:0;top:0;width:100%;height:100%"></i></div>
+      <figcaption>Vollbild<span>eine Quelle</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:26.75%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:26.75%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>Nebeneinander<span>Interview, Gespräch</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:0;top:0;width:100%;height:100%"></i><i class="cam" style="left:69.5%;top:69.5%;width:28%;height:28%"></i></div>
+      <figcaption>Bild-in-Bild<span>Screen gross, Kamera in der Ecke</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:2.5%;top:14%;width:72%;height:72%"></i><i class="cam" style="left:76%;top:27.75%;width:21.5%;height:21.5%"></i><i class="cam" style="left:76%;top:50.75%;width:21.5%;height:21.5%"></i></div>
+      <figcaption>Screen + Kamera-Spalte<span>Präsentation mit zwei Personen</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:18.5%;width:63%;height:63%"></i><i class="cam" style="left:67%;top:18.75%;width:30.5%;height:30.5%"></i><i class="cam" style="left:67%;top:50.75%;width:30.5%;height:30.5%"></i></div>
+      <figcaption>Eins plus zwei<span>Moderation und zwei Gäste</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:2.5%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:2.5%;top:51%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:51%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>2 × 2<span>Panel oder Q&amp;A</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:2.5%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:2.5%;top:66.83%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:66.83%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:66.83%;width:30.67%;height:30.67%"></i></div>
+      <figcaption>3 × 3<span>Galerie, viele Gäste</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:26.75%;top:51%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>Auto-Grid<span>ordnet sich nach aktiven Kameras</span></figcaption>
+    </figure>
+  </div>
+  <p class="presets-key"><span><i class="sw sw-scr"></i>Screen</span><span><i class="sw sw-cam"></i>Kamera</span></p>
+
+  <h3>Frei bearbeiten</h3>
+  <ul class="bullets">
+    <li>Ziehen zum Verschieben, Ecken zum Skalieren; Shift löst das Seitenverhältnis. Alt + Ziehen schneidet zu, wie in OBS.</li>
+    <li>Snapping an Canvas-Rändern, Mitte und anderen Elementen, mit Hilfslinien. Pfeiltasten verschieben pixelgenau.</li>
+    <li>Handys im Hochformat: <em>contain</em> mit Hintergrund oder <em>cover</em> zugeschnitten. Drehen und Spiegeln pro Element.</li>
+    <li>Pro Element ein Fallback: Fällt die Quelle aus, bleibt das letzte Bild einige Sekunden stehen, danach folgt ein Slate oder eine Ersatzquelle.</li>
+    <li>Ohne Studio-Modus bearbeitest du direkt die Live-Szene, und der Program-Monitor sagt das auch. Mit Studio-Modus wird in der Preview gebaut, und das Program ändert sich erst mit Take. Undo und Redo in der Regie.</li>
+  </ul>
+
+  <h3 id="regie">Die Regie-Oberfläche</h3>
+  <p class="prose">Die Oberfläche ist mit Impeccable entworfen und als klickbarer Prototyp umgesetzt, ausgelegt für einen 14–16-Zoll-Laptop bei normalem Raumlicht. Zwei Dinge haben Vorrang: Ein Ausfall darf nie unbemerkt bleiben, und das Einrichten vor dem Webinar muss schnell gehen.</p>
+  <figure class="fig" id="abb-regie">
+    <p class="shot-label">Studio-Modus aus (Standard)</p>
+    <a class="shot" href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu" target="_blank" rel="noopener"><img src="regie-entwurf.png" width="1440" height="900" loading="lazy" alt="Regie ohne Studio-Modus: oben ein grosser Program-Monitor mit der Spalte für Übergang und den Schalter Studio-Modus, unten nebeneinander Szenen, Quellen, Eigenschaften mit Vorlagen und Stationen."></a>
+    <p class="shot-label">Studio-Modus an</p>
+    <a class="shot" href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#studio" target="_blank" rel="noopener"><img src="regie-studio.png" width="1440" height="900" loading="lazy" alt="Dieselbe Regie mit Studio-Modus: links die Preview mit grünem Rand, daneben das Program mit rotem Rand, rechts die Spalte mit Übergang und Take; die Docks unten bleiben an ihrem Platz."></a>
+    <p class="shot-label">Docks umgestellt: Stationen rechts angedockt</p>
+    <a class="shot" href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#studio+docks" target="_blank" rel="noopener"><img src="regie-docks.png" width="1440" height="900" loading="lazy" alt="Die Regie mit eigenem Layout: Stationen als hohe Spalte am rechten Rand, unten Szenen, Quellen und Eigenschaften, oben Preview und Program mit der Bedienspalte."></a>
+    <figcaption><strong>Abb. 5 · Regie-Entwurf (Prototyp mit Beispieldaten).</strong> Eine durchgehende dunkle Konsole ohne Kästen und ohne Rahmen: Haarlinien trennen die Bereiche und dienen zugleich als Griffe zum Ändern der Grösse. Farbe gibt es nur für Zustände. Rot ist live, Grün kommt als Nächstes, Bernstein verbindet neu. Der Studio-Modus klappt die Preview ein und aus; Docks und die Spalte rechts mit Übergang und Take bleiben dabei an ihrem Platz.</figcaption>
+  </figure>
+  <ul class="bullets">
+    <li><strong>Kein Ausfall bleibt unbemerkt:</strong> Eine gestörte Station leuchtet gleichzeitig in der Kopfzeile, in der Meldungszeile, im Monitor, in der Szenenliste, bei den Quellen und bei den Stationen. Ist sie zurück, bleibt die Meldung stehen, bis jemand «Gesehen» klickt.</li>
+    <li><strong>Schnell einrichten:</strong> Eine Vorlage verteilt die Quellen mit einem Klick, danach wird frei gezogen, mit Hilfslinien und Einrasten. Geräte kommen über «Gerät koppeln», Laptops per Kurz-URL und Prüfcode.</li>
+    <li><strong>Studio-Modus nach Bedarf, wie bei OBS:</strong> Aus ist der Standard. Ein Klick auf eine Szene geht dann direkt live, und Änderungen wirken sofort, was der Program-Monitor auch anzeigt. Eingeschaltet kommt die Preview dazu: Dort wird gebaut, Take schaltet, und die Live-Szene ist gegen Änderungen geschützt. Der Browser merkt sich die Einstellung.</li>
+    <li><strong>Übergang ohne T-Bar:</strong> Schnitt oder Blende mit einstellbarer Dauer von 0,2 bis 2 s. Eine Blende läuft immer ganz durch, halbe Mischungen braucht es im Webinar nicht.</li>
+    <li><strong>Aufbau wie bei OBS:</strong> Oben die Monitore, rechts davon eine feste Spalte mit Studio-Modus, Übergang und Take, unten nebeneinander die Docks Szenen, Quellen, Eigenschaften und Stationen.</li>
+    <li><strong>Arbeitsfläche frei einrichten:</strong> Jedes Dock lässt sich an der Kopfzeile nach unten, links oder rechts ziehen. Die Trennlinien ändern die Grösse: Höhe der Docks unten, Breite der Seiten, Breite zwischen zwei Docks und im Studio-Modus das Verhältnis von Preview zu Program. Docks lassen sich ausblenden, der Browser merkt sich das Layout, und «Layout zurücksetzen» stellt den Ausgangszustand wieder her. Alles geht auch mit der Tastatur.</li>
+    <li><strong>Tastatur:</strong> 1–9 wählt eine Szene, ohne Studio-Modus direkt live, mit Studio-Modus in die Preview. Leerschlag schaltet den Take, Pfeiltasten verschieben ein Element um 1 px.</li>
+  </ul>
+  <p class="prose"><a class="shot-link" href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu" target="_blank" rel="noopener">Prototyp öffnen</a> · mit Studio-Modus: <a href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#studio" target="_blank" rel="noopener">#studio</a> · mit umgestellten Docks: <a href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#studio+docks" target="_blank" rel="noopener">#docks</a> · mit Störungen: <a href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#stoerung" target="_blank" rel="noopener">#stoerung</a> · mit offener Kopplung: <a href="https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu#koppeln" target="_blank" rel="noopener">#koppeln</a>. Im Prototyp spielt das Menü «Prototyp» Störungen und eine Kopplungsanfrage auch von Hand ab.</p>
+
+  <h3>Datenmodell einer Szene</h3>
+  <p class="prose">Jede Szene ist ein JSON-Dokument. Die API prüft jede Änderung und vergibt eine fortlaufende Version, über die sich beide Regie-Arbeitsplätze und die Output-Seite abgleichen. Produktionen tragen eine Mandanten-ID (heute nur «opten»), damit FlowStudio später mandantenfähig wird, ohne das Modell umzubauen.</p>
+<pre><code>{
+  "id": "scn_screen_cam",
+  "name": "Screen + Kamera",
+  "canvas": { "w": 1920, "h": 1080 },
+  "background": { "type": "image", "asset": "ast_bg_q4" },
+  "items": [
+    {
+      "id": "it_screen",
+      "source": "dev_laptop_anna/screen-1",
+      "x": 40, "y": 40, "w": 1360, "h": 765, "z": 1,
+      "fit": "contain", "crop": [0, 0, 0, 0], "radius": 12,
+      "onLost": { "holdMs": 3000, "then": "src_slate_pause" }
+    },
+    {
+      "id": "it_cam",
+      "source": "dev_handy_a/camera",
+      "x": 1440, "y": 40, "w": 440, "h": 248, "z": 2,
+      "fit": "cover", "mirror": false
+    }
+  ]
+}</code></pre>
+  <p class="prose">Quellen werden über <strong>Geräte-ID und Slot</strong> referenziert (<code>dev_handy_a/camera</code>), nicht über LiveKit-Track-IDs. Track-IDs ändern sich bei jedem Reconnect, Geräte-ID und Slot bleiben. Deshalb landet ein Bild nach einem Unterbruch automatisch wieder an derselben Stelle.</p>
+</section>
+
+<section class="wrap sec" id="sender">
+  <h2><span class="num">4</span>Sender und Geräte koppeln</h2>
+  <p class="intro">Sender brauchen weder App noch Konto. Je nach Gerät gibt es drei Wege, es mit der Regie zu koppeln. Alle enden gleich: Das Gerät bekommt einen eigenen Schlüssel, den die Regie jederzeit sperren kann.</p>
+
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Weg</th><th>Für</th><th>Ablauf</th></tr></thead>
+      <tbody>
+        <tr><td>QR-Code</td><td>Handys</td><td>Die Regie zeigt einen QR-Code, das Handy scannt ihn mit der Kamera-App, fertig.</td></tr>
+        <tr><td>Kurz-URL und Freigabe</td><td>Laptops vor Ort</td><td>Adresse eintippen, Namen eingeben, die Regie gibt mit einem vierstelligen Prüfcode frei.</td></tr>
+        <tr><td>Einladungslink</td><td>Laptops, auch vorab</td><td>Die Regie kopiert einen Link und schickt ihn per Teams oder Mail; einmal gültig, 30 Minuten lang.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Ein Laptop ohne QR-Code, in vier Schritten</h3>
+  <ol class="steps">
+    <li class="step">
+      <div class="mock" aria-hidden="true">
+        <div class="mock-bar">flowstudio.opten.ch/join</div>
+        <div class="mock-body"><p class="mock-h">Gerät koppeln</p><span class="mock-field">Laptop Anna</span><span class="mock-btn">Weiter</span></div>
+      </div>
+      <p class="step-t"><b>Adresse öffnen</b>Die Kurz-URL eintippen oder den Einladungslink anklicken, dann einen Namen für das Gerät eingeben.</p>
+    </li>
+    <li class="step">
+      <div class="mock" aria-hidden="true">
+        <div class="mock-bar">flowstudio.opten.ch/join</div>
+        <div class="mock-body"><p class="mock-h">Wartet auf Freigabe</p><span class="mock-code">47 12</span><p class="mock-s">Prüfcode für die Regie</p></div>
+      </div>
+      <p class="step-t"><b>Prüfcode erscheint</b>Der Laptop zeigt einen vierstelligen Code und wartet, bis die Regie ihn zulässt.</p>
+    </li>
+    <li class="step">
+      <div class="mock mock-regie" aria-hidden="true">
+        <div class="mock-bar">Regie · Stationen</div>
+        <div class="mock-body"><p class="mock-h">Laptop Anna möchte beitreten</p><span class="mock-code">47 12</span><span class="mock-btn mock-btn-go">Zulassen</span></div>
+      </div>
+      <p class="step-t"><b>Regie gibt frei</b>Stimmt der Code auf beiden Bildschirmen überein, klickt die Regie auf «Zulassen».</p>
+    </li>
+    <li class="step">
+      <div class="mock" aria-hidden="true">
+        <div class="mock-bar">flowstudio.opten.ch/join</div>
+        <div class="mock-body"><p class="mock-h">Gekoppelt</p><span class="mock-btn">Bildschirm teilen</span><p class="mock-s">+ weiteren Bildschirm</p></div>
+      </div>
+      <p class="step-t"><b>Bildschirm teilen</b>Ein Klick, der Browser fragt nach Bildschirm oder Fenster. Beim nächsten Mal erkennt FlowStudio den Laptop wieder.</p>
+    </li>
+  </ol>
+  <p class="note">Die Freigabe ist der Schutz: Wer im WLAN die Adresse kennt, kann nur anklopfen. Erst die Regie lässt ein Gerät zu, und der Prüfcode verhindert, dass sie aus Versehen das falsche freigibt.</p>
+
+  <div class="cards">
+    <article class="card">
+      <h3>Handy als Kamera</h3>
+      <ul>
+        <li>Front- oder Rückkamera, 720p oder 1080p, 30 fps</li>
+        <li>Bildschirm bleibt an (Wake-Lock), ein Dunkel-Modus spart Akku</li>
+        <li>Grosse Tally-Anzeige: rot heisst live, grün heisst als Nächstes</li>
+        <li>Startet nach dem Neuladen von selbst mit den letzten Einstellungen</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Laptop mit Screens</h3>
+      <ul>
+        <li>Beliebig viele Screens, jeder ist eine eigene Quelle; Kamera optional</li>
+        <li>Beendet jemand das Teilen, darf der Browser es nicht selbst neu starten. FlowStudio zeigt dann einen grossen Knopf «Erneut teilen», und die Regie sieht es sofort.</li>
+        <li>Screen-Sharing geht nur in Desktop-Browsern, nicht auf Handys</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Ton <span class="chip">später</span></h3>
+      <ul>
+        <li>Heute läuft der Ton extern über das Mischpult</li>
+        <li>Vorbereitet: ein Audio-Client am Mischpult, Opus in Stereo, Echo- und Rauschunterdrückung aus</li>
+        <li>Die Output-Seite kann Ton abspielen, sobald FlowStudio ihn liefert</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Pro-Quellen <span class="chip">später</span></h3>
+      <ul>
+        <li>OBS, vMix, ATEM oder die Handy-App Larix</li>
+        <li>Einspeisung per WHIP oder RTMP über LiveKit Ingress, als eigener Container</li>
+      </ul>
+    </article>
+  </div>
+  <p class="note">Bandbreite als Richtwert: pro Handy 3–5 Mbit/s Upload, pro Screen 2–4 Mbit/s. Bei vier Handys und zwei Screens sind das rund 25 Mbit/s im WLAN, dazu der Empfang durch Regie und Output. Ein eigenes 5-GHz-Netz für die Geräte und Kabel für Server und Regie-Laptop machen den Unterschied.</p>
+</section>
+
+<section class="wrap sec" id="output">
+  <h2><span class="num">5</span>Output: immer 16:9, als iframe</h2>
+  <p class="intro">Die Output-Seite rendert einen festen Canvas von 1920 × 1080 Pixeln und skaliert ihn ohne Verzerrung in jeden Container. Heute nimmt sie genau ein Abnehmer ab: der Proxy, der das Bild an rund 30 Personen verteilt.</p>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Output</th><th>Für wen</th><th>Weg</th><th>Latenz</th><th>Abnehmer</th></tr></thead>
+      <tbody>
+        <tr><td>Output-Seite</td><td>Proxy, OBS-Browserquelle, Regie-Monitor</td><td>komponiert selbst aus dem Backstage-Raum, geheimer und sperrbarer Link</td><td class="num">≈ 0,15 s</td><td>einer bis wenige</td></tr>
+        <tr><td>Air-Modus <span class="chip">optional</span></td><td>Zuschauer, die die Seite selbst öffnen</td><td>Renderer mischt, 1 Program-Stream aus dem Air-Raum</td><td class="num">≈ 0,25 s</td><td>Hunderte</td></tr>
+        <tr><td>Restream &amp; Aufnahme <span class="chip">später</span></td><td>YouTube, LinkedIn, Vimeo, MP4-Datei</td><td>LiveKit Egress vom Program-Track</td><td class="num">2–10 s und mehr</td><td>so viele, wie die Plattform trägt</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Annahme: Der Proxy öffnet die Output-Seite einmal und verteilt das Bild selbst. Öffnen die rund 30 Personen die Seite jeweils selbst, schalten wir den Air-Modus ein, damit niemand an Quellen kommt, die gerade nicht live sind.</p>
+
+  <h3>Verhalten der Output-Seite</h3>
+  <ul class="bullets">
+    <li>Ist der Container nicht 16:9, gibt es Balken statt Verzerrung, schwarz oder transparent.</li>
+    <li>Keine Bedienelemente. Solange der Ton extern läuft, bleibt die Seite stumm; später zeigt sie einen dezenten Knopf «Ton an», weil Browser Ton erst nach einem Klick abspielen.</li>
+    <li>Bei einem Unterbruch bleibt das letzte Bild stehen, statt schwarz zu werden, und die Seite verbindet sich selbst neu.</li>
+    <li>Vor dem Start und nach dem Ende zeigt sie ein Slate, zum Beispiel «Gleich geht's los».</li>
+    <li><code>?bg=transparent</code> für Overlays in OBS oder vMix, <code>?debug=1</code> blendet Bitrate, Auflösung und Latenz ein.</li>
+    <li>Der Link lässt sich jederzeit neu erzeugen, und auf Wunsch nimmt die Seite nur Aufrufe von der IP des Proxys an.</li>
+  </ul>
+
+  <h3>Einbetten</h3>
+<pre><code>&lt;iframe
+  src="https://flowstudio.opten.ch/o/webinar-q4?k=…"
+  title="Webinar Q4 live"
+  allow="autoplay; fullscreen"
+  allowfullscreen
+  style="width:100%; aspect-ratio:16/9; border:0"&gt;&lt;/iframe&gt;</code></pre>
+  <p class="note">Beispiel-URL. Der Schlüssel <code>k</code> im Link ist geheim und gibt das Bild frei; einbetten lässt sich die Seite nur auf freigegebenen Domains (siehe <a href="#sicher">Sicherheit</a>).</p>
+</section>
+
+<section class="wrap sec" id="stabil">
+  <h2><span class="num">6</span>Stabil bleiben, sofort zurückkommen</h2>
+  <p class="intro">Unterbrüche passieren: Das WLAN wechselt, ein Handy wird warm, jemand lädt die Seite neu. Das Ziel ist, dass beim Proxy davon höchstens ein kurzes Standbild ankommt und die Regie jeden Ausfall sofort sieht.</p>
+
+  <figure class="fig" id="abb-reconnect">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 320" role="img" aria-label="Reconnect-Ablauf: Aus Live führt ein erkannter Abbruch zu Resume. Klappt Resume, geht es zurück zu Live, sonst zu Rejoin. Klappt Rejoin, zurück zu Live, sonst Warten mit wachsender Pause und erneut Rejoin, ohne Limit. Netz zurück oder Tab sichtbar beendet das Warten sofort. Gekickt, gesperrt oder zweiter Tab führt zu Stopp ohne Auto-Reconnect.">
+        <defs>
+          <marker id="f5-an" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-ctl"/></marker>
+          <marker id="f5-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-good"/></marker>
+          <marker id="f5-aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-media"/></marker>
+        </defs>
+
+        <path d="M760,130 C760,30 80,30 80,126" class="d-good-line" marker-end="url(#f5-ag)"/>
+        <text x="420" y="44" class="d-k" text-anchor="middle">ok · Tracks neu publiziert, gleicher Slot</text>
+        <path d="M430,130 C430,84 150,84 150,126" class="d-good-line" marker-end="url(#f5-ag)"/>
+        <text x="290" y="84" class="d-k" text-anchor="middle">ok · meist unter 3 s</text>
+
+        <g class="d-node d-good">
+          <rect x="30" y="130" width="170" height="64" rx="8"/>
+          <text x="48" y="158" class="d-t">Live</text>
+          <text x="48" y="177" class="d-s">Bild läuft</text>
+        </g>
+        <g class="d-node">
+          <rect x="330" y="130" width="200" height="64" rx="8"/>
+          <text x="348" y="158" class="d-t">Resume</text>
+          <text x="348" y="177" class="d-s">ICE-Restart, Session bleibt</text>
+        </g>
+        <g class="d-node">
+          <rect x="660" y="130" width="200" height="64" rx="8"/>
+          <text x="678" y="158" class="d-t">Rejoin</text>
+          <text x="678" y="177" class="d-s">neu beitreten, gleiche ID</text>
+        </g>
+        <g class="d-node">
+          <rect x="990" y="130" width="180" height="64" rx="8"/>
+          <text x="1008" y="158" class="d-t">Warten</text>
+          <text x="1008" y="177" class="d-s">0,3 → 0,6 → 1,2 … 5 s</text>
+        </g>
+
+        <line x1="200" y1="162" x2="328" y2="162" class="d-neutral" marker-end="url(#f5-an)"/>
+        <text x="264" y="153" class="d-k" text-anchor="middle">Abbruch erkannt</text>
+        <text x="264" y="181" class="d-k" text-anchor="middle">nach 2–5 s</text>
+        <line x1="530" y1="162" x2="658" y2="162" class="d-neutral" marker-end="url(#f5-an)"/>
+        <text x="594" y="153" class="d-k" text-anchor="middle">klappt nicht</text>
+        <line x1="860" y1="162" x2="988" y2="162" class="d-neutral" marker-end="url(#f5-an)"/>
+        <text x="924" y="153" class="d-k" text-anchor="middle">klappt nicht</text>
+
+        <path d="M1080,194 C1080,262 760,262 760,198" class="d-accent" marker-end="url(#f5-aa)"/>
+        <text x="920" y="274" class="d-k" text-anchor="middle">nächster Versuch, ohne Limit</text>
+
+        <g class="d-node d-soft">
+          <rect x="990" y="24" width="180" height="56" rx="6"/>
+          <text x="1004" y="48" class="d-t">Netz zurück</text>
+          <text x="1004" y="66" class="d-s">oder Tab wieder sichtbar</text>
+        </g>
+        <line x1="1080" y1="80" x2="1080" y2="126" class="d-accent" marker-end="url(#f5-aa)"/>
+        <text x="1092" y="108" class="d-k">Warten beenden</text>
+
+        <line x1="115" y1="194" x2="115" y2="248" class="d-neutral" marker-end="url(#f5-an)"/>
+        <text x="127" y="226" class="d-k">gekickt · gesperrt · zweiter Tab</text>
+        <g class="d-node d-stop">
+          <rect x="30" y="250" width="170" height="56" rx="8"/>
+          <text x="48" y="274" class="d-t">Stopp</text>
+          <text x="48" y="292" class="d-s">kein Auto-Reconnect</text>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 6 · Reconnect.</strong> Jede Verbindung, ob Sender, Regie oder Output, durchläuft dieselben Stufen. Zuerst wird die bestehende Session repariert, dann neu beigetreten, dann ohne Limit weiter versucht. Draussen bleibt nur, wer bewusst getrennt wurde.</figcaption>
+  </figure>
+
+  <h3>Bausteine</h3>
+  <ul class="levers">
+    <li><strong>Verbindung</strong><span>ICE über UDP, mit TCP als Ausweichweg. Im eigenen WLAN braucht es kein TURN; für Teilnehmende von ausserhalb lässt es sich zuschalten. Ein Netzwechsel löst einen ICE-Restart aus, die Session bleibt bestehen.</span></li>
+    <li><strong>Erkennung</strong><span>Heartbeats auf Signal- und Medienebene erkennen einen Abbruch nach 2–5 s. Die Browser-Ereignisse «online» und «Tab sichtbar» starten sofort einen neuen Versuch, statt auf den Timer zu warten.</span></li>
+    <li><strong>Identität</strong><span>Jedes Gerät hat eine feste ID. Tritt es neu bei, ersetzt LiveKit die alte, hängende Session automatisch. Quellen hängen an Geräte-ID und Slot und kommen an derselben Stelle zurück.</span></li>
+    <li><strong>Gerät</strong><span>Verschwindet die Kamera (Anruf, andere App, USB gezogen), fordert der Sender sie neu an und publiziert neu. Den Wake-Lock setzt er nach jedem Sichtbarwerden neu.</span></li>
+    <li><strong>Steuerung</strong><span>SignalR mit endloser Retry-Policy. Nach dem Reconnect gleicht die Versionsnummer den Szenen-Zustand ab, per Delta oder vollem Snapshot.</span></li>
+    <li><strong>Server</strong><span>Alle Container mit <code>restart: unless-stopped</code> und Healthchecks; die Daten in den Volumes überstehen jeden Neustart. Während einer Produktion gibt es keine Updates.</span></li>
+  </ul>
+
+  <h3>Was passiert, wenn …</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Ereignis</th><th>FlowStudio reagiert</th><th>Beim Proxy kommt an</th></tr></thead>
+      <tbody>
+        <tr><td>Handy verliert kurz das WLAN</td><td>ICE-Restart, die Session bleibt; die Station blinkt in der Regie</td><td>kurzes Standbild, ≈ 1–3 s</td></tr>
+        <tr><td>Handy ist 30 s ohne Netz</td><td>verbindet ohne Limit neu; die Regie zeigt «verbindet neu · 00:30», bis jemand es bestätigt</td><td>Standbild, dann Fallback oder Slate</td></tr>
+        <tr><td>Anruf oder andere App belegt die Kamera</td><td>Kamera neu anfordern und neu publizieren</td><td>Standbild, dann wieder live</td></tr>
+        <tr><td>Sender-Seite wird neu geladen</td><td>gleiche Geräte-ID, gleicher Slot, Auto-Start</td><td>kurzes Standbild</td></tr>
+        <tr><td>Jemand beendet sein Screen-Sharing</td><td>Regie wird gewarnt, der Sender zeigt «Erneut teilen»</td><td>Fallback der Kachel</td></tr>
+        <tr><td>WLAN ist überlastet</td><td>Simulcast senkt die Stufen; die Regie zeigt Paketverlust und Bitrate pro Station</td><td>etwas weniger scharf, kein Hänger</td></tr>
+        <tr><td>Der Regie-Browser stürzt ab</td><td>Output läuft weiter, er hängt nicht am Regie-Browser</td><td>nichts</td></tr>
+        <tr><td>API-Neustart oder Update</td><td>SignalR verbindet neu, Zustand per Version abgeglichen</td><td>nichts</td></tr>
+        <tr><td>Ein Container stürzt ab</td><td>Docker startet ihn neu, alle Clients verbinden sich selbst neu</td><td>Standbild, einige Sekunden</td></tr>
+        <tr><td>Der ganze Server startet neu</td><td>alle Container starten automatisch, alle Geräte kommen von selbst zurück</td><td>Unterbruch, bis der Server wieder da ist</td></tr>
+        <tr><td>Gerät in einem zweiten Tab geöffnet</td><td>der alte Tab wird getrennt und bleibt aus, kein Ping-Pong</td><td>nichts</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>So sieht das im Code aus</h3>
+<pre><code><span class="c">// packages/media-client: gleiche Logik in Sender, Regie und Output</span>
+const INTENTIONAL = [
+  DisconnectReason.CLIENT_INITIATED,
+  DisconnectReason.PARTICIPANT_REMOVED,  <span class="c">// gekickt oder gesperrt</span>
+  DisconnectReason.DUPLICATE_IDENTITY,   <span class="c">// gleiches Gerät in zweitem Tab</span>
+];
+
+const room = new Room({
+  dynacast: true,                <span class="c">// ungenutzte Simulcast-Stufen beim Sender pausieren</span>
+  adaptiveStream: !isOutput,     <span class="c">// die Output-Seite wählt die Stufe selbst aus der Szene</span>
+  reconnectPolicy: {             <span class="c">// nie aufgeben: 0,3 s, 0,6 s, 1,2 s … max. 5 s</span>
+    nextRetryDelayInMs: ({ retryCount }) =&gt;
+      Math.min(5_000, 300 * 2 ** retryCount) + Math.random() * 250,
+  },
+});
+
+room.on(RoomEvent.Disconnected, (reason) =&gt; {
+  if (!INTENTIONAL.includes(reason)) rejoin();   <span class="c">// frisches Token, gleiche Identität</span>
+});
+window.addEventListener('online', () =&gt; {
+  if (room.state === ConnectionState.Disconnected) rejoin();   <span class="c">// nicht auf den Timer warten</span>
+});
+cameraTrack.mediaStreamTrack.addEventListener('ended', reacquireCamera);</code></pre>
+</section>
+
+<section class="wrap sec" id="sicher">
+  <h2><span class="num">7</span>Sicherheit</h2>
+  <p class="intro">Der Output geht heute an genau einen Abnehmer. Ihn schützt ein geheimer Link, den die Regie jederzeit neu erzeugen kann, auf Wunsch zusätzlich beschränkt auf die IP des Proxys.</p>
+  <div class="prose">
+    <p>Die Output-Seite darf alle Quellen im Backstage-Raum abonnieren, denn sie setzt die Szenen selbst zusammen. Das ist in Ordnung, solange nur der Proxy sie öffnet. Würden Zuschauer die Seite direkt aufrufen, könnten sie auch Kameras und Screens sehen, die gerade nicht live sind, etwa den Bildschirm einer Sprecherin, die noch ihre Mails offen hat. Für diesen Fall ist der Air-Modus vorbereitet: Zuschauer kommen dann nur noch an den fertigen Program-Stream.</p>
+  </div>
+
+  <h3>Rollen und Rechte</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Rolle</th><th>Anmeldung</th><th>Darf senden</th><th>Darf empfangen</th><th>Für andere sichtbar</th></tr></thead>
+      <tbody>
+        <tr><td>Regie</td><td>Admin-Konto aus appsettings bzw. <code>.env</code></td><td>Steuerdaten</td><td>alle Quellen</td><td>nein</td></tr>
+        <tr><td>Sender-Gerät</td><td>QR-Code, Prüfcode mit Freigabe oder Einladungslink</td><td>nur die eigenen Slots: Kamera, Screen</td><td>nichts, optional Rückbild</td><td>ja, in der Regie</td></tr>
+        <tr><td>Output-Seite</td><td>geheimer Link, optional IP-Sperre</td><td>nichts</td><td>Quellen der Szenen</td><td>nein</td></tr>
+        <tr><td>Renderer <span class="chip">Air</span></td><td>Dienst-Identität</td><td>1 Program-Track, nur im Air-Raum</td><td>Quellen der Szenen</td><td>nein</td></tr>
+        <tr><td>Zuschauer <span class="chip">Air</span></td><td>öffentliche Output-ID mit Origin-Check</td><td>nichts</td><td>nur den Program-Track</td><td>nein</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Schutz auf jeder Ebene</h3>
+  <ul class="levers">
+    <li><strong>Transport</strong><span>HTTPS über Caddy, auch im WLAN, mit TLS 1.3 und HSTS. Medien sind in WebRTC immer verschlüsselt (DTLS-SRTP).</span></li>
+    <li><strong>Admin-Login</strong><span>Benutzername und Passwort aus appsettings bzw. <code>.env</code>; auf dem VPS als Hash statt Klartext. Login-Cookie mit HttpOnly, Secure und SameSite=Strict, nach fünf Fehlversuchen 15 Minuten Sperre. Die Schlüssel liegen im Volume, damit Logins Neustarts überstehen.</span></li>
+    <li><strong>Tokens mit minimalen Rechten</strong><span>Die API signiert LiveKit-Tokens (JWT) mit genau den Rechten der Rolle, gebunden an Raum und Identität, mit kurzer Laufzeit. LiveKit erneuert sie für laufende Verbindungen. Das LiveKit-Secret verlässt den Server nie.</span></li>
+    <li><strong>Koppeln mit Freigabe</strong><span>QR-Codes und Einladungslinks gelten einmal und laufen nach 30 Minuten ab. Über die Kurz-URL kann man nur anklopfen; zugelassen wird mit Prüfcode. Die Regie sperrt jedes Gerät mit einem Klick, LiveKit wirft es dabei sofort raus.</span></li>
+    <li><strong>Output schützen</strong><span>Geheimer Schlüssel im Link, jederzeit neu erzeugbar; optional nur von der IP des Proxys erreichbar. <code>frame-ancestors</code> erlaubt das Einbetten nur auf freigegebenen Domains.</span></li>
+    <li><strong>App-Härtung</strong><span>Strikte CSP. Uploads nur in erlaubten Typen und Grössen, serverseitig geprüft, keine SVG mit Skripten. Medien nur mit gültiger Sitzung oder Output-Schlüssel abrufbar.</span></li>
+    <li><strong>Nachvollziehbar</strong><span>Das Audit-Log in PostgreSQL hält fest, wer wann welche Szene live geschaltet und welches Gerät zugelassen hat. LiveKit-Webhooks sind signiert und werden geprüft.</span></li>
+    <li><strong>Secrets und Daten</strong><span>Alles bleibt auf dem eigenen Server, es gibt keine Cloud-Dienste. Die <code>.env</code> kommt nie ins Git; <code>./setup.sh</code> erzeugt zufällige Secrets. Standardmässig wird nichts aufgezeichnet.</span></li>
+  </ul>
+</section>
+
+<section class="wrap sec" id="stack">
+  <h2><span class="num">8</span>Tech-Stack und Repo</h2>
+  <p class="intro">Wo es passt, bleiben wir beim OPTEN-Stack mit .NET im Backend und Angular im Frontend. Nur die Output-Seite verzichtet auf ein Framework, weil dort jede Millisekunde Ladezeit zählt.</p>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Bereich</th><th>Wahl</th><th>Warum</th></tr></thead>
+      <tbody>
+        <tr><td>Medien</td><td>LiveKit (Open Source) mit livekit-client</td><td>Simulcast, Dynacast, Reconnect und Token-Rechte; Egress und Ingress für später</td></tr>
+        <tr><td>Backend</td><td>ASP.NET Core (.NET 10 LTS), SignalR mit MessagePack, EF Core</td><td>OPTEN-Stack, Echtzeit mit Auto-Reconnect</td></tr>
+        <tr><td>Regie und Sender</td><td>Angular (Standalone, Signals, OnPush), Sender als PWA</td><td>OPTEN-Standard; die Regie ist eine grosse App</td></tr>
+        <tr><td>Schriften und Assets</td><td>im eigenen Build, ausgeliefert von Caddy</td><td>die Regie läuft im LAN; keine Abhängigkeit von Google Fonts oder anderen CDNs</td></tr>
+        <tr><td>Output</td><td>Vanilla TypeScript mit Vite</td><td>kleinste Ladezeit im iframe</td></tr>
+        <tr><td>Datenbank</td><td>PostgreSQL 17 im Container</td><td>klein, frei, ein Volume, guter EF-Core-Treiber</td></tr>
+        <tr><td>Dateien</td><td>Docker-Volume, ausgeliefert über die API</td><td>kein Blob-Speicher nötig</td></tr>
+        <tr><td>HTTPS</td><td>Caddy mit automatischen Zertifikaten</td><td>ein Container für TLS und Weiterleitung</td></tr>
+        <tr><td>Login</td><td>Admin-Konto aus appsettings bzw. <code>.env</code></td><td>reicht für eine bis zwei Personen in der Regie</td></tr>
+        <tr><td>Betrieb</td><td>Docker Compose, lokal oder auf einem Linux-Server</td><td>ein Befehl startet alles</td></tr>
+        <tr><td>Monitoring</td><td>Healthchecks und <code>docker compose logs</code>; später Prometheus und Grafana</td><td>reicht für einen Server</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Bewusst nicht</h3>
+  <ul class="bullets">
+    <li><strong>Keine Cloud-Dienste und kein SSO.</strong> Azure, Blob-Storage, verwaltete Datenbank und Entra ID fallen weg; alles läuft im eigenen Stack.</li>
+    <li><strong>Kein Peer-to-Peer wie bei VDO.Ninja.</strong> Bei mehreren Empfängern müsste jedes Handy sein Bild mehrfach hochladen.</li>
+    <li><strong>Kein Mischen im Regie-Browser.</strong> Sonst hinge der Output am Laptop der Regie.</li>
+    <li><strong>Kein HLS auf dem Hauptweg.</strong> 2–10 s Verzögerung passen nicht zu einer Live-Regie.</li>
+    <li><strong>Kein selbst gebauter Media-Server.</strong> Mit mediasoup oder Pion müssten wir Reconnect und Simulcast-Logik selbst bauen.</li>
+  </ul>
+
+  <h3>Repo-Struktur</h3>
+<pre><code>flowstudio/
+├─ apps/
+│  ├─ api/              ASP.NET Core: REST, SignalR-Hub, Tokens, Webhooks
+│  ├─ studio/           Angular: Regie
+│  ├─ sender/           Angular-PWA: Kamera, Screens
+│  └─ output/           Vanilla TS: Output-Seite
+├─ packages/
+│  ├─ scene-model/      Szenen-Typen und Validierung, aus der API generiert
+│  ├─ scene-renderer/   Renderer ohne Framework für Regie und Output
+│  └─ media-client/     Hülle um livekit-client: Reconnect, Stats, Tally
+├─ prototype/           klickbarer Regie-Entwurf (Impeccable)
+├─ infra/
+│  ├─ caddy/            Caddyfile, Dockerfile mit DNS-Modul
+│  └─ livekit.yaml
+├─ docker-compose.yml
+├─ .env.example         ohne Secrets, ./setup.sh füllt die echte .env
+├─ setup.sh · backup.sh
+└─ PRODUCT.md · DESIGN.md</code></pre>
+</section>
+
+<section class="wrap sec" id="roadmap">
+  <h2><span class="num">9</span>Roadmap</h2>
+  <p class="intro">Jede Phase endet mit etwas, das man live ausprobieren kann. Phase 0 klärt die technischen Risiken, bevor viel Code entsteht.</p>
+  <ol class="phases">
+    <li class="phase">
+      <div class="phase-k">Wenige Tage<b>Phase 0</b><span class="chip chip-acc">als Nächstes</span></div>
+      <div>
+        <h3>Spike: Stack, HTTPS im WLAN, Latenz</h3>
+        <ul>
+          <li>Compose-Stack lokal: Caddy, LiveKit, PostgreSQL und eine Mini-API</li>
+          <li>HTTPS im WLAN mit Subdomain und DNS-Challenge, ohne Zertifikatswarnung auf den Handys</li>
+          <li>Handy → SFU → Browser im WLAN, Glass-to-Glass messen, indem wir eine laufende Uhr filmen</li>
+          <li>Reconnect-Tests: WLAN aus und an, Flugmodus, Tab neu laden, Kamera von anderer App belegt</li>
+          <li>Laptop koppeln per Kurz-URL und Prüfcode</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong><code>docker compose up</code> auf einem frischen Rechner läuft, Handys ohne Warnung senden, der Output unter 200 ms gemessen ist und ein Reconnect unter 3 s klappt.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">MVP<b>Phase 1</b></div>
+      <div>
+        <h3>Regie und Output</h3>
+        <ul>
+          <li>API: Admin-Login, Produktionen, Koppeln per QR, Prüfcode oder Link, Tokens, SignalR-Hub</li>
+          <li>Sender-PWA: Kamera, mehrere Screens, Tally, Auto-Reconnect, Wake-Lock, Technik-Check</li>
+          <li>Regie nach dem Impeccable-Entwurf: Szenen, Layout-Vorlagen, freies Bearbeiten, Studio-Modus mit Preview und Take, Schnitt und Blende, Stationen mit Zustand, frei anordnbare Docks</li>
+          <li>Bilder und Videos als Quellen, Output-Seite 16:9 mit geheimem Link</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>ein internes Probe-Webinar mit drei Handys und zwei Laptops über den Proxy läuft.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Go-Live<b>Phase 2</b></div>
+      <div>
+        <h3>Betrieb</h3>
+        <ul>
+          <li>Deployment auf den VPS im Betrieb, Backup-Skript, Update-Ablauf</li>
+          <li>Slates und Fallbacks pro Element, Monitoring-Ansicht mit Bitrate, Paketverlust und Akku</li>
+          <li>Security-Review und Runbook für den Live-Betrieb</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>das erste echte Webinar über FlowStudio gelaufen ist.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Ausbau<b>Phase 3</b></div>
+      <div>
+        <h3>Ton, Restream, Air-Modus</h3>
+        <ul>
+          <li>Ton in FlowStudio: Audio-Client und Mixer, falls das Mischpult wegfallen soll</li>
+          <li>Restream zu YouTube oder LinkedIn und Aufnahme per LiveKit Egress</li>
+          <li>Air-Modus, falls Zuschauer die Output-Seite direkt öffnen</li>
+          <li>Bauchbinden, Text, Timer, globale Overlays, Multiview, Stream Deck</li>
+        </ul>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Produkt<b>Phase 4</b></div>
+      <div>
+        <h3>Mandanten und Komfort</h3>
+        <ul>
+          <li>Mandantenfähigkeit aktivieren: Organisationen, eigene Konten, Branding pro Kunde</li>
+          <li>Mehrere Personen in der Regie mit Anzeige, wer gerade was bearbeitet</li>
+          <li>Vorlagen, Auto-Regie, Greenscreen und Hintergrund-Unschärfe</li>
+        </ul>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="wrap sec" id="ideen">
+  <h2><span class="num">10</span>Ideen aus Broadcast und OBS, die sich lohnen</h2>
+  <div class="ideas">
+    <article class="idea"><div class="idea-h"><h3>Tally auf dem Gerät</h3><span class="chip chip-acc">Phase 1</span></div><p>Der Rand leuchtet rot, wenn die Quelle live ist, und grün, wenn sie als Nächstes kommt. Sprecher wissen immer, ob sie im Bild sind.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Technik-Check</h3><span class="chip chip-acc">Phase 1</span></div><p>Vor dem Start prüft der Sender Kamera, Netz und Bandbreite. Die Regie sieht eine Ampel pro Gerät.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Rückbild für Sprecher</h3><span class="chip">Phase 2</span></div><p>Das Program mit rund 0,2 s Verzögerung auf einem zweiten Gerät oder direkt im Sender.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Regie-Chat</h3><span class="chip">Phase 2</span></div><p>Kurze Nachrichten an einzelne Geräte, zum Beispiel «In 10 s live».</p></article>
+    <article class="idea"><div class="idea-h"><h3>Raumplan der Stationen</h3><span class="chip">Phase 2</span></div><p>Eine Skizze des Raums zeigt, wo welches Handy steht. Platzcodes wie K1 oder S2 sind überall gleich.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Multiview</h3><span class="chip">Phase 3</span></div><p>Alle Quellen plus Preview und Program auf einem zweiten Monitor, mit Namen und Tally.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Bauchbinden und Timer</h3><span class="chip">Phase 3</span></div><p>Name und Funktion, Countdown und Logo aus Vorlagen. Der Text bleibt scharf, weil er als HTML gerendert wird.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Stream Deck und Hotkeys</h3><span class="chip">Phase 3</span></div><p>Szenen per Taste wechseln. Bitfocus Companion steuert FlowStudio über die REST-API.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Aufnahme und ISO</h3><span class="chip">Phase 3</span></div><p>Das Program als MP4, dazu jede Quelle einzeln für den Schnitt.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Kamera-Fernsteuerung</h3><span class="chip">Phase 3</span></div><p>Zoom, Licht, Front/Rück und Auflösung aus der Regie, wo das Handy es unterstützt.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Auto-Regie</h3><span class="chip">Phase 4</span></div><p>Wer gerade spricht, wird hervorgehoben oder bekommt automatisch seine Szene.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Greenscreen und Unschärfe</h3><span class="chip">Phase 4</span></div><p>Chroma-Key im Renderer, Hintergrund-Unschärfe direkt auf dem Sender.</p></article>
+  </div>
+</section>
+
+<section class="wrap sec" id="fragen">
+  <h2><span class="num">11</span>Geklärt und noch offen</h2>
+  <p class="intro">Deine Antworten vom 22. Oktober und was sie im Plan verändert haben.</p>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Thema</th><th>Antwort</th><th>Folge für den Plan</th></tr></thead>
+      <tbody>
+        <tr><td>Zuschauer</td><td>rund 30 Personen über einen Proxy; für FlowStudio zählt ein Abnehmer</td><td>Output-Seite mit geheimem Link reicht; Air-Modus nur bei Bedarf</td></tr>
+        <tr><td>Ton</td><td>separat über ein Mischpult</td><td>kein Ton im MVP; Audio-Client und Mixer bleiben vorbereitet</td></tr>
+        <tr><td>Ort</td><td>alles vor Ort in einem WLAN</td><td>Server im selben Netz, HTTPS im WLAN, WLAN-Planung für die Geräte</td></tr>
+        <tr><td>Hosting</td><td>lokal per Docker oder VPS im Betrieb</td><td>ein Compose-Stack, Daten in Volumes, keine Cloud-Dienste</td></tr>
+        <tr><td>Login</td><td>Admin-Benutzer und Passwort in appsettings</td><td>kein Entra ID; Hash empfohlen, Sperre nach Fehlversuchen</td></tr>
+        <tr><td>Mandanten</td><td>nur OPTEN, Mandantenfähigkeit andenken</td><td>Mandanten-ID im Datenmodell, Oberfläche ohne Mandantenwahl</td></tr>
+        <tr><td>Restream, Aufnahme</td><td>später</td><td>Phase 3, dann mit Egress-Container</td></tr>
+        <tr><td>Personen in der Regie</td><td>meist eine, höchstens zwei</td><td>ein Admin-Konto, mehrere Sitzungen, Änderungen live synchron</td></tr>
+        <tr><td>Regieplatz</td><td>Laptop bei normalem Raumlicht</td><td>Regie-Entwurf für 14–16 Zoll als dunkle Konsole, gewählt in der Entscheidungsrunde</td></tr>
+        <tr><td>Regie-Layout</td><td>keine Kästen mit Lücken, kein Rahmen aussen; Szenen unten neben den Quellen</td><td>eine durchgehende Fläche mit Haarlinien, Docks unten wie bei OBS</td></tr>
+        <tr><td>Preview</td><td>überspringbar wie der Studio-Modus von OBS</td><td>Studio-Modus als Schalter, Standard aus: eine Szene geht mit einem Klick live</td></tr>
+        <tr><td>Blende</td><td>kein T-Bar, eine Blende bleibt nie halb stehen</td><td>Schnitt oder Blende mit fester Dauer, ausgelöst per Szenenklick oder Take</td></tr>
+        <tr><td>Arbeitsfläche</td><td>Grösse und Anordnung von Quellen, Stationen, Preview usw. selbst einstellen</td><td>Docks wie bei OBS verschieb- und skalierbar, Layout pro Browser gespeichert und zurücksetzbar</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Noch offen</h3>
+  <ol class="questions">
+    <li><div><strong>Was genau ist der Proxy?</strong><span>Öffnet er die Output-Seite einmal, zum Beispiel als Browserquelle, und verteilt das Bild selbst? Davon hängt ab, ob der Air-Modus nötig wird.</span></div></li>
+    <li><div><strong>Welche Domain und welcher DNS-Anbieter für das Zertifikat?</strong><span>Für HTTPS im WLAN brauchen wir eine Subdomain wie <code>flowstudio.opten.ch</code> und einen API-Token des DNS-Anbieters für die DNS-Challenge.</span></div></li>
+    <li><div><strong>Läuft der Server auf dem Regie-Laptop oder auf dem VPS?</strong><span>Auf dem Regie-Laptop ist alles in einer Hand, ein Absturz träfe aber Regie und Server zugleich. Empfehlung: VPS oder ein zweiter Rechner per Kabel.</span></div></li>
+  </ol>
+</section>
+
+</main>
+
+<footer class="wrap foot" lang="de-CH">
+  <p>FlowStudio · Architektur &amp; Plan, Entwurf 2 vom 22.10.2026. Latenz- und Kapazitätswerte sind Schätzungen; Phase 0 misst sie.</p>
+</footer>
+
+<script>
+(() => {
+  const chart = document.getElementById('lat-chart');
+  if (!chart) return;
+  const tip = chart.querySelector('.lat-tip');
+  const tv = tip.querySelector('.tv');
+  const tl = tip.querySelector('.tl');
+
+  const place = (x, y) => {
+    const box = chart.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    let left = x - box.left + 14;
+    let top = y - box.top - h - 12;
+    if (left + w > box.width - 8) left = box.width - w - 8;
+    if (left < 8) left = 8;
+    if (top < 8) top = y - box.top + 18;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  };
+
+  const show = (seg) => {
+    tv.textContent = seg.dataset.ms + ' ms';
+    tl.textContent = seg.dataset.label + ' · ' + seg.dataset.path;
+    tip.hidden = false;
+  };
+
+  chart.querySelectorAll('.lat-seg').forEach((seg) => {
+    seg.addEventListener('pointerenter', () => show(seg));
+    seg.addEventListener('pointermove', (e) => place(e.clientX, e.clientY));
+    seg.addEventListener('pointerleave', () => { tip.hidden = true; });
+    seg.addEventListener('focus', () => {
+      show(seg);
+      const r = seg.getBoundingClientRect();
+      place(r.left + r.width / 2, r.top);
+    });
+    seg.addEventListener('blur', () => { tip.hidden = true; });
+  });
+})();
+</script>
+</body>
+</html>

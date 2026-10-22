@@ -1,0 +1,190 @@
+{
+  "title": "Gestaltungswelt für die Regie",
+  "question": "Der Wurf hat «Inspizientenpult» zugeteilt. Übernehmen, eine Alternative wählen oder neu würfeln.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Inspizientenpult",
+      "kicker": "THE ROLL",
+      "lineage": "Inspizientenpult und Regiebuch im Theater",
+      "thesis": "Jede Quelle ist eine Station mit Signallampe, jede Szene ein Stichwort im Regiebuch, und Take ist das «Los».",
+      "palette": ["#eef1f3", "#24282c", "#e5322d", "#2fa84f", "#f2a516"],
+      "materials": ["Regiebuch-Papier mit Bleistiftnotizen", "Signallampen hinter Milchglas", "gummierte Pulttasten"],
+      "viewport": "Links das Regiebuch mit nummerierten Szenen, in der Mitte Preview und Program als dunkle Monitorschächte mit dem T-Bar dazwischen, unten rechts die Stationen aller Geräte mit Lampen.",
+      "risk": "Theater-Begriffe dürfen die OBS-Begriffe nicht verdrängen; zu viel Pult-Optik wirkt verspielt.",
+      "raised": [
+        { "from": "challenger-star-atlas", "raise": "Feste Zustands-Skala: Je kritischer ein Zustand, desto grösser und heller die Lampe; nichts anderes nutzt diese Skala." },
+        { "from": "challenger-doujin-catalog", "raise": "Feste Platzcodes (K1, K2, S1 …) für jede Quelle, gleich in Szenen, Stationen und Program." },
+        { "from": "challenger-botanical-folio", "raise": "Alle Miniaturen in einem Massstab auf einer gemeinsamen Grundlinie, damit Unterschiede Inhalt sind und nicht Layout." },
+        { "from": "challenger-type-specimen", "raise": "Take als T-Bar: ziehen für eine manuelle Blende mit Live-Prozentanzeige, klicken für den automatischen Übergang." }
+      ],
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Kopfzeile: Produktion, Output, Uhr", "x": 0, "y": 0, "w": 12, "h": 1 },
+          { "label": "Regiebuch: Szenen", "x": 0, "y": 1, "w": 3, "h": 9, "accent": true },
+          { "label": "Preview", "x": 3, "y": 1, "w": 4, "h": 5 },
+          { "label": "T-Bar", "x": 7, "y": 1, "w": 1, "h": 5, "accent": true },
+          { "label": "Program", "x": 8, "y": 1, "w": 4, "h": 5 },
+          { "label": "Elemente und Layout", "x": 3, "y": 6, "w": 5, "h": 4 },
+          { "label": "Stationen mit Lampen", "x": 8, "y": 6, "w": 4, "h": 4, "accent": true }
+        ]
+      }
+    },
+    {
+      "id": "model-pick",
+      "label": "Bildmischer",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Bildmischer-Bedienfelder mit Program- und Preview-Tastenreihen",
+      "thesis": "Zwei beleuchtete Tastenreihen für Program und Preview, ein T-Bar und ein Multiview mit allen Quellen.",
+      "palette": ["#1c1f23", "#d9dde1", "#ff3b30", "#2ecc71"],
+      "materials": ["beleuchtete Tastenkappen", "gebürstetes Aluminium", "LCD-Beschriftungsstreifen"],
+      "viewport": "Oben ein Multiview mit Preview, Program und allen Quellen-Kacheln, darunter die zwei Tastenreihen, rechts der T-Bar.",
+      "risk": "Das naheliegendste Bild für eine Regie: vertraut, aber kaum von anderer Streaming-Software zu unterscheiden, und dunkel im hellen Raum.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Multiview: Preview, Program, Quellen", "x": 0, "y": 0, "w": 9, "h": 6, "accent": true },
+          { "label": "T-Bar", "x": 9, "y": 0, "w": 3, "h": 6 },
+          { "label": "Program-Tasten", "x": 0, "y": 6, "w": 9, "h": 2 },
+          { "label": "Preview-Tasten", "x": 0, "y": 8, "w": 9, "h": 2 },
+          { "label": "Übergänge", "x": 9, "y": 6, "w": 3, "h": 4 }
+        ]
+      }
+    },
+    {
+      "id": "challenger-gate-board",
+      "label": "Abflugtafel",
+      "verdict": "competitive",
+      "lineage": "Bordkarte und Abflugtafel am Gate",
+      "thesis": "Quellen stehen in festen Zeilen, und eine Änderung leuchtet so lange, bis jemand sie bestätigt.",
+      "palette": ["#f4f5f6", "#111418", "#ffcc00", "#d7263d"],
+      "materials": ["Tafel-Raster mit Tabellenziffern", "Bordkarten-Segmente", "eine einzige Alarmfarbe"],
+      "viewport": "Oben Preview und Program, darunter die Tafel aller Quellen nach Zustand sortiert; Störungen stehen oben und bleiben markiert, bis sie bestätigt sind.",
+      "case": "Hält die Identifikation: Jede und jeder kennt Abflugtafeln, und eine Störung bleibt sichtbar, bis jemand sie sieht. Verliert bei der Klarheit fürs Szenenbauen, das die Tafel nicht abbildet.",
+      "risk": "Die Tafel trägt den Gerätestatus, aber nicht das Komponieren der Szenen.",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Preview", "x": 0, "y": 0, "w": 5, "h": 5 },
+          { "label": "Take", "x": 5, "y": 0, "w": 2, "h": 5 },
+          { "label": "Program", "x": 7, "y": 0, "w": 5, "h": 5 },
+          { "label": "Quellen-Tafel, Störungen oben", "x": 0, "y": 5, "w": 8, "h": 5, "accent": true },
+          { "label": "Szenen", "x": 8, "y": 5, "w": 4, "h": 5 }
+        ]
+      }
+    },
+    {
+      "id": "challenger-dark-console",
+      "label": "Dunkle Konsole",
+      "verdict": "competitive",
+      "lineage": "dunkle Entwickler-Konsolen mit Haarlinien-Panels",
+      "thesis": "Feste Panels auf Graphit, getrennt durch Haarlinien; Farbe nur für Zustände, heikle Aktionen räumlich isoliert.",
+      "palette": ["#16181b", "#2a2e33", "#e5e7ea", "#ff5c57", "#5af78e"],
+      "materials": ["Graphit", "Haarlinien", "Monospace-Ziffern"],
+      "viewport": "Panels kacheln den Schirm: Szenen, Monitore, Quellen, Geräte; der Inhalt wechselt, das Layout bleibt.",
+      "case": "Hält die Klarheit: Persistente Panels und isolierte heikle Aktionen tragen die Live-Bedienung. Verliert bei der Identifikation, weil es nach Entwicklerwerkzeug aussieht und im hellen Raum spiegelt.",
+      "risk": "Liegt nahe am Kategorie-Standard dunkler Streaming-Software.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console.webp",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          { "label": "Szenen", "x": 0, "y": 0, "w": 2, "h": 10 },
+          { "label": "Preview", "x": 2, "y": 0, "w": 4, "h": 5 },
+          { "label": "Program", "x": 6, "y": 0, "w": 4, "h": 5 },
+          { "label": "Quellen", "x": 10, "y": 0, "w": 2, "h": 5 },
+          { "label": "Eigenschaften", "x": 2, "y": 5, "w": 5, "h": 5 },
+          { "label": "Geräte", "x": 7, "y": 5, "w": 5, "h": 5, "accent": true }
+        ]
+      }
+    },
+    {
+      "id": "challenger-star-atlas",
+      "label": "Sternatlas",
+      "verdict": "declined",
+      "lineage": "Himmelsatlas mit Grössenklassen",
+      "thesis": "Wichtigkeit als Punktgrösse auf einer festen Skala.",
+      "palette": ["#14213d", "#f2f2f0", "#d9480f"],
+      "materials": ["Tiefblau", "Kreideweiss"],
+      "viewport": "Quellen als Punkte auf einer Karte, die wichtigste am grössten.",
+      "case": "Verschmilzt schwach: Eine Sternkarte hat keinen Bezug zur Regie.",
+      "kept": "Die feste Skala: kritische Zustände bekommen die grössten, hellsten Lampen.",
+      "risk": "Wirkt als Dekoration statt als Werkzeug.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-star-atlas-hero.webp"
+    },
+    {
+      "id": "challenger-doujin-catalog",
+      "label": "Messekatalog",
+      "verdict": "declined",
+      "lineage": "Zeichner-Katalog einer Comic-Messe mit Hallenplan",
+      "thesis": "Tausende Miniaturen mit Tischcodes, verknüpft mit dem Hallenplan.",
+      "palette": ["#efefe8", "#1a1a1a", "#e2342f"],
+      "materials": ["Zeitungspapier", "Kugelschreiber-Kreise"],
+      "viewport": "Ein dichtes Raster aller Quellen mit Codes.",
+      "case": "Verschmilzt schwach: Das Raster passt, die Welt nicht.",
+      "kept": "Feste Platzcodes, die in jeder Ansicht gleich bleiben.",
+      "risk": "Zu dicht für die Arbeit unter Zeitdruck.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-doujin-event-catalog-hero.webp"
+    },
+    {
+      "id": "challenger-botanical-folio",
+      "label": "Botanisches Folio",
+      "verdict": "declined",
+      "lineage": "Pflanzentafeln im gleichen Massstab über die Jahreszeiten",
+      "thesis": "Gleicher Massstab, gleiche Grundlinie, nur der Inhalt verändert sich.",
+      "palette": ["#f1ead8", "#4f6f3a", "#b3261e"],
+      "materials": ["Tafelpapier", "Sepia-Haarlinien"],
+      "viewport": "Szenen als Tafeln nebeneinander.",
+      "case": "Verschmilzt kaum: Jahreszeiten-Tafeln haben keinen Bezug zur Live-Regie.",
+      "kept": "Ein Massstab und eine Grundlinie für alle Miniaturen.",
+      "risk": "Zu ruhig für eine Live-Regie.",
+      "hero": "https://impeccable.style/worlds/cards/editorial-sequence-montage-botanical-folio-season-hero.webp"
+    },
+    {
+      "id": "challenger-type-specimen",
+      "label": "Schriftmuster",
+      "verdict": "declined",
+      "lineage": "Variable-Font-Specimen mit Achsenreglern",
+      "thesis": "Ein Regler verändert das ganze Bild live.",
+      "palette": ["#fafafa", "#0a0a0a", "#ff4d00"],
+      "materials": ["Papierweiss", "Tusche"],
+      "viewport": "Ein grosser Regler und eine Live-Anzeige.",
+      "case": "Verschmilzt schwach: Schriftmuster sind nicht die Welt der Regie.",
+      "kept": "Ein Regler mit Live-Anzeige, der das Bild steuert: der T-Bar.",
+      "risk": "Spielerei ohne Bezug zum Ablauf.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp"
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code", "toggle": false },
+  "canon": true,
+  "canonCard": {
+    "label": "Der Kategorie-Standard",
+    "thesis": "So sieht Streaming-Software heute aus, sauber umgesetzt: OBS-artige dunkle Docks.",
+    "palette": ["#1e1f22", "#2b2d31", "#e6e6e6", "#3b82f6"],
+    "materials": ["dunkle Docks", "Standard-Bedienelemente"],
+    "viewport": "Preview und Program oben, darunter Docks für Szenen, Quellen, Mixer und Übergänge.",
+    "risk": "Bewusst nicht von OBS zu unterscheiden.",
+    "wireframe": {
+      "cols": 12,
+      "rows": 10,
+      "regions": [
+        { "label": "Preview", "x": 0, "y": 0, "w": 5, "h": 6 },
+        { "label": "Übergang", "x": 5, "y": 0, "w": 2, "h": 6 },
+        { "label": "Program", "x": 7, "y": 0, "w": 5, "h": 6 },
+        { "label": "Szenen", "x": 0, "y": 6, "w": 3, "h": 4 },
+        { "label": "Quellen", "x": 3, "y": 6, "w": 3, "h": 4 },
+        { "label": "Mixer", "x": 6, "y": 6, "w": 3, "h": 4 },
+        { "label": "Übergänge", "x": 9, "y": 6, "w": 3, "h": 4 }
+      ]
+    }
+  },
+  "steer": true
+}

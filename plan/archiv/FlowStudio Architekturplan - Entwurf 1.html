@@ -1,0 +1,1472 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FlowStudio Architekturplan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: ein Signalfluss-Blatt von 1160px Breite; Fliesstext max. 68ch, Abbildungen über die ganze Spalte */
+:root {
+  --bg: #f2f4f6;
+  --surface: #fbfcfd;
+  --surface-2: #e8ecf0;
+  --ink: #111720;
+  --ink-2: #46505d;
+  --muted: #616c7a;
+  --line: #d5dbe2;
+  --line-strong: #aab4c0;
+  --accent: #1f62c4;
+  --accent-wash: #e2ebf8;
+  --pgm: #d12d2d;
+  --pgm-wash: #fbe6e5;
+  --on-pgm: #ffffff;
+  --pvw: #0e7f3f;
+  --amber: #9a5c00;
+  --amber-dot: #e39b00;
+  --on-amber: #1a1200;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --shadow: 0 6px 24px rgba(17, 23, 32, .14);
+  --font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1116;
+    --surface: #141a21;
+    --surface-2: #1c242d;
+    --ink: #e6ebf1;
+    --ink-2: #a6b1be;
+    --muted: #7f8a98;
+    --line: #27313b;
+    --line-strong: #3b4753;
+    --accent: #5d9ef0;
+    --accent-wash: #15253a;
+    --pgm: #f0605c;
+    --pgm-wash: #2d1617;
+    --on-pgm: #1c0707;
+    --pvw: #3dbd72;
+    --amber: #e8a83c;
+    --amber-dot: #f0b429;
+    --on-amber: #1a1200;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1116;
+  --surface: #141a21;
+  --surface-2: #1c242d;
+  --ink: #e6ebf1;
+  --ink-2: #a6b1be;
+  --muted: #7f8a98;
+  --line: #27313b;
+  --line-strong: #3b4753;
+  --accent: #5d9ef0;
+  --accent-wash: #15253a;
+  --pgm: #f0605c;
+  --pgm-wash: #2d1617;
+  --on-pgm: #1c0707;
+  --pvw: #3dbd72;
+  --amber: #e8a83c;
+  --amber-dot: #f0b429;
+  --on-amber: #1a1200;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  overflow-wrap: break-word;
+}
+.wrap { max-width: 1160px; margin-inline: auto; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+strong { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: .9em; }
+:not(pre) > code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+
+/* Kopf */
+.masthead { padding-block: 56px 28px; }
+.eyebrow { font: 500 12px/1.4 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; }
+h1 { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; font-size: clamp(40px, 8.4vw, 92px); line-height: .95; letter-spacing: -.02em; margin: 0 0 22px; }
+.lead { font-size: clamp(18px, 2.1vw, 21px); line-height: 1.5; color: var(--ink-2); max-width: 60ch; margin: 0 0 30px; text-wrap: pretty; }
+.specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin: 0 0 22px; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line); }
+.specs div { padding: 12px 16px 12px 0; min-width: 0; }
+.specs dt { font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.specs dd { margin: 3px 0 0; font-weight: 600; font-size: 17px; }
+.keyline { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13.5px; color: var(--ink-2); margin: 0; padding: 0; list-style: none; }
+.keyline li { display: flex; align-items: center; gap: 8px; }
+.keyline .lbl { font: 500 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.k { display: inline-block; width: 26px; height: 0; border-top: 2px solid var(--ink-2); }
+.k-media { border-top-color: var(--accent); }
+.k-pgm { border-top-color: var(--pgm); }
+.k-pvw { border-top-color: var(--pvw); }
+.k-ctl { border-top-style: dashed; }
+
+/* Inhalt */
+.toc { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-block: 14px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; counter-reset: toc; }
+.toc li { counter-increment: toc; font-size: 14.5px; }
+.toc li::before { content: counter(toc); font: 500 11px var(--font-mono); color: var(--muted); margin-right: 6px; }
+.toc a { color: var(--ink); text-decoration: none; }
+.toc a:hover { color: var(--accent); text-decoration: underline; }
+
+/* Abschnitte */
+.sec { padding-block: 60px 12px; }
+.sec + .sec { border-top: 1px solid var(--line); }
+h2 { font-family: var(--font-display); font-stretch: 112%; font-weight: 750; font-size: clamp(26px, 3.4vw, 36px); line-height: 1.12; letter-spacing: -.01em; margin: 0 0 16px; text-wrap: balance; display: flex; gap: 14px; align-items: baseline; }
+h2 .num { font: 500 14px var(--font-mono); color: var(--muted); letter-spacing: 0; flex: none; }
+h3 { font-size: 19px; font-weight: 600; line-height: 1.3; margin: 44px 0 12px; text-wrap: balance; }
+.intro { font-size: 17.5px; color: var(--ink-2); max-width: 66ch; margin: 0 0 8px; text-wrap: pretty; }
+.prose { max-width: 68ch; }
+.prose p { margin: 0 0 14px; }
+.note { font-size: 14px; color: var(--ink-2); max-width: 82ch; margin: 14px 0 0; }
+.bullets { max-width: 74ch; margin: 0; padding-left: 20px; }
+.bullets li { margin-bottom: 8px; }
+.bullets li::marker { color: var(--muted); }
+
+/* Kernentscheide */
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 30px 40px; margin-top: 26px; }
+.decision { border-top: 2px solid var(--ink); padding-top: 14px; min-width: 0; }
+.dtag { font: 500 11.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.decision h3 { font-size: 18px; margin: 6px 0 6px; }
+.decision p:last-child { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+
+/* Abbildungen */
+.fig { margin: 28px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+.fig-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fig-scroll > svg { display: block; width: 100%; height: auto; }
+.swipe-hint { display: none; font: 12px var(--font-mono); color: var(--muted); margin: 8px 0 0; }
+.fig figcaption { margin-top: 16px; font-size: 14.5px; color: var(--ink-2); max-width: 84ch; }
+.fig figcaption strong { color: var(--ink); }
+@media (max-width: 760px) {
+  .fig { padding: 14px; }
+  .fig-scroll > svg { min-width: 860px; }
+  .swipe-hint { display: block; }
+}
+
+/* SVG-Diagramme */
+.diagram { fill: var(--ink); font-family: var(--font-body); }
+.d-col { font: 500 11px var(--font-mono); letter-spacing: .08em; fill: var(--muted); }
+.d-t { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.d-s { font-size: 11.5px; fill: var(--ink-2); }
+.d-k { font: 11px var(--font-mono); fill: var(--ink-2); }
+.d-k2 { fill: var(--muted); }
+.d-rt { font-family: var(--font-display); font-stretch: 112%; font-size: 17px; font-weight: 750; fill: var(--ink); }
+.d-node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.25; }
+.d-later { opacity: .55; }
+.d-good rect { stroke: var(--pvw); stroke-width: 2; }
+.d-soft rect, .d-store rect { fill: var(--surface-2); }
+.d-stop rect { stroke: var(--muted); }
+.d-room { stroke-width: 1.5; }
+.d-room-bs { fill: var(--accent-wash); stroke: var(--accent); }
+.d-room-air { fill: var(--pgm-wash); stroke: var(--pgm); }
+.d-hub { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 1.5; }
+.d-layer { fill: var(--accent); fill-opacity: .6; }
+.d-media, .d-accent { stroke: var(--accent); stroke-width: 2; fill: none; }
+.d-pgm { stroke: var(--pgm); stroke-width: 2; fill: none; }
+.d-ctl { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 6 5; fill: none; }
+.d-neutral { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.d-good-line { stroke: var(--pvw); stroke-width: 2; fill: none; }
+.d-boundary { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 4; }
+.d-legend-box { fill: var(--surface); stroke: var(--line-strong); }
+.ah-media { fill: var(--accent); }
+.ah-pgm { fill: var(--pgm); }
+.ah-ctl { fill: var(--ink-2); }
+.ah-good { fill: var(--pvw); }
+
+/* Studio-Skizze */
+.w-frame { fill: var(--bg); stroke: var(--line-strong); }
+.w-sep { stroke: var(--line); }
+.w-brand { font-family: var(--font-display); font-stretch: 112%; font-weight: 800; font-size: 17px; fill: var(--ink); }
+.w-meta { font-size: 12.5px; fill: var(--ink-2); }
+.w-live { fill: var(--pgm); }
+.w-live-dot { fill: var(--on-pgm); }
+.w-live-t { font: 600 12px var(--font-mono); letter-spacing: .04em; fill: var(--on-pgm); }
+.w-label { font: 500 11px var(--font-mono); letter-spacing: .08em; fill: var(--muted); }
+.w-label-n { font-family: var(--font-body); font-size: 12px; letter-spacing: 0; fill: var(--ink-2); }
+.w-mon { fill: var(--surface-2); stroke-width: 3; }
+.w-pvw { stroke: var(--pvw); }
+.w-pgm { stroke: var(--pgm); }
+.w-dot-pvw, .w-dot-good { fill: var(--pvw); }
+.w-dot-pgm { fill: var(--pgm); }
+.w-dot-warn { fill: var(--amber-dot); }
+.w-dot-off { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.w-src-screen { fill: var(--accent-wash); stroke: var(--accent); }
+.w-src-cam { fill: var(--surface); stroke: var(--line-strong); }
+.w-src-t { font-size: 11px; fill: var(--ink-2); }
+.w-faux { fill: var(--accent); fill-opacity: .2; }
+.w-person { fill: var(--line-strong); }
+.w-sel { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.w-handle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+.w-guide { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 3; }
+.w-ctl { fill: var(--surface); stroke: var(--line-strong); }
+.w-ctl-t { font-size: 12.5px; fill: var(--ink); }
+.w-chev { fill: var(--ink-2); }
+.w-take { fill: var(--pgm); }
+.w-take-t { font-family: var(--font-display); font-stretch: 112%; font-weight: 800; font-size: 17px; letter-spacing: .1em; fill: var(--on-pgm); }
+.w-hint { font: 11px var(--font-mono); fill: var(--muted); }
+.w-lower { fill: var(--ink); fill-opacity: .88; }
+.w-lower-t { font-size: 12px; font-weight: 600; fill: var(--surface); }
+.w-logo { fill: var(--surface); stroke: var(--line-strong); }
+.w-badge { fill: var(--amber-dot); }
+.w-badge-t { font: 600 10px var(--font-mono); fill: var(--on-amber); }
+.w-dock { fill: var(--surface); stroke: var(--line); }
+.w-dock-h { font: 600 11px var(--font-mono); letter-spacing: .08em; fill: var(--ink-2); }
+.w-dock-n { font-family: var(--font-body); font-weight: 500; letter-spacing: 0; font-size: 12px; fill: var(--ink); }
+.w-row-sel { fill: var(--accent-wash); }
+.w-row-t { font-size: 12.5px; fill: var(--ink); }
+.w-row-s { font-size: 11px; fill: var(--ink-2); }
+.w-tally-t { font: 500 10.5px var(--font-mono); fill: var(--ink-2); }
+.w-eye { fill: none; stroke: var(--ink-2); stroke-width: 1.2; }
+.w-eye-p { fill: var(--ink-2); }
+.w-lock { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+.w-add { font-size: 12.5px; font-weight: 500; fill: var(--accent); }
+.w-thumb { fill: var(--surface-2); stroke: var(--line-strong); }
+.w-thumb-on { stroke: var(--accent); stroke-width: 2; }
+.w-thumb-t { fill: var(--line-strong); }
+.w-thumb-s { fill: var(--accent); fill-opacity: .35; }
+.w-thumb-t2 { fill: var(--ink-2); }
+.w-field { fill: var(--surface-2); stroke: var(--line); }
+.w-field-k { font: 11px var(--font-mono); fill: var(--muted); }
+.w-field-v { font: 12px var(--font-mono); fill: var(--ink); }
+.w-check { fill: var(--surface); stroke: var(--line-strong); }
+.w-meter-bg { fill: var(--surface-2); stroke: var(--line); }
+.w-meter { fill: var(--pvw); }
+.w-meter-hot { fill: var(--amber-dot); }
+.w-meter-off { fill: var(--line-strong); }
+.w-mute { fill: var(--surface); stroke: var(--line-strong); }
+.w-mute-on { fill: var(--ink-2); stroke: var(--ink-2); }
+.w-mute-t { font: 600 10.5px var(--font-mono); fill: var(--ink-2); }
+.w-mute-t-on { fill: var(--surface); }
+
+/* Latenz-Diagramm */
+.lat { position: relative; }
+.lat-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; margin: 0 0 20px; padding: 0; font-size: 13.5px; color: var(--ink-2); }
+.lat-legend li { display: flex; align-items: center; gap: 8px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; flex: none; vertical-align: -1px; }
+.s1 { background: var(--s1); }
+.s2 { background: var(--s2); }
+.s3 { background: var(--s3); }
+.s4 { background: var(--s4); }
+.lat-rows { display: grid; gap: 16px; }
+.lat-row { display: grid; grid-template-columns: 11rem minmax(0, 1fr); align-items: center; gap: 16px; }
+.lat-name { font-weight: 600; font-size: 15px; line-height: 1.25; }
+.lat-name small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.lat-track { position: relative; height: 36px; }
+.lat-grid { position: absolute; inset: 0; pointer-events: none; }
+.lat-grid span { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.lat-grid .base { background: var(--line-strong); }
+.lat-bar { position: absolute; left: 0; top: 7px; height: 22px; width: 100%; display: flex; }
+.lat-seg { position: relative; height: 100%; width: calc(var(--w) - 2px); min-width: 1px; margin-right: 2px; }
+.lat-seg:last-child { width: var(--w); margin-right: 0; border-radius: 0 4px 4px 0; }
+.lat-seg::after { content: ""; position: absolute; inset: -7px 0; }
+.lat-seg:hover, .lat-seg:focus-visible { filter: brightness(1.12); outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 2px; }
+.lat-total { position: absolute; top: 50%; left: calc(var(--t) + 10px); transform: translateY(-50%); font-weight: 600; font-size: 13.5px; white-space: nowrap; }
+.lat-axis { position: relative; height: 22px; margin-left: calc(11rem + 16px); font: 11.5px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lat-axis span { position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; }
+.lat-axis span:first-child { transform: none; }
+.lat-axis span:last-child { transform: translateX(-100%); }
+.lat-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 11px; box-shadow: var(--shadow); font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.lat-tip strong { display: block; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .lat-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .lat-axis { margin-left: 0; }
+}
+
+/* Tabellen und Code */
+.table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.t-min { min-width: 680px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+th { font: 500 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: var(--surface-2); border-bottom-color: var(--line-strong); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; }
+td { hyphens: auto; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.t-sum td { font-weight: 600; background: var(--surface-2); }
+.t-sum td:nth-child(2) { font-weight: 400; color: var(--ink-2); }
+pre { margin: 18px 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; font: 13.5px/1.6 var(--font-mono); color: var(--ink); tab-size: 2; }
+pre code { font-size: inherit; }
+pre .c { color: var(--muted); }
+
+/* Hebel, Karten, Ideen */
+.levers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 0 44px; list-style: none; padding: 0; margin: 18px 0 0; }
+.levers li { min-width: 0; padding-block: 13px; border-top: 1px solid var(--line); }
+.levers strong { display: block; margin-bottom: 2px; }
+.levers span { display: block; color: var(--ink-2); font-size: 15px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; margin-top: 24px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 12px; min-width: 0; hyphens: auto; }
+.card h3 { margin: 0 0 10px; font-size: 17px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.card ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.card li { margin-bottom: 7px; }
+.chip { font: 500 11px/1.6 var(--font-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-2); white-space: nowrap; flex: none; letter-spacing: .02em; }
+.chip-acc { border-color: var(--accent); color: var(--accent); }
+.presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 18px; margin: 22px 0 10px; }
+@media (max-width: 680px) { .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.preset { margin: 0; min-width: 0; }
+.pv { position: relative; aspect-ratio: 16 / 9; max-width: 100%; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.pv i { position: absolute; border-radius: 3px; }
+.pv .cam { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.pv .scr { background: var(--accent-wash); box-shadow: inset 0 0 0 1px var(--accent); }
+.preset figcaption { margin-top: 9px; font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.preset figcaption span { display: block; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+.presets-key { display: flex; gap: 18px; align-items: center; font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
+.presets-key span { display: inline-flex; align-items: center; gap: 7px; }
+.sw-scr { background: var(--accent-wash); box-shadow: inset 0 0 0 1px var(--accent); }
+.sw-cam { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr)); gap: 0 30px; margin-top: 20px; }
+.idea { padding-block: 14px; border-top: 1px solid var(--line); min-width: 0; }
+.idea-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.idea h3 { font-size: 16px; margin: 0; }
+.idea p { margin: 5px 0 0; color: var(--ink-2); font-size: 14.5px; }
+
+/* Roadmap */
+.phases { list-style: none; margin: 24px 0 0; padding: 0; }
+.phase { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 8px 28px; padding-block: 22px; border-top: 1px solid var(--line); }
+.phase:first-child { border-top: 2px solid var(--ink); }
+.phase-k { font: 500 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.phase-k b { display: block; font-family: var(--font-display); font-stretch: 112%; font-size: 24px; font-weight: 750; letter-spacing: -.01em; text-transform: none; color: var(--ink); margin: 2px 0 8px; }
+.phase h3 { margin: 0 0 8px; }
+.phase ul { margin: 0 0 12px; padding-left: 18px; color: var(--ink-2); max-width: 76ch; }
+.phase li { margin-bottom: 4px; }
+.done { margin: 0; font-size: 15px; max-width: 76ch; }
+.done strong { font: 600 11.5px var(--font-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--pvw); margin-right: 6px; }
+@media (max-width: 640px) { .phase { grid-template-columns: minmax(0, 1fr); } .phase-k b { margin-bottom: 0; } }
+
+/* Fragen und Fuss */
+.questions { list-style: none; margin: 20px 0 0; padding: 0; counter-reset: q; max-width: 82ch; }
+.questions li { counter-increment: q; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); padding-block: 14px; border-top: 1px solid var(--line); }
+.questions li::before { content: counter(q); font: 500 13px var(--font-mono); color: var(--muted); padding-top: 2px; }
+.questions strong { display: block; }
+.questions span { color: var(--ink-2); font-size: 15px; }
+.foot { margin-top: 56px; padding-block: 28px 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; }
+</style>
+
+<header class="wrap masthead" lang="de-CH">
+  <p class="eyebrow">Architektur &amp; Plan · Entwurf 1 · 21. Oktober 2026</p>
+  <h1>FlowStudio</h1>
+  <p class="lead">Eine Web-Regie nach dem Vorbild von OBS: Handys und Laptops senden Kamera, Bildschirm und Ton direkt aus dem Browser. Im Studio stellst du daraus Szenen zusammen, und ein 16:9-Output läuft als iframe auf deiner Webinar-Seite.</p>
+  <dl class="specs">
+    <div><dt>Latenz Regie (Ziel)</dt><dd>≈ 0,2 s</dd></div>
+    <div><dt>Latenz Publikum (Ziel)</dt><dd>≈ 0,3 s</dd></div>
+    <div><dt>Output</dt><dd>16:9 · 1920 × 1080</dd></div>
+    <div><dt>Reconnect</dt><dd>automatisch, ohne Limit</dd></div>
+  </dl>
+  <ul class="keyline" aria-label="Farbcode der Diagramme">
+    <li class="lbl">Farbcode</li>
+    <li><i class="k k-media"></i>Medien im Backstage</li>
+    <li><i class="k k-pgm"></i>Program, on air</li>
+    <li><i class="k k-pvw"></i>Preview, ok</li>
+    <li><i class="k k-ctl"></i>Steuerung über die API</li>
+  </ul>
+</header>
+
+<nav class="wrap toc" aria-label="Inhalt" lang="de-CH">
+  <ol>
+    <li><a href="#infra">Infrastruktur</a></li>
+    <li><a href="#latenz">Latenz</a></li>
+    <li><a href="#szenen">Szenen &amp; Layouts</a></li>
+    <li><a href="#sender">Sender</a></li>
+    <li><a href="#output">Output</a></li>
+    <li><a href="#stabil">Stabilität</a></li>
+    <li><a href="#sicher">Sicherheit</a></li>
+    <li><a href="#stack">Tech-Stack</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#ideen">Ideen</a></li>
+    <li><a href="#fragen">Offene Fragen</a></li>
+  </ol>
+</nav>
+
+<main lang="de-CH">
+
+<section class="wrap sec" id="entscheide" aria-labelledby="h-entscheide">
+  <h2 id="h-entscheide">Sechs Entscheide tragen das Ganze</h2>
+  <div class="decisions">
+    <article class="decision">
+      <p class="dtag">Medien</p>
+      <h3>WebRTC von der Kamera bis zum Zuschauer</h3>
+      <p>Nur WebRTC bringt Bild im Browser deutlich unter eine Sekunde. HLS und RTMP kommen höchstens am Ende dazu, für Restreams.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Server</p>
+      <h3>LiveKit als SFU, selbst betrieben in Zürich</h3>
+      <p>Leitet Pakete nur weiter, statt sie neu zu kodieren. Simulcast, Reconnect, TURN und Token-Rechte sind eingebaut. Open Source unter Apache 2.0.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Rendering</p>
+      <h3>Ein Renderer für alle Ansichten</h3>
+      <p>Studio-Monitore, Output-Seite und Server-Renderer nutzen denselben Szenen-Renderer. Was in der Preview steht, kommt genau so raus.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Sicherheit</p>
+      <h3>Backstage und Air sind getrennte Räume</h3>
+      <p>Das Publikum bekommt nur den fertig gemischten Program-Stream. Kameras und Screens, die gerade nicht live sind, kann ein Zuschauer technisch nicht abrufen.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Steuerung</p>
+      <h3>Die API hält den Zustand, nicht das Bild</h3>
+      <p>ASP.NET Core mit SignalR verwaltet Szenen, Geräte und Rechte und verteilt Änderungen in Millisekunden. Bild und Ton laufen nie über die API.</p>
+    </article>
+    <article class="decision">
+      <p class="dtag">Stabilität</p>
+      <h3>Reconnect in drei Stufen, ohne aufzugeben</h3>
+      <p>Resume, Rejoin, Warten mit Backoff. Jedes Gerät behält seine Identität und landet nach einem Unterbruch wieder im selben Slot der Szene.</p>
+    </article>
+  </div>
+</section>
+
+<section class="wrap sec" id="infra">
+  <h2><span class="num">1</span>Infrastruktur</h2>
+  <p class="intro">Zwei Ebenen, sauber getrennt. Die <strong>Media-Plane</strong> transportiert Bild und Ton über LiveKit. Die <strong>Control-Plane</strong>, also die FlowStudio-API, entscheidet, wer was darf und welche Szene läuft.</p>
+
+  <figure class="fig" id="abb-medien">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 600" role="img" aria-label="Medienfluss: Handys, Laptops und Audio-Clients senden per WebRTC in den privaten Backstage-Raum. Studio und Direct-Output empfangen von dort. Der Renderer mischt die Program-Szene und schickt genau einen Program-Track in den Air-Raum. Nur aus dem Air-Raum empfangen der öffentliche Output im iframe und später Restream und Aufnahme.">
+        <defs>
+          <marker id="f1-am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-media"/></marker>
+          <marker id="f1-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-pgm"/></marker>
+        </defs>
+
+        <text x="20" y="24" class="d-col">SENDER · BROWSER</text>
+        <text x="330" y="24" class="d-col">FLOWSTUDIO-SERVER · ZÜRICH</text>
+        <text x="760" y="24" class="d-col">EMPFÄNGER</text>
+
+        <g class="d-node">
+          <rect x="20" y="40" width="220" height="56" rx="6"/>
+          <text x="34" y="64" class="d-t">Handy-Kameras</text>
+          <text x="34" y="82" class="d-s">Sender-PWA · 1080p · Simulcast</text>
+        </g>
+        <g class="d-node">
+          <rect x="20" y="108" width="220" height="56" rx="6"/>
+          <text x="34" y="132" class="d-t">Laptops</text>
+          <text x="34" y="150" class="d-s">Screen 1…n · Kamera · Systemton</text>
+        </g>
+        <g class="d-node">
+          <rect x="20" y="176" width="220" height="56" rx="6"/>
+          <text x="34" y="200" class="d-t">Audio-Client</text>
+          <text x="34" y="218" class="d-s">Mikro oder Mischpult · Opus</text>
+        </g>
+        <g class="d-node d-later">
+          <rect x="20" y="244" width="220" height="56" rx="6"/>
+          <text x="34" y="268" class="d-t">Pro-Quellen</text>
+          <text x="34" y="286" class="d-s">OBS, vMix · WHIP/RTMP · später</text>
+        </g>
+
+        <line x1="240" y1="68" x2="328" y2="68" class="d-media" marker-end="url(#f1-am)"/>
+        <line x1="240" y1="136" x2="328" y2="136" class="d-media" marker-end="url(#f1-am)"/>
+        <line x1="240" y1="204" x2="328" y2="204" class="d-media" marker-end="url(#f1-am)"/>
+        <g class="d-later"><line x1="240" y1="272" x2="328" y2="272" class="d-media" marker-end="url(#f1-am)"/></g>
+        <text x="284" y="59" class="d-k" text-anchor="middle">WebRTC</text>
+
+        <rect x="330" y="40" width="320" height="260" rx="10" class="d-room d-room-bs"/>
+        <text x="352" y="70" class="d-rt">Backstage-Raum</text>
+        <text x="352" y="90" class="d-s">LiveKit · privat · alle Quellen</text>
+        <text x="352" y="128" class="d-k">je Quelle bis zu 3 Stufen</text>
+        <rect x="352" y="138" width="156" height="10" rx="2" class="d-layer"/>
+        <text x="518" y="147" class="d-k">1080p</text>
+        <rect x="352" y="156" width="104" height="10" rx="2" class="d-layer"/>
+        <text x="466" y="165" class="d-k">540p</text>
+        <rect x="352" y="174" width="52" height="10" rx="2" class="d-layer"/>
+        <text x="414" y="183" class="d-k">270p</text>
+        <text x="352" y="222" class="d-s">leitet weiter, kodiert nicht um</text>
+        <text x="352" y="242" class="d-s">Zugang: Regie, Renderer, Direct-Output</text>
+
+        <line x1="650" y1="78" x2="758" y2="78" class="d-media" marker-end="url(#f1-am)"/>
+        <text x="704" y="69" class="d-k" text-anchor="middle">alle Quellen</text>
+        <line x1="650" y1="158" x2="758" y2="158" class="d-media" marker-end="url(#f1-am)"/>
+        <text x="704" y="149" class="d-k" text-anchor="middle">Szenen-Quellen</text>
+        <g class="d-node">
+          <rect x="760" y="50" width="250" height="56" rx="6"/>
+          <text x="774" y="74" class="d-t">Studio (Regie)</text>
+          <text x="774" y="92" class="d-s">Preview · Program · Multiview</text>
+        </g>
+        <g class="d-node">
+          <rect x="760" y="130" width="250" height="56" rx="6"/>
+          <text x="774" y="154" class="d-t">Direct-Output</text>
+          <text x="774" y="172" class="d-s">vertraulich: OBS, Regie-Monitor</text>
+        </g>
+
+        <g>
+          <line x1="1046" y1="60" x2="1076" y2="60" class="d-media"/>
+          <text x="1084" y="64" class="d-k">Backstage</text>
+          <line x1="1046" y1="84" x2="1076" y2="84" class="d-pgm"/>
+          <text x="1084" y="88" class="d-k">Program</text>
+          <g class="d-later"><rect x="1046" y="100" width="30" height="16" rx="3" class="d-legend-box"/></g>
+          <text x="1084" y="112" class="d-k">später</text>
+        </g>
+
+        <line x1="490" y1="300" x2="490" y2="338" class="d-media" marker-end="url(#f1-am)"/>
+        <text x="502" y="324" class="d-k">Program-Quellen</text>
+        <g class="d-node">
+          <rect x="380" y="340" width="220" height="56" rx="6"/>
+          <text x="394" y="364" class="d-t">Renderer</text>
+          <text x="394" y="382" class="d-s">rendert die Program-Szene</text>
+        </g>
+
+        <line x1="20" y1="424" x2="1180" y2="424" class="d-boundary"/>
+        <text x="20" y="416" class="d-col">VERTRAUT</text>
+        <text x="20" y="442" class="d-col">PUBLIKUM</text>
+        <text x="1180" y="416" class="d-col" text-anchor="end">VERTRAUENSGRENZE</text>
+
+        <line x1="490" y1="396" x2="490" y2="448" class="d-pgm" marker-end="url(#f1-ap)"/>
+        <text x="502" y="414" class="d-k">1 Program-Track · Bild + Ton</text>
+
+        <rect x="330" y="450" width="320" height="120" rx="10" class="d-room d-room-air"/>
+        <text x="352" y="480" class="d-rt">Air-Raum</text>
+        <text x="352" y="500" class="d-s">LiveKit · nur der fertige Program-Stream</text>
+        <text x="352" y="538" class="d-k">1 Track · Simulcast 1080p / 720p / 360p</text>
+
+        <line x1="650" y1="488" x2="758" y2="488" class="d-pgm" marker-end="url(#f1-ap)"/>
+        <text x="704" y="479" class="d-k" text-anchor="middle">1 Stream</text>
+        <g class="d-node">
+          <rect x="760" y="460" width="250" height="56" rx="6"/>
+          <text x="774" y="484" class="d-t">Öffentlicher Output</text>
+          <text x="774" y="502" class="d-s">iframe 16:9 auf der Webinar-Seite</text>
+        </g>
+        <line x1="1010" y1="488" x2="1058" y2="488" class="d-pgm" marker-end="url(#f1-ap)"/>
+        <g class="d-node">
+          <rect x="1060" y="460" width="120" height="56" rx="6"/>
+          <text x="1074" y="484" class="d-t">Zuschauer</text>
+          <text x="1074" y="502" class="d-s">Browser, Handy</text>
+        </g>
+        <g class="d-later">
+          <line x1="650" y1="550" x2="758" y2="550" class="d-pgm" marker-end="url(#f1-ap)"/>
+          <text x="704" y="541" class="d-k" text-anchor="middle">Egress</text>
+          <g class="d-node">
+            <rect x="760" y="530" width="250" height="56" rx="6"/>
+            <text x="774" y="554" class="d-t">Restream &amp; Aufnahme</text>
+            <text x="774" y="572" class="d-s">YouTube, LinkedIn, MP4 · später</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 1 · Medienfluss.</strong> Kameras, Screens und Ton landen verschlüsselt (DTLS-SRTP) im privaten Backstage-Raum, und die Regie sieht dort alles. Der Renderer mischt die Program-Szene zu einem einzigen Stream und schickt nur diesen in den Air-Raum. Zuschauer im iframe sind ausschliesslich dort.</figcaption>
+  </figure>
+
+  <figure class="fig" id="abb-steuerung">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 450" role="img" aria-label="Steuerung: Die FlowStudio-API ist der Knoten. Sender holen Pairing, Token und Tally, das Studio schickt Szenen und Take, Renderer und Direct-Output erhalten den Szenen-Zustand live, der öffentliche Output holt nur ein Viewer-Token. Die API steuert LiveKit über die Server-API und nutzt Datenbank, Blob-Storage, Entra ID und Key Vault.">
+        <defs>
+          <marker id="f2-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-ctl"/></marker>
+        </defs>
+
+        <g class="d-node">
+          <rect x="490" y="16" width="220" height="56" rx="6"/>
+          <text x="600" y="40" class="d-t" text-anchor="middle">LiveKit SFU</text>
+          <text x="600" y="58" class="d-s" text-anchor="middle">Server-API · Webhooks</text>
+        </g>
+        <line x1="600" y1="74" x2="600" y2="118" class="d-ctl" marker-start="url(#f2-ac)" marker-end="url(#f2-ac)"/>
+        <text x="614" y="101" class="d-k">Kick · Rechte · Join/Leave</text>
+
+        <rect x="465" y="120" width="270" height="200" rx="10" class="d-hub"/>
+        <text x="600" y="186" class="d-rt" text-anchor="middle">FlowStudio-API</text>
+        <text x="600" y="208" class="d-s" text-anchor="middle">ASP.NET Core · SignalR</text>
+        <text x="600" y="226" class="d-s" text-anchor="middle">Token-Dienst (JWT)</text>
+        <text x="600" y="262" class="d-k" text-anchor="middle">Szenen · Geräte · Rechte</text>
+
+        <g class="d-node">
+          <rect x="30" y="130" width="240" height="56" rx="6"/>
+          <text x="44" y="154" class="d-t">Sender-PWA</text>
+          <text x="44" y="172" class="d-s">Handys, Laptops, Audio</text>
+        </g>
+        <line x1="272" y1="158" x2="463" y2="158" class="d-ctl" marker-start="url(#f2-ac)" marker-end="url(#f2-ac)"/>
+        <text x="368" y="149" class="d-k" text-anchor="middle">Pairing · Token · Tally</text>
+        <text x="368" y="177" class="d-k d-k2" text-anchor="middle">HTTPS + SignalR</text>
+
+        <g class="d-node">
+          <rect x="30" y="264" width="240" height="56" rx="6"/>
+          <text x="44" y="288" class="d-t">Öffentlicher Output</text>
+          <text x="44" y="306" class="d-s">iframe beim Publikum</text>
+        </g>
+        <line x1="272" y1="292" x2="463" y2="292" class="d-ctl" marker-start="url(#f2-ac)" marker-end="url(#f2-ac)"/>
+        <text x="368" y="283" class="d-k" text-anchor="middle">Viewer-Token · Origin-Check</text>
+        <text x="368" y="311" class="d-k d-k2" text-anchor="middle">HTTPS, 1× pro Aufruf</text>
+
+        <line x1="737" y1="158" x2="928" y2="158" class="d-ctl" marker-start="url(#f2-ac)" marker-end="url(#f2-ac)"/>
+        <text x="832" y="149" class="d-k" text-anchor="middle">Szenen · Take · Status</text>
+        <text x="832" y="177" class="d-k d-k2" text-anchor="middle">SignalR über WSS</text>
+        <g class="d-node">
+          <rect x="930" y="130" width="240" height="56" rx="6"/>
+          <text x="944" y="154" class="d-t">Studio (Regie)</text>
+          <text x="944" y="172" class="d-s">Login über Entra ID + MFA</text>
+        </g>
+
+        <line x1="737" y1="292" x2="928" y2="292" class="d-ctl" marker-start="url(#f2-ac)" marker-end="url(#f2-ac)"/>
+        <text x="832" y="283" class="d-k" text-anchor="middle">Szenen-Zustand live</text>
+        <text x="832" y="311" class="d-k d-k2" text-anchor="middle">SignalR über WSS</text>
+        <g class="d-node">
+          <rect x="930" y="264" width="240" height="56" rx="6"/>
+          <text x="944" y="288" class="d-t">Renderer · Direct-Output</text>
+          <text x="944" y="306" class="d-s">folgen der Regie in Echtzeit</text>
+        </g>
+
+        <line x1="600" y1="320" x2="600" y2="352" class="d-ctl"/>
+        <line x1="330" y1="352" x2="870" y2="352" class="d-ctl"/>
+        <line x1="330" y1="352" x2="330" y2="376" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <line x1="510" y1="352" x2="510" y2="376" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <line x1="690" y1="352" x2="690" y2="376" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <line x1="870" y1="352" x2="870" y2="376" class="d-ctl" marker-end="url(#f2-ac)"/>
+        <g class="d-node d-store">
+          <rect x="250" y="378" width="160" height="56" rx="6"/>
+          <text x="330" y="402" class="d-t" text-anchor="middle">SQL-Datenbank</text>
+          <text x="330" y="420" class="d-s" text-anchor="middle">Szenen, Geräte, Audit</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="430" y="378" width="160" height="56" rx="6"/>
+          <text x="510" y="402" class="d-t" text-anchor="middle">Blob + CDN</text>
+          <text x="510" y="420" class="d-s" text-anchor="middle">Bilder, Videos</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="610" y="378" width="160" height="56" rx="6"/>
+          <text x="690" y="402" class="d-t" text-anchor="middle">Entra ID</text>
+          <text x="690" y="420" class="d-s" text-anchor="middle">Admin-Login, MFA</text>
+        </g>
+        <g class="d-node d-store">
+          <rect x="790" y="378" width="160" height="56" rx="6"/>
+          <text x="870" y="402" class="d-t" text-anchor="middle">Key Vault</text>
+          <text x="870" y="420" class="d-s" text-anchor="middle">Secrets, Schlüssel</text>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 2 · Steuerung.</strong> Alles, was nicht Bild oder Ton ist, läuft über die API: Pairing, Tokens, Szenen-Änderungen, Take und Tally. Jeder Client holt zuerst ein Token mit genau seinen Rechten und verbindet sich damit direkt mit LiveKit (Abb. 1). Fällt die API kurz aus, laufen Bild und Ton weiter.</figcaption>
+  </figure>
+
+  <h3>Komponenten</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Komponente</th><th>Aufgabe</th><th>Technik</th></tr></thead>
+      <tbody>
+        <tr><td>Sender-PWA</td><td>Kamera, Screens und Ton senden, Tally anzeigen</td><td>Angular-PWA, livekit-client, Wake-Lock</td></tr>
+        <tr><td>Studio</td><td>Szenen bauen, Preview/Program, Take, Audio-Mixer, Geräte</td><td>Angular (Signals, OnPush), gemeinsamer Renderer</td></tr>
+        <tr><td>FlowStudio-API</td><td>Login, Pairing, Tokens, Szenen-Zustand, Uploads, Webhooks</td><td>ASP.NET Core (.NET 10), SignalR, EF Core</td></tr>
+        <tr><td>LiveKit SFU</td><td>Medien weiterleiten, Simulcast, TURN</td><td>LiveKit (Open Source) auf eigener VM</td></tr>
+        <tr><td>Renderer</td><td>Program-Szene mischen und als 1 Track in den Air-Raum senden</td><td>Headless Chromium mit Playwright, lädt die Output-Seite</td></tr>
+        <tr><td>Output-Seiten</td><td>Direct (vertraulich) und öffentlich (iframe)</td><td>Vanilla TypeScript mit Vite, ohne Framework</td></tr>
+        <tr><td>Daten</td><td>Szenen, Geräte, Audit · Bilder, Videos · Secrets</td><td>SQL Server, Blob Storage mit CDN, Key Vault</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Hosting</h3>
+  <div class="prose">
+    <p>Für Entwicklung und Spike läuft alles per Docker Compose auf einem Rechner. In Produktion bekommen LiveKit und der Renderer eigene VMs in Azure Switzerland North (Zürich) mit öffentlicher IP, weil WebRTC UDP braucht. API und Frontends laufen als Container oder App Service mit mindestens zwei Instanzen, Datenbank, Storage und Key Vault als Managed Services.</p>
+    <p>Offene Ports der LiveKit-VM: <code>443/TCP</code> für Signalisierung und TURN/TLS, <code>7881/TCP</code> für ICE über TCP, <code>7882/UDP</code> für die Medien und <code>3478/UDP</code> für TURN. Ein Raum läuft jeweils auf genau einem LiveKit-Node. Ein zweiter Node mit Redis übernimmt, wenn der erste ausfällt; alle Clients verbinden sich dann automatisch neu.</p>
+  </div>
+</section>
+
+<section class="wrap sec" id="latenz">
+  <h2><span class="num">2</span>Latenz: rund 0,2 s von der Kamera zum Schirm</h2>
+  <p class="intro">Glass-to-Glass heisst: vom Licht auf dem Kamerasensor bis zum Pixel beim Zuschauer. Die SFU selbst kostet fast nichts. Die Zeit steckt in Aufnahme, Netz und Puffern, und genau dort setzen die Optimierungen an.</p>
+
+  <figure class="fig lat" id="lat-chart">
+    <ul class="lat-legend" aria-label="Legende">
+      <li><span class="sw s1"></span>Aufnahme &amp; Encode</li>
+      <li><span class="sw s2"></span>Netzwerk</li>
+      <li><span class="sw s3"></span>Server (SFU, Renderer)</li>
+      <li><span class="sw s4"></span>Wiedergabe</li>
+    </ul>
+    <div class="lat-rows">
+      <div class="lat-row">
+        <div class="lat-name">Direct<small>Regie, vertraulich</small><small>≈&nbsp;5&nbsp;Frames</small></div>
+        <div class="lat-track" style="--t: 42.5%">
+          <div class="lat-grid" aria-hidden="true"><span class="base" style="left:0"></span><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span><span style="left:calc(100% - 1px)"></span></div>
+          <div class="lat-bar">
+            <span class="lat-seg s1" style="--w:11.25%" tabindex="0" role="img" aria-label="Direct, Aufnahme und Encode: 45 ms" data-ms="45" data-label="Aufnahme &amp; Encode" data-path="Direct"></span>
+            <span class="lat-seg s2" style="--w:12.5%" tabindex="0" role="img" aria-label="Direct, Netzwerk: 50 ms" data-ms="50" data-label="Netzwerk" data-path="Direct"></span>
+            <span class="lat-seg s3" style="--w:1.25%" tabindex="0" role="img" aria-label="Direct, Server: 5 ms" data-ms="5" data-label="Server (SFU)" data-path="Direct"></span>
+            <span class="lat-seg s4" style="--w:17.5%" tabindex="0" role="img" aria-label="Direct, Wiedergabe: 70 ms" data-ms="70" data-label="Wiedergabe" data-path="Direct"></span>
+          </div>
+          <span class="lat-total">≈ 170 ms</span>
+        </div>
+      </div>
+      <div class="lat-row">
+        <div class="lat-name">Air<small>Publikum im iframe</small><small>≈&nbsp;8&nbsp;Frames</small></div>
+        <div class="lat-track" style="--t: 65%">
+          <div class="lat-grid" aria-hidden="true"><span class="base" style="left:0"></span><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span><span style="left:calc(100% - 1px)"></span></div>
+          <div class="lat-bar">
+            <span class="lat-seg s1" style="--w:11.25%" tabindex="0" role="img" aria-label="Air, Aufnahme und Encode: 45 ms" data-ms="45" data-label="Aufnahme &amp; Encode" data-path="Air"></span>
+            <span class="lat-seg s2" style="--w:13.75%" tabindex="0" role="img" aria-label="Air, Netzwerk: 55 ms" data-ms="55" data-label="Netzwerk" data-path="Air"></span>
+            <span class="lat-seg s3" style="--w:22.5%" tabindex="0" role="img" aria-label="Air, Server mit Renderer: 90 ms" data-ms="90" data-label="Server (SFU + Renderer)" data-path="Air"></span>
+            <span class="lat-seg s4" style="--w:17.5%" tabindex="0" role="img" aria-label="Air, Wiedergabe: 70 ms" data-ms="70" data-label="Wiedergabe" data-path="Air"></span>
+          </div>
+          <span class="lat-total">≈ 260 ms</span>
+        </div>
+      </div>
+    </div>
+    <div class="lat-axis" aria-hidden="true"><span style="left:0">0</span><span style="left:25%">100</span><span style="left:50%">200</span><span style="left:75%">300</span><span style="left:100%">400 ms</span></div>
+    <div class="lat-tip" hidden aria-hidden="true"><strong class="tv"></strong><span class="tl"></span></div>
+    <figcaption><strong>Abb. 3 · Latenz-Budget (Schätzung).</strong> Der Weg für die Regie und vertrauliche Outputs gegen den Weg zum Publikum. Beim Publikum kommt der Renderer dazu: Puffer, Mischen und ein zweites Encoding kosten rund 85 ms.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Abschnitt</th><th>Was passiert</th><th class="num">Direct</th><th class="num">Air</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sw s1"></span> Aufnahme &amp; Encode</td><td>ein Kamera-Frame (33 ms bei 30 fps) plus Hardware-Encoder</td><td class="num">45 ms</td><td class="num">45 ms</td></tr>
+        <tr><td><span class="sw s2"></span> Netzwerk</td><td>Upload zur SFU und Download, innerhalb der Schweiz</td><td class="num">50 ms</td><td class="num">55 ms</td></tr>
+        <tr><td><span class="sw s3"></span> Server</td><td>SFU leitet weiter; bei Air zusätzlich der Renderer (Puffer, Mischen, Encode)</td><td class="num">5 ms</td><td class="num">90 ms</td></tr>
+        <tr><td><span class="sw s4"></span> Wiedergabe</td><td>Jitter-Buffer, Decode, Anzeige</td><td class="num">70 ms</td><td class="num">70 ms</td></tr>
+        <tr class="t-sum"><td>Total</td><td>Glass-to-Glass</td><td class="num">≈ 170 ms</td><td class="num">≈ 260 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Schätzwerte für Teilnehmende in der Schweiz mit gutem Netz, bei 30 fps (1 Frame = 33 ms). Phase 0 misst sie echt. Zum Vergleich: Restreams über YouTube und Co. liegen bei 2–10 s und mehr.</p>
+
+  <h3>Die Hebel für Tempo</h3>
+  <ul class="levers">
+    <li><strong>Weiterleiten statt umkodieren</strong><span>Die SFU fasst das Video nicht an. Ein Hop kostet wenige Millisekunden.</span></li>
+    <li><strong>Simulcast und Dynacast</strong><span>Jeder Sender liefert bis zu drei Qualitätsstufen, jede Kachel holt die passende. Stufen, die niemand braucht, kodiert das Handy gar nicht erst; das spart Akku und Upload.</span></li>
+    <li><strong>Stufe aus der Szene ableiten</strong><span>Der Renderer kennt die Kachelgrösse aus dem Szenenmodell und fordert direkt die richtige Auflösung an, statt zu raten.</span></li>
+    <li><strong>Vorladen für den Take</strong><span>Die Quellen der Preview-Szene sind schon abonniert und dekodieren im Hintergrund. Der Schnitt kommt ohne Schwarzbild und ohne Warten auf ein Keyframe.</span></li>
+    <li><strong>Kleiner Puffer in der Regie</strong><span>Im Studio steht der Jitter-Buffer auf Minimum (<code>jitterBufferTarget</code> in Chromium). Für das Publikum etwas grösser, damit das Bild ruhig bleibt.</span></li>
+    <li><strong>Hardware-Codecs</strong><span>H.264 auf Handys, weil der Hardware-Encoder Akku und Wärme spart. Screens mit VP9 oder AV1 für scharfe Schrift bei wenig Bitrate, mit Fallback für ältere Geräte.</span></li>
+    <li><strong>Inhalt passend kodieren</strong><span>Screens mit <code>contentHint = "detail"</code>: Schärfe vor Bildrate. Kameras mit <code>"motion"</code>: flüssig vor scharf.</span></li>
+    <li><strong>Rendern auf der GPU</strong><span>Videos sind echte <code>&lt;video&gt;</code>-Elemente, platziert per CSS-Transform. Kein Kopieren von Frames in ein Canvas.</span></li>
+    <li><strong>Leichte Output-Seite</strong><span>Vanilla TypeScript ohne Framework. Die Seite steht in Sekundenbruchteilen, auch im iframe.</span></li>
+    <li><strong>Server nah bei den Leuten</strong><span>Rechenzentrum in Zürich, Medien direkt per UDP. TURN über Port 443 nur als Fallback hinter strengen Firewalls.</span></li>
+  </ul>
+</section>
+
+<section class="wrap sec" id="szenen">
+  <h2><span class="num">3</span>Szenen, Quellen und Layouts wie in OBS</h2>
+  <p class="intro">Die Begriffe kommen von OBS, damit sich alle sofort zurechtfinden. Eine Szene ist eine geordnete Liste von Elementen auf einem festen Canvas von 1920 × 1080 Pixeln, und jedes Element zeigt eine Quelle.</p>
+
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>In OBS</th><th>In FlowStudio</th><th>Was es kann</th></tr></thead>
+      <tbody>
+        <tr><td>Szene</td><td>Szene</td><td>geordnete Elemente auf festem 1920 × 1080-Canvas</td></tr>
+        <tr><td>Quelle</td><td>Quelle</td><td>Kamera, Screen oder Ton eines Geräts; Bild, Video, Text, Farbe, Webseite, andere Szene</td></tr>
+        <tr><td>Szenenelement</td><td>Element</td><td>Position, Grösse, Crop, Fit, Ecken, Rahmen, Ebene, Fallback</td></tr>
+        <tr><td>Studio-Modus</td><td>Preview / Program</td><td>Take mit Cut, Fade oder Slide; Stinger später</td></tr>
+        <tr><td>Audio-Mixer</td><td>Audio-Mixer</td><td>Pegel, Mute, Lautstärke, Sync-Versatz pro Quelle</td></tr>
+        <tr><td>Basis-Auflösung</td><td>Canvas</td><td>fix 1920 × 1080, der Output skaliert verlustfrei auf jede 16:9-Fläche</td></tr>
+        <tr><td>Szenensammlung</td><td>Produktion</td><td>ein Event mit eigenen Geräten, Szenen und Outputs</td></tr>
+        <tr><td>Browserquelle</td><td>Webseiten-Quelle</td><td>nur freigegebene Domains, in einem Sandbox-iframe</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Layout-Vorlagen</h3>
+  <p class="prose">Eine Vorlage legt Slots an, und du ziehst Quellen per Drag &amp; Drop hinein. Danach ist jedes Element frei veränderbar.</p>
+  <div class="presets">
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:0;top:0;width:100%;height:100%"></i></div>
+      <figcaption>Vollbild<span>eine Quelle</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:26.75%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:26.75%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>Zwei nebeneinander<span>Interview, Gespräch</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:0;top:0;width:100%;height:100%"></i><i class="cam" style="left:69.5%;top:69.5%;width:28%;height:28%"></i></div>
+      <figcaption>Bild-in-Bild<span>Screen gross, Kamera in der Ecke</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:2.5%;top:14%;width:72%;height:72%"></i><i class="cam" style="left:76%;top:27.75%;width:21.5%;height:21.5%"></i><i class="cam" style="left:76%;top:50.75%;width:21.5%;height:21.5%"></i></div>
+      <figcaption>Screen + Kamera-Spalte<span>Präsentation mit zwei Personen</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:18.5%;width:63%;height:63%"></i><i class="cam" style="left:67%;top:18.75%;width:30.5%;height:30.5%"></i><i class="cam" style="left:67%;top:50.75%;width:30.5%;height:30.5%"></i></div>
+      <figcaption>Eins plus zwei<span>Moderation und zwei Gäste</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="scr" style="left:2.5%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:2.5%;top:51%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:51%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>2 × 2<span>Panel oder Q&amp;A</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:2.5%;width:30.67%;height:30.67%"></i><i class="cam" style="left:2.5%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:34.67%;width:30.67%;height:30.67%"></i><i class="cam" style="left:2.5%;top:66.83%;width:30.67%;height:30.67%"></i><i class="cam" style="left:34.67%;top:66.83%;width:30.67%;height:30.67%"></i><i class="cam" style="left:66.83%;top:66.83%;width:30.67%;height:30.67%"></i></div>
+      <figcaption>3 × 3<span>Galerie, viele Gäste</span></figcaption>
+    </figure>
+    <figure class="preset">
+      <div class="pv" aria-hidden="true"><i class="cam" style="left:2.5%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:51%;top:2.5%;width:46.5%;height:46.5%"></i><i class="cam" style="left:26.75%;top:51%;width:46.5%;height:46.5%"></i></div>
+      <figcaption>Auto-Grid<span>ordnet sich nach aktiven Kameras</span></figcaption>
+    </figure>
+  </div>
+  <p class="presets-key"><span><i class="sw sw-scr"></i>Screen</span><span><i class="sw sw-cam"></i>Kamera</span></p>
+
+  <h3>Frei bearbeiten</h3>
+  <ul class="bullets">
+    <li>Ziehen zum Verschieben, Ecken zum Skalieren; Shift löst das Seitenverhältnis. Alt + Ziehen schneidet zu, wie in OBS.</li>
+    <li>Snapping an Canvas-Rändern, Mitte und anderen Elementen, mit Hilfslinien. Pfeiltasten verschieben pixelgenau.</li>
+    <li>Handys im Hochformat: <em>contain</em> mit Hintergrund oder <em>cover</em> zugeschnitten. Drehen und Spiegeln pro Element.</li>
+    <li>Ebenen per Drag &amp; Drop in der Quellenliste, Sichtbarkeit und Sperre pro Element.</li>
+    <li>Gestaltung pro Element: Ecken, Rahmen, Schatten, Deckkraft, Namensschild.</li>
+    <li>Pro Element ein Fallback: Fällt die Quelle aus, bleibt das letzte Bild einige Sekunden stehen, danach folgt ein Slate oder eine Ersatzquelle.</li>
+    <li>Gebaut wird in der Preview, das Program ändert sich erst mit Take. Undo und Redo im Studio.</li>
+  </ul>
+
+  <figure class="fig" id="abb-studio">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 660" role="img" aria-label="Skizze der Studio-Ansicht: oben links die Preview mit der Szene Screen plus Kamera, in der Mitte Übergang, Cut und Take, oben rechts das Program mit der Szene Talk zu zweit. Unten Docks für Szenen, Quellen, Element-Eigenschaften, Audio-Mixer und Geräte mit Verbindungsstatus.">
+        <rect x="0.5" y="0.5" width="1199" height="659" rx="12" class="w-frame"/>
+        <line x1="1" y1="48" x2="1199" y2="48" class="w-sep"/>
+        <text x="24" y="31" class="w-brand">FlowStudio</text>
+        <text x="150" y="30" class="w-meta">Produktion: Webinar «Q4-Update»</text>
+        <rect x="900" y="13" width="140" height="24" rx="12" class="w-live"/>
+        <circle cx="916" cy="25" r="4" class="w-live-dot"/>
+        <text x="927" y="29.5" class="w-live-t">LIVE 00:42:13</text>
+        <text x="1176" y="30" class="w-meta" text-anchor="end">Air · 312 Zuschauer</text>
+
+        <circle cx="30" cy="64" r="4" class="w-dot-pvw"/>
+        <text x="40" y="68" class="w-label">PREVIEW <tspan class="w-label-n">· Screen + Kamera</tspan></text>
+        <circle cx="702" cy="64" r="4" class="w-dot-pgm"/>
+        <text x="712" y="68" class="w-label">PROGRAM <tspan class="w-label-n">· Talk 2er</tspan></text>
+
+        <rect x="24" y="76" width="480" height="270" rx="4" class="w-mon w-pvw"/>
+        <rect x="34" y="86" width="340" height="191" rx="3" class="w-src-screen"/>
+        <text x="46" y="105" class="w-src-t">Screen 1 · Anna</text>
+        <rect x="54" y="126" width="190" height="9" rx="2" class="w-faux"/>
+        <rect x="54" y="146" width="280" height="6" rx="2" class="w-faux"/>
+        <rect x="54" y="160" width="250" height="6" rx="2" class="w-faux"/>
+        <rect x="54" y="174" width="265" height="6" rx="2" class="w-faux"/>
+        <rect x="54" y="196" width="120" height="62" rx="3" class="w-faux"/>
+        <rect x="384" y="86" width="110" height="62" rx="3" class="w-src-cam"/>
+        <circle cx="439" cy="112" r="8" class="w-person"/>
+        <path d="M423,140 Q439,118 455,140 Z" class="w-person"/>
+        <text x="391" y="100" class="w-src-t">Handy A</text>
+        <line x1="28" y1="86" x2="500" y2="86" class="w-guide"/>
+        <rect x="384" y="86" width="110" height="62" class="w-sel"/>
+        <rect x="380.5" y="82.5" width="7" height="7" class="w-handle"/>
+        <rect x="435.5" y="82.5" width="7" height="7" class="w-handle"/>
+        <rect x="490.5" y="82.5" width="7" height="7" class="w-handle"/>
+        <rect x="380.5" y="113.5" width="7" height="7" class="w-handle"/>
+        <rect x="490.5" y="113.5" width="7" height="7" class="w-handle"/>
+        <rect x="380.5" y="144.5" width="7" height="7" class="w-handle"/>
+        <rect x="435.5" y="144.5" width="7" height="7" class="w-handle"/>
+        <rect x="490.5" y="144.5" width="7" height="7" class="w-handle"/>
+
+        <text x="600" y="112" class="w-label" text-anchor="middle">ÜBERGANG</text>
+        <rect x="530" y="124" width="140" height="32" rx="6" class="w-ctl"/>
+        <text x="544" y="145" class="w-ctl-t">Fade · 300 ms</text>
+        <path d="M648,137 L656,137 L652,142 Z" class="w-chev"/>
+        <rect x="530" y="166" width="140" height="32" rx="6" class="w-ctl"/>
+        <text x="600" y="187" class="w-ctl-t" text-anchor="middle">Cut</text>
+        <rect x="530" y="212" width="140" height="60" rx="8" class="w-take"/>
+        <text x="600" y="248" class="w-take-t" text-anchor="middle">TAKE</text>
+        <text x="600" y="292" class="w-hint" text-anchor="middle">Taste: Leerschlag</text>
+
+        <rect x="696" y="76" width="480" height="270" rx="4" class="w-mon w-pgm"/>
+        <rect x="706" y="148" width="225" height="127" rx="3" class="w-src-cam"/>
+        <circle cx="818" cy="196" r="15" class="w-person"/>
+        <path d="M788,262 Q818,214 848,262 Z" class="w-person"/>
+        <text x="716" y="166" class="w-src-t">Handy A</text>
+        <rect x="941" y="148" width="225" height="127" rx="3" class="w-src-cam"/>
+        <circle cx="1053" cy="196" r="15" class="w-person"/>
+        <path d="M1023,262 Q1053,214 1083,262 Z" class="w-person"/>
+        <text x="951" y="166" class="w-src-t">Handy B</text>
+        <rect x="1088" y="156" width="70" height="18" rx="9" class="w-badge"/>
+        <text x="1123" y="168.5" class="w-badge-t" text-anchor="middle">verbindet</text>
+        <rect x="706" y="296" width="200" height="30" rx="3" class="w-lower"/>
+        <text x="716" y="316" class="w-lower-t">Anna Muster · CEO</text>
+        <rect x="1116" y="88" width="48" height="22" rx="3" class="w-logo"/>
+        <text x="1140" y="103" class="w-src-t" text-anchor="middle">Logo</text>
+
+        <rect x="24" y="366" width="196" height="274" rx="8" class="w-dock"/>
+        <text x="38" y="390" class="w-dock-h">SZENEN</text>
+        <line x1="24" y1="402" x2="220" y2="402" class="w-sep"/>
+        <text x="38" y="430" class="w-row-t">Intro · Slate</text>
+        <text x="38" y="460" class="w-row-t">Talk 2er</text>
+        <circle cx="176" cy="456" r="4" class="w-dot-pgm"/>
+        <text x="206" y="460" class="w-tally-t" text-anchor="end">PGM</text>
+        <rect x="30" y="471" width="184" height="28" rx="4" class="w-row-sel"/>
+        <text x="38" y="490" class="w-row-t">Screen + Kamera</text>
+        <circle cx="176" cy="486" r="4" class="w-dot-pvw"/>
+        <text x="206" y="490" class="w-tally-t" text-anchor="end">PVW</text>
+        <text x="38" y="520" class="w-row-t">Q&amp;A 2 × 2</text>
+        <text x="38" y="550" class="w-row-t">Pause · Video-Loop</text>
+        <text x="38" y="626" class="w-add">+ Szene</text>
+
+        <rect x="232" y="366" width="220" height="274" rx="8" class="w-dock"/>
+        <text x="246" y="390" class="w-dock-h">QUELLEN</text>
+        <line x1="232" y1="402" x2="452" y2="402" class="w-sep"/>
+        <rect x="238" y="441" width="208" height="28" rx="4" class="w-row-sel"/>
+        <ellipse cx="252" cy="426" rx="7" ry="4.5" class="w-eye"/><circle cx="252" cy="426" r="2" class="w-eye-p"/>
+        <text x="268" y="430" class="w-row-t">Logo</text>
+        <ellipse cx="252" cy="456" rx="7" ry="4.5" class="w-eye"/><circle cx="252" cy="456" r="2" class="w-eye-p"/>
+        <text x="268" y="460" class="w-row-t">Handy A</text>
+        <ellipse cx="252" cy="486" rx="7" ry="4.5" class="w-eye"/><circle cx="252" cy="486" r="2" class="w-eye-p"/>
+        <text x="268" y="490" class="w-row-t">Screen 1 · Anna</text>
+        <ellipse cx="252" cy="516" rx="7" ry="4.5" class="w-eye"/><circle cx="252" cy="516" r="2" class="w-eye-p"/>
+        <text x="268" y="520" class="w-row-t">Hintergrund</text>
+        <rect x="424" y="514" width="10" height="8" rx="1.5" class="w-lock"/>
+        <path d="M426.5,514 v-3 a2.5,2.5 0 0 1 5,0 v3" class="w-lock"/>
+        <text x="246" y="626" class="w-add">+ Quelle</text>
+
+        <rect x="464" y="366" width="300" height="274" rx="8" class="w-dock"/>
+        <text x="478" y="390" class="w-dock-h">ELEMENT <tspan class="w-dock-n">· Handy A</tspan></text>
+        <line x1="464" y1="402" x2="764" y2="402" class="w-sep"/>
+        <text x="478" y="424" class="w-row-s">Vorlage</text>
+        <rect x="478" y="432" width="38" height="21.4" rx="2" class="w-thumb"/>
+        <rect x="480" y="434" width="34" height="17.4" rx="1" class="w-thumb-t"/>
+        <rect x="524" y="432" width="38" height="21.4" rx="2" class="w-thumb"/>
+        <rect x="526" y="438" width="16.5" height="9.3" rx="1" class="w-thumb-t"/>
+        <rect x="543.5" y="438" width="16.5" height="9.3" rx="1" class="w-thumb-t"/>
+        <rect x="570" y="432" width="38" height="21.4" rx="2" class="w-thumb w-thumb-on"/>
+        <rect x="572" y="434" width="34" height="17.4" rx="1" class="w-thumb-s"/>
+        <rect x="595" y="444.5" width="9.5" height="5.3" rx="1" class="w-thumb-t2"/>
+        <rect x="616" y="432" width="38" height="21.4" rx="2" class="w-thumb"/>
+        <rect x="618" y="434" width="25" height="17.4" rx="1" class="w-thumb-s"/>
+        <rect x="644.5" y="434" width="7.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="644.5" y="443.2" width="7.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="662" y="432" width="38" height="21.4" rx="2" class="w-thumb"/>
+        <rect x="664" y="434" width="16.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="681.5" y="434" width="16.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="664" y="443.2" width="16.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="681.5" y="443.2" width="16.5" height="8.2" rx="1" class="w-thumb-t"/>
+        <rect x="708" y="432" width="38" height="21.4" rx="2" class="w-thumb"/>
+        <rect x="710" y="434" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="721.7" y="434" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="733.4" y="434" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="710" y="440.1" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="721.7" y="440.1" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="733.4" y="440.1" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="710" y="446.2" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="721.7" y="446.2" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="733.4" y="446.2" width="10.6" height="5.2" rx="1" class="w-thumb-t"/>
+        <rect x="478" y="468" width="62" height="26" rx="4" class="w-field"/>
+        <text x="486" y="485.5" class="w-field-k">X <tspan class="w-field-v">1440</tspan></text>
+        <rect x="548" y="468" width="62" height="26" rx="4" class="w-field"/>
+        <text x="556" y="485.5" class="w-field-k">Y <tspan class="w-field-v">40</tspan></text>
+        <rect x="618" y="468" width="62" height="26" rx="4" class="w-field"/>
+        <text x="626" y="485.5" class="w-field-k">B <tspan class="w-field-v">440</tspan></text>
+        <rect x="688" y="468" width="62" height="26" rx="4" class="w-field"/>
+        <text x="696" y="485.5" class="w-field-k">H <tspan class="w-field-v">248</tspan></text>
+        <rect x="478" y="506" width="130" height="26" rx="4" class="w-field"/>
+        <text x="486" y="523.5" class="w-field-k">Fit <tspan class="w-field-v">cover</tspan></text>
+        <path d="M592,517 L600,517 L596,522 Z" class="w-chev"/>
+        <rect x="618" y="506" width="132" height="26" rx="4" class="w-field"/>
+        <text x="626" y="523.5" class="w-field-k">Ecken <tspan class="w-field-v">12 px</tspan></text>
+        <rect x="478" y="544" width="272" height="26" rx="4" class="w-field"/>
+        <text x="486" y="561.5" class="w-field-k">Bei Ausfall <tspan class="w-field-v">3 s halten, dann Slate</tspan></text>
+        <rect x="478" y="588" width="12" height="12" rx="2" class="w-check"/>
+        <text x="497" y="598.5" class="w-row-t">Spiegeln</text>
+        <text x="590" y="598.5" class="w-row-t">Drehen 0°</text>
+        <text x="478" y="626" class="w-hint">Alt + Ziehen schneidet zu</text>
+
+        <rect x="776" y="366" width="190" height="274" rx="8" class="w-dock"/>
+        <text x="790" y="390" class="w-dock-h">AUDIO</text>
+        <line x1="776" y1="402" x2="966" y2="402" class="w-sep"/>
+        <rect x="810" y="414" width="12" height="146" rx="2" class="w-meter-bg"/>
+        <rect x="810" y="452" width="12" height="108" class="w-meter"/>
+        <rect x="810" y="440" width="12" height="10" class="w-meter-hot"/>
+        <rect x="865" y="414" width="12" height="146" rx="2" class="w-meter-bg"/>
+        <rect x="865" y="550" width="12" height="10" class="w-meter-off"/>
+        <rect x="920" y="414" width="12" height="146" rx="2" class="w-meter-bg"/>
+        <rect x="920" y="498" width="12" height="62" class="w-meter"/>
+        <text x="816" y="578" class="w-row-s" text-anchor="middle">Mic Anna</text>
+        <text x="871" y="578" class="w-row-s" text-anchor="middle">Handy A</text>
+        <text x="926" y="578" class="w-row-s" text-anchor="middle">Video</text>
+        <rect x="804" y="588" width="24" height="18" rx="3" class="w-mute"/>
+        <text x="816" y="601" class="w-mute-t" text-anchor="middle">M</text>
+        <rect x="859" y="588" width="24" height="18" rx="3" class="w-mute w-mute-on"/>
+        <text x="871" y="601" class="w-mute-t w-mute-t-on" text-anchor="middle">M</text>
+        <rect x="914" y="588" width="24" height="18" rx="3" class="w-mute"/>
+        <text x="926" y="601" class="w-mute-t" text-anchor="middle">M</text>
+        <text x="816" y="626" class="w-hint" text-anchor="middle">+40 ms</text>
+
+        <rect x="978" y="366" width="198" height="274" rx="8" class="w-dock"/>
+        <text x="992" y="390" class="w-dock-h">GERÄTE</text>
+        <line x1="978" y1="402" x2="1176" y2="402" class="w-sep"/>
+        <circle cx="996" cy="424" r="5" class="w-dot-good"/>
+        <text x="1008" y="428" class="w-row-t">Handy A</text>
+        <text x="1008" y="444" class="w-row-s">1080p · 38 ms · Akku 81 %</text>
+        <circle cx="996" cy="470" r="5" class="w-dot-good"/>
+        <text x="1008" y="474" class="w-row-t">Laptop Anna</text>
+        <text x="1008" y="490" class="w-row-s">2 Screens · Mic · 24 ms</text>
+        <circle cx="996" cy="516" r="5" class="w-dot-warn"/>
+        <text x="1008" y="520" class="w-row-t">Handy B</text>
+        <text x="1008" y="536" class="w-row-s">verbindet neu · 00:04</text>
+        <circle cx="996" cy="562" r="5" class="w-dot-off"/>
+        <text x="1008" y="566" class="w-row-t">Handy C</text>
+        <text x="1008" y="582" class="w-row-s">offline seit 2 min</text>
+        <text x="992" y="626" class="w-add">+ Gerät per QR</text>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 4 · Studio-Ansicht (Skizze mit Beispielwerten).</strong> Aufgebaut wie der Studio-Modus in OBS: Links die Preview, in der du baust und frei verschiebst, rechts das Program, das live ist. Take übernimmt die Preview mit dem gewählten Übergang. Handy B verbindet gerade neu; im Program steht so lange sein letztes Bild.</figcaption>
+  </figure>
+
+  <h3>Datenmodell einer Szene</h3>
+  <p class="prose">Jede Szene ist ein JSON-Dokument. Die API prüft jede Änderung und vergibt eine fortlaufende Version, über die sich alle Clients abgleichen.</p>
+<pre><code>{
+  "id": "scn_screen_cam",
+  "name": "Screen + Kamera",
+  "canvas": { "w": 1920, "h": 1080 },
+  "background": { "type": "image", "asset": "ast_bg_q4" },
+  "items": [
+    {
+      "id": "it_screen",
+      "source": "dev_laptop_anna/screen-1",
+      "x": 40, "y": 40, "w": 1360, "h": 765, "z": 1,
+      "fit": "contain", "crop": [0, 0, 0, 0], "radius": 12,
+      "onLost": { "holdMs": 3000, "then": "src_slate_pause" }
+    },
+    {
+      "id": "it_cam",
+      "source": "dev_handy_a/camera",
+      "x": 1440, "y": 40, "w": 440, "h": 248, "z": 2,
+      "fit": "cover", "mirror": false
+    }
+  ]
+}</code></pre>
+  <p class="prose">Quellen werden über <strong>Geräte-ID und Slot</strong> referenziert (<code>dev_handy_a/camera</code>), nicht über LiveKit-Track-IDs. Track-IDs ändern sich bei jedem Reconnect, Geräte-ID und Slot bleiben. Deshalb landet ein Bild nach einem Unterbruch automatisch wieder an derselben Stelle.</p>
+</section>
+
+<section class="wrap sec" id="sender">
+  <h2><span class="num">4</span>Sender: Handy, Laptop, Ton</h2>
+  <p class="intro">Sender brauchen weder App noch Konto. Die Regie erzeugt einen QR-Code, das Gerät scannt ihn, die Regie bestätigt das Gerät, und das Bild läuft.</p>
+  <div class="cards">
+    <article class="card">
+      <h3>Handy als Kamera</h3>
+      <ul>
+        <li>Front- oder Rückkamera, 720p oder 1080p, 30 fps</li>
+        <li>Bildschirm bleibt an (Wake-Lock), ein Dunkel-Modus spart Akku</li>
+        <li>Grosse Tally-Anzeige: rot heisst live, grün heisst als Nächstes</li>
+        <li>Startet nach dem Neuladen von selbst mit den letzten Einstellungen</li>
+        <li>Fernsteuerung aus dem Studio: Kamera wechseln, Auflösung, Zoom und Licht, wo das Gerät es kann</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Laptop mit Screens</h3>
+      <ul>
+        <li>Kamera plus beliebig viele Screens; jeder Screen ist eine eigene Quelle</li>
+        <li>Systemton optional (Chromium, vor allem unter Windows)</li>
+        <li>Beendet jemand das Teilen, darf der Browser es nicht selbst neu starten. FlowStudio zeigt dann einen grossen Knopf «Erneut teilen», und die Regie sieht es sofort.</li>
+        <li>Screen-Sharing geht nur in Desktop-Browsern, nicht auf Handys</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Audio-Client</h3>
+      <ul>
+        <li>Laptop am Mischpult oder ein gutes USB-Mikrofon</li>
+        <li>Opus in Stereo mit hoher Bitrate, Echo- und Rauschunterdrückung aus</li>
+        <li>Paket-Redundanz (RED) gegen Aussetzer</li>
+        <li>Für Webinare meist die beste Tonquelle, denn Handy-Mikros im Raum klingen hallig</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Pro-Quellen <span class="chip">später</span></h3>
+      <ul>
+        <li>OBS, vMix, ATEM oder die Handy-App Larix</li>
+        <li>Einspeisung per WHIP oder RTMP über LiveKit Ingress</li>
+        <li>Für echte Kameras oder einen bestehenden Bildmischer vor Ort</li>
+      </ul>
+    </article>
+  </div>
+  <p class="note">Bandbreite als Richtwert: pro Handy 3–5 Mbit/s Upload, pro Screen 2–4 Mbit/s, Ton rund 0,1 Mbit/s. Vor Ort hilft ein eigenes WLAN (5 GHz) oder LAN, und Laptops hängen wenn möglich am Kabel.</p>
+</section>
+
+<section class="wrap sec" id="output">
+  <h2><span class="num">5</span>Output: immer 16:9, als iframe</h2>
+  <p class="intro">FlowStudio kennt zwei Output-Seiten. Beide rendern einen festen Canvas von 1920 × 1080 Pixeln und skalieren ihn ohne Verzerrung in jeden Container.</p>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Output</th><th>Für wen</th><th>Weg</th><th>Latenz</th><th>Zuschauer</th></tr></thead>
+      <tbody>
+        <tr><td>Öffentlich (Air)</td><td>Publikum im iframe</td><td>Renderer mischt, 1 Program-Stream aus dem Air-Raum</td><td class="num">≈ 0,25–0,5 s</td><td>Hunderte und mehr, Grenze per Lasttest</td></tr>
+        <tr><td>Direct (vertraulich)</td><td>OBS-Browserquelle, Regie-Monitor, Rückbild für Sprecher</td><td>komponiert selbst aus dem Backstage-Raum</td><td class="num">≈ 0,15–0,3 s</td><td>wenige, mit geschütztem Link</td></tr>
+        <tr><td>Restream &amp; Aufnahme <span class="chip">später</span></td><td>YouTube, LinkedIn, Vimeo, MP4-Datei</td><td>LiveKit Egress vom Program-Track</td><td class="num">2–10 s und mehr</td><td>so viele, wie die Plattform trägt</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Verhalten der Output-Seite</h3>
+  <ul class="bullets">
+    <li>Ist der Container nicht 16:9, gibt es Balken statt Verzerrung, schwarz oder transparent.</li>
+    <li>Keine Bedienelemente. Einzige Ausnahme ist ein dezenter Knopf «Ton an», weil Browser Ton erst nach einem Klick abspielen; das Video startet sofort stumm.</li>
+    <li>Bei einem Unterbruch bleibt das letzte Bild stehen, statt schwarz zu werden, und die Seite verbindet sich selbst neu.</li>
+    <li>Vor dem Start und nach dem Ende zeigt sie ein Slate, zum Beispiel «Gleich geht's los».</li>
+    <li><code>?bg=transparent</code> für Overlays in OBS oder vMix, <code>?debug=1</code> blendet Bitrate, Auflösung und Latenz ein.</li>
+    <li>Im Studio gibt es zusätzlich einen kleinen Air-Monitor. Er zeigt, was beim Publikum wirklich ankommt.</li>
+  </ul>
+
+  <h3>Einbetten</h3>
+<pre><code>&lt;iframe
+  src="https://flowstudio.opten.ch/o/webinar-q4"
+  title="Webinar Q4 live"
+  allow="autoplay; fullscreen"
+  allowfullscreen
+  style="width:100%; aspect-ratio:16/9; border:0"&gt;&lt;/iframe&gt;</code></pre>
+  <p class="note">Beispiel-URL. Die Output-ID im Link ist öffentlich und gibt nur den Program-Stream frei. Einbetten lässt sich die Seite nur auf freigegebenen Domains (siehe <a href="#sicher">Sicherheit</a>).</p>
+</section>
+
+<section class="wrap sec" id="stabil">
+  <h2><span class="num">6</span>Stabil bleiben, sofort zurückkommen</h2>
+  <p class="intro">Unterbrüche passieren: Das WLAN wechselt, ein Handy wird warm, jemand lädt die Seite neu. Das Ziel ist, dass das Publikum davon höchstens ein kurzes Standbild sieht.</p>
+
+  <figure class="fig" id="abb-reconnect">
+    <div class="fig-scroll">
+      <svg class="diagram" viewBox="0 0 1200 320" role="img" aria-label="Reconnect-Ablauf: Aus Live führt ein erkannter Abbruch zu Resume. Klappt Resume, geht es zurück zu Live, sonst zu Rejoin. Klappt Rejoin, zurück zu Live, sonst Warten mit wachsender Pause und erneut Rejoin, ohne Limit. Netz zurück oder Tab sichtbar beendet das Warten sofort. Gekickt, gesperrt oder zweiter Tab führt zu Stopp ohne Auto-Reconnect.">
+        <defs>
+          <marker id="f4-an" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-ctl"/></marker>
+          <marker id="f4-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-good"/></marker>
+          <marker id="f4-aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 Z" class="ah-media"/></marker>
+        </defs>
+
+        <path d="M760,130 C760,30 80,30 80,126" class="d-good-line" marker-end="url(#f4-ag)"/>
+        <text x="420" y="44" class="d-k" text-anchor="middle">ok · Tracks neu publiziert, gleicher Slot</text>
+        <path d="M430,130 C430,84 150,84 150,126" class="d-good-line" marker-end="url(#f4-ag)"/>
+        <text x="290" y="84" class="d-k" text-anchor="middle">ok · meist unter 3 s</text>
+
+        <g class="d-node d-good">
+          <rect x="30" y="130" width="170" height="64" rx="8"/>
+          <text x="48" y="158" class="d-t">Live</text>
+          <text x="48" y="177" class="d-s">Bild und Ton laufen</text>
+        </g>
+        <g class="d-node">
+          <rect x="330" y="130" width="200" height="64" rx="8"/>
+          <text x="348" y="158" class="d-t">Resume</text>
+          <text x="348" y="177" class="d-s">ICE-Restart, Session bleibt</text>
+        </g>
+        <g class="d-node">
+          <rect x="660" y="130" width="200" height="64" rx="8"/>
+          <text x="678" y="158" class="d-t">Rejoin</text>
+          <text x="678" y="177" class="d-s">neu beitreten, gleiche ID</text>
+        </g>
+        <g class="d-node">
+          <rect x="990" y="130" width="180" height="64" rx="8"/>
+          <text x="1008" y="158" class="d-t">Warten</text>
+          <text x="1008" y="177" class="d-s">0,3 → 0,6 → 1,2 … 5 s</text>
+        </g>
+
+        <line x1="200" y1="162" x2="328" y2="162" class="d-neutral" marker-end="url(#f4-an)"/>
+        <text x="264" y="153" class="d-k" text-anchor="middle">Abbruch erkannt</text>
+        <text x="264" y="181" class="d-k" text-anchor="middle">nach 2–5 s</text>
+        <line x1="530" y1="162" x2="658" y2="162" class="d-neutral" marker-end="url(#f4-an)"/>
+        <text x="594" y="153" class="d-k" text-anchor="middle">klappt nicht</text>
+        <line x1="860" y1="162" x2="988" y2="162" class="d-neutral" marker-end="url(#f4-an)"/>
+        <text x="924" y="153" class="d-k" text-anchor="middle">klappt nicht</text>
+
+        <path d="M1080,194 C1080,262 760,262 760,198" class="d-accent" marker-end="url(#f4-aa)"/>
+        <text x="920" y="274" class="d-k" text-anchor="middle">nächster Versuch, ohne Limit</text>
+
+        <g class="d-node d-soft">
+          <rect x="990" y="24" width="180" height="56" rx="6"/>
+          <text x="1004" y="48" class="d-t">Netz zurück</text>
+          <text x="1004" y="66" class="d-s">oder Tab wieder sichtbar</text>
+        </g>
+        <line x1="1080" y1="80" x2="1080" y2="126" class="d-accent" marker-end="url(#f4-aa)"/>
+        <text x="1092" y="108" class="d-k">Warten beenden</text>
+
+        <line x1="115" y1="194" x2="115" y2="248" class="d-neutral" marker-end="url(#f4-an)"/>
+        <text x="127" y="226" class="d-k">gekickt · gesperrt · zweiter Tab</text>
+        <g class="d-node d-stop">
+          <rect x="30" y="250" width="170" height="56" rx="8"/>
+          <text x="48" y="274" class="d-t">Stopp</text>
+          <text x="48" y="292" class="d-s">kein Auto-Reconnect</text>
+        </g>
+      </svg>
+    </div>
+    <p class="swipe-hint">Seitlich wischen, um die ganze Abbildung zu sehen.</p>
+    <figcaption><strong>Abb. 5 · Reconnect.</strong> Jede Verbindung, ob Sender, Regie, Renderer oder Output, durchläuft dieselben Stufen. Zuerst wird die bestehende Session repariert, dann neu beigetreten, dann ohne Limit weiter versucht. Draussen bleibt nur, wer bewusst getrennt wurde.</figcaption>
+  </figure>
+
+  <h3>Bausteine</h3>
+  <ul class="levers">
+    <li><strong>Verbindung</strong><span>ICE mit STUN und TURN über UDP, TCP und TLS auf Port 443; das kommt auch durch Firmen-Firewalls. Ein Netzwechsel löst einen ICE-Restart aus, die Session bleibt bestehen.</span></li>
+    <li><strong>Erkennung</strong><span>Heartbeats auf Signal- und Medienebene erkennen einen Abbruch nach 2–5 s. Die Browser-Ereignisse «online» und «Tab sichtbar» starten sofort einen neuen Versuch, statt auf den Timer zu warten.</span></li>
+    <li><strong>Identität</strong><span>Jedes Gerät hat eine feste ID. Tritt es neu bei, ersetzt LiveKit die alte, hängende Session automatisch. Quellen hängen an Geräte-ID und Slot und kommen an derselben Stelle zurück.</span></li>
+    <li><strong>Gerät</strong><span>Verschwindet die Kamera (Anruf, andere App, USB gezogen), fordert der Sender sie neu an und publiziert neu. Den Wake-Lock setzt er nach jedem Sichtbarwerden neu.</span></li>
+    <li><strong>Steuerung</strong><span>SignalR mit endloser Retry-Policy. Nach dem Reconnect gleicht die Versionsnummer den Szenen-Zustand ab, per Delta oder vollem Snapshot.</span></li>
+    <li><strong>Server</strong><span>API mit mindestens zwei Instanzen, Renderer mit Watchdog und später mit Hot-Standby. Während einer Live-Produktion gibt es keine Deployments auf LiveKit und Renderer.</span></li>
+  </ul>
+
+  <h3>Was passiert, wenn …</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Ereignis</th><th>FlowStudio reagiert</th><th>Das Publikum sieht</th></tr></thead>
+      <tbody>
+        <tr><td>Handy wechselt vom WLAN ins 5G</td><td>ICE-Restart, die Session bleibt</td><td>kurzes Standbild, ≈ 1–3 s</td></tr>
+        <tr><td>Handy ist 30 s ohne Netz</td><td>verbindet ohne Limit neu; das Studio zeigt «verbindet neu · 00:30»</td><td>Standbild, dann Fallback oder Slate</td></tr>
+        <tr><td>Anruf oder andere App belegt die Kamera</td><td>Kamera neu anfordern und neu publizieren</td><td>Standbild, dann wieder live</td></tr>
+        <tr><td>Sender-Seite wird neu geladen</td><td>gleiche Geräte-ID, gleicher Slot, Auto-Start</td><td>kurzes Standbild</td></tr>
+        <tr><td>Jemand beendet sein Screen-Sharing</td><td>Regie wird gewarnt, der Sender zeigt «Erneut teilen»</td><td>Fallback der Kachel</td></tr>
+        <tr><td>Der Studio-Browser stürzt ab</td><td>Output läuft weiter, denn der Renderer sitzt auf dem Server</td><td>nichts</td></tr>
+        <tr><td>API-Neustart oder Deployment</td><td>SignalR verbindet neu, Zustand per Version abgeglichen</td><td>nichts</td></tr>
+        <tr><td>Der Renderer stürzt ab</td><td>Watchdog startet neu; später übernimmt der Standby</td><td>Standbild ≈ 2–5 s, mit Standby unter 1 s</td></tr>
+        <tr><td>Ein LiveKit-Node fällt aus</td><td>alle verbinden sich automatisch mit dem zweiten Node</td><td>Unterbruch von einigen Sekunden</td></tr>
+        <tr><td>Zuschauer mit schwachem Netz</td><td>Simulcast liefert diesem Zuschauer eine tiefere Stufe</td><td>etwas weniger scharf, kein Hänger</td></tr>
+        <tr><td>Gerät in einem zweiten Tab geöffnet</td><td>der alte Tab wird getrennt und bleibt aus, kein Ping-Pong</td><td>nichts</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>So sieht das im Code aus</h3>
+<pre><code><span class="c">// packages/media-client: gleiche Logik in Sender, Studio, Renderer und Output</span>
+const INTENTIONAL = [
+  DisconnectReason.CLIENT_INITIATED,
+  DisconnectReason.PARTICIPANT_REMOVED,  <span class="c">// gekickt oder gesperrt</span>
+  DisconnectReason.DUPLICATE_IDENTITY,   <span class="c">// gleiches Gerät in zweitem Tab</span>
+];
+
+const room = new Room({
+  dynacast: true,                <span class="c">// ungenutzte Simulcast-Stufen beim Sender pausieren</span>
+  adaptiveStream: !isOutput,     <span class="c">// Outputs wählen die Stufe selbst aus der Szene</span>
+  reconnectPolicy: {             <span class="c">// nie aufgeben: 0,3 s, 0,6 s, 1,2 s … max. 5 s</span>
+    nextRetryDelayInMs: ({ retryCount }) =&gt;
+      Math.min(5_000, 300 * 2 ** retryCount) + Math.random() * 250,
+  },
+});
+
+room.on(RoomEvent.Disconnected, (reason) =&gt; {
+  if (!INTENTIONAL.includes(reason)) rejoin();   <span class="c">// frisches Token, gleiche Identität</span>
+});
+window.addEventListener('online', () =&gt; {
+  if (room.state === ConnectionState.Disconnected) rejoin();   <span class="c">// nicht auf den Timer warten</span>
+});
+cameraTrack.mediaStreamTrack.addEventListener('ended', reacquireCamera);</code></pre>
+</section>
+
+<section class="wrap sec" id="sicher">
+  <h2><span class="num">7</span>Sicherheit</h2>
+  <p class="intro">Der wichtigste Schutz steckt in der Architektur: Zuschauer sind nie im Backstage-Raum. Wer den iframe-Code kopiert oder in den Entwicklertools stöbert, kommt nur an den Program-Stream, den ohnehin alle sehen.</p>
+  <div class="prose">
+    <p>Wären Zuschauer direkt im Backstage-Raum, könnten sie jede Quelle abonnieren, auch den Bildschirm einer Sprecherin, die gerade noch ihre Mails offen hat. Rechte pro Track lassen sich für Hunderte anonyme Zuschauer nicht sauber verwalten. Zwei Räume lösen das an der Wurzel.</p>
+  </div>
+
+  <h3>Rollen und Rechte</h3>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Rolle</th><th>Anmeldung</th><th>Darf senden</th><th>Darf empfangen</th><th>Für andere sichtbar</th></tr></thead>
+      <tbody>
+        <tr><td>Regie (Studio)</td><td>Entra ID mit MFA</td><td>Steuerdaten</td><td>alle Backstage-Quellen</td><td>nein</td></tr>
+        <tr><td>Sender-Gerät</td><td>QR-Pairing, Regie bestätigt</td><td>nur die eigenen Slots: Kamera, Screen, Ton</td><td>nichts, optional Rückbild</td><td>ja, in der Regie</td></tr>
+        <tr><td>Renderer</td><td>Dienst-Identität</td><td>1 Program-Track, nur im Air-Raum</td><td>Backstage-Quellen</td><td>nein</td></tr>
+        <tr><td>Direct-Output</td><td>geheimer, sperrbarer Link</td><td>nichts</td><td>Backstage-Quellen</td><td>nein</td></tr>
+        <tr><td>Zuschauer</td><td>öffentliche Output-ID, Origin-Check</td><td>nichts</td><td>nur den Program-Track im Air-Raum</td><td>nein</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Schutz auf jeder Ebene</h3>
+  <ul class="levers">
+    <li><strong>Transport</strong><span>HTTPS und WSS mit TLS 1.3 und HSTS. Medien sind in WebRTC immer verschlüsselt (DTLS-SRTP). TURN nur mit Zugangsdaten.</span></li>
+    <li><strong>Tokens mit minimalen Rechten</strong><span>Die API signiert LiveKit-Tokens (JWT) mit genau den Rechten der Rolle, gebunden an Raum und Identität und mit kurzer Laufzeit. LiveKit erneuert sie für laufende Verbindungen. Das LiveKit-Secret verlässt den Server nie.</span></li>
+    <li><strong>Pairing statt Passwort</strong><span>Einmal-Code per QR, 10 Minuten gültig, und die Regie bestätigt das Gerät. Danach gilt ein Geräte-Schlüssel, den die Regie mit einem Klick sperrt; LiveKit wirft das Gerät dabei sofort raus.</span></li>
+    <li><strong>Einbetten kontrollieren</strong><span><code>frame-ancestors</code> pro Output, also nur auf euren Webinar-Domains. Viewer-Tokens gibt es nur bei passendem Origin, mit Rate-Limit pro IP, optional mit Passwort oder signiertem Link für geschlossene Webinare.</span></li>
+    <li><strong>App-Härtung</strong><span>Strikte CSP. Uploads nur in erlaubten Typen und Grössen, serverseitig neu kodiert, keine SVG mit Skripten. Medien privat mit signierten URLs. Webseiten-Quellen nur von freigegebenen Domains, in Sandbox-iframes.</span></li>
+    <li><strong>Nachvollziehbar</strong><span>Das Audit-Log hält fest, wer wann welche Szene live geschaltet und welches Gerät zugelassen hat. LiveKit-Webhooks sind signiert und werden geprüft. Secrets liegen im Key Vault.</span></li>
+    <li><strong>Datenschutz</strong><span>Hosting in der Schweiz, standardmässig keine Aufnahme, Medien-Dateien mit Ablaufdatum. Vor dem ersten öffentlichen Einsatz ein Security-Review mit Pentest.</span></li>
+  </ul>
+</section>
+
+<section class="wrap sec" id="stack">
+  <h2><span class="num">8</span>Tech-Stack und Repo</h2>
+  <p class="intro">Wo es passt, bleiben wir beim OPTEN-Stack mit .NET im Backend und Angular im Frontend. Nur die Output-Seite verzichtet auf ein Framework, weil dort jede Millisekunde Ladezeit zählt.</p>
+  <div class="table-wrap">
+    <table class="t-min">
+      <thead><tr><th>Bereich</th><th>Wahl</th><th>Warum</th></tr></thead>
+      <tbody>
+        <tr><td>Medien</td><td>LiveKit (Open Source) mit livekit-client</td><td>Simulcast, Dynacast, Reconnect, TURN und JWT-Rechte; Egress und Ingress für später</td></tr>
+        <tr><td>Backend</td><td>ASP.NET Core (.NET 10 LTS), SignalR mit MessagePack, EF Core</td><td>OPTEN-Stack, Echtzeit mit Auto-Reconnect</td></tr>
+        <tr><td>Studio und Sender</td><td>Angular (Standalone, Signals, OnPush), Sender als PWA</td><td>OPTEN-Standard; das Studio ist eine grosse App</td></tr>
+        <tr><td>Output</td><td>Vanilla TypeScript mit Vite</td><td>kleinste Ladezeit im iframe</td></tr>
+        <tr><td>Renderer</td><td>Node mit Playwright (Headless Chromium)</td><td>rendert dieselbe Seite wie jeder Browser</td></tr>
+        <tr><td>Daten</td><td>SQL Server bzw. Azure SQL, Blob Storage mit CDN, Key Vault</td><td>bewährt, als Managed Service</td></tr>
+        <tr><td>Login</td><td>Microsoft Entra ID (OIDC, MFA)</td><td>passt zum bestehenden Microsoft 365</td></tr>
+        <tr><td>Monitoring</td><td>Application Insights, Prometheus und Grafana für LiveKit</td><td>Fehler und Medienqualität im Blick</td></tr>
+        <tr><td>Hosting</td><td>Azure Switzerland North (Zürich)</td><td>Daten in der Schweiz, UDP auf eigener VM</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Bewusst nicht</h3>
+  <ul class="bullets">
+    <li><strong>Kein Peer-to-Peer wie bei VDO.Ninja.</strong> Bei mehreren Empfängern müsste jedes Handy sein Bild mehrfach hochladen.</li>
+    <li><strong>Kein Mischen im Regie-Browser.</strong> Sonst fällt der Output mit dem Laptop der Regie aus.</li>
+    <li><strong>Kein HLS auf dem Hauptweg.</strong> 2–10 s Verzögerung passen nicht zu einer Live-Regie.</li>
+    <li><strong>Kein selbst gebauter Media-Server.</strong> Mit mediasoup oder Pion müssten wir Reconnect, Simulcast-Logik und TURN selbst bauen.</li>
+  </ul>
+
+  <h3>Repo-Struktur</h3>
+<pre><code>flowstudio/
+├─ apps/
+│  ├─ api/             ASP.NET Core: REST, SignalR-Hub, Tokens, Webhooks
+│  ├─ studio/          Angular: Regie
+│  ├─ sender/          Angular-PWA: Kamera, Screens, Ton
+│  ├─ output/          Vanilla TS: Direct- und Publikums-Output
+│  └─ renderer/        Node + Playwright: Program → Air-Raum
+├─ packages/
+│  ├─ scene-model/     Szenen-Typen und Validierung, aus der API generiert
+│  ├─ scene-renderer/  Renderer ohne Framework für Studio, Output, Renderer
+│  └─ media-client/    Hülle um livekit-client: Reconnect, Stats, Tally
+└─ infra/              Docker Compose, Bicep für Azure, livekit.yaml</code></pre>
+</section>
+
+<section class="wrap sec" id="roadmap">
+  <h2><span class="num">9</span>Roadmap</h2>
+  <p class="intro">Jede Phase endet mit etwas, das man live ausprobieren kann. Phase 0 klärt die technischen Risiken, bevor viel Code entsteht.</p>
+  <ol class="phases">
+    <li class="phase">
+      <div class="phase-k">Wenige Tage<b>Phase 0</b><span class="chip chip-acc">als Nächstes</span></div>
+      <div>
+        <h3>Spike: Latenz und Reconnect beweisen</h3>
+        <ul>
+          <li>LiveKit lokal per Docker und auf einer Test-VM in Zürich</li>
+          <li>Handy → SFU → Browser, Glass-to-Glass messen, indem wir eine laufende Uhr filmen</li>
+          <li>Reconnect-Tests: WLAN ↔ 5G, Flugmodus, Tab neu laden, Kamera von anderer App belegt</li>
+          <li>TURN über Port 443 aus einem Firmennetz</li>
+          <li>Renderer-Prototyp: Tab-Capture gegen Canvas-Capture vergleichen</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>Direct unter 300 ms, Rückkehr nach Netzwechsel unter 3 s und der Renderer-Aufschlag unter 200 ms gemessen sind.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">MVP<b>Phase 1</b></div>
+      <div>
+        <h3>Regie mit Direct-Output</h3>
+        <ul>
+          <li>API: Login über Entra ID, Produktionen, Geräte-Pairing per QR, Tokens, SignalR-Hub</li>
+          <li>Sender-PWA: Kamera, mehrere Screens, Ton, Tally, Auto-Reconnect, Wake-Lock, Technik-Check</li>
+          <li>Studio: Szenen, Quellen, Layout-Vorlagen, frei verschieben, skalieren und zuschneiden, Preview/Program, Cut und Fade</li>
+          <li>Bilder und Videos als Quellen, einfacher Audio-Mixer, Direct-Output in 16:9</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>ein internes Probe-Webinar mit drei Handys und zwei Screens läuft, gestreamt über die OBS-Browserquelle.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Go-Live<b>Phase 2</b></div>
+      <div>
+        <h3>Öffentlicher Output</h3>
+        <ul>
+          <li>Renderer-Dienst und Air-Raum</li>
+          <li>Öffentlicher Output als iframe mit Embed-Schutz</li>
+          <li>Slates, Fallbacks pro Element, Monitoring mit Bitrate, Paketverlust und Akku</li>
+          <li>Lasttest mit simulierten Zuschauern, Security-Review, Runbook für den Live-Betrieb</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>das erste echte Webinar mit Publikum im iframe gelaufen ist.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Pro<b>Phase 3</b></div>
+      <div>
+        <h3>Funktionen für grössere Produktionen</h3>
+        <ul>
+          <li>Restream zu YouTube und LinkedIn sowie Aufnahme per LiveKit Egress</li>
+          <li>Pro-Quellen per Ingress (WHIP, RTMP)</li>
+          <li>Bauchbinden, Text, Timer, globale Overlays, Stinger-Übergänge</li>
+          <li>Multiview, Hotkeys, Stream Deck, Hot-Standby-Renderer</li>
+        </ul>
+        <p class="done"><strong>Fertig, wenn</strong>eine Produktion ganz ohne zusätzliches OBS auskommt.</p>
+      </div>
+    </li>
+    <li class="phase">
+      <div class="phase-k">Ausbau<b>Phase 4</b></div>
+      <div>
+        <h3>Komfort und Produkt</h3>
+        <ul>
+          <li>Greenscreen und Hintergrund-Unschärfe, Auto-Regie</li>
+          <li>Vorlagen und Branding pro Kunde, mehrere Operatoren gleichzeitig</li>
+          <li>Mandantenfähigkeit, falls FlowStudio ein Produkt für Kunden wird</li>
+        </ul>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="wrap sec" id="ideen">
+  <h2><span class="num">10</span>Ideen aus Broadcast und OBS, die sich lohnen</h2>
+  <div class="ideas">
+    <article class="idea"><div class="idea-h"><h3>Tally auf dem Gerät</h3><span class="chip chip-acc">Phase 1</span></div><p>Der Rand leuchtet rot, wenn die Quelle live ist, und grün, wenn sie als Nächstes kommt. Sprecher wissen immer, ob sie im Bild sind.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Technik-Check</h3><span class="chip chip-acc">Phase 1</span></div><p>Vor dem Start prüft der Sender Kamera, Mikro, Netz und Bandbreite. Die Regie sieht eine Ampel pro Gerät.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Rückbild für Sprecher</h3><span class="chip">Phase 2</span></div><p>Das Program mit rund 0,2 s Verzögerung auf einem zweiten Gerät oder direkt im Sender.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Regie-Chat</h3><span class="chip">Phase 2</span></div><p>Kurze Nachrichten an einzelne Geräte, zum Beispiel «In 10 s live».</p></article>
+    <article class="idea"><div class="idea-h"><h3>Multiview</h3><span class="chip">Phase 3</span></div><p>Alle Quellen plus Preview und Program auf einem Monitor, mit Namen und Tally, wie bei einem ATEM.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Bauchbinden und Timer</h3><span class="chip">Phase 3</span></div><p>Name und Funktion, Countdown und Logo aus Vorlagen. Der Text bleibt scharf, weil er als HTML gerendert wird.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Globale Overlays</h3><span class="chip">Phase 3</span></div><p>Logo oder Bauchbinde einmal definieren und über alle Szenen legen, wie verschachtelte Szenen in OBS.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Stream Deck und Hotkeys</h3><span class="chip">Phase 3</span></div><p>Szenen per Taste wechseln. Bitfocus Companion steuert FlowStudio über die REST-API.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Aufnahme und ISO</h3><span class="chip">Phase 3</span></div><p>Das Program als MP4, dazu jede Quelle einzeln für den Schnitt.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Kamera-Fernsteuerung</h3><span class="chip">Phase 3</span></div><p>Zoom, Licht, Front/Rück und Auflösung aus dem Studio, wo das Handy es unterstützt.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Auto-Regie</h3><span class="chip">Phase 4</span></div><p>Wer gerade spricht, wird hervorgehoben oder bekommt automatisch seine Szene.</p></article>
+    <article class="idea"><div class="idea-h"><h3>Greenscreen und Unschärfe</h3><span class="chip">Phase 4</span></div><p>Chroma-Key im Renderer, Hintergrund-Unschärfe direkt auf dem Sender.</p></article>
+  </div>
+</section>
+
+<section class="wrap sec" id="fragen">
+  <h2><span class="num">11</span>Offene Fragen</h2>
+  <p class="intro">Die Antworten verschieben Details, nicht die Architektur. Bis zur Klärung gilt jeweils die Annahme.</p>
+  <ol class="questions">
+    <li><div><strong>Wie viele Zuschauer schauen gleichzeitig zu?</strong><span>Annahme: bis einige Hundert. Für grössere Events nehmen wir HLS über ein CDN dazu.</span></div></li>
+    <li><div><strong>Woher kommt der Ton?</strong><span>Annahme: pro Person ein Headset oder Mikro am Laptop, vor Ort ein Audio-Client am Mischpult. FlowStudio mischt.</span></div></li>
+    <li><div><strong>Vor Ort, remote oder gemischt?</strong><span>Annahme: gemischt. Vor Ort braucht es ein stabiles eigenes WLAN.</span></div></li>
+    <li><div><strong>Wo soll FlowStudio laufen?</strong><span>Empfehlung: selbst betrieben in Azure Switzerland North. LiveKit Cloud wäre schneller startklar; dort müssten wir den Datenstandort prüfen.</span></div></li>
+    <li><div><strong>Nur für OPTEN oder auch als Produkt für Kunden?</strong><span>Annahme: zuerst intern. Das Datenmodell sieht Mandanten trotzdem schon vor.</span></div></li>
+    <li><div><strong>Braucht es Restream oder Aufnahme von Anfang an?</strong><span>Annahme: nein, das kommt in Phase 3.</span></div></li>
+    <li><div><strong>Wie viele Personen bedienen die Regie gleichzeitig?</strong><span>Annahme: eine bis zwei.</span></div></li>
+  </ol>
+</section>
+
+</main>
+
+<footer class="wrap foot" lang="de-CH">
+  <p>FlowStudio · Architektur &amp; Plan, Entwurf 1 vom 21.10.2026. Latenz- und Kapazitätswerte sind Schätzungen; Phase 0 und der Lasttest in Phase 2 messen sie.</p>
+</footer>
+
+<script>
+(() => {
+  const chart = document.getElementById('lat-chart');
+  if (!chart) return;
+  const tip = chart.querySelector('.lat-tip');
+  const tv = tip.querySelector('.tv');
+  const tl = tip.querySelector('.tl');
+
+  const place = (x, y) => {
+    const box = chart.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    let left = x - box.left + 14;
+    let top = y - box.top - h - 12;
+    if (left + w > box.width - 8) left = box.width - w - 8;
+    if (left < 8) left = 8;
+    if (top < 8) top = y - box.top + 18;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  };
+
+  const show = (seg) => {
+    tv.textContent = seg.dataset.ms + ' ms';
+    tl.textContent = seg.dataset.label + ' · ' + seg.dataset.path;
+    tip.hidden = false;
+  };
+
+  chart.querySelectorAll('.lat-seg').forEach((seg) => {
+    seg.addEventListener('pointerenter', () => show(seg));
+    seg.addEventListener('pointermove', (e) => place(e.clientX, e.clientY));
+    seg.addEventListener('pointerleave', () => { tip.hidden = true; });
+    seg.addEventListener('focus', () => {
+      show(seg);
+      const r = seg.getBoundingClientRect();
+      place(r.left + r.width / 2, r.top);
+    });
+    seg.addEventListener('blur', () => { tip.hidden = true; });
+  });
+})();
+</script>
+
+</body></html>
