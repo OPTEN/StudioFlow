@@ -161,6 +161,10 @@ export const ERROR_CODES = {
   deviceBlocked: 'device_blocked',
   conflict: 'conflict',
   limitReached: 'limit_reached',
+  unauthorized: 'unauthorized',
+  forbidden: 'forbidden',
+  requestTimeout: 'request_timeout',
+  internalError: 'internal_error',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
