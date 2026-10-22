@@ -4,7 +4,8 @@
 #   docker compose up -d --build
 #
 # Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
-# Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media).
+# Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
+# with FLOWSTUDIO_RTC_TCP_PORT / FLOWSTUDIO_RTC_UDP_PORT).
 # Required variables fail fast (${VAR:?...}); optional ones have their default here and nowhere else.
 
 name: flowstudio
@@ -120,9 +121,10 @@ services:
     cap_drop:
       - ALL
     # Media goes directly to the clients, never through Caddy. Signalling (7880) is only reachable via Caddy (/rtc).
+    # Host and container port must be the same number: LiveKit announces the container-side port to the devices.
     ports:
-      - "7881:7881/tcp"
-      - "7882:7882/udp"
+      - "${FLOWSTUDIO_RTC_TCP_PORT:-7881}:${FLOWSTUDIO_RTC_TCP_PORT:-7881}/tcp"
+      - "${FLOWSTUDIO_RTC_UDP_PORT:-7882}:${FLOWSTUDIO_RTC_UDP_PORT:-7882}/udp"
     environment:
       # The address LiveKit announces to the devices: the server's LAN IPv4 (127.0.0.1 only for single-machine tests).
       NODE_IP: ${FLOWSTUDIO_NODE_IP:?fehlt in .env (LAN-IPv4 des Servers)}
@@ -131,8 +133,8 @@ services:
       LIVEKIT_CONFIG: |
         port: 7880
         rtc:
-          tcp_port: 7881
-          udp_port: 7882
+          tcp_port: ${FLOWSTUDIO_RTC_TCP_PORT:-7881}
+          udp_port: ${FLOWSTUDIO_RTC_UDP_PORT:-7882}
           use_external_ip: false
         room:
           auto_create: true
