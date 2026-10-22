@@ -1,0 +1,10 @@
+# Line endings: LF everywhere (shell scripts and container builds), CRLF only for PowerShell scripts.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.webp binary
+*.woff2 binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.y4m binary
