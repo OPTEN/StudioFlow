@@ -1,0 +1,566 @@
+import { autoGridSlots } from '@flowstudio/scene-model';
+
+import {
+  CAMERA,
+  CAMERA_2,
+  clearFrame,
+  fakeAnimate,
+  fakeCanvas2d,
+  giveFrame,
+  IMAGE,
+  mount,
+  PAUSE_IMAGE,
+  phone,
+  scene,
+  sceneItem,
+  type Mounted,
+} from './testing/fixtures';
+
+function slotRect(count: number, index: number): { x: number; y: number; w: number; h: number } {
+  const [x, y, w, h] = autoGridSlots(count)[index];
+  return { x, y, w, h };
+}
+
+describe('scene renderer: hold frame', () => {
+  let mounted: Mounted;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    mounted?.renderer.destroy();
+    mounted?.container.remove();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function showCamera(overrides: Parameters<typeof sceneItem>[2] = {}): HTMLVideoElement {
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA, overrides)]));
+    const video = mounted.part('itm_a', 'video') as HTMLVideoElement;
+    mounted.provider.live(CAMERA);
+    giveFrame(video);
+    return video;
+  }
+
+  const held = (): HTMLElement | null => mounted.part('itm_a', '.fs-r-held');
+  const box = (): HTMLElement | null => mounted.part('itm_a', '.fs-r-box');
+  const snapshot = (): HTMLCanvasElement | null => mounted.part('itm_a', 'canvas');
+
+  it('copies the current frame into the hold frame the moment the source is lost', () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera({ w: 1280, h: 720 });
+    expect(snapshot()).toBeNull();
+
+    mounted.provider.lose(CAMERA);
+    const copy = snapshot();
+    expect(copy).not.toBeNull();
+    expect(copy?.width).toBe(1280);
+    expect(copy?.height).toBe(720);
+    expect(copy?.style.display).toBe('block');
+    expect(canvas2d.drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720);
+    expect(copy?.style.objectFit).toBe('cover');
+    // The video stays in place (the provider keeps its last frame as well).
+    expect(mounted.part('itm_a', 'video')).toBe(video);
+    // Still sharp during the hold time.
+    expect(held()?.style.display).toBe('none');
+    expect(box()?.style.filter).toBe('');
+    // Exactly one copy, not one per render.
+    mounted.renderer.setSourceStatuses();
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it('copies at on-screen resolution and mirrors the hold frame like the video', () => {
+    fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera({ mirror: true, fit: 'contain', x: 0, y: 0, w: 1920, h: 1080 });
+    giveFrame(video, 3840, 2160);
+    mounted.provider.lose(CAMERA);
+    expect(snapshot()?.width).toBe(1920);
+    expect(snapshot()?.height).toBe(1080);
+    expect(snapshot()?.style.transform).toBe('scaleX(-1)');
+    expect(snapshot()?.style.objectFit).toBe('contain');
+  });
+
+  it('copies small items at their on-screen size (stage scale × device pixel ratio)', () => {
+    fakeCanvas2d();
+    vi.stubGlobal('devicePixelRatio', 2);
+    try {
+      mounted = mount({}, { width: 960, height: 540 });
+      showCamera({ w: 640, h: 360 });
+      mounted.provider.lose(CAMERA);
+      // 640 × 0.5 × 2 = 640 px on screen; the 1280 × 720 frame is halved.
+      expect([snapshot()?.width, snapshot()?.height]).toEqual([654, 368]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps a rolling copy of live pictures, once per second', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(3);
+    expect(canvas2d.drawImage).toHaveBeenLastCalledWith(video, 0, 0, 654, 368);
+    // The copy is kept hidden while the source is live.
+    expect(snapshot()?.style.display).toBe('none');
+  });
+
+  it('keeps the rolling copy when the track already ended at the loss (Chromium paints it black)', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    const ended = { getVideoTracks: () => [{ readyState: 'ended' }] } as unknown as MediaStream;
+    Object.defineProperty(video, 'srcObject', { value: ended, configurable: true });
+    mounted.provider.lose(CAMERA);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    expect(snapshot()?.style.display).toBe('block');
+    // No refreshes while lost.
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a fresh copy at the loss while the track still runs', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    const running = { getVideoTracks: () => [{ readyState: 'live' }] } as unknown as MediaStream;
+    Object.defineProperty(video, 'srcObject', { value: running, configurable: true });
+    mounted.provider.lose(CAMERA);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not refresh hold frames while the page is hidden', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    showCamera();
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    try {
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(canvas2d.drawImage).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    }
+  });
+
+  it('skips the snapshot without a frame or without a 2D context, without errors', () => {
+    mounted = mount();
+    const video = showCamera();
+    mounted.provider.lose(CAMERA);
+    expect(snapshot()).toBeNull();
+
+    mounted.provider.live(CAMERA);
+    clearFrame(video);
+    fakeCanvas2d();
+    mounted.provider.lose(CAMERA);
+    expect(snapshot()).toBeNull();
+    expect(mounted.errors).toEqual([]);
+  });
+
+  it('ignores a failing drawImage', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          drawImage: () => {
+            throw new DOMException('tainted', 'SecurityError');
+          },
+        }) as unknown as CanvasRenderingContext2D,
+    );
+    mounted = mount();
+    showCamera();
+    mounted.provider.lose(CAMERA);
+    expect(snapshot()).toBeNull();
+    expect(mounted.errors).toEqual([]);
+  });
+
+  it('darkens after holdMs: blur, scrim and «Bild kommt gleich zurück»', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    showCamera({ w: 640, h: 360 });
+    mounted.provider.lose(CAMERA);
+
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(held()?.style.display).toBe('none');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(held()?.style.display).toBe('flex');
+    expect(held()?.textContent).toBe('Bild kommt gleich zurück');
+    expect(held()?.style.background).toBe('rgba(13, 17, 23, 0.72)');
+    expect(mounted.part('itm_a', '.fs-r-held-text')?.style.display).toBe('inline');
+    expect(box()?.style.filter).toBe('blur(16px)');
+    expect(snapshot()).not.toBeNull();
+  });
+
+  it('omits the hold message on items narrower than 320 canvas pixels', async () => {
+    mounted = mount();
+    showCamera({ w: 319, h: 180 });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(held()?.style.display).toBe('flex');
+    expect(mounted.part('itm_a', '.fs-r-held-text')?.style.display).toBe('none');
+    expect(box()?.style.filter).toBe('blur(8px)');
+  });
+
+  it('uses the provider lost time: a source lost 2 s ago escalates after 1 s', async () => {
+    mounted = mount();
+    showCamera();
+    mounted.provider.lose(CAMERA, performance.now() - 2000);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(held()?.style.display).toBe('none');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(held()?.style.display).toBe('flex');
+  });
+
+  it('is held at once with holdMs 0', () => {
+    mounted = mount();
+    showCamera({ onLost: { holdMs: 0, fallbackSource: null } });
+    mounted.provider.lose(CAMERA);
+    expect(held()?.style.display).toBe('flex');
+  });
+
+  it('never escalates with holdMs null', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    showCamera({ onLost: { holdMs: null, fallbackSource: null } });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(held()?.style.display).toBe('none');
+    expect(snapshot()).not.toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('removes the held state only when the returned video has a frame', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+
+    // The provider sets a new srcObject: no frame yet, so the darkened picture stays.
+    clearFrame(video);
+    mounted.provider.live(CAMERA);
+    expect(held()?.style.display).toBe('flex');
+    expect(snapshot()).not.toBeNull();
+
+    giveFrame(video);
+    video.dispatchEvent(new Event('loadeddata'));
+    expect(held()?.style.display).toBe('none');
+    expect(box()?.style.filter).toBe('');
+    expect(snapshot()?.style.display).toBe('none');
+    // Only the rolling copy of the live picture keeps running.
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('removes the hold picture at once when the video still has frames', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    showCamera();
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    mounted.provider.live(CAMERA);
+    expect(held()?.style.display).toBe('none');
+    expect(snapshot()?.style.display).toBe('none');
+  });
+
+  it('gives up waiting for the first frame after 1.5 s', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    clearFrame(video);
+    mounted.provider.live(CAMERA);
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(held()?.style.display).toBe('flex');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(held()?.style.display).toBe('none');
+    expect(snapshot()?.style.display).toBe('none');
+  });
+
+  it('keeps the hold picture when the source drops again while waiting for its first frame', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    clearFrame(video);
+    mounted.provider.live(CAMERA);
+    mounted.provider.lose(CAMERA);
+    video.dispatchEvent(new Event('loadeddata'));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(snapshot()?.style.display).toBe('block');
+    // A fresh hold time started with the second loss.
+    expect(held()?.style.display).toBe('none');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(held()?.style.display).toBe('flex');
+  });
+
+  it('shows the fallback source after holdMs and removes it when the source returns', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera({
+      mirror: true,
+      onLost: { holdMs: 3000, fallbackSource: PAUSE_IMAGE },
+    });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+
+    const fallback = mounted.part('itm_a', '.fs-r-fallback');
+    expect(fallback?.style.display).toBe('block');
+    const image = fallback?.querySelector('img');
+    expect(image?.getAttribute('src')).toBe('/media/pause.png');
+    // Crop, rotation and mirror stay with the primary picture.
+    expect(image?.style.transform).toBe('');
+    expect(box()?.style.opacity).toBe('0');
+    expect(held()?.style.display).toBe('none');
+    // The primary video stays registered to notice the return.
+    expect(mounted.provider.attached(CAMERA)).toEqual([video]);
+
+    mounted.provider.live(CAMERA);
+    expect(fallback?.style.display).toBe('none');
+    expect(fallback?.querySelector('img')).toBeNull();
+    expect(box()?.style.opacity).toBe('');
+  });
+
+  it('shows a device fallback source and releases it afterwards', async () => {
+    mounted = mount();
+    showCamera({ onLost: { holdMs: 1000, fallbackSource: CAMERA_2 } });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(1000);
+    const fallbackVideo = mounted.part('itm_a', '.fs-r-fallback video');
+    expect(fallbackVideo).not.toBeNull();
+    expect(mounted.provider.attached(CAMERA_2)).toEqual([fallbackVideo]);
+    expect(mounted.provider.desired().has(CAMERA_2)).toBe(true);
+
+    mounted.provider.live(CAMERA);
+    expect(mounted.provider.attached(CAMERA_2)).toEqual([]);
+    expect(mounted.provider.desired().has(CAMERA_2)).toBe(false);
+  });
+
+  it('ignores a fallback that equals the source itself', async () => {
+    mounted = mount();
+    showCamera({ onLost: { holdMs: 0, fallbackSource: CAMERA } });
+    mounted.provider.lose(CAMERA);
+    expect(held()?.style.display).toBe('flex');
+    expect(mounted.part('itm_a', '.fs-r-fallback')?.style.display).toBe('none');
+  });
+
+  it('shows the dark placeholder for pending sources, never a held frame', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(mounted.item('itm_a')?.style.backgroundColor).toBe('#121821');
+    expect(held()?.style.display).toBe('none');
+    expect(snapshot()).toBeNull();
+  });
+
+  it('runs one timer for all hold expiries', async () => {
+    mounted = mount();
+    mounted.renderer.show(
+      scene('scn_a', [
+        sceneItem('itm_a', CAMERA, { onLost: { holdMs: 3000, fallbackSource: null } }),
+        sceneItem('itm_b', CAMERA_2, { onLost: { holdMs: 10_000, fallbackSource: null } }),
+      ]),
+    );
+    mounted.provider.live(CAMERA);
+    mounted.provider.live(CAMERA_2);
+    mounted.provider.lose(CAMERA);
+    mounted.provider.lose(CAMERA_2);
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(mounted.part('itm_a', '.fs-r-held')?.style.display).toBe('flex');
+    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('none');
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(7000);
+    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('flex');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps the hold state when the item moves to another layer by a cut', async () => {
+    fakeCanvas2d();
+    mounted = mount();
+    showCamera();
+    mounted.provider.lose(CAMERA);
+    mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA, { w: 800 })]));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('flex');
+  });
+
+  function endTrack(video: HTMLVideoElement): void {
+    const ended = { getVideoTracks: () => [{ readyState: 'ended' }] } as unknown as MediaStream;
+    Object.defineProperty(video, 'srcObject', { value: ended, configurable: true });
+  }
+
+  it('gives an item that appears by a cut during a loss the hold frame of the replaced item', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    endTrack(video);
+    mounted.provider.lose(CAMERA);
+    const donor = snapshot();
+    mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA, { w: 800, h: 450 })]));
+    const copy = mounted.part('itm_b', 'canvas') as HTMLCanvasElement | null;
+    expect(copy).not.toBeNull();
+    expect(copy).not.toBe(donor);
+    expect(canvas2d.drawImage).toHaveBeenLastCalledWith(donor, 0, 0);
+    expect(copy?.style.display).toBe('block');
+  });
+
+  it('gives an item that fades in during a loss the hold frame of the outgoing item', async () => {
+    const canvas2d = fakeCanvas2d();
+    fakeAnimate();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    endTrack(video);
+    mounted.provider.lose(CAMERA);
+    const donor = snapshot();
+    void mounted.renderer.transitionTo(scene('scn_b', [sceneItem('itm_b', CAMERA)]), {
+      kind: 'fade',
+      durationMs: 500,
+    });
+    const copy = mounted.part('itm_b', 'canvas');
+    expect(copy).not.toBeNull();
+    expect(canvas2d.drawImage).toHaveBeenLastCalledWith(donor, 0, 0);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(mounted.item('itm_a')).toBeNull();
+    expect(copy?.style.display).toBe('block');
+  });
+
+  it('has no hold frame for an item that appears during a loss without any donor', () => {
+    fakeCanvas2d();
+    mounted = mount();
+    mounted.provider.live(CAMERA);
+    mounted.provider.lose(CAMERA);
+    mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA)]));
+    expect(mounted.part('itm_b', 'canvas')).toBeNull();
+    expect(mounted.errors).toEqual([]);
+  });
+});
+
+describe('scene renderer: Auto-Grid', () => {
+  let mounted: Mounted;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    mounted?.renderer.destroy();
+    mounted?.container.remove();
+    vi.useRealTimers();
+  });
+
+  function showGrid(count: number, holdMs: number | null = 3000): void {
+    mounted.renderer.show(
+      scene(
+        'scn_grid',
+        Array.from({ length: count }, (_, index) =>
+          sceneItem(`itm_${index}`, phone(index + 1), { onLost: { holdMs, fallbackSource: null } }),
+        ),
+        { layoutMode: 'autoGrid' },
+      ),
+    );
+  }
+
+  it.each([1, 2, 3, 4, 5, 9, 10])('places %i live sources on the Auto-Grid slots', (count) => {
+    mounted = mount();
+    showGrid(count);
+    for (let index = 0; index < count; index += 1) {
+      mounted.provider.live(phone(index + 1));
+    }
+    const rects = mounted.renderer.effectiveRects();
+    expect(rects.size).toBe(Math.min(count, 9));
+    for (let index = 0; index < Math.min(count, 9); index += 1) {
+      expect(rects.get(`itm_${index}`)).toEqual(slotRect(count, index));
+      expect(mounted.item(`itm_${index}`)?.style.display).toBe('block');
+    }
+    if (count === 10) {
+      expect(mounted.item('itm_9')?.style.display).toBe('none');
+    }
+  });
+
+  it('does not place pending sources and reflows when they arrive', () => {
+    mounted = mount();
+    showGrid(3);
+    mounted.provider.live(phone(1));
+    expect(mounted.renderer.effectiveRects().size).toBe(1);
+    expect(mounted.renderer.effectiveRects().get('itm_0')).toEqual(slotRect(1, 0));
+    expect(mounted.item('itm_1')?.style.display).toBe('none');
+    mounted.provider.live(phone(3));
+    expect(mounted.renderer.effectiveRects().get('itm_2')).toEqual(slotRect(2, 1));
+  });
+
+  it('keeps a lost source in its slot during the hold time, then reflows; reflows back on return', async () => {
+    mounted = mount();
+    showGrid(4);
+    for (let index = 1; index <= 4; index += 1) {
+      mounted.provider.live(phone(index));
+    }
+    mounted.provider.lose(phone(2));
+    expect(mounted.renderer.effectiveRects().size).toBe(4);
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(mounted.renderer.effectiveRects().size).toBe(4);
+    await vi.advanceTimersByTimeAsync(1);
+    const rects = mounted.renderer.effectiveRects();
+    expect(rects.size).toBe(3);
+    expect(rects.has('itm_1')).toBe(false);
+    expect(rects.get('itm_2')).toEqual(slotRect(3, 1));
+    expect(mounted.item('itm_1')?.style.display).toBe('none');
+
+    mounted.provider.live(phone(2));
+    expect(mounted.renderer.effectiveRects().get('itm_1')).toEqual(slotRect(4, 1));
+  });
+
+  it('keeps a lost source placed forever with holdMs null', async () => {
+    mounted = mount();
+    showGrid(2, null);
+    mounted.provider.live(phone(1));
+    mounted.provider.live(phone(2));
+    mounted.provider.lose(phone(1));
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(mounted.renderer.effectiveRects().size).toBe(2);
+  });
+
+  it('always places media and never hidden items', () => {
+    mounted = mount();
+    mounted.renderer.show(
+      scene(
+        'scn_grid',
+        [
+          sceneItem('itm_img', IMAGE),
+          sceneItem('itm_hidden', CAMERA, { hidden: true }),
+          sceneItem('itm_cam', CAMERA_2),
+        ],
+        { layoutMode: 'autoGrid' },
+      ),
+    );
+    mounted.provider.live(CAMERA);
+    expect([...mounted.renderer.effectiveRects().keys()]).toEqual(['itm_img']);
+    mounted.provider.live(CAMERA_2);
+    expect([...mounted.renderer.effectiveRects().keys()]).toEqual(['itm_img', 'itm_cam']);
+  });
+
+  it('keeps sources that wait for a slot subscribed with a small picture', () => {
+    mounted = mount();
+    showGrid(2);
+    mounted.provider.live(phone(1));
+    expect(mounted.provider.desired().get(phone(2))).toEqual({ width: 320, height: 180 });
+  });
+
+  it('switches between free and Auto-Grid on update', () => {
+    mounted = mount();
+    const items = [sceneItem('itm_a', CAMERA, { x: 5, y: 6, w: 100, h: 60 })];
+    mounted.renderer.show(scene('scn_a', items));
+    mounted.provider.live(CAMERA);
+    expect(mounted.renderer.effectiveRects().get('itm_a')).toEqual({ x: 5, y: 6, w: 100, h: 60 });
+    mounted.renderer.update(scene('scn_a', items, { version: 2, layoutMode: 'autoGrid' }));
+    expect(mounted.renderer.effectiveRects().get('itm_a')).toEqual(slotRect(1, 0));
+  });
+});

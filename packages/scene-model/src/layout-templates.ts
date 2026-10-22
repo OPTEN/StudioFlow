@@ -1,11 +1,12 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from './constants';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, DEFAULT_ITEM_RADIUS } from './constants';
 import type { SceneItemDto, SceneLayoutMode, SourceKind } from './contracts';
 
 /** A slot rectangle in canvas pixels: [x, y, w, h]. */
 export type SlotRect = readonly [x: number, y: number, w: number, h: number];
 
 /** Identifier of a layout template («Vorlage»). */
-export type LayoutTemplateId = 'full' | 'two' | 'pip' | 'col' | 'onetwo' | 'grid' | 'grid3' | 'auto';
+export type LayoutTemplateId =
+  'full' | 'two' | 'pip' | 'col' | 'onetwo' | 'grid' | 'grid3' | 'auto';
 
 /** A layout template; `slots` is null for Auto-Grid, which depends on the number of available sources. */
 export interface LayoutTemplate {
@@ -21,26 +22,60 @@ const GRID3: readonly SlotRect[] = [40, 378, 716].flatMap((y) =>
 
 /** The eight templates of the plan; slot rectangles are identical to the prototype. */
 export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [
-  { id: 'full', name: 'Vollbild', description: 'eine Quelle', slots: [[0, 0, CANVAS_WIDTH, CANVAS_HEIGHT]] },
-  { id: 'two', name: 'Nebeneinander', description: 'Interview, Gespräch', slots: [[40, 287, 900, 506], [980, 287, 900, 506]] },
-  { id: 'pip', name: 'Bild-in-Bild', description: 'Screen gross, Kamera in der Ecke', slots: [[0, 0, CANVAS_WIDTH, CANVAS_HEIGHT], [1400, 772, 480, 270]] },
+  {
+    id: 'full',
+    name: 'Vollbild',
+    description: 'eine Quelle',
+    slots: [[0, 0, CANVAS_WIDTH, CANVAS_HEIGHT]],
+  },
+  {
+    id: 'two',
+    name: 'Nebeneinander',
+    description: 'Interview, Gespräch',
+    slots: [
+      [40, 287, 900, 506],
+      [980, 287, 900, 506],
+    ],
+  },
+  {
+    id: 'pip',
+    name: 'Bild-in-Bild',
+    description: 'Screen gross, Kamera in der Ecke',
+    slots: [
+      [0, 0, CANVAS_WIDTH, CANVAS_HEIGHT],
+      [1400, 772, 480, 270],
+    ],
+  },
   {
     id: 'col',
     name: 'Screen + Spalte',
     description: 'Präsentation mit zwei Personen',
-    slots: [[40, 158, 1360, 765], [1440, 283, 440, 248], [1440, 551, 440, 248]],
+    slots: [
+      [40, 158, 1360, 765],
+      [1440, 283, 440, 248],
+      [1440, 551, 440, 248],
+    ],
   },
   {
     id: 'onetwo',
     name: 'Eins plus zwei',
     description: 'Moderation und zwei Gäste',
-    slots: [[40, 196, 1225, 689], [1285, 196, 595, 335], [1285, 551, 595, 335]],
+    slots: [
+      [40, 196, 1225, 689],
+      [1285, 196, 595, 335],
+      [1285, 551, 595, 335],
+    ],
   },
   {
     id: 'grid',
     name: '2 × 2',
     description: 'Panel oder Q&A',
-    slots: [[79, 40, 871, 490], [970, 40, 871, 490], [79, 550, 871, 490], [970, 550, 871, 490]],
+    slots: [
+      [79, 40, 871, 490],
+      [970, 40, 871, 490],
+      [79, 550, 871, 490],
+      [970, 550, 871, 490],
+    ],
   },
   { id: 'grid3', name: '3 × 3', description: 'Galerie, viele Gäste', slots: GRID3 },
   { id: 'auto', name: 'Auto-Grid', description: 'ordnet sich nach aktiven Kameras', slots: null },
@@ -64,7 +99,11 @@ export function autoGridSlots(count: number): readonly SlotRect[] {
     return layoutTemplate('two').slots ?? [];
   }
   if (count === 3) {
-    return [[79, 40, 871, 490], [970, 40, 871, 490], [525, 550, 871, 490]];
+    return [
+      [79, 40, 871, 490],
+      [970, 40, 871, 490],
+      [525, 550, 871, 490],
+    ];
   }
   if (count === 4) {
     return layoutTemplate('grid').slots ?? [];
@@ -72,7 +111,10 @@ export function autoGridSlots(count: number): readonly SlotRect[] {
   return GRID3;
 }
 
-/** Sort rank used when distributing items over slots: screens first, then media, then cameras. */
+/**
+ * Sort rank used when distributing items over slots: screens first, then media, then cameras; items whose source no
+ * longer exists («Quelle fehlt») come last so they never take the main slot.
+ */
 function kindRank(kind: SourceKind | undefined): number {
   switch (kind) {
     case 'screen':
@@ -80,8 +122,10 @@ function kindRank(kind: SourceKind | undefined): number {
     case 'image':
     case 'video':
       return 1;
-    default:
+    case 'camera':
       return 2;
+    case undefined:
+      return 3;
   }
 }
 
@@ -102,7 +146,10 @@ export function applyLayoutTemplate(
   const ordered = items
     .filter((item) => !item.hidden)
     .map((item, index) => ({ item, index }))
-    .sort((a, b) => kindRank(kindOf(a.item.source)) - kindRank(kindOf(b.item.source)) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        kindRank(kindOf(a.item.source)) - kindRank(kindOf(b.item.source)) || a.index - b.index,
+    )
     .map(({ item }) => item);
   const placed = new Map<string, SceneItemDto>();
   ordered.forEach((item, index) => {
@@ -111,8 +158,20 @@ export function applyLayoutTemplate(
       return;
     }
     const [x, y, w, h] = slot;
-    const isScreenLead = kindOf(item.source) === 'screen' && index === 0 && templateId !== 'two' && !templateId.startsWith('grid');
-    placed.set(item.id, { ...item, x, y, w, h, fit: isScreenLead ? 'contain' : 'cover', radius: w === CANVAS_WIDTH ? 0 : 12 });
+    const isScreenLead =
+      kindOf(item.source) === 'screen' &&
+      index === 0 &&
+      templateId !== 'two' &&
+      !templateId.startsWith('grid');
+    placed.set(item.id, {
+      ...item,
+      x,
+      y,
+      w,
+      h,
+      fit: isScreenLead ? 'contain' : 'cover',
+      radius: w === CANVAS_WIDTH ? 0 : DEFAULT_ITEM_RADIUS,
+    });
   });
   return { items: items.map((item) => placed.get(item.id) ?? { ...item }), layoutMode: 'free' };
 }
