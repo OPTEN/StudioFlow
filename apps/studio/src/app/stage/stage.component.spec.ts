@@ -8,6 +8,7 @@ import {
   type StoreHarness,
 } from '../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
+import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { LIVE_NOTE } from './monitor.component';
 import { SCENE_RENDERER_FACTORY } from './scene-view.component';
@@ -125,6 +126,70 @@ describe('StageComponent', () => {
     );
     expect(monitor('program')?.querySelector('.c-monitor__live-note')).toBeNull();
     expect(monitor('preview')?.querySelector('fs-edit-overlay')?.classList).toContain('is-locked');
+  });
+
+  function press(target: Element, init: PointerEventInit = {}): void {
+    const options = {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      ...init,
+    };
+    target.dispatchEvent(new PointerEvent('pointerdown', options));
+    target.dispatchEvent(new PointerEvent('pointerup', options));
+  }
+
+  it('a press on the stage around the editable screen clears the selection', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    const program = monitor('program') as HTMLElement;
+    const around = [
+      element,
+      program.querySelector('.c-monitor__head') as Element,
+      program.querySelector('.c-monitor__name') as Element,
+      element.querySelector('.c-stage__preview-off') as Element,
+      element.querySelector('.c-stage__monitors') as Element,
+    ];
+    for (const target of around) {
+      editor.select('itm_a1');
+      press(target);
+      expect(editor.selectedItemId()).toBeNull();
+    }
+    await render();
+    harness.http.expectNone(() => true);
+  });
+
+  it('leaves the selection to the editable screen, the controls and other mouse buttons', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    editor.select('itm_a1');
+    const screen = monitor('program')?.querySelector('.c-monitor__screen') as HTMLElement;
+    press(screen.querySelector('fs-scene-view') as Element);
+    press(element.querySelector('fs-control-column') as Element);
+    press(element.querySelector('fs-control-column button') as Element);
+    press(element.querySelector('fs-control-column label') as Element);
+    press(element, { button: 2 });
+    expect(editor.selectedItemId()).toBe('itm_a1');
+    await render();
+    harness.http.expectNone(() => true);
+  });
+
+  it('with Studio-Modus: a press on the Program monitor clears the selection, the split does not', async () => {
+    await setup({ studio: true, preview: 'scn_b' });
+    const editor = TestBed.inject(EditorService);
+    editor.select('itm_b1');
+    press(element.querySelector('.c-stage__split') as Element);
+    expect(editor.selectedItemId()).toBe('itm_b1');
+    press(monitor('preview')?.querySelector('.c-monitor__screen fs-scene-view') as Element);
+    expect(editor.selectedItemId()).toBe('itm_b1');
+    press(monitor('program')?.querySelector('.c-monitor__screen') as Element);
+    expect(editor.selectedItemId()).toBeNull();
+    editor.select('itm_b1');
+    press(monitor('preview')?.querySelector('.c-monitor__head') as Element);
+    expect(editor.selectedItemId()).toBeNull();
+    await render();
   });
 
   it('keeps the Program renderer when Studio-Modus toggles', async () => {

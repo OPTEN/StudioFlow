@@ -18,7 +18,8 @@ interface SceneEntry {
 /**
  * The Szenen dock (prototype «Szenenliste»): every scene in list order with thumbnail, keycap 1–9, name and meta
  * (PGM/PVW tags, slot codes or the health lamp «K2 gestört»). A click goes through `SwitcherService.chooseScene`:
- * without Studio-Modus the scene goes live, with it the scene goes into the preview. «+ Szene» creates «Neue Szene N»
+ * without Studio-Modus the scene goes live, with it the scene goes into the preview; a click on the scene being edited
+ * clears the element selection (Eigenschaften shows the scene). «+ Szene» creates «Neue Szene N»
  * and opens its name; each row has Umbenennen, Duplizieren and Nach oben/unten. Compact one-line rows at heights
  * ≤ 820 px, a horizontal strip at widths ≤ 900 px.
  */
@@ -60,7 +61,15 @@ export class ScenesDockComponent {
       : 'Neue Szene am Ende der Liste',
   );
 
+  /**
+   * A click on a row. On the scene being edited it also clears the element selection, so Eigenschaften shows the
+   * scene again; switching works as before (`chooseScene` is a no-op for the current scene, and switching to another
+   * scene clears the selection through the editor).
+   */
   protected choose(sceneId: string): void {
+    if (sceneId === this.editor.editSceneId()) {
+      this.editor.select(null);
+    }
     void this.switcher.chooseScene(sceneId);
   }
 

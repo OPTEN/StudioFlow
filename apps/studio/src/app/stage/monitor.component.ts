@@ -52,6 +52,7 @@ let nextMonitorId = 0;
     role: 'region',
     '[class.c-monitor--preview]': "kind() === 'preview'",
     '[class.c-monitor--program]': "kind() === 'program'",
+    '[class.is-editable]': 'editable()',
     '[attr.aria-labelledby]': 'labelId',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,

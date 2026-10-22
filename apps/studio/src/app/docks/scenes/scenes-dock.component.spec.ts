@@ -6,7 +6,14 @@ import {
   snapshotFixture,
   sourceFixture,
 } from '../../../testing/fixtures';
-import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import {
+  MemoryStorage,
+  startStore,
+  studioTestProviders,
+  type StoreHarness,
+} from '../../../testing/store-harness';
+import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
+import { EditorService } from '../../stage/editor.service';
 import { ScenesDockComponent } from './scenes-dock.component';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
@@ -16,9 +23,16 @@ describe('ScenesDockComponent', () => {
   let fixture: ComponentFixture<ScenesDockComponent>;
   let element: HTMLElement;
 
-  async function setup(snapshot = snapshotFixture()): Promise<void> {
+  async function setup(
+    snapshot = snapshotFixture(),
+    options: { studio?: boolean } = {},
+  ): Promise<void> {
     const hub = new FakeStudioHub();
-    TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
+    const storage = new MemoryStorage();
+    if (options.studio) {
+      storage.setItem(PREFERENCE_KEYS.studioMode, '1');
+    }
+    TestBed.configureTestingModule({ providers: studioTestProviders(hub, storage) });
     harness = await startStore(hub, snapshot);
     fixture = TestBed.createComponent(ScenesDockComponent);
     element = fixture.nativeElement as HTMLElement;
@@ -93,6 +107,55 @@ describe('ScenesDockComponent', () => {
     });
     request.flush(snapshotFixture().production);
     await render();
+  });
+
+  it('a click on the scene being edited clears the element selection, without a request', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    editor.select('itm_a1');
+    expect(editor.selectedItem()?.id).toBe('itm_a1');
+    rows()[0].click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    harness.http.expectNone(() => true);
+  });
+
+  it('a click on another scene still switches it and keeps the selection until the switch', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    editor.select('itm_a1');
+    rows()[1].click();
+    expect(editor.selectedItemId()).toBe('itm_a1');
+    const request = harness.http.expectOne(`${BASE}/program`);
+    expect(request.request.body.sceneId).toBe('scn_b');
+    harness.emitEvent({
+      type: 'programSwitched',
+      programSceneId: 'scn_b',
+      previewSceneId: null,
+      previousProgramSceneId: 'scn_a',
+      transition: { kind: 'fade', durationMs: 300 },
+      at: new Date().toISOString(),
+    });
+    request.flush({ ...snapshotFixture().production, programSceneId: 'scn_b' });
+    await harness.settle();
+    await render();
+    // The editor clears the selection whenever the edit scene changes.
+    expect(editor.editSceneId()).toBe('scn_b');
+    expect(editor.selectedItemId()).toBeNull();
+  });
+
+  it('in Studio-Modus a click on the Preview scene clears the selection, without a request', async () => {
+    await setup(
+      snapshotFixture({ production: { ...snapshotFixture().production, previewSceneId: 'scn_b' } }),
+      { studio: true },
+    );
+    const editor = TestBed.inject(EditorService);
+    editor.select('itm_b1');
+    expect(rows()[1].getAttribute('aria-pressed')).toBe('true');
+    rows()[1].click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    harness.http.expectNone(() => true);
   });
 
   it('creates a scene and opens its name; Enter saves the new name', async () => {

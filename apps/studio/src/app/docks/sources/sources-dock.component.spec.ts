@@ -85,6 +85,33 @@ describe('SourcesDockComponent', () => {
     expect(element.querySelector('.c-src-dock__hint')).toBeNull();
   });
 
+  it('a second click on the selected row clears the selection (toggle)', async () => {
+    await setup();
+    const editor = TestBed.inject(EditorService);
+    const selectButton = (index: number): HTMLButtonElement =>
+      rows()[index].querySelector<HTMLButtonElement>('.c-src__select') as HTMLButtonElement;
+    selectButton(1).click();
+    await render();
+    expect(editor.selectedItemId()).toBe('itm_b1');
+    expect(selectButton(1).getAttribute('aria-pressed')).toBe('true');
+    selectButton(1).click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    expect(selectButton(1).getAttribute('aria-pressed')).toBe('false');
+    expect(rows()[1].className).not.toContain('is-sel');
+    // The row itself toggles as well; another row moves the selection instead of clearing it.
+    rows()[1].click();
+    await render();
+    expect(editor.selectedItemId()).toBe('itm_b1');
+    selectButton(0).click();
+    await render();
+    expect(editor.selectedItemId()).toBe('itm_b2');
+    rows()[0].click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    harness.http.expectNone(() => true);
+  });
+
   it('hides and locks items through the editor', async () => {
     await setup();
     const [front] = rows();

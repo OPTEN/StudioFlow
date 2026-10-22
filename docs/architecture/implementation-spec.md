@@ -127,10 +127,15 @@ Layout templates (client-side, `packages/scene-model`): Vollbild, Nebeneinander,
 Screen + Kamera-Spalte, Eins plus zwei, 2 × 2, 3 × 3, Auto-Grid – slot rectangles exactly as `PRESETS` in the
 prototype. Applying a template orders the visible items by kind (screen, then image/video, then camera), assigns slots
 in order, sets fit contain for a screen in slot 0 (except Nebeneinander and the grids), radius 0 for full-canvas slots
-else 12, and sends `ReplaceSceneItems`. Items beyond the slot count keep their geometry. Auto-Grid sets
-`layoutMode = autoGrid`: the renderer arranges all visible items whose source is available (live, or lost but still
-inside its hold time; media always) with `autoGridSlots(n)` (prototype `autoSlots`), in item order; editing an item's
-geometry in the editor switches the scene back to `free` with the current computed rectangles.
+else 12, and sends `ReplaceSceneItems`. Items beyond the slot count keep their geometry. The item order is the
+z-order (first = back), and slots may overlap (Bild-in-Bild), so applying a template also re-orders the items: the
+placed items first in slot order (slot 0 at the back, later slots in front), then every item without a slot (hidden
+items and items beyond the slot count) in front of them in their previous relative order – nothing that is or later
+becomes visible disappears behind a template slot. Undo restores the previous order. Auto-Grid sets
+`layoutMode = autoGrid` and keeps the item order (its slots never overlap): the renderer arranges all visible items
+whose source is available (live, or lost but still inside its hold time; media always) with `autoGridSlots(n)`
+(prototype `autoSlots`), in item order; editing an item's geometry in the editor switches the scene back to `free`
+with the current computed rectangles.
 
 ### 4.4 Sources and slot codes
 

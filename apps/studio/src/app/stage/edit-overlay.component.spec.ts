@@ -188,6 +188,28 @@ describe('EditOverlayComponent', () => {
     expect(editor.selectedItemId()).toBeNull();
   });
 
+  it('stacks the boxes in z-order: after Bild-in-Bild the corner box lies above the full one', async () => {
+    // Camera added before the screen (camera at the back).
+    const scenes = defaultScenes();
+    scenes[1] = { ...scenes[1], items: [...scenes[1].items].reverse() };
+    await setup({ studio: true, preview: 'scn_b', scenes });
+    editor.applyTemplate('pip');
+    await render();
+    const boxes = Array.from(overlay.querySelectorAll<HTMLElement>('.c-edit-box'));
+    // Later boxes are painted on top (DOM order, no z-index), like the renderer's items.
+    expect(boxes.map((entry) => entry.dataset['itemId'])).toEqual(['itm_b1', 'itm_b2']);
+    expect(boxes.every((entry) => entry.style.zIndex === '')).toBe(true);
+    expect(box('itm_b1').style.width).toBe('100%');
+    expect(box('itm_b2').style.left).toBe(`${(1400 / 1920) * 100}%`);
+    pointer('pointerdown', box('itm_b2'), 820, 450);
+    pointer('pointerup', overlay, 820, 450);
+    await render();
+    expect(editor.selectedItemId()).toBe('itm_b2');
+    harness.http
+      .expectOne(`${BASE}/scenes/scn_b/items`)
+      .flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
+  });
+
   it('moves an element in one undo step and sends coalesced updates', async () => {
     await setup();
     // 50 screen px = 100 canvas px to the right, 25 = 50 down; the frame batching sends at most one step per frame.

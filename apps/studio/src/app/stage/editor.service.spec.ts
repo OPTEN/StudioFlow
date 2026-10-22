@@ -273,6 +273,32 @@ describe('EditorService', () => {
     template.flush({ ...harness.store.sceneById('scn_b'), version: 3 });
   });
 
+  it('sends Bild-in-Bild re-ordered to the slots (small picture in front) and undoes the order', async () => {
+    // Camera added before the screen: the camera is at the back, the screen in front.
+    const scenes = defaultScenes();
+    scenes[1] = { ...scenes[1], items: [...scenes[1].items].reverse() };
+    await setup({ studio: true, preview: 'scn_b', scenes });
+    expect(editor.editScene()?.items.map((item) => item.id)).toEqual(['itm_b2', 'itm_b1']);
+
+    expect(editor.applyTemplate('pip')).toBe(true);
+    const template = harness.http.expectOne(`${SCENE_B}/items`);
+    const sent = template.request.body.items as SceneItemDto[];
+    expect(sent.map((item) => item.id)).toEqual(['itm_b1', 'itm_b2']);
+    expect(sent[0]).toMatchObject({ x: 0, y: 0, w: 1920, h: 1080, fit: 'contain', radius: 0 });
+    expect(sent[1]).toMatchObject({ x: 1400, y: 772, w: 480, h: 270, radius: 12 });
+    // The optimistic draft shows the new order right away.
+    expect(editor.editScene()?.items.map((item) => item.id)).toEqual(['itm_b1', 'itm_b2']);
+    template.flush({ ...harness.store.sceneById('scn_b'), version: 2 });
+    await flushMicrotasks();
+
+    editor.undo();
+    const undo = harness.http.expectOne(`${SCENE_B}/items`);
+    const restored = undo.request.body.items as SceneItemDto[];
+    expect(restored.map((item) => item.id)).toEqual(['itm_b2', 'itm_b1']);
+    expect(restored[1]).toMatchObject({ x: 40, y: 40, w: 1360, h: 765 });
+    undo.flush({ ...harness.store.sceneById('scn_b'), version: 3 });
+  });
+
   it('asks for a source before applying a template to an empty scene', async () => {
     await setup({ studio: true, preview: 'scn_c' });
     expect(editor.applyTemplate('two')).toBe(false);

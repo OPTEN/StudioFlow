@@ -21,6 +21,12 @@ import { MonitorComponent } from './monitor.component';
 import type { SceneTransitionCue } from './scene-view.component';
 import { SwitcherService } from './switcher.service';
 
+/** The editable 16:9 surface: its overlay handles clicks itself (select, empty area deselects). */
+const EDITABLE_SCREEN = '.c-monitor.is-editable .c-monitor__screen';
+/** Controls inside the stage that keep their own pointer behaviour (no deselect). */
+const STAGE_CONTROLS =
+  'button, a, input, select, textarea, label, [role="separator"], [role="switch"], .c-pop, fs-control-column';
+
 function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | null {
   return id ? (scenes.find((scene) => scene.id === id) ?? null) : null;
 }
@@ -39,13 +45,16 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
  * - Sizes: a ResizeObserver measures the stage and writes the monitor widths (`monitor-layout.ts`) as the custom
  *   properties `--fs-preview-w` / `--fs-program-w` directly on the host, so resizing never runs change detection.
  * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
+ * - A press on the stage around the editable screen (monitor headers, the «Preview aus» space, the other monitor,
+ *   the free stage) clears the element selection, so Eigenschaften shows the scene again even when an element fills
+ *   the whole editable screen («Vollbild»). Controls (control column, splitter) are left alone.
  */
 @Component({
   selector: 'fs-stage',
   imports: [MonitorComponent, ControlColumnComponent, SplitterDirective],
   templateUrl: './stage.component.html',
   styleUrl: './stage.component.scss',
-  host: { class: 'c-stage' },
+  host: { class: 'c-stage', '(pointerdown)': 'onPointerDown($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StageComponent {
@@ -92,6 +101,18 @@ export class StageComponent {
       untracked(() => this.applyWidths());
     });
     this.observeSize();
+  }
+
+  /** Deselects on a primary press outside the editable screen and outside controls. */
+  protected onPointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target || target.closest(EDITABLE_SCREEN) || target.closest(STAGE_CONTROLS)) {
+      return;
+    }
+    this.editor.select(null);
   }
 
   /** Writes the monitor widths for the last measured stage size. */

@@ -196,6 +196,84 @@ describe('PropertiesDockComponent', () => {
     expect(element.querySelector<HTMLSelectElement>('#fs-insp-fallback')?.disabled).toBe(true);
   });
 
+  function backButton(): HTMLButtonElement | null {
+    return element.querySelector<HTMLButtonElement>(
+      '.c-dock-frame__head button[aria-label="Auswahl aufheben, zurück zur Szene"]',
+    );
+  }
+
+  function heading(): HTMLElement {
+    return element.querySelector<HTMLElement>('.c-dock-frame__title') as HTMLElement;
+  }
+
+  it('«Zur Szene» goes back from the element to the scene, focuses the heading and the templates work', async () => {
+    await setup();
+    expect(backButton()).toBeNull();
+    editor.select('itm_b1');
+    await render();
+    const back = backButton() as HTMLButtonElement;
+    expect(text(back)).toBe('Zur Szene');
+    expect(back.title).toBe('Auswahl aufheben (Esc)');
+    expect(back.getAttribute('aria-keyshortcuts')).toBe('Escape');
+    expect(back.type).toBe('button');
+    expect(back.querySelector('svg.c-icon')?.getAttribute('aria-hidden')).toBe('true');
+    back.focus();
+    back.click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    expect(backButton()).toBeNull();
+    expect(text(heading())).toBe('Szene');
+    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Präsentation');
+    expect(document.activeElement).toBe(heading());
+    expect(heading().tabIndex).toBe(-1);
+    // The scene inspector is back: «Vorlage anwenden» with all eight templates.
+    const tiles = Array.from(element.querySelectorAll<HTMLButtonElement>('.c-preset'));
+    expect(tiles).toHaveLength(8);
+    tiles.find((tile) => text(tile).includes('Vollbild'))?.click();
+    const request = harness.http.expectOne(`${BASE}/scenes/scn_b/items`);
+    expect(request.request.body.items[0]).toMatchObject({ x: 0, y: 0, w: 1920, h: 1080 });
+    request.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
+    await render();
+  });
+
+  it('Escape inside the element view goes back to the scene and keeps the focus in the dock', async () => {
+    await setup();
+    const off = editor.registerShortcuts();
+    editor.select('itm_b2');
+    await render();
+    const remove = button('Aus Szene entfernen') as HTMLButtonElement;
+    remove.focus();
+    remove.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    expect(element.querySelector('fs-scene-inspector')).not.toBeNull();
+    expect(document.activeElement).toBe(heading());
+    off();
+  });
+
+  it('explains Escape in the hint of the element view', async () => {
+    await setup();
+    editor.select('itm_b1');
+    await render();
+    expect(text(element.querySelector('.c-insp__note'))).toBe(
+      'Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um ' +
+        '1 px. Esc hebt die Auswahl auf.',
+    );
+  });
+
+  it('offers «Zur Szene» on the live scene in Studio-Modus too (deselecting is no edit)', async () => {
+    await setup({ studio: true, preview: 'scn_b' });
+    editor.select('itm_b1');
+    await render();
+    const back = backButton() as HTMLButtonElement;
+    expect(back.disabled).toBe(false);
+    back.click();
+    await render();
+    expect(editor.selectedItemId()).toBeNull();
+    expect(element.querySelector('fs-scene-inspector')).not.toBeNull();
+    harness.http.expectNone(() => true);
+  });
+
   it('disables every field while the scene is live in Studio-Modus', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     editor.select('itm_b1');

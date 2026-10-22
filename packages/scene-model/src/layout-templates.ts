@@ -130,9 +130,24 @@ function kindRank(kind: SourceKind | undefined): number {
 }
 
 /**
- * Applies a template to the items of a scene (pure). Visible items are ordered by kind and get the slots in order;
- * hidden items and items beyond the slot count keep their geometry. Auto-Grid only switches the layout mode; the
- * renderer computes the rectangles from the available sources.
+ * Applies a template to the items of a scene (pure).
+ *
+ * Slots: the visible items are ordered by kind (screen, then image/video, then camera, then missing sources; stable
+ * inside a kind) and get the slots in that order. A screen in slot 0 gets fit `contain` (except Nebeneinander and the
+ * grids), everything else `cover`; full-canvas slots get radius 0, the others 12.
+ *
+ * Z-order: the item order is the layer order (first = back), so the result is re-ordered to match the slots, because
+ * slots may overlap (Bild-in-Bild: the small picture lies on top of the full one):
+ * 1. the placed items first, in slot order – slot 0 at the back, every later slot in front of the earlier ones;
+ * 2. then every item that got no slot – hidden items and visible items beyond the slot count – in front of the
+ *    placed ones, in their previous relative order and with their geometry unchanged.
+ *
+ * Unplaced items go in front so that nothing that is visible, or becomes visible when it is shown again later,
+ * disappears behind a template slot it does not belong to: a leftover stays visible and clickable in the monitor,
+ * and a hidden item shows up where the operator can see it.
+ *
+ * Auto-Grid only switches the layout mode and keeps the item order; the renderer computes the rectangles from the
+ * available sources in item order, and its slots never overlap.
  */
 export function applyLayoutTemplate(
   items: readonly SceneItemDto[],
@@ -143,27 +158,22 @@ export function applyLayoutTemplate(
     return { items: items.map((item) => ({ ...item })), layoutMode: 'autoGrid' };
   }
   const slots = layoutTemplate(templateId).slots ?? [];
-  const ordered = items
-    .filter((item) => !item.hidden)
+  const candidates = items
     .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.hidden)
     .sort(
       (a, b) =>
         kindRank(kindOf(a.item.source)) - kindRank(kindOf(b.item.source)) || a.index - b.index,
     )
-    .map(({ item }) => item);
-  const placed = new Map<string, SceneItemDto>();
-  ordered.forEach((item, index) => {
-    const slot = slots[index];
-    if (!slot) {
-      return;
-    }
-    const [x, y, w, h] = slot;
+    .slice(0, slots.length);
+  const placed = candidates.map(({ item }, slotIndex) => {
+    const [x, y, w, h] = slots[slotIndex];
     const isScreenLead =
       kindOf(item.source) === 'screen' &&
-      index === 0 &&
+      slotIndex === 0 &&
       templateId !== 'two' &&
       !templateId.startsWith('grid');
-    placed.set(item.id, {
+    return {
       ...item,
       x,
       y,
@@ -171,7 +181,11 @@ export function applyLayoutTemplate(
       h,
       fit: isScreenLead ? 'contain' : 'cover',
       radius: w === CANVAS_WIDTH ? 0 : DEFAULT_ITEM_RADIUS,
-    });
+    } satisfies SceneItemDto;
   });
-  return { items: items.map((item) => placed.get(item.id) ?? { ...item }), layoutMode: 'free' };
+  const placedIndexes = new Set(candidates.map(({ index }) => index));
+  const unplaced = items
+    .filter((_, index) => !placedIndexes.has(index))
+    .map((item) => ({ ...item }));
+  return { items: [...placed, ...unplaced], layoutMode: 'free' };
 }

@@ -7,6 +7,7 @@ import {
   computed,
   inject,
   input,
+  viewChild,
 } from '@angular/core';
 import { IconComponent } from '../../core/ui/icon.component';
 import { DOCK_TITLES, type DockId, type DockSlotId } from './dock-layout';
@@ -58,9 +59,13 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
           <svg fsIcon="grip"></svg>
         </button>
       }
-      <span class="c-dock-frame__title" [class.c-dock-frame__title--solo]="!draggable()">{{
-        heading()
-      }}</span>
+      <span
+        #title
+        class="c-dock-frame__title"
+        tabindex="-1"
+        [class.c-dock-frame__title--solo]="!draggable()"
+        >{{ heading() }}</span
+      >
       @if (subtitle()) {
         <span class="c-dock-frame__sub">{{ subtitle() }}</span>
       }
@@ -95,9 +100,18 @@ export class DockFrameComponent {
   private readonly layout = inject(DockLayoutService);
   private readonly injector = inject(Injector);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly titleElement = viewChild.required<ElementRef<HTMLElement>>('title');
 
   protected readonly dockTitle = computed(() => DOCK_TITLES[this.dock()]);
   protected readonly heading = computed(() => this.title() ?? this.dockTitle());
+
+  /**
+   * Moves the focus to the header title (focusable with `tabindex="-1"`, not in the tab order); used when the dock's
+   * content is replaced under the focus, e.g. Eigenschaften going back from the element to the scene.
+   */
+  focusTitle(): void {
+    this.titleElement().nativeElement.focus();
+  }
 
   protected onHeadPointerDown(event: PointerEvent): void {
     const id = this.dock();

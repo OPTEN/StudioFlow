@@ -128,14 +128,6 @@ describe('applyLayoutTemplate', () => {
     expect(rectOf(byId(placed, 'c'))).toEqual(slotRect('col', 2));
   });
 
-  it('keeps the item order (z-order) of the scene', () => {
-    const items = [itemFixture('c', 'cam1'), itemFixture('s', 'screen1')];
-    expect(applyLayoutTemplate(items, 'pip', kindOf).items.map((item) => item.id)).toEqual([
-      'c',
-      's',
-    ]);
-  });
-
   it('keeps the scene order within one kind', () => {
     const items = [itemFixture('c2', 'cam2'), itemFixture('c1', 'cam1')];
     const placed = applyLayoutTemplate(items, 'two', kindOf).items;
@@ -237,3 +229,187 @@ describe('applyLayoutTemplate', () => {
     expect(items).toEqual(copy);
   });
 });
+
+describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
+  function ids(items: readonly SceneItemDto[]): string[] {
+    return items.map((item) => item.id);
+  }
+
+  function apply(items: readonly SceneItemDto[], templateId: LayoutTemplateId): SceneItemDto[] {
+    return applyLayoutTemplate(items, templateId, kindOf).items;
+  }
+
+  it('Bild-in-Bild, camera before screen: the screen goes to the back, the small camera in front', () => {
+    const placed = apply([itemFixture('c', 'cam1'), itemFixture('s', 'screen1')], 'pip');
+    expect(ids(placed)).toEqual(['s', 'c']);
+    expect(rectOf(placed[0])).toEqual(slotRect('pip', 0));
+    expect(rectOf(placed[1])).toEqual(slotRect('pip', 1));
+  });
+
+  it('Bild-in-Bild, screen before camera: the order stays', () => {
+    const placed = apply([itemFixture('s', 'screen1'), itemFixture('c', 'cam1')], 'pip');
+    expect(ids(placed)).toEqual(['s', 'c']);
+    expect(rectOf(placed[0])).toEqual(slotRect('pip', 0));
+    expect(rectOf(placed[1])).toEqual(slotRect('pip', 1));
+  });
+
+  it.each([
+    [
+      ['c1', 'c2'],
+      ['c1', 'c2'],
+    ],
+    [
+      ['c2', 'c1'],
+      ['c2', 'c1'],
+    ],
+  ])(
+    'Bild-in-Bild, two cameras %j: the back one gets the full picture, the front one the corner',
+    (order, expected) => {
+      const items = order.map((id) => itemFixture(id, id === 'c1' ? 'cam1' : 'cam2'));
+      const placed = apply(items, 'pip');
+      expect(ids(placed)).toEqual(expected);
+      expect(rectOf(placed[0])).toEqual(slotRect('pip', 0));
+      expect(rectOf(placed[1])).toEqual(slotRect('pip', 1));
+    },
+  );
+
+  it('Bild-in-Bild, a missing source before a camera: the camera is full and at the back', () => {
+    const placed = apply([itemFixture('x', 'gone'), itemFixture('c', 'cam1')], 'pip');
+    expect(ids(placed)).toEqual(['c', 'x']);
+    expect(rectOf(placed[1])).toEqual(slotRect('pip', 1));
+  });
+
+  it.each([
+    [
+      ['c', 'h', 's'],
+      ['s', 'c', 'h'],
+    ],
+    [
+      ['h', 'c', 's'],
+      ['s', 'c', 'h'],
+    ],
+    [
+      ['c', 's', 'h'],
+      ['s', 'c', 'h'],
+    ],
+  ])(
+    'three items, one hidden %j: the hidden item goes in front of the placed ones',
+    (order, expected) => {
+      const all: Record<string, SceneItemDto> = {
+        c: itemFixture('c', 'cam1'),
+        s: itemFixture('s', 'screen1'),
+        h: itemFixture('h', 'screen2', { hidden: true, x: 7, y: 8, w: 99, h: 98 }),
+      };
+      const placed = apply(
+        order.map((id) => all[id]),
+        'pip',
+      );
+      expect(ids(placed)).toEqual(expected);
+      expect(byId(placed, 'h')).toEqual(all['h']);
+      expect(rectOf(byId(placed, 's'))).toEqual(slotRect('pip', 0));
+      expect(rectOf(byId(placed, 'c'))).toEqual(slotRect('pip', 1));
+    },
+  );
+
+  it('more items than slots: the items without a slot go in front, in their previous order', () => {
+    const c1 = itemFixture('c1', 'cam1', { x: 5, y: 6, w: 70, h: 80 });
+    const c2 = itemFixture('c2', 'cam2', { x: 9, y: 10, w: 110, h: 120 });
+    const full = apply([c1, c2, itemFixture('s', 'screen1')], 'full');
+    expect(ids(full)).toEqual(['s', 'c1', 'c2']);
+    expect(byId(full, 'c1')).toEqual(c1);
+    expect(byId(full, 'c2')).toEqual(c2);
+
+    const pip = apply([c1, itemFixture('i', 'image'), c2, itemFixture('s', 'screen1')], 'pip');
+    expect(ids(pip)).toEqual(['s', 'i', 'c1', 'c2']);
+    expect(rectOf(byId(pip, 'i'))).toEqual(slotRect('pip', 1));
+    expect(byId(pip, 'c1')).toEqual(c1);
+    expect(byId(pip, 'c2')).toEqual(c2);
+  });
+
+  it('keeps the relative order of hidden items and items beyond the slot count together', () => {
+    const items = [
+      itemFixture('c1', 'cam1'),
+      itemFixture('h1', 'image', { hidden: true }),
+      itemFixture('c2', 'cam2'),
+      itemFixture('s', 'screen1'),
+      itemFixture('h2', 'screen2', { hidden: true }),
+      itemFixture('v', 'video'),
+    ];
+    expect(ids(apply(items, 'two'))).toEqual(['s', 'v', 'c1', 'h1', 'c2', 'h2']);
+  });
+
+  it('Auto-Grid keeps the item order (its slots never overlap)', () => {
+    const items = [itemFixture('c', 'cam1'), itemFixture('s', 'screen1')];
+    expect(ids(applyLayoutTemplate(items, 'auto', kindOf).items)).toEqual(['c', 's']);
+  });
+
+  const SLOT_TEMPLATES = LAYOUT_TEMPLATES.filter((template) => template.slots !== null).map(
+    (template) => [template.name, template.id] as const,
+  );
+
+  it.each(SLOT_TEMPLATES)(
+    '%s: slot i is layer i, later slots in front, items without a slot in front of all slots',
+    (_name, templateId) => {
+      const slotCount = layoutTemplate(templateId).slots?.length ?? 0;
+      // Worst case for the old behaviour: a hidden item at the very back, cameras and media behind a screen at the
+      // front, and one item more than there are slots.
+      const count = slotCount + 1;
+      const kindAt = (index: number): SourceKind =>
+        index === count - 1 ? 'screen' : (['camera', 'video', 'image'] as const)[index % 3];
+      const visible = Array.from({ length: count }, (_, index) =>
+        itemFixture(`v${index}`, `${kindAt(index)}:${index}`, { x: index, y: index }),
+      );
+      const items = [itemFixture('hid', 'screen:hidden', { hidden: true }), ...visible];
+      const kindOfMixed = (source: string): SourceKind | undefined =>
+        source.split(':')[0] as SourceKind;
+      const result = applyLayoutTemplate(items, templateId, kindOfMixed).items;
+
+      const rank: Readonly<Record<SourceKind, number>> = {
+        screen: 0,
+        image: 1,
+        video: 1,
+        camera: 2,
+      };
+      const expectedPlaced = visible
+        .map((item, index) => ({ id: item.id, rank: rank[kindAt(index)], index }))
+        .sort((a, b) => a.rank - b.rank || a.index - b.index)
+        .slice(0, slotCount)
+        .map(({ id }) => id);
+      const expectedRest = ids(items).filter((id) => !expectedPlaced.includes(id));
+      expect(ids(result)).toEqual([...expectedPlaced, ...expectedRest]);
+
+      for (let slot = 0; slot < slotCount; slot += 1) {
+        expect(rectOf(result[slot])).toEqual(slotRect(templateId, slot));
+      }
+      // Overlapping slots (Bild-in-Bild): the item of the later slot is painted on top.
+      for (let i = 0; i < slotCount; i += 1) {
+        for (let j = i + 1; j < slotCount; j += 1) {
+          if (rectIntersects(slotRect(templateId, i), slotRect(templateId, j))) {
+            const back = result.findIndex((item) => sameRect(item, slotRect(templateId, i)));
+            const front = result.findIndex((item) => sameRect(item, slotRect(templateId, j)));
+            expect(front).toBeGreaterThan(back);
+          }
+        }
+      }
+      // Items without a slot keep everything and lie in front of every placed item.
+      for (const item of result.slice(slotCount)) {
+        expect(item).toEqual(items.find((entry) => entry.id === item.id));
+      }
+    },
+  );
+
+  it('Bild-in-Bild is the only template with overlapping slots', () => {
+    const overlapping = LAYOUT_TEMPLATES.filter((template) => {
+      const slots = (template.slots ?? []).map(([x, y, w, h]) => ({ x, y, w, h }));
+      return slots.some((a, i) => slots.some((b, j) => j > i && rectIntersects(a, b)));
+    });
+    expect(overlapping.map((template) => template.id)).toEqual(['pip']);
+  });
+});
+
+function sameRect(
+  item: SceneItemDto,
+  rect: { x: number; y: number; w: number; h: number },
+): boolean {
+  return item.x === rect.x && item.y === rect.y && item.w === rect.w && item.h === rect.h;
+}

@@ -27,8 +27,9 @@ import { dragHasFiles } from './upload-validation';
 /**
  * The Quellen dock (prototype «Auswahl und Quellenliste»): the items of the edit scene front to back, each with the
  * eye toggle, kind icon, slot code, name, state with timer, lamp and lock toggle. Selecting a row selects the item
- * for the monitor and Eigenschaften (`EditorService.select`). The header holds undo and «+ Quelle» (add a source,
- * upload, manage media). Files dropped on the dock are uploaded.
+ * for the monitor and Eigenschaften (`EditorService.select`); selecting the selected row again clears the selection
+ * (toggle, `aria-pressed`). The header holds undo and «+ Quelle» (add a source, upload, manage media). Files dropped
+ * on the dock are uploaded.
  */
 @Component({
   selector: 'fs-sources-dock',
@@ -95,10 +96,11 @@ export class SourcesDockComponent {
     return toneClass(tone);
   }
 
+  /** Selects the row's item; a second click on the selected row clears the selection (back to the scene). */
   protected select(row: SourceRowView, event?: Event): void {
     event?.stopPropagation();
     if (!row.hidden) {
-      this.editor.select(row.itemId);
+      this.editor.select(row.selected ? null : row.itemId);
     }
   }
 
