@@ -69,6 +69,32 @@ internal sealed class HubOriginMiddleware(RequestDelegate next)
         && (host.Port is { } port ? uri.Port == port : uri.IsDefaultPort);
 }
 
+/// <summary>
+/// Hardening headers of every API response (INT-AUTH-21), also when Caddy is not in front (tests, local runs):
+/// <c>X-Content-Type-Options: nosniff</c> everywhere and <c>Cache-Control: no-store</c> for <c>/api</c> answers that do
+/// not set their own caching (state, credentials and tokens must never be cached).
+/// </summary>
+internal sealed class ResponseHardeningMiddleware(RequestDelegate next)
+{
+    private const string ApiPrefix = "/api";
+
+    public Task InvokeAsync(HttpContext context)
+    {
+        context.Response.OnStarting(() =>
+        {
+            var headers = context.Response.Headers;
+            headers.XContentTypeOptions = "nosniff";
+            if (context.Request.Path.StartsWithSegments(ApiPrefix, StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(headers.CacheControl))
+            {
+                headers.CacheControl = "no-store";
+            }
+
+            return Task.CompletedTask;
+        });
+        return next(context);
+    }
+}
+
 /// <summary>Client address helpers (after the forwarded headers of the trusted proxy were applied).</summary>
 internal static class ClientAddress
 {

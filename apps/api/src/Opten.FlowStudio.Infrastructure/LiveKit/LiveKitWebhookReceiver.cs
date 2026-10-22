@@ -16,8 +16,8 @@ namespace Opten.FlowStudio.Infrastructure.LiveKit;
 /// </summary>
 public sealed class LiveKitWebhookReceiver(IOptions<LiveKitOptions> options)
 {
-    /// <summary>Largest accepted webhook body.</summary>
-    public const int MaxBodyBytes = 64 * 1024;
+    /// <summary>Largest accepted webhook body (1 MiB, GAP-22); larger bodies are 413.</summary>
+    public const int MaxBodyBytes = 1024 * 1024;
 
     private static readonly JsonSerializerOptions BodyJson = new(JsonSerializerDefaults.Web)
     {
@@ -82,7 +82,7 @@ public sealed class LiveKitWebhookReceiver(IOptions<LiveKitOptions> options)
             "room_finished" => LiveKitEventKind.RoomFinished,
             _ => LiveKitEventKind.Other,
         };
-        return new LiveKitEvent(kind, room, parsed.Room.Sid, parsed.Participant?.Sid, parsed.Participant?.Identity, parsed.Track?.Name);
+        return new LiveKitEvent(kind, room, parsed.Room.Sid, parsed.Participant?.Sid, parsed.Participant?.Identity, parsed.Track?.Name, parsed.Track?.Sid);
     }
 
     private sealed record WebhookBody(string? Event, RoomInfo? Room, ParticipantInfo? Participant, TrackInfo? Track);

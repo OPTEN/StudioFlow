@@ -14,7 +14,11 @@ public sealed record SessionTakeover(string? ReplacedConnectionId, bool NotifyRe
 /// </summary>
 public sealed class DeviceRuntime(string deviceId)
 {
+    /// <summary>How many replaced tab sessions are remembered per device.</summary>
+    private const int ReplacedSessionMemory = 16;
+
     private readonly Dictionary<string, SlotState> slotStates = new(StringComparer.Ordinal);
+    private readonly Queue<string> replacedSessions = new();
 
     /// <summary>Device id.</summary>
     public string DeviceId { get; } = deviceId;
@@ -36,6 +40,9 @@ public sealed class DeviceRuntime(string deviceId)
 
     /// <summary>Last control connection or report.</summary>
     public DateTimeOffset? LastSeenAt { get; private set; }
+
+    /// <summary>Time of the last report of the active session, or of its start when it has not reported yet.</summary>
+    public DateTimeOffset? LastReportAt { get; private set; }
 
     /// <summary>Connection state last published in a <c>deviceUpserted</c> event.</summary>
     public DeviceConnection PublishedConnection { get; private set; } = DeviceConnection.Offline;
@@ -68,12 +75,42 @@ public sealed class DeviceRuntime(string deviceId)
         if (isNewConnection)
         {
             LastTally = null;
+            LastReportAt ??= now;
+        }
+
+        if (notify && SessionId is { } old)
+        {
+            RememberReplaced(old);
         }
 
         ConnectionId = connectionId;
         SessionId = sessionId;
         LastSeenAt = now;
         return new SessionTakeover(replaced, notify);
+    }
+
+    /// <summary>
+    /// True when <paramref name="sessionId"/> belongs to a tab that another tab took over (GAP-21): its later
+    /// <c>Hello</c> is refused, so a replaced tab cannot take the session back by reconnecting on its own.
+    /// </summary>
+    public bool WasReplaced(string sessionId) =>
+        !string.Equals(SessionId, sessionId, StringComparison.Ordinal) && replacedSessions.Contains(sessionId, StringComparer.Ordinal);
+
+    /// <summary>
+    /// True when the active session has not reported for <paramref name="staleAfter"/> (GAP-29) and is not marked
+    /// disconnected yet.
+    /// </summary>
+    public bool IsReportStale(DateTimeOffset now, TimeSpan staleAfter) =>
+        IsConnected && Rtc != RtcState.Disconnected && LastReportAt is { } last && now - last > staleAfter;
+
+    /// <summary>A silent device counts as <c>rtc: disconnected</c>; its telemetry shows that too, nothing is pushed.</summary>
+    public void MarkReportStale()
+    {
+        Rtc = RtcState.Disconnected;
+        if (Telemetry is { } telemetry)
+        {
+            Telemetry = telemetry with { Rtc = RtcState.Disconnected };
+        }
     }
 
     /// <summary>Ends the session when <paramref name="connectionId"/> is the active one; returns false otherwise.</summary>
@@ -88,16 +125,22 @@ public sealed class DeviceRuntime(string deviceId)
         SessionId = null;
         Rtc = null;
         LastTally = null;
+        LastReportAt = null;
         LastSeenAt = now;
         return true;
     }
 
-    /// <summary>Applies a report; returns the telemetry built from it and whether the technical check changed.</summary>
-    public (DeviceTelemetryDto Telemetry, bool TechCheckChanged) ApplyReport(DeviceReportDto report, DateTimeOffset now)
+    /// <summary>
+    /// Applies a report (GAP-29): only slots the device owns count (at most 10), out-of-range numbers become null.
+    /// Returns the telemetry built from it and whether the technical check changed.
+    /// </summary>
+    public (DeviceTelemetryDto Telemetry, bool TechCheckChanged) ApplyReport(DeviceReportDto report, IReadOnlyCollection<string> ownSlots, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(report);
+        ArgumentNullException.ThrowIfNull(ownSlots);
         Rtc = Enum.IsDefined(report.Rtc) ? report.Rtc : RtcState.Disconnected;
-        var slots = (report.Slots ?? []).Where(s => s is not null && DeviceSlots.IsValid(s.Slot) && Enum.IsDefined(s.State))
+        var slots = (report.Slots ?? []).Where(s => s is not null && ownSlots.Contains(s.Slot, StringComparer.Ordinal) && Enum.IsDefined(s.State))
+            .DistinctBy(s => s.Slot, StringComparer.Ordinal)
             .Take(DeviceSlots.MaxScreens + 1)
             .Select(Sanitize)
             .ToList();
@@ -115,6 +158,7 @@ public sealed class DeviceRuntime(string deviceId)
         }
 
         LastSeenAt = now;
+        LastReportAt = now;
         Telemetry = new DeviceTelemetryDto(
             now,
             Rtc.Value,
@@ -145,10 +189,25 @@ public sealed class DeviceRuntime(string deviceId)
         return true;
     }
 
+    private void RememberReplaced(string sessionId)
+    {
+        if (replacedSessions.Contains(sessionId, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        if (replacedSessions.Count == ReplacedSessionMemory)
+        {
+            replacedSessions.Dequeue();
+        }
+
+        replacedSessions.Enqueue(sessionId);
+    }
+
     private static SlotTelemetryDto Sanitize(SlotTelemetryDto slot) => slot with
     {
-        Width = slot.Width is > 0 and <= 16_384 ? slot.Width : null,
-        Height = slot.Height is > 0 and <= 16_384 ? slot.Height : null,
+        Width = slot.Width is >= 0 and <= 16_384 ? slot.Width : null,
+        Height = slot.Height is >= 0 and <= 16_384 ? slot.Height : null,
         Fps = slot.Fps is >= 0 and <= 1000 ? slot.Fps : null,
         BitrateKbps = slot.BitrateKbps is >= 0 and <= 1_000_000 ? slot.BitrateKbps : null,
         PacketLossPct = slot.PacketLossPct is >= 0 and <= 100 ? slot.PacketLossPct : null,

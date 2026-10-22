@@ -98,7 +98,7 @@ public sealed class AssetApiTests(FlowStudioApp app) : IClassFixture<FlowStudioA
         var admin = await app.AdminAsync();
         var asset = await UploadAsync(admin, MediaSamples.Png(1, 1), "x.png", "image/png").ExpectAsync<AssetDto>(HttpStatusCode.Created);
 
-        await app.Anonymous().GetAsync(asset.ContentUrl, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Forbidden);
+        Assert.Equal(ErrorCodes.Unauthorized, await app.Anonymous().GetAsync(asset.ContentUrl, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized));
         await app.Anonymous().GetAsync($"{asset.ContentUrl}?k=wrong", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Forbidden);
         await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/assets/ast_unknown0000/content", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound);
         await admin.Client.GetAsync("/api/productions/prd_unknown00000/assets/ast_unknown0000/content", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound);
@@ -202,7 +202,60 @@ public sealed class OutputApiTests(FlowStudioApp app) : IClassFixture<FlowStudio
         Assert.All(snapshot.Sources, s => Assert.Equal(SourceStatus.Ok, s.Status));
         Assert.Single(snapshot.Sources);
         Assert.Equal(wrongKey, unknownSlug);
-        await app.Anonymous().GetAsync($"/api/output/{slug}/snapshot", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.BadRequest);
+        Assert.Equal(wrongKey, await app.Anonymous().GetAsync($"/api/output/{slug}/snapshot", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Forbidden));
+    }
+
+    [Fact]
+    public async Task OutputRoutes_UnknownSlugWrongOrMissingKey_GiveTheSameForbiddenBody()
+    {
+        var (_, key, slug) = await ProductionAsync();
+        string[] paths = ["snapshot", "changes?since=1", "livekit-token", "report"];
+
+        foreach (var path in paths)
+        {
+            var post = path is "livekit-token" or "report";
+            var bodies = new List<string>();
+            foreach (var (client, route) in new[] { (OutputClient(key + "x"), slug), (OutputClient(key), "does-not-exist"), (app.Anonymous(), slug) })
+            {
+                using var response = post
+                    ? await client.PostJsonAsync($"/api/output/{route}/{path}", new OutputReport(true, 1, 1, null))
+                    : await client.GetAsync($"/api/output/{route}/{path}", TestContext.Current.CancellationToken);
+                await response.ExpectAsync(HttpStatusCode.Forbidden);
+                bodies.Add(WithoutTraceId(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)));
+            }
+
+            Assert.Single(bodies.Distinct(StringComparer.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task OutputChanges_Rest_ReturnsDeltaOrSnapshotWithoutPrivateData()
+    {
+        var (admin, key, slug) = await ProductionAsync();
+        var output = OutputClient(key);
+        var start = await output.GetAsync($"/api/output/{slug}/changes?since=0", TestContext.Current.CancellationToken).ExpectAsync<OutputChangesDto>();
+        await app.PairPhoneAsync(admin);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Umbenannt", null, null)).ExpectAsync(HttpStatusCode.OK);
+
+        var delta = await output.GetAsync($"/api/output/{slug}/changes?since={start.Revision}", TestContext.Current.CancellationToken).ExpectAsync<OutputChangesDto>();
+        await output.GetAsync($"/api/output/{slug}/changes?since=-1", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.BadRequest);
+        await output.GetAsync($"/api/output/{slug}/changes", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.BadRequest);
+
+        Assert.NotNull(start.Snapshot);
+        Assert.Null(start.Events);
+        Assert.Null(delta.Snapshot);
+        Assert.Contains(delta.Events!, e => e is ProductionChangedEvent { Production.Name: "Umbenannt" });
+        Assert.Contains(delta.Events!, e => e is SourceUpsertedEvent { Source.Status: SourceStatus.Ok, Source.StatusSince: null });
+        Assert.DoesNotContain(delta.Events!, e => e is DeviceUpsertedEvent or InviteUpsertedEvent or InviteRemovedEvent or LogAppendedEvent);
+        Assert.Contains(delta.Events!, e => e is RevisionOnlyEvent);
+        Assert.Equal(delta.Revision, delta.Events![^1].Revision);
+    }
+
+    private static string WithoutTraceId(string json)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+        node.Remove("traceId");
+        return node.ToJsonString();
     }
 
     [Fact]

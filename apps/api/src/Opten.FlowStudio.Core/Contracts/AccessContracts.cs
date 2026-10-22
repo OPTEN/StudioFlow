@@ -45,7 +45,10 @@ public static class ErrorCodes
     /// <summary>Invite or request is expired, used or revoked.</summary>
     public const string PairingExpired = "pairing_expired";
 
-    /// <summary>Too many attempts; retry later (login lockout, knock flood).</summary>
+    /// <summary>
+    /// Too many attempts; retry after <c>Retry-After</c> (429): login lockout, more than 10 knocks per address in 10
+    /// minutes, more than 20 knocks pending at once, more than 20 redeem attempts per address in 10 minutes.
+    /// </summary>
     public const string RateLimited = "rate_limited";
 
     /// <summary>The device is blocked.</summary>
@@ -54,7 +57,10 @@ public static class ErrorCodes
     /// <summary>The request conflicts with the current state (e.g. no preview for a take).</summary>
     public const string Conflict = "conflict";
 
-    /// <summary>A limit was reached (scenes, items, slots, pending requests).</summary>
+    /// <summary>
+    /// A size limit was reached (409): 99 scenes per production, 32 items per scene (add or replace), 9 screens or one
+    /// camera per device. Invalid values are <see cref="ValidationFailed"/> (400), floods <see cref="RateLimited"/> (429).
+    /// </summary>
     public const string LimitReached = "limit_reached";
 
     /// <summary>Not signed in, or the credentials are wrong or unknown (401).</summary>
@@ -68,4 +74,10 @@ public static class ErrorCodes
 
     /// <summary>Unexpected server error (500); details are logged on the server only.</summary>
     public const string InternalError = "internal_error";
+
+    /// <summary>
+    /// The database is not reachable (503, GAP-32); retry later. Hub connections stay open meanwhile, and the API recovers
+    /// by itself once the database is back.
+    /// </summary>
+    public const string ServiceUnavailable = "service_unavailable";
 }

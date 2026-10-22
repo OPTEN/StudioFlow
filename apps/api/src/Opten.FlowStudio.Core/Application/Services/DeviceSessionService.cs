@@ -1,4 +1,5 @@
 using Opten.FlowStudio.Core.Application.Ports;
+using Opten.FlowStudio.Core.Application.Runtime;
 using Opten.FlowStudio.Core.Contracts;
 using Opten.FlowStudio.Core.Domain;
 
@@ -14,7 +15,13 @@ public sealed record DeviceIdentity(string DeviceId, string ProductionId, bool B
 /// Use cases of the sender (spec 4.6): authentication, hub sessions with session replacement, reports, slots, LiveKit
 /// tokens and unpairing.
 /// </summary>
-public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUnitOfWorkFactory data, ILiveKitTokenIssuer tokens, LiveKitKicker kicker)
+public sealed class DeviceSessionService(
+    ProductionCoordinator coordinator,
+    IUnitOfWorkFactory data,
+    ProductionRuntimeRegistry runtimes,
+    ILiveKitTokenIssuer tokens,
+    LiveKitKicker kicker,
+    SourceMonitorOptions options)
 {
     private const int SessionIdMax = 128;
 
@@ -83,14 +90,16 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
 
     /// <summary>
     /// Starts a hub session. A newer Hello wins: another tab's connection gets <c>sessionReplaced</c> and is aborted; a
-    /// stale connection of the same tab is just aborted.
+    /// stale connection of the same tab is just aborted. A Hello of a tab that was replaced before is answered with
+    /// <c>sessionReplaced</c> and a <c>conflict</c> error and the current session stays (GAP-21, no ping-pong): a tab
+    /// that wants to take over again starts a new session id.
     /// </summary>
-    public Task<DeviceSessionDto> HelloAsync(DeviceIdentity identity, string connectionId, DeviceHelloDto hello, CancellationToken cancellationToken)
+    public async Task<DeviceSessionDto> HelloAsync(DeviceIdentity identity, string connectionId, DeviceHelloDto hello, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(hello);
         var sessionId = TextRules.Truncate(hello.SessionId, SessionIdMax) ?? throw FlowStudioException.Invalid("sessionId", "Sitzungs-ID fehlt.");
-        return coordinator.ExecuteAsync(
+        var session = await coordinator.ExecuteAsync(
             identity.ProductionId,
             async context =>
             {
@@ -100,8 +109,18 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
                     throw new FlowStudioException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
                 }
 
-                var onAir = await OnAirAsync(context, cancellationToken);
                 var live = context.Runtime.Device(device.Id);
+                if (live.WasReplaced(sessionId))
+                {
+                    context.Send(async p =>
+                    {
+                        await p.SendSessionReplacedAsync(connectionId);
+                        p.AbortAfterDelivery(connectionId);
+                    });
+                    return null;
+                }
+
+                var onAir = await OnAirAsync(context, cancellationToken);
                 var takeover = live.Attach(connectionId, sessionId, context.Now);
                 if (takeover.ReplacedConnectionId is { } replaced)
                 {
@@ -128,6 +147,7 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
                 return new DeviceSessionDto(Dtos.Self(device, await context.ProductionNameAsync(cancellationToken)), tally);
             },
             cancellationToken);
+        return session ?? throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Diese Sitzung wurde in einem anderen Tab übernommen.");
     }
 
     /// <summary>Ends a hub session when the connection was the active one.</summary>
@@ -144,6 +164,8 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
                     return;
                 }
 
+                // Detached first on purpose: even when the database is down (GAP-32) the closed connection is gone, and
+                // the next reconcile or report re-evaluates the sources.
                 var device = await context.Data.Devices.GetAsync(identity.DeviceId, cancellationToken);
                 if (device is not null)
                 {
@@ -182,7 +204,7 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
                 }
 
                 var live = context.Runtime.Device(device.Id);
-                var (telemetry, techCheckChanged) = live.ApplyReport(report, context.Now);
+                var (telemetry, techCheckChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
                 SourceMonitor.Reevaluate(context, device);
                 if (techCheckChanged)
                 {
@@ -194,6 +216,35 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
                 context.Send(p => p.PublishTelemetryAsync(productionId, message));
             },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Marks connected devices that stopped reporting as <c>rtc: disconnected</c> (GAP-29, 1 s maintenance tick); their
+    /// live sources then turn <c>reconnecting</c> like after a reported media loss.
+    /// </summary>
+    public async Task ExpireStaleReportsAsync(CancellationToken cancellationToken)
+    {
+        foreach (var runtime in runtimes.All)
+        {
+            // Device runtimes are only read inside the lock; a mutation without changes does not touch the database.
+            await coordinator.ExecuteAsync(
+                runtime.ProductionId,
+                async context =>
+                {
+                    foreach (var live in context.Runtime.Devices.Where(d => d.IsReportStale(context.Now, options.ReportStaleAfter)).ToList())
+                    {
+                        var device = await context.Data.Devices.GetAsync(live.DeviceId, cancellationToken);
+                        if (device is null || !string.Equals(device.ProductionId, context.ProductionId, StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        live.MarkReportStale();
+                        SourceMonitor.Reevaluate(context, device);
+                    }
+                },
+                cancellationToken);
+        }
     }
 
     /// <summary>Allocates another screen or the optional camera.</summary>
@@ -215,7 +266,10 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
             cancellationToken);
     }
 
-    /// <summary>Removes a slot and its source («Entfernen»); unknown slots are ignored.</summary>
+    /// <summary>
+    /// Removes a slot and its source («Entfernen»). An unknown slot is <c>not_found</c>; the camera of a phone cannot be
+    /// removed (<c>conflict</c>, GAP-19).
+    /// </summary>
     public Task ReleaseSlotAsync(DeviceIdentity identity, string slot, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
@@ -224,11 +278,7 @@ public sealed class DeviceSessionService(ProductionCoordinator coordinator, IUni
             async context =>
             {
                 var device = await context.DeviceAsync(identity.DeviceId, cancellationToken);
-                if (device.ReleaseSlot(slot) is not { } released)
-                {
-                    return;
-                }
-
+                var released = device.ReleaseSlot(slot) ?? throw FlowStudioException.NotFound("Der Slot");
                 var sourceId = device.SourceIdOf(released);
                 SourceMonitor.Forget(context, sourceId);
                 context.Emit(revision => new SourceRemovedEvent(revision, sourceId));

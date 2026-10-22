@@ -58,7 +58,13 @@ public static class TextRules
         return info.LengthInTextElements <= maxLength ? trimmed : info.SubstringByTextElements(0, maxLength).TrimEnd();
     }
 
-    /// <summary>Removes control characters and surrounding whitespace; returns null for empty input.</summary>
+    /// <summary>
+    /// True for the invisible bidirectional formatting characters (embeddings, overrides, isolates, marks). They can make
+    /// a name look different from what it is («‮gnp.exe» shows as «exe.png»), so names never keep them.
+    /// </summary>
+    public static bool IsBidiControl(char c) => c is (>= '‪' and <= '‮') or (>= '⁦' and <= '⁩') or '‎' or '‏' or '؜';
+
+    /// <summary>Removes control and bidi formatting characters and surrounding whitespace; returns null for empty input.</summary>
     private static string? Clean(string? value)
     {
         if (value is null)
@@ -69,7 +75,7 @@ public static class TextRules
         var builder = new StringBuilder(value.Length);
         foreach (var c in value)
         {
-            if (!char.IsControl(c))
+            if (!char.IsControl(c) && !IsBidiControl(c))
             {
                 builder.Append(c);
             }

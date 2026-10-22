@@ -5,8 +5,8 @@ using Opten.FlowStudio.Core.Domain;
 namespace Opten.FlowStudio.Infrastructure.Persistence;
 
 /// <summary>
-/// The FlowStudio database (PostgreSQL 17): productions with scenes (items as <c>jsonb</c>), devices, assets, invites and
-/// the audit log. Tables, columns, keys and indexes use snake_case names.
+/// The FlowStudio database (PostgreSQL 17): productions with scenes (items as <c>jsonb</c>), devices, assets, invites,
+/// the audit log and the last-live times of sources. Tables, columns, keys and indexes use snake_case names.
 /// </summary>
 public sealed class FlowStudioDbContext(DbContextOptions<FlowStudioDbContext> options) : DbContext(options)
 {
@@ -27,6 +27,9 @@ public sealed class FlowStudioDbContext(DbContextOptions<FlowStudioDbContext> op
 
     /// <summary>Audit log.</summary>
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    /// <summary>Last-live times of device sources.</summary>
+    internal DbSet<SourceActivity> SourceActivity => Set<SourceActivity>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

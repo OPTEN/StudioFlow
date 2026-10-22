@@ -1,7 +1,9 @@
 # FlowStudio API. Build context: apps/api (docker build apps/api).
 # Stage 1 restores and publishes with the SDK; stage 2 runs on the small Alpine ASP.NET runtime as a non-root user.
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Pinned to patch versions (SDK 10.0.402 ships runtime 10.0.13, the version of the referenced ASP.NET Core packages);
+# update both together.
+FROM mcr.microsoft.com/dotnet/sdk:10.0.402 AS build
 WORKDIR /src
 
 # Restore first (cached as long as project files and package versions do not change).
@@ -16,7 +18,7 @@ COPY src/ src/
 RUN dotnet publish src/Opten.FlowStudio.Web/Opten.FlowStudio.Web.csproj -c Release -o /app --no-restore \
     -p:UseAppHost=false -p:OpenApiGenerateDocuments=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-alpine3.24 AS runtime
 
 # Culture data for German (CH) texts (the project does not run in invariant globalization mode) and the Kerberos
 # library that Npgsql probes for GSS encryption.

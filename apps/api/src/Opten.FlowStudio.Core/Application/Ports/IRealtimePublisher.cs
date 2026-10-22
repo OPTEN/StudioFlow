@@ -3,8 +3,9 @@ using Opten.FlowStudio.Core.Contracts;
 namespace Opten.FlowStudio.Core.Application.Ports;
 
 /// <summary>
-/// Fan-out to the SignalR hubs (spec 6). The coordinator calls it inside the production lock, so events reach every
-/// client in revision order.
+/// Fan-out to the SignalR hubs (spec 6). Called only by the ordered dispatcher of a production (never inside the
+/// production lock), one call after the other, so events reach every client in revision order. Implementations must not
+/// let one slow client delay the messages of the others.
 /// </summary>
 public interface IRealtimePublisher
 {

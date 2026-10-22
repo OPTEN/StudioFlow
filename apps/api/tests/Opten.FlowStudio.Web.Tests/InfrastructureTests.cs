@@ -69,8 +69,26 @@ public sealed class MediaInspectorTests
         Assert.Null(Size([0xFF, 0xD8, 0x00, 0x00], MediaInspector.Jpeg));
     }
 
-    [Fact]
-    public void ReadImageSize_ZeroDimensions_IsNull() => Assert.Null(Size(MediaSamples.Png(0, 100), MediaInspector.Png));
+    [Theory]
+    [InlineData(0, 100, false)]
+    [InlineData(16_384, 16_384, true)]
+    [InlineData(16_385, 1, false)]
+    [InlineData(60_000, 60_000, false)]
+    public void IsAcceptedSize_PngDimensions_OnlyOneTo16384(int width, int height, bool accepted) =>
+        Assert.Equal(accepted, MediaInspector.IsAcceptedSize(Size(MediaSamples.Png(width, height), MediaInspector.Png)));
+
+    [Theory]
+    [InlineData("iso5", "mp41", true)]
+    [InlineData("dash", "iso6", false)]
+    [InlineData("mif1", "mp42", false)]
+    [InlineData("M4V ", "", true)]
+    public void Detect_Mp4CompatibleBrands_FollowTheAllowList(string major, string compatible, bool accepted)
+    {
+        var header = MediaSamples.Mp4(major);
+        System.Text.Encoding.ASCII.GetBytes(compatible).CopyTo(header, 16);
+
+        Assert.Equal(accepted, MediaInspector.Detect(header) is not null);
+    }
 
     private static (int, int)? Size(byte[] bytes, MediaType type)
     {
@@ -260,15 +278,15 @@ public sealed class LiveKitWebhookReceiverTests
 
 public sealed class LiveKitRoomClientTests
 {
-    private static (LiveKitRoomClient Client, StubHandler Handler) Create(HttpStatusCode status, string body)
+    private static (LiveKitRoomClient Client, StubHandler Handler) Create(HttpStatusCode status, string body, TimeSpan? delay = null, TimeSpan? timeout = null)
     {
-        var handler = new StubHandler(status, body);
+        var handler = new StubHandler(status, body, delay ?? TimeSpan.Zero);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://livekit:7880/") };
         var issuer = new LiveKitTokenIssuer(
             Options.Create(new LiveKitOptions { ApiKey = "key", ApiSecret = "sk-secret-with-more-than-thirty-two-chars" }),
             Options.Create(new FlowStudioOptions()),
             TimeProvider.System);
-        return (new LiveKitRoomClient(http, issuer), handler);
+        return (new LiveKitRoomClient(http, issuer, Options.Create(new LiveKitOptions { RequestTimeout = timeout ?? TimeSpan.FromSeconds(5) })), handler);
     }
 
     [Fact]
@@ -309,7 +327,19 @@ public sealed class LiveKitRoomClientTests
         var issuer = new LiveKitTokenIssuer(Options.Create(new LiveKitOptions { ApiKey = "k", ApiSecret = "sk-secret-with-more-than-thirty-two-chars" }), Options.Create(new FlowStudioOptions()), TimeProvider.System);
         using var http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:1/"), Timeout = TimeSpan.FromSeconds(2) };
 
-        await Assert.ThrowsAsync<LiveKitUnavailableException>(() => new LiveKitRoomClient(http, issuer).ListParticipantsAsync("prd_x", CancellationToken.None));
+        await Assert.ThrowsAsync<LiveKitUnavailableException>(() => new LiveKitRoomClient(http, issuer, Options.Create(new LiveKitOptions())).ListParticipantsAsync("prd_x", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RemoveParticipantAsync_LiveKitHangs_TimesOutAsUnavailable()
+    {
+        var (client, _) = Create(HttpStatusCode.OK, "{}", delay: TimeSpan.FromSeconds(30), timeout: TimeSpan.FromMilliseconds(200));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var error = await Assert.ThrowsAsync<LiveKitUnavailableException>(() => client.RemoveParticipantAsync("prd_x", "dev_a", CancellationToken.None));
+
+        Assert.Contains("timed out", error.Message, StringComparison.Ordinal);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
     }
 
     [Fact]
@@ -320,7 +350,7 @@ public sealed class LiveKitRoomClientTests
         await Assert.ThrowsAsync<LiveKitUnavailableException>(() => client.ListParticipantsAsync("prd_x", CancellationToken.None));
     }
 
-    private sealed class StubHandler(HttpStatusCode status, string body) : HttpMessageHandler
+    private sealed class StubHandler(HttpStatusCode status, string body, TimeSpan delay) : HttpMessageHandler
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
@@ -330,6 +360,7 @@ public sealed class LiveKitRoomClientTests
         {
             LastRequest = request;
             LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            await Task.Delay(delay, cancellationToken);
             return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         }
     }

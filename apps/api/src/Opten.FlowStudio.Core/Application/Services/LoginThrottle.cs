@@ -1,29 +1,36 @@
 namespace Opten.FlowStudio.Core.Application.Services;
 
 /// <summary>
-/// Login lockout (spec 5): 5 failed attempts per client IP within 15 minutes lock that IP for 15 minutes; 20 failures
-/// per user name within 15 minutes lock the user name. In memory, bounded in size.
+/// Login lockout (spec 5, GAP-03): by default 5 failed attempts per client IP within 15 minutes lock that IP for 15
+/// minutes; 20 failures per user name within 15 minutes lock the user name (all values from <c>Admin:Lockout</c>). In
+/// memory, bounded in size.
 /// </summary>
-public sealed class LoginThrottle(TimeProvider clock)
+public sealed class LoginThrottle(TimeProvider clock, LoginLockoutOptions options)
 {
-    /// <summary>Failures per IP before the lockout.</summary>
-    public const int MaxFailuresPerIp = 5;
-
-    /// <summary>Failures per user name before the lockout.</summary>
-    public const int MaxFailuresPerUser = 20;
-
-    /// <summary>Window in which failures count.</summary>
-    public static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
-
-    /// <summary>Duration of a lockout.</summary>
-    public static readonly TimeSpan Lockout = TimeSpan.FromMinutes(15);
-
     private const int MaxTrackedKeys = 10_000;
     private const int MaxUserKeyLength = 100;
 
     private readonly Lock gate = new();
     private readonly Dictionary<string, Counter> ips = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Counter> users = new(StringComparer.Ordinal);
+
+    /// <summary>Creates a throttle with the spec defaults.</summary>
+    public LoginThrottle(TimeProvider clock)
+        : this(clock, new LoginLockoutOptions())
+    {
+    }
+
+    /// <summary>Failures per IP before the lockout.</summary>
+    public int MaxFailuresPerIp => options.MaxFailuresPerIp;
+
+    /// <summary>Failures per user name before the lockout.</summary>
+    public int MaxFailuresPerUser => options.MaxFailuresPerUser;
+
+    /// <summary>Window in which failures count.</summary>
+    public TimeSpan Window => options.Window;
+
+    /// <summary>Duration of a lockout.</summary>
+    public TimeSpan Lockout => options.Duration;
 
     /// <summary>Remaining lockout for the IP or the user name, or null when a login may be tried.</summary>
     public TimeSpan? LockedFor(string ip, string? username)
@@ -69,7 +76,7 @@ public sealed class LoginThrottle(TimeProvider clock)
         }
     }
 
-    private static TimeSpan? Count(Dictionary<string, Counter> map, string key, int limit, DateTimeOffset now)
+    private TimeSpan? Count(Dictionary<string, Counter> map, string key, int limit, DateTimeOffset now)
     {
         if (!map.TryGetValue(key, out var counter))
         {
@@ -105,7 +112,7 @@ public sealed class LoginThrottle(TimeProvider clock)
     private static TimeSpan? Max(TimeSpan? left, TimeSpan? right) =>
         left is null ? right : right is null ? left : left > right ? left : right;
 
-    private static void PruneMap(Dictionary<string, Counter> map, DateTimeOffset now)
+    private void PruneMap(Dictionary<string, Counter> map, DateTimeOffset now)
     {
         foreach (var key in map.Where(e => Remaining(e.Value, now) is null && now - e.Value.LastFailure > Window).Select(e => e.Key).ToList())
         {

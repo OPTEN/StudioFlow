@@ -20,6 +20,15 @@ public sealed class LiveKitOptions
     /// </summary>
     public string PublicUrl { get; set; } = string.Empty;
 
-    /// <summary>Timeout of room service calls.</summary>
+    /// <summary>
+    /// <c>LiveKit:RequestTimeout</c>: timeout of one room service call (kick, list). LiveKit calls never run inside a
+    /// production lock, and a call that times out is logged and skipped (default 5 s).
+    /// </summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// <c>LiveKit:TokenTtl</c>: validity of participant tokens (spec 7, default 10 minutes). LiveKit refreshes the token of
+    /// a connected participant itself; clients fetch a fresh one for every rejoin.
+    /// </summary>
+    public TimeSpan TokenTtl { get; set; } = TimeSpan.FromMinutes(10);
 }

@@ -10,25 +10,34 @@ namespace Opten.FlowStudio.Core.Tests.Application;
 /// <summary>The application services wired with in-memory fakes and a manual clock.</summary>
 internal sealed class ServiceHarness : IDisposable
 {
-    public ServiceHarness()
+    public ServiceHarness(PairingOptions? pairing = null)
     {
+        PairingOptions = pairing ?? new PairingOptions();
         Production = Core.Domain.Production.Create("Webinar", "webinar", isActive: true, Clock.Now);
         Data.Productions.Add(Production);
+        Requests = new PairingRequestStore(PairingOptions);
         Runtimes = new ProductionRuntimeRegistry(Clock);
-        Coordinator = new ProductionCoordinator(Runtimes, Data, Publisher, Clock, NullLogger<ProductionCoordinator>.Instance);
+        Coordinator = new ProductionCoordinator(Runtimes, Data, new InlineDispatcher(Publisher), Clock);
         Snapshots = new SnapshotBuilder(Requests, Options);
         var kicker = new LiveKitKicker(Rooms, NullLogger<LiveKitKicker>.Instance);
-        Productions = new ProductionService(Coordinator, Data, Snapshots, new FakeTokens(), Publisher, Clock);
+        Productions = new ProductionService(Coordinator, Data, Snapshots, new FakeTokens(), Requests, Clock);
         Scenes = new SceneService(Coordinator);
         DeviceAdmin = new DeviceAdminService(Coordinator, kicker);
-        Devices = new DeviceSessionService(Coordinator, Data, new FakeTokens(), kicker);
-        Pairing = new PairingService(Coordinator, Data, Requests, Options, Clock);
+        Devices = new DeviceSessionService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, SourceOptions);
+        Pairing = new PairingService(Coordinator, Data, Requests, Options, PairingOptions, Clock);
         Outputs = new OutputService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, Options);
         LiveKit = new LiveKitSyncService(Coordinator, Data, Runtimes, Rooms, kicker, NullLogger<LiveKitSyncService>.Instance);
         Studio = new StudioSessionService(Coordinator, Snapshots);
+        RestartWatch = new SourceRestartWatch(Coordinator, Data, Runtimes, SourceOptions, Clock);
     }
 
     public ManualClock Clock { get; } = new();
+
+    public PairingOptions PairingOptions { get; }
+
+    public SourceMonitorOptions SourceOptions { get; } = new();
+
+    public SourceRestartWatch RestartWatch { get; }
 
     public InMemoryData Data { get; } = new();
 
@@ -36,7 +45,7 @@ internal sealed class ServiceHarness : IDisposable
 
     public FakeRoomClient Rooms { get; } = new();
 
-    public PairingRequestStore Requests { get; } = new();
+    public PairingRequestStore Requests { get; }
 
     public FlowStudioOptions Options { get; } = new() { PublicBaseUrl = "https://fs.example" };
 
@@ -73,6 +82,15 @@ internal sealed class ServiceHarness : IDisposable
         var invite = await Pairing.GetPhoneInviteAsync(Production.Id, CancellationToken.None);
         var token = invite.Url[(invite.Url.LastIndexOf('/') + 1)..];
         var credentials = await Pairing.RedeemAsync(token, new RedeemInviteRequest(Guid.NewGuid().ToString(), name, DeviceKind.Phone, "iPhone"), CancellationToken.None);
+        var device = Data.Devices.Single(d => d.Id == credentials.DeviceId);
+        return (device, new DeviceIdentity(device.Id, Production.Id, false));
+    }
+
+    public async Task<(Device Device, DeviceIdentity Identity)> PairLaptopAsync(string name = "Laptop Lea")
+    {
+        var invite = await Pairing.CreateInviteAsync(Production.Id, new CreateInviteRequest(InviteKind.LaptopLink), CancellationToken.None);
+        var token = invite.Url[(invite.Url.LastIndexOf('/') + 1)..];
+        var credentials = await Pairing.RedeemAsync(token, new RedeemInviteRequest(Guid.NewGuid().ToString(), name, DeviceKind.Laptop, "Windows"), CancellationToken.None);
         var device = Data.Devices.Single(d => d.Id == credentials.DeviceId);
         return (device, new DeviceIdentity(device.Id, Production.Id, false));
     }

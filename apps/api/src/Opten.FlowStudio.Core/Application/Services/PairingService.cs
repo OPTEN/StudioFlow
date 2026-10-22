@@ -14,6 +14,7 @@ public sealed class PairingService(
     IUnitOfWorkFactory data,
     PairingRequestStore requests,
     FlowStudioOptions options,
+    PairingOptions pairing,
     TimeProvider clock)
 {
     private const int ClientIdMax = 128;
@@ -25,7 +26,7 @@ public sealed class PairingService(
             async context =>
             {
                 var current = (await context.Data.Invites.ListOpenAsync(productionId, context.Now, cancellationToken))
-                    .Where(i => i.Kind == InviteKind.PhoneQr && !i.NeedsRenewal(context.Now))
+                    .Where(i => i.Kind == InviteKind.PhoneQr && !i.NeedsRenewal(context.Now, pairing.PhoneInviteRenewalLead))
                     .MaxBy(i => i.CreatedAt);
                 return current is null ? await RenewPhoneInviteAsync(context, cancellationToken) : Dtos.Invite(current, options.BaseUrl);
             },
@@ -72,13 +73,22 @@ public sealed class PairingService(
             },
             cancellationToken);
 
-    /// <summary>Approves a knock: creates the device; the poll returns its credentials for five minutes.</summary>
+    /// <summary>
+    /// Approves a knock: creates the device; the poll returns its credentials for <c>Pairing:CredentialsWindow</c>. A knock
+    /// that was already decided (the second of two approvals) is <c>not_found</c> and creates no second device, an
+    /// expired one is <c>pairing_expired</c> (GAP-09).
+    /// </summary>
     public Task<DeviceDto> ApproveAsync(string productionId, string requestId, CancellationToken cancellationToken) =>
         coordinator.ExecuteAsync(
             productionId,
             async context =>
             {
                 var request = FindRequest(productionId, requestId);
+                if (request.IsDecided)
+                {
+                    throw FlowStudioException.NotFound("Die Anfrage");
+                }
+
                 if (!request.IsPending(context.Now))
                 {
                     throw FlowStudioException.PairingExpired();
@@ -171,8 +181,10 @@ public sealed class PairingService(
     }
 
     /// <summary>
-    /// Redeems a QR code or invite link. Idempotent per client id for five minutes: the same client gets the same device
-    /// with a rotated secret. Unknown, expired, used or revoked tokens are <c>pairing_expired</c> (410).
+    /// Redeems a QR code or invite link. Idempotent per client id for <c>Pairing:RedeemIdempotencyWindow</c>: the same
+    /// client gets the same device with a rotated secret. Unknown, expired, used or revoked tokens are
+    /// <c>pairing_expired</c> (410). The invite decides the device kind: a QR code pairs a phone, a link a laptop; the
+    /// kind in the request is ignored (GAP-19).
     /// </summary>
     public async Task<DeviceCredentialsDto> RedeemAsync(string token, RedeemInviteRequest request, CancellationToken cancellationToken)
     {
@@ -189,7 +201,7 @@ public sealed class PairingService(
             async context =>
             {
                 var invite = await context.Data.Invites.GetByTokenAsync(token, cancellationToken) ?? throw FlowStudioException.PairingExpired();
-                if (invite.CanReplay(clientId, context.Now))
+                if (invite.CanReplay(clientId, context.Now, pairing.RedeemIdempotencyWindow))
                 {
                     var existing = await context.Data.Devices.GetAsync(invite.RedeemedDeviceId!, cancellationToken) ?? throw FlowStudioException.PairingExpired();
                     return new DeviceCredentialsDto(existing.Id, existing.RotateSecret(), productionId);
@@ -202,8 +214,9 @@ public sealed class PairingService(
 
                 var devices = await context.Data.Devices.ListAsync(productionId, cancellationToken);
                 var assets = await context.Data.Assets.ListAsync(productionId, cancellationToken);
-                var name = string.IsNullOrWhiteSpace(request.Name) ? Device.DefaultName(request.Kind, devices.Select(d => d.Name)) : request.Name;
-                var (device, secret) = Device.Pair(productionId, name, request.Kind, request.Platform, invite.PairingMethod, context.Now, new SourceCatalog(devices, assets).CodesInUse);
+                var kind = invite.DeviceKind;
+                var name = TextRules.Truncate(request.Name, TextRules.DeviceNameMax) ?? Device.DefaultName(kind, devices.Select(d => d.Name));
+                var (device, secret) = Device.Pair(productionId, name, kind, request.Platform, invite.PairingMethod, context.Now, new SourceCatalog(devices, assets).CodesInUse);
                 invite.Redeem(clientId, device.Id, context.Now);
                 context.Data.Devices.Add(device);
                 context.Emit(revision => new InviteRemovedEvent(revision, invite.Id));
@@ -247,7 +260,7 @@ public sealed class PairingService(
         IReadOnlyList<string> due;
         await using (var unit = data.Create())
         {
-            due = await unit.Invites.ListProductionsWithDueInvitesAsync(clock.GetUtcNow(), cancellationToken);
+            due = await unit.Invites.ListProductionsWithDueInvitesAsync(clock.GetUtcNow(), pairing.PhoneInviteRenewalLead, cancellationToken);
             await unit.Invites.DeleteExpiredAsync(clock.GetUtcNow() - TimeSpan.FromDays(1), cancellationToken);
         }
 
@@ -271,7 +284,8 @@ public sealed class PairingService(
             errors.Add("kind", "Unbekannte Geräteart.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Name))
+        // A name that is empty after cleaning falls back to the default name («Handy n», UNIT-PAIR-06).
+        if (TextRules.Truncate(request.Name, int.MaxValue) is not null)
         {
             TextRules.RequiredName(request.Name, TextRules.DeviceNameMax, "name", errors);
         }
@@ -307,7 +321,7 @@ public sealed class PairingService(
 
     private InviteDto CreateInvite(MutationContext context, InviteKind kind, string actor)
     {
-        var invite = Invite.Create(context.ProductionId, kind, context.Now);
+        var invite = Invite.Create(context.ProductionId, kind, context.Now, pairing.InviteTtl);
         context.Data.Invites.Add(invite);
         var dto = Dtos.Invite(invite, options.BaseUrl);
         context.Emit(revision => new InviteUpsertedEvent(revision, dto));
@@ -338,7 +352,7 @@ public sealed class PairingService(
                 context.Emit(revision => new InviteRemovedEvent(revision, invite.Id));
                 renewPhone |= invite.Kind == InviteKind.PhoneQr;
             }
-            else if (invite.NeedsRenewal(context.Now))
+            else if (invite.NeedsRenewal(context.Now, pairing.PhoneInviteRenewalLead))
             {
                 invite.Revoke(context.Now);
                 RemoveInvite(context, invite, AuditActors.System);
@@ -346,7 +360,7 @@ public sealed class PairingService(
             }
         }
 
-        if (renewPhone && !(await context.Data.Invites.ListOpenAsync(context.ProductionId, context.Now, cancellationToken)).Any(i => i.Kind == InviteKind.PhoneQr && !i.NeedsRenewal(context.Now)))
+        if (renewPhone && !(await context.Data.Invites.ListOpenAsync(context.ProductionId, context.Now, cancellationToken)).Any(i => i.Kind == InviteKind.PhoneQr && !i.NeedsRenewal(context.Now, pairing.PhoneInviteRenewalLead)))
         {
             CreateInvite(context, InviteKind.PhoneQr, AuditActors.System);
         }

@@ -69,7 +69,7 @@ public sealed class EventRingTests
 
 public sealed class OutputTrackerTests
 {
-    private readonly OutputTracker tracker = new();
+    private readonly OutputTracker tracker = new(new OutputMonitorOptions());
 
     [Fact]
     public void Current_NoPage_IsNone() => Assert.Equal(OutputState.None, tracker.Current(Build.T0).State);
@@ -216,6 +216,8 @@ public sealed class LiveKitRoomStateTests
 
 public sealed class DeviceRuntimeTests
 {
+    private static readonly string[] OwnSlots = ["camera", "screen-1"];
+
     private readonly DeviceRuntime device = new("dev_a");
 
     [Fact]
@@ -282,7 +284,7 @@ public sealed class DeviceRuntimeTests
             -10,
             null);
 
-        var (telemetry, techCheckChanged) = device.ApplyReport(report, Build.T0);
+        var (telemetry, techCheckChanged) = device.ApplyReport(report, OwnSlots, Build.T0);
 
         Assert.False(techCheckChanged);
         Assert.Equal(2, telemetry.Slots.Count);
@@ -305,13 +307,13 @@ public sealed class DeviceRuntimeTests
         var check = new TechCheckDto(TechCheckLevel.Ok, TechCheckLevel.Ok, TechCheckLevel.Ok, TechCheckLevel.Warn, 4000, 30, Build.T0, null);
         var report = new DeviceReportDto(RtcState.Connected, [], null, null, null, null, check);
 
-        Assert.True(device.ApplyReport(report, Build.T0).TechCheckChanged);
-        Assert.False(device.ApplyReport(report, Build.T0.AddSeconds(2)).TechCheckChanged);
+        Assert.True(device.ApplyReport(report, OwnSlots, Build.T0).TechCheckChanged);
+        Assert.False(device.ApplyReport(report, OwnSlots, Build.T0.AddSeconds(2)).TechCheckChanged);
     }
 
     [Fact]
     public void ApplyReport_NullSlots_AreTolerated() =>
-        Assert.Empty(device.ApplyReport(new DeviceReportDto((RtcState)99, null!, null, null, null, null, null), Build.T0).Telemetry.Slots);
+        Assert.Empty(device.ApplyReport(new DeviceReportDto((RtcState)99, null!, null, null, null, null, null), OwnSlots, Build.T0).Telemetry.Slots);
 }
 
 public sealed class OutputViewTests
@@ -409,7 +411,7 @@ public sealed class LoginThrottleTests
     public void RegisterFailure_TwentyFailuresForUserFromManyIps_LocksUser()
     {
         TimeSpan? lockout = null;
-        for (var i = 0; i < LoginThrottle.MaxFailuresPerUser; i++)
+        for (var i = 0; i < throttle.MaxFailuresPerUser; i++)
         {
             lockout = throttle.RegisterFailure($"10.0.0.{i}", " Admin ");
         }

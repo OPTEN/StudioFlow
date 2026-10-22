@@ -21,7 +21,7 @@ public sealed class ConcurrencyTests(FlowStudioApp app) : IClassFixture<FlowStud
         var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
 
         Assert.Single(statuses, s => s == HttpStatusCode.OK);
-        Assert.All(statuses.Where(s => s != HttpStatusCode.OK), s => Assert.Equal(HttpStatusCode.Gone, s));
+        Assert.All(statuses.Where(s => s != HttpStatusCode.OK), s => Assert.Equal(HttpStatusCode.NotFound, s));
         Assert.Single(snapshot.Devices, d => d.Name == "Parallel");
     }
 

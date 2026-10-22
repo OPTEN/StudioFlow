@@ -241,12 +241,16 @@ public sealed class SecurityTests(FlowStudioApp app) : IClassFixture<FlowStudioA
     }
 
     [Fact]
-    public async Task SystemInfo_Anonymous_ReturnsCanvasAndBaseUrl()
+    public async Task SystemInfo_Admin_ReturnsCanvasAndBaseUrlAndAnonymousIsUnauthorized()
     {
-        var info = await app.Anonymous().GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectAsync<SystemInfoDto>();
+        var admin = await app.AdminAsync();
+
+        var info = await admin.Client.GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectAsync<SystemInfoDto>();
+        var anonymous = await app.Anonymous().GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
 
         Assert.Equal((1920, 1080, FlowStudioApp.PublicBaseUrl), (info.CanvasWidth, info.CanvasHeight, info.PublicBaseUrl));
         Assert.False(string.IsNullOrWhiteSpace(info.Version));
+        Assert.Equal(ErrorCodes.Unauthorized, anonymous);
     }
 
     [Fact]

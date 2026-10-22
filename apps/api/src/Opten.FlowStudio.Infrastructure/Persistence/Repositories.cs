@@ -85,9 +85,9 @@ internal sealed class InviteRepository(FlowStudioDbContext db) : IInviteReposito
         await db.Invites.Where(i => i.ProductionId == productionId && i.RedeemedAt == null && i.RevokedAt == null)
             .OrderBy(i => i.CreatedAt).ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<string>> ListProductionsWithDueInvitesAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> ListProductionsWithDueInvitesAsync(DateTimeOffset now, TimeSpan renewBefore, CancellationToken cancellationToken)
     {
-        var renewalLimit = now + Invite.RenewBefore;
+        var renewalLimit = now + renewBefore;
         return await db.Invites
             .Where(i => i.RedeemedAt == null && i.RevokedAt == null && (i.ExpiresAt <= now || (i.Kind == InviteKind.PhoneQr && i.ExpiresAt < renewalLimit)))
             .Select(i => i.ProductionId).Distinct().ToListAsync(cancellationToken);
@@ -112,6 +112,38 @@ internal sealed class AuditRepository(FlowStudioDbContext db) : IAuditRepository
             .OrderByDescending(a => a.Id).Take(count).ToListAsync(cancellationToken);
 }
 
+/// <summary>EF Core implementation of <see cref="ISourceActivityRepository"/>.</summary>
+internal sealed class SourceActivityRepository(FlowStudioDbContext db) : ISourceActivityRepository
+{
+    public async Task MarkLiveAsync(string productionId, IReadOnlyCollection<SourceLiveMark> marks, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(marks);
+        var ids = marks.Select(m => m.SourceId).ToList();
+        var existing = await db.SourceActivity.Where(a => ids.Contains(a.SourceId)).ToDictionaryAsync(a => a.SourceId, StringComparer.Ordinal, cancellationToken);
+
+        // A mark must never fail the mutation it belongs to: marks of devices that are gone (or deleted in this unit) are dropped.
+        var deviceIds = marks.Select(m => m.DeviceId).Distinct(StringComparer.Ordinal).ToList();
+        var devices = (await db.Devices.Where(d => deviceIds.Contains(d.Id)).Select(d => d.Id).ToListAsync(cancellationToken)).ToHashSet(StringComparer.Ordinal);
+        devices.ExceptWith(db.ChangeTracker.Entries<Device>().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity.Id));
+        foreach (var mark in marks.Where(m => devices.Contains(m.DeviceId)))
+        {
+            if (existing.TryGetValue(mark.SourceId, out var row))
+            {
+                row.LastLiveAt = at;
+            }
+            else
+            {
+                db.SourceActivity.Add(new SourceActivity { SourceId = mark.SourceId, ProductionId = productionId, DeviceId = mark.DeviceId, LastLiveAt = at });
+            }
+        }
+    }
+
+    public async Task<IReadOnlyList<SourceLastLive>> ListLiveSinceAsync(DateTimeOffset since, CancellationToken cancellationToken) =>
+        await db.SourceActivity.AsNoTracking().Where(a => a.LastLiveAt >= since)
+            .Select(a => new SourceLastLive(a.SourceId, a.ProductionId, a.DeviceId, a.LastLiveAt))
+            .ToListAsync(cancellationToken);
+}
+
 /// <summary>A unit of work over one <see cref="FlowStudioDbContext"/>.</summary>
 internal sealed class UnitOfWork : IUnitOfWork
 {
@@ -125,7 +157,10 @@ internal sealed class UnitOfWork : IUnitOfWork
         Assets = new AssetRepository(db);
         Invites = new InviteRepository(db);
         Audit = new AuditRepository(db);
+        SourceActivity = new SourceActivityRepository(db);
     }
+
+    public ISourceActivityRepository SourceActivity { get; }
 
     public IProductionRepository Productions { get; }
 

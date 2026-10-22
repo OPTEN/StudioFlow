@@ -103,12 +103,18 @@ public sealed class Device
     }
 
     /// <summary>
-    /// Allocates another slot: the camera (once) or the next free screen (max 9). Throws <c>limit_reached</c> when no
-    /// slot of the kind is left.
+    /// Allocates another slot: the camera (once) or the next free screen (max 9, laptops only). Throws
+    /// <c>limit_reached</c> (409) when no slot of the kind is left and <c>validation_failed</c> (400) for a kind the
+    /// device cannot have (GAP-05, GAP-19).
     /// </summary>
     public DeviceSlot AllocateSlot(SourceKind kind, IEnumerable<string> codesInUse)
     {
         string slot;
+        if (kind == SourceKind.Screen && Kind == DeviceKind.Phone)
+        {
+            throw FlowStudioException.Invalid("kind", "Ein Handy kann keinen Bildschirm teilen.");
+        }
+
         if (kind == SourceKind.Camera)
         {
             if (FindSlot(DeviceSlots.Camera) is not null)
@@ -134,15 +140,24 @@ public sealed class Device
         return allocated;
     }
 
-    /// <summary>Removes a slot; returns the removed slot or null when the device has no such slot.</summary>
+    /// <summary>
+    /// Removes a slot; returns the removed slot or null when the device has no such slot. The camera of a phone is the
+    /// phone's only source and cannot be removed (<c>conflict</c>, GAP-19); the phone is removed as a whole instead.
+    /// </summary>
     public DeviceSlot? ReleaseSlot(string slot)
     {
         var existing = FindSlot(slot);
-        if (existing is not null)
+        if (existing is null)
         {
-            Slots = [.. Slots.Where(s => s != existing)];
+            return null;
         }
 
+        if (Kind == DeviceKind.Phone && existing.Kind == SourceKind.Camera)
+        {
+            throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Die Kamera eines Handys kann nicht entfernt werden.");
+        }
+
+        Slots = [.. Slots.Where(s => s != existing)];
         return existing;
     }
 

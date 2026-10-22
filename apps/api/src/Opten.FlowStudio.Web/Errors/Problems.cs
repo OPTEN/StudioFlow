@@ -24,6 +24,7 @@ internal static class Problems
         StatusCodes.Status410Gone => ErrorCodes.PairingExpired,
         StatusCodes.Status413PayloadTooLarge or StatusCodes.Status415UnsupportedMediaType => ErrorCodes.UnsupportedMedia,
         StatusCodes.Status429TooManyRequests => ErrorCodes.RateLimited,
+        StatusCodes.Status503ServiceUnavailable => ErrorCodes.ServiceUnavailable,
         _ => ErrorCodes.InternalError,
     };
 
@@ -40,6 +41,7 @@ internal static class Problems
         StatusCodes.Status413PayloadTooLarge => "Zu gross",
         StatusCodes.Status415UnsupportedMediaType => "Dateityp nicht erlaubt",
         StatusCodes.Status429TooManyRequests => "Zu viele Versuche",
+        StatusCodes.Status503ServiceUnavailable => "Vorübergehend nicht verfügbar",
         _ => "Serverfehler",
     };
 

@@ -1,18 +1,29 @@
-using System.Collections.Concurrent;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Opten.FlowStudio.Core.Application.Services;
 using Opten.FlowStudio.Core.Contracts;
 using Opten.FlowStudio.Core.Domain;
+using Opten.FlowStudio.Web.Errors;
 using Opten.FlowStudio.Web.Security;
 
 namespace Opten.FlowStudio.Web.Hubs;
 
-/// <summary>Regie hub (<c>/hubs/studio</c>, admin cookie).</summary>
+/// <summary>
+/// Regie hub (<c>/hubs/studio</c>, admin cookie). The connection belongs to the admin session that opened it: logout
+/// closes it, and so does the expiry of the session (GAP-04).
+/// </summary>
 [Authorize(Policy = Policies.Admin)]
-public sealed class StudioHub(StudioSessionService sessions) : Hub<IStudioClient>
+public sealed class StudioHub(StudioSessionService sessions, HubConnectionRegistry registry) : Hub<IStudioClient>
 {
+    /// <inheritdoc />
+    public override async Task OnConnectedAsync()
+    {
+        registry.Register(Context, Context.User?.FindFirstValue(FlowStudioClaims.SessionId));
+        registry.Join(HubConnectionRegistry.AllStudios, Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
+
     /// <summary>Subscribes to a production: missed events or a snapshot, then <c>event</c>, <c>telemetry</c>, <c>presence</c>.</summary>
     [HubMethodName(HubMethods.Subscribe)]
     public Task<ProductionChangesDto> SubscribeAsync(string productionId, long? sinceRevision) =>
@@ -21,6 +32,7 @@ public sealed class StudioHub(StudioSessionService sessions) : Hub<IStudioClient
     /// <inheritdoc />
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        registry.Unregister(Context.ConnectionId);
         await sessions.DisconnectedAsync(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
@@ -93,44 +105,10 @@ public sealed class DeviceHub(DeviceSessionService sessions, HubConnectionRegist
         Blocked: false);
 }
 
-/// <summary>Live hub connections by id, so the server can abort them (blocked device, replaced session, new key).</summary>
-public sealed class HubConnectionRegistry(TimeProvider clock)
-{
-    /// <summary>Time a final message gets before its connection is aborted.</summary>
-    public static readonly TimeSpan DeliveryGrace = TimeSpan.FromSeconds(1);
-
-    private readonly ConcurrentDictionary<string, HubCallerContext> connections = new(StringComparer.Ordinal);
-
-    /// <summary>Tracks a connection.</summary>
-    public void Register(HubCallerContext context)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        connections[context.ConnectionId] = context;
-    }
-
-    /// <summary>Forgets a closed connection.</summary>
-    public void Unregister(string connectionId) => connections.TryRemove(connectionId, out _);
-
-    /// <summary>Aborts a connection when it is still open.</summary>
-    public void Abort(string connectionId)
-    {
-        if (connections.TryRemove(connectionId, out var context))
-        {
-            context.Abort();
-        }
-    }
-
-    /// <summary>Aborts a connection after <paramref name="delay"/> unless it closed by itself before.</summary>
-    public void AbortLater(string connectionId, TimeSpan delay) => _ = AbortAfterAsync(connectionId, delay);
-
-    private async Task AbortAfterAsync(string connectionId, TimeSpan delay)
-    {
-        await Task.Delay(delay, clock);
-        Abort(connectionId);
-    }
-}
-
-/// <summary>Turns use case errors into <see cref="HubException"/> messages <c>{code}: {message}</c> for the clients.</summary>
+/// <summary>
+/// Turns use case errors into <see cref="HubException"/> messages <c>{code}: {message}</c> for the clients. A database
+/// outage is <c>service_unavailable</c>: the connection stays open and the client retries later (GAP-32).
+/// </summary>
 internal sealed class HubErrorFilter(ILogger<HubErrorFilter> logger) : IHubFilter
 {
     public async ValueTask<object?> InvokeMethodAsync(HubInvocationContext invocationContext, Func<HubInvocationContext, ValueTask<object?>> next)
@@ -142,6 +120,11 @@ internal sealed class HubErrorFilter(ILogger<HubErrorFilter> logger) : IHubFilte
         catch (FlowStudioException exception)
         {
             throw new HubException($"{exception.Code}: {exception.Message}");
+        }
+        catch (Exception exception) when (DatabaseOutage.IsOutage(exception))
+        {
+            logger.LogWarning("Hub method {Method} failed: the database is not reachable", invocationContext.HubMethodName);
+            throw new HubException($"{ErrorCodes.ServiceUnavailable}: {DatabaseOutage.Message}");
         }
         catch (Exception exception) when (exception is not HubException and not OperationCanceledException)
         {

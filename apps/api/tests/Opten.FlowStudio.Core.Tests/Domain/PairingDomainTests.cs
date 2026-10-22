@@ -123,7 +123,7 @@ public sealed class InviteTests
     [Fact]
     public void Create_Always_ValidForThirtyMinutes()
     {
-        var invite = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0);
+        var invite = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0, TimeSpan.FromMinutes(30));
 
         Assert.True(invite.IsOpen(Build.T0.AddMinutes(29)));
         Assert.False(invite.IsOpen(Build.T0.AddMinutes(30)));
@@ -133,8 +133,8 @@ public sealed class InviteTests
     [Fact]
     public void UrlFor_Kind_UsesJoinPathOrShortLink()
     {
-        var phone = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0);
-        var link = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0);
+        var phone = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0, TimeSpan.FromMinutes(30));
+        var link = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
 
         Assert.Equal($"https://fs.example/join/i/{phone.Token}", phone.UrlFor("https://fs.example/"));
         Assert.Equal($"https://fs.example/j/{link.Token}", link.UrlFor("https://fs.example"));
@@ -144,7 +144,7 @@ public sealed class InviteTests
     [Fact]
     public void Redeem_Twice_SecondIsExpired()
     {
-        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0);
+        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
         invite.Redeem("client-1", "dev_aaaa", Build.T0);
 
         Assert.Equal(ErrorCodes.PairingExpired, Assert.Throws<FlowStudioException>(() => invite.Redeem("client-2", "dev_bbbb", Build.T0)).Code);
@@ -153,18 +153,18 @@ public sealed class InviteTests
     [Fact]
     public void CanReplay_SameClientWithinFiveMinutes_IsTrue()
     {
-        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0);
+        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
         invite.Redeem("client-1", "dev_aaaa", Build.T0);
 
-        Assert.True(invite.CanReplay("client-1", Build.T0.AddMinutes(5)));
-        Assert.False(invite.CanReplay("client-1", Build.T0.AddMinutes(5).AddSeconds(1)));
-        Assert.False(invite.CanReplay("client-2", Build.T0));
+        Assert.True(invite.CanReplay("client-1", Build.T0.AddMinutes(5), TimeSpan.FromMinutes(5)));
+        Assert.False(invite.CanReplay("client-1", Build.T0.AddMinutes(5).AddSeconds(1), TimeSpan.FromMinutes(5)));
+        Assert.False(invite.CanReplay("client-2", Build.T0, TimeSpan.FromMinutes(5)));
     }
 
     [Fact]
     public void Revoke_Open_ClosesAndSecondRevokeIsNoOp()
     {
-        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0);
+        var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
 
         Assert.True(invite.Revoke(Build.T0));
         Assert.False(invite.IsOpen(Build.T0));
@@ -175,12 +175,12 @@ public sealed class InviteTests
     [Fact]
     public void NeedsRenewal_OnlyPhoneInvitesNearExpiry()
     {
-        var phone = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0);
-        var link = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0);
+        var phone = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0, TimeSpan.FromMinutes(30));
+        var link = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
 
-        Assert.False(phone.NeedsRenewal(Build.T0.AddMinutes(27)));
-        Assert.True(phone.NeedsRenewal(Build.T0.AddMinutes(28).AddSeconds(1)));
-        Assert.False(link.NeedsRenewal(Build.T0.AddMinutes(29)));
+        Assert.False(phone.NeedsRenewal(Build.T0.AddMinutes(27), TimeSpan.FromMinutes(2)));
+        Assert.True(phone.NeedsRenewal(Build.T0.AddMinutes(28).AddSeconds(1), TimeSpan.FromMinutes(2)));
+        Assert.False(link.NeedsRenewal(Build.T0.AddMinutes(29), TimeSpan.FromMinutes(2)));
     }
 }
 
@@ -249,7 +249,7 @@ public sealed class PairingRequestStoreTests
     {
         var store = new PairingRequestStore();
         var codes = new HashSet<string>(StringComparer.Ordinal);
-        for (var i = 0; i < PairingRequestStore.MaxPending; i++)
+        for (var i = 0; i < store.MaxPending; i++)
         {
             Assert.True(codes.Add(store.Create("prd_x", Knock, Build.T0).Request.CheckCode));
         }
@@ -264,7 +264,7 @@ public sealed class PairingRequestStoreTests
     public void Create_AfterExpiry_FreesCapacity()
     {
         var store = new PairingRequestStore();
-        for (var i = 0; i < PairingRequestStore.MaxPending; i++)
+        for (var i = 0; i < store.MaxPending; i++)
         {
             store.Create("prd_x", Knock, Build.T0);
         }
@@ -315,7 +315,7 @@ public sealed class PairingRequestStoreTests
         })));
 
         var created = results.Where(c => c is not null).ToList();
-        Assert.Equal(PairingRequestStore.MaxPending, created.Count);
+        Assert.Equal(store.MaxPending, created.Count);
         Assert.Equal(created.Count, created.Distinct(StringComparer.Ordinal).Count());
     }
 }

@@ -23,11 +23,62 @@ public static class SourceMonitor
         {
             var health = HealthOf(runtime, device, slot);
             var signals = new SlotSignals(device.IsBlocked, live.IsConnected, runtime.Room.IsPublished(device.Id, slot.Slot), live.SlotStateOf(slot.Slot), live.Rtc);
+            var wasOk = health.Status == SourceStatus.Ok;
             var change = health.Apply(SourceStatusRules.Evaluate(signals, health.WasLive), context.Now);
+            if (change.StatusChanged && (wasOk || health.Status == SourceStatus.Ok))
+            {
+                // Going live and stopping being live both record the last-live time for the restart watch.
+                context.MarkLive(health.SourceId, device.Id);
+            }
+
             Publish(context, device, slot, health, change);
         }
 
         PublishConnection(context, device, live);
+    }
+
+    /// <summary>
+    /// The restart watch of spec 12 / GAP-08: flags a source of <paramref name="device"/> that was live shortly before
+    /// the API started but whose device has not come back. Returns true when the source changed.
+    /// </summary>
+    public static bool MarkMissingAfterRestart(MutationContext context, Device device, DeviceSlot slot, DateTimeOffset outageSince)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(slot);
+        var runtime = context.Runtime;
+        if (device.IsBlocked || runtime.FindDevice(device.Id)?.IsConnected == true)
+        {
+            return false;
+        }
+
+        var health = HealthOf(runtime, device, slot);
+        var change = health.MarkMissingAfterRestart(context.Now, outageSince);
+        if (!change.StatusChanged)
+        {
+            return false;
+        }
+
+        Publish(context, device, slot, health, change);
+        PublishConnection(context, device, runtime.Device(device.Id));
+        return true;
+    }
+
+    /// <summary>Records the last-live time of every live device source of the production (periodic, GAP-08).</summary>
+    public static int MarkLiveSources(MutationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var count = 0;
+        foreach (var health in context.Runtime.Sources.Values.Where(h => h.Status == SourceStatus.Ok))
+        {
+            if (SourceRef.TryParse(health.SourceId, out var source) && source.IsDevice)
+            {
+                context.MarkLive(health.SourceId, source.DeviceId);
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>Starts the health of a new slot with its evaluated status and emits the new source.</summary>
@@ -45,7 +96,7 @@ public static class SourceMonitor
         context.Emit(revision => new SourceUpsertedEvent(revision, dto));
     }
 
-    /// <summary>Emits <c>sourceUpserted</c> for every slot (labels changed after a rename).</summary>
+    /// <summary>Emits <c>sourceUpserted</c> for every slot (labels changed after a rename; the output sees these).</summary>
     public static void PublishSources(MutationContext context, Device device)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -79,20 +130,21 @@ public static class SourceMonitor
     }
 
     /// <summary>
-    /// Device connection state (spec 4.6): online with a hub session (reconnecting while the media session reconnects);
-    /// without a session reconnecting when a source that was live is expected back, offline otherwise.
+    /// Device connection state (spec 4.6): online with a hub session (reconnecting while the media session reconnects, or
+    /// is reported disconnected while a source that was live is expected back); without a session reconnecting when a
+    /// source that was live is expected back, offline otherwise.
     /// </summary>
     public static DeviceConnection ConnectionOf(ProductionRuntime runtime, Device device, DeviceRuntime live)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(live);
+        var expectedBack = !device.IsBlocked && device.Slots.Any(s => runtime.Sources.TryGetValue(device.SourceIdOf(s), out var h) && h.Status == SourceStatus.Reconnecting);
         if (live.IsConnected)
         {
-            return live.Rtc == RtcState.Reconnecting ? DeviceConnection.Reconnecting : DeviceConnection.Online;
+            return live.Rtc == RtcState.Reconnecting || (live.Rtc == RtcState.Disconnected && expectedBack) ? DeviceConnection.Reconnecting : DeviceConnection.Online;
         }
 
-        var expectedBack = !device.IsBlocked && device.Slots.Any(s => runtime.Sources.TryGetValue(device.SourceIdOf(s), out var h) && h.Status == SourceStatus.Reconnecting);
         return expectedBack ? DeviceConnection.Reconnecting : DeviceConnection.Offline;
     }
 
@@ -112,8 +164,9 @@ public static class SourceMonitor
     {
         if (change.StatusChanged)
         {
+            // Health only: the output page sees revisionOnly (GAP-07).
             var dto = SourceOf(context.Runtime, device, slot);
-            context.Emit(revision => new SourceUpsertedEvent(revision, dto));
+            context.EmitHiddenFromOutput(revision => new SourceUpsertedEvent(revision, dto));
         }
 
         if (change.RemovedIncident is { } removed)

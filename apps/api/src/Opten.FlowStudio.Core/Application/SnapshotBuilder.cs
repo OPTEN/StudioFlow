@@ -51,10 +51,15 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, FlowStu
             [.. assets.Select(Dtos.Asset)]);
     }
 
-    /// <summary>Answers a (re)subscribe: the missed events when the ring still has them, else a snapshot.</summary>
+    /// <summary>
+    /// Answers a (re)subscribe (GAP-20): the missed events when the ring still has all of them (also an empty list when
+    /// the client is current), else a snapshot (unknown, too old or future revision, or none given). A negative
+    /// revision is <c>validation_failed</c>.
+    /// </summary>
     public async Task<ProductionChangesDto> ChangesAsync(MutationContext context, long? sinceRevision, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
+        EnsureValid(sinceRevision);
         if (sinceRevision is { } since && context.Runtime.Events.TryGetSince(since, context.Runtime.Revision, out var missed))
         {
             return new ProductionChangesDto(context.Runtime.Revision, missed, null);
@@ -64,17 +69,26 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, FlowStu
         return new ProductionChangesDto(snapshot.Revision, null, snapshot);
     }
 
-    /// <summary>The output variant of <see cref="ChangesAsync"/>.</summary>
+    /// <summary>The output variant of <see cref="ChangesAsync"/>: private and health-only changes are <c>revisionOnly</c>.</summary>
     public static async Task<OutputChangesDto> OutputChangesAsync(MutationContext context, long? sinceRevision, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (sinceRevision is { } since && context.Runtime.Events.TryGetSince(since, context.Runtime.Revision, out var missed))
+        EnsureValid(sinceRevision);
+        if (sinceRevision is { } since && context.Runtime.Events.TryGetOutputSince(since, context.Runtime.Revision, out var missed))
         {
-            return new OutputChangesDto(context.Runtime.Revision, [.. missed.Select(OutputView.ForOutput)], null);
+            return new OutputChangesDto(context.Runtime.Revision, missed, null);
         }
 
         var snapshot = await BuildOutputAsync(context, cancellationToken);
         return new OutputChangesDto(snapshot.Revision, null, snapshot);
+    }
+
+    private static void EnsureValid(long? sinceRevision)
+    {
+        if (sinceRevision < 0)
+        {
+            throw FlowStudioException.Invalid("since", "Die Revision muss 0 oder grösser sein.");
+        }
     }
 
     private static async Task<(Production Production, IReadOnlyList<Device> Devices, IReadOnlyList<Asset> Assets)> LoadAsync(MutationContext context, CancellationToken cancellationToken)

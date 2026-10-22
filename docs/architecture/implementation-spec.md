@@ -268,8 +268,9 @@ Validation: built-in .NET 10 minimal API validation where it fits, plus domain v
 test ≤ 4 MB).
 
 Concurrency: one API instance. All mutations of a production run through `ProductionCoordinator`, which serializes
-them per production (SemaphoreSlim), loads/saves through EF Core, increments the in-memory revision and publishes
-events **inside the lock** (ordered delivery). The revision counter starts at `unixTimeMs * 1000` on process start, so
+them per production (SemaphoreSlim), loads/saves through EF Core and assigns revisions and ring-buffer entries inside the
+lock; delivery happens outside it through one ordered dispatcher per production with a per-connection outbox, so a
+slow or dead client never delays a mutation (`Realtime:DeliveryWait`, `Realtime:ConnectionQueueLimit`). The revision counter starts at `unixTimeMs * 1000` on process start, so
 it is monotonic across restarts; clients resubscribe after any reconnect anyway.
 
 Persistence: PostgreSQL 17, EF Core 10 + Npgsql, snake_case tables, migrations applied on startup
@@ -279,7 +280,7 @@ Health: `/health/live` (process), `/health/ready` (database reachable).
 ## 6. Realtime protocol (SignalR, JSON protocol, camelCase, enums as camelCase strings)
 
 Hubs: `/hubs/studio` (Admin), `/hubs/device` (Device), `/hubs/output` (Output). Server keep-alive 2 s, client timeout
-6 s; clients set `serverTimeoutInMilliseconds = 6000`, `keepAliveIntervalInMilliseconds = 2000` and reconnect
+5 s (section 12); clients set `serverTimeoutInMilliseconds = 5000`, `keepAliveIntervalInMilliseconds = 2000` and reconnect
 forever (0, 300, 600, 1200 … max 5000 ms + jitter); `online` and `visibilitychange` trigger an immediate attempt.
 
 Verified details (research 2026-10-22):

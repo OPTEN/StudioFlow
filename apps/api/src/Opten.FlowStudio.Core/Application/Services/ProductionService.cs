@@ -11,7 +11,7 @@ public sealed class ProductionService(
     IUnitOfWorkFactory data,
     SnapshotBuilder snapshots,
     ILiveKitTokenIssuer tokens,
-    IRealtimePublisher realtime,
+    PairingRequestStore requests,
     TimeProvider clock) : IDisposable
 {
     /// <summary>LiveKit identity prefix of Regie sessions.</summary>
@@ -108,7 +108,10 @@ public sealed class ProductionService(
             cancellationToken);
     }
 
-    /// <summary>Makes the production the active one; every Regie gets <c>resync</c>.</summary>
+    /// <summary>
+    /// Makes the production the active one; every Regie gets <c>resync</c>. Knocks still pending for the previously
+    /// active production are dropped with outcome <c>expired</c> (GAP-36: /join always pairs into the active one).
+    /// </summary>
     public async Task<ProductionDto> ActivateAsync(string productionId, CancellationToken cancellationToken)
     {
         await tenantGate.WaitAsync(cancellationToken);
@@ -133,10 +136,11 @@ public sealed class ProductionService(
             if (previous is not null)
             {
                 await SetActiveAsync(previous, active: false);
+                await DropPendingKnocksAsync(previous);
             }
 
             var activated = await SetActiveAsync(productionId, active: true);
-            await realtime.RequestStudioResyncAsync(productionId);
+            coordinator.Send(productionId, p => p.RequestStudioResyncAsync(productionId));
             return activated;
         }
         finally
@@ -178,7 +182,10 @@ public sealed class ProductionService(
         return SwitchAsync(productionId, (p, now) => p.Take(request.Transition, now), cancellationToken);
     }
 
-    /// <summary>Acknowledges an incident («Gesehen»); shared by every Regie session.</summary>
+    /// <summary>
+    /// Acknowledges a recovered incident («Gesehen»); shared by every Regie session. An open incident is
+    /// <c>conflict</c>, an unknown or already acknowledged one <c>not_found</c> (UNIT-SRC-02).
+    /// </summary>
     public Task AcknowledgeIncidentAsync(string productionId, string incidentId, CancellationToken cancellationToken) =>
         coordinator.ExecuteAsync(
             productionId,
@@ -220,6 +227,20 @@ public sealed class ProductionService(
         var dto = Dtos.Production(production);
         context.Emit(revision => new ProductionChangedEvent(revision, dto));
     }
+
+    private Task DropPendingKnocksAsync(string productionId) =>
+        coordinator.ExecuteAsync(
+            productionId,
+            context =>
+            {
+                foreach (var request in requests.RemovePending(productionId, context.Now))
+                {
+                    context.Emit(revision => new PairingRequestRemovedEvent(revision, request.Id, PairingRequestStatus.Expired));
+                }
+
+                return Task.CompletedTask;
+            },
+            CancellationToken.None);
 
     private Task<ProductionDto> SetActiveAsync(string productionId, bool active) =>
         coordinator.ExecuteAsync(

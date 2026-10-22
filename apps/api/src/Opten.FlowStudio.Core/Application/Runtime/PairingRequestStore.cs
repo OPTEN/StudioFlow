@@ -4,21 +4,28 @@ using Opten.FlowStudio.Core.Domain;
 namespace Opten.FlowStudio.Core.Application.Runtime;
 
 /// <summary>
-/// Pending and recently decided /join requests (spec 4.6), in memory only. At most 20 requests may be pending in total;
-/// check codes are unique among pending requests.
+/// Pending and recently decided /join requests (spec 4.6), in memory only. At most <c>Pairing:Limits:PendingTotal</c>
+/// requests (default 20) may be pending in total; check codes are unique among pending requests.
 /// </summary>
-public sealed class PairingRequestStore
+public sealed class PairingRequestStore(PairingOptions options)
 {
-    /// <summary>Maximum number of pending requests over all productions.</summary>
-    public const int MaxPending = 20;
-
     /// <summary>Retry hint when the pending limit is reached.</summary>
     public static readonly TimeSpan FullRetryAfter = TimeSpan.FromMinutes(1);
 
     private readonly Lock gate = new();
     private readonly Dictionary<string, PairingRequest> requests = new(StringComparer.Ordinal);
+    private readonly PairingRequestLifetimes lifetimes = new(options.RequestTtl, options.CredentialsWindow);
 
-    /// <summary>Creates a request with a unique check code; throws <c>rate_limited</c> when 20 requests are pending.</summary>
+    /// <summary>Creates a store with the spec defaults.</summary>
+    public PairingRequestStore()
+        : this(new PairingOptions())
+    {
+    }
+
+    /// <summary>Maximum number of pending requests over all productions.</summary>
+    public int MaxPending { get; } = options.Limits.PendingTotal;
+
+    /// <summary>Creates a request with a unique check code; throws <c>rate_limited</c> when the pending limit is reached.</summary>
     public (PairingRequest Request, string PollToken) Create(string productionId, CreatePairingRequest input, DateTimeOffset now)
     {
         lock (gate)
@@ -26,11 +33,11 @@ public sealed class PairingRequestStore
             var pending = requests.Values.Where(r => r.IsPending(now)).ToList();
             if (pending.Count >= MaxPending)
             {
-                throw FlowStudioException.RateLimited(FullRetryAfter);
+                throw FlowStudioException.RateLimited(FullRetryAfter < lifetimes.Pending ? FullRetryAfter : lifetimes.Pending);
             }
 
             var code = PairingRequest.NewCheckCode(pending.Select(r => r.CheckCode).ToHashSet(StringComparer.Ordinal));
-            var created = PairingRequest.Create(productionId, input, code, now);
+            var created = PairingRequest.Create(productionId, input, code, now, lifetimes);
             requests[created.Request.Id] = created.Request;
             return created;
         }
@@ -64,8 +71,26 @@ public sealed class PairingRequestStore
     }
 
     /// <summary>
-    /// Forgets every request that is expired or was decided more than five minutes ago. Returns the requests that expired
-    /// while pending (the Regie still shows their knock card).
+    /// Forgets the pending requests of a production that is no longer the active one (GAP-36); their pollers then see
+    /// <c>expired</c>. Returns the removed requests.
+    /// </summary>
+    public IReadOnlyList<PairingRequest> RemovePending(string productionId, DateTimeOffset now)
+    {
+        lock (gate)
+        {
+            var pending = requests.Values.Where(r => r.IsPending(now) && string.Equals(r.ProductionId, productionId, StringComparison.Ordinal)).ToList();
+            foreach (var request in pending)
+            {
+                requests.Remove(request.Id);
+            }
+
+            return pending;
+        }
+    }
+
+    /// <summary>
+    /// Forgets every request that is expired or was decided longer ago than the credentials window. Returns the requests
+    /// that expired while pending (the Regie still shows their knock card).
     /// </summary>
     public IReadOnlyList<PairingRequest> RemoveExpired(DateTimeOffset now)
     {

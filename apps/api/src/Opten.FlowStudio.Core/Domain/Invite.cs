@@ -3,20 +3,12 @@ using Opten.FlowStudio.Core.Contracts;
 namespace Opten.FlowStudio.Core.Domain;
 
 /// <summary>
-/// A one-time invite (spec 4.6): the phone QR code or a laptop invite link. Valid once for 30 minutes and revocable.
-/// Redeeming is idempotent per client id for five minutes, so a lost response does not burn the invite.
+/// A one-time invite (spec 4.6): the phone QR code or a laptop invite link. Valid once (30 minutes by default,
+/// <c>Pairing:InviteTtl</c>) and revocable. Redeeming is idempotent per client id for a short window
+/// (<c>Pairing:RedeemIdempotencyWindow</c>), so a lost response does not burn the invite.
 /// </summary>
 public sealed class Invite
 {
-    /// <summary>Validity of a new invite.</summary>
-    public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
-
-    /// <summary>Window in which the same client may redeem again.</summary>
-    public static readonly TimeSpan ReplayWindow = TimeSpan.FromMinutes(5);
-
-    /// <summary>A phone invite is renewed when less than this time is left, so the Regie never shows an expiring code.</summary>
-    public static readonly TimeSpan RenewBefore = TimeSpan.FromMinutes(2);
-
     private Invite()
     {
     }
@@ -51,16 +43,23 @@ public sealed class Invite
     /// <summary>Revocation time.</summary>
     public DateTimeOffset? RevokedAt { get; private set; }
 
-    /// <summary>Creates an invite valid for 30 minutes.</summary>
-    public static Invite Create(string productionId, InviteKind kind, DateTimeOffset now) => new()
+    /// <summary>Creates an invite valid for <paramref name="lifetime"/>.</summary>
+    public static Invite Create(string productionId, InviteKind kind, DateTimeOffset now, TimeSpan lifetime)
     {
-        Id = EntityIds.New(EntityIds.Invite),
-        ProductionId = productionId,
-        Kind = kind,
-        Token = Secrets.New(),
-        CreatedAt = now,
-        ExpiresAt = now + Lifetime,
-    };
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(lifetime, TimeSpan.Zero);
+        return new Invite
+        {
+            Id = EntityIds.New(EntityIds.Invite),
+            ProductionId = productionId,
+            Kind = kind,
+            Token = Secrets.New(),
+            CreatedAt = now,
+            ExpiresAt = now + lifetime,
+        };
+    }
+
+    /// <summary>Kind of a device paired through this invite: the invite decides, not the redeeming client (GAP-19).</summary>
+    public DeviceKind DeviceKind => Kind == InviteKind.PhoneQr ? DeviceKind.Phone : DeviceKind.Laptop;
 
     /// <summary>Pairing method of a device created through this invite.</summary>
     public PairingMethod PairingMethod => Kind == InviteKind.PhoneQr ? PairingMethod.Qr : PairingMethod.Link;
@@ -68,12 +67,15 @@ public sealed class Invite
     /// <summary>True while the invite can be redeemed.</summary>
     public bool IsOpen(DateTimeOffset now) => RedeemedAt is null && RevokedAt is null && now < ExpiresAt;
 
-    /// <summary>True when an open phone invite should be replaced by a fresh one.</summary>
-    public bool NeedsRenewal(DateTimeOffset now) => Kind == InviteKind.PhoneQr && IsOpen(now) && ExpiresAt - now < RenewBefore;
+    /// <summary>
+    /// True when an open phone invite should be replaced by a fresh one because less than <paramref name="renewBefore"/>
+    /// is left (the Regie never shows an expiring code).
+    /// </summary>
+    public bool NeedsRenewal(DateTimeOffset now, TimeSpan renewBefore) => Kind == InviteKind.PhoneQr && IsOpen(now) && ExpiresAt - now < renewBefore;
 
-    /// <summary>True when <paramref name="clientId"/> redeemed this invite less than five minutes ago.</summary>
-    public bool CanReplay(string clientId, DateTimeOffset now) =>
-        RedeemedAt is { } at && RevokedAt is null && RedeemedDeviceId is not null && now - at <= ReplayWindow
+    /// <summary>True when <paramref name="clientId"/> redeemed this invite at most <paramref name="window"/> ago.</summary>
+    public bool CanReplay(string clientId, DateTimeOffset now, TimeSpan window) =>
+        RedeemedAt is { } at && RevokedAt is null && RedeemedDeviceId is not null && now - at <= window
         && Secrets.FixedTimeEquals(RedeemedClientId, clientId);
 
     /// <summary>Marks the invite as used by a client and its new device.</summary>

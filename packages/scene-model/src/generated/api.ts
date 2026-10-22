@@ -852,6 +852,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/output/{slug}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getOutputChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/output/{slug}/livekit-token": {
         parameters: {
             query?: never;
@@ -1282,831 +1298,20 @@ export interface components {
             /** @description Optional replacement source reference (e.g. a pause slate image). */
             fallbackSource: null | string;
         };
-        /** @description Output variant of ProductionChangesDto; hidden changes appear as RevisionOnlyEvent. */
+        /**
+         * @description Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):
+         *     changes the output must not see – devices, pairing, invites, incidents, log, output status and health-only source
+         *     changes – appear as RevisionOnlyEvent with the same revision.
+         */
         OutputChangesDto: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Current revision.
+             */
             revision: number;
-            events: null | ({
-                /** @enum {string} */
-                type: "productionChanged";
-                /** @description Production (OBS: scene collection): one event with its own devices, scenes and output. */
-                production: {
-                    /** @description Production id, e.g. `prd_9x2k…`. */
-                    id: string;
-                    /** @description Tenant id; only `opten` for now (multi-tenancy is prepared, not active). */
-                    tenantId: string;
-                    /** @description Display name shown in the header. */
-                    name: string;
-                    /** @description URL slug of the output page (`/o/{slug}`). */
-                    slug: string;
-                    /** @description The active production is the one /join pairs into. */
-                    isActive: boolean;
-                    /**
-                     * @description Broadcast state of a production. Standby and Ended show a slate on the output.
-                     * @enum {unknown}
-                     */
-                    broadcast: "standby" | "live" | "ended";
-                    /**
-                     * Format: date-time
-                     * @description Start of the current broadcast (LIVE runtime in the header).
-                     */
-                    liveSince: null | string;
-                    /**
-                     * Format: date-time
-                     * @description End of the last broadcast.
-                     */
-                    endedAt: null | string;
-                    /** @description Scene on air. Null only when the production has no scenes. */
-                    programSceneId: null | string;
-                    /** @description Scene in the preview (Studio-Modus). Null when no operator uses Studio-Modus. */
-                    previewSceneId: null | string;
-                    /** @description Transition used for a program switch. */
-                    lastTransition: {
-                        /**
-                         * @description Kind of transition between program scenes. A fade always runs to completion (no T-bar).
-                         * @enum {unknown}
-                         */
-                        kind: "cut" | "fade";
-                        /**
-                         * Format: int32
-                         * @description Fade duration; one of 200, 300, 500, 800, 1000, 1500, 2000. Ignored (0) for a cut.
-                         */
-                        durationMs: number;
-                    };
-                    /**
-                     * Format: date-time
-                     * @description Server time of the last program switch.
-                     */
-                    lastSwitchAt: null | string;
-                    /** @description A full-screen slate on the output. */
-                    standbySlate: {
-                        /** @description Main line, e.g. «Gleich geht's los». */
-                        title: string;
-                        /** @description Optional second line. */
-                        subtitle: null | string;
-                        /** @description Optional image asset behind the text. */
-                        backgroundAssetId: null | string;
-                    };
-                    /** @description A full-screen slate on the output. */
-                    endSlate: {
-                        /** @description Main line, e.g. «Gleich geht's los». */
-                        title: string;
-                        /** @description Optional second line. */
-                        subtitle: null | string;
-                        /** @description Optional image asset behind the text. */
-                        backgroundAssetId: null | string;
-                    };
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "programSwitched";
-                /** @description New program scene. */
-                programSceneId: null | string;
-                /** @description New preview scene. */
-                previewSceneId: null | string;
-                /** @description Program scene before the switch (fade source). */
-                previousProgramSceneId: null | string;
-                /** @description Transition used for a program switch. */
-                transition: {
-                    /**
-                     * @description Kind of transition between program scenes. A fade always runs to completion (no T-bar).
-                     * @enum {unknown}
-                     */
-                    kind: "cut" | "fade";
-                    /**
-                     * Format: int32
-                     * @description Fade duration; one of 200, 300, 500, 800, 1000, 1500, 2000. Ignored (0) for a cut.
-                     */
-                    durationMs: number;
-                };
-                /**
-                 * Format: date-time
-                 * @description Server time of the switch.
-                 */
-                at: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "sceneUpserted";
-                /** @description Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back). */
-                scene: {
-                    /** @description Scene id, e.g. `scn_…`. */
-                    id: string;
-                    /** @description Display name, 1–80 characters. */
-                    name: string;
-                    /**
-                     * Format: int32
-                     * @description Position in the scene list, 0-based (keys 1–9 select the first nine).
-                     */
-                    sortOrder: number;
-                    /**
-                     * Format: int32
-                     * @description Increments with every change of this scene.
-                     */
-                    version: number;
-                    /**
-                     * @description Layout mode of a scene.
-                     * @enum {unknown}
-                     */
-                    layoutMode: "free" | "autoGrid";
-                    /** @description Canvas background: a colour and an optional image asset on top of it. */
-                    background: {
-                        /** @description Hex colour `#rrggbb`. */
-                        color: string;
-                        /** @description Optional image asset, drawn with cover fit. */
-                        assetId: null | string;
-                    };
-                    /** @description Items, back to front. */
-                    items: {
-                        /** @description Item id, e.g. `itm_…`; unique within the scene. */
-                        id: string;
-                        /** @description Source reference: `{deviceId}/{slot}` for device slots, `{assetId}` for media. */
-                        source: string;
-                        /**
-                         * Format: int32
-                         * @description Left edge, -3840…3840.
-                         */
-                        x: number;
-                        /**
-                         * Format: int32
-                         * @description Top edge, -2160…2160.
-                         */
-                        y: number;
-                        /**
-                         * Format: int32
-                         * @description Width, 16…3840.
-                         */
-                        w: number;
-                        /**
-                         * Format: int32
-                         * @description Height, 16…2160.
-                         */
-                        h: number;
-                        /**
-                         * @description How a source is fitted into its item rectangle.
-                         * @enum {unknown}
-                         */
-                        fit: "cover" | "contain";
-                        /** @description Crop per side as a fraction (0–0.45) of the source picture. Opposite sides sum to less than 0.9. */
-                        crop: {
-                            /** Format: double */
-                            top: number;
-                            /** Format: double */
-                            right: number;
-                            /** Format: double */
-                            bottom: number;
-                            /** Format: double */
-                            left: number;
-                        };
-                        /**
-                         * Format: int32
-                         * @description Corner radius in canvas pixels, 0…200.
-                         */
-                        radius: number;
-                        /** @description Mirror horizontally. */
-                        mirror: boolean;
-                        /**
-                         * Format: int32
-                         * @description Rotation in degrees: 0, 90, 180 or 270.
-                         */
-                        rotation: number;
-                        /** @description Hidden items are not rendered. */
-                        hidden: boolean;
-                        /** @description Locked items cannot be moved in the editor. */
-                        locked: boolean;
-                        /** @description Border drawn inside the item rectangle. */
-                        border: {
-                            /**
-                             * Format: int32
-                             * @description Width in canvas pixels, 1–40.
-                             */
-                            width: number;
-                            /** @description Hex colour `#rrggbb`. */
-                            color: string;
-                        };
-                        /** @description Fallback when the source of an item fails. */
-                        onLost: {
-                            /**
-                             * Format: int32
-                             * @description How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with «Bild kommt gleich zurück», or the fallback source is shown.
-                             */
-                            holdMs: null | number;
-                            /** @description Optional replacement source reference (e.g. a pause slate image). */
-                            fallbackSource: null | string;
-                        };
-                    }[];
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "sceneRemoved";
-                sceneId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "scenesReordered";
-                sceneIds: string[];
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "sourceUpserted";
-                /** @description A source that scene items can show. */
-                source: {
-                    /** @description Source reference: `{deviceId}/{slot}` or `{assetId}`. */
-                    id: string;
-                    /** @description Slot code shown everywhere: K1… cameras, S1… screens, M1… media. */
-                    code: string;
-                    /**
-                     * @description Kind of a source.
-                     * @enum {unknown}
-                     */
-                    kind: "camera" | "screen" | "image" | "video";
-                    /** @description Display name, e.g. «Laptop Lea · Screen 1». */
-                    label: string;
-                    /** @description Device for device slots. */
-                    deviceId: null | string;
-                    /** @description Slot name for device slots: `camera` or `screen-1`…`screen-9`. Equals the LiveKit track name. */
-                    slot: null | string;
-                    /** @description Asset for media sources. */
-                    assetId: null | string;
-                    /**
-                     * @description Health of a source as shown in the Regie (lamps, washes, message strip).
-                     * @enum {unknown}
-                     */
-                    status: "ok" | "connecting" | "offline" | "reconnecting" | "ended" | "lost" | "blocked";
-                    /**
-                     * Format: date-time
-                     * @description Time of the last status change (timers in the Regie).
-                     */
-                    statusSince: null | string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "sourceRemoved";
-                sourceId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "deviceUpserted";
-                /** @description A paired device (station) as shown in the Regie. */
-                device: {
-                    /** @description Device id, e.g. `dev_…`; equals the LiveKit participant identity. */
-                    id: string;
-                    /** @description Display name, editable in the Regie. */
-                    name: string;
-                    /**
-                     * @description Kind of a paired device.
-                     * @enum {unknown}
-                     */
-                    kind: "phone" | "laptop";
-                    /** @description Short platform text reported by the sender, e.g. «iPhone · Safari». */
-                    platform: string;
-                    /**
-                     * @description Administrative state of a device.
-                     * @enum {unknown}
-                     */
-                    state: "active" | "blocked";
-                    /**
-                     * Format: date-time
-                     * @description Pairing time.
-                     */
-                    pairedAt: string;
-                    /**
-                     * Format: date-time
-                     * @description Last control connection or report.
-                     */
-                    lastSeenAt: null | string;
-                    /**
-                     * @description How a device was paired.
-                     * @enum {unknown}
-                     */
-                    pairingMethod: "qr" | "code" | "link";
-                    /**
-                     * @description Live connection state of a device as seen by the server.
-                     * @enum {unknown}
-                     */
-                    connection: "online" | "reconnecting" | "offline";
-                    /**
-                     * Format: date-time
-                     * @description Time of the last connection change.
-                     */
-                    connectionSince: null | string;
-                    /** @description Result of the technical check on the sender (camera, network, bandwidth). */
-                    techCheck: {
-                        /**
-                         * @description Traffic light used by the technical check.
-                         * @enum {unknown}
-                         */
-                        overall: "unknown" | "ok" | "warn" | "bad";
-                        /**
-                         * @description Traffic light used by the technical check.
-                         * @enum {unknown}
-                         */
-                        camera: "unknown" | "ok" | "warn" | "bad";
-                        /**
-                         * @description Traffic light used by the technical check.
-                         * @enum {unknown}
-                         */
-                        network: "unknown" | "ok" | "warn" | "bad";
-                        /**
-                         * @description Traffic light used by the technical check.
-                         * @enum {unknown}
-                         */
-                        bandwidth: "unknown" | "ok" | "warn" | "bad";
-                        /** Format: int32 */
-                        uploadKbps: null | number;
-                        /** Format: int32 */
-                        rttMs: null | number;
-                        /** Format: date-time */
-                        at: string;
-                        note: null | string;
-                    };
-                    /** @description Telemetry of a device, reported about every two seconds. */
-                    telemetry: {
-                        /**
-                         * Format: date-time
-                         * @description Server receive time.
-                         */
-                        at: string;
-                        /**
-                         * @description Media connection state reported by the sender.
-                         * @enum {unknown}
-                         */
-                        rtc: "connected" | "reconnecting" | "disconnected";
-                        /**
-                         * Format: int32
-                         * @description Battery level 0–100 where the browser exposes it.
-                         */
-                        batteryPct: null | number;
-                        /** @description Charging state where available. */
-                        charging: null | boolean;
-                        /** @description Network type, e.g. «wifi» or «4g», where available. */
-                        network: null | string;
-                        /**
-                         * Format: int32
-                         * @description Round trip time to the server.
-                         */
-                        rttMs: null | number;
-                        /** @description Per slot telemetry. */
-                        slots: {
-                            slot: string;
-                            /**
-                             * @description State of a slot on a device as reported by the sender.
-                             * @enum {unknown}
-                             */
-                            state: "starting" | "live" | "paused" | "ended" | "failed";
-                            /** Format: int32 */
-                            width: null | number;
-                            /** Format: int32 */
-                            height: null | number;
-                            /** Format: double */
-                            fps: null | number;
-                            /** Format: int32 */
-                            bitrateKbps: null | number;
-                            /** Format: double */
-                            packetLossPct: null | number;
-                            codec: null | string;
-                        }[];
-                    };
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "deviceRemoved";
-                deviceId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "assetUpserted";
-                /** @description An uploaded image or video. */
-                asset: {
-                    /** @description Asset id, e.g. `ast_…`; also the source reference. */
-                    id: string;
-                    /** @description Slot code M1, M2, … */
-                    code: string;
-                    /**
-                     * @description Kind of an uploaded media asset.
-                     * @enum {unknown}
-                     */
-                    kind: "image" | "video";
-                    /** @description Display name (from the file name, editable). */
-                    name: string;
-                    /** @description Verified MIME type. */
-                    contentType: string;
-                    /**
-                     * Format: int64
-                     * @description File size.
-                     */
-                    sizeBytes: number;
-                    /**
-                     * Format: int32
-                     * @description Pixel width where known.
-                     */
-                    width: null | number;
-                    /**
-                     * Format: int32
-                     * @description Pixel height where known.
-                     */
-                    height: null | number;
-                    /**
-                     * Format: date-time
-                     * @description Upload time.
-                     */
-                    createdAt: string;
-                    /** @description Relative URL of the content. The output appends its key as `?k=`. */
-                    contentUrl: string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "assetRemoved";
-                assetId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "pairingRequestUpserted";
-                /** @description A pending /join request as shown to the Regie (knock card). */
-                request: {
-                    /** @description Request id. */
-                    id: string;
-                    /** @description Device name typed on the laptop. */
-                    name: string;
-                    /**
-                     * @description Kind of a paired device.
-                     * @enum {unknown}
-                     */
-                    kind: "phone" | "laptop";
-                    /** @description Platform text of the requester. */
-                    platform: string;
-                    /** @description Four digit check code, shown as «47 12» on both screens. */
-                    checkCode: string;
-                    /**
-                     * Format: date-time
-                     * @description Creation time.
-                     */
-                    createdAt: string;
-                    /**
-                     * Format: date-time
-                     * @description Expiry (10 minutes).
-                     */
-                    expiresAt: string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "pairingRequestRemoved";
-                requestId: string;
-                /**
-                 * @description Status of an anonymous pairing request from /join.
-                 * @enum {unknown}
-                 */
-                outcome: "pending" | "approved" | "denied" | "expired";
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "inviteUpserted";
-                /** @description A one-time invite (QR code for phones, link for laptops). Valid once for 30 minutes. */
-                invite: {
-                    /** @description Invite id. */
-                    id: string;
-                    /**
-                     * @description Kind of a one-time invite.
-                     * @enum {unknown}
-                     */
-                    kind: "phoneQr" | "laptopLink";
-                    /** @description Absolute URL with the secret token; only visible to the Regie. */
-                    url: string;
-                    /**
-                     * Format: date-time
-                     * @description Creation time.
-                     */
-                    createdAt: string;
-                    /**
-                     * Format: date-time
-                     * @description Expiry.
-                     */
-                    expiresAt: string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "inviteRemoved";
-                inviteId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "incidentUpserted";
-                /** @description An incident in the message strip. Recovered incidents stay until someone acknowledges them («Gesehen»). */
-                incident: {
-                    /** @description Incident id. */
-                    id: string;
-                    /** @description Affected source. */
-                    sourceId: string;
-                    /** @description Slot code of the source. */
-                    code: string;
-                    /**
-                     * @description Kind of an incident in the message strip.
-                     * @enum {unknown}
-                     */
-                    kind: "reconnecting" | "ended" | "lost";
-                    /**
-                     * Format: date-time
-                     * @description Start of the outage.
-                     */
-                    startedAt: string;
-                    /**
-                     * Format: date-time
-                     * @description Recovery time; null while the outage lasts.
-                     */
-                    endedAt: null | string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "incidentRemoved";
-                incidentId: string;
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "outputStatusChanged";
-                /** @description Live state of the output consumer (chip «Output an Proxy» in the header). */
-                status: {
-                    /**
-                     * @description Connection state of the output consumer (proxy).
-                     * @enum {unknown}
-                     */
-                    state: "none" | "connected" | "stale";
-                    /**
-                     * Format: int32
-                     * @description Number of connected output pages.
-                     */
-                    consumers: number;
-                    /** @description Remote IP addresses of the output pages. */
-                    addresses: string[];
-                    /**
-                     * Format: int32
-                     * @description Estimated receive latency reported by the output page.
-                     */
-                    latencyMs: null | number;
-                    /**
-                     * Format: double
-                     * @description Rendered frames per second of the program.
-                     */
-                    fps: null | number;
-                    /**
-                     * Format: date-time
-                     * @description Last report time.
-                     */
-                    lastReportAt: null | string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "logAppended";
-                /** @description A human-readable entry for «Letzte Ereignisse» (backed by the audit log). */
-                entry: {
-                    /** Format: date-time */
-                    at: string;
-                    text: string;
-                };
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            } | {
-                /** @enum {string} */
-                type: "revisionOnly";
-                /**
-                 * Format: int64
-                 * @description Revision after this change.
-                 */
-                revision: number;
-            })[];
-            /** @description Production state for the output page. Contains no device, pairing or incident data. */
-            snapshot: {
-                /**
-                 * Format: int64
-                 * @description Same revision counter as the Regie snapshot.
-                 */
-                revision: number;
-                /**
-                 * Format: date-time
-                 * @description Server clock.
-                 */
-                serverTime: string;
-                /** @description Production (OBS: scene collection): one event with its own devices, scenes and output. */
-                production: {
-                    /** @description Production id, e.g. `prd_9x2k…`. */
-                    id: string;
-                    /** @description Tenant id; only `opten` for now (multi-tenancy is prepared, not active). */
-                    tenantId: string;
-                    /** @description Display name shown in the header. */
-                    name: string;
-                    /** @description URL slug of the output page (`/o/{slug}`). */
-                    slug: string;
-                    /** @description The active production is the one /join pairs into. */
-                    isActive: boolean;
-                    /**
-                     * @description Broadcast state of a production. Standby and Ended show a slate on the output.
-                     * @enum {unknown}
-                     */
-                    broadcast: "standby" | "live" | "ended";
-                    /**
-                     * Format: date-time
-                     * @description Start of the current broadcast (LIVE runtime in the header).
-                     */
-                    liveSince: null | string;
-                    /**
-                     * Format: date-time
-                     * @description End of the last broadcast.
-                     */
-                    endedAt: null | string;
-                    /** @description Scene on air. Null only when the production has no scenes. */
-                    programSceneId: null | string;
-                    /** @description Scene in the preview (Studio-Modus). Null when no operator uses Studio-Modus. */
-                    previewSceneId: null | string;
-                    /** @description Transition used for a program switch. */
-                    lastTransition: unknown;
-                    /**
-                     * Format: date-time
-                     * @description Server time of the last program switch.
-                     */
-                    lastSwitchAt: null | string;
-                    /** @description A full-screen slate on the output. */
-                    standbySlate: unknown;
-                    /** @description A full-screen slate on the output. */
-                    endSlate: unknown;
-                };
-                /** @description All scenes (the output preloads their sources). */
-                scenes: {
-                    /** @description Scene id, e.g. `scn_…`. */
-                    id: string;
-                    /** @description Display name, 1–80 characters. */
-                    name: string;
-                    /**
-                     * Format: int32
-                     * @description Position in the scene list, 0-based (keys 1–9 select the first nine).
-                     */
-                    sortOrder: number;
-                    /**
-                     * Format: int32
-                     * @description Increments with every change of this scene.
-                     */
-                    version: number;
-                    /**
-                     * @description Layout mode of a scene.
-                     * @enum {unknown}
-                     */
-                    layoutMode: "free" | "autoGrid";
-                    /** @description Canvas background: a colour and an optional image asset on top of it. */
-                    background: unknown;
-                    /** @description Items, back to front. */
-                    items: unknown;
-                }[];
-                /** @description Sources without health. */
-                sources: {
-                    /** @description Source reference: `{deviceId}/{slot}` or `{assetId}`. */
-                    id: string;
-                    /** @description Slot code shown everywhere: K1… cameras, S1… screens, M1… media. */
-                    code: string;
-                    /**
-                     * @description Kind of a source.
-                     * @enum {unknown}
-                     */
-                    kind: "camera" | "screen" | "image" | "video";
-                    /** @description Display name, e.g. «Laptop Lea · Screen 1». */
-                    label: string;
-                    /** @description Device for device slots. */
-                    deviceId: null | string;
-                    /** @description Slot name for device slots: `camera` or `screen-1`…`screen-9`. Equals the LiveKit track name. */
-                    slot: null | string;
-                    /** @description Asset for media sources. */
-                    assetId: null | string;
-                    /**
-                     * @description Health of a source as shown in the Regie (lamps, washes, message strip).
-                     * @enum {unknown}
-                     */
-                    status: "ok" | "connecting" | "offline" | "reconnecting" | "ended" | "lost" | "blocked";
-                    /**
-                     * Format: date-time
-                     * @description Time of the last status change (timers in the Regie).
-                     */
-                    statusSince: null | string;
-                }[];
-                /** @description Media with content URLs. */
-                assets: {
-                    /** @description Asset id, e.g. `ast_…`; also the source reference. */
-                    id: string;
-                    /** @description Slot code M1, M2, … */
-                    code: string;
-                    /**
-                     * @description Kind of an uploaded media asset.
-                     * @enum {unknown}
-                     */
-                    kind: "image" | "video";
-                    /** @description Display name (from the file name, editable). */
-                    name: string;
-                    /** @description Verified MIME type. */
-                    contentType: string;
-                    /**
-                     * Format: int64
-                     * @description File size.
-                     */
-                    sizeBytes: number;
-                    /**
-                     * Format: int32
-                     * @description Pixel width where known.
-                     */
-                    width: null | number;
-                    /**
-                     * Format: int32
-                     * @description Pixel height where known.
-                     */
-                    height: null | number;
-                    /**
-                     * Format: date-time
-                     * @description Upload time.
-                     */
-                    createdAt: string;
-                    /** @description Relative URL of the content. The output appends its key as `?k=`. */
-                    contentUrl: string;
-                }[];
-            };
+            /** @description Events after the requested revision, oldest first; null when a snapshot is returned. */
+            events: null | components["schemas"]["ProductionEvent"][];
+            snapshot: null | components["schemas"]["OutputSnapshot"];
         };
         /** @description Status report of an output page, sent about every two seconds. */
         OutputReport: {
@@ -3061,6 +2266,24 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     getSession: {
@@ -3108,6 +2331,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemInfoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -3245,6 +2477,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductionChangesDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
             /** @description Not Found */
@@ -3523,6 +2764,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     getStudioLiveKitToken: {
@@ -3773,6 +3023,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     addSceneItem: {
@@ -3811,6 +3070,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4418,6 +3686,24 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4796,6 +4082,24 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     reportDeviceStatus: {
@@ -4874,8 +4178,8 @@ export interface operations {
     getOutputSnapshot: {
         parameters: {
             query?: never;
-            header: {
-                "X-Output-Key": string;
+            header?: {
+                "X-Output-Key"?: string;
             };
             path: {
                 slug: string;
@@ -4902,8 +4206,43 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
-            /** @description Not Found */
-            404: {
+        };
+    };
+    getOutputChanges: {
+        parameters: {
+            query: {
+                since: number;
+            };
+            header?: {
+                "X-Output-Key"?: string;
+            };
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputChangesDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4916,8 +4255,8 @@ export interface operations {
     getOutputLiveKitToken: {
         parameters: {
             query?: never;
-            header: {
-                "X-Output-Key": string;
+            header?: {
+                "X-Output-Key"?: string;
             };
             path: {
                 slug: string;
@@ -4949,8 +4288,8 @@ export interface operations {
     reportOutputStatus: {
         parameters: {
             query?: never;
-            header: {
-                "X-Output-Key": string;
+            header?: {
+                "X-Output-Key"?: string;
             };
             path: {
                 slug: string;
@@ -4969,6 +4308,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };

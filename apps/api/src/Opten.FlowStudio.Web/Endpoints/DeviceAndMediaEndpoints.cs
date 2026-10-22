@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Opten.FlowStudio.Core.Application.Services;
 using Opten.FlowStudio.Core.Contracts;
 using Opten.FlowStudio.Infrastructure.LiveKit;
@@ -100,13 +101,19 @@ internal static class AssetEndpoints
         return TypedResults.NoContent();
     }
 
-    // Streams the content with range support for the admin cookie or the output key (?k=).
+    // Streams the content with range support for the admin cookie or the output key (?k=). The verified type, nosniff,
+    // an inline disposition with the sanitised name and a sandboxing CSP keep a polyglot file from running as a page
+    // (GAP-13); ETag and Last-Modified allow 304 answers.
     public static async Task<IResult> GetContentAsync(string productionId, string assetId, [FromQuery] string? k, AssetService assets, HttpContext context, CancellationToken cancellationToken)
     {
         var isAdmin = context.User.Identity is { IsAuthenticated: true, AuthenticationType: AuthSchemes.Admin };
         var content = await assets.GetContentAsync(productionId, assetId, isAdmin, k, context.Connection.RemoteIpAddress, cancellationToken);
-        context.Response.Headers.CacheControl = "private, max-age=3600";
-        return TypedResults.PhysicalFile(content.Path, content.ContentType, lastModified: content.LastModified, enableRangeProcessing: true);
+        var headers = context.Response.Headers;
+        headers.CacheControl = "private, max-age=3600";
+        headers.XContentTypeOptions = "nosniff";
+        headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
+        headers.ContentDisposition = new ContentDispositionHeaderValue("inline") { FileNameStar = content.DisplayFileName }.ToString();
+        return TypedResults.PhysicalFile(content.Path, content.ContentType, lastModified: content.LastModified, entityTag: new EntityTagHeaderValue(content.ETag), enableRangeProcessing: true);
     }
 }
 

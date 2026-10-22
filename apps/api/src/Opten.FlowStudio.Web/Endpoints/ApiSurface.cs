@@ -10,10 +10,10 @@ namespace Opten.FlowStudio.Web.Endpoints;
 /// </summary>
 internal static class ApiSurface
 {
-    /// <summary>Rate limit of anonymous knocks (10 per IP per 10 minutes).</summary>
+    /// <summary>Rate limit of anonymous knocks (<c>Pairing:Limits:RequestsPerIpPer10Min</c>, default 10 per IP per 10 minutes; 429).</summary>
     public const string PairingRequestsLimit = "pairing-requests";
 
-    /// <summary>Rate limit of invite redemptions (20 per IP per 10 minutes).</summary>
+    /// <summary>Rate limit of invite redemptions (<c>Pairing:Limits:RedeemPerIpPer10Min</c>, default 20 per IP per 10 minutes; 429).</summary>
     public const string RedeemLimit = "pairing-redeem";
 
     /// <summary>Maps every API route.</summary>
@@ -31,7 +31,8 @@ internal static class ApiSurface
         MapDevice(app.MapGroup("/api/device").WithTags("Device (sender)").RequireAuthorization(Policies.Device));
         MapOutputPublic(app.MapGroup("/api/output/{slug}").WithTags("Output (public)"));
         app.MapPost("/api/livekit/webhook", LiveKitEndpoints.ReceiveWebhookAsync).WithName("receiveLiveKitWebhook").WithTags("LiveKit")
-            .Accepts<object>("application/webhook+json").Produces(200);
+            .Accepts<object>("application/webhook+json").Produces(200)
+            .WithMetadata(new RequestBodyLimit(Infrastructure.LiveKit.LiveKitWebhookReceiver.MaxBodyBytes));
         return app;
     }
 
@@ -42,14 +43,16 @@ internal static class ApiSurface
     {
         g.MapPost("/login", AuthEndpoints.LoginAsync).WithName("login")
             .Produces<SessionDto>().ProducesProblem(401).ProducesProblem(429);
-        g.MapPost("/logout", (Delegate)AuthEndpoints.LogoutAsync).WithName("logout").Produces(204).AddEndpointFilter<CsrfHeaderFilter>();
+        g.MapPost("/logout", (Delegate)AuthEndpoints.LogoutAsync).WithName("logout").Produces(204).ProducesProblem(401).ProducesProblem(403)
+            .RequireAuthorization(Policies.Admin).AddEndpointFilter<CsrfHeaderFilter>();
         g.MapGet("/me", AuthEndpoints.GetSession).WithName("getSession").Produces<SessionDto>().ProducesProblem(401)
             .RequireAuthorization(Policies.Admin);
     }
 
     private static void MapSystem(RouteGroupBuilder g)
     {
-        g.MapGet("/info", SystemEndpoints.GetInfo).WithName("getSystemInfo").Produces<SystemInfoDto>();
+        g.MapGet("/info", SystemEndpoints.GetInfo).WithName("getSystemInfo").Produces<SystemInfoDto>().ProducesProblem(401)
+            .RequireAuthorization(Policies.Admin);
     }
 
     private static void MapProductions(RouteGroupBuilder g)
@@ -61,7 +64,7 @@ internal static class ApiSurface
         g.MapGet("/{productionId}/snapshot", ProductionEndpoints.GetSnapshotAsync).WithName("getSnapshot")
             .Produces<ProductionSnapshot>().ProducesProblem(404);
         g.MapGet("/{productionId}/changes", ProductionEndpoints.GetChangesAsync).WithName("getChanges")
-            .Produces<ProductionChangesDto>().ProducesProblem(404);
+            .Produces<ProductionChangesDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapPatch("/{productionId}", ProductionEndpoints.UpdateAsync)
             .WithName("updateProduction").Produces<ProductionDto>().ProducesValidationProblem();
         g.MapPost("/{productionId}/activate", ProductionEndpoints.ActivateAsync).WithName("activateProduction").Produces<ProductionDto>();
@@ -75,7 +78,7 @@ internal static class ApiSurface
         g.MapPost("/{productionId}/take", ProductionEndpoints.TakeAsync)
             .WithName("take").Produces<ProductionDto>().ProducesProblem(409);
         g.MapPost("/{productionId}/incidents/{incidentId}/ack", ProductionEndpoints.AcknowledgeIncidentAsync)
-            .WithName("acknowledgeIncident").Produces(204).ProducesProblem(404);
+            .WithName("acknowledgeIncident").Produces(204).ProducesProblem(404).ProducesProblem(409);
         g.MapPost("/{productionId}/livekit-token", ProductionEndpoints.IssueLiveKitTokenAsync).WithName("getStudioLiveKitToken")
             .Produces<LiveKitTokenDto>();
         g.MapGet("/{productionId}/telemetry", ProductionEndpoints.GetTelemetryAsync).WithName("getTelemetry")
@@ -93,13 +96,13 @@ internal static class ApiSurface
         g.MapPut("/order", SceneEndpoints.ReorderAsync).WithName("reorderScenes")
             .Produces(204).ProducesValidationProblem();
         g.MapPost("/{sceneId}/items", SceneEndpoints.AddItemAsync)
-            .WithName("addSceneItem").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404);
+            .WithName("addSceneItem").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
         g.MapPut("/{sceneId}/items/{itemId}", SceneEndpoints.UpdateItemAsync)
             .WithName("updateSceneItem").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapDelete("/{sceneId}/items/{itemId}", SceneEndpoints.RemoveItemAsync)
             .WithName("removeSceneItem").Produces<SceneDto>().ProducesProblem(404);
         g.MapPut("/{sceneId}/items", SceneEndpoints.ReplaceItemsAsync)
-            .WithName("replaceSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404);
+            .WithName("replaceSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
     }
 
     private static void MapDevices(RouteGroupBuilder g)
@@ -141,7 +144,7 @@ internal static class ApiSurface
         g.MapDelete("/{assetId}", AssetEndpoints.DeleteAsync).WithName("deleteAsset")
             .Produces(204).ProducesProblem(404).ProducesProblem(409);
         g.MapGet("/{assetId}/content", AssetEndpoints.GetContentAsync)
-            .WithName("getAssetContent").Produces(200, contentType: "application/octet-stream").ProducesProblem(404)
+            .WithName("getAssetContent").Produces(200, contentType: "application/octet-stream").ProducesProblem(401).ProducesProblem(403).ProducesProblem(404)
             .AllowAnonymous();
     }
 
@@ -175,7 +178,7 @@ internal static class ApiSurface
         g.MapPost("/livekit-token", DeviceEndpoints.IssueLiveKitTokenAsync).WithName("getDeviceLiveKitToken").Produces<LiveKitTokenDto>().ProducesProblem(403);
         g.MapPost("/slots", DeviceEndpoints.AllocateSlotAsync).WithName("allocateSlot")
             .Produces<DeviceSlotDto>().ProducesValidationProblem().ProducesProblem(409);
-        g.MapDelete("/slots/{slot}", DeviceEndpoints.ReleaseSlotAsync).WithName("releaseSlot").Produces(204);
+        g.MapDelete("/slots/{slot}", DeviceEndpoints.ReleaseSlotAsync).WithName("releaseSlot").Produces(204).ProducesProblem(404).ProducesProblem(409);
         g.MapPost("/report", DeviceEndpoints.ReportAsync).WithName("reportDeviceStatus").Produces(204);
         g.MapPost("/bandwidth-test", DeviceEndpoints.BandwidthTestAsync).WithName("bandwidthTest").Accepts<byte[]>("application/octet-stream")
             .Produces<BandwidthTestResultDto>().ProducesProblem(413)
@@ -186,10 +189,12 @@ internal static class ApiSurface
     private static void MapOutputPublic(RouteGroupBuilder g)
     {
         g.MapGet("/snapshot", OutputEndpoints.GetSnapshotAsync).WithName("getOutputSnapshot")
-            .Produces<OutputSnapshot>().ProducesProblem(403).ProducesProblem(404);
+            .Produces<OutputSnapshot>().ProducesProblem(403);
+        g.MapGet("/changes", OutputEndpoints.GetChangesAsync).WithName("getOutputChanges")
+            .Produces<OutputChangesDto>().ProducesValidationProblem().ProducesProblem(403);
         g.MapPost("/livekit-token", OutputEndpoints.IssueLiveKitTokenAsync)
             .WithName("getOutputLiveKitToken").Produces<LiveKitTokenDto>().ProducesProblem(403);
         g.MapPost("/report", OutputEndpoints.ReportAsync)
-            .WithName("reportOutputStatus").Produces(204);
+            .WithName("reportOutputStatus").Produces(204).ProducesProblem(403);
     }
 }

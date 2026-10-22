@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using Opten.FlowStudio.Core.Application;
 using Opten.FlowStudio.Core.Application.Ports;
 using Opten.FlowStudio.Core.Application.Runtime;
@@ -33,6 +34,9 @@ internal static class FlowStudioHost
 
     /// <summary>Configuration section of the trusted proxy networks.</summary>
     private const string ForwardedHeadersSection = "ForwardedHeaders:KnownNetworks";
+
+    /// <summary>The window of the pairing rate limits (part of the key names <c>…PerIpPer10Min</c>).</summary>
+    private static readonly TimeSpan PairingLimitWindow = TimeSpan.FromMinutes(10);
 
     /// <summary>True while <c>dotnet build</c> generates the OpenAPI document (the app is started without a database).</summary>
     public static bool IsDocumentGeneration => Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
@@ -60,7 +64,12 @@ internal static class FlowStudioHost
 
         services.AddOptions<FlowStudioOptions>().Bind(configuration.GetSection(FlowStudioOptions.Section))
             .Validate(o => Uri.TryCreate(o.PublicBaseUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp), "FlowStudio:PublicBaseUrl must be an absolute http(s) URL.");
-        services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<FlowStudioOptions>>().Value);
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<FlowStudioOptions>>().Value);
+        services.AddValidatedOptions<PairingOptions>(configuration, PairingOptions.Section);
+        services.AddValidatedOptions<LoginLockoutOptions>(configuration, LoginLockoutOptions.Section);
+        services.AddValidatedOptions<SourceMonitorOptions>(configuration, SourceMonitorOptions.Section);
+        services.AddValidatedOptions<OutputMonitorOptions>(configuration, OutputMonitorOptions.Section);
+        services.AddValidatedOptions<RealtimeOptions>(configuration, RealtimeOptions.Section);
         services.AddSingleton(TimeProvider.System);
         services.AddFlowStudioInfrastructure(configuration);
         AddApplication(services);
@@ -95,6 +104,7 @@ internal static class FlowStudioHost
 
         // The proxy's client address must be known before rate limiting, IP rules and logging.
         app.UseForwardedHeaders();
+        app.UseMiddleware<ResponseHardeningMiddleware>();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         app.UseRouting();
@@ -104,7 +114,8 @@ internal static class FlowStudioHost
         app.UseAuthorization();
         app.UseRateLimiter();
 
-        if (app.Environment.IsDevelopment())
+        // GAP-04c: the OpenAPI document is served only in Development (and built at build time, which needs no route).
+        if (app.Environment.IsDevelopment() || IsDocumentGeneration)
         {
             app.MapOpenApi();
         }
@@ -112,16 +123,32 @@ internal static class FlowStudioHost
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
         app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(DatabaseMaintenance.ReadyTag) }).DisableRateLimiting();
         app.MapFlowStudioApi();
-        app.MapHub<StudioHub>(HubMethods.StudioHubPath);
+
+        // A Regie connection ends with its admin session (GAP-04b).
+        app.MapHub<StudioHub>(HubMethods.StudioHubPath, options => options.CloseOnAuthenticationExpiration = true);
         app.MapHub<DeviceHub>(HubMethods.DeviceHubPath);
         app.MapHub<OutputHub>(HubMethods.OutputHubPath);
         return app;
+    }
+
+    /// <summary>
+    /// Binds settings that validate themselves (<see cref="IValidatedOptions"/>) and registers their value as a singleton
+    /// for the core services. Invalid values stop the host at startup with messages naming the keys (GAP-01).
+    /// </summary>
+    private static void AddValidatedOptions<T>(this IServiceCollection services, ConfigurationManager configuration, string section)
+        where T : class, IValidatedOptions, new()
+    {
+        services.AddOptions<T>().Bind(configuration.GetSection(section));
+        services.AddSingleton<IValidateOptions<T>, SelfValidatingOptions<T>>();
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<T>>().Value);
     }
 
     private static void AddApplication(IServiceCollection services)
     {
         services.AddSingleton<ProductionRuntimeRegistry>();
         services.AddSingleton<PairingRequestStore>();
+        services.AddSingleton<OrderedRealtimeDispatcher>();
+        services.AddSingleton<IRealtimeDispatcher>(sp => sp.GetRequiredService<OrderedRealtimeDispatcher>());
         services.AddSingleton<ProductionCoordinator>();
         services.AddSingleton<SnapshotBuilder>();
         services.AddSingleton<LiveKitKicker>();
@@ -136,6 +163,7 @@ internal static class FlowStudioHost
         services.AddSingleton<LiveKitSyncService>();
         services.AddSingleton<StudioSessionService>();
         services.AddSingleton<AdminLoginService>();
+        services.AddSingleton<SourceRestartWatch>();
     }
 
     private static void AddSecurity(IServiceCollection services, ConfigurationManager configuration, IWebHostEnvironment environment)
@@ -146,6 +174,7 @@ internal static class FlowStudioHost
             dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
         }
 
+        services.AddSingleton<AdminSessions>();
         services.AddAuthentication(AuthSchemes.Admin)
             .AddCookie(AuthSchemes.Admin, cookie =>
             {
@@ -155,7 +184,6 @@ internal static class FlowStudioHost
 
                 // Caddy always terminates TLS; only local development and the tests run over plain HTTP.
                 cookie.Cookie.SecurePolicy = environment.IsDevelopment() || environment.IsEnvironment(TestingEnvironment) ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
-                cookie.ExpireTimeSpan = TimeSpan.FromHours(12);
                 cookie.SlidingExpiration = true;
                 cookie.Events.OnRedirectToLogin = context =>
                 {
@@ -167,20 +195,16 @@ internal static class FlowStudioHost
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return Task.CompletedTask;
                 };
-                cookie.Events.OnValidatePrincipal = context =>
-                {
-                    // A session of a renamed admin user ends.
-                    var admin = context.HttpContext.RequestServices.GetRequiredService<IAdminCredentials>();
-                    if (!string.Equals(context.Principal?.Identity?.Name, admin.Username, StringComparison.Ordinal))
-                    {
-                        context.RejectPrincipal();
-                    }
 
-                    return Task.CompletedTask;
-                };
+                // Logged-out sessions (GAP-04b) and sessions of a renamed admin user end.
+                cookie.Events.OnValidatePrincipal = AdminSessions.ValidateAsync;
             })
             .AddScheme<AuthenticationSchemeOptions, DeviceAuthenticationHandler>(AuthSchemes.Device, null)
             .AddScheme<AuthenticationSchemeOptions, OutputAuthenticationHandler>(AuthSchemes.Output, null);
+
+        // The cookie lifetime comes from Admin:SessionLifetime (12 h by default).
+        services.AddOptions<CookieAuthenticationOptions>(AuthSchemes.Admin)
+            .Configure<IOptions<AdminOptions>>((cookie, admin) => cookie.ExpireTimeSpan = admin.Value.SessionLifetime);
 
         services.AddSingleton<IAuthorizationHandler, DeviceNotBlockedRequirement>();
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, ProblemAuthorizationResultHandler>();
@@ -214,8 +238,8 @@ internal static class FlowStudioHost
                 context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 await Problems.WriteAsync(context.HttpContext, StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, "Zu viele Versuche. Bitte später erneut versuchen.");
             };
-            options.AddPolicy(ApiSurface.PairingRequestsLimit, context => PerClient(context, 10));
-            options.AddPolicy(ApiSurface.RedeemLimit, context => PerClient(context, 20));
+            options.AddPolicy(ApiSurface.PairingRequestsLimit, context => PerClient(context, Limits(context).RequestsPerIpPer10Min));
+            options.AddPolicy(ApiSurface.RedeemLimit, context => PerClient(context, Limits(context).RedeemPerIpPer10Min));
         });
     }
 
@@ -225,21 +249,39 @@ internal static class FlowStudioHost
         services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
         services.AddSignalR(hub =>
         {
-            hub.KeepAliveInterval = TimeSpan.FromSeconds(2);
-            hub.ClientTimeoutInterval = TimeSpan.FromSeconds(6);
             hub.MaximumReceiveMessageSize = 64 * 1024;
             hub.EnableDetailedErrors = environment.IsDevelopment();
             hub.AddFilter<HubErrorFilter>();
         }).AddJsonProtocol(json => ContractJson.Configure(json.PayloadSerializerOptions));
+
+        // GAP-12: keep-alive 2 s and client timeout 5 s by default (Realtime:KeepAliveInterval, Realtime:ClientTimeout).
+        services.AddOptions<HubOptions>().Configure<IOptions<RealtimeOptions>>((hub, realtime) =>
+        {
+            hub.KeepAliveInterval = realtime.Value.KeepAliveInterval;
+            hub.ClientTimeoutInterval = realtime.Value.ClientTimeout;
+        });
     }
+
+    private static PairingLimits Limits(HttpContext context) => context.RequestServices.GetRequiredService<PairingOptions>().Limits;
 
     /// <summary>Sliding window of 10 minutes per client address.</summary>
     private static RateLimitPartition<string> PerClient(HttpContext context, int permits) =>
         RateLimitPartition.GetSlidingWindowLimiter(ClientAddress.Of(context), _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = permits,
-            Window = TimeSpan.FromMinutes(10),
+            Window = PairingLimitWindow,
             SegmentsPerWindow = 10,
             QueueLimit = 0,
         });
+
+    /// <summary>Runs <see cref="IValidatedOptions.Validate"/> when the options are first read.</summary>
+    private sealed class SelfValidatingOptions<T> : IValidateOptions<T>
+        where T : class, IValidatedOptions
+    {
+        public ValidateOptionsResult Validate(string? name, T options)
+        {
+            var errors = options.Validate().ToList();
+            return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+        }
+    }
 }

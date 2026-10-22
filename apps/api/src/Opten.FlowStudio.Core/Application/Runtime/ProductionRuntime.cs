@@ -8,7 +8,7 @@ namespace Opten.FlowStudio.Core.Application.Runtime;
 /// sessions, source health, LiveKit tracks, output consumers and Regie sessions. Everything except the lock is mutated
 /// only while the lock is held.
 /// </summary>
-public sealed class ProductionRuntime(string productionId, long initialRevision) : IDisposable
+public sealed class ProductionRuntime(string productionId, long initialRevision, OutputMonitorOptions? outputOptions = null) : IDisposable
 {
     private readonly Dictionary<string, DeviceRuntime> devices = new(StringComparer.Ordinal);
 
@@ -34,7 +34,7 @@ public sealed class ProductionRuntime(string productionId, long initialRevision)
     public LiveKitRoomState Room { get; } = new();
 
     /// <summary>Output consumers.</summary>
-    public OutputTracker Output { get; } = new();
+    public OutputTracker Output { get; } = new(outputOptions ?? new OutputMonitorOptions());
 
     /// <summary>Connected Regie sessions subscribed to this production.</summary>
     public HashSet<string> StudioConnections { get; } = new(StringComparer.Ordinal);
@@ -71,18 +71,21 @@ public sealed class ProductionRuntime(string productionId, long initialRevision)
 /// The runtimes of all productions. Revisions start at <c>unixTimeMs * 1000</c> of the process start, so they are
 /// monotonic across restarts (spec 5).
 /// </summary>
-public sealed class ProductionRuntimeRegistry(TimeProvider clock) : IDisposable
+public sealed class ProductionRuntimeRegistry(TimeProvider clock, OutputMonitorOptions? outputOptions = null) : IDisposable
 {
     private readonly ConcurrentDictionary<string, ProductionRuntime> runtimes = new(StringComparer.Ordinal);
 
     /// <summary>First revision of every production in this process.</summary>
     public long RevisionBase { get; } = clock.GetUtcNow().ToUnixTimeMilliseconds() * 1000;
 
+    /// <summary>When this process started (the API restart watch of GAP-08 counts from here).</summary>
+    public DateTimeOffset StartedAt { get; } = clock.GetUtcNow();
+
     /// <summary>Every production runtime created so far.</summary>
     public IReadOnlyCollection<ProductionRuntime> All => [.. runtimes.Values];
 
     /// <summary>The runtime of a production that is known to exist.</summary>
-    public ProductionRuntime GetOrAdd(string productionId) => runtimes.GetOrAdd(productionId, id => new ProductionRuntime(id, RevisionBase));
+    public ProductionRuntime GetOrAdd(string productionId) => runtimes.GetOrAdd(productionId, id => new ProductionRuntime(id, RevisionBase, outputOptions));
 
     /// <summary>The runtime of a production, if it was created already.</summary>
     public ProductionRuntime? Find(string productionId) => runtimes.GetValueOrDefault(productionId);

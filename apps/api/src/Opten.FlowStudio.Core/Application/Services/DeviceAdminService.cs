@@ -199,7 +199,11 @@ internal static class DeviceEvents
     }
 }
 
-/// <summary>Removes participants from LiveKit after a block, delete or key rotation (best effort, outside the lock).</summary>
+/// <summary>
+/// Removes participants from LiveKit after a block, delete or key rotation: best effort, always called after the
+/// production lock was released, every call bounded by <c>LiveKit:RequestTimeout</c>. A failure is logged and never
+/// fails the request (the token endpoints refuse the participant anyway).
+/// </summary>
 public sealed class LiveKitKicker(ILiveKitRoomClient rooms, ILogger<LiveKitKicker> logger)
 {
     /// <summary>Removes one identity from the production's room.</summary>
@@ -212,6 +216,10 @@ public sealed class LiveKitKicker(ILiveKitRoomClient rooms, ILogger<LiveKitKicke
         catch (LiveKitUnavailableException exception)
         {
             logger.LogWarning("LiveKit could not remove {Identity} from {Room}: {Reason}", identity, productionId, exception.Message);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            logger.LogWarning(exception, "LiveKit could not remove {Identity} from {Room}", identity, productionId);
         }
     }
 
@@ -229,6 +237,10 @@ public sealed class LiveKitKicker(ILiveKitRoomClient rooms, ILogger<LiveKitKicke
         catch (LiveKitUnavailableException exception)
         {
             logger.LogWarning("LiveKit could not remove participants {Prefix}* from {Room}: {Reason}", identityPrefix, productionId, exception.Message);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            logger.LogWarning(exception, "LiveKit could not remove participants {Prefix}* from {Room}", identityPrefix, productionId);
         }
     }
 }

@@ -118,6 +118,23 @@ internal sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
         builder.HasIndex(i => i.Token).IsUnique();
         builder.HasIndex(i => new { i.ProductionId, i.ExpiresAt });
         builder.Ignore(i => i.PairingMethod);
+        builder.Ignore(i => i.DeviceKind);
+    }
+}
+
+/// <summary>Table <c>source_activity</c>: last-live time per device source (restart watch, GAP-08).</summary>
+internal sealed class SourceActivityConfiguration : IEntityTypeConfiguration<SourceActivity>
+{
+    public void Configure(EntityTypeBuilder<SourceActivity> builder)
+    {
+        builder.ToTable("source_activity");
+        builder.HasKey(a => a.SourceId);
+        builder.Property(a => a.SourceId).HasMaxLength(Columns.Id + 16).ValueGeneratedNever();
+        builder.Property(a => a.ProductionId).HasMaxLength(Columns.Id).IsRequired();
+        builder.Property(a => a.DeviceId).HasMaxLength(Columns.Id).IsRequired();
+        builder.HasOne<Device>().WithMany().HasForeignKey(a => a.DeviceId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(a => a.DeviceId);
+        builder.HasIndex(a => a.LastLiveAt);
     }
 }
 

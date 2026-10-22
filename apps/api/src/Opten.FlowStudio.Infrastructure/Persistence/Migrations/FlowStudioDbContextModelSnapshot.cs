@@ -430,6 +430,41 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("scenes", (string)null);
                 });
 
+            modelBuilder.Entity("Opten.FlowStudio.Infrastructure.Persistence.SourceActivity", b =>
+                {
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("device_id");
+
+                    b.Property<DateTimeOffset>("LastLiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_live_at");
+
+                    b.Property<string>("ProductionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("production_id");
+
+                    b.HasKey("SourceId")
+                        .HasName("pk_source_activity");
+
+                    b.HasIndex("DeviceId")
+                        .HasDatabaseName("ix_source_activity_device_id");
+
+                    b.HasIndex("LastLiveAt")
+                        .HasDatabaseName("ix_source_activity_last_live_at");
+
+                    b.ToTable("source_activity", (string)null);
+                });
+
             modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Asset", b =>
                 {
                     b.HasOne("Opten.FlowStudio.Core.Domain.Production", null)
@@ -468,6 +503,16 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_scenes_production_id");
+                });
+
+            modelBuilder.Entity("Opten.FlowStudio.Infrastructure.Persistence.SourceActivity", b =>
+                {
+                    b.HasOne("Opten.FlowStudio.Core.Domain.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_source_activity_device_id");
                 });
 
             modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Production", b =>

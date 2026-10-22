@@ -11,14 +11,11 @@ namespace Opten.FlowStudio.Infrastructure.LiveKit;
 
 /// <summary>
 /// Creates LiveKit access tokens (spec 7): HS256 JWT with <c>iss</c> = API key, <c>sub</c> = identity, <c>nbf</c>,
-/// <c>exp</c> (10 minutes), <c>name</c>, <c>metadata</c> and the nested <c>video</c> grant. LiveKit refreshes the token of
-/// connected participants itself; clients fetch a new one for every rejoin.
+/// <c>exp</c> (<c>LiveKit:TokenTtl</c>, 10 minutes), <c>name</c>, <c>metadata</c> and the nested <c>video</c> grant.
+/// LiveKit refreshes the token of connected participants itself; clients fetch a new one for every rejoin.
 /// </summary>
 internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOptions<FlowStudioOptions> studio, TimeProvider clock) : ILiveKitTokenIssuer
 {
-    /// <summary>Validity of participant tokens.</summary>
-    public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(10);
-
     private static readonly TimeSpan AdminLifetime = TimeSpan.FromMinutes(1);
     private static readonly string[] SenderSources = ["camera", "screen_share"];
 
@@ -67,7 +64,7 @@ internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOpti
     private LiveKitTokenDto Issue(string room, string identity, string name, string role, Dictionary<string, object> video)
     {
         var now = clock.GetUtcNow();
-        var expires = now + Lifetime;
+        var expires = now + options.Value.TokenTtl;
         var token = Create(now.UtcDateTime, expires.UtcDateTime, new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["sub"] = identity,

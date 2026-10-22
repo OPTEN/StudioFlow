@@ -4,21 +4,29 @@ using Opten.FlowStudio.Core.Contracts;
 
 namespace Opten.FlowStudio.Core.Domain;
 
+/// <summary>The two lifetimes of a knock.</summary>
+/// <param name="Pending">How long a request waits for the Regie (<c>Pairing:RequestTtl</c>, default 10 minutes).</param>
+/// <param name="Decision">
+/// How long an approval (with its credentials) or a denial stays visible to the poller (<c>Pairing:CredentialsWindow</c>,
+/// default 5 minutes).
+/// </param>
+public sealed record PairingRequestLifetimes(TimeSpan Pending, TimeSpan Decision)
+{
+    /// <summary>The spec values (10 and 5 minutes).</summary>
+    public static PairingRequestLifetimes Default { get; } = new(TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(5));
+}
+
 /// <summary>
-/// An anonymous knock from /join (spec 4.6, way 2). Lives in memory only: pending for 10 minutes; after approval the
-/// poll returns the same credentials for 5 minutes; a denial stays visible to the poller for 5 minutes.
+/// An anonymous knock from /join (spec 4.6, way 2). Lives in memory only: pending for <c>Pairing:RequestTtl</c>; after
+/// approval the poll returns the same credentials for <c>Pairing:CredentialsWindow</c>; a denial stays visible to the
+/// poller for the same window.
 /// </summary>
 public sealed class PairingRequest
 {
-    /// <summary>How long a request waits for the Regie.</summary>
-    public static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(10);
-
-    /// <summary>How long a decision stays visible to the poller.</summary>
-    public static readonly TimeSpan DecisionLifetime = TimeSpan.FromMinutes(5);
-
+    private readonly TimeSpan decisionLifetime;
     private DeviceCredentialsDto? credentials;
 
-    private PairingRequest(string productionId, string name, DeviceKind kind, string platform, string checkCode, string pollTokenHash, DateTimeOffset now)
+    private PairingRequest(string productionId, string name, DeviceKind kind, string platform, string checkCode, string pollTokenHash, DateTimeOffset now, PairingRequestLifetimes lifetimes)
     {
         Id = EntityIds.New(EntityIds.PairingRequest);
         ProductionId = productionId;
@@ -28,7 +36,8 @@ public sealed class PairingRequest
         CheckCode = checkCode;
         PollTokenHash = pollTokenHash;
         CreatedAt = now;
-        ExpiresAt = now + PendingLifetime;
+        ExpiresAt = now + lifetimes.Pending;
+        decisionLifetime = lifetimes.Decision;
     }
 
     /// <summary>Request id.</summary>
@@ -65,7 +74,7 @@ public sealed class PairingRequest
     public DateTimeOffset? DecidedAt { get; private set; }
 
     /// <summary>Creates a request with a fresh poll token; <paramref name="checkCode"/> must be unique among pending requests.</summary>
-    public static (PairingRequest Request, string PollToken) Create(string productionId, CreatePairingRequest input, string checkCode, DateTimeOffset now)
+    public static (PairingRequest Request, string PollToken) Create(string productionId, CreatePairingRequest input, string checkCode, DateTimeOffset now, PairingRequestLifetimes? lifetimes = null)
     {
         ArgumentNullException.ThrowIfNull(input);
         var errors = new ValidationErrors();
@@ -78,7 +87,7 @@ public sealed class PairingRequest
         errors.ThrowIfAny();
         var pollToken = Secrets.New();
         var platform = TextRules.Truncate(input.Platform, TextRules.PlatformMax) ?? string.Empty;
-        return (new PairingRequest(productionId, name!, input.Kind, platform, checkCode, Secrets.Hash(pollToken), now), pollToken);
+        return (new PairingRequest(productionId, name!, input.Kind, platform, checkCode, Secrets.Hash(pollToken), now, lifetimes ?? PairingRequestLifetimes.Default), pollToken);
     }
 
     /// <summary>A random four digit check code that is not in <paramref name="taken"/>.</summary>
@@ -98,10 +107,13 @@ public sealed class PairingRequest
     /// <summary>True while the Regie can still approve or deny.</summary>
     public bool IsPending(DateTimeOffset now) => Status == PairingRequestStatus.Pending && now < ExpiresAt;
 
-    /// <summary>True when the request can be forgotten (expired, or decided more than five minutes ago).</summary>
+    /// <summary>True once the Regie approved or denied the request.</summary>
+    public bool IsDecided => Status != PairingRequestStatus.Pending;
+
+    /// <summary>True when the request can be forgotten (expired, or decided longer ago than the decision window).</summary>
     public bool IsExpired(DateTimeOffset now) => Status == PairingRequestStatus.Pending
         ? now >= ExpiresAt
-        : DecidedAt is { } decided && now - decided >= DecisionLifetime;
+        : DecidedAt is { } decided && now - decided >= decisionLifetime;
 
     /// <summary>True when <paramref name="pollToken"/> belongs to this request.</summary>
     public bool HasPollToken(string? pollToken) => Secrets.MatchesHash(pollToken, PollTokenHash);

@@ -85,6 +85,26 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -132,6 +152,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SystemInfoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -302,6 +332,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProductionChangesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -686,6 +726,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -1037,6 +1087,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -1096,6 +1156,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1989,6 +2059,26 @@
           "200": {
             "description": "OK"
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -2458,6 +2548,26 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -2557,7 +2667,6 @@
           {
             "name": "X-Output-Key",
             "in": "header",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2583,9 +2692,65 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/output/{slug}/changes": {
+      "get": {
+        "tags": [
+          "Output (public)"
+        ],
+        "operationId": "getOutputChanges",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
-          "404": {
-            "description": "Not Found",
+          {
+            "name": "since",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "X-Output-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputChangesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2615,7 +2780,6 @@
           {
             "name": "X-Output-Key",
             "in": "header",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2663,7 +2827,6 @@
           {
             "name": "X-Output-Key",
             "in": "header",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -2682,6 +2845,16 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -3686,6 +3859,7 @@
         "properties": {
           "revision": {
             "type": "integer",
+            "description": "Current revision.",
             "format": "int64"
           },
           "events": {
@@ -3694,1913 +3868,23 @@
               "array"
             ],
             "items": {
-              "required": [
-                "type"
-              ],
-              "type": "object",
-              "anyOf": [
-                {
-                  "required": [
-                    "production",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "productionChanged"
-                      ],
-                      "type": "string"
-                    },
-                    "production": {
-                      "required": [
-                        "id",
-                        "tenantId",
-                        "name",
-                        "slug",
-                        "isActive",
-                        "broadcast",
-                        "liveSince",
-                        "endedAt",
-                        "programSceneId",
-                        "previewSceneId",
-                        "lastTransition",
-                        "lastSwitchAt",
-                        "standbySlate",
-                        "endSlate"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Production id, e.g. `prd_9x2k…`."
-                        },
-                        "tenantId": {
-                          "type": "string",
-                          "description": "Tenant id; only `opten` for now (multi-tenancy is prepared, not active)."
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Display name shown in the header."
-                        },
-                        "slug": {
-                          "type": "string",
-                          "description": "URL slug of the output page (`/o/{slug}`)."
-                        },
-                        "isActive": {
-                          "type": "boolean",
-                          "description": "The active production is the one /join pairs into."
-                        },
-                        "broadcast": {
-                          "enum": [
-                            "standby",
-                            "live",
-                            "ended"
-                          ],
-                          "description": "Broadcast state of a production. Standby and Ended show a slate on the output."
-                        },
-                        "liveSince": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Start of the current broadcast (LIVE runtime in the header).",
-                          "format": "date-time"
-                        },
-                        "endedAt": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "End of the last broadcast.",
-                          "format": "date-time"
-                        },
-                        "programSceneId": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Scene on air. Null only when the production has no scenes."
-                        },
-                        "previewSceneId": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Scene in the preview (Studio-Modus). Null when no operator uses Studio-Modus."
-                        },
-                        "lastTransition": {
-                          "required": [
-                            "kind",
-                            "durationMs"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "enum": [
-                                "cut",
-                                "fade"
-                              ],
-                              "description": "Kind of transition between program scenes. A fade always runs to completion (no T-bar)."
-                            },
-                            "durationMs": {
-                              "type": "integer",
-                              "description": "Fade duration; one of 200, 300, 500, 800, 1000, 1500, 2000. Ignored (0) for a cut.",
-                              "format": "int32"
-                            }
-                          },
-                          "description": "Transition used for a program switch."
-                        },
-                        "lastSwitchAt": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Server time of the last program switch.",
-                          "format": "date-time"
-                        },
-                        "standbySlate": {
-                          "required": [
-                            "title",
-                            "subtitle",
-                            "backgroundAssetId"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "title": {
-                              "type": "string",
-                              "description": "Main line, e.g. «Gleich geht's los»."
-                            },
-                            "subtitle": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Optional second line."
-                            },
-                            "backgroundAssetId": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Optional image asset behind the text."
-                            }
-                          },
-                          "description": "A full-screen slate on the output."
-                        },
-                        "endSlate": {
-                          "required": [
-                            "title",
-                            "subtitle",
-                            "backgroundAssetId"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "title": {
-                              "type": "string",
-                              "description": "Main line, e.g. «Gleich geht's los»."
-                            },
-                            "subtitle": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Optional second line."
-                            },
-                            "backgroundAssetId": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Optional image asset behind the text."
-                            }
-                          },
-                          "description": "A full-screen slate on the output."
-                        }
-                      },
-                      "description": "Production (OBS: scene collection): one event with its own devices, scenes and output."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "Production settings or broadcast state changed (not a program switch)."
-                },
-                {
-                  "required": [
-                    "programSceneId",
-                    "previewSceneId",
-                    "previousProgramSceneId",
-                    "transition",
-                    "at",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "programSwitched"
-                      ],
-                      "type": "string"
-                    },
-                    "programSceneId": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "New program scene."
-                    },
-                    "previewSceneId": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "New preview scene."
-                    },
-                    "previousProgramSceneId": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "Program scene before the switch (fade source)."
-                    },
-                    "transition": {
-                      "required": [
-                        "kind",
-                        "durationMs"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "enum": [
-                            "cut",
-                            "fade"
-                          ],
-                          "description": "Kind of transition between program scenes. A fade always runs to completion (no T-bar)."
-                        },
-                        "durationMs": {
-                          "type": "integer",
-                          "description": "Fade duration; one of 200, 300, 500, 800, 1000, 1500, 2000. Ignored (0) for a cut.",
-                          "format": "int32"
-                        }
-                      },
-                      "description": "Transition used for a program switch."
-                    },
-                    "at": {
-                      "type": "string",
-                      "description": "Server time of the switch.",
-                      "format": "date-time"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "Program and/or preview changed. Renderers play TransitionDto ProgramSwitchedEvent.Transition when the program changed."
-                },
-                {
-                  "required": [
-                    "scene",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "sceneUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "scene": {
-                      "required": [
-                        "id",
-                        "name",
-                        "sortOrder",
-                        "version",
-                        "layoutMode",
-                        "background",
-                        "items"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Scene id, e.g. `scn_…`."
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Display name, 1–80 characters."
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "description": "Position in the scene list, 0-based (keys 1–9 select the first nine).",
-                          "format": "int32"
-                        },
-                        "version": {
-                          "type": "integer",
-                          "description": "Increments with every change of this scene.",
-                          "format": "int32"
-                        },
-                        "layoutMode": {
-                          "enum": [
-                            "free",
-                            "autoGrid"
-                          ],
-                          "description": "Layout mode of a scene."
-                        },
-                        "background": {
-                          "required": [
-                            "color",
-                            "assetId"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "color": {
-                              "type": "string",
-                              "description": "Hex colour `#rrggbb`."
-                            },
-                            "assetId": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Optional image asset, drawn with cover fit."
-                            }
-                          },
-                          "description": "Canvas background: a colour and an optional image asset on top of it."
-                        },
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "required": [
-                              "id",
-                              "source",
-                              "x",
-                              "y",
-                              "w",
-                              "h",
-                              "fit",
-                              "crop",
-                              "radius",
-                              "mirror",
-                              "rotation",
-                              "hidden",
-                              "locked",
-                              "border",
-                              "onLost"
-                            ],
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "description": "Item id, e.g. `itm_…`; unique within the scene."
-                              },
-                              "source": {
-                                "type": "string",
-                                "description": "Source reference: `{deviceId}/{slot}` for device slots, `{assetId}` for media."
-                              },
-                              "x": {
-                                "type": "integer",
-                                "description": "Left edge, -3840…3840.",
-                                "format": "int32"
-                              },
-                              "y": {
-                                "type": "integer",
-                                "description": "Top edge, -2160…2160.",
-                                "format": "int32"
-                              },
-                              "w": {
-                                "type": "integer",
-                                "description": "Width, 16…3840.",
-                                "format": "int32"
-                              },
-                              "h": {
-                                "type": "integer",
-                                "description": "Height, 16…2160.",
-                                "format": "int32"
-                              },
-                              "fit": {
-                                "enum": [
-                                  "cover",
-                                  "contain"
-                                ],
-                                "description": "How a source is fitted into its item rectangle."
-                              },
-                              "crop": {
-                                "required": [
-                                  "top",
-                                  "right",
-                                  "bottom",
-                                  "left"
-                                ],
-                                "type": "object",
-                                "properties": {
-                                  "top": {
-                                    "type": "number",
-                                    "format": "double"
-                                  },
-                                  "right": {
-                                    "type": "number",
-                                    "format": "double"
-                                  },
-                                  "bottom": {
-                                    "type": "number",
-                                    "format": "double"
-                                  },
-                                  "left": {
-                                    "type": "number",
-                                    "format": "double"
-                                  }
-                                },
-                                "description": "Crop per side as a fraction (0–0.45) of the source picture. Opposite sides sum to less than 0.9."
-                              },
-                              "radius": {
-                                "type": "integer",
-                                "description": "Corner radius in canvas pixels, 0…200.",
-                                "format": "int32"
-                              },
-                              "mirror": {
-                                "type": "boolean",
-                                "description": "Mirror horizontally."
-                              },
-                              "rotation": {
-                                "type": "integer",
-                                "description": "Rotation in degrees: 0, 90, 180 or 270.",
-                                "format": "int32"
-                              },
-                              "hidden": {
-                                "type": "boolean",
-                                "description": "Hidden items are not rendered."
-                              },
-                              "locked": {
-                                "type": "boolean",
-                                "description": "Locked items cannot be moved in the editor."
-                              },
-                              "border": {
-                                "required": [
-                                  "width",
-                                  "color"
-                                ],
-                                "type": "object",
-                                "properties": {
-                                  "width": {
-                                    "type": "integer",
-                                    "description": "Width in canvas pixels, 1–40.",
-                                    "format": "int32"
-                                  },
-                                  "color": {
-                                    "type": "string",
-                                    "description": "Hex colour `#rrggbb`."
-                                  }
-                                },
-                                "description": "Border drawn inside the item rectangle."
-                              },
-                              "onLost": {
-                                "required": [
-                                  "holdMs",
-                                  "fallbackSource"
-                                ],
-                                "type": "object",
-                                "properties": {
-                                  "holdMs": {
-                                    "type": [
-                                      "null",
-                                      "integer"
-                                    ],
-                                    "description": "How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with «Bild kommt gleich zurück», or the fallback source is shown.",
-                                    "format": "int32"
-                                  },
-                                  "fallbackSource": {
-                                    "type": [
-                                      "null",
-                                      "string"
-                                    ],
-                                    "description": "Optional replacement source reference (e.g. a pause slate image)."
-                                  }
-                                },
-                                "description": "Fallback when the source of an item fails."
-                              }
-                            },
-                            "description": "Element of a scene (OBS: scene item). Geometry is in canvas pixels."
-                          },
-                          "description": "Items, back to front."
-                        }
-                      },
-                      "description": "Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back)."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A scene was created or changed."
-                },
-                {
-                  "required": [
-                    "sceneId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "sceneRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "sceneId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A scene was deleted."
-                },
-                {
-                  "required": [
-                    "sceneIds",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "scenesReordered"
-                      ],
-                      "type": "string"
-                    },
-                    "sceneIds": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "The scene order changed; IReadOnlyList&lt;string&gt; ScenesReorderedEvent.SceneIds lists every scene in the new order."
-                },
-                {
-                  "required": [
-                    "source",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "sourceUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "source": {
-                      "required": [
-                        "id",
-                        "code",
-                        "kind",
-                        "label",
-                        "deviceId",
-                        "slot",
-                        "assetId",
-                        "status",
-                        "statusSince"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Source reference: `{deviceId}/{slot}` or `{assetId}`."
-                        },
-                        "code": {
-                          "type": "string",
-                          "description": "Slot code shown everywhere: K1… cameras, S1… screens, M1… media."
-                        },
-                        "kind": {
-                          "enum": [
-                            "camera",
-                            "screen",
-                            "image",
-                            "video"
-                          ],
-                          "description": "Kind of a source."
-                        },
-                        "label": {
-                          "type": "string",
-                          "description": "Display name, e.g. «Laptop Lea · Screen 1»."
-                        },
-                        "deviceId": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Device for device slots."
-                        },
-                        "slot": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Slot name for device slots: `camera` or `screen-1`…`screen-9`. Equals the LiveKit track name."
-                        },
-                        "assetId": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Asset for media sources."
-                        },
-                        "status": {
-                          "enum": [
-                            "ok",
-                            "connecting",
-                            "offline",
-                            "reconnecting",
-                            "ended",
-                            "lost",
-                            "blocked"
-                          ],
-                          "description": "Health of a source as shown in the Regie (lamps, washes, message strip)."
-                        },
-                        "statusSince": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Time of the last status change (timers in the Regie).",
-                          "format": "date-time"
-                        }
-                      },
-                      "description": "A source that scene items can show."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A source was created or its health or label changed."
-                },
-                {
-                  "required": [
-                    "sourceId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "sourceRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "sourceId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A source was removed (slot released, device or asset deleted)."
-                },
-                {
-                  "required": [
-                    "device",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "deviceUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "device": {
-                      "required": [
-                        "id",
-                        "name",
-                        "kind",
-                        "platform",
-                        "state",
-                        "pairedAt",
-                        "lastSeenAt",
-                        "pairingMethod",
-                        "connection",
-                        "connectionSince",
-                        "techCheck",
-                        "telemetry"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Device id, e.g. `dev_…`; equals the LiveKit participant identity."
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Display name, editable in the Regie."
-                        },
-                        "kind": {
-                          "enum": [
-                            "phone",
-                            "laptop"
-                          ],
-                          "description": "Kind of a paired device."
-                        },
-                        "platform": {
-                          "type": "string",
-                          "description": "Short platform text reported by the sender, e.g. «iPhone · Safari»."
-                        },
-                        "state": {
-                          "enum": [
-                            "active",
-                            "blocked"
-                          ],
-                          "description": "Administrative state of a device."
-                        },
-                        "pairedAt": {
-                          "type": "string",
-                          "description": "Pairing time.",
-                          "format": "date-time"
-                        },
-                        "lastSeenAt": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Last control connection or report.",
-                          "format": "date-time"
-                        },
-                        "pairingMethod": {
-                          "enum": [
-                            "qr",
-                            "code",
-                            "link"
-                          ],
-                          "description": "How a device was paired."
-                        },
-                        "connection": {
-                          "enum": [
-                            "online",
-                            "reconnecting",
-                            "offline"
-                          ],
-                          "description": "Live connection state of a device as seen by the server."
-                        },
-                        "connectionSince": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Time of the last connection change.",
-                          "format": "date-time"
-                        },
-                        "techCheck": {
-                          "required": [
-                            "overall",
-                            "camera",
-                            "network",
-                            "bandwidth",
-                            "uploadKbps",
-                            "rttMs",
-                            "at",
-                            "note"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "overall": {
-                              "enum": [
-                                "unknown",
-                                "ok",
-                                "warn",
-                                "bad"
-                              ],
-                              "description": "Traffic light used by the technical check."
-                            },
-                            "camera": {
-                              "enum": [
-                                "unknown",
-                                "ok",
-                                "warn",
-                                "bad"
-                              ],
-                              "description": "Traffic light used by the technical check."
-                            },
-                            "network": {
-                              "enum": [
-                                "unknown",
-                                "ok",
-                                "warn",
-                                "bad"
-                              ],
-                              "description": "Traffic light used by the technical check."
-                            },
-                            "bandwidth": {
-                              "enum": [
-                                "unknown",
-                                "ok",
-                                "warn",
-                                "bad"
-                              ],
-                              "description": "Traffic light used by the technical check."
-                            },
-                            "uploadKbps": {
-                              "type": [
-                                "null",
-                                "integer"
-                              ],
-                              "format": "int32"
-                            },
-                            "rttMs": {
-                              "type": [
-                                "null",
-                                "integer"
-                              ],
-                              "format": "int32"
-                            },
-                            "at": {
-                              "type": "string",
-                              "format": "date-time"
-                            },
-                            "note": {
-                              "type": [
-                                "null",
-                                "string"
-                              ]
-                            }
-                          },
-                          "description": "Result of the technical check on the sender (camera, network, bandwidth)."
-                        },
-                        "telemetry": {
-                          "required": [
-                            "at",
-                            "rtc",
-                            "batteryPct",
-                            "charging",
-                            "network",
-                            "rttMs",
-                            "slots"
-                          ],
-                          "type": "object",
-                          "properties": {
-                            "at": {
-                              "type": "string",
-                              "description": "Server receive time.",
-                              "format": "date-time"
-                            },
-                            "rtc": {
-                              "enum": [
-                                "connected",
-                                "reconnecting",
-                                "disconnected"
-                              ],
-                              "description": "Media connection state reported by the sender."
-                            },
-                            "batteryPct": {
-                              "type": [
-                                "null",
-                                "integer"
-                              ],
-                              "description": "Battery level 0–100 where the browser exposes it.",
-                              "format": "int32"
-                            },
-                            "charging": {
-                              "type": [
-                                "null",
-                                "boolean"
-                              ],
-                              "description": "Charging state where available."
-                            },
-                            "network": {
-                              "type": [
-                                "null",
-                                "string"
-                              ],
-                              "description": "Network type, e.g. «wifi» or «4g», where available."
-                            },
-                            "rttMs": {
-                              "type": [
-                                "null",
-                                "integer"
-                              ],
-                              "description": "Round trip time to the server.",
-                              "format": "int32"
-                            },
-                            "slots": {
-                              "type": "array",
-                              "items": {
-                                "required": [
-                                  "slot",
-                                  "state",
-                                  "width",
-                                  "height",
-                                  "fps",
-                                  "bitrateKbps",
-                                  "packetLossPct",
-                                  "codec"
-                                ],
-                                "type": "object",
-                                "properties": {
-                                  "slot": {
-                                    "type": "string"
-                                  },
-                                  "state": {
-                                    "enum": [
-                                      "starting",
-                                      "live",
-                                      "paused",
-                                      "ended",
-                                      "failed"
-                                    ],
-                                    "description": "State of a slot on a device as reported by the sender."
-                                  },
-                                  "width": {
-                                    "type": [
-                                      "null",
-                                      "integer"
-                                    ],
-                                    "format": "int32"
-                                  },
-                                  "height": {
-                                    "type": [
-                                      "null",
-                                      "integer"
-                                    ],
-                                    "format": "int32"
-                                  },
-                                  "fps": {
-                                    "type": [
-                                      "null",
-                                      "number"
-                                    ],
-                                    "format": "double"
-                                  },
-                                  "bitrateKbps": {
-                                    "type": [
-                                      "null",
-                                      "integer"
-                                    ],
-                                    "format": "int32"
-                                  },
-                                  "packetLossPct": {
-                                    "type": [
-                                      "null",
-                                      "number"
-                                    ],
-                                    "format": "double"
-                                  },
-                                  "codec": {
-                                    "type": [
-                                      "null",
-                                      "string"
-                                    ]
-                                  }
-                                },
-                                "description": "Telemetry of one slot (camera or screen) of a device."
-                              },
-                              "description": "Per slot telemetry."
-                            }
-                          },
-                          "description": "Telemetry of a device, reported about every two seconds."
-                        }
-                      },
-                      "description": "A paired device (station) as shown in the Regie."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A device was paired or changed (name, state, connection, tech check)."
-                },
-                {
-                  "required": [
-                    "deviceId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "deviceRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "deviceId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A device was deleted."
-                },
-                {
-                  "required": [
-                    "asset",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "assetUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "asset": {
-                      "required": [
-                        "id",
-                        "code",
-                        "kind",
-                        "name",
-                        "contentType",
-                        "sizeBytes",
-                        "width",
-                        "height",
-                        "createdAt",
-                        "contentUrl"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Asset id, e.g. `ast_…`; also the source reference."
-                        },
-                        "code": {
-                          "type": "string",
-                          "description": "Slot code M1, M2, …"
-                        },
-                        "kind": {
-                          "enum": [
-                            "image",
-                            "video"
-                          ],
-                          "description": "Kind of an uploaded media asset."
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Display name (from the file name, editable)."
-                        },
-                        "contentType": {
-                          "type": "string",
-                          "description": "Verified MIME type."
-                        },
-                        "sizeBytes": {
-                          "type": "integer",
-                          "description": "File size.",
-                          "format": "int64"
-                        },
-                        "width": {
-                          "type": [
-                            "null",
-                            "integer"
-                          ],
-                          "description": "Pixel width where known.",
-                          "format": "int32"
-                        },
-                        "height": {
-                          "type": [
-                            "null",
-                            "integer"
-                          ],
-                          "description": "Pixel height where known.",
-                          "format": "int32"
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "description": "Upload time.",
-                          "format": "date-time"
-                        },
-                        "contentUrl": {
-                          "type": "string",
-                          "description": "Relative URL of the content. The output appends its key as `?k=`."
-                        }
-                      },
-                      "description": "An uploaded image or video."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An asset was uploaded or renamed."
-                },
-                {
-                  "required": [
-                    "assetId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "assetRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "assetId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An asset was deleted."
-                },
-                {
-                  "required": [
-                    "request",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "pairingRequestUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "request": {
-                      "required": [
-                        "id",
-                        "name",
-                        "kind",
-                        "platform",
-                        "checkCode",
-                        "createdAt",
-                        "expiresAt"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Request id."
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Device name typed on the laptop."
-                        },
-                        "kind": {
-                          "enum": [
-                            "phone",
-                            "laptop"
-                          ],
-                          "description": "Kind of a paired device."
-                        },
-                        "platform": {
-                          "type": "string",
-                          "description": "Platform text of the requester."
-                        },
-                        "checkCode": {
-                          "type": "string",
-                          "description": "Four digit check code, shown as «47 12» on both screens."
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "description": "Creation time.",
-                          "format": "date-time"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "description": "Expiry (10 minutes).",
-                          "format": "date-time"
-                        }
-                      },
-                      "description": "A pending /join request as shown to the Regie (knock card)."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A device knocked on /join."
-                },
-                {
-                  "required": [
-                    "requestId",
-                    "outcome",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "pairingRequestRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "type": "string"
-                    },
-                    "outcome": {
-                      "enum": [
-                        "pending",
-                        "approved",
-                        "denied",
-                        "expired"
-                      ],
-                      "description": "Status of an anonymous pairing request from /join."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A knock was approved, denied or expired."
-                },
-                {
-                  "required": [
-                    "invite",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "inviteUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "invite": {
-                      "required": [
-                        "id",
-                        "kind",
-                        "url",
-                        "createdAt",
-                        "expiresAt"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Invite id."
-                        },
-                        "kind": {
-                          "enum": [
-                            "phoneQr",
-                            "laptopLink"
-                          ],
-                          "description": "Kind of a one-time invite."
-                        },
-                        "url": {
-                          "type": "string",
-                          "description": "Absolute URL with the secret token; only visible to the Regie."
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "description": "Creation time.",
-                          "format": "date-time"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "description": "Expiry.",
-                          "format": "date-time"
-                        }
-                      },
-                      "description": "A one-time invite (QR code for phones, link for laptops). Valid once for 30 minutes."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An invite was created."
-                },
-                {
-                  "required": [
-                    "inviteId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "inviteRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "inviteId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An invite was used, revoked or expired."
-                },
-                {
-                  "required": [
-                    "incident",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "incidentUpserted"
-                      ],
-                      "type": "string"
-                    },
-                    "incident": {
-                      "required": [
-                        "id",
-                        "sourceId",
-                        "code",
-                        "kind",
-                        "startedAt",
-                        "endedAt"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "description": "Incident id."
-                        },
-                        "sourceId": {
-                          "type": "string",
-                          "description": "Affected source."
-                        },
-                        "code": {
-                          "type": "string",
-                          "description": "Slot code of the source."
-                        },
-                        "kind": {
-                          "enum": [
-                            "reconnecting",
-                            "ended",
-                            "lost"
-                          ],
-                          "description": "Kind of an incident in the message strip."
-                        },
-                        "startedAt": {
-                          "type": "string",
-                          "description": "Start of the outage.",
-                          "format": "date-time"
-                        },
-                        "endedAt": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Recovery time; null while the outage lasts.",
-                          "format": "date-time"
-                        }
-                      },
-                      "description": "An incident in the message strip. Recovered incidents stay until someone acknowledges them («Gesehen»)."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An incident started, changed or recovered."
-                },
-                {
-                  "required": [
-                    "incidentId",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "incidentRemoved"
-                      ],
-                      "type": "string"
-                    },
-                    "incidentId": {
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "An incident was acknowledged or superseded."
-                },
-                {
-                  "required": [
-                    "status",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "outputStatusChanged"
-                      ],
-                      "type": "string"
-                    },
-                    "status": {
-                      "required": [
-                        "state",
-                        "consumers",
-                        "addresses",
-                        "latencyMs",
-                        "fps",
-                        "lastReportAt"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "state": {
-                          "enum": [
-                            "none",
-                            "connected",
-                            "stale"
-                          ],
-                          "description": "Connection state of the output consumer (proxy)."
-                        },
-                        "consumers": {
-                          "type": "integer",
-                          "description": "Number of connected output pages.",
-                          "format": "int32"
-                        },
-                        "addresses": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          },
-                          "description": "Remote IP addresses of the output pages."
-                        },
-                        "latencyMs": {
-                          "type": [
-                            "null",
-                            "integer"
-                          ],
-                          "description": "Estimated receive latency reported by the output page.",
-                          "format": "int32"
-                        },
-                        "fps": {
-                          "type": [
-                            "null",
-                            "number"
-                          ],
-                          "description": "Rendered frames per second of the program.",
-                          "format": "double"
-                        },
-                        "lastReportAt": {
-                          "type": [
-                            "null",
-                            "string"
-                          ],
-                          "description": "Last report time.",
-                          "format": "date-time"
-                        }
-                      },
-                      "description": "Live state of the output consumer (chip «Output an Proxy» in the header)."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "The output consumer state changed."
-                },
-                {
-                  "required": [
-                    "entry",
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "logAppended"
-                      ],
-                      "type": "string"
-                    },
-                    "entry": {
-                      "required": [
-                        "at",
-                        "text"
-                      ],
-                      "type": "object",
-                      "properties": {
-                        "at": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "text": {
-                          "type": "string"
-                        }
-                      },
-                      "description": "A human-readable entry for «Letzte Ereignisse» (backed by the audit log)."
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "A new entry for «Letzte Ereignisse»."
-                },
-                {
-                  "required": [
-                    "revision",
-                    "type"
-                  ],
-                  "properties": {
-                    "type": {
-                      "enum": [
-                        "revisionOnly"
-                      ],
-                      "type": "string"
-                    },
-                    "revision": {
-                      "type": "integer",
-                      "description": "Revision after this change.",
-                      "format": "int64"
-                    }
-                  },
-                  "description": "Placeholder that only advances the revision; sent to clients that must not see the actual change (output page)."
-                }
-              ],
-              "description": "A revisioned change of the production state, pushed over SignalR (method string HubMethods.Event).\r\nClients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync\r\n(new snapshot), a smaller revision is ignored.",
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "productionChanged": "#/components/schemas/ProductionEventProductionChangedEvent",
-                  "programSwitched": "#/components/schemas/ProductionEventProgramSwitchedEvent",
-                  "sceneUpserted": "#/components/schemas/ProductionEventSceneUpsertedEvent",
-                  "sceneRemoved": "#/components/schemas/ProductionEventSceneRemovedEvent",
-                  "scenesReordered": "#/components/schemas/ProductionEventScenesReorderedEvent",
-                  "sourceUpserted": "#/components/schemas/ProductionEventSourceUpsertedEvent",
-                  "sourceRemoved": "#/components/schemas/ProductionEventSourceRemovedEvent",
-                  "deviceUpserted": "#/components/schemas/ProductionEventDeviceUpsertedEvent",
-                  "deviceRemoved": "#/components/schemas/ProductionEventDeviceRemovedEvent",
-                  "assetUpserted": "#/components/schemas/ProductionEventAssetUpsertedEvent",
-                  "assetRemoved": "#/components/schemas/ProductionEventAssetRemovedEvent",
-                  "pairingRequestUpserted": "#/components/schemas/ProductionEventPairingRequestUpsertedEvent",
-                  "pairingRequestRemoved": "#/components/schemas/ProductionEventPairingRequestRemovedEvent",
-                  "inviteUpserted": "#/components/schemas/ProductionEventInviteUpsertedEvent",
-                  "inviteRemoved": "#/components/schemas/ProductionEventInviteRemovedEvent",
-                  "incidentUpserted": "#/components/schemas/ProductionEventIncidentUpsertedEvent",
-                  "incidentRemoved": "#/components/schemas/ProductionEventIncidentRemovedEvent",
-                  "outputStatusChanged": "#/components/schemas/ProductionEventOutputStatusChangedEvent",
-                  "logAppended": "#/components/schemas/ProductionEventLogAppendedEvent",
-                  "revisionOnly": "#/components/schemas/ProductionEventRevisionOnlyEvent"
-                }
-              }
-            }
+              "$ref": "#/components/schemas/ProductionEvent"
+            },
+            "description": "Events after the requested revision, oldest first; null when a snapshot is returned."
           },
           "snapshot": {
-            "required": [
-              "revision",
-              "serverTime",
-              "production",
-              "scenes",
-              "sources",
-              "assets"
-            ],
-            "type": "object",
-            "properties": {
-              "revision": {
-                "type": "integer",
-                "description": "Same revision counter as the Regie snapshot.",
-                "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
               },
-              "serverTime": {
-                "type": "string",
-                "description": "Server clock.",
-                "format": "date-time"
-              },
-              "production": {
-                "required": [
-                  "id",
-                  "tenantId",
-                  "name",
-                  "slug",
-                  "isActive",
-                  "broadcast",
-                  "liveSince",
-                  "endedAt",
-                  "programSceneId",
-                  "previewSceneId",
-                  "lastTransition",
-                  "lastSwitchAt",
-                  "standbySlate",
-                  "endSlate"
-                ],
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "description": "Production id, e.g. `prd_9x2k…`."
-                  },
-                  "tenantId": {
-                    "type": "string",
-                    "description": "Tenant id; only `opten` for now (multi-tenancy is prepared, not active)."
-                  },
-                  "name": {
-                    "type": "string",
-                    "description": "Display name shown in the header."
-                  },
-                  "slug": {
-                    "type": "string",
-                    "description": "URL slug of the output page (`/o/{slug}`)."
-                  },
-                  "isActive": {
-                    "type": "boolean",
-                    "description": "The active production is the one /join pairs into."
-                  },
-                  "broadcast": {
-                    "enum": [
-                      "standby",
-                      "live",
-                      "ended"
-                    ],
-                    "description": "Broadcast state of a production. Standby and Ended show a slate on the output."
-                  },
-                  "liveSince": {
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "description": "Start of the current broadcast (LIVE runtime in the header).",
-                    "format": "date-time"
-                  },
-                  "endedAt": {
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "description": "End of the last broadcast.",
-                    "format": "date-time"
-                  },
-                  "programSceneId": {
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "description": "Scene on air. Null only when the production has no scenes."
-                  },
-                  "previewSceneId": {
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "description": "Scene in the preview (Studio-Modus). Null when no operator uses Studio-Modus."
-                  },
-                  "lastTransition": {
-                    "description": "Transition used for a program switch."
-                  },
-                  "lastSwitchAt": {
-                    "type": [
-                      "null",
-                      "string"
-                    ],
-                    "description": "Server time of the last program switch.",
-                    "format": "date-time"
-                  },
-                  "standbySlate": {
-                    "description": "A full-screen slate on the output."
-                  },
-                  "endSlate": {
-                    "description": "A full-screen slate on the output."
-                  }
-                },
-                "description": "Production (OBS: scene collection): one event with its own devices, scenes and output."
-              },
-              "scenes": {
-                "type": "array",
-                "items": {
-                  "required": [
-                    "id",
-                    "name",
-                    "sortOrder",
-                    "version",
-                    "layoutMode",
-                    "background",
-                    "items"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Scene id, e.g. `scn_…`."
-                    },
-                    "name": {
-                      "type": "string",
-                      "description": "Display name, 1–80 characters."
-                    },
-                    "sortOrder": {
-                      "type": "integer",
-                      "description": "Position in the scene list, 0-based (keys 1–9 select the first nine).",
-                      "format": "int32"
-                    },
-                    "version": {
-                      "type": "integer",
-                      "description": "Increments with every change of this scene.",
-                      "format": "int32"
-                    },
-                    "layoutMode": {
-                      "enum": [
-                        "free",
-                        "autoGrid"
-                      ],
-                      "description": "Layout mode of a scene."
-                    },
-                    "background": {
-                      "description": "Canvas background: a colour and an optional image asset on top of it."
-                    },
-                    "items": {
-                      "description": "Items, back to front."
-                    }
-                  },
-                  "description": "Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back)."
-                },
-                "description": "All scenes (the output preloads their sources)."
-              },
-              "sources": {
-                "type": "array",
-                "items": {
-                  "required": [
-                    "id",
-                    "code",
-                    "kind",
-                    "label",
-                    "deviceId",
-                    "slot",
-                    "assetId",
-                    "status",
-                    "statusSince"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Source reference: `{deviceId}/{slot}` or `{assetId}`."
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "Slot code shown everywhere: K1… cameras, S1… screens, M1… media."
-                    },
-                    "kind": {
-                      "enum": [
-                        "camera",
-                        "screen",
-                        "image",
-                        "video"
-                      ],
-                      "description": "Kind of a source."
-                    },
-                    "label": {
-                      "type": "string",
-                      "description": "Display name, e.g. «Laptop Lea · Screen 1»."
-                    },
-                    "deviceId": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "Device for device slots."
-                    },
-                    "slot": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "Slot name for device slots: `camera` or `screen-1`…`screen-9`. Equals the LiveKit track name."
-                    },
-                    "assetId": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "Asset for media sources."
-                    },
-                    "status": {
-                      "enum": [
-                        "ok",
-                        "connecting",
-                        "offline",
-                        "reconnecting",
-                        "ended",
-                        "lost",
-                        "blocked"
-                      ],
-                      "description": "Health of a source as shown in the Regie (lamps, washes, message strip)."
-                    },
-                    "statusSince": {
-                      "type": [
-                        "null",
-                        "string"
-                      ],
-                      "description": "Time of the last status change (timers in the Regie).",
-                      "format": "date-time"
-                    }
-                  },
-                  "description": "A source that scene items can show."
-                },
-                "description": "Sources without health."
-              },
-              "assets": {
-                "type": "array",
-                "items": {
-                  "required": [
-                    "id",
-                    "code",
-                    "kind",
-                    "name",
-                    "contentType",
-                    "sizeBytes",
-                    "width",
-                    "height",
-                    "createdAt",
-                    "contentUrl"
-                  ],
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Asset id, e.g. `ast_…`; also the source reference."
-                    },
-                    "code": {
-                      "type": "string",
-                      "description": "Slot code M1, M2, …"
-                    },
-                    "kind": {
-                      "enum": [
-                        "image",
-                        "video"
-                      ],
-                      "description": "Kind of an uploaded media asset."
-                    },
-                    "name": {
-                      "type": "string",
-                      "description": "Display name (from the file name, editable)."
-                    },
-                    "contentType": {
-                      "type": "string",
-                      "description": "Verified MIME type."
-                    },
-                    "sizeBytes": {
-                      "type": "integer",
-                      "description": "File size.",
-                      "format": "int64"
-                    },
-                    "width": {
-                      "type": [
-                        "null",
-                        "integer"
-                      ],
-                      "description": "Pixel width where known.",
-                      "format": "int32"
-                    },
-                    "height": {
-                      "type": [
-                        "null",
-                        "integer"
-                      ],
-                      "description": "Pixel height where known.",
-                      "format": "int32"
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "description": "Upload time.",
-                      "format": "date-time"
-                    },
-                    "contentUrl": {
-                      "type": "string",
-                      "description": "Relative URL of the content. The output appends its key as `?k=`."
-                    }
-                  },
-                  "description": "An uploaded image or video."
-                },
-                "description": "Media with content URLs."
+              {
+                "description": "Full output state; null when IReadOnlyList&lt;ProductionEvent&gt;? OutputChangesDto.Events is returned.",
+                "$ref": "#/components/schemas/OutputSnapshot"
               }
-            },
-            "description": "Production state for the output page. Contains no device, pairing or incident data."
+            ]
           }
         },
-        "description": "Output variant of ProductionChangesDto; hidden changes appear as RevisionOnlyEvent."
+        "description": "Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):\r\nchanges the output must not see – devices, pairing, invites, incidents, log, output status and health-only source\r\nchanges – appear as RevisionOnlyEvent with the same revision."
       },
       "OutputReport": {
         "required": [

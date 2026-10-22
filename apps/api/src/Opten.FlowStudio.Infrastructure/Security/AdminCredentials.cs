@@ -20,6 +20,12 @@ public sealed class AdminOptions
     /// <summary>Plain password for local setups only (a warning is logged when it is used).</summary>
     public string Password { get; set; } = string.Empty;
 
+    /// <summary>
+    /// <c>Admin:SessionLifetime</c>: sliding lifetime of the session cookie <c>fs_session</c> (spec 5, default 12 h); a
+    /// studio hub connection is closed when its session expires.
+    /// </summary>
+    public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(12);
+
     /// <summary>True when the plain password is the active credential.</summary>
     public bool UsesPlainPassword => string.IsNullOrEmpty(PasswordHash) && !string.IsNullOrEmpty(Password);
 }

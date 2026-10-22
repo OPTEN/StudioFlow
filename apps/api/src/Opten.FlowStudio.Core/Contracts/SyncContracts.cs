@@ -9,7 +9,14 @@ namespace Opten.FlowStudio.Core.Contracts;
 /// <param name="Snapshot">Full state; null when <see cref="Events"/> is returned.</param>
 public sealed record ProductionChangesDto(long Revision, IReadOnlyList<ProductionEvent>? Events, ProductionSnapshot? Snapshot);
 
-/// <summary>Output variant of <see cref="ProductionChangesDto"/>; hidden changes appear as <see cref="RevisionOnlyEvent"/>.</summary>
+/// <summary>
+/// Output variant of <see cref="ProductionChangesDto"/> (hub <c>SubscribeOutput</c> and <c>GET /api/output/{slug}/changes</c>):
+/// changes the output must not see – devices, pairing, invites, incidents, log, output status and health-only source
+/// changes – appear as <see cref="RevisionOnlyEvent"/> with the same revision.
+/// </summary>
+/// <param name="Revision">Current revision.</param>
+/// <param name="Events">Events after the requested revision, oldest first; null when a snapshot is returned.</param>
+/// <param name="Snapshot">Full output state; null when <see cref="Events"/> is returned.</param>
 public sealed record OutputChangesDto(long Revision, IReadOnlyList<ProductionEvent>? Events, OutputSnapshot? Snapshot);
 
 /// <summary>Result of the upload part of the technical check.</summary>

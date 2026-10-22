@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Opten.FlowStudio.Core.Application.Ports;
+using Opten.FlowStudio.Core.Application.Runtime;
 using Opten.FlowStudio.Core.Contracts;
 using Opten.FlowStudio.Core.Domain;
 
@@ -18,15 +19,18 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
 
     public List<AuditEntry> Audit { get; } = [];
 
+    public Dictionary<string, SourceLastLive> LiveMarks { get; } = new(StringComparer.Ordinal);
+
     public int Commits { get; private set; }
 
     public bool FailNextCommit { get; set; }
 
     public IUnitOfWork Create() => new Unit(this);
 
-    private sealed class Unit(InMemoryData data) : IUnitOfWork, IProductionRepository, IDeviceRepository, IAssetRepository, IInviteRepository, IAuditRepository
+    private sealed class Unit(InMemoryData data) : IUnitOfWork, IProductionRepository, IDeviceRepository, IAssetRepository, IInviteRepository, IAuditRepository, ISourceActivityRepository
     {
         private readonly List<AuditEntry> pendingAudit = [];
+        private readonly List<SourceLastLive> pendingMarks = [];
 
         public IProductionRepository Productions => this;
 
@@ -37,6 +41,8 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
         public IInviteRepository Invites => this;
 
         public IAuditRepository Audit => this;
+
+        public ISourceActivityRepository SourceActivity => this;
 
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {
@@ -49,11 +55,31 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
             lock (data)
             {
                 data.Audit.AddRange(pendingAudit);
+                foreach (var mark in pendingMarks)
+                {
+                    data.LiveMarks[mark.SourceId] = mark;
+                }
+
                 data.Commits++;
             }
 
             pendingAudit.Clear();
+            pendingMarks.Clear();
             return Task.CompletedTask;
+        }
+
+        Task ISourceActivityRepository.MarkLiveAsync(string productionId, IReadOnlyCollection<SourceLiveMark> marks, DateTimeOffset at, CancellationToken cancellationToken)
+        {
+            pendingMarks.AddRange(marks.Select(m => new SourceLastLive(m.SourceId, productionId, m.DeviceId, at)));
+            return Task.CompletedTask;
+        }
+
+        Task<IReadOnlyList<SourceLastLive>> ISourceActivityRepository.ListLiveSinceAsync(DateTimeOffset since, CancellationToken cancellationToken)
+        {
+            lock (data)
+            {
+                return Task.FromResult<IReadOnlyList<SourceLastLive>>([.. data.LiveMarks.Values.Where(m => m.LastLiveAt >= since)]);
+            }
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -116,8 +142,8 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
         Task<IReadOnlyList<Invite>> IInviteRepository.ListOpenAsync(string productionId, DateTimeOffset now, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Invite>>([.. data.Invites.Where(i => i.ProductionId == productionId && i.IsOpen(now))]);
 
-        Task<IReadOnlyList<string>> IInviteRepository.ListProductionsWithDueInvitesAsync(DateTimeOffset now, CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<string>>([.. data.Invites.Where(i => i.RedeemedAt is null && i.RevokedAt is null && (i.ExpiresAt <= now || i.NeedsRenewal(now))).Select(i => i.ProductionId).Distinct()]);
+        Task<IReadOnlyList<string>> IInviteRepository.ListProductionsWithDueInvitesAsync(DateTimeOffset now, TimeSpan renewBefore, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<string>>([.. data.Invites.Where(i => i.RedeemedAt is null && i.RevokedAt is null && (i.ExpiresAt <= now || i.NeedsRenewal(now, renewBefore))).Select(i => i.ProductionId).Distinct()]);
 
         Task<IReadOnlyList<Invite>> IInviteRepository.ListUnusedAsync(string productionId, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Invite>>([.. data.Invites.Where(i => i.ProductionId == productionId && i.RedeemedAt is null && i.RevokedAt is null)]);
@@ -225,6 +251,27 @@ internal sealed class RecordingPublisher : IRealtimePublisher
     public void Abort(string connectionId) => Aborted.Enqueue(connectionId);
 
     public void AbortAfterDelivery(string connectionId) => AbortedAfterDelivery.Enqueue(connectionId);
+}
+
+/// <summary>
+/// Delivers at once on the calling thread, so tests see the events right after the mutation returns (the ordered
+/// production dispatcher has its own tests).
+/// </summary>
+internal sealed class InlineDispatcher(IRealtimePublisher publisher) : IRealtimeDispatcher
+{
+    public void Enqueue(string productionId, Func<IRealtimePublisher, Task> delivery)
+    {
+        try
+        {
+            delivery(publisher).GetAwaiter().GetResult();
+        }
+        catch (InvalidOperationException)
+        {
+            // Like the real dispatcher: a failing delivery never fails the mutation.
+        }
+    }
+
+    public Task WhenIdleAsync(string productionId, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>Room service that remembers removals and returns a configurable participant list.</summary>

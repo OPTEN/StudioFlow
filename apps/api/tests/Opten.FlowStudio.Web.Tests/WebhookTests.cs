@@ -1,6 +1,7 @@
 using System.Net;
 using Opten.FlowStudio.Core.Application.Services;
 using Opten.FlowStudio.Core.Contracts;
+using Opten.FlowStudio.Infrastructure.LiveKit;
 using Opten.FlowStudio.Web.Tests.Support;
 
 namespace Opten.FlowStudio.Web.Tests;
@@ -74,9 +75,17 @@ public sealed class WebhookTests(FlowStudioApp app) : IClassFixture<FlowStudioAp
     [Fact]
     public async Task Webhook_TooLarge_Is413()
     {
-        var body = new string(' ', 70 * 1024);
+        var body = new string(' ', LiveKitWebhookReceiver.MaxBodyBytes + 1);
 
         await app.Anonymous().SendAsync(Webhooks.Request(body, Webhooks.Sign(body)), TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.RequestEntityTooLarge);
+    }
+
+    [Fact]
+    public async Task Webhook_LargeButBelowOneMebibyte_IsAccepted()
+    {
+        var body = Webhooks.Participant("participant_joined", "prd_unknown00000", "PA_9", "dev_x") + new string(' ', 300 * 1024);
+
+        await app.Anonymous().SendAsync(Webhooks.Request(body, Webhooks.Sign(body)), TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
     }
 
     [Fact]

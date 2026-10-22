@@ -45,7 +45,9 @@ public static class InfrastructureServices
         services.AddOptions<LiveKitOptions>().Bind(configuration.GetSection(LiveKitOptions.Section))
             .Validate(o => !string.IsNullOrWhiteSpace(o.ApiKey), "LiveKit:ApiKey is required.")
             .Validate(o => o.ApiSecret.Length >= MinSecretLength, $"LiveKit:ApiSecret must have at least {MinSecretLength} characters.")
-            .Validate(o => Uri.TryCreate(o.InternalUrl, UriKind.Absolute, out _), "LiveKit:InternalUrl must be an absolute URL.");
+            .Validate(o => Uri.TryCreate(o.InternalUrl, UriKind.Absolute, out _), "LiveKit:InternalUrl must be an absolute URL.")
+            .Validate(o => o.TokenTtl >= TimeSpan.FromMinutes(1) && o.TokenTtl <= TimeSpan.FromHours(24), "LiveKit:TokenTtl must be between 00:01:00 and 1.00:00:00.")
+            .Validate(o => o.RequestTimeout >= TimeSpan.FromMilliseconds(100) && o.RequestTimeout <= TimeSpan.FromMinutes(1), "LiveKit:RequestTimeout must be between 00:00:00.1 and 00:01:00.");
         services.AddSingleton<LiveKitTokenIssuer>();
         services.AddSingleton<ILiveKitTokenIssuer>(sp => sp.GetRequiredService<LiveKitTokenIssuer>());
         services.AddSingleton<LiveKitWebhookReceiver>();
@@ -63,7 +65,8 @@ public static class InfrastructureServices
 
         services.AddOptions<AdminOptions>().Bind(configuration.GetSection(AdminOptions.Section))
             .Validate(o => !string.IsNullOrWhiteSpace(o.Username), "Admin:Username is required.")
-            .Validate(o => !string.IsNullOrEmpty(o.PasswordHash) || !string.IsNullOrEmpty(o.Password), "Admin:PasswordHash (or, for local setups, Admin:Password) is required.");
+            .Validate(o => !string.IsNullOrEmpty(o.PasswordHash) || !string.IsNullOrEmpty(o.Password), "Admin:PasswordHash (or, for local setups, Admin:Password) is required.")
+            .Validate(o => o.SessionLifetime >= TimeSpan.FromSeconds(1) && o.SessionLifetime <= TimeSpan.FromDays(30), "Admin:SessionLifetime must be between 00:00:01 and 30.00:00:00.");
         services.AddSingleton<IAdminCredentials, AdminCredentials>();
         return services;
     }

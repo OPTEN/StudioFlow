@@ -8,6 +8,9 @@ public enum ErrorKind
     /// <summary>Input failed validation (400).</summary>
     Validation,
 
+    /// <summary>No credential at all where one is required (401).</summary>
+    Unauthorized,
+
     /// <summary>Signed in but not allowed (403).</summary>
     Forbidden,
 
@@ -77,6 +80,6 @@ public sealed class FlowStudioException : Exception
     public static FlowStudioException RateLimited(TimeSpan retryAfter) =>
         new(ErrorKind.RateLimited, ErrorCodes.RateLimited, "Zu viele Versuche. Bitte später erneut versuchen.", retryAfter: retryAfter);
 
-    /// <summary>A limit (scenes, items, slots, pending requests) was reached.</summary>
+    /// <summary>A size limit (scenes per production, items per scene, slots per device) was reached (409, GAP-05).</summary>
     public static FlowStudioException LimitReached(string message) => Conflict(ErrorCodes.LimitReached, message);
 }

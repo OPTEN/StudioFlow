@@ -3,9 +3,11 @@ using System.Reflection;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Opten.FlowStudio.Core.Application;
 using Opten.FlowStudio.Core.Application.Services;
 using Opten.FlowStudio.Core.Contracts;
+using Opten.FlowStudio.Infrastructure.Security;
 using Opten.FlowStudio.Web.Errors;
 using Opten.FlowStudio.Web.Security;
 
@@ -20,8 +22,7 @@ internal static class AuthEndpoints
         switch (result.Outcome)
         {
             case LoginOutcome.Succeeded:
-                var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, result.Username!)], AuthSchemes.Admin);
-                await context.SignInAsync(AuthSchemes.Admin, new ClaimsPrincipal(identity), new AuthenticationProperties { IsPersistent = true });
+                await context.SignInAsync(AuthSchemes.Admin, AdminSessions.Principal(result.Username!), new AuthenticationProperties { IsPersistent = true });
                 return TypedResults.Ok(new SessionDto(result.Username!));
             case LoginOutcome.Locked:
                 var seconds = Math.Max(1, (int)Math.Ceiling(result.RetryAfter!.Value.TotalSeconds));
@@ -32,8 +33,16 @@ internal static class AuthEndpoints
         }
     }
 
-    public static async Task<IResult> LogoutAsync(HttpContext context)
+    // Ends the session on the server too (GAP-04): the cookie is refused from now on and the Regie hub connections of
+    // this session are closed.
+    public static async Task<IResult> LogoutAsync(HttpContext context, AdminSessions sessions, TimeProvider clock, IOptions<AdminOptions> admin)
     {
+        if (context.User.FindFirstValue(FlowStudioClaims.SessionId) is { Length: > 0 } sessionId)
+        {
+            // No copy of the cookie (sliding renewals included) can be valid longer than one lifetime from now.
+            sessions.Revoke(sessionId, clock.GetUtcNow() + admin.Value.SessionLifetime);
+        }
+
         await context.SignOutAsync(AuthSchemes.Admin);
         return TypedResults.NoContent();
     }
@@ -216,9 +225,11 @@ internal static class PairingEndpoints
         TypedResults.Ok(await pairing.RedeemAsync(token, body, cancellationToken));
 }
 
-/// <summary>Output settings for the Regie.</summary>
+/// <summary>Output settings for the Regie and the output page routes (key in <c>X-Output-Key</c>).</summary>
 internal static class OutputEndpoints
 {
+    private const string OutputKeyHeader = "X-Output-Key";
+
     public static async Task<IResult> GetSettingsAsync(string productionId, OutputService outputs, CancellationToken cancellationToken) =>
         TypedResults.Ok(await outputs.GetSettingsAsync(productionId, cancellationToken));
 
@@ -228,19 +239,26 @@ internal static class OutputEndpoints
     public static async Task<IResult> RegenerateKeyAsync(string productionId, OutputService outputs, CancellationToken cancellationToken) =>
         TypedResults.Ok(await outputs.RegenerateKeyAsync(productionId, cancellationToken));
 
-    public static async Task<IResult> GetSnapshotAsync(string slug, [FromHeader(Name = "X-Output-Key")] string key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
+    // The key header is optional for the binder: a missing key must give the same 403 as a wrong one, not a 400 (GAP-06).
+    public static async Task<IResult> GetSnapshotAsync(string slug, [FromHeader(Name = OutputKeyHeader)] string? key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
     {
         var access = await outputs.AuthorizeAsync(slug, key, context.Connection.RemoteIpAddress, cancellationToken);
         return TypedResults.Ok(await outputs.GetSnapshotAsync(access, cancellationToken));
     }
 
-    public static async Task<IResult> IssueLiveKitTokenAsync(string slug, [FromHeader(Name = "X-Output-Key")] string key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
+    public static async Task<IResult> GetChangesAsync(string slug, [FromQuery] long since, [FromHeader(Name = OutputKeyHeader)] string? key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
+    {
+        var access = await outputs.AuthorizeAsync(slug, key, context.Connection.RemoteIpAddress, cancellationToken);
+        return TypedResults.Ok(await outputs.GetChangesAsync(access, since, cancellationToken));
+    }
+
+    public static async Task<IResult> IssueLiveKitTokenAsync(string slug, [FromHeader(Name = OutputKeyHeader)] string? key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
     {
         var access = await outputs.AuthorizeAsync(slug, key, context.Connection.RemoteIpAddress, cancellationToken);
         return TypedResults.Ok(outputs.IssueToken(access));
     }
 
-    public static async Task<IResult> ReportAsync(string slug, [FromHeader(Name = "X-Output-Key")] string key, [FromBody] OutputReport body, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
+    public static async Task<IResult> ReportAsync(string slug, [FromHeader(Name = OutputKeyHeader)] string? key, [FromBody] OutputReport body, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
     {
         var access = await outputs.AuthorizeAsync(slug, key, context.Connection.RemoteIpAddress, cancellationToken);
         await outputs.ReportAsync(access.ProductionId, body, cancellationToken);

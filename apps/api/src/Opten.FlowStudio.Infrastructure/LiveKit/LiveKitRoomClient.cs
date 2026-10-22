@@ -3,15 +3,17 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 using Opten.FlowStudio.Core.Application.Ports;
 
 namespace Opten.FlowStudio.Infrastructure.LiveKit;
 
 /// <summary>
 /// LiveKit room service over Twirp (<c>POST /twirp/livekit.RoomService/{Method}</c>, spec 7). Requests are camelCase,
-/// responses snake_case with int64 values as strings; every failure surfaces as <see cref="LiveKitUnavailableException"/>.
+/// responses snake_case with int64 values as strings; every failure – including a call that exceeds
+/// <c>LiveKit:RequestTimeout</c> while sending or reading – surfaces as <see cref="LiveKitUnavailableException"/>.
 /// </summary>
-internal sealed class LiveKitRoomClient(HttpClient http, LiveKitTokenIssuer tokens) : ILiveKitRoomClient
+internal sealed class LiveKitRoomClient(HttpClient http, LiveKitTokenIssuer tokens, IOptions<LiveKitOptions> options) : ILiveKitRoomClient
 {
     private const string ServicePath = "twirp/livekit.RoomService/";
 
@@ -21,32 +23,58 @@ internal sealed class LiveKitRoomClient(HttpClient http, LiveKitTokenIssuer toke
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
-    public async Task<IReadOnlyList<LiveKitParticipant>> ListParticipantsAsync(string room, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<LiveKitParticipant>> ListParticipantsAsync(string room, CancellationToken cancellationToken) =>
+        CallAsync<IReadOnlyList<LiveKitParticipant>>("ListParticipants", async token =>
+        {
+            using var response = await SendAsync("ListParticipants", room, new { room }, token);
+            await EnsureSuccessAsync(response, "ListParticipants", token);
+            try
+            {
+                var body = await response.Content.ReadFromJsonAsync<ListParticipantsResponse>(ResponseJson, token);
+                return [.. (body?.Participants ?? []).Where(p => !string.IsNullOrEmpty(p.Sid) && !string.IsNullOrEmpty(p.Identity))
+                    .Select(p => new LiveKitParticipant(p.Sid!, p.Identity!, [.. (p.Tracks ?? []).Where(t => !string.IsNullOrEmpty(t.Name)).Select(t => t.Name!)]))];
+            }
+            catch (JsonException exception)
+            {
+                throw new LiveKitUnavailableException("LiveKit returned an unreadable participant list.", exception);
+            }
+        }, cancellationToken);
+
+    public Task RemoveParticipantAsync(string room, string identity, CancellationToken cancellationToken) =>
+        CallAsync("RemoveParticipant", async token =>
+        {
+            using var response = await SendAsync("RemoveParticipant", room, new { room, identity }, token);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // The participant is not in the room (any more): nothing to remove.
+                return true;
+            }
+
+            await EnsureSuccessAsync(response, "RemoveParticipant", token);
+            return true;
+        }, cancellationToken);
+
+    /// <summary>Runs one call with an overall time limit; network, timeout and protocol errors become <see cref="LiveKitUnavailableException"/>.</summary>
+    private async Task<T> CallAsync<T>(string method, Func<CancellationToken, Task<T>> call, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync("ListParticipants", room, new { room }, cancellationToken);
-        await EnsureSuccessAsync(response, "ListParticipants", cancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(options.Value.RequestTimeout);
         try
         {
-            var body = await response.Content.ReadFromJsonAsync<ListParticipantsResponse>(ResponseJson, cancellationToken);
-            return [.. (body?.Participants ?? []).Where(p => !string.IsNullOrEmpty(p.Sid) && !string.IsNullOrEmpty(p.Identity))
-                .Select(p => new LiveKitParticipant(p.Sid!, p.Identity!, [.. (p.Tracks ?? []).Where(t => !string.IsNullOrEmpty(t.Name)).Select(t => t.Name!)]))];
+            return await call(timeout.Token);
         }
-        catch (JsonException exception)
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new LiveKitUnavailableException("LiveKit returned an unreadable participant list.", exception);
+            throw new LiveKitUnavailableException($"LiveKit {method} timed out.", exception);
         }
-    }
-
-    public async Task RemoveParticipantAsync(string room, string identity, CancellationToken cancellationToken)
-    {
-        using var response = await SendAsync("RemoveParticipant", room, new { room, identity }, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        catch (HttpRequestException exception)
         {
-            // The participant is not in the room (any more): nothing to remove.
-            return;
+            throw new LiveKitUnavailableException($"LiveKit {method} is unreachable.", exception);
         }
-
-        await EnsureSuccessAsync(response, "RemoveParticipant", cancellationToken);
+        catch (IOException exception)
+        {
+            throw new LiveKitUnavailableException($"LiveKit {method} failed while reading the response.", exception);
+        }
     }
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, string method, CancellationToken cancellationToken)
@@ -67,18 +95,7 @@ internal sealed class LiveKitRoomClient(HttpClient http, LiveKitTokenIssuer toke
             Content = JsonContent.Create(payload),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens.CreateAdminToken(room));
-        try
-        {
-            return await http.SendAsync(request, cancellationToken);
-        }
-        catch (HttpRequestException exception)
-        {
-            throw new LiveKitUnavailableException($"LiveKit {method} is unreachable.", exception);
-        }
-        catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            throw new LiveKitUnavailableException($"LiveKit {method} timed out.", exception);
-        }
+        return await http.SendAsync(request, cancellationToken);
     }
 
     private sealed record ListParticipantsResponse(IReadOnlyList<ParticipantInfo>? Participants);

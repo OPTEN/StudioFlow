@@ -4,42 +4,87 @@ using Opten.FlowStudio.Core.Contracts;
 
 namespace Opten.FlowStudio.Web.Hubs;
 
-/// <summary>Delivers realtime messages through the three hubs (groups per production for the Regie and the output).</summary>
+/// <summary>
+/// Delivers realtime messages through the three hubs. Every message goes into the outbox of each target connection
+/// (<see cref="HubConnectionRegistry"/>) and the call returns at once: the ordered dispatcher of a production never waits
+/// for a client, and one stuck connection cannot delay the others. Per connection the order of the calls is kept.
+/// </summary>
 internal sealed class SignalRRealtimePublisher(
     IHubContext<StudioHub, IStudioClient> studio,
     IHubContext<OutputHub, IOutputClient> output,
     IHubContext<DeviceHub, IDeviceClient> devices,
     HubConnectionRegistry registry) : IRealtimePublisher
 {
-    public Task JoinStudioAsync(string connectionId, string productionId) => studio.Groups.AddToGroupAsync(connectionId, StudioGroup(productionId));
-
-    public Task LeaveStudioAsync(string connectionId, string productionId) => studio.Groups.RemoveFromGroupAsync(connectionId, StudioGroup(productionId));
-
-    public Task JoinOutputAsync(string connectionId, string productionId) => output.Groups.AddToGroupAsync(connectionId, OutputGroup(productionId));
-
-    public async Task PublishEventAsync(string productionId, ProductionEvent studioEvent, ProductionEvent outputEvent)
+    public Task JoinStudioAsync(string connectionId, string productionId)
     {
-        await studio.Clients.Group(StudioGroup(productionId)).ReceiveEvent(studioEvent);
-        await output.Clients.Group(OutputGroup(productionId)).ReceiveEvent(outputEvent);
+        registry.Join(StudioGroup(productionId), connectionId);
+        return Task.CompletedTask;
     }
 
-    public Task PublishTelemetryAsync(string productionId, DeviceTelemetryMessage message) => studio.Clients.Group(StudioGroup(productionId)).ReceiveTelemetry(message);
+    public Task LeaveStudioAsync(string connectionId, string productionId)
+    {
+        registry.Leave(StudioGroup(productionId), connectionId);
+        return Task.CompletedTask;
+    }
 
-    public Task PublishPresenceAsync(string productionId, int operatorsOnline) => studio.Clients.Group(StudioGroup(productionId)).ReceivePresence(operatorsOnline);
+    public Task JoinOutputAsync(string connectionId, string productionId)
+    {
+        registry.Join(OutputGroup(productionId), connectionId);
+        return Task.CompletedTask;
+    }
 
-    public Task RequestStudioResyncAsync(string activeProductionId) => studio.Clients.All.ReceiveResync(activeProductionId);
+    public Task PublishEventAsync(string productionId, ProductionEvent studioEvent, ProductionEvent outputEvent)
+    {
+        registry.SendToGroup(StudioGroup(productionId), id => studio.Clients.Client(id).ReceiveEvent(studioEvent));
+        registry.SendToGroup(OutputGroup(productionId), id => output.Clients.Client(id).ReceiveEvent(outputEvent));
+        return Task.CompletedTask;
+    }
 
-    public Task SendTallyAsync(string connectionId, TallyDto tally) => devices.Clients.Client(connectionId).ReceiveTally(tally);
+    public Task PublishTelemetryAsync(string productionId, DeviceTelemetryMessage message)
+    {
+        registry.SendToGroup(StudioGroup(productionId), id => studio.Clients.Client(id).ReceiveTelemetry(message));
+        return Task.CompletedTask;
+    }
 
-    public Task SendSelfAsync(string connectionId, DeviceSelfDto self) => devices.Clients.Client(connectionId).ReceiveSelf(self);
+    public Task PublishPresenceAsync(string productionId, int operatorsOnline)
+    {
+        registry.SendToGroup(StudioGroup(productionId), id => studio.Clients.Client(id).ReceivePresence(operatorsOnline));
+        return Task.CompletedTask;
+    }
 
-    public Task SendCommandAsync(string connectionId, DeviceCommandDto command) => devices.Clients.Client(connectionId).ReceiveCommand(command);
+    public Task RequestStudioResyncAsync(string activeProductionId)
+    {
+        registry.SendToGroup(HubConnectionRegistry.AllStudios, id => studio.Clients.Client(id).ReceiveResync(activeProductionId));
+        return Task.CompletedTask;
+    }
 
-    public Task SendSessionReplacedAsync(string connectionId) => devices.Clients.Client(connectionId).ReceiveSessionReplaced();
+    public Task SendTallyAsync(string connectionId, TallyDto tally)
+    {
+        registry.Send(connectionId, () => devices.Clients.Client(connectionId).ReceiveTally(tally));
+        return Task.CompletedTask;
+    }
+
+    public Task SendSelfAsync(string connectionId, DeviceSelfDto self)
+    {
+        registry.Send(connectionId, () => devices.Clients.Client(connectionId).ReceiveSelf(self));
+        return Task.CompletedTask;
+    }
+
+    public Task SendCommandAsync(string connectionId, DeviceCommandDto command)
+    {
+        registry.Send(connectionId, () => devices.Clients.Client(connectionId).ReceiveCommand(command));
+        return Task.CompletedTask;
+    }
+
+    public Task SendSessionReplacedAsync(string connectionId)
+    {
+        registry.Send(connectionId, () => devices.Clients.Client(connectionId).ReceiveSessionReplaced());
+        return Task.CompletedTask;
+    }
 
     public void Abort(string connectionId) => registry.Abort(connectionId);
 
-    public void AbortAfterDelivery(string connectionId) => registry.AbortLater(connectionId, HubConnectionRegistry.DeliveryGrace);
+    public void AbortAfterDelivery(string connectionId) => registry.AbortAfterDelivery(connectionId);
 
     private static string StudioGroup(string productionId) => $"studio:{productionId}";
 

@@ -67,7 +67,8 @@ public enum LiveKitEventKind
 /// <param name="ParticipantSid">Participant session id.</param>
 /// <param name="Identity">Participant identity.</param>
 /// <param name="TrackName">Track name (= slot) for track events.</param>
-public sealed record LiveKitEvent(LiveKitEventKind Kind, string Room, string? RoomSid, string? ParticipantSid, string? Identity, string? TrackName);
+/// <param name="TrackSid">Track session id (<c>TR_…</c>), unique per publication; lets late or duplicate events be ignored.</param>
+public sealed record LiveKitEvent(LiveKitEventKind Kind, string Room, string? RoomSid, string? ParticipantSid, string? Identity, string? TrackName, string? TrackSid = null);
 
 /// <summary>Result of storing an uploaded file.</summary>
 /// <param name="Kind">Image or video, from the magic bytes.</param>

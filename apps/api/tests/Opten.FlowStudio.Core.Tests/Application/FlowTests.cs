@@ -305,16 +305,32 @@ public sealed class DeviceFlowTests : IDisposable
     [Fact]
     public async Task AllocateSlot_NewScreen_EmitsSourceAndSelfAndAppearsInTally()
     {
-        var (_, identity) = await LiveDeviceAsync("c1");
+        var (_, identity) = await harness.PairLaptopAsync();
+        await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "Windows", "1.0"), CancellationToken.None);
 
         var slot = await harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Screen), CancellationToken.None);
         await harness.Devices.ReleaseSlotAsync(identity, slot.Slot, CancellationToken.None);
-        await harness.Devices.ReleaseSlotAsync(identity, "screen-7", CancellationToken.None);
+        var unknown = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.ReleaseSlotAsync(identity, "screen-7", CancellationToken.None));
 
-        Assert.Equal(new DeviceSlotDto("screen-1", "S1", SourceKind.Screen), slot);
-        Assert.Equal(SourceStatus.Connecting, harness.Source($"{identity.DeviceId}/screen-1").Status);
-        Assert.Contains(harness.Events, e => e is SourceRemovedEvent r && r.SourceId == $"{identity.DeviceId}/screen-1");
+        Assert.Equal(new DeviceSlotDto("screen-2", "S2", SourceKind.Screen), slot);
+        Assert.Equal(SourceStatus.Connecting, harness.Source($"{identity.DeviceId}/screen-2").Status);
+        Assert.Contains(harness.Events, e => e is SourceRemovedEvent r && r.SourceId == $"{identity.DeviceId}/screen-2");
         Assert.Equal(2, harness.Publisher.Selves.Count);
+        Assert.Equal(ErrorKind.NotFound, unknown.Kind);
+    }
+
+    [Fact]
+    public async Task Slots_PhoneScreenOrPhoneCameraRelease_AreRejected()
+    {
+        var (_, identity) = await harness.PairPhoneAsync();
+
+        var screen = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Screen), CancellationToken.None));
+        var camera = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Camera), CancellationToken.None));
+        var release = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.ReleaseSlotAsync(identity, "camera", CancellationToken.None));
+
+        Assert.Equal(ErrorCodes.ValidationFailed, screen.Code);
+        Assert.Equal(ErrorCodes.LimitReached, camera.Code);
+        Assert.Equal((ErrorKind.Conflict, ErrorCodes.Conflict), (release.Kind, release.Code));
     }
 
     [Fact]
@@ -474,8 +490,48 @@ public sealed class PairingFlowTests : IDisposable
         Assert.Equal(device.Id, first.Credentials!.DeviceId);
         Assert.Equal(PairingMethod.Code, device.PairingMethod);
         Assert.Equal(PairingRequestStatus.Expired, harness.Pairing.Poll(knock.RequestId, "wrong").Status);
-        Assert.Equal(ErrorCodes.PairingExpired, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None))).Code);
+        Assert.Equal(ErrorCodes.NotFound, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None))).Code);
+        Assert.Single(harness.Data.Devices);
         Assert.Contains(harness.Events, e => e is PairingRequestRemovedEvent { Outcome: PairingRequestStatus.Approved });
+    }
+
+    [Fact]
+    public async Task Knock_ApprovedAfterExpiry_IsPairingExpired()
+    {
+        var knock = await harness.Pairing.CreateRequestAsync(new CreatePairingRequest("Laptop Lea", DeviceKind.Laptop, "Windows"), CancellationToken.None);
+        harness.Clock.Advance(harness.PairingOptions.RequestTtl);
+
+        var error = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None));
+
+        Assert.Equal(ErrorCodes.PairingExpired, error.Code);
+    }
+
+    [Fact]
+    public async Task Redeem_KindInRequestContradictsInvite_InviteDecides()
+    {
+        var phoneInvite = await harness.Pairing.GetPhoneInviteAsync(harness.Production.Id, CancellationToken.None);
+        var linkInvite = await harness.Pairing.CreateInviteAsync(harness.Production.Id, new CreateInviteRequest(InviteKind.LaptopLink), CancellationToken.None);
+
+        var phone = await harness.Pairing.RedeemAsync(Token(phoneInvite), new RedeemInviteRequest("c1", null, DeviceKind.Laptop, "p"), CancellationToken.None);
+        var laptop = await harness.Pairing.RedeemAsync(Token(linkInvite), new RedeemInviteRequest("c2", "\u0001\u0002", DeviceKind.Phone, "p"), CancellationToken.None);
+
+        var phoneDevice = harness.Data.Devices.Single(d => d.Id == phone.DeviceId);
+        var laptopDevice = harness.Data.Devices.Single(d => d.Id == laptop.DeviceId);
+        Assert.Equal((DeviceKind.Phone, "camera", "Handy 1"), (phoneDevice.Kind, phoneDevice.Slots[0].Slot, phoneDevice.Name));
+        Assert.Equal((DeviceKind.Laptop, "screen-1", "Laptop 1"), (laptopDevice.Kind, laptopDevice.Slots[0].Slot, laptopDevice.Name));
+    }
+
+    [Fact]
+    public async Task Activate_OtherProductionWithPendingKnock_DropsItAsExpired()
+    {
+        var knock = await harness.Pairing.CreateRequestAsync(new CreatePairingRequest("Laptop Lea", DeviceKind.Laptop, "Windows"), CancellationToken.None);
+        var other = await harness.Productions.CreateAsync(new CreateProductionRequest("Zweite"), CancellationToken.None);
+
+        await harness.Productions.ActivateAsync(other.Id, CancellationToken.None);
+
+        Assert.Equal(PairingRequestStatus.Expired, harness.Pairing.Poll(knock.RequestId, knock.PollToken).Status);
+        Assert.Contains(harness.Events, e => e is PairingRequestRemovedEvent { Outcome: PairingRequestStatus.Expired } r && r.RequestId == knock.RequestId);
+        Assert.Empty(harness.Requests.Pending(harness.Production.Id, harness.Clock.Now));
     }
 
     [Fact]

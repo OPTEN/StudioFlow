@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Opten.FlowStudio.Core.Application.Ports;
 using Opten.FlowStudio.Core.Application.Runtime;
 using Opten.FlowStudio.Core.Contracts;
@@ -12,9 +11,10 @@ namespace Opten.FlowStudio.Core.Application;
 /// </summary>
 public sealed class MutationContext
 {
-    private readonly List<Func<long, ProductionEvent>> events = [];
+    private readonly List<StagedEvent> events = [];
     private readonly List<Action> committed = [];
     private readonly List<Func<IRealtimePublisher, Task>> realtime = [];
+    private readonly Dictionary<string, SourceLiveMark> liveMarks = new(StringComparer.Ordinal);
 
     internal MutationContext(ProductionRuntime runtime, IUnitOfWork data, DateTimeOffset now)
     {
@@ -37,17 +37,29 @@ public sealed class MutationContext
 
     internal bool TalliesMayChange { get; private set; }
 
-    internal IReadOnlyList<Func<long, ProductionEvent>> Events => events;
+    internal IReadOnlyList<StagedEvent> Events => events;
 
     internal IReadOnlyList<Action> Committed => committed;
 
     internal IReadOnlyList<Func<IRealtimePublisher, Task>> Realtime => realtime;
 
+    internal IReadOnlyCollection<SourceLiveMark> LiveMarks => liveMarks.Values;
+
     /// <summary>Stages an event; the factory receives the revision assigned after the commit.</summary>
     public void Emit(Func<long, ProductionEvent> factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        events.Add(factory);
+        events.Add(new StagedEvent(factory, HiddenFromOutput: false));
+    }
+
+    /// <summary>
+    /// Stages an event that the output page only sees as <c>revisionOnly</c> although its type is public, e.g. a source
+    /// whose health changed (GAP-07: the output derives hold and loss from LiveKit alone).
+    /// </summary>
+    public void EmitHiddenFromOutput(Func<long, ProductionEvent> factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        events.Add(new StagedEvent(factory, HiddenFromOutput: true));
     }
 
     /// <summary>Writes an audit entry in the same transaction and emits its log text, if it has one.</summary>
@@ -76,6 +88,14 @@ public sealed class MutationContext
         realtime.Add(action);
     }
 
+    /// <summary>Records that a device source is (or just was) live, so the API can watch it after a restart (GAP-08).</summary>
+    public void MarkLive(string sourceId, string deviceId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(deviceId);
+        liveMarks[sourceId] = new SourceLiveMark(sourceId, deviceId);
+    }
+
     /// <summary>Updates what is on air after the commit and pushes changed tallies to connected devices.</summary>
     public void UpdateOnAir(Production production)
     {
@@ -86,18 +106,24 @@ public sealed class MutationContext
 
     /// <summary>Pushes changed tallies to connected devices (slots of a device changed).</summary>
     public void RefreshTallies() => TalliesMayChange = true;
+
+    /// <summary>An event waiting for its revision.</summary>
+    /// <param name="Factory">Creates the event for the assigned revision.</param>
+    /// <param name="HiddenFromOutput">The output page gets <c>revisionOnly</c> regardless of the event type.</param>
+    internal sealed record StagedEvent(Func<long, ProductionEvent> Factory, bool HiddenFromOutput);
 }
 
 /// <summary>
 /// Serializes all mutations of a production (spec 5): it waits for the production's lock, runs the mutation with a fresh
-/// unit of work, commits, assigns revisions and publishes the events inside the lock, so clients see them in order.
+/// unit of work and commits. Still inside the lock it assigns the revisions, fills the event ring and queues every
+/// delivery (events, device messages, tallies) on the production's ordered dispatcher, so clients see them in revision
+/// order – but the lock is released without waiting for any client: a slow or dead connection never delays a mutation.
 /// </summary>
 public sealed class ProductionCoordinator(
     ProductionRuntimeRegistry runtimes,
     IUnitOfWorkFactory data,
-    IRealtimePublisher realtime,
-    TimeProvider clock,
-    ILogger<ProductionCoordinator> logger)
+    IRealtimeDispatcher dispatcher,
+    TimeProvider clock)
 {
     /// <summary>Runs a mutation (or a consistent read) of a production; unknown productions are <c>not_found</c>.</summary>
     public async Task<T> ExecuteAsync<T>(string productionId, Func<MutationContext, Task<T>> mutation, CancellationToken cancellationToken)
@@ -112,8 +138,13 @@ public sealed class ProductionCoordinator(
             var result = await mutation(context);
 
             // Once the mutation decided, finish it even if the caller goes away: a half-applied change is worse.
+            if (context.LiveMarks.Count > 0)
+            {
+                await unit.SourceActivity.MarkLiveAsync(productionId, context.LiveMarks, context.Now, CancellationToken.None);
+            }
+
             await unit.SaveChangesAsync(CancellationToken.None);
-            await FlushAsync(context);
+            Flush(context);
             return result;
         }
         finally
@@ -135,6 +166,9 @@ public sealed class ProductionCoordinator(
             },
             cancellationToken);
     }
+
+    /// <summary>Queues a delivery behind everything already queued for the production (outside a mutation).</summary>
+    public void Send(string productionId, Func<IRealtimePublisher, Task> delivery) => dispatcher.Enqueue(productionId, delivery);
 
     /// <summary>The runtime of an existing production; checks the database for productions not seen yet.</summary>
     private async Task<ProductionRuntime> GetRuntimeAsync(string productionId, CancellationToken cancellationToken)
@@ -158,7 +192,8 @@ public sealed class ProductionCoordinator(
         return runtimes.GetOrAdd(productionId);
     }
 
-    private async Task FlushAsync(MutationContext context)
+    /// <summary>Applies the committed in-memory changes and queues the deliveries; runs inside the lock and never waits.</summary>
+    private void Flush(MutationContext context)
     {
         foreach (var action in context.Committed)
         {
@@ -166,16 +201,18 @@ public sealed class ProductionCoordinator(
         }
 
         var runtime = context.Runtime;
-        foreach (var factory in context.Events)
+        var productionId = runtime.ProductionId;
+        foreach (var staged in context.Events)
         {
-            var productionEvent = factory(runtime.NextRevision());
-            runtime.Events.Add(productionEvent);
-            await SendSafelyAsync(p => p.PublishEventAsync(runtime.ProductionId, productionEvent, OutputView.ForOutput(productionEvent)));
+            var studioEvent = staged.Factory(runtime.NextRevision());
+            var outputEvent = staged.HiddenFromOutput ? new RevisionOnlyEvent(studioEvent.Revision) : OutputView.ForOutput(studioEvent);
+            runtime.Events.Add(new RecordedEvent(studioEvent, outputEvent));
+            dispatcher.Enqueue(productionId, p => p.PublishEventAsync(productionId, studioEvent, outputEvent));
         }
 
         foreach (var action in context.Realtime)
         {
-            await SendSafelyAsync(action);
+            dispatcher.Enqueue(productionId, action);
         }
 
         if (context.TalliesMayChange && runtime.OnAir is { } onAir)
@@ -187,22 +224,9 @@ public sealed class ProductionCoordinator(
                 {
                     device.LastTally = tally;
                     var connectionId = device.ConnectionId!;
-                    await SendSafelyAsync(p => p.SendTallyAsync(connectionId, tally));
+                    dispatcher.Enqueue(productionId, p => p.SendTallyAsync(connectionId, tally));
                 }
             }
-        }
-    }
-
-    private async Task SendSafelyAsync(Func<IRealtimePublisher, Task> action)
-    {
-        try
-        {
-            await action(realtime);
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            // A failing client send must never undo or block a committed change.
-            logger.LogWarning(exception, "Realtime delivery failed");
         }
     }
 

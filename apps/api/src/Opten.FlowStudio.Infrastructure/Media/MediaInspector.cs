@@ -11,23 +11,30 @@ namespace Opten.FlowStudio.Infrastructure.Media;
 public sealed record MediaType(AssetKind Kind, string ContentType, string Extension);
 
 /// <summary>
-/// Recognises the allowed upload types by magic bytes (spec 4.7) – PNG, JPEG, WebP, MP4 (<c>ftyp</c>) and WebM (EBML
-/// with doc type <c>webm</c>) – and reads image dimensions from the headers. Everything else (SVG, GIF, HEIC/AVIF in an
-/// <c>ftyp</c> box, QuickTime, Matroska, …) is rejected. The client's content type is never trusted.
+/// Recognises the allowed upload types by magic bytes (spec 4.7, GAP-13) – PNG, JPEG, WebP, MP4 (<c>ftyp</c> with an
+/// allowed brand) and WebM (EBML with DocType <c>webm</c>) – and reads image dimensions from the headers. Everything else
+/// (SVG, GIF, HEIC/AVIF in an <c>ftyp</c> box, QuickTime, Matroska, …) is rejected. The client's content type is never
+/// trusted.
 /// </summary>
 public static class MediaInspector
 {
     /// <summary>Bytes needed to recognise a type.</summary>
     public const int HeaderLength = 64;
 
-    private const int MaxDimension = 65_535;
+    /// <summary>Largest accepted image width and height (GAP-13); larger images are rejected as unsupported.</summary>
+    public const int MaxDimension = 16_384;
 
     // Bounds the marker walk of crafted files with very many tiny segments.
     private const int MaxJpegSegments = 10_000;
 
     private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     private static readonly byte[] Ebml = [0x1A, 0x45, 0xDF, 0xA3];
-    private static readonly string[] RejectedFtypBrands = ["avif", "avis", "heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1", "qt  ", "crx "];
+
+    /// <summary>MP4 brands browsers play as H.264/AAC MP4 (GAP-13 allow-list); <c>M4V </c> is padded to four characters.</summary>
+    private static readonly string[] Mp4Brands = ["isom", "iso2", "mp41", "mp42", "avc1", "M4V "];
+
+    /// <summary>Still-image and QuickTime brands: never a video, even when they list an MP4 brand as compatible.</summary>
+    private static readonly string[] RejectedFtypBrands = ["avif", "avis", "heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1", "miaf", "qt  ", "crx "];
 
     /// <summary>PNG image.</summary>
     public static MediaType Png { get; } = new(AssetKind.Image, "image/png", ".png");
@@ -64,11 +71,10 @@ public static class MediaInspector
 
         if (header.Length >= 12 && header[4..8].SequenceEqual("ftyp"u8))
         {
-            var brand = Encoding.ASCII.GetString(header[8..12]);
-            return RejectedFtypBrands.Contains(brand, StringComparer.Ordinal) ? null : Mp4;
+            return IsMp4(header) ? Mp4 : null;
         }
 
-        if (header.StartsWith(Ebml) && header.IndexOf("webm"u8) > 0)
+        if (header.StartsWith(Ebml) && string.Equals(ReadEbmlDocType(header), "webm", StringComparison.Ordinal))
         {
             return WebM;
         }
@@ -76,15 +82,125 @@ public static class MediaInspector
         return null;
     }
 
-    /// <summary>Reads width and height of a stored image; null when the header is unreadable.</summary>
+    /// <summary>True when the image size is within 1…<see cref="MaxDimension"/> in both directions.</summary>
+    public static bool IsAcceptedSize((int Width, int Height)? size) =>
+        size is { Width: >= 1 and <= MaxDimension, Height: >= 1 and <= MaxDimension };
+
+    /// <summary>
+    /// The major brand must be on the allow-list, or – for other ISO brands such as <c>iso5</c> of fragmented files – one
+    /// of the compatible brands in the header must be, while still-image and QuickTime brands are always rejected.
+    /// </summary>
+    private static bool IsMp4(ReadOnlySpan<byte> header)
+    {
+        var major = Encoding.ASCII.GetString(header[8..12]);
+        if (RejectedFtypBrands.Contains(major, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        if (Mp4Brands.Contains(major, StringComparer.Ordinal))
+        {
+            return true;
+        }
+
+        // Box layout: size (4), "ftyp" (4), major brand (4), minor version (4), compatible brands (4 each).
+        var boxSize = (int)Math.Min(BinaryPrimitives.ReadUInt32BigEndian(header[..4]), (uint)header.Length);
+        for (var offset = 16; offset + 4 <= boxSize; offset += 4)
+        {
+            var compatible = Encoding.ASCII.GetString(header[offset..(offset + 4)]);
+            if (RejectedFtypBrands.Contains(compatible, StringComparer.Ordinal))
+            {
+                return false;
+            }
+
+            if (Mp4Brands.Contains(compatible, StringComparer.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>The DocType of an EBML header (element 0x4282), or null when it is not in the first bytes.</summary>
+    private static string? ReadEbmlDocType(ReadOnlySpan<byte> header)
+    {
+        // Element ids and sizes are variable-length integers; the header element follows the 4-byte EBML id.
+        var position = 4;
+        if (!TryReadVint(header, ref position, out _))
+        {
+            return null;
+        }
+
+        while (position + 2 < header.Length)
+        {
+            var isDocType = header[position] == 0x42 && header[position + 1] == 0x82;
+            var idLength = header[position] switch
+            {
+                >= 0x80 => 1,
+                >= 0x40 => 2,
+                >= 0x20 => 3,
+                >= 0x10 => 4,
+                _ => 0,
+            };
+            if (idLength == 0)
+            {
+                return null;
+            }
+
+            position += idLength;
+            if (!TryReadVint(header, ref position, out var size) || size > header.Length - position)
+            {
+                return null;
+            }
+
+            if (isDocType)
+            {
+                return Encoding.ASCII.GetString(header.Slice(position, (int)size));
+            }
+
+            position += (int)size;
+        }
+
+        return null;
+    }
+
+    private static bool TryReadVint(ReadOnlySpan<byte> data, ref int position, out long value)
+    {
+        value = 0;
+        if (position >= data.Length || data[position] == 0)
+        {
+            return false;
+        }
+
+        var first = data[position];
+        var length = System.Numerics.BitOperations.LeadingZeroCount((uint)first) - 23;
+        if (length is < 1 or > 8 || position + length > data.Length)
+        {
+            return false;
+        }
+
+        value = first & (0xFF >> length);
+        for (var i = 1; i < length; i++)
+        {
+            value = (value << 8) | data[position + i];
+        }
+
+        position += length;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads width and height of a stored image as written in its header; null when the header is unreadable. Use
+    /// <see cref="IsAcceptedSize"/> to check the limits.
+    /// </summary>
     public static (int Width, int Height)? ReadImageSize(Stream image, MediaType type)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(type);
         try
         {
-            var size = type == Png ? ReadPng(image) : type == WebP ? ReadWebP(image) : type == Jpeg ? ReadJpeg(image) : null;
-            return size is { Width: > 0 and <= MaxDimension, Height: > 0 and <= MaxDimension } ? size : null;
+            return type == Png ? ReadPng(image) : type == WebP ? ReadWebP(image) : type == Jpeg ? ReadJpeg(image) : null;
         }
         catch (EndOfStreamException)
         {

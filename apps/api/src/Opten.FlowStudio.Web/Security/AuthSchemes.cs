@@ -34,6 +34,9 @@ internal static class FlowStudioClaims
 
     /// <summary>The device is blocked.</summary>
     public const string Blocked = "flowstudio:blocked";
+
+    /// <summary>Random id of an admin session (logout revokes it, GAP-04).</summary>
+    public const string SessionId = "flowstudio:sid";
 }
 
 /// <summary>Names of the cookie, headers and query parameters of the security layer.</summary>

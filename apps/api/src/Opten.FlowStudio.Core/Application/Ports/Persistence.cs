@@ -87,8 +87,11 @@ public interface IInviteRepository
     /// <summary>Invites of a production that are still open at <paramref name="now"/>.</summary>
     Task<IReadOnlyList<Invite>> ListOpenAsync(string productionId, DateTimeOffset now, CancellationToken cancellationToken);
 
-    /// <summary>Ids of productions with an invite that is open but expired, or a phone invite due for renewal.</summary>
-    Task<IReadOnlyList<string>> ListProductionsWithDueInvitesAsync(DateTimeOffset now, CancellationToken cancellationToken);
+    /// <summary>
+    /// Ids of productions with an invite that is open but expired, or a phone invite with less than
+    /// <paramref name="renewBefore"/> left.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListProductionsWithDueInvitesAsync(DateTimeOffset now, TimeSpan renewBefore, CancellationToken cancellationToken);
 
     /// <summary>Invites of a production that are not redeemed or revoked (including expired ones).</summary>
     Task<IReadOnlyList<Invite>> ListUnusedAsync(string productionId, CancellationToken cancellationToken);
@@ -113,6 +116,28 @@ public interface IAuditRepository
     Task<IReadOnlyList<AuditEntry>> ListRecentAsync(string productionId, IReadOnlyCollection<string> actions, int count, CancellationToken cancellationToken);
 }
 
+/// <summary>A device source that is live (or just stopped being live) at the time of a mutation.</summary>
+/// <param name="SourceId">Source reference <c>{deviceId}/{slot}</c>.</param>
+/// <param name="DeviceId">The device.</param>
+public sealed record SourceLiveMark(string SourceId, string DeviceId);
+
+/// <summary>When a device source was last seen live (persisted so the API can watch it after a restart, GAP-08).</summary>
+/// <param name="SourceId">Source reference <c>{deviceId}/{slot}</c>.</param>
+/// <param name="ProductionId">Production of the device.</param>
+/// <param name="DeviceId">The device.</param>
+/// <param name="LastLiveAt">Last time the source was live.</param>
+public sealed record SourceLastLive(string SourceId, string ProductionId, string DeviceId, DateTimeOffset LastLiveAt);
+
+/// <summary>Persistence of the last-live times of device sources.</summary>
+public interface ISourceActivityRepository
+{
+    /// <summary>Records <paramref name="at"/> as the last-live time of the sources (committed with the unit of work).</summary>
+    Task MarkLiveAsync(string productionId, IReadOnlyCollection<SourceLiveMark> marks, DateTimeOffset at, CancellationToken cancellationToken);
+
+    /// <summary>Every source that was live at or after <paramref name="since"/>.</summary>
+    Task<IReadOnlyList<SourceLastLive>> ListLiveSinceAsync(DateTimeOffset since, CancellationToken cancellationToken);
+}
+
 /// <summary>A unit of work over the repositories; changes are committed together.</summary>
 public interface IUnitOfWork : IAsyncDisposable
 {
@@ -130,6 +155,9 @@ public interface IUnitOfWork : IAsyncDisposable
 
     /// <summary>Audit log.</summary>
     IAuditRepository Audit { get; }
+
+    /// <summary>Last-live times of device sources.</summary>
+    ISourceActivityRepository SourceActivity { get; }
 
     /// <summary>Commits all changes in one transaction.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);

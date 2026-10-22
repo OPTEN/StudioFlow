@@ -10,8 +10,13 @@ namespace Opten.FlowStudio.Core.Domain;
 /// <param name="Rtc">Media connection state from the last device report, if any.</param>
 public sealed record SlotSignals(bool Blocked, bool Connected, bool Published, SlotState? Reported, RtcState? Rtc)
 {
-    /// <summary>True when the track is published or the device itself reports the slot live over a connected media session.</summary>
-    public bool IsLive => Published || (Reported == SlotState.Live && Rtc == RtcState.Connected);
+    /// <summary>
+    /// True when the track is published or the device itself reports the slot live over a connected media session – and
+    /// the device does not report its media session as reconnecting or disconnected. A frozen or cut-off LiveKit
+    /// connection sends no webhook for about 21 s, so the device report is the fast signal (GAP-08, spec 12).
+    /// </summary>
+    public bool IsLive => Rtc is not (RtcState.Reconnecting or RtcState.Disconnected)
+        && (Published || (Reported == SlotState.Live && Rtc == RtcState.Connected));
 }
 
 /// <summary>Pure rules that turn <see cref="SlotSignals"/> into a <see cref="SourceStatus"/> (spec 4.5).</summary>
@@ -147,12 +152,41 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
         return new SourceHealthChange(true, null, null, null);
     }
 
-    /// <summary>Removes the incident when its id matches («Gesehen»); returns false for another id.</summary>
+    /// <summary>
+    /// After an API start (spec 12, GAP-08): the source was live shortly before the restart, is on air or in the preview,
+    /// and its device did not come back within the grace time. The in-memory history is gone, so the source becomes
+    /// <c>reconnecting</c> with an incident that started at <paramref name="outageSince"/> (the restart). Only a source
+    /// that is still <c>offline</c> and was not live in this process is affected.
+    /// </summary>
+    public SourceHealthChange MarkMissingAfterRestart(DateTimeOffset now, DateTimeOffset outageSince)
+    {
+        if (Status != SourceStatus.Offline || WasLive)
+        {
+            return SourceHealthChange.None;
+        }
+
+        var replaced = Incident;
+        Status = SourceStatus.Reconnecting;
+        Since = now;
+        WasLive = true;
+        Incident = new IncidentDto(EntityIds.New(EntityIds.Incident), SourceId, Code, IncidentKind.Reconnecting, outageSince, null);
+        return new SourceHealthChange(true, replaced, Incident, AuditActions.SourceReconnecting);
+    }
+
+    /// <summary>
+    /// Removes the incident when its id matches and the source recovered («Gesehen», UNIT-SRC-02). An open incident
+    /// cannot be acknowledged (<c>conflict</c>); another id is not this source's incident.
+    /// </summary>
     public bool Acknowledge(string incidentId)
     {
         if (Incident is null || !string.Equals(Incident.Id, incidentId, StringComparison.Ordinal))
         {
             return false;
+        }
+
+        if (Incident.EndedAt is null)
+        {
+            throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Die Störung dauert noch an; bestätigen geht erst, wenn die Quelle wieder da ist.");
         }
 
         Incident = null;

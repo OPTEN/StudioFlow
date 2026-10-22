@@ -65,22 +65,41 @@ public sealed class Asset
             CreatedAt = now,
         };
 
+    /// <summary>Name of an upload whose file name leaves nothing usable (GAP-13).</summary>
+    public const string FallbackName = "Medium";
+
     /// <summary>
-    /// Display name for an uploaded file: the file name without directory and extension, without control characters,
-    /// at most 80 characters; «Bild» or «Video» when nothing is left.
+    /// Display name for an uploaded file (GAP-13): the last path segment without its extension (informational only; the
+    /// stored file name is <c>{assetId}{ext of the verified type}</c>), without control or bidi characters, at most 80
+    /// characters; <see cref="FallbackName"/> when nothing or only dots are left.
     /// </summary>
-    public static string NameFromFileName(string? fileName, AssetKind kind)
+    public static string NameFromFileName(string? fileName)
     {
-        var name = Path.GetFileName((fileName ?? string.Empty).Replace('\\', '/'));
+        var name = LastSegment(fileName);
         var dot = name.LastIndexOf('.');
         if (dot > 0)
         {
             name = name[..dot];
         }
 
-        return TextRules.Truncate(name, TextRules.NameMax) ?? (kind == AssetKind.Image ? "Bild" : "Video");
+        return Usable(TextRules.Truncate(name, TextRules.NameMax)) ?? FallbackName;
     }
 
-    /// <summary>Renames the asset.</summary>
-    public void Rename(string name) => Name = TextRules.RequireName(name, TextRules.NameMax, "name");
+    /// <summary>Renames the asset with the same rules as an upload name; an empty result is <c>validation_failed</c>.</summary>
+    public void Rename(string name)
+    {
+        var segment = Usable(TextRules.Truncate(LastSegment(name), int.MaxValue));
+        Name = TextRules.RequireName(segment, TextRules.NameMax, "name");
+    }
+
+    /// <summary>The part after the last <c>/</c>, <c>\</c> or <c>:</c>, so a name is never a path.</summary>
+    private static string LastSegment(string? value)
+    {
+        var text = value ?? string.Empty;
+        var separator = text.LastIndexOfAny(['/', '\\', ':']);
+        return separator < 0 ? text : text[(separator + 1)..];
+    }
+
+    /// <summary>Null for names made of dots and spaces only («...»).</summary>
+    private static string? Usable(string? name) => name is null || name.All(c => c is '.' || char.IsWhiteSpace(c)) ? null : name;
 }

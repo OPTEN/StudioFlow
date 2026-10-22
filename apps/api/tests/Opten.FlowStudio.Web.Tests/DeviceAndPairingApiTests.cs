@@ -107,7 +107,7 @@ public sealed class DeviceApiTests(FlowStudioApp app) : IClassFixture<FlowStudio
         Assert.Equal(ErrorCodes.LimitReached, await device.PostJsonAsync("/api/device/slots", new AllocateSlotRequest(SourceKind.Screen)).ExpectProblemAsync(HttpStatusCode.Conflict));
         await device.PostJsonAsync("/api/device/slots", new AllocateSlotRequest(SourceKind.Image)).ExpectProblemAsync(HttpStatusCode.BadRequest);
         await device.DeleteAsync("/api/device/slots/screen-4", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
-        await device.DeleteAsync("/api/device/slots/screen-4", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
+        Assert.Equal(ErrorCodes.NotFound, await device.DeleteAsync("/api/device/slots/screen-4", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound));
         var self = await device.GetAsync("/api/device/me", TestContext.Current.CancellationToken).ExpectAsync<DeviceSelfDto>();
 
         Assert.Equal("camera", camera.Slot);
@@ -250,7 +250,7 @@ public sealed class PairingApiTests(FlowStudioApp app) : IClassFixture<FlowStudi
         Assert.Single(polls.Select(p => p.Credentials).Distinct());
         await app.DeviceClient(polls[0].Credentials!).GetAsync("/api/device/me", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
         Assert.Equal(PairingRequestStatus.Expired, (await Poll(anonymous, knock.RequestId, "wrong-token")).Status);
-        Assert.Equal(ErrorCodes.PairingExpired, await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/{knock.RequestId}/approve", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Gone));
+        Assert.Equal(ErrorCodes.NotFound, await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/{knock.RequestId}/approve", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound));
     }
 
     [Fact]
@@ -269,7 +269,7 @@ public sealed class PairingApiTests(FlowStudioApp app) : IClassFixture<FlowStudi
 
         Assert.Equal(PairingRequestStatus.Denied, (await Poll(anonymous, denied.RequestId, denied.PollToken)).Status);
         Assert.Equal(PairingRequestStatus.Expired, (await Poll(anonymous, cancelled.RequestId, cancelled.PollToken)).Status);
-        Assert.Equal(ErrorCodes.PairingExpired, await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/{denied.RequestId}/approve", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Gone));
+        Assert.Equal(ErrorCodes.NotFound, await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/{denied.RequestId}/approve", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound));
     }
 
     [Fact]

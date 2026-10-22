@@ -68,8 +68,16 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
             (int Width, int Height)? size = null;
             if (type.Kind == AssetKind.Image)
             {
-                await using var image = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: false);
-                size = MediaInspector.ReadImageSize(image, type);
+                await using (var image = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: false))
+                {
+                    size = MediaInspector.ReadImageSize(image, type);
+                }
+
+                // An image without a readable size, with a zero side or larger than 16384 px is not accepted (GAP-13).
+                if (!MediaInspector.IsAcceptedSize(size))
+                {
+                    throw new FlowStudioException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, $"Bilder brauchen eine lesbare Grösse von 1 bis {MediaInspector.MaxDimension} Pixeln pro Seite.");
+                }
             }
 
             File.Move(tempPath, finalPath);

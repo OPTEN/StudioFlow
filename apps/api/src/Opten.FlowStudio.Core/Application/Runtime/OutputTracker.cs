@@ -4,18 +4,12 @@ namespace Opten.FlowStudio.Core.Application.Runtime;
 
 /// <summary>
 /// Output consumer status of a production (spec 4.8): connected output hub pages, their addresses and the last report.
-/// <c>connected</c> needs at least one page and a rendering report within 6 s, <c>stale</c> means connected without a
-/// fresh rendering report, <c>none</c> means no page. Latency and fps updates are published at most every 5 s unless
-/// they change by more than 20 %.
+/// <c>connected</c> needs at least one page and a rendering report within <c>Output:StaleAfter</c> (6 s), <c>stale</c>
+/// means connected without a fresh rendering report, <c>none</c> means no page. Latency and fps updates are published at
+/// most every <c>Output:MetricsInterval</c> (5 s) unless they change by more than 20 %.
 /// </summary>
-public sealed class OutputTracker
+public sealed class OutputTracker(OutputMonitorOptions options)
 {
-    /// <summary>How long a rendering report counts as fresh.</summary>
-    public static readonly TimeSpan FreshReport = TimeSpan.FromSeconds(6);
-
-    /// <summary>Minimum interval between metric-only updates.</summary>
-    public static readonly TimeSpan MetricsInterval = TimeSpan.FromSeconds(5);
-
     private const double SignificantChange = 0.2;
 
     private readonly Dictionary<string, string> connections = new(StringComparer.Ordinal);
@@ -61,7 +55,7 @@ public sealed class OutputTracker
         var consumers = connections.Count;
         var state = consumers == 0
             ? OutputState.None
-            : lastRenderingAt is { } rendering && now - rendering <= FreshReport ? OutputState.Connected : OutputState.Stale;
+            : lastRenderingAt is { } rendering && now - rendering <= options.StaleAfter ? OutputState.Connected : OutputState.Stale;
         var addresses = connections.Values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         return new OutputStatusDto(state, consumers, addresses, lastReport?.LatencyMs, lastReport?.Fps, lastReportAt);
     }
@@ -82,7 +76,7 @@ public sealed class OutputTracker
         }
 
         var significant = IsSignificant(previous.LatencyMs, current.LatencyMs) || IsSignificant(previous.Fps, current.Fps);
-        var intervalPassed = lastMetricsPublishedAt is not { } at || now - at >= MetricsInterval;
+        var intervalPassed = lastMetricsPublishedAt is not { } at || now - at >= options.MetricsInterval;
         if (!structural && !significant && !intervalPassed)
         {
             return null;

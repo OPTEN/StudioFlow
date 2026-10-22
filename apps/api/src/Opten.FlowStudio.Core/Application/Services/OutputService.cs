@@ -76,15 +76,21 @@ public sealed class OutputService(
         return settings.Settings;
     }
 
-    /// <summary>Checks key and address for a REST call; a wrong key and an unknown slug look the same (403).</summary>
+    /// <summary>
+    /// Checks key and address for a REST call. A missing key, a wrong key, an unknown slug and a forbidden address all
+    /// give the same 403 (GAP-06: no hint whether the slug exists).
+    /// </summary>
     public async Task<OutputKeyInfo> AuthorizeAsync(string slug, string? key, IPAddress? client, CancellationToken cancellationToken)
     {
         await using var unit = data.Create();
         var access = Slugs.IsValid(slug) ? await unit.Productions.GetOutputKeyBySlugAsync(slug, cancellationToken) : null;
         return access is not null && Secrets.FixedTimeEquals(key, access.OutputKey) && IpRule.IsAllowed(access.AllowedIps, client)
             ? access
-            : throw new FlowStudioException(ErrorKind.Forbidden, ErrorCodes.Forbidden, "Kein Zugang.");
+            : throw NoAccess();
     }
+
+    /// <summary>The one answer for every refused output request.</summary>
+    public static FlowStudioException NoAccess() => new(ErrorKind.Forbidden, ErrorCodes.Forbidden, "Kein Zugang.");
 
     /// <summary>Finds the production of a key for the output hub (the hub URL carries no slug).</summary>
     public async Task<OutputKeyInfo?> FindByKeyAsync(string? key, IPAddress? client, CancellationToken cancellationToken)
@@ -113,6 +119,16 @@ public sealed class OutputService(
     {
         ArgumentNullException.ThrowIfNull(access);
         return coordinator.ExecuteAsync(access.ProductionId, context => SnapshotBuilder.BuildOutputAsync(context, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// Changes since a revision for the output page over REST (the same answer as <c>SubscribeOutput</c>, without joining
+    /// the event stream): missed events with private and health-only changes as <c>revisionOnly</c>, or a snapshot.
+    /// </summary>
+    public Task<OutputChangesDto> GetChangesAsync(OutputKeyInfo access, long since, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(access);
+        return coordinator.ExecuteAsync(access.ProductionId, context => SnapshotBuilder.OutputChangesAsync(context, since, cancellationToken), cancellationToken);
     }
 
     /// <summary>LiveKit token for an output page (hidden subscriber <c>output_{slug}_{random}</c>).</summary>
