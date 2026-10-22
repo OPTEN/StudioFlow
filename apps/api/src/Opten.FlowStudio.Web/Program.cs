@@ -1,25 +1,18 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Opten.FlowStudio.Web.Endpoints;
-using Opten.FlowStudio.Web.OpenApi;
+using Opten.FlowStudio.Web.Hosting;
+
+if (await CliCommands.TryRunAsync(args) is { } exitCode)
+{
+    return exitCode;
+}
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-});
-builder.Services.AddOpenApi(options =>
-{
-    options.AddDocumentTransformer<ContractSchemasTransformer>();
-    options.AddSchemaTransformer<DiscriminatorRequiredTransformer>();
-});
+builder.AddFlowStudio();
 
 var app = builder.Build();
-
-app.MapOpenApi();
-app.MapFlowStudioApi();
+app.UseFlowStudio();
 
 await app.RunAsync();
+return 0;
+
+/// <summary>Entry point (public for <c>WebApplicationFactory</c> in the integration tests).</summary>
+public partial class Program;

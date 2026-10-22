@@ -56,4 +56,16 @@ public static class ErrorCodes
 
     /// <summary>A limit was reached (scenes, items, slots, pending requests).</summary>
     public const string LimitReached = "limit_reached";
+
+    /// <summary>Not signed in, or the credentials are wrong or unknown (401).</summary>
+    public const string Unauthorized = "unauthorized";
+
+    /// <summary>Access denied: missing CSRF header, wrong output key, address not allowed, foreign origin (403).</summary>
+    public const string Forbidden = "forbidden";
+
+    /// <summary>The request body arrived too slowly (408).</summary>
+    public const string RequestTimeout = "request_timeout";
+
+    /// <summary>Unexpected server error (500); details are logged on the server only.</summary>
+    public const string InternalError = "internal_error";
 }

@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Persistence (EF Core + PostgreSQL), LiveKit server API, media storage. -->
+  <!-- Persistence (EF Core + PostgreSQL), LiveKit server API, media storage, password hashing. -->
   <PropertyGroup>
     <RootNamespace>Opten.FlowStudio.Infrastructure</RootNamespace>
   </PropertyGroup>
@@ -10,6 +10,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- LiveKit access tokens and webhook verification (HS256 JWT). -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

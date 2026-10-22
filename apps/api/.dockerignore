@@ -1,0 +1,10 @@
+# Only the sources are needed to publish the API image.
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+tests/
+openapi/
+dotnet-tools.json
+Dockerfile
+.dockerignore
