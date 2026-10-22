@@ -4,7 +4,7 @@ import path from 'node:path';
 import { AdminApi, CUT, OutputApi } from '../../support/api';
 import type { ProductionSnapshot } from '../../../../packages/scene-model/src/contracts';
 import { dockerCtl } from '../../support/docker-ctl';
-import { stackConfig } from '../../support/env';
+import { PROJECT, stackConfig } from '../../support/env';
 import { expect, test } from '../../support/fixtures';
 import { generateSamples } from '../../support/media-samples';
 import { OpsSandbox, bashLine, certSerial } from '../../support/ops';
@@ -16,7 +16,7 @@ import { eventually } from '../../support/sim';
 import { t } from '../../support/tags';
 
 /**
- * OPS - backup.sh and restore.sh on the running fs-e2e stack (docs/testing.md E2E-OPS-07 and -08). The scripts run
+ * OPS - backup.sh and restore.sh on the running stack (docs/testing.md E2E-OPS-07 and -08). The scripts run
  * unmodified from an isolated copy (support/ops.ts); their backups land in the sandbox, never in the repository.
  */
 
@@ -176,7 +176,7 @@ test.describe('OPS backup', () => {
       expect(entries.stdout, `${archive}.tar.gz holds no .env`).not.toMatch(/(^|\/)\.env/m);
     }
     const info = fs.readFileSync(path.join(folder, 'backup-info.txt'), 'utf8');
-    expect(info).toMatch(/projekt:\s+fs-e2e/);
+    expect(info).toMatch(new RegExp(`projekt:\\s+${PROJECT}\\s*$`, 'm'));
     expect(info).toMatch(/postgres:\s+17\./);
     expect(fs.readFileSync(path.join(folder, 'SHA256SUMS'), 'utf8'), 'the .env is not part of the backup').not.toContain('.env');
     if (process.platform !== 'win32') expect(fs.statSync(folder).mode & 0o777, 'mode 700').toBe(0o700);
@@ -253,7 +253,7 @@ test.describe('OPS backup', () => {
     expect(result.stderr).toMatch(/Die unvollständige Sicherung wurde entfernt/);
     const after = fs.existsSync(box.path('backups')) ? fs.readdirSync(box.path('backups')).sort() : [];
     expect(after, 'no partial folder').toEqual(before);
-    const helpers = await docker(['ps', '-a', '--filter', 'label=com.docker.compose.project=fs-e2e', '--filter', 'label=com.docker.compose.service=toolbox', '-q']);
+    const helpers = await docker(['ps', '-a', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--filter', 'label=com.docker.compose.service=toolbox', '-q']);
     expect(helpers.stdout.trim(), 'the toolbox container is removed').toBe('');
     const leftover = await docker(['exec', containerName('postgres'), 'ls', '/tmp']);
     expect(leftover.stdout, 'the temporary dump is removed from the postgres container').not.toContain('flowstudio-backup.dump');
@@ -305,7 +305,7 @@ test.describe('OPS restore', () => {
     const foldersBefore = backupFolders();
 
     await compose(['down', '-v'], { check: true, timeoutMs: 300_000 });
-    const volumes = await docker(['volume', 'ls', '--filter', 'label=com.docker.compose.project=fs-e2e', '-q']);
+    const volumes = await docker(['volume', 'ls', '--filter', `label=com.docker.compose.project=${PROJECT}`, '-q']);
     expect(volumes.stdout.trim(), 'down -v removes all volumes').toBe('');
 
     const restore = await box.run('restore.sh', [folder, '--yes', '--no-safety-backup']);

@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { COMPOSE_FILES, ENV_FILE, REPO_ROOT, TEST_ADMIN, parseEnvFile, stackConfig } from '../../support/env';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, TEST_ADMIN, imageNameOf, parseEnvFile, stackConfig } from '../../support/env';
 import { expect, knownBug, test } from '../../support/fixtures';
 import { detectLanIPv4 } from '../../support/network-info';
 import { OPS_HASH_PROJECT, OpsSandbox, cleanComposeEnv, composeConfig } from '../../support/ops';
-import { docker } from '../../support/stack';
+import { containerName, docker } from '../../support/stack';
 import { exec } from '../../support/shell';
 import { t } from '../../support/tags';
 
@@ -74,7 +74,7 @@ test.describe('OPS compose file', () => {
     for (const service of ['caddy', 'api', 'livekit'] as const) expect(services[service]!.cap_drop ?? [], `${service} cap_drop`).toContain('ALL');
     // Healthchecks: in the compose file, or (Caddy) from the image.
     for (const service of ['api', 'livekit', 'postgres'] as const) expect(services[service]!.healthcheck?.test, `${service} healthcheck`).toBeTruthy();
-    const caddyImage = await docker(['inspect', '-f', '{{json .Config.Healthcheck}}', 'fs-e2e-caddy-1']);
+    const caddyImage = await docker(['inspect', '-f', '{{json .Config.Healthcheck}}', containerName('caddy')]);
     expect(caddyImage.stdout.trim(), 'Caddy healthcheck (from the image)').not.toBe('null');
     const depends = (service: string, on: string) => services[service]!.depends_on?.[on]?.condition;
     expect(depends('caddy', 'api'), 'caddy waits for api').toBe('service_healthy');
@@ -102,7 +102,7 @@ test.describe('OPS compose file', () => {
       try {
         const file = path.join(dir, 'env');
         fs.writeFileSync(file, Object.entries(env).map(([key, value]) => `${key}='${value}'`).join('\n') + '\n');
-        const result = await exec('docker', ['compose', '-p', 'fs-e2e-cfg', '-f', COMPOSE_FILES.base, '--env-file', file, 'config', '--quiet'], { cwd: REPO_ROOT, env: cleanComposeEnv([name]) });
+        const result = await exec('docker', ['compose', '-p', `${PROJECT}-cfg`, '-f', COMPOSE_FILES.base, '--env-file', file, 'config', '--quiet'], { cwd: REPO_ROOT, env: cleanComposeEnv([name]) });
         expect(result.code, `${name} removed`).not.toBe(0);
         expect(result.output, `message for ${name}`).toContain('fehlt in .env');
         expect(result.output).not.toContain(env['POSTGRES_PASSWORD'] ?? '(none)');
@@ -228,13 +228,19 @@ test.describe('OPS setup.sh', () => {
     });
   }
 
-  test('E2E-OPS-02 [setup.sh] an empty domain in internal mode falls back to the node IP (spec says invalid)', t.p2, async () => {
-    knownBug('DOC-05', 'docs/testing.md E2E-OPS-02 lists an empty domain as invalid input; setup.sh uses the node IP as domain in internal mode (documented in its prompt text)');
+  test('E2E-OPS-02 [setup.sh] an empty domain in internal mode uses the node IP as the domain; with a public TLS mode it is an error (DOC-05)', t.p2, async () => {
     const box = sandbox();
     fs.mkdirSync(box.path('emptydomain'));
     const file = box.path('emptydomain', '.env');
     const result = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file], { input: 'Passwort-2026-lang-genug\n' });
-    expect(result.code, 'an empty domain is refused').not.toBe(0);
+    expect(result.code, result.output.slice(-600)).toBe(0);
+    expect(parseEnvFile(file)['FLOWSTUDIO_DOMAIN'], 'the node IP is the domain').toBe('127.0.0.1');
+
+    fs.mkdirSync(box.path('emptydomain-acme'));
+    const acme = box.path('emptydomain-acme', '.env');
+    const refused = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme', '--admin-password-stdin', '--plain-password', '--env-file', acme], { input: 'Passwort-2026-lang-genug\n' });
+    expect(refused.code, 'a public TLS mode needs a real domain').not.toBe(0);
+    expect(fs.existsSync(acme), 'no .env written').toBe(false);
   });
 
   test('E2E-OPS-02 [setup.sh] an existing .env is replaced only with --force; the copy and the secrets are kept', t.p0, async () => {
@@ -272,10 +278,12 @@ test.describe('OPS setup.sh', () => {
 
 test.describe('OPS network and hardening', () => {
   test('E2E-OPS-12 [static] only Caddy (80, 443 tcp+udp) and the LiveKit media ports (7881 tcp, 7882 udp) are published; helper services publish nothing', t.p0, async () => {
+    // The base file alone (no e2e override): Caddy on 80/443, LiveKit's media ports from the env file (7881/7882 by default).
     const services = await configOf(['chaos', 'tools']);
+    const config = stackConfig();
     const published = (name: string) => (services[name]?.ports ?? []).map((port) => `${port.published}/${port.protocol ?? 'tcp'}`).sort();
     expect(published('caddy')).toEqual(['443/tcp', '443/udp', '80/tcp']);
-    expect(published('livekit')).toEqual(['7881/tcp', '7882/udp']);
+    expect(published('livekit')).toEqual([`${config.rtcTcpPort}/tcp`, `${config.rtcUdpPort}/udp`].sort());
     expect(published('api'), 'api 8080 not published').toEqual([]);
     expect(published('postgres'), 'postgres 5432 not published').toEqual([]);
     for (const [name, service] of Object.entries(services)) {
@@ -294,21 +302,22 @@ test.describe('OPS network and hardening', () => {
         socket.on('error', () => resolve(false));
       });
     for (const port of [8080, 7880, 5432, 2020, 2019]) expect(await probe(port), `port ${port} on ${host}`).toBe(false);
-    expect(await probe(443), '443').toBe(true);
-    expect(await probe(7881), '7881').toBe(true);
+    const config = stackConfig();
+    expect(await probe(config.httpsPort), String(config.httpsPort)).toBe(true);
+    expect(await probe(config.rtcTcpPort), String(config.rtcTcpPort)).toBe(true);
   });
 
   test('E2E-OPS-13 [stack] every container runs with no-new-privileges and cap_drop ALL; the API runs as a non-root user', t.p1, async () => {
     for (const service of SERVICES) {
-      const info = JSON.parse((await docker(['inspect', `fs-e2e-${service}-1`], { check: true })).stdout)[0] as { HostConfig: { SecurityOpt: string[]; CapDrop: string[]; Privileged: boolean } };
+      const info = JSON.parse((await docker(['inspect', containerName(service)], { check: true })).stdout)[0] as { HostConfig: { SecurityOpt: string[]; CapDrop: string[]; Privileged: boolean } };
       expect(info.HostConfig.SecurityOpt ?? [], `${service} no-new-privileges`).toContain('no-new-privileges:true');
       if (service !== 'postgres') expect(info.HostConfig.CapDrop ?? [], `${service} cap_drop`).toContain('ALL');
       expect(info.HostConfig.Privileged, `${service} not privileged`).toBe(false);
     }
-    const uid = (await docker(['exec', 'fs-e2e-api-1', 'id', '-u'], { check: true })).stdout.trim();
+    const uid = (await docker(['exec', containerName('api'), 'id', '-u'], { check: true })).stdout.trim();
     expect(Number(uid), `API uid ${uid}`).toBeGreaterThan(0);
     for (const service of ['caddy', 'postgres'] as const) {
-      const user = (await docker(['exec', `fs-e2e-${service}-1`, 'id', '-u'])).stdout.trim();
+      const user = (await docker(['exec', containerName(service), 'id', '-u'])).stdout.trim();
       test.info().annotations.push({ type: 'measurement', description: `${service} runs as uid ${user}` });
     }
   });
@@ -317,14 +326,14 @@ test.describe('OPS network and hardening', () => {
     knownBug('BUG-22', 'the postgres service has no cap_drop: ALL (caddy, api and livekit have it); docs/testing.md E2E-OPS-01 and -13 require it for every service');
     const services = await configOf();
     expect(services['postgres']!.cap_drop ?? [], 'postgres cap_drop in docker-compose.yml').toContain('ALL');
-    const info = JSON.parse((await docker(['inspect', 'fs-e2e-postgres-1'], { check: true })).stdout)[0] as { HostConfig: { CapDrop: string[] } };
+    const info = JSON.parse((await docker(['inspect', containerName('postgres')], { check: true })).stdout)[0] as { HostConfig: { CapDrop: string[] } };
     expect(info.HostConfig.CapDrop ?? [], 'postgres CapDrop of the running container').toContain('ALL');
   });
 
   test('E2E-OPS-13 [stack] secrets live only in the environment of the services that need them and in no image layer', t.p1, async () => {
     const config = stackConfig();
     const secrets = { admin: config.admin.password, livekit: config.livekit.apiSecret, postgres: config.postgresPassword };
-    const environment = async (service: string) => (await docker(['inspect', '-f', '{{json .Config.Env}}', `fs-e2e-${service}-1`], { check: true })).stdout;
+    const environment = async (service: string) => (await docker(['inspect', '-f', '{{json .Config.Env}}', containerName(service)], { check: true })).stdout;
     const has = (env: string, secret: string) => env.includes(secret);
     const caddy = await environment('caddy');
     expect(has(caddy, secrets.admin), 'caddy: admin password').toBe(false);
@@ -337,7 +346,7 @@ test.describe('OPS network and hardening', () => {
     expect(has(postgres, secrets.admin), 'postgres: admin password').toBe(false);
     expect(has(postgres, secrets.livekit), 'postgres: LiveKit secret').toBe(false);
     // Images: no secret in the config or the history of the images the stack is built from.
-    for (const image of ['fs-e2e-api', 'fs-e2e-caddy']) {
+    for (const image of [imageNameOf('api'), imageNameOf('caddy')]) {
       const inspect = (await docker(['image', 'inspect', image], { check: true })).stdout;
       const history = (await docker(['history', '--no-trunc', '--format', '{{.CreatedBy}}', image], { check: true })).stdout;
       for (const [name, secret] of Object.entries(secrets)) {
@@ -353,7 +362,7 @@ test.describe('OPS network and hardening', () => {
 });
 
 test.describe('OPS admin hash path', () => {
-  const IMAGE = 'fs-e2e-api';
+  const IMAGE = imageNameOf('api');
 
   test('E2E-OPS-15 [image] hash-password reads the password from stdin, prints a salted Identity v3 hash and never echoes the password', t.p1, async () => {
     const password = 'Hash-Test-Passwort-2026';

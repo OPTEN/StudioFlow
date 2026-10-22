@@ -23,6 +23,9 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>Session of the latest Hello; unlike <see cref="SessionId"/> it survives a disconnect.</summary>
     private string? lastSessionId;
 
+    /// <summary>When telemetry of this device was last relayed to the Regie (BUG-19 throttle).</summary>
+    private DateTimeOffset? telemetrySentAt;
+
     /// <summary>Device id.</summary>
     public string DeviceId { get; } = deviceId;
 
@@ -58,6 +61,12 @@ public sealed class DeviceRuntime(string deviceId)
 
     /// <summary>Last tally pushed to the active session.</summary>
     public TallyDto? LastTally { get; set; }
+
+    /// <summary>
+    /// True while the telemetry of the latest report was held back by the throttle and not relayed yet (it leaves with
+    /// <see cref="TakeDueTelemetry"/> once the interval has passed).
+    /// </summary>
+    public bool TelemetryPending { get; private set; }
 
     /// <summary>True while a hub session is active.</summary>
     public bool IsConnected => ConnectionId is not null;
@@ -120,6 +129,7 @@ public sealed class DeviceRuntime(string deviceId)
     public void MarkReportStale()
     {
         Rtc = RtcState.Disconnected;
+        TelemetryPending = false;
         if (Telemetry is { } telemetry)
         {
             Telemetry = telemetry with { Rtc = RtcState.Disconnected };
@@ -140,7 +150,48 @@ public sealed class DeviceRuntime(string deviceId)
         LastTally = null;
         LastReportAt = null;
         LastSeenAt = now;
+        TelemetryPending = false;
         return true;
+    }
+
+    /// <summary>
+    /// Records that the active session sent a report, before it is applied. A report that cannot be applied (the
+    /// database is down, GAP-32) still proves that the session is alive, so the device is not taken for silent
+    /// (GAP-29) and its live sources do not turn <c>reconnecting</c> once the database is back.
+    /// </summary>
+    public void NoteReport(DateTimeOffset now)
+    {
+        if (IsConnected)
+        {
+            LastReportAt = now;
+            LastSeenAt = now;
+        }
+    }
+
+    /// <summary>
+    /// Throttles the telemetry relayed to the Regie (BUG-19, spec 6: every 2 s per device): the telemetry of the report
+    /// just applied is returned when nothing was relayed within <paramref name="interval"/> (the first report goes out
+    /// at once); otherwise it is held back and the newest one leaves with <see cref="TakeDueTelemetry"/> once the
+    /// interval has passed (latest value wins). State changes that matter for the Regie travel as revisioned events and
+    /// are not throttled.
+    /// </summary>
+    public DeviceTelemetryDto? OfferTelemetry(DateTimeOffset now, TimeSpan interval)
+    {
+        TelemetryPending = Telemetry is not null;
+        return TakeDueTelemetry(now, interval);
+    }
+
+    /// <summary>The held-back telemetry when <paramref name="interval"/> has passed since the last relayed one; null otherwise.</summary>
+    public DeviceTelemetryDto? TakeDueTelemetry(DateTimeOffset now, TimeSpan interval)
+    {
+        if (!TelemetryPending || Telemetry is null || (telemetrySentAt is { } sent && now - sent < interval))
+        {
+            return null;
+        }
+
+        TelemetryPending = false;
+        telemetrySentAt = now;
+        return Telemetry;
     }
 
     /// <summary>

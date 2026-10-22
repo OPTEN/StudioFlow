@@ -22,8 +22,14 @@ test.describe('AUTH hubs and output access', () => {
       device: { accessToken: phone.bearer },
       output: { accessToken: production.outputKey },
     } as const;
-    const allowed = [undefined, 'https://localhost', 'https://LOCALHOST', 'http://localhost'];
-    const refused = ['https://evil.example', 'null', 'https://localhost:8443', 'https://localhost.evil.com', 'javascript:alert(1)', 'https://evil.example:443', ''];
+    // The Origin must match the host and port the request arrives on: https://localhost on the default stack,
+    // https://localhost:849N on a numbered one (E2E_STACK).
+    const own = new URL(base);
+    const portSuffix = own.port ? `:${own.port}` : '';
+    const otherPort = own.port === '8443' ? 8444 : 8443;
+    const allowed = [undefined, `https://localhost${portSuffix}`, `https://LOCALHOST${portSuffix}`, `http://localhost${portSuffix}`];
+    const refused = ['https://evil.example', 'null', `https://localhost:${otherPort}`, 'https://localhost.evil.com', 'javascript:alert(1)', `https://evil.example${portSuffix || ':443'}`, ''];
+    if (own.port) refused.push('https://localhost'); // the default port is a different origin than the published one
     for (const hub of ['studio', 'device', 'output'] as const) {
       for (const origin of refused) {
         const negotiated = await negotiate(base, hub, { ...('cookie' in credentials[hub] ? { cookie: api.cookie } : { accessTokenQuery: (credentials[hub] as { accessToken: string }).accessToken }), origin: origin || undefined, headers: origin === '' ? { Origin: '' } : {} });

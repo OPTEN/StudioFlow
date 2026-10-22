@@ -2196,6 +2196,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/webhook+json": unknown;
+                "application/json": unknown;
             };
         };
         responses: {

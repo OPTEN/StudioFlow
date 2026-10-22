@@ -1,5 +1,7 @@
 import dns from 'node:dns';
+import path from 'node:path';
 import { defineConfig, devices, type Project } from '@playwright/test';
+import { OUTPUT_DIR, SETTINGS, originFor } from './support/env';
 import { CHROMIUM_ARGS, FIREFOX_PREFS } from './support/fake-media';
 
 // Caddy's local CA signs the certificate (TLS mode internal); Node clients (SignalR, fetch) of the specs accept it.
@@ -9,7 +11,8 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 process.env['NODE_NO_WARNINGS'] = '1';
 dns.setDefaultResultOrder('ipv4first');
 
-const baseURL = process.env['E2E_BASE_URL'] ?? 'https://localhost';
+// The stack selected by E2E_STACK / E2E_PROJECT / E2E_*_PORT (support/env.ts); E2E_BASE_URL overrides the origin only.
+const baseURL = process.env['E2E_BASE_URL'] ?? originFor('localhost', SETTINGS.httpsPort);
 
 /** Specs that need their own stack mode never run in the generic projects. */
 const SPECIAL = ['**/*.short-ttl.spec.ts', '**/*.disruptive.spec.ts', '**/*.firefox.spec.ts', '**/*.webkit.spec.ts', '**/*.mobile.spec.ts', '**/*.soak.spec.ts'];
@@ -85,7 +88,7 @@ const projects: Project[] = [
 
 export default defineConfig({
   testDir: './specs',
-  outputDir: './.output/artifacts',
+  outputDir: path.join(OUTPUT_DIR, 'artifacts'),
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
   timeout: 60_000,
@@ -96,9 +99,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env['CI']),
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: '.output/html' }],
-    ['junit', { outputFile: '.output/junit.xml' }],
-    ['json', { outputFile: '.output/results.json' }],
+    ['html', { open: 'never', outputFolder: path.join(OUTPUT_DIR, 'html') }],
+    ['junit', { outputFile: path.join(OUTPUT_DIR, 'junit.xml') }],
+    ['json', { outputFile: path.join(OUTPUT_DIR, 'results.json') }],
   ],
   use: {
     baseURL,

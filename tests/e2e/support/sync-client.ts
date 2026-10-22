@@ -25,7 +25,7 @@ export class SyncClient {
     readonly productionId: string,
   ) {
     hub.connection.on('event', (event: ProductionEvent) => this.onEvent(event));
-    hub.connection.onreconnected(() => {
+    hub.onReconnected(() => {
       void this.resubscribe();
     });
   }

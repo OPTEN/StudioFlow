@@ -24,6 +24,9 @@ export interface Received {
   args: unknown[];
 }
 
+/** SignalR error text of a refused connection: the credentials are wrong, trying again does not help. */
+const REFUSED = /Status code '(401|403)'/;
+
 const SERVER_TO_CLIENT = ['event', 'telemetry', 'presence', 'resync', 'tally', 'command', 'self', 'sessionReplaced'] as const;
 
 export interface HubOptions {
@@ -36,7 +39,12 @@ export interface HubOptions {
   /** SignalR client timeouts; the product clients use 6000/2000 (spec 6, 5000 after GAP-12). */
   serverTimeoutMs?: number;
   keepAliveMs?: number;
-  /** Reconnect forever with the 0/300/600/… backoff of the product; default: no automatic reconnect. */
+  /**
+   * Reconnect forever with the 0/300/600/… backoff of the product; default: no automatic reconnect. Like the product's
+   * ResilientHub this also holds when the server closes the connection cleanly: SignalR's own automatic reconnect only
+   * answers a lost connection, not a close the server asked for (the API does that while it stops), so the hub is
+   * started again until it is connected - except after a 401/403, when the credentials were refused (terminal).
+   */
   reconnect?: boolean;
   logLevel?: signalR.LogLevel;
 }
@@ -49,10 +57,14 @@ export class HubSession {
   readonly startedAt = Date.now();
   reconnectedAt: number[] = [];
   reconnectingAt: number[] = [];
+  private userStopped = false;
+  private readonly reconnectHandlers: Array<() => void> = [];
 
   constructor(
     readonly connection: signalR.HubConnection,
     readonly url: string,
+    /** Start the connection again after a close the user did not ask for (see {@link HubOptions.reconnect}). */
+    readonly restartOnClose = false,
   ) {
     for (const method of SERVER_TO_CLIENT) {
       connection.on(method, (...args: unknown[]) => {
@@ -62,12 +74,19 @@ export class HubSession {
     connection.onclose((error) => {
       this.closedAt = Date.now();
       this.closeError = error ?? undefined;
+      if (this.restartOnClose && !this.userStopped && !REFUSED.test(error?.message ?? '')) void this.restartLoop();
     });
     connection.onreconnecting(() => this.reconnectingAt.push(Date.now()));
     connection.onreconnected(() => this.reconnectedAt.push(Date.now()));
   }
 
   static create(url: string, options: HubOptions = {}): HubSession {
+    const built = HubSession.build(url, options);
+    return new HubSession(built.connection, built.url, built.restartOnClose);
+  }
+
+  /** The connection of a hub before a session wraps it (the role classes below wrap it once). */
+  static build(url: string, options: HubOptions = {}): { connection: signalR.HubConnection; url: string; restartOnClose: boolean } {
     const headers: Record<string, string> = { ...options.headers };
     if (options.cookie) headers['Cookie'] = options.cookie;
     const builder = new signalR.HubConnectionBuilder()
@@ -89,7 +108,33 @@ export class HubSession {
     const connection = builder.build();
     connection.serverTimeoutInMilliseconds = options.serverTimeoutMs ?? 6000;
     connection.keepAliveIntervalInMilliseconds = options.keepAliveMs ?? 2000;
-    return new HubSession(connection, url);
+    return { connection, url, restartOnClose: Boolean(options.reconnect) };
+  }
+
+  /**
+   * Calls `handler` after every successful reconnect: SignalR's automatic reconnect (a lost connection) and the restart
+   * after a clean close by the server. The sims say Hello / Subscribe again from here.
+   */
+  onReconnected(handler: () => void): void {
+    this.reconnectHandlers.push(handler);
+    this.connection.onreconnected(() => handler());
+  }
+
+  /** Starts the closed connection again with the product's backoff until it is up, stopped or refused (401/403). */
+  private async restartLoop(): Promise<void> {
+    for (let attempt = 0; !this.userStopped; attempt++) {
+      const delay = attempt === 0 ? 0 : Math.min(5000, 300 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+      if (delay > 0) await sleep(delay);
+      if (this.userStopped) return;
+      try {
+        await this.connection.start();
+        this.reconnectedAt.push(Date.now());
+        for (const handler of this.reconnectHandlers) handler();
+        return;
+      } catch (error) {
+        if (REFUSED.test(String((error as Error)?.message ?? error))) return;
+      }
+    }
   }
 
   get state(): signalR.HubConnectionState {
@@ -108,6 +153,7 @@ export class HubSession {
   }
 
   async stop(): Promise<void> {
+    this.userStopped = true;
     try {
       await this.connection.stop();
     } catch {
@@ -168,8 +214,8 @@ export class HubSession {
 
 export class StudioHub extends HubSession {
   static connect(base: string, cookie: string, options: HubOptions = {}): StudioHub {
-    const session = HubSession.create(`${base}/hubs/studio`, { ...options, cookie });
-    return new StudioHub(session.connection, session.url);
+    const built = HubSession.build(`${base}/hubs/studio`, { ...options, cookie });
+    return new StudioHub(built.connection, built.url, built.restartOnClose);
   }
   /** Connects and subscribes; returns the changes answer. */
   async open(productionId: string, sinceRevision: number | null = null): Promise<ProductionChangesDto> {
@@ -187,8 +233,8 @@ export class StudioHub extends HubSession {
 
 export class DeviceHub extends HubSession {
   static connect(base: string, credentials: DeviceCredentialsDto, options: HubOptions = {}): DeviceHub {
-    const session = HubSession.create(`${base}/hubs/device`, { ...options, accessToken: `${credentials.deviceId}.${credentials.deviceSecret}` });
-    return new DeviceHub(session.connection, session.url);
+    const built = HubSession.build(`${base}/hubs/device`, { ...options, accessToken: `${credentials.deviceId}.${credentials.deviceSecret}` });
+    return new DeviceHub(built.connection, built.url, built.restartOnClose);
   }
   sessionId = `tab-${Math.random().toString(36).slice(2, 10)}`;
   /** Connects and says Hello (the first message of a sender). */
@@ -223,8 +269,8 @@ export class DeviceHub extends HubSession {
 
 export class OutputHub extends HubSession {
   static connect(base: string, key: string, options: HubOptions = {}): OutputHub {
-    const session = HubSession.create(`${base}/hubs/output`, { ...options, accessToken: key });
-    return new OutputHub(session.connection, session.url);
+    const built = HubSession.build(`${base}/hubs/output`, { ...options, accessToken: key });
+    return new OutputHub(built.connection, built.url, built.restartOnClose);
   }
   async open(sinceRevision: number | null = null): Promise<OutputChangesDto> {
     await this.start();

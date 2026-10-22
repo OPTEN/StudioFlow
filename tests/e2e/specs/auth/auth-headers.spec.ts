@@ -1,5 +1,5 @@
 import tls from 'node:tls';
-import { expect, knownBug, test } from '../../support/fixtures';
+import { expect, test } from '../../support/fixtures';
 import { rawRequest, send } from '../../support/http';
 import { parseCsp } from '../../support/parse';
 import { stackConfig } from '../../support/env';
@@ -67,7 +67,7 @@ test.describe('AUTH headers', () => {
       expect(csp['form-action'], label).toEqual(["'self'"]);
       expect(["'self'", "'none'"], `${label} default-src`).toContain(csp['default-src']?.[0]);
       expect(csp['connect-src'], `${label} connect-src`).toContain("'self'");
-      expect(csp['connect-src'], `${label} connect-src names the websocket origin (Safari)`).toContain(`wss://${host}`);
+      expect(csp['connect-src'], `${label} connect-src names the websocket origin (Safari)`).toContain(`wss://${new URL(config.baseURL).host}`);
       expect(csp['img-src'], label).toEqual(expect.arrayContaining(['data:', 'blob:']));
       expect(csp['media-src'], label).toContain('blob:');
       for (const [directive, sources] of Object.entries(csp)) {
@@ -79,7 +79,7 @@ test.describe('AUTH headers', () => {
 
       // Framing: only the output may be embedded, and only by self + FLOWSTUDIO_FRAME_ANCESTORS.
       if (target.area === 'output') {
-        expect(csp['frame-ancestors'], label).toEqual(["'self'", config.frameAncestors]);
+        expect(csp['frame-ancestors'], label).toEqual(["'self'", ...config.frameAncestors.split(/\s+/)]);
         expect(response.headers['x-frame-options'], `${label} /o/* sends no X-Frame-Options`).toBeUndefined();
       } else {
         expect(csp['frame-ancestors'], label).toEqual(["'none'"]);
@@ -102,10 +102,9 @@ test.describe('AUTH headers', () => {
     }
   });
 
-  test('E2E-AUTH-09 [sender microphone] /join/* disables the microphone (plan) - the Caddyfile follows spec section 10', t.p1, async ({ config }) => {
-    knownBug('DOC-01', 'docs/testing.md E2E-AUTH-09 pins microphone=() for /join/*, implementation-spec section 10 and the Caddyfile have microphone=(self)');
+  test('E2E-AUTH-09 [sender microphone] /join/* allows the microphone for itself (microphone=(self), spec section 10, DOC-01)', t.p1, async ({ config }) => {
     const response = await send({ method: 'GET', url: `${config.baseURL}/join/` });
-    expect(response.headers['permissions-policy']).toContain('microphone=()');
+    expect(response.headers['permissions-policy']).toContain('microphone=(self)');
   });
 
   test('E2E-AUTH-09 [caching] hashed files are immutable, index.html and ngsw.json are revalidated, errors are not cached', t.p1, async ({ config }) => {
@@ -129,7 +128,7 @@ test.describe('AUTH headers', () => {
 
   test('E2E-AUTH-10 [headers] only the output may be framed, and only by the configured origins', t.p0, async ({ config, production }) => {
     const out = await send({ method: 'GET', url: `${config.baseURL}/o/${production.slug}?k=${production.outputKey}` });
-    expect(parseCsp(out.headers['content-security-policy']!)['frame-ancestors']).toEqual(["'self'", 'https://embed.e2e.test']);
+    expect(parseCsp(out.headers['content-security-policy']!)['frame-ancestors']).toEqual(["'self'", 'https://embed.e2e.test', 'https://embed.test']);
     for (const route of ['/', '/join/', '/login', '/monitoring']) {
       const response = await send({ method: 'GET', url: `${config.baseURL}${route}` });
       expect(parseCsp(response.headers['content-security-policy']!)['frame-ancestors'], route).toEqual(["'none'"]);

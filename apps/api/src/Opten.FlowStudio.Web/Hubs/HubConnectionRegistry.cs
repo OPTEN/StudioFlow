@@ -132,6 +132,26 @@ public sealed class HubConnectionRegistry(RealtimeOptions options, TimeProvider 
         });
     }
 
+    /// <summary>
+    /// Aborts every connection (host shutdown, OBS-01): the clients reconnect to the restarted API at once, and Kestrel
+    /// does not wait for long-lived WebSocket and long-polling requests until the shutdown timeout. Returns how many
+    /// connections were closed.
+    /// </summary>
+    public int AbortAll()
+    {
+        var closed = 0;
+        foreach (var connectionId in connections.Keys.ToList())
+        {
+            if (connections.ContainsKey(connectionId))
+            {
+                Abort(connectionId);
+                closed++;
+            }
+        }
+
+        return closed;
+    }
+
     /// <summary>Aborts every Regie connection of an admin session (logout, GAP-04); returns how many were closed.</summary>
     public int AbortSession(string sessionId)
     {

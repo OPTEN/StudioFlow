@@ -10,14 +10,14 @@ namespace Opten.FlowStudio.Core.Tests.Application;
 /// <summary>The application services wired with in-memory fakes and a manual clock.</summary>
 internal sealed class ServiceHarness : IDisposable
 {
-    public ServiceHarness(PairingOptions? pairing = null)
+    public ServiceHarness(PairingOptions? pairing = null, HostShutdown? shutdown = null)
     {
         PairingOptions = pairing ?? new PairingOptions();
         Production = Core.Domain.Production.Create("Webinar", "webinar", isActive: true, Clock.Now);
         Data.Productions.Add(Production);
         Requests = new PairingRequestStore(PairingOptions);
         Runtimes = new ProductionRuntimeRegistry(Clock);
-        Coordinator = new ProductionCoordinator(Runtimes, Data, new InlineDispatcher(Publisher), Clock);
+        Coordinator = new ProductionCoordinator(Runtimes, Data, new InlineDispatcher(Publisher), Clock, shutdown);
         Snapshots = new SnapshotBuilder(Requests, Options);
         var kicker = new LiveKitKicker(Rooms, NullLogger<LiveKitKicker>.Instance);
         Productions = new ProductionService(Coordinator, Data, Snapshots, new FakeTokens(), Requests, Clock);

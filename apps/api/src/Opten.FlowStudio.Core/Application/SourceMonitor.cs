@@ -12,11 +12,20 @@ namespace Opten.FlowStudio.Core.Application;
 /// </summary>
 public static class SourceMonitor
 {
-    /// <summary>Re-evaluates every slot of a device and emits what changed.</summary>
+    /// <summary>
+    /// Re-evaluates every slot of a device and emits what changed. Not while the host shuts down (BUG-20): the hub
+    /// connections end because the API stops, which is no outage of the sources; after the restart the restart watch
+    /// (spec 12) flags a source whose device does not come back.
+    /// </summary>
     public static void Reevaluate(MutationContext context, Device device)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(device);
+        if (context.IsHostStopping)
+        {
+            return;
+        }
+
         var runtime = context.Runtime;
         var live = runtime.Device(device.Id);
         foreach (var slot in device.Slots)
@@ -47,7 +56,7 @@ public static class SourceMonitor
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(slot);
         var runtime = context.Runtime;
-        if (device.IsBlocked || runtime.FindDevice(device.Id)?.IsConnected == true)
+        if (context.IsHostStopping || device.IsBlocked || runtime.FindDevice(device.Id)?.IsConnected == true)
         {
             return false;
         }

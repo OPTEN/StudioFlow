@@ -50,10 +50,10 @@ public sealed class StudioSessionService(ProductionCoordinator coordinator, Snap
         }
     }
 
-    /// <summary>A Regie connection closed.</summary>
+    /// <summary>A Regie connection closed; while the host shuts down every Regie goes away, so no presence is published (OBS-01).</summary>
     public async Task DisconnectedAsync(string connectionId)
     {
-        if (subscriptions.TryRemove(connectionId, out var productionId))
+        if (subscriptions.TryRemove(connectionId, out var productionId) && !coordinator.IsHostStopping)
         {
             await LeaveAsync(connectionId, productionId);
         }

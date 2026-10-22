@@ -69,14 +69,13 @@ test.describe('PAIR', () => {
     expect((await api.getPhoneInvite(production.id)).body.id).toBe(next.id);
   });
 
-  test('E2E-PAIR-01 [api, event order] events follow the order pinned in INT-PAIR-01', t.p2, async ({ config, api, production, stack, onCleanup }) => {
-    knownBug('DOC-02', 'the API emits inviteRemoved first and the replacement inviteUpserted last; docs/testing.md INT-PAIR-01 pins deviceUpserted, sourceUpserted, inviteRemoved, inviteUpserted, logAppended (no functional impact: the reducer handles any order)');
+  test('E2E-PAIR-01 [api, event order] events follow the order pinned in INT-PAIR-01 (DOC-02: inviteRemoved first, the replacement invite last)', t.p2, async ({ config, api, production, stack, onCleanup }) => {
     const invite = (await api.getPhoneInvite(production.id)).body;
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
     await publicApi.redeemInvite(inviteToken(invite.url), { clientId: 'client-order', kind: 'phone', platform: 'Pixel 7 · Chrome' });
     await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('gekoppelt'));
-    expect(hub.events().map((event) => event.type), describeEvents(hub)).toEqual(['deviceUpserted', 'sourceUpserted', 'inviteRemoved', 'inviteUpserted', 'logAppended']);
+    expect(hub.events().map((event) => event.type), describeEvents(hub)).toEqual(['inviteRemoved', 'deviceUpserted', 'sourceUpserted', 'logAppended', 'inviteUpserted']);
   });
 
   test('E2E-PAIR-03 [api] laptop pairing by check code: knock, card, approve, credentials stay the same on every poll', t.smoke, async ({ config, api, production, stack, onCleanup }) => {
@@ -505,14 +504,13 @@ test.describe('PAIR', () => {
     expectProblem(await phone.api.getDeviceSelf(), 401, ERROR.unauthorized);
   });
 
-  test('INT-PAIR-12 [stack, log texts] block and unblock log «K1 gesperrt» / «K1 entsperrt» as in the prototype', t.p2, async ({ config, api, production, pairContext, onCleanup }) => {
-    knownBug('BUG-10', 'the log texts of block/unblock/remove contain the device name («K1 Handy 1 gesperrt»); prototype and docs/testing.md have «K1 gesperrt»');
+  test('INT-PAIR-12 [stack, log texts] block and unblock log «K1 Handy 1 gesperrt» / «K1 Handy 1 entsperrt» (codes and device name, BUG-10 resolved as an intended deviation)', t.p2, async ({ config, api, production, pairContext, onCleanup }) => {
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
     const phone = await pairPhone(pairContext, { name: 'Handy 1' });
     await api.blockDevice(production.id, phone.id);
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('gesperrt'))).entry.text).toBe('K1 gesperrt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('gesperrt'))).entry.text).toBe('K1 Handy 1 gesperrt');
     await api.unblockDevice(production.id, phone.id);
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('entsperrt'))).entry.text).toBe('K1 entsperrt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('entsperrt'))).entry.text).toBe('K1 Handy 1 entsperrt');
   });
 
   test('INT-PAIR-13 [stack] renaming a device updates device, source label and the connected sender', t.p2, async ({ config, api, production, pairContext, stack, onCleanup }) => {

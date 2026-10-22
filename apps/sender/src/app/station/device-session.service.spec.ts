@@ -21,6 +21,7 @@ import { DeviceApiService } from '../core/device-api.service';
 import { DEVICE_ENVIRONMENT, type DeviceEnvironment } from '../core/device-environment';
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
+import { TEST_HOOKS_FLAG } from '../core/test-hooks';
 import {
   BLOCKED_RETRY_MS,
   DeviceSessionService,
@@ -138,6 +139,7 @@ describe('DeviceSessionService', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
+    window.localStorage.removeItem(TEST_HOOKS_FLAG);
   });
 
   it('connects the device hub with the bearer and says Hello with the tab session id', async () => {
@@ -600,22 +602,46 @@ describe('DeviceSessionService', () => {
     expect(service.degradedSince()).toBeNull();
   });
 
-  it('exposes the read-only test hook window.__fsSender', async () => {
+  it('exposes the read-only test hook window.__fsSender with the opt-in flag', async () => {
+    window.localStorage.setItem(TEST_HOOKS_FLAG, '1');
     const service = setup();
     await online(service);
     media.publisher.emitSlot('camera', 'live');
 
-    const hook = (
-      window as unknown as { __fsSender: { slots(): unknown; rtc(): string; sessionId: string } }
-    ).__fsSender;
+    const view = window as unknown as {
+      __fsSender: { slots(): unknown; rtc(): string; sessionId: string };
+    };
+    const hook = view.__fsSender;
     expect(hook.slots()).toEqual({ camera: 'live' });
     expect(hook.rtc()).toBe('connected');
     expect(hook.sessionId).toBe(service.sessionId);
+    expect(Object.isFrozen(hook)).toBe(true);
+    expect(Object.keys(window)).not.toContain('__fsSender');
+    expect(() => {
+      (view as { __fsSender: unknown }).__fsSender = {};
+    }).toThrow(TypeError);
+    expect(view.__fsSender).toBe(hook);
 
     hub.emit('sessionReplaced');
     service.takeOver();
     expect(hook.sessionId).toBe(service.sessionId);
+
+    TestBed.resetTestingModule();
+    expect('__fsSender' in window).toBe(false);
   });
+
+  it.each([null, '0', 'true', ' 1'])(
+    'has no window.__fsSender without the opt-in flag (%s)',
+    async (flag) => {
+      if (flag !== null) {
+        window.localStorage.setItem(TEST_HOOKS_FLAG, flag);
+      }
+      const service = setup();
+      await online(service);
+
+      expect('__fsSender' in window).toBe(false);
+    },
+  );
 
   it('measures the RTT from the Report round trip and never polls /me while connected', async () => {
     const service = setup({ settings: { cameraOn: false } });

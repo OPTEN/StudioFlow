@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ENV_FILE, OUTPUT_DIR, PROJECT, REPO_ROOT, STATE_FILE, renderEnvFile, stackConfig } from './support/env';
+import { ENV_FILE, OUTPUT_DIR, PROJECT, REPO_ROOT, SETTINGS, STATE_FILE, containerNameOf, renderEnvFile, stackConfig } from './support/env';
 import { generateSamples } from './support/media-samples';
 import { detectLanIPv4 } from './support/network-info';
+import { assertStackFree } from './support/preflight';
 import { exec } from './support/shell';
 import { allHealthy, compose, ensureHealthy, docker } from './support/stack';
 
@@ -44,7 +45,7 @@ async function recordBuild(): Promise<StackState['build']> {
   const diff = await git(['diff', 'HEAD']);
   const images: Record<string, string> = {};
   for (const service of ['api', 'caddy', 'livekit', 'postgres']) {
-    const result = await docker(['inspect', '-f', '{{.Image}}', `${PROJECT}-${service}-1`]);
+    const result = await docker(['inspect', '-f', '{{.Image}}', containerNameOf(service)]);
     images[service] = result.code === 0 ? result.stdout.trim().replace('sha256:', '').slice(0, 12) : 'unknown';
   }
   const version = await docker(['version', '--format', '{{.Server.Version}}']);
@@ -109,6 +110,8 @@ export default async function globalSetup(): Promise<void> {
 
   log(`removing an old ${PROJECT} stack, if any`);
   await compose(['down', '--volumes', '--remove-orphans', '--timeout', '30'], { profiles: ['chaos', 'tools'] });
+  log(`stack ${PROJECT}: https ${SETTINGS.httpsPort}, http ${SETTINGS.httpPort}, media ${SETTINGS.rtcTcpPort}/tcp ${SETTINGS.rtcUdpPort}/udp, api ${SETTINGS.apiPort}, livekit ${SETTINGS.livekitPort}, postgres ${SETTINGS.postgresPort}, subnet ${SETTINGS.subnet}`);
+  await assertStackFree();
 
   const build = process.env['E2E_NO_BUILD'] === '1' ? [] : ['--build'];
   log(`docker compose -p ${PROJECT} up -d ${build.join(' ')} --wait (first build can take several minutes)`);

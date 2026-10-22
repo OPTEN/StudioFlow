@@ -25,6 +25,13 @@ public sealed class SourceMonitorOptions : IValidatedOptions
     /// <summary><c>Sources:LiveMarkInterval</c>: how often the last-live time of live sources is persisted (default 1 minute).</summary>
     public TimeSpan LiveMarkInterval { get; set; } = TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// <c>Sources:TelemetryInterval</c>: at most one telemetry message per device and this interval goes to the Regie
+    /// (default 2 s, spec 6, BUG-19); reports in between are held back and the newest one is relayed when the interval
+    /// has passed.
+    /// </summary>
+    public TimeSpan TelemetryInterval { get; set; } = TimeSpan.FromSeconds(2);
+
     /// <inheritdoc />
     public IEnumerable<string> Validate() =>
     [
@@ -32,6 +39,7 @@ public sealed class SourceMonitorOptions : IValidatedOptions
         .. OptionRules.Duration("Sources:RestartGrace", RestartGrace, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10)),
         .. OptionRules.Duration("Sources:RestartLiveWindow", RestartLiveWindow, TimeSpan.FromMinutes(1), TimeSpan.FromDays(7)),
         .. OptionRules.Duration("Sources:LiveMarkInterval", LiveMarkInterval, TimeSpan.FromSeconds(5), TimeSpan.FromHours(1)),
+        .. OptionRules.Duration("Sources:TelemetryInterval", TelemetryInterval, TimeSpan.Zero, TimeSpan.FromMinutes(1)),
     ];
 }
 

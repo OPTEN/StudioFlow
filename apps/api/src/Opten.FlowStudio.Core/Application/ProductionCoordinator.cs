@@ -16,11 +16,14 @@ public sealed class MutationContext
     private readonly List<Func<IRealtimePublisher, Task>> realtime = [];
     private readonly Dictionary<string, SourceLiveMark> liveMarks = new(StringComparer.Ordinal);
 
-    internal MutationContext(ProductionRuntime runtime, IUnitOfWork data, DateTimeOffset now)
+    private readonly HostShutdown shutdown;
+
+    internal MutationContext(ProductionRuntime runtime, IUnitOfWork data, DateTimeOffset now, HostShutdown? shutdown = null)
     {
         Runtime = runtime;
         Data = data;
         Now = now;
+        this.shutdown = shutdown ?? HostShutdown.None;
     }
 
     /// <summary>In-memory state of the production.</summary>
@@ -34,6 +37,12 @@ public sealed class MutationContext
 
     /// <summary>The production.</summary>
     public string ProductionId => Runtime.ProductionId;
+
+    /// <summary>
+    /// True while the host shuts down (BUG-20): connections that end now are no outage, so source statuses are not
+    /// re-evaluated (see <see cref="SourceMonitor.Reevaluate"/>).
+    /// </summary>
+    public bool IsHostStopping => shutdown.IsStopping;
 
     internal bool TalliesMayChange { get; private set; }
 
@@ -123,8 +132,14 @@ public sealed class ProductionCoordinator(
     ProductionRuntimeRegistry runtimes,
     IUnitOfWorkFactory data,
     IRealtimeDispatcher dispatcher,
-    TimeProvider clock)
+    TimeProvider clock,
+    HostShutdown? shutdown = null)
 {
+    private readonly HostShutdown hostShutdown = shutdown ?? HostShutdown.None;
+
+    /// <summary>True once the host began to stop (BUG-20, OBS-01): disconnects are no outage then.</summary>
+    public bool IsHostStopping => hostShutdown.IsStopping;
+
     /// <summary>Runs a mutation (or a consistent read) of a production; unknown productions are <c>not_found</c>.</summary>
     public async Task<T> ExecuteAsync<T>(string productionId, Func<MutationContext, Task<T>> mutation, CancellationToken cancellationToken)
     {
@@ -134,7 +149,7 @@ public sealed class ProductionCoordinator(
         try
         {
             await using var unit = data.Create();
-            var context = new MutationContext(runtime, unit, clock.StorageNow());
+            var context = new MutationContext(runtime, unit, clock.StorageNow(), hostShutdown);
             var result = await mutation(context);
 
             // Once the mutation decided, finish it even if the caller goes away: a half-applied change is worse.

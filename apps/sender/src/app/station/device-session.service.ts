@@ -31,6 +31,7 @@ import { LiveStateService } from '../core/live-state.service';
 import { NetworkStatusService } from '../core/network-status.service';
 import { NoticeService } from '../core/notice.service';
 import { createSessionId } from '../core/random-id';
+import { exposeTestHook, testHooksEnabled } from '../core/test-hooks';
 import {
   SenderSettingsService,
   type Facing,
@@ -163,6 +164,8 @@ export class DeviceSessionService {
   private readonly network = inject(NetworkStatusService);
   private readonly notices = inject(NoticeService);
   private readonly document = inject(DOCUMENT);
+  /** Removes `window.__fsSender` again (no-op while it is not installed). */
+  private removeTestHook: () => void = () => undefined;
   private readonly hubFactory = inject(DEVICE_HUB_FACTORY);
   private readonly mediaFactory = inject(SENDER_MEDIA_FACTORY);
   private readonly wakeLockFactory = inject(WAKE_LOCK_FACTORY);
@@ -1228,13 +1231,18 @@ export class DeviceSessionService {
     }
   }
 
+  /**
+   * `window.__fsSender` (spec 12, docs/testing.md 1.7): a read-only view of the slot states, the media state and the
+   * session id for the E2E tests. Only with the opt-in flag `localStorage['flowstudio.testHooks'] = '1'`.
+   */
   private installTestHook(): void {
-    const view = this.document.defaultView as (Window & { __fsSender?: unknown }) | null;
-    if (view === null) {
+    const view = this.document.defaultView;
+    if (!testHooksEnabled(view)) {
       return;
     }
     const session = this;
-    const hook = Object.freeze({
+    this.removeTestHook();
+    this.removeTestHook = exposeTestHook(view, '__fsSender', {
       slots: (): Record<string, string> =>
         Object.fromEntries(this.slots().map((slot) => [slot.slot, slot.state])),
       rtc: (): string => toRtcState(this.mediaState()),
@@ -1242,7 +1250,6 @@ export class DeviceSessionService {
         return session.sessionId;
       },
     });
-    Object.defineProperty(view, '__fsSender', { value: hook, configurable: true });
   }
 
   private shutdown(): void {
@@ -1258,9 +1265,7 @@ export class DeviceSessionService {
     this.media?.publisher.dispose();
     this.wakeLock?.dispose();
     this.liveState.reset();
-    const view = this.document.defaultView as (Window & { __fsSender?: unknown }) | null;
-    if (view !== null && '__fsSender' in view) {
-      delete view.__fsSender;
-    }
+    this.removeTestHook();
+    this.removeTestHook = () => undefined;
   }
 }

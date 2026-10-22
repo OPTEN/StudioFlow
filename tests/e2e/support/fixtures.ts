@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { StackState } from '../global-setup';
 import { AdminApi, type Problem, type ApiResult } from './api';
-import { E2E_DIR, STATE_FILE, stackConfig, type StackConfig } from './env';
+import { E2E_DIR, OUTPUT_DIR, STATE_FILE, stackConfig, type StackConfig } from './env';
 import { cleanupProduction, createProduction, probeForwardedFor, uniqueIp, type PairContext, type Production, type Stack } from './production';
 import { ensureHealthy } from './stack';
 
@@ -150,7 +150,7 @@ export function knownBug(id: string, description: string): void {
  * message instead of passing vacuously (docs/testing.md 1.6). A missing canary file means the canary did not run yet.
  */
 export function requireTool(tool: string): void {
-  const file = path.join(E2E_DIR, '.output', 'canary.json');
+  const file = path.join(OUTPUT_DIR, 'canary.json');
   if (!fs.existsSync(file)) throw new Error(`tool ${tool} unavailable: E2E-NET-00 has not run (run the smoke project first)`);
   const canary = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, { ok: boolean; detail: string }>;
   if (!canary[tool]?.ok) throw new Error(`tool ${tool} unavailable (E2E-NET-00): ${canary[tool]?.detail ?? 'not exercised'}`);

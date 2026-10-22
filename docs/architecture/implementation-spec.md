@@ -196,6 +196,9 @@ until someone acknowledges it («Gesehen», `POST …/incidents/{id}/ack`, share
 device or removing a source removes its incidents. Each change emits `sourceUpserted` / `incidentUpserted` /
 `incidentRemovedEvent` and a log entry: «K2 verbindet neu» (also a paused camera), «K2 wieder da, war 9 s weg»,
 «S1 Teilen beendet» (screen `ended`), «K1 Kamera beendet» (camera `ended`), «K1 kein Bild» (`failed`).
+A graceful shutdown of the API is no outage: hub connections that end because the host stops
+(`ApplicationStopping`) are not evaluated and nothing is written (no log entry, no incident); after the restart the
+restart watch of section 12 (GAP-08 b) flags a source on air whose device does not return.
 
 ### 4.6 Devices and pairing
 
@@ -245,7 +248,8 @@ Upload `multipart/form-data` field `file`. Allowed (verified by magic bytes, not
 PNG, JPEG, WebP images ≤ 25 MB; MP4 (ftyp) and WebM (EBML) videos ≤ 1 GB (configurable `Media:MaxImageBytes`,
 `Media:MaxVideoBytes`). SVG, GIF and everything else → 415 `unsupported_media`; too big → 413. Image width/height are
 read from the header. Stored at `/data/media/{productionId}/{assetId}{ext}`; name from the file name (sanitized,
-≤ 80 chars). Content endpoint supports HTTP range requests and `Cache-Control: private, max-age=3600`; access with
+≤ 80 chars). Content endpoint supports HTTP range requests, `HEAD` (the headers of `GET` without the body; not part
+of the OpenAPI contract) and `Cache-Control: private, max-age=3600`; access with
 the admin cookie or `?k={outputKey}` of the asset's production. Deleting an asset used by a scene item, a scene
 background, a slate or a fallback → 409 `asset_in_use`.
 
@@ -291,7 +295,9 @@ Authentication and authorization:
 - Production-scoped routes return 404 for unknown production ids.
 
 Validation: built-in .NET 10 minimal API validation where it fits, plus domain validation in Core returning
-`validation_failed` with field errors. Input sizes are bounded (JSON body ≤ 256 KB except uploads and the bandwidth
+`validation_failed` with field errors. A body that cannot be bound (unknown enum text, wrong JSON type, broken JSON)
+is the same 400 `validation_failed` with `errors` naming the camelCase field path (`kind`, `items[0].fit`; `body` for
+the body as a whole) and «Ungültiger Wert.» – never the serializer message (it names .NET types). Input sizes are bounded (JSON body ≤ 256 KB except uploads and the bandwidth
 test ≤ 4 MB).
 
 Concurrency: one API instance. All mutations of a production run through `ProductionCoordinator`, which serializes
@@ -303,6 +309,15 @@ it is monotonic across restarts; clients resubscribe after any reconnect anyway.
 Persistence: PostgreSQL 17, EF Core 10 + Npgsql, snake_case tables, migrations applied on startup
 (`Database.MigrateAsync`, guarded against design-time/OpenAPI generation). Scene items are stored as `jsonb`.
 Health: `/health/live` (process), `/health/ready` (database reachable).
+Database outage (GAP-32): connect timeout 3 s, command timeout 5 s (`Database:ConnectTimeout`,
+`Database:CommandTimeout`; they replace timeouts in the connection string; migrations get 10 min). A connection that
+cannot be established or a statement without answer opens a circuit: every database operation then fails at once
+(503 `service_unavailable`, `Retry-After: 5`; hub methods `service_unavailable`) instead of waiting for its own timeout
+and queueing behind the device reports of the same production, and a probe connection every `Database:ProbeInterval`
+(1 s) closes the circuit again – readiness and writes recover without a restart. Transient errors are retried (3×, at
+most 2 s apart) only while the circuit is closed. The startup waits up to `Database:StartupWait` (60 s) for PostgreSQL.
+Graceful shutdown: every hub connection is aborted when the host begins to stop, the maintenance loops end,
+`HostOptions.ShutdownTimeout` is 5 s (below Docker's 10 s stop grace).
 
 ## 6. Realtime protocol (SignalR, JSON protocol, camelCase, enums as camelCase strings)
 
@@ -327,7 +342,8 @@ Verified details (research 2026-10-22):
 Studio: `Subscribe(productionId, sinceRevision?) → ProductionChangesDto`. The server keeps the last 500 events per
 production in a ring buffer: if `sinceRevision` is known and all later events are buffered, it returns them
 (`events`), else a `snapshot`. After subscribing, the connection receives `event` (one `ProductionEvent`),
-`telemetry` (`DeviceTelemetryMessage`, every 2 s per device, not revisioned) and `presence` (number of connected Regie
+`telemetry` (`DeviceTelemetryMessage`, at most once per device and 2 s – the first report at once, the newest held-back
+report when the interval has passed, `Sources:TelemetryInterval` –, not revisioned) and `presence` (number of connected Regie
 sessions). Client rule: apply an event if `revision == local + 1`; ignore if `≤ local`; on a gap call `Subscribe`
 again with the local revision. `resync` (payload: productionId) tells the client to resubscribe (active production
 changed).
@@ -353,7 +369,8 @@ Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `
   (`JsonWebTokenHandler`, `SetDefaultTimesOnTokenCreation = false`).
 - `RemoveParticipant` is a kick, not a ban: blocked devices are refused by the token endpoint, and a
   `participant_joined` webhook for a blocked device triggers `RemoveParticipant` again.
-- Webhooks: LiveKit posts to `http://api:8080/api/livekit/webhook` (`application/webhook+json`). `Authorization`
+- Webhooks: LiveKit posts to `http://api:8080/api/livekit/webhook` (`application/webhook+json`; `application/json` is
+  accepted as well). `Authorization`
   carries the raw JWT (no `Bearer`), HS256 with the API secret, `iss` = API key, claim `sha256` = standard base64 of
   SHA-256 over the raw body bytes (compare in constant time); invalid → 401. Body: camelCase, enums as strings,
   int64 as strings (`createdAt`), defaults omitted → deserialize with web defaults + `AllowReadingFromString`.
@@ -442,7 +459,8 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   `stationOrder` (prototype ordering), `isDown(status)`.
 - `format.ts` (de-CH): `formatDuration(ms)` mm:ss, `formatRuntime(ms)` hh:mm:ss, `formatClock(date)`,
   `formatHm(date)`, `formatSeconds(ms)` («0,3 s»), `formatRate(mbit)` («2,8»), `formatCheckCode('4712')` («47 12»),
-  `statusWord(status)` («verbindet neu», «Teilen beendet», «gesperrt», «verbindet …», «kein Bild», «nicht verbunden»).
+  `statusWord(status, kind)` («verbindet neu», «Teilen beendet» / «Kamera beendet» for a camera, «gesperrt», «verbindet …»,
+  «kein Bild», «nicht verbunden»).
 
 ### 8.2 `@flowstudio/realtime-client`
 
@@ -595,7 +613,9 @@ fast (`${VAR:?…}`); optional variables have their default in `docker-compose.y
   `wget -q -O /dev/null http://127.0.0.1:7880/`.
 - `postgres`: `postgres:17.11-alpine`, database and user `flowstudio`, volume `pgdata`, healthcheck
   `pg_isready -h 127.0.0.1 -U flowstudio -d flowstudio` (TCP: during the first initialisation only the socket
-  listens), `stop_grace_period: 30s`.
+  listens), `stop_grace_period: 30s`, `cap_drop: ALL` with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`,
+  `SETUID` (the official entrypoint fixes ownership and mode of the data and socket directories as root and then drops
+  to the user `postgres`; without `DAC_OVERRIDE` a restart on a non-empty volume fails).
 - Profile `chaos`: `netem` (built from `infra/netem`, `network_mode: service:livekit`, `cap_add: NET_ADMIN`):
   `docker compose --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate] | clear | show`
   (egress and ingress via ifb; affects media, signalling and API ↔ LiveKit).
@@ -627,7 +647,9 @@ Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS mod
   a file extension get `index.html`, missing files stay 404. Proxies use `dial_timeout 5s` and `stream_close_delay 5m`
   (WebSockets survive a config reload). The API's `/health/*` is not reachable through Caddy.
 - Headers on every response: `Strict-Transport-Security: max-age={FLOWSTUDIO_HSTS_MAX_AGE}; includeSubDomains`,
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no `Server`.
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no `Server`;
+  every header exactly once: the proxies to the API, the hubs and LiveKit drop the upstream's `X-Content-Type-Options`
+  (`header_down`), the API keeps sending its own for direct access.
   HTML areas: `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://{host}
   wss://{host}; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self';
@@ -756,4 +778,15 @@ The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decision
   `reconnecting` if it was live; only a deliberate stop is `ended` («K1 Kamera beendet», «S1 Teilen beendet»). Every
   device report lists every slot; a new Hello session clears the reported slot states (section 4.5).
 - Test hooks (`window.__fsStudio`, `window.__fsSender`) are read-only state views that exist only when the opt-in
-  flag `localStorage['flowstudio.testHooks'] = '1'` is set (E2E sets it with an init script).
+  flag `localStorage['flowstudio.testHooks'] = '1'` is set (E2E sets it with an init script). The flag is read once
+  when the Regie's production store / the sender's station starts and must be exactly `'1'`; the objects are frozen,
+  non-enumerable and non-writable (getters read the live state) and live as long as the page (removed when the service is
+  destroyed; after a sign-out `__fsStudio` reports `revision: null`, `hub: 'idle'`).
+  `__fsStudio = { revision: number | null, lastSync: 'delta' | 'snapshot' | null, hub: HubState }`;
+  `__fsSender = { slots(): Record<slot, SlotState>, rtc(): RtcState, sessionId: string }`.
+- Log texts of block, unblock and removal name the codes and the device («K1 Handy 1 gesperrt», «S1 S2 Laptop Mia
+  entfernt»; known-bugs BUG-10: intended, more informative for devices with several slots); the Regie toasts name the
+  codes only («K1 gesperrt und getrennt»).
+- Hub reports are cheap and frequent: the telemetry relayed to the Regie is throttled (section 6), and a report that
+  arrives while the database is down still counts as a sign of life of the session (GAP-29), so the database outage does
+  not turn into source outages once it is over.

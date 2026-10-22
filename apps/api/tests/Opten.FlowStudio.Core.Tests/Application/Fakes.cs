@@ -25,6 +25,9 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
 
     public bool FailNextCommit { get; set; }
 
+    /// <summary>While true, device reads throw like an unreachable database.</summary>
+    public bool FailDeviceReads { get; set; }
+
     public IUnitOfWork Create() => new Unit(this);
 
     private sealed class Unit(InMemoryData data) : IUnitOfWork, IProductionRepository, IDeviceRepository, IAssetRepository, IInviteRepository, IAuditRepository, ISourceActivityRepository
@@ -114,7 +117,9 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
         void IProductionRepository.Add(Production production) => data.Productions.Add(production);
 
         Task<Device?> IDeviceRepository.GetAsync(string deviceId, CancellationToken cancellationToken) =>
-            Task.FromResult(data.Devices.FirstOrDefault(d => d.Id == deviceId));
+            data.FailDeviceReads
+                ? Task.FromException<Device?>(new TimeoutException("Database unavailable."))
+                : Task.FromResult(data.Devices.FirstOrDefault(d => d.Id == deviceId));
 
         Task<IReadOnlyList<Device>> IDeviceRepository.ListAsync(string productionId, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Device>>([.. data.Devices.Where(d => d.ProductionId == productionId)]);

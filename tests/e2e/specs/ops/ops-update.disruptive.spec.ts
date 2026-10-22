@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { AdminApi } from '../../support/api';
 import { expect, test } from '../../support/fixtures';
+import { PROJECT, volumeNameOf } from '../../support/env';
 import { OpsSandbox } from '../../support/ops';
 import { exec } from '../../support/shell';
 import { SERVICES, compose, docker, ensureHealthy, inspectService } from '../../support/stack';
@@ -9,7 +10,7 @@ import { t } from '../../support/tags';
 
 /**
  * E2E-OPS-09: update.sh refuses while a broadcast is live [GAP-31]. The script runs unmodified in an isolated git work
- * tree that tracks a local bare remote; docker compose finds the fs-e2e stack through the environment (support/ops.ts).
+ * tree that tracks a local bare remote; docker compose finds the stack under test through the environment (support/ops.ts).
  * The «docker compose up -d --build» of a successful update builds from the repository's build contexts (layer cache).
  */
 
@@ -80,8 +81,8 @@ test.describe('OPS update', () => {
     await ensureHealthy();
     const after = (await new AdminApi(config.baseURL, api.cookie).getSnapshot(production.id)).body;
     expect(after.scenes.map((scene) => scene.id), 'data retained').toEqual(snapshot.scenes.map((scene) => scene.id));
-    const volumes = (await docker(['volume', 'ls', '--filter', 'label=com.docker.compose.project=fs-e2e', '--format', '{{.Name}}'])).stdout;
-    for (const name of ['pgdata', 'media', 'keys', 'caddy_data']) expect(volumes, `volume ${name} retained`).toContain(`fs-e2e_${name}`);
+    const volumes = (await docker(['volume', 'ls', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--format', '{{.Name}}'])).stdout;
+    for (const name of ['pgdata', 'media', 'keys', 'caddy_data']) expect(volumes, `volume ${name} retained`).toContain(volumeNameOf(name));
   });
 
   test('E2E-OPS-09 [update.sh] an ended broadcast does not block; --no-pull only rebuilds', t.disruptive('@p1'), async ({ api, production }) => {

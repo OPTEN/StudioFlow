@@ -153,9 +153,9 @@ public sealed class OutputService(
     public Task ConnectedAsync(string productionId, string connectionId, string address, CancellationToken cancellationToken) =>
         Track(productionId, (tracker, _) => tracker.Connect(connectionId, address), cancellationToken);
 
-    /// <summary>An output page left the hub.</summary>
+    /// <summary>An output page left the hub; nothing to publish while the host shuts down (OBS-01).</summary>
     public Task DisconnectedAsync(string productionId, string connectionId, CancellationToken cancellationToken) =>
-        Track(productionId, (tracker, _) => tracker.Disconnect(connectionId), cancellationToken);
+        coordinator.IsHostStopping ? Task.CompletedTask : Track(productionId, (tracker, _) => tracker.Disconnect(connectionId), cancellationToken);
 
     /// <summary>Subscribes an output hub connection: delta or snapshot, then <c>event</c> messages.</summary>
     public Task<OutputChangesDto> SubscribeAsync(string productionId, string connectionId, long? sinceRevision, CancellationToken cancellationToken) =>

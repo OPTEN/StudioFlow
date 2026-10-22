@@ -35,6 +35,12 @@ internal static class FlowStudioHost
     /// <summary>Configuration section of the trusted proxy networks.</summary>
     private const string ForwardedHeadersSection = "ForwardedHeaders:KnownNetworks";
 
+    /// <summary>
+    /// How long a graceful shutdown may take (OBS-01). Hub connections are aborted when the host begins to stop, so the
+    /// shutdown normally takes well under a second; the bound stays below the 10 s stop grace period of Docker.
+    /// </summary>
+    public static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
+
     /// <summary>The window of the pairing rate limits (part of the key names <c>…PerIpPer10Min</c>).</summary>
     private static readonly TimeSpan PairingLimitWindow = TimeSpan.FromMinutes(10);
 
@@ -56,6 +62,12 @@ internal static class FlowStudioHost
         });
 
         services.ConfigureHttpJsonOptions(options => ContractJson.Configure(options.SerializerOptions));
+
+        // BUG-08: a body that cannot be bound (unknown enum text, wrong type, broken JSON) throws in every environment,
+        // so FlowStudioExceptionHandler can name the field in a 400 validation_failed instead of an empty 400.
+        services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+        services.Configure<HostOptions>(options => options.ShutdownTimeout = ShutdownTimeout);
+        services.AddSingleton(sp => new HostShutdown(sp.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping));
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer<ContractSchemasTransformer>();
@@ -128,6 +140,16 @@ internal static class FlowStudioHost
         app.MapHub<StudioHub>(HubMethods.StudioHubPath, options => options.CloseOnAuthenticationExpiration = true);
         app.MapHub<DeviceHub>(HubMethods.DeviceHubPath);
         app.MapHub<OutputHub>(HubMethods.OutputHubPath);
+
+        // OBS-01: close every hub connection as soon as the host begins to stop. The disconnects caused by this are no
+        // outage (BUG-20, HostShutdown); without the abort Kestrel waits for the WebSockets until the shutdown timeout.
+        var registry = app.Services.GetRequiredService<HubConnectionRegistry>();
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(FlowStudioHost).FullName!);
+        app.Lifetime.ApplicationStopping.Register(() =>
+        {
+            var closed = registry.AbortAll();
+            logger.LogInformation("Shutting down: closed {Count} hub connection(s)", closed);
+        });
         return app;
     }
 

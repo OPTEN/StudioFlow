@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Opten.FlowStudio.Core.Application.Ports;
 using Opten.FlowStudio.Infrastructure.LiveKit;
 using Opten.FlowStudio.Infrastructure.Media;
@@ -19,15 +22,41 @@ public static class InfrastructureServices
     /// <summary>Minimum length of the LiveKit API secret (HS256 needs 256 bits).</summary>
     public const int MinSecretLength = 32;
 
-    /// <summary>Database access only (also used by the <c>broadcast-status</c> command).</summary>
+    /// <summary>
+    /// Database access only (also used by the <c>broadcast-status</c> command): pooled contexts with the timeouts of
+    /// <see cref="DatabaseOptions"/>, a retry strategy for transient errors and the <see cref="DatabaseCircuit"/> that
+    /// makes requests fail fast while PostgreSQL is unreachable (GAP-32).
+    /// </summary>
     public static IServiceCollection AddFlowStudioPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.Section));
+        services.AddSingleton<IValidateOptions<DatabaseOptions>, DatabaseOptionsValidator>();
+        services.AddSingleton(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+            var probeConnection = options.Apply(ConnectionString(configuration), pooled: false);
+            return new DatabaseCircuit(
+                async cancellationToken =>
+                {
+                    await using var connection = new NpgsqlConnection(probeConnection);
+                    await connection.OpenAsync(cancellationToken);
+                },
+                options.ProbeInterval,
+                sp.GetService<TimeProvider>() ?? TimeProvider.System,
+                (sp.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance).CreateLogger<DatabaseCircuit>());
+        });
 
         // Read lazily: build-time OpenAPI generation and design-time tools run the composition without a database.
-        services.AddPooledDbContextFactory<FlowStudioDbContext>(options => options.UseNpgsql(
-            configuration.GetConnectionString(ConnectionStringName) ?? throw new InvalidOperationException($"ConnectionStrings:{ConnectionStringName} is not configured."),
-            npgsql => npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(2), null)));
+        services.AddPooledDbContextFactory<FlowStudioDbContext>((sp, options) =>
+        {
+            var database = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+            var circuit = sp.GetRequiredService<DatabaseCircuit>();
+            options.UseNpgsql(
+                    database.Apply(ConnectionString(configuration)),
+                    npgsql => npgsql.ExecutionStrategy(dependencies => new CircuitAwareRetryStrategy(dependencies, circuit)))
+                .AddInterceptors(new DatabaseCircuitInterceptor(circuit));
+        });
         services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
         return services;
     }
@@ -69,5 +98,20 @@ public static class InfrastructureServices
             .Validate(o => o.SessionLifetime >= TimeSpan.FromSeconds(1) && o.SessionLifetime <= TimeSpan.FromDays(30), "Admin:SessionLifetime must be between 00:00:01 and 30.00:00:00.");
         services.AddSingleton<IAdminCredentials, AdminCredentials>();
         return services;
+    }
+
+    private static string ConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString(ConnectionStringName) is { Length: > 0 } value
+            ? value
+            : throw new InvalidOperationException($"ConnectionStrings:{ConnectionStringName} is not configured.");
+
+    /// <summary>Reports every out-of-range database timeout with its key.</summary>
+    private sealed class DatabaseOptionsValidator : IValidateOptions<DatabaseOptions>
+    {
+        public ValidateOptionsResult Validate(string? name, DatabaseOptions options)
+        {
+            var errors = options.Validate().ToList();
+            return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+        }
     }
 }

@@ -152,10 +152,19 @@ public sealed class DeviceSessionService(
         return session ?? throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Diese Sitzung wurde in einem anderen Tab übernommen.");
     }
 
-    /// <summary>Ends a hub session when the connection was the active one.</summary>
+    /// <summary>
+    /// Ends a hub session when the connection was the active one. Not while the host shuts down (BUG-20): the
+    /// connection ends because the API stops, which is no outage of the sources of the device, so nothing is evaluated
+    /// or written (no «verbindet neu», no incident); the restart watch (spec 12) handles a device that does not return.
+    /// </summary>
     public Task DisconnectedAsync(DeviceIdentity identity, string connectionId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
+        if (coordinator.IsHostStopping)
+        {
+            return Task.CompletedTask;
+        }
+
         return coordinator.ExecuteAsync(
             identity.ProductionId,
             async context =>
@@ -180,9 +189,12 @@ public sealed class DeviceSessionService(
 
     /// <summary>
     /// Applies a periodic report: replaces the reported slot states, updates source statuses and relays telemetry to
-    /// the Regie. Reports of a replaced hub connection are ignored; REST reports (<paramref name="connectionId"/> null)
-    /// always count. The sender measures its RTT with this call, so it stays cheap: one device read, a database write
-    /// only when a source status changes (audit entry, last-live time), delivery to the Regie after the call.
+    /// the Regie, at most once per device and <c>Sources:TelemetryInterval</c> (BUG-19; the newest held-back report
+    /// follows with <see cref="TickAsync"/>). Reports of a replaced hub connection are ignored; REST reports
+    /// (<paramref name="connectionId"/> null) always count. The sender measures its RTT with this call, so it stays
+    /// cheap: one device read, a database write only when a source status changes (audit entry, last-live time),
+    /// delivery to the Regie after the call. A report that fails because the database is down still counts as a sign
+    /// of life of the session (GAP-29).
     /// </summary>
     public Task ReportAsync(DeviceIdentity identity, string? connectionId, DeviceReportDto report, CancellationToken cancellationToken)
     {
@@ -196,11 +208,14 @@ public sealed class DeviceSessionService(
             identity.ProductionId,
             async context =>
             {
-                if (connectionId is not null && !string.Equals(context.Runtime.FindDevice(identity.DeviceId)?.ConnectionId, connectionId, StringComparison.Ordinal))
+                var known = context.Runtime.FindDevice(identity.DeviceId);
+                if (connectionId is not null && !string.Equals(known?.ConnectionId, connectionId, StringComparison.Ordinal))
                 {
                     return;
                 }
 
+                // Before the database read: the session is alive even when the read fails (GAP-32).
+                known?.NoteReport(context.Now);
                 var device = await context.Data.Devices.GetAsync(identity.DeviceId, cancellationToken);
                 if (device is null || device.IsBlocked)
                 {
@@ -208,25 +223,27 @@ public sealed class DeviceSessionService(
                 }
 
                 var live = context.Runtime.Device(device.Id);
-                var (telemetry, techCheckChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
+                var (_, techCheckChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
                 SourceMonitor.Reevaluate(context, device);
                 if (techCheckChanged)
                 {
                     DeviceEvents.EmitDevice(context, device);
                 }
 
-                var message = new DeviceTelemetryMessage(device.Id, telemetry);
-                var productionId = context.ProductionId;
-                context.Send(p => p.PublishTelemetryAsync(productionId, message));
+                if (live.OfferTelemetry(context.Now, options.TelemetryInterval) is { } due)
+                {
+                    SendTelemetry(context, device.Id, due);
+                }
             },
             cancellationToken);
     }
 
     /// <summary>
-    /// Marks connected devices that stopped reporting as <c>rtc: disconnected</c> (GAP-29, 1 s maintenance tick); their
-    /// live sources then turn <c>reconnecting</c> like after a reported media loss.
+    /// The 1 s maintenance tick of the devices: marks connected devices that stopped reporting as
+    /// <c>rtc: disconnected</c> (GAP-29; their live sources then turn <c>reconnecting</c> like after a reported media
+    /// loss) and relays held-back telemetry whose interval has passed (BUG-19).
     /// </summary>
-    public async Task ExpireStaleReportsAsync(CancellationToken cancellationToken)
+    public async Task TickAsync(CancellationToken cancellationToken)
     {
         foreach (var runtime in runtimes.All)
         {
@@ -245,6 +262,14 @@ public sealed class DeviceSessionService(
 
                         live.MarkReportStale();
                         SourceMonitor.Reevaluate(context, device);
+                    }
+
+                    foreach (var live in context.Runtime.Devices.Where(d => d.IsConnected && d.TelemetryPending))
+                    {
+                        if (live.TakeDueTelemetry(context.Now, options.TelemetryInterval) is { } due)
+                        {
+                            SendTelemetry(context, live.DeviceId, due);
+                        }
                     }
                 },
                 cancellationToken);
@@ -301,6 +326,13 @@ public sealed class DeviceSessionService(
             async context => DeviceEvents.Remove(context, await context.DeviceAsync(identity.DeviceId, cancellationToken), AuditActors.Device(identity.DeviceId)),
             cancellationToken);
         await kicker.KickAsync(identity.ProductionId, identity.DeviceId);
+    }
+
+    private static void SendTelemetry(MutationContext context, string deviceId, DeviceTelemetryDto telemetry)
+    {
+        var message = new DeviceTelemetryMessage(deviceId, telemetry);
+        var productionId = context.ProductionId;
+        context.Send(p => p.PublishTelemetryAsync(productionId, message));
     }
 
     private static async Task SlotsChangedAsync(MutationContext context, Device device, CancellationToken cancellationToken)

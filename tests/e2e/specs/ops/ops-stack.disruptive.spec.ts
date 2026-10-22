@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { AdminApi } from '../../support/api';
 import { dockerCtl } from '../../support/docker-ctl';
-import { OUTPUT_DIR, TEST_ADMIN, stackConfig } from '../../support/env';
-import { expect, knownBug, test, uniqueIp } from '../../support/fixtures';
+import { OUTPUT_DIR, PROJECT, TEST_ADMIN, imageNameOf, stackConfig, volumeNameOf } from '../../support/env';
+import { expect, test, uniqueIp } from '../../support/fixtures';
 import { certSerial } from '../../support/ops';
 import { makePng } from '../../support/media-samples';
 import { pairPhone } from '../../support/production';
@@ -106,12 +106,11 @@ test.describe('OPS restart policy and persistence', () => {
     });
   }
 
-  test('E2E-OPS-06 [stack, DOC-04] `docker kill` of a container with restart: unless-stopped brings it back', t.p2, async () => {
-    knownBug('DOC-04', 'docs/testing.md E2E-OPS-06 kills containers with docker kill; Docker 29 treats that as a manual stop');
+  test('E2E-OPS-06 [stack, DOC-04] a crash (kill -TERM 1 inside the container) of a service with restart: unless-stopped brings it back', t.p2, async () => {
     test.setTimeout(240_000);
-    await dockerCtl.kill('caddy');
+    await dockerCtl.crash('caddy');
     await sleep(15_000);
-    expect((await inspectService('caddy'))?.running, 'caddy running again 15 s after docker kill').toBe(true);
+    expect((await inspectService('caddy'))?.running, 'caddy running again 15 s after its process ended').toBe(true);
     if (!(await inspectService('caddy'))?.running) await compose(['start', 'caddy']);
   });
 
@@ -123,11 +122,11 @@ test.describe('OPS restart policy and persistence', () => {
     await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Bleibt Erhalten' });
     const snapshot = (await api.getSnapshot(production.id)).body;
     const serial = await certSerial();
-    const volumes = (await docker(['volume', 'ls', '--filter', 'label=com.docker.compose.project=fs-e2e', '--format', '{{.Name}}'], { check: true })).stdout.split(/\r?\n/).filter(Boolean).sort();
-    for (const name of ['caddy_config', 'caddy_data', 'keys', 'media', 'pgdata']) expect(volumes, `volume ${name}`).toContain(`fs-e2e_${name}`);
+    const volumes = (await docker(['volume', 'ls', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--format', '{{.Name}}'], { check: true })).stdout.split(/\r?\n/).filter(Boolean).sort();
+    for (const name of ['caddy_config', 'caddy_data', 'keys', 'media', 'pgdata']) expect(volumes, `volume ${name}`).toContain(volumeNameOf(name));
 
     await compose(['down'], { check: true, timeoutMs: 240_000 });
-    const gone = await docker(['ps', '-a', '--filter', 'label=com.docker.compose.project=fs-e2e', '-q']);
+    const gone = await docker(['ps', '-a', '--filter', `label=com.docker.compose.project=${PROJECT}`, '-q']);
     expect(gone.stdout.trim(), 'down removes the containers').toBe('');
     const started = Date.now();
     await compose(['up', '-d', '--wait', '--wait-timeout', '240'], { check: true, timeoutMs: 300_000 });
@@ -154,7 +153,7 @@ test.describe('OPS admin hash path', () => {
     test.setTimeout(420_000);
     const config = stackConfig();
     const password = 'Hash-Login-Passwort-2026';
-    const hashRun = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', 'fs-e2e-api', 'Opten.FlowStudio.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
+    const hashRun = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', imageNameOf('api'), 'Opten.FlowStudio.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
     expect(hashRun.code, hashRun.output).toBe(0);
     const hash = hashRun.stdout.trim().split(/\r?\n/).pop()!;
     expect(hash).toMatch(/^AQAAAA/);

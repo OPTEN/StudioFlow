@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, stackConfig } from './env';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, containerNameOf, stackConfig } from './env';
 import { exec, sleep, waitUntil, type ExecOptions, type ExecResult } from './shell';
 
 export const SERVICES = ['postgres', 'livekit', 'api', 'caddy'] as const;
@@ -11,7 +11,7 @@ export interface ComposeOptions extends ExecOptions {
   profiles?: string[];
 }
 
-/** Arguments that select the fs-e2e project, its env file and compose files. */
+/** Arguments that select the compose project of the stack (E2E_PROJECT, default fs-e2e), its env file and compose files. */
 export function composeBaseArgs(options: Pick<ComposeOptions, 'extraFiles' | 'profiles'> = {}): string[] {
   const args = ['compose', '-p', PROJECT, '--env-file', ENV_FILE, '-f', COMPOSE_FILES.base, '-f', COMPOSE_FILES.e2e];
   for (const file of options.extraFiles ?? []) args.push('-f', file);
@@ -19,7 +19,7 @@ export function composeBaseArgs(options: Pick<ComposeOptions, 'extraFiles' | 'pr
   return args;
 }
 
-/** `docker compose -p fs-e2e ...` from the repository root. */
+/** `docker compose -p <project> ...` from the repository root. */
 export function compose(args: string[], options: ComposeOptions = {}): Promise<ExecResult> {
   const { extraFiles, profiles, ...rest } = options;
   return exec('docker', [...composeBaseArgs({ extraFiles, profiles }), ...args], { cwd: REPO_ROOT, ...rest });
@@ -29,9 +29,9 @@ export function docker(args: string[], options: ExecOptions = {}): Promise<ExecR
   return exec('docker', args, { cwd: REPO_ROOT, ...options });
 }
 
-/** Container name of a service of the fs-e2e project (compose v2 naming). */
+/** Container name of a service of the stack's project (compose v2 naming). */
 export function containerName(service: Service | string): string {
-  return `${PROJECT}-${service}-1`;
+  return containerNameOf(service);
 }
 
 export interface ContainerState {

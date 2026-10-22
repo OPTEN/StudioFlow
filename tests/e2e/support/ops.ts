@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT } from './env';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, SETTINGS } from './env';
 import { exec, type ExecOptions, type ExecResult } from './shell';
 
 /**
@@ -40,16 +40,18 @@ export async function realDocker(): Promise<string> {
 export interface SandboxOptions {
   /**
    * Which docker compose project the scripts see:
-   * - `stack` (default): the running fs-e2e stack, with the same files and env file the harness uses;
-   * - `hash`: a separate project `fs-e2e-ops` on the base compose file only (setup.sh builds the API image and runs
-   *   `hash-password` in it; this must not collide with the addresses of the running stack);
+   * - `stack` (default): the running stack of this process (project `fs-e2e`, `fs-e2e-N` with E2E_STACK=N), with the
+   *   same files and env file the harness uses;
+   * - `hash`: a separate project `<project>-ops` on the base compose file only (setup.sh builds the API image and runs
+   *   `hash-password` in it; it has its own subnet, so it collides neither with the running stack nor with the OPS
+   *   scratch stack of another numbered stack);
    * - `none`: no compose environment.
    */
   mode?: 'stack' | 'hash' | 'none';
 }
 
-export const OPS_HASH_PROJECT = 'fs-e2e-ops';
-export const OPS_HASH_SUBNET = '172.31.251.0/24';
+export const OPS_HASH_PROJECT = `${PROJECT}-ops`;
+export const OPS_HASH_SUBNET = SETTINGS.opsSubnet;
 
 export class OpsSandbox {
   readonly bash = bashPath();
@@ -168,7 +170,7 @@ export function cleanComposeEnv(drop: string[] = []): NodeJS.ProcessEnv {
 
 /** `docker compose config` on the production compose file (without the e2e override) with an explicit env file. */
 export function composeConfig(options: { envFile?: string; profiles?: string[]; format?: 'json' | 'yaml' } = {}): Promise<ExecResult> {
-  const args = ['compose', '-p', 'fs-e2e-cfg', '-f', COMPOSE_FILES.base, '--env-file', options.envFile ?? ENV_FILE];
+  const args = ['compose', '-p', `${PROJECT}-cfg`, '-f', COMPOSE_FILES.base, '--env-file', options.envFile ?? ENV_FILE];
   for (const profile of options.profiles ?? []) args.push('--profile', profile);
   args.push('config');
   if (options.format !== 'yaml') args.push('--format', 'json');
@@ -176,7 +178,7 @@ export function composeConfig(options: { envFile?: string; profiles?: string[]; 
 }
 
 /** Serial number of the certificate Caddy presents for SNI `localhost` (stays the same while caddy_data persists). */
-export async function certSerial(host = '127.0.0.1', port = 443, servername = 'localhost'): Promise<string> {
+export async function certSerial(host = '127.0.0.1', port = SETTINGS.httpsPort, servername = 'localhost'): Promise<string> {
   const tls = await import('node:tls');
   return new Promise((resolve, reject) => {
     const socket = tls.connect({ host, port, servername, rejectUnauthorized: false }, () => {

@@ -22,8 +22,11 @@ export const dockerCtl = {
    * The process of the container ends by itself (what a crash looks like to Docker): a signal sent from inside the
    * container, so the restart policy applies. PID 1 ignores SIGKILL from its own namespace, hence SIGTERM for the
    * API, Caddy and LiveKit (they exit on it) and SIGQUIT (immediate shutdown, no clean checkpoint) for PostgreSQL.
+   * The PostgreSQL container drops all capabilities (BUG-22) and its server runs as the `postgres` user, so root
+   * (without CAP_KILL) may not signal it: the signal is sent as the `postgres` user.
    */
-  crash: (service: Service) => docker(['exec', containerName(service), 'kill', service === 'postgres' ? '-QUIT' : '-TERM', '1'], { check: true }),
+  crash: (service: Service) =>
+    docker(['exec', ...(service === 'postgres' ? ['--user', 'postgres'] : []), containerName(service), 'kill', service === 'postgres' ? '-QUIT' : '-TERM', '1'], { check: true }),
   /** Removes the container from the compose network: no RST for new packets, published ports keep their mapping. */
   networkDisconnect: (service: Service) => docker(['network', 'disconnect', stackConfig().network, containerName(service)], { check: true }),
   /** Reconnects with the previous address and the service name as alias. */

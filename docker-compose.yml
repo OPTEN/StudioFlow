@@ -157,6 +157,17 @@ services:
   postgres:
     <<: *service-defaults
     image: *postgres-image
+    # The official entrypoint starts as root, fixes the ownership and mode of the data and socket directories
+    # (CHOWN, FOWNER, DAC_OVERRIDE to enter a 0700 data directory that postgres owns) and drops to the postgres user
+    # (SETUID, SETGID). The server itself runs unprivileged; nothing else is granted.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     environment:
       POSTGRES_DB: flowstudio
       POSTGRES_USER: flowstudio

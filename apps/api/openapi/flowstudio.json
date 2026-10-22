@@ -15,6 +15,9 @@
           "content": {
             "application/webhook+json": {
               "schema": { }
+            },
+            "application/json": {
+              "schema": { }
             }
           },
           "required": true

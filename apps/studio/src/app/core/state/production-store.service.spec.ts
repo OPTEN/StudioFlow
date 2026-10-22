@@ -11,9 +11,14 @@ import {
   snapshotChanges,
   snapshotFixture,
 } from '../../../testing/fixtures';
-import { startStore, studioTestProviders } from '../../../testing/store-harness';
+import { MemoryStorage, startStore, studioTestProviders } from '../../../testing/store-harness';
 import { AuthService } from '../auth/auth.service';
-import { ProductionStoreService, sortIncidents } from './production-store.service';
+import {
+  ProductionStoreService,
+  sortIncidents,
+  type StudioTestHook,
+} from './production-store.service';
+import { TEST_HOOKS_FLAG } from './test-hooks';
 
 describe('ProductionStoreService', () => {
   let hub: FakeStudioHub;
@@ -280,4 +285,67 @@ describe('ProductionStoreService', () => {
     ]);
     expect(sorted.map((incident) => incident.id)).toEqual(['inc_4', 'inc_2', 'inc_1', 'inc_3']);
   });
+});
+
+describe('ProductionStoreService test hook (spec 12)', () => {
+  const view = window as unknown as { __fsStudio?: StudioTestHook };
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  function configure(flag: string | null): FakeStudioHub {
+    const hub = new FakeStudioHub();
+    const storage = new MemoryStorage();
+    if (flag !== null) {
+      storage.setItem(TEST_HOOKS_FLAG, flag);
+    }
+    TestBed.configureTestingModule({ providers: studioTestProviders(hub, storage) });
+    return hub;
+  }
+
+  it('exposes a read-only window.__fsStudio with the opt-in flag', async () => {
+    const hub = configure('1');
+    const harness = await startStore(hub);
+    const hook = view.__fsStudio!;
+
+    expect(hook.revision).toBe(100);
+    expect(hook.lastSync).toBe('snapshot');
+    expect(hook.hub).toBe('connected');
+
+    hub.subscribe = () =>
+      Promise.resolve(
+        deltaChanges(102, [
+          { type: 'logAppended', entry: logFixture('eins'), revision: 101 },
+          { type: 'logAppended', entry: logFixture('zwei'), revision: 102 },
+        ]),
+      );
+    harness.emitEvent({ type: 'logAppended', entry: logFixture('zwei'), revision: 102 });
+    await flushMicrotasks();
+    expect(hook.lastSync).toBe('delta');
+    expect(hook.revision).toBe(102);
+
+    hub.setState('reconnecting');
+    expect(hook.hub).toBe('reconnecting');
+    expect(Object.isFrozen(hook)).toBe(true);
+    expect(Object.keys(window)).not.toContain('__fsStudio');
+    expect(() => {
+      (view as { __fsStudio: unknown }).__fsStudio = {};
+    }).toThrow(TypeError);
+    expect(() => {
+      (hook as { revision: number | null }).revision = 1;
+    }).toThrow(TypeError);
+    expect(view.__fsStudio).toBe(hook);
+
+    TestBed.resetTestingModule();
+    expect('__fsStudio' in window).toBe(false);
+  });
+
+  it.each([null, '0', 'true', ' 1'])(
+    'has no window.__fsStudio without the opt-in flag (%s)',
+    async (flag) => {
+      const hub = configure(flag);
+      await startStore(hub);
+
+      expect('__fsStudio' in window).toBe(false);
+    },
+  );
 });

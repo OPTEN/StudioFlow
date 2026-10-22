@@ -22,7 +22,7 @@ export class SenderSim {
   static async start(base: string, credentials: DeviceCredentialsDto, options: { slots?: string[]; headers?: Record<string, string>; reportMs?: number } = {}): Promise<SenderSim> {
     const hub = DeviceHub.connect(base, credentials, { headers: options.headers, reconnect: true });
     const sim = new SenderSim(hub, options.slots ?? ['camera']);
-    hub.connection.onreconnected(() => {
+    hub.onReconnected(() => {
       sim.reconnects += 1;
       void sim.sayHello();
     });
@@ -69,7 +69,7 @@ export class OutputSim {
 
   private constructor(readonly hub: OutputHub) {
     hub.connection.on('event', (event: ProductionEvent) => this.onEvent(event));
-    hub.connection.onreconnected(() => {
+    hub.onReconnected(() => {
       this.reconnects += 1;
       void this.resubscribe();
     });

@@ -79,11 +79,11 @@ public static class Webhooks
         });
     }
 
-    public static HttpRequestMessage Request(string body, string? authorization)
+    public static HttpRequestMessage Request(string body, string? authorization, string contentType = "application/webhook+json")
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/livekit/webhook")
         {
-            Content = new StringContent(body, Encoding.UTF8, "application/webhook+json"),
+            Content = new StringContent(body, Encoding.UTF8, contentType),
         };
         if (authorization is not null)
         {

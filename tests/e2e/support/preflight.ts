@@ -1,0 +1,170 @@
+import dgram from 'node:dgram';
+import net from 'node:net';
+import { SETTINGS, type StackSettings } from './env';
+import { docker } from './stack';
+
+/**
+ * Checks that run before a stack starts, so two stacks on one machine fail with a message that names the clash
+ * instead of a Docker error halfway through `compose up`: host ports (the ones Docker publishes for this stack) and the
+ * compose subnet.
+ */
+
+interface PortCheck {
+  what: string;
+  port: number;
+  protocol: 'tcp' | 'udp';
+  /** The address Docker publishes on (loopback for the test-only ports). */
+  host: string;
+}
+
+export function portChecks(settings: StackSettings = SETTINGS): PortCheck[] {
+  return [
+    {
+      what: 'Caddy http (E2E_HTTP_PORT)',
+      port: settings.httpPort,
+      protocol: 'tcp',
+      host: '0.0.0.0',
+    },
+    {
+      what: 'Caddy https (E2E_HTTPS_PORT)',
+      port: settings.httpsPort,
+      protocol: 'tcp',
+      host: '0.0.0.0',
+    },
+    {
+      what: 'Caddy https/UDP (E2E_HTTPS_PORT)',
+      port: settings.httpsPort,
+      protocol: 'udp',
+      host: '0.0.0.0',
+    },
+    {
+      what: 'LiveKit media TCP (E2E_RTC_TCP_PORT)',
+      port: settings.rtcTcpPort,
+      protocol: 'tcp',
+      host: '0.0.0.0',
+    },
+    {
+      what: 'LiveKit media UDP (E2E_RTC_UDP_PORT)',
+      port: settings.rtcUdpPort,
+      protocol: 'udp',
+      host: '0.0.0.0',
+    },
+    {
+      what: 'direct API (E2E_API_PORT)',
+      port: settings.apiPort,
+      protocol: 'tcp',
+      host: '127.0.0.1',
+    },
+    {
+      what: 'LiveKit signalling (E2E_LIVEKIT_PORT)',
+      port: settings.livekitPort,
+      protocol: 'tcp',
+      host: '127.0.0.1',
+    },
+    {
+      what: 'PostgreSQL (E2E_POSTGRES_PORT)',
+      port: settings.postgresPort,
+      protocol: 'tcp',
+      host: '127.0.0.1',
+    },
+  ];
+}
+
+function tcpFree(port: number, host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.listen({ port, host, exclusive: true }, () => server.close(() => resolve(true)));
+  });
+}
+
+function udpFree(port: number, host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: false });
+    socket.once('error', () => {
+      socket.close();
+      resolve(false);
+    });
+    socket.bind({ port, address: host, exclusive: true }, () => socket.close(() => resolve(true)));
+  });
+}
+
+/** The checks whose port is taken right now. */
+export async function portsInUse(settings: StackSettings = SETTINGS): Promise<PortCheck[]> {
+  const taken: PortCheck[] = [];
+  for (const check of portChecks(settings)) {
+    const free =
+      check.protocol === 'tcp'
+        ? await tcpFree(check.port, check.host)
+        : await udpFree(check.port, check.host);
+    if (!free) taken.push(check);
+  }
+  return taken;
+}
+
+function ipv4ToInt(address: string): number {
+  return address.split('.').reduce((sum, part) => sum * 256 + Number(part), 0);
+}
+
+/** [first, last] address of an IPv4 CIDR as numbers, or undefined for anything else (IPv6). */
+export function cidrRange(cidr: string): [number, number] | undefined {
+  const match = /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/.exec(cidr);
+  if (!match) return undefined;
+  const bits = Number(match[2]);
+  const size = 2 ** (32 - bits);
+  const first = Math.floor(ipv4ToInt(match[1]!) / size) * size;
+  return [first, first + size - 1];
+}
+
+/** Docker networks whose subnet overlaps `subnet` (a network of this stack's own project is not a clash). */
+export async function overlappingNetworks(
+  subnet: string,
+  project: string,
+): Promise<Array<{ name: string; subnet: string }>> {
+  const wanted = cidrRange(subnet);
+  if (!wanted) return [];
+  const ids = (await docker(['network', 'ls', '-q'])).stdout.split(/\s+/).filter(Boolean);
+  if (ids.length === 0) return [];
+  const inspected = await docker(['network', 'inspect', ...ids]);
+  if (inspected.code !== 0) return [];
+  const networks = JSON.parse(inspected.stdout) as Array<{
+    Name: string;
+    Labels?: Record<string, string>;
+    IPAM?: { Config?: Array<{ Subnet?: string }> };
+  }>;
+  const clashes: Array<{ name: string; subnet: string }> = [];
+  for (const network of networks) {
+    if (network.Labels?.['com.docker.compose.project'] === project) continue;
+    for (const entry of network.IPAM?.Config ?? []) {
+      const range = entry.Subnet ? cidrRange(entry.Subnet) : undefined;
+      if (range && range[0] <= wanted[1] && wanted[0] <= range[1])
+        clashes.push({ name: network.Name, subnet: entry.Subnet! });
+    }
+  }
+  return clashes;
+}
+
+/** Throws a message that names every clash (ports and subnet) of the stack that is about to start. */
+export async function assertStackFree(settings: StackSettings = SETTINGS): Promise<void> {
+  // Ports of a stack that was just taken down are released a moment later (Docker Desktop's port proxy).
+  let taken = await portsInUse(settings);
+  for (let attempt = 0; attempt < 10 && taken.length > 0; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    taken = await portsInUse(settings);
+  }
+  const problems: string[] = [];
+  for (const check of taken)
+    problems.push(
+      `port ${check.port}/${check.protocol} (${check.what}) is already in use on ${check.host}`,
+    );
+  for (const clash of await overlappingNetworks(settings.subnet, settings.project))
+    problems.push(
+      `subnet ${settings.subnet} (E2E_SUBNET) overlaps the Docker network ${clash.name} (${clash.subnet})`,
+    );
+  if (problems.length > 0) {
+    const list = problems.map((problem) => ` - ${problem}`).join('\n');
+    throw new Error(
+      `Stack ${settings.project} cannot start:\n${list}\nStop what holds them, or use another stack (E2E_STACK=1..4) or move the values with E2E_*_PORT / E2E_SUBNET (tests/e2e/README.md, "Parallel stacks").`,
+    );
+  }
+}

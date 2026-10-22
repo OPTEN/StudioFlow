@@ -73,10 +73,17 @@
 	file_server
 }
 
+# Upstream headers that base_headers sets for every response already. reverse_proxy adds the upstream's values to
+# the ones set before it, so an upstream copy would be sent twice ("nosniff, nosniff"); Caddy's copy stays.
+(upstream_header_dedup) {
+	header_down -X-Content-Type-Options
+}
+
 # ASP.NET Core API. args[0] = how long the API may take to send response headers after the whole request body
 # has arrived (uploads are written and checked before the API answers).
 (api_proxy) {
 	reverse_proxy api:8080 {
+		import upstream_header_dedup
 		# Keep long uploads alive across a config reload.
 		stream_close_delay 5m
 		transport http {
@@ -148,6 +155,7 @@ http://127.0.0.1:2020 {
 	# SignalR (WebSockets, with SSE / long polling as fallback). No response header timeout: long polling waits.
 	handle /hubs/* {
 		reverse_proxy api:8080 {
+			import upstream_header_dedup
 			stream_close_delay 5m
 			transport http {
 				dial_timeout 5s
@@ -159,6 +167,7 @@ http://127.0.0.1:2020 {
 	@livekit path /rtc /rtc/*
 	handle @livekit {
 		reverse_proxy livekit:7880 {
+			import upstream_header_dedup
 			stream_close_delay 5m
 			transport http {
 				dial_timeout 5s

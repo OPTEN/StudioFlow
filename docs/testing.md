@@ -9,6 +9,9 @@ section 7 and must be resolved by the implementers (fix the code to the pinned v
 
 Status: version 1, written 2026-10-22 against `docs/architecture/implementation-spec.md` (repository HEAD `00a6deb`) and the work in progress in the working tree (`docker-compose.yml`, `.env.example`, the ops scripts, `apps/api/src/Opten.FlowStudio.Core/Domain` and `Application`).
 Where the working tree already fixes a name or behaviour that is consistent with the spec, this plan follows it; where it deviates from the spec, the deviation is listed as a gap in section 7.
+Version 2 (2026-10-22, after the first full E2E run): aligned with implementation-spec 4.3, 4.5 and 12 and with the findings of `tests/e2e/known-bugs.json` (DOC-01 … DOC-07,
+BUG-05/08/10/16/18/19/20/21/22, OBS-01; summary in 7.2): paused/ended semantics, template z-order, 5 s hub timeout, LiveKit token TTL 10 min, crash method and healthcheck method under Docker 29,
+storage keys and opt-in test hooks as implemented, the final German texts reported by the implementers (GAP-27).
 Language: this document is English. UI strings are quoted in German (CH) exactly as the spec or prototype has them (`«ss»` instead of `«ß»`, `« »`,
 decimal comma, 24 h clock). A string the spec does not define is written as a regular expression or a `data-testid` and listed in GAP-27.
 
@@ -190,13 +193,13 @@ interface OutputView { page: Page; frame: FrameLocator | null; sceneId(): Promis
 ```
 
 `pairPhone(via:'ui')` opens the phone invite URL in a fresh context (device descriptor + fake media args) and waits for «Verbunden»; `via:'api'` redeems through REST and writes the
-credentials to localStorage key `flowstudio.device` (fast path for tests that are not about pairing). `pairLaptop` is analogous (`code`: `/join` form + approval through the
+credentials to localStorage key `flowstudio.sender.v1` (fast path for tests that are not about pairing). `pairLaptop` is analogous (`code`: `/join` form + approval through the
 admin API; `link`: `/j/{token}`).
 
 #### 1.2.6 Short-TTL overrides (keys to be provided, [GAP-01])
 
 `Pairing:InviteTtl=00:00:20`, `Pairing:RequestTtl=00:00:20`, `Pairing:CredentialsWindow=00:00:15`, `Pairing:RedeemIdempotencyWindow=00:00:10`, `Pairing:Limits:PendingTotal=3`,
-`LiveKit:TokenTtl=00:01:00`, `Admin:Lockout:*` unchanged; LiveKit's own `room.empty_timeout` (300 s in the `LIVEKIT_CONFIG` block of the compose file) is set to 10 in the override. `docker-compose.test.yml` forwards the keys as `PAIRING__…`/`LIVEKIT__…` environment variables of the api (the base file does not know them). Spec defaults are 30 min / 10 min / 5 min / 5 min / 2 h / 300 s.
+`LiveKit:TokenTtl=00:01:00`, `Admin:Lockout:*` unchanged; LiveKit's own `room.empty_timeout` (300 s in the `LIVEKIT_CONFIG` block of the compose file) is set to 10 in the override. `docker-compose.test.yml` forwards the keys as `PAIRING__…`/`LIVEKIT__…` environment variables of the api (the base file does not know them). Spec defaults are 30 min / 10 min / 5 min / 5 min / 10 min / 300 s.
 
 ### 1.3 Browser launch configuration and fake media
 
@@ -300,7 +303,7 @@ export async function expectVideoFrozen(video: Locator, ms = 1500) { /* totalVid
 | `lk.disconnect()/connect()` → `docker network disconnect fs-e2e_flowstudio <livekit>` / `docker network connect --ip 172.31.250.10 --alias livekit fs-e2e_flowstudio <livekit>` | container unreachable (no RST for new packets) | all browsers | — (published ports can need a restart after reconnect; the canary checks it) |
 | `lk.netem({ delayMs, jitterMs, lossPct, rateKbit })` → `docker compose -p fs-e2e --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate]` (e.g. `apply 200 20 0`, `apply 0 0 5`, `apply 0 0 0 1mbit`), `lk.clearNetem()` → `… netem clear`, `… netem show`: the `netem` service of the base compose file (`infra/netem/netem.sh`) shares LiveKit's network namespace and shapes **egress and ingress** (ingress mirrored to `ifb0`). Fallback without that service (egress only): `docker run --rm --net container:<livekit> --cap-add NET_ADMIN nicolaka/netshoot tc qdisc replace dev eth0 root netem delay 200ms 20ms loss 5% rate 1mbit`, clear with `tc qdisc del dev eth0 root` | all traffic of LiveKit in both directions: phone uplink, subscriber downlink, signalling through Caddy, and the LiveKit → API webhooks | media and signalling of every client at once | browser ↔ API/Caddy HTTP traffic |
 | `phone.netem(...)`, `phone.disconnect()` (profile `netns`) | same on the phone host container: real silent loss, real uplink loss | that phone's hub **and** media | other phones |
-| `docker.restart(svc)`, `docker.stop(svc)`, `docker.start(svc)`, `docker.kill(svc)` with `svc` in `api`, `livekit`, `postgres`, `caddy` → `docker compose -p fs-e2e <cmd> <service>` / `docker kill` (crash, relies on `restart: unless-stopped`) | container lifecycle | per service | — |
+| `docker.restart(svc)`, `docker.stop(svc)`, `docker.start(svc)`, `docker.kill(svc)` with `svc` in `api`, `livekit`, `postgres`, `caddy` → `docker compose -p fs-e2e <cmd> <service>`; `kill` = crash: `kill -TERM 1` inside the container (`kill -QUIT 1` for PostgreSQL), relies on `restart: unless-stopped` – since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04] | container lifecycle | per service | — |
 | `docker.logs(service, since)`, `docker.stats(service)` (`docker stats --no-stream --format json`) | evidence and memory | — | — |
 
 CPU and memory: `cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })`; `cdp.send('HeapProfiler.collectGarbage')` before each sample, then `Performance.getMetrics`
@@ -313,22 +316,29 @@ dependent tests fail with a clear message instead of passing vacuously.
 
 The spec defines no DOM hooks; the following are required so tests do not depend on layout or CSS ([GAP-15]).
 
+**Opt-in for the global state views (spec 12).** `window.__fsStudio` and `window.__fsSender` exist only when `localStorage['flowstudio.testHooks']` is exactly `'1'`
+when the app starts (Regie: when the production store is created; sender: when the station starts); E2E sets the flag with an init script before any page script runs. Without the flag
+(also `'0'`, `'true'`, `' 1'`, or storage blocked) the properties do not exist (`'__fsStudio' in window === false`). With it they are frozen, non-enumerable and non-writable objects whose
+getters read the live state; assignments throw in strict mode; they live as long as the page (removed when the Angular service is destroyed; after a sign-out `__fsStudio` reports `revision: null`, `hub: 'idle'`). No other global debug object exists in a
+production build except the output page's `?latency=1` aid (`window.__flowstudioLatency`).
+
 **Regie** (`apps/studio`): the roles/names of the prototype are the contract (`Studio-Modus` switch (`role=switch`), group `Art des Übergangs` with `Schnitt`/`Blende`, group `Dauer der Blende` with
 `Blende kürzer`/`Blende länger`, `Take` with `aria-keyshortcuts="Space"`, scene buttons `<name>[, live im Program][, in der Preview][, K2 gestört]` with `aria-pressed`, `Docks und Layout`, `Gerät koppeln`,
 grips `Dock <Titel> verschieben, mit Pfeiltasten`, separators `Höhe der Docks unten` / `Breite der Docks links|rechts` / `Grösse von A und B` / `Grösse von Preview und Program`, station rows with `aria-expanded` and
 `<code> <name>[, im Program|in der Preview][, <Zustand>]`, canvases `role=img` `Program-Monitor: <Szene>, entspricht dem Output`, toast `role=status`). Additionally:
 `[data-testid=regie-ready]` (set after the first snapshot), `[data-testid=connection-state][data-state=connected|reconnecting|disconnected]` (hub state, visible indicator), `[data-testid=toast]`,
 `[data-scene-id]` on scene buttons, `[data-code]` on station rows, `[data-item-id]` on Quellen rows and overlay boxes, `[data-testid=monitor-program|monitor-preview]`, `[data-testid=overlay]`.
-`window.__fsStudio = { revision, lastSync: 'delta'|'snapshot'|null, hub: state }` (read-only).
+`window.__fsStudio = { revision: number|null, lastSync: 'delta'|'snapshot'|null, hub: 'idle'|'connecting'|'connected'|'reconnecting'|'unauthorized'|'stopped' }` (read-only, opt-in; `revision` null before the first snapshot, `lastSync` = kind of the last `Subscribe` answer).
 
 **Sender** (`apps/sender`): `[data-testid=tally][data-tally=program|preview|off]`, `[data-testid=connection-state][data-state=connected|reconnecting|blocked|replaced]`,
 `[data-testid=check-code]`, `[data-testid=pairing-denied|pairing-expired]`, `[data-testid=slot-<slot>][data-state=starting|live|paused|ended|failed]`, `[data-testid=message-banner]`.
-`window.__fsSender = { slots(): Record<string,string>, rtc(): string, sessionId: string }` (read-only). localStorage `flowstudio.device` = `{"deviceId","deviceSecret","productionId"}`;
-sessionStorage `flowstudio.pairing` = `{"requestId","pollToken"}`; `flowstudio.sender.settings` = `{"facing","resolution","dark"}`.
+`window.__fsSender = { slots(): Record<string,string>, rtc(): string, sessionId: string }` (read-only, opt-in). Storage as implemented [GAP-15]: localStorage `flowstudio.sender.v1` =
+`{"deviceId","secret","productionId"}` once paired (before that only `{"clientId"}`, the redeem client id); localStorage `flowstudio.sender.settings` =
+`{"facing","resolution","dark","cameraOn","sharedScreens","techCheck"}`; sessionStorage `flowstudio.pairing` = `{"requestId","pollToken","checkCode","expiresAt","name","kind"}`.
 
 **Output** (`apps/output`): stage element `[data-scene-id]`; per item `[data-item-id][data-source][data-state=live|hold|held|fallback|missing|connecting]`;
 slate `[data-slate=standby|end|denied]` with `[data-testid=slate-title]`, `[data-testid=slate-subtitle]`; debug overlay `[data-testid=debug-overlay]` (one `key: value` per line);
-`window.__fsOutput = { sceneId(), revision(), hub(), media(), stats(), sourceStats(sourceId) }` (read-only).
+No `window.__fsOutput` (spec 12): tests read the DOM attributes above and the `debug=1` overlay; `?latency=1` collects latency samples in `window.__flowstudioLatency`.
 
 **localStorage (Regie)**: `flowstudio.studio` = `'1'|'0'`; `flowstudio.layout` = JSON v1 (prototype shape); `flowstudio.transition` = `{"kind":"cut"|"fade","durationMs":300}` [GAP-34].
 
@@ -518,7 +528,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **INT-AUTH-21** · P1 · xunit — Response hardening
 - Steps: sample 1 response of each route class; force an unhandled exception through a test-only endpoint.
-- Expect: `X-Content-Type-Options: nosniff` on all API responses; credentials-bearing responses (`login`, `redeem`, pairing poll with credentials, `livekit-token`) send `Cache-Control: no-store`; 500 returns ProblemDetails `internal_error` with `traceId` only (no exception type/message/stack) in Production; `Server` header not revealing version.
+- Expect: `X-Content-Type-Options: nosniff` on all API responses (through Caddy exactly once: Caddy sets it for every response and drops the upstream copy of proxied API, hub and `/rtc` responses, BUG-18); credentials-bearing responses (`login`, `redeem`, pairing poll with credentials, `livekit-token`) send `Cache-Control: no-store`; 500 returns ProblemDetails `internal_error` with `traceId` only (no exception type/message/stack) in Production; `Server` header not revealing version.
 
 **INT-AUTH-22** · P1 · xunit — Request size limits
 - Steps: JSON body of 256 KB, 256 KB + 1, 10 MB on a normal route; bandwidth test with 4 MB and 4 MB + 1; chunked body without length > limit; `Content-Length` larger than the actual body.
@@ -534,7 +544,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **INT-AUTH-25** · P1 · xunit — Webhook endpoint authentication
 - Steps: missing/invalid/expired JWT, body hash mismatch, body > 1 MB, right signature with `application/webhook+json`, with `application/json`.
-- Expect: 401 for all invalid cases without parsing the body; 413 for oversize; valid → 200; no state change on failure.
+- Expect: 401 for all invalid cases without parsing the body; 413 for oversize; valid → 200 with either content type (LiveKit sends `application/webhook+json`, BUG-05), another content type → 415; no state change on failure.
 
 **INT-AUTH-26** · P1 · xunit — Secrets at rest
 - Steps: pair a device, create an invite, regenerate the output key; dump all tables (`pg_dump --data-only`) and the Data Protection directory.
@@ -574,7 +584,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-09** · P0 · pw — Security headers on every entry point
 - Steps: `GET` `/`, `/login`, `/join/`, `/join/i/x`, `/o/webinar?k=x`, `/api/system/info` (authenticated), a hashed asset, `index.html`, `ngsw.json`, `/j/x`.
-- Expect: `Strict-Transport-Security` with `max-age` = `FLOWSTUDIO_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year; `setup.sh` writes 3600 for TLS mode `internal`, the test env leaves the default); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `display-capture=(self)`, and disables `microphone`; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `FLOWSTUDIO_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
+- Expect: `Strict-Transport-Security` with `max-age` = `FLOWSTUDIO_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year; `setup.sh` writes 3600 for TLS mode `internal`, the test env leaves the default); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `microphone=(self)`, `display-capture=(self)` (spec 10 and the Caddyfile; no audio track is published) [DOC-01]; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `FLOWSTUDIO_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
 
 **E2E-AUTH-10** · P0 · pw — Embedding limited by frame-ancestors
 - Steps: `embedHost` serves a page at `https://embed.e2e.test` (allowed) and `https://other.e2e.test` (not allowed) each containing `<iframe src="https://localhost/o/{slug}?k=…" allow="autoplay; fullscreen">`; also iframes of `/`, `/join/`, `/login`.
@@ -604,11 +614,11 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-16** · P1 · pw — Device credentials handling on the sender
 - Steps: redeem an invite; inspect URL history, storage, cookies, service worker caches, network log.
-- Expect: credentials only in localStorage `flowstudio.device`; URL `/join/i/{token}` replaced by `/join/station` (`history.replaceState`) so the invite token is not in history; `document.cookie` empty; no secret in any URL; service worker cache contains no `/api`, `/hubs`, `/rtc` responses; `Referer` on later requests has no token (`Referrer-Policy: no-referrer`).
+- Expect: credentials only in localStorage `flowstudio.sender.v1`; URL `/join/i/{token}` replaced by `/join/station` (`history.replaceState`) so the invite token is not in history; `document.cookie` empty; no secret in any URL; service worker cache contains no `/api`, `/hubs`, `/rtc` responses; `Referer` on later requests has no token (`Referrer-Policy: no-referrer`).
 
 **E2E-AUTH-17** · P1 · pw — Asset content access
 - Steps: upload `tiny.png`; request `…/assets/{id}/content` without credentials, with the admin cookie, with `?k=<key>`, with a wrong `k`, with the key of another production, `HEAD`.
-- Expect: none → 401; cookie → 200; right `k` → 200; wrong or foreign `k` → 403; `HEAD` mirrors `GET` status; response `Content-Type: image/png`, `X-Content-Type-Options: nosniff`.
+- Expect: none → 401; cookie → 200; right `k` → 200; wrong or foreign `k` → 403; `HEAD` mirrors `GET` status and headers without a body (BUG-16); response `Content-Type: image/png`, `X-Content-Type-Options: nosniff` (exactly once).
 
 **E2E-AUTH-18** · P1 · pw (`@disruptive`) — Rate limits on public pairing routes [GAP-01]
 - Steps: 11 × `POST /api/pairing/requests` from the same IP within 10 min; 21 × `redeem` with random tokens (the pending cap of 20 cannot be reached from one IP because the per-IP limit of 10 hits first: `INT-PAIR-08` covers it, and `E2E-PAIR-16` runs it with `Pairing:Limits:PendingTotal=3`).
@@ -686,11 +696,11 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-PAIR-08** · P1 · ng — Sender pairing state machine
 - Steps: fake timers and fake API: form validation (name trimmed 1–60), kind detection (`getDisplayMedia` present, mobile UA), `POST requests` then polling; statuses `pending → approved|denied|expired`; network error during polling; reload with `flowstudio.pairing` in sessionStorage; invite redeem with `clientId` generation and a lost response; stored credentials → `GET /api/device/me` (200, 401, 403 `device_blocked`); URL clean-up after redeem.
-- Expect: states `form → waiting → paired|denied|expired`; polling every 1,5 s (±0,2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `flowstudio.device` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
+- Expect: states `form → waiting → paired|denied|expired`; polling every 1,5 s (±0,2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `flowstudio.sender.v1` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
 
 **INT-PAIR-01** · P0 · xunit — QR flow over REST and events
 - Steps: connect a studio hub client and `Subscribe`; `GET …/pairing/phone-invite`; redeem with `{clientId, kind:'phone', platform:'Pixel 7 · Chrome'}`; `GET /api/device/me`.
-- Expect: invite `Url` = `https://flowstudio.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order: `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `inviteRemoved`, `inviteUpserted` (new phone invite), `logAppended` «K1 Handy 1 gekoppelt»; revisions strictly consecutive.
+- Expect: invite `Url` = `https://flowstudio.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order (as implemented, DOC-02): `inviteRemoved` (the redeemed invite), `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `logAppended` «K1 Handy 1 gekoppelt», `inviteUpserted` (the next phone invite); revisions strictly consecutive (the reducer accepts any order).
 
 **INT-PAIR-02** · P0 · xunit — Redeem idempotency
 - Steps: redeem with clientId A twice (simulating a lost response), then use the first secret; redeem with clientId B afterwards.
@@ -718,7 +728,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **INT-PAIR-08** · P0 · xunit — Limits and validation over HTTP [GAP-05]
 - Steps: 11 requests/IP/10 min with `X-Test-Remote-IP`; 21 pending; 21 redeem attempts; body validation: name empty/61 chars/control chars, `kind` invalid enum, `platform` 81 chars, unknown extra fields, body 300 KB.
-- Expect: 429 `rate_limited` with `Retry-After` for each limit; 400 `validation_failed` with field names (`name`, `kind`) for invalid bodies; a `platform` longer than 80 characters is truncated to 80 (accepted); 413 for oversize; extra fields ignored; limits are per IP, not global, except the pending cap.
+- Expect: 429 `rate_limited` with `Retry-After` for each limit; 400 `validation_failed` with field names (`name`, `kind`) for invalid bodies – also when the body cannot be bound (an unknown enum text such as `"kind":"tablet"`, a wrong JSON type, broken JSON): `errors` names the camelCase field path (`kind`, `items[0].fit`; `body` for the body as a whole) with «Ungültiger Wert.», never the serializer message or a .NET type name (BUG-08); a `platform` longer than 80 characters is truncated to 80 (accepted); 413 for oversize; extra fields ignored; limits are per IP, not global, except the pending cap.
 
 **INT-PAIR-09** · P0 · xunit — Laptop invite link
 - Steps: `POST …/pairing/invites {kind:'laptopLink'}`; redeem `kind:'laptop'`; second redeem; create another and `DELETE …/invites/{id}`; redeem the revoked.
@@ -734,7 +744,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **INT-PAIR-12** · P0 · xunit — Block, unblock, delete lifecycle
 - Steps: device with a live camera, a device hub connection, an open incident and the source in a scene; block; unblock; block again; delete.
-- Expect: block → `deviceUpserted(state: blocked)`, `sourceUpserted(status: blocked)`, `incidentRemoved` for its incident, fake LiveKit `RemoveParticipant(room, deviceId)`, the device hub receives `self` (state blocked) then is closed, log «K1 gesperrt», audit `device.blocked`; unblock → `device.unblocked`, log «K1 entsperrt», status `offline`/`connecting` until it reconnects (no incident); delete → `deviceRemoved` + `sourceRemoved` per slot + `device.removed`, the scene keeps the item (source ref now dangling, [GAP-35]).
+- Expect: block → `deviceUpserted(state: blocked)`, `sourceUpserted(status: blocked)`, `incidentRemoved` for its incident, fake LiveKit `RemoveParticipant(room, deviceId)`, the device hub receives `self` (state blocked) then is closed, log «K1 Handy 1 gesperrt» (codes and device name, `LogTexts`; intended deviation from the prototype's «K1 gesperrt», BUG-10), audit `device.blocked`; unblock → `device.unblocked`, log «K1 Handy 1 entsperrt», status `offline`/`connecting` until it reconnects (no incident); delete → `deviceRemoved` + `sourceRemoved` per slot + `device.removed` (log «K1 Handy 1 entfernt»), the scene keeps the item (source ref now dangling, [GAP-35]).
 
 **INT-PAIR-13** · P2 · xunit — Rename device
 - Steps: `PATCH …/devices/{id}` with valid, trimmed, 60/61 chars, XSS strings, empty.
@@ -884,7 +894,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-SCENE-12** · P0 · vitest — Layout templates produce the prototype rectangles
 - Steps: for each of the 8 template ids `full two pip col onetwo grid grid3 auto` apply to 1…10 visible items of mixed kinds (screen, image, video, camera) plus hidden items.
-- Expect: slot rectangles exactly equal `LAYOUT_TEMPLATES` (and the prototype `PRESETS`); items ordered by kind rank screen < media < camera, stable inside a rank; hidden items and items beyond the slot count keep their geometry; `fit: 'contain'` only for a screen in slot 0 unless template is `two`, `grid`, `grid3`; `radius: 0` for slots with `w === 1920` else 12; `auto` returns items unchanged with `layoutMode: 'autoGrid'`; all others `'free'`; the input array is not mutated.
+- Expect: slot rectangles exactly equal `LAYOUT_TEMPLATES` (and the prototype `PRESETS`); items ordered by kind rank screen < media < camera, stable inside a rank; hidden items and items beyond the slot count keep their geometry; `fit: 'contain'` only for a screen in slot 0 unless template is `two`, `grid`, `grid3`; `radius: 0` for slots with `w === 1920` else 12; `auto` returns items unchanged (same order) with `layoutMode: 'autoGrid'`; all others `'free'`; the item order is the z-order, so a template re-orders the items (spec 4.3): the placed items first in slot order (slot 0 at the back, later slots in front, e.g. the small Bild-in-Bild window above the full-screen one), then every item without a slot (hidden items and items beyond the slot count) in front of them in their previous relative order; undo restores the previous order; the input array is not mutated.
 
 **UNIT-SCENE-13** · P1 · vitest — Auto-Grid slot function
 - Steps: `autoGridSlots(n)` for n = 0…12.
@@ -1148,7 +1158,7 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 - Expect: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (preloaded); resolution of the new picture never drops below the LOW layer; `T-SWITCH` unaffected.
 
 **E2E-SWITCH-10** · P1 · pw — Preview scene sources are preloaded at high quality
-- Steps: output with `debug=1`; Studio-Modus on; select a preview scene whose camera is not in the program; read the per-source resolution from `window.__fsOutput.sourceStats`.
+- Steps: output with `debug=1`; Studio-Modus on; select a preview scene whose camera is not in the program; read the per-source resolution from the `debug=1` overlay (`<code> <w>x<h> …` lines).
 - Expect: that camera is delivered at the highest simulcast layer (≥ 1280 px wide for a 1080p publisher) within 3 s of selecting the preview; before selection (source only in another scene) it is at the lowest layer (≤ 360 px wide).
 
 **E2E-SWITCH-11** · P0 · pw — Tally on devices
@@ -1194,23 +1204,23 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 ### 2.5 SRC – Sources, stations and incidents
 
-Strings (exact): state words «verbindet neu», «Teilen beendet», «gesperrt», «verbindet …», «kein Bild», «nicht verbunden»; recovered «wieder da» + «war N s weg»; places «im Program» / «in der Preview» / «nicht live»;
+Strings (exact): state words «verbindet neu», «Teilen beendet» (screen) / «Kamera beendet» (camera), «gesperrt», «verbindet …», «kein Bild», «nicht verbunden»; recovered «wieder da» + «war N s weg»; places «im Program» / «in der Preview» / «nicht live»;
 button «Gesehen»; «Neu teilen lassen»; strip with no incident «Keine offenen Meldungen» + «Letzte Ereignisse»; health chip «Alle N Stationen ok» / «1 Störung» / «N Störungen»; station recovered box «Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.»;
 block box «K1 wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.» with «Jetzt sperren» / «Abbrechen», «Gerät sperren», «Entsperren»; toasts «K1 gesperrt und getrennt», «K1 entsperrt», «Bitte an {Name} geschickt: «Bildschirm erneut teilen»»;
-log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», «S1 gebeten, neu zu teilen», «K1 gesperrt», «K1 entsperrt», «K2 bestätigt»; sender «Erneut teilen», «Die Regie bittet dich, den Bildschirm erneut zu teilen», «Gesperrt», «In einem anderen Tab geöffnet», «Hier weitermachen», «Verbunden», «Verbindet neu …», «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen».
+log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», «K1 Kamera beendet», «K1 kein Bild», «K1 Handy 1 gesperrt», «K1 Handy 1 entsperrt», «K1 Handy 1 entfernt» (codes and device name, BUG-10; the prototype's «S1 gebeten, neu zu teilen» and «K2 bestätigt» do not exist); sender «Erneut teilen», «Die Regie bittet dich, den Bildschirm erneut zu teilen», «Gesperrt», «In einem anderen Tab geöffnet», «Hier weitermachen», «Verbunden», «Verbindet neu …», «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen».
 
 **UNIT-SRC-01** · P0 · xunit — Source status state machine, all transitions [GAP-08]
 - Steps: drive the `SourceStatusTracker` with events (`DeviceConnected/Disconnected`, `TrackPublished/Unpublished`, `ParticipantLeft`, `Report(slot states, rtc)`, `Block/Unblock`, `SlotRemoved`) through this table:
-  `offline→connecting` (device online, no track); `connecting→ok` (track published); `ok→reconnecting` (hub disconnected; participant left unintentionally; track unpublished while report says `rtc: reconnecting`; a report `rtc: reconnecting|disconnected` alone while the hub is up, because a frozen LiveKit sends no webhook); `ok→ended` (report `ended`); `ok→lost` (report `failed`); `reconnecting→ok`; `ended→ok`; `lost→ok`; `reconnecting→ended`; `reconnecting→lost`; `ended` + hub disconnect; `lost` + hub disconnect; any → `blocked`; `blocked→offline` on unblock; media always `ok`.
-- Expect: statuses as listed; `StatusSince` changes only on a status change; the pinned rules (they equal `SourceStatusRules` and `SourceHealth` in the working tree): a reported `ended`/`lost` wins over the connection state (sticky across hub disconnects); slot state `paused` counts as `ended` (a stopped phone camera is «Kamera beendet»); `reconnecting→ended|lost` keeps the open incident (same id, original `StartedAt`) and only changes its kind (`incidentUpserted`, no removal); slot state `starting` has no rule of its own (a slot that was live and has no track is `reconnecting`); the device hub connection is the fast signal: `ok` needs a connected hub and a live slot; media loss that only the device report shows (`rtc: reconnecting|disconnected` while the track is still `Published` and the hub is up) must also yield `reconnecting` within `T-DETECT-SILENT` [GAP-08]; unblock goes to `offline` until the device reconnects, never opens an incident.
+  `offline→connecting` (device online, no track); `connecting→ok` (track published); `ok→reconnecting` (hub disconnected; participant left unintentionally; track unpublished while report says `rtc: reconnecting`; a report `rtc: reconnecting|disconnected` alone while the hub is up, because a frozen LiveKit sends no webhook; slot reported `paused`; slot missing from the report while no track is published); `ok→ended` (report `ended`); `ok→lost` (report `failed`); `reconnecting→ok`; `ended→ok`; `lost→ok`; `reconnecting→ended`; `reconnecting→lost`; `ended` + hub disconnect; `lost` + hub disconnect; any → `blocked`; `blocked→offline` on unblock; media always `ok`.
+- Expect: statuses as listed; `StatusSince` changes only on a status change; the pinned rules (they equal `SourceStatusRules` and `SourceHealth` in the working tree): a reported `ended`/`lost` wins over the connection state (sticky across hub disconnects of the same session, not across a new session); slot state `paused` (the operating system suspended the capture, e.g. the phone app in the background) is not live and expected back: `reconnecting` if the slot was live, `connecting` if it never was – never `ended`; only a deliberate stop is `ended` («Teilen beenden», the browser's stop button, the camera stopped by the user) [DOC-06, spec 4.5]; every report replaces all earlier slot states (a slot missing from it has no state) and a new `Hello` session starts without slot and rtc states; `reconnecting→ended|lost` keeps the open incident (same id, original `StartedAt`) and only changes its kind (`incidentUpserted`, no removal); slot state `starting` has no rule of its own (a slot that was live and has no track is `reconnecting`); the device hub connection is the fast signal: `ok` needs a connected hub and a live slot; media loss that only the device report shows (`rtc: reconnecting|disconnected` while the track is still `Published` and the hub is up) must also yield `reconnecting` within `T-DETECT-SILENT` [GAP-08]; unblock goes to `offline` until the device reconnects, never opens an incident.
 
 **UNIT-SRC-02** · P0 · xunit — Incident lifecycle
 - Steps: ok→reconnecting→ok; ok→ended→ok; reconnecting→ended→ok; ack while open; ack after recovery; ack twice; block with open incident; slot removal with open incident; new outage on the same source while a recovered incident is un-acked.
-- Expect: an outage from `ok` opens an incident (replacing an earlier incident of the same source: `incidentRemoved(old)` then `incidentUpserted(new)`); an escalation `reconnecting → ended|lost` updates the open incident in place; recovery sets `EndedAt` and keeps it; `ack` of a recovered incident → removed (204), `ack` of an open incident → 409 `conflict`, second ack → 404; block/slot removal remove incidents; log texts «K2 verbindet neu», «K2 wieder da, war 9 s weg» (rounded seconds, minimum 1), «S1 Teilen beendet», «K1 Kamera beendet» (camera ended or paused), «K1 kein Bild»; an acknowledgement writes no log entry.
+- Expect: an outage from `ok` opens an incident (replacing an earlier incident of the same source: `incidentRemoved(old)` then `incidentUpserted(new)`); an escalation `reconnecting → ended|lost` updates the open incident in place; recovery sets `EndedAt` and keeps it; `ack` of a recovered incident → removed (204), `ack` of an open incident → 409 `conflict`, second ack → 404; block/slot removal remove incidents; log texts «K2 verbindet neu», «K2 wieder da, war 9 s weg» (rounded seconds, minimum 1), «S1 Teilen beendet», «K1 Kamera beendet» (camera stopped on purpose; a paused camera is «K1 verbindet neu», and when it is then stopped the open incident keeps its id and start and only changes its kind), «K1 kein Bild»; an acknowledgement writes no log entry.
 
 **UNIT-SRC-03** · P1 · xunit — Startup seed and API restart [GAP-08]
 - Steps: start the tracker with empty in-memory health and `ListParticipants` returning two participants with published `camera` tracks; device hubs reconnect after 3 s and after 20 s; a third device that never returns.
-- Expect: until its hub is back a seeded source is `offline` (the "was live" history is not carried over a restart), then `ok`; no incident is created for the restart itself, so `incidentUpserted`/log entries «verbindet neu» do not appear; the device that never returns stays `offline` (grey, no incident) [GAP-08].
+- Expect: until its hub is back a seeded source is `offline` (the "was live" history is not carried over a restart), then `ok`; no incident is created for the restart itself – neither by the graceful shutdown before it (hub connections that end because the host stops are no outage: nothing is evaluated or written, BUG-20) nor after the start – so `incidentUpserted`/log entries «verbindet neu» do not appear; the device that never returns: if its source was live within 12 h (`lastLiveAt`) and is used in the program or preview scene it becomes `reconnecting` with an incident («K1 verbindet neu») once `Sources:RestartGrace` (15 s) after the start has passed (spec 12, GAP-08 b), otherwise it stays `offline` (grey, no incident).
 
 **UNIT-SRC-04** · P1 · xunit — Telemetry aggregation [GAP-29]
 - Steps: reports with battery −5, 0, 100, 101, null; loss 0–100, −1, 150; bitrate negative; unknown slot names; 200 slots; stale (> 6 s) device.
@@ -1246,7 +1256,7 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **INT-SRC-03** · P0 · xunit — Device report path
 - Steps: `POST /api/device/report` and hub `Report` with slots `live`, `ended`, `failed`, `starting`, `paused`, rtc `connected|reconnecting|disconnected`; invalid values; flood of 100 reports/s.
-- Expect: statuses per UNIT-SRC-01; telemetry relayed to the studio hub as `telemetry` (not revisioned) at most every 2 s per device; invalid enum or oversize → 400; the flood is bounded (coalesced or 429), the process stays healthy.
+- Expect: statuses per UNIT-SRC-01; telemetry relayed to the studio hub as `telemetry` (not revisioned) at most every 2 s per device (the first report at once, reports in between are held back and the newest one follows when the 2 s have passed – latest value wins, `Sources:TelemetryInterval`; state changes such as `rtc` or slot states arrive as revisioned events at once, BUG-19); a report that arrives while the database is down still counts as a sign of life of the session (no stale-report outage afterwards); invalid enum or oversize → 400; the flood is bounded (coalesced or 429), the process stays healthy.
 
 **INT-SRC-04** · P0 · xunit — Session replacement
 - Steps: device hub connection 1 (`Hello` sessionId S1); connection 2 (`Hello` S2); then connection 1 re-connects and sends `Hello` S1; connection 3 with S2 again (same tab reconnect).
@@ -1305,7 +1315,7 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 **E2E-SRC-10** · P0 · pw — Block and unblock
 - Pre: K1 live in a scene, listed in «+ Quelle» menus.
 - Steps: Stationen row K1 → expand → «Gerät sperren» → box → «Jetzt sperren»; wait 45 s; «Entsperren».
-- Expect: toast «K1 gesperrt und getrennt», log «K1 gesperrt»; row red «gesperrt · kann sich nicht verbinden»; incidents of K1 removed; monitor element tab «K1 · gesperrt» red dashed; K1 no longer offered in «+ Quelle»; sender shows «Gesperrt» and stops the camera within `T-BLOCK`; LiveKit has no participant `dev_…`; during the 45 s the sender polls at most 4 times (15 s cadence: count of `GET /api/device/me` or negotiate requests ≤ 4); «Abbrechen» in the box does nothing; «Entsperren» → toast «K1 entsperrt», log «K1 entsperrt»; the sender reconnects within 20 s, publishes again, K1 `ok`, no incident remains.
+- Expect: toast «K1 gesperrt und getrennt», log «K1 Handy 1 gesperrt»; row red «gesperrt · kann sich nicht verbinden»; incidents of K1 removed; monitor element tab «K1 · gesperrt» red dashed; K1 no longer offered in «+ Quelle»; sender shows «Gesperrt» and stops the camera within `T-BLOCK`; LiveKit has no participant `dev_…`; during the 45 s the sender polls at most 4 times (15 s cadence: count of `GET /api/device/me` or negotiate requests ≤ 4); «Abbrechen» in the box does nothing; «Entsperren» → toast «K1 entsperrt», log «K1 Handy 1 entsperrt»; the sender reconnects within 20 s, publishes again, K1 `ok`, no incident remains.
 
 **E2E-SRC-11** · P0 · pw — Duplicate tab, no ping-pong
 - Steps: sender tab 1 live; open the sender in tab 2 of the same context; wait 30 s; click «Hier weitermachen» in tab 1; wait 30 s.
@@ -1341,7 +1351,7 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **E2E-SRC-19** · P1 · pw (`pixel7`) — Phone behaviour: wake lock, auto-start, settings, dark mode
 - Steps: stub `navigator.wakeLock`; start camera; hide/show the page (`visibilitychange`); reload; switch 720p/1080p; toggle dark mode; stop.
-- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`flowstudio.sender.settings`); published resolution matches (station «Auflösung» `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `paused` → Regie `ended` (red incident, log «K1 Kamera beendet», [GAP-08]).
+- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`flowstudio.sender.settings`); published resolution matches (station «Auflösung» `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `ended` → Regie `ended` (red incident, log «K1 Kamera beendet»); the page in the background (the OS suspends the camera) → slot `paused` → `reconnecting` («K1 verbindet neu»), back in the foreground → `ok` and «wieder da» [DOC-06, spec 4.5].
 
 **E2E-SRC-20** · P0 · pw — A returning source keeps its place
 - Steps: scene with K1 at a custom rectangle and z-order; K1 offline 10 s and back; reload the phone.
@@ -1425,7 +1435,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-05** · P1 · pw — `debug=1` overlay
 - Steps: open with `&debug=1`.
-- Expect: `[data-testid=debug-overlay]` in a mono font with lines `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values equal `window.__fsOutput` [GAP-24].
+- Expect: `[data-testid=debug-overlay]` in a mono font with lines `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24].
 
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
@@ -1438,7 +1448,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-08** · P0 · pw — Survives API restart
 - Steps: broadcast live with two cameras on air; `docker.restart('api')`; after it is healthy switch scenes from the Regie.
-- Expect: during the outage videos keep playing (frames advance), no slate, no text, no blank; once the API is back (≤ `T-RESTART-API`) the output resubscribes (snapshot because revisions restarted) and reports resume (status chip `stale` → `connected`); the switch made afterwards reaches the output within `T-SWITCH`; no page reload happened (`window.__fsOutput` identity/`performance.timeOrigin` unchanged).
+- Expect: during the outage videos keep playing (frames advance), no slate, no text, no blank; once the API is back (≤ `T-RESTART-API`) the output resubscribes (snapshot because revisions restarted) and reports resume (status chip `stale` → `connected`); the switch made afterwards reaches the output within `T-SWITCH`; no page reload happened (`performance.timeOrigin` unchanged).
 
 **E2E-OUT-09** · P0 · pw — Survives LiveKit restart
 - Steps: `docker.restart('livekit')` with cameras on air.
@@ -1541,11 +1551,11 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **INT-NET-04** · P0 · xunit — Database outage [GAP-32]
 - Steps: stop the PostgreSQL container; call `/health/live`, `/health/ready`, a read, a write, hub `Subscribe` on an existing connection; restart PostgreSQL.
-- Expect: `/health/live` 200 throughout; `/health/ready` 503 within 5 s; reads/writes needing the DB → 503 ProblemDetails (no stack, no connection string); existing hub connections stay open; after PostgreSQL returns, `/health/ready` is 200 again within 30 s **without** restarting the API and writes work; no state was lost.
+- Expect: `/health/live` 200 throughout; `/health/ready` 503 within 5 s; reads, writes and the login needing the DB → 503 `service_unavailable` ProblemDetails (no stack, no connection string) within 5 s, also when PostgreSQL hangs or its name resolves slowly (`Database:ConnectTimeout` 3 s, `Database:CommandTimeout` 5 s) and also for requests queued behind device reports of the same production; once the outage is known every request answers at once and a probe connection every `Database:ProbeInterval` (1 s) ends it (BUG-21); hub calls answer `service_unavailable` and existing hub connections stay open; after PostgreSQL returns, `/health/ready` is 200 again within 30 s **without** restarting the API and writes work; no state was lost.
 
 **INT-NET-05** · P2 · xunit — Graceful shutdown
 - Steps: dispose the host while hub clients are connected and a request is in flight.
-- Expect: in-flight request completes; hubs receive a close (clients see `onclose` immediately, not after the 6 s timeout); no unobserved exceptions logged at error level.
+- Expect: in-flight request completes; every hub connection is aborted when the host begins to stop (clients see `onclose` immediately, not after the 5 s timeout); the host stops well within `HostOptions.ShutdownTimeout` = 5 s; the maintenance loops end at once; the disconnects caused by the shutdown write no audit or log entry, no incident and no «verbindet neu» (BUG-20, OBS-01); no unobserved exceptions logged at error level.
 
 **INT-NET-06** · P2 · xunit — Unhandled exceptions
 - Steps: inject a failing `IProductionRepository`; call mutating endpoints and a hub method.
@@ -1597,14 +1607,14 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-11** · P0 · pw — PostgreSQL down [GAP-32]
 - Steps: Regie, output, phones live; `docker.stop('postgres')` for 30 s; try to switch and edit; `start`.
-- Expect: output and media unaffected; switch/edit fail with an error toast (503); already loaded Regie remains usable for viewing; `curl /health/ready` → 503, `/health/live` → 200; after PostgreSQL is back (≤ 30 s) edits work again without API restart; state (scenes, devices) intact; no incident created for senders whose hubs stayed connected.
+- Expect: output and media unaffected; switch/edit fail with an error toast (503); already loaded Regie remains usable for viewing; `curl /health/ready` → 503, `/health/live` → 200; after PostgreSQL is back (≤ 30 s) edits work again without API restart; state (scenes, devices) intact; no incident created for senders whose hubs stayed connected; a request through Caddy is answered with a 503 ProblemDetails within `T-DB-OUTAGE` (never a 504 of Caddy) [BUG-21].
 
 **E2E-NET-12** · P0 · pw (`@disruptive`) — Single container restarts
-- Steps: for each of `api`, `livekit`, `postgres`, `caddy`: `docker.restart(svc)` (and `docker.kill(svc)` once for `api` to test the restart policy) with Regie ×2, output, 3 phones and 1 laptop live.
-- Expect: per service within its threshold (`T-RESTART-API`, `T-RESTART-LK`, 30 s for postgres/caddy after healthy): all clients reconnect without manual reload; Regie `connection-state=connected`; output playing; stations `ok`; no permanent incident; for `caddy` the media (UDP 7882) keeps flowing throughout; revisions of both Regies equal the server's; logs contain no unexpected errors beyond connection failures.
+- Steps: for each of `api`, `livekit`, `postgres`, `caddy`: `docker.restart(svc)` (and a crash – `kill -TERM 1` inside the container [DOC-04] – once for `api` to test the restart policy) with Regie ×2, output, 3 phones and 1 laptop live.
+- Expect: per service within its threshold (`T-RESTART-API`, `T-RESTART-LK`, 30 s for postgres/caddy after healthy): all clients reconnect without manual reload; Regie `connection-state=connected`; output playing; stations `ok`; no permanent incident; for `caddy` the media (UDP 7882) keeps flowing throughout; revisions of both Regies equal the server's; logs contain no unexpected errors beyond connection failures; `api`: the graceful restart takes a few seconds (`T-SHUTDOWN`, OBS-01) and writes no «verbindet neu» and no incident for sources whose device comes back (BUG-20), while a source on air whose device does not come back is flagged by the restart watch (spec 12).
 
 **E2E-NET-13** · P0 · pw (`@disruptive`) — Whole stack restart
-- Steps: `docker compose -p fs-e2e restart` (then `kill` all containers once); same clients as -12.
+- Steps: `docker compose -p fs-e2e restart` (then crash all containers once: `kill -TERM 1` inside each, `kill -QUIT 1` for PostgreSQL [DOC-04]); same clients as -12.
 - Expect: all containers return via restart policy, healthy ≤ 90 s; all browsers return without reload within `T-RESTART-STACK`; persistent data intact: scenes, devices recognised with their old credentials, output key unchanged, admin session still valid (Data Protection keys volume), assets served, `LiveSince` unchanged so the LIVE runtime keeps counting [GAP-33]; incident history is empty.
 
 **E2E-NET-14** · P0 · pw — Reconnect with delta and with snapshot
@@ -1655,7 +1665,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-25** · P2 · pw (`@netns`) — Uplink loss and full uplink disconnect of one phone
 - Steps: `phone.disconnect()` 20 s with `docker network disconnect` of the phone container (silent loss) then reconnect; compare detection to `T-DETECT-SILENT`.
-- Expect: detection within the silent threshold (hub timeout 6 s), recovery per `T-RECOVER-LONG`; the other phones unaffected.
+- Expect: detection within the silent threshold (hub timeout 5 s), recovery per `T-RECOVER-LONG`; the other phones unaffected.
 
 **E2E-NET-26** · P1 · pw (`@short-ttl`) — Token expiry
 - Steps: with `LiveKit:TokenTtl=60 s` keep a sender and the output connected for 5 min; then force a rejoin.
@@ -1859,7 +1869,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **INT-MEDIA-06** · P0 · xunit — Content endpoint access and caching [GAP-13]
 - Steps: admin cookie; `?k=` (right, wrong, other production's key); none; `HEAD`; conditional `If-None-Match`/`If-Modified-Since`.
-- Expect: cookie → 200; right `k` → 200; none → 401; wrong or foreign `k` → 403; `Cache-Control: private, max-age=3600`; `ETag`/`Last-Modified` present and 304 on match; `Accept-Ranges: bytes`; `HEAD` has no body.
+- Expect: cookie → 200; right `k` → 200; none → 401; wrong or foreign `k` → 403; `Cache-Control: private, max-age=3600`; `ETag`/`Last-Modified` present and 304 on match; `Accept-Ranges: bytes`; `HEAD` answers like `GET` (status, `Content-Type`, `Content-Length`, `ETag`, `Accept-Ranges`, `Cache-Control`, `Content-Disposition`, CSP, nosniff) without a body, also with `Range` (206 and `Content-Range`) and without credentials (401) [BUG-16].
 
 **INT-MEDIA-07** · P1 · xunit — Range requests
 - Steps: `Range: bytes=0-99`, `bytes=100-`, `bytes=-50`, `bytes=0-0`, last byte, `bytes=999999999-`, `bytes=5-2`, `bytes=0-99,200-299`, garbage, `If-Range` with matching/mismatching validator; images and video.
@@ -1931,10 +1941,10 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-01** · P1 · pw — Compose file and `.env.example` consistency
 - Steps: `docker compose config --format json` with a generated `.env`; extract all `${VAR}` references; compare with `.env.example`.
-- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL`, and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
+- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
 
 **E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
-- Steps: run `printf '%s' "$PW" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --admin-password-stdin --env-file <dir>/.env` twice into two directories, once with `--generate-password`, once with `--plain-password`, once without `--node-ip` (auto-detection); invalid inputs (empty domain, invalid IP, `--tls-mode foo`, password shorter than 12 characters); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
+- Steps: run `printf '%s' "$PW" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --admin-password-stdin --env-file <dir>/.env` twice into two directories, once with `--generate-password`, once with `--plain-password`, once without `--node-ip` (auto-detection); invalid inputs (invalid IP, `--tls-mode foo`, password shorter than 12 characters; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
 - Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode, admin user; secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `flowstudio`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); the admin password is stored as `ADMIN__PASSWORDHASH` starting `AQAAAA` with `ADMIN__PASSWORD` empty (the plain password only with `--plain-password`) and is never printed or logged (except the single display of `--generate-password`); `FLOWSTUDIO_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; invalid inputs exit ≠ 0 with a German «Fehler: …» message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets.
 
 **E2E-OPS-03** · P1 · pw (Windows runner) — `setup.ps1`
@@ -1945,11 +1955,11 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Expect: the build succeeds from lock files only (`npm ci`, locked NuGet restore); start-to-healthy ≤ 120 s after the images are built; `GET /health/ready` 200; `/` serves the Regie login; admin login works; the default production «Webinar» (slug `webinar`, active, broadcast standby) with scenes «Begrüssung», «Präsentation», «Pause» exists and the program scene is «Begrüssung»; output URL shows the standby slate; a second `up -d` changes nothing (no restart, no new migration).
 
 **E2E-OPS-05** · P1 · pw — Healthchecks are real
-- Steps: `docker inspect` health of each container; then degrade each service specifically and measure the time to `unhealthy`: `docker pause livekit`; `docker pause postgres` (api readiness must fail); `docker pause api`; `docker pause caddy`.
-- Expect: caddy, api, livekit, postgres report `healthy` when OK; each becomes `unhealthy` within `interval × retries` (≤ 60 s) when its function is broken (the checks exercise the service: `pg_isready` over TCP, API `GET /health/live` on 127.0.0.1:8080, LiveKit `GET /` on 127.0.0.1:7880, Caddy's loopback `127.0.0.1:2020/healthz` from the image); `depends_on: service_healthy` ordering verified: with postgres stopped `docker compose up -d api` starts postgres first and api only after it is healthy.
+- Steps: `docker inspect` health of each container; then show that each check exercises its service ([command] tests, DOC-07): run the healthcheck command inside the running container (exit 0) and in a container of the same image without the service (exit ≠ 0); `docker compose stop postgres` (api readiness must fail). `docker pause` is not used: Docker 29 marks a paused container unhealthy at once, even for a check that is just `true`.
+- Expect: caddy, api, livekit, postgres report `healthy` when OK; each check fails when its service is missing (the checks exercise the service: `pg_isready` over TCP, API `GET /health/live` on 127.0.0.1:8080, LiveKit `GET /` on 127.0.0.1:7880, Caddy's loopback `127.0.0.1:2020/healthz` from the image); `depends_on: service_healthy` ordering verified: with postgres stopped `docker compose up -d api` starts postgres first and api only after it is healthy.
 
 **E2E-OPS-06** · P0 · pw — Restart policy and volumes
-- Steps: `docker kill` each service; `docker compose down` then `up -d`; `down -v`.
+- Steps: crash each service (`kill -TERM 1` inside the container, `kill -QUIT 1` for PostgreSQL; since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04]); `docker compose down` then `up -d`; `down -v`.
 - Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial) and PostgreSQL data persist; `down -v` removes them; volume names `caddy_data`, `caddy_config`, `media`, `keys`, `pgdata`.
 
 **E2E-OPS-07** · P0 · pw — Backup
@@ -1978,7 +1988,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-13** · P1 · pw — Container hardening
 - Steps: `docker exec api id -u`; inspect images and containers.
-- Expect: the API runs as non-root (uid ≠ 0); every service runs with `no-new-privileges` and `cap_drop: ALL` (`docker inspect`); no secret in image layers, `Config.Env` of images, or `docker history`; `.dockerignore` excludes `.env`, `.git`, `node_modules`; `docker inspect` of running containers shows secrets only as runtime env of the services that need them.
+- Expect: the API runs as non-root (uid ≠ 0); every service runs with `no-new-privileges` and `cap_drop: ALL` (`docker inspect`; postgres with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` only, and the server process runs as `postgres`, BUG-22); no secret in image layers, `Config.Env` of images, or `docker history`; `.dockerignore` excludes `.env`, `.git`, `node_modules`; `docker inspect` of running containers shows secrets only as runtime env of the services that need them.
 
 **E2E-OPS-14** · P1 · pw — Logs after a full scenario
 - Steps: run the soak-light scenario (pairing, switching, uploads, block, key rotation, restarts) and read `docker compose logs`.
@@ -2020,7 +2030,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **UNIT-SYNC-04** · P1 · vitest — German formatting
 - Steps: `formatDuration`, `formatRuntime`, `formatClock`, `formatHm`, `formatSeconds`, `formatRate`, `formatCheckCode`, `statusWord`.
-- Expect: `formatDuration(59_000)` «00:59», 60 s «01:00», 3599 s «59:59», 3600 s «60:00», negative «00:00»; `formatRuntime(3_725_000)` «01:02:05»; `formatSeconds(300)` «0,3 s», 1000 «1 s», 1500 «1,5 s», 2000 «2 s»; `formatRate(2.8)` «2,8», `formatRate(2)` «2,0»; `formatCheckCode('4712')` «47 12», other lengths returned unchanged; `statusWord`: reconnecting «verbindet neu», ended «Teilen beendet», blocked «gesperrt», connecting «verbindet …», lost «kein Bild», offline «nicht verbunden», ok «».
+- Expect: `formatDuration(59_000)` «00:59», 60 s «01:00», 3599 s «59:59», 3600 s «60:00», negative «00:00»; `formatRuntime(3_725_000)` «01:02:05»; `formatSeconds(300)` «0,3 s», 1000 «1 s», 1500 «1,5 s», 2000 «2 s»; `formatRate(2.8)` «2,8», `formatRate(2)` «2,0»; `formatCheckCode('4712')` «47 12», other lengths returned unchanged; `statusWord`: reconnecting «verbindet neu», ended «Teilen beendet» (camera: «Kamera beendet»), blocked «gesperrt», connecting «verbindet …», lost «kein Bild», offline «nicht verbunden», ok «».
 
 **INT-SYNC-01** · P0 · xunit — Studio hub subscribe, presence, resync
 - Steps: `Subscribe` for known/unknown production; two clients connect/disconnect (clean and TCP kill); `activateProduction` another production.
@@ -2036,11 +2046,11 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **INT-SYNC-04** · P2 · xunit — Keep-alive and timeouts
 - Steps: raw WebSocket client that completes the handshake and then sends nothing; another that answers pings.
-- Expect: server keep-alive ping every 2 s; the silent client is closed after 6 s ± 1 s; the answering client stays; options match `KeepAliveInterval = 2 s`, `ClientTimeoutInterval = 6 s`.
+- Expect: server keep-alive ping every 2 s; the silent client is closed after 5 s ± 1 s; the answering client stays; options match `KeepAliveInterval = 2 s`, `ClientTimeoutInterval = 5 s` (spec 6/12, GAP-12).
 
 **INT-SYNC-05** · P2 · xunit — Telemetry stream
 - Steps: device sends reports at 10/s for 10 s; second device idle.
-- Expect: the Regie receives `telemetry` at most every 2 s per device, not revisioned; none for the idle device after it is stale; payload contains only the subscribed production's devices.
+- Expect: the Regie receives `telemetry` at most once per device and 2 s (never two messages closer than 2 s; with 10 reports/s at most 6 messages in 10 s), the first report at once and the newest held-back values after the interval (latest value wins), not revisioned (BUG-19); none for the idle device after it is stale; payload contains only the subscribed production's devices.
 
 **INT-SYNC-06** · P1 · xunit — `GET …/changes`
 - Steps: `since` = current, 0, huge, negative, non-numeric, missing; unknown production.
@@ -2058,11 +2068,11 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **UNIT-LK-01** · P0 · xunit — Token claims
 - Steps: build tokens for sender, studio, output; decode and verify with `jose`/`JwtSecurityTokenHandler` (HS256, API secret).
-- Expect: `iss` = API key; room `prd_{id}`; sender: identity = device id, `roomJoin`, `canPublish: true`, `canPublishSources: ['camera','screen_share']`, `canSubscribe: false`, `canPublishData: false`, `hidden: false`; studio: identity `studio_{random}`, `canSubscribe: true`, `canPublish: false`, `canPublishData: false`, `hidden: true`; output: identity `output_{slug}_{random}`, same flags as studio; `exp − nbf` = 2 h ± 5 s (configurable [GAP-01]); random parts differ per call; no secret or metadata with secrets inside the token; token never contains the API secret.
+- Expect: `iss` = API key; room `prd_{id}`; sender: identity = device id, `roomJoin`, `canPublish: true`, `canPublishSources: ['camera','screen_share']`, `canSubscribe: false`, `canPublishData: false`, `hidden: false`; studio: identity `studio_{random}`, `canSubscribe: true`, `canPublish: false`, `canPublishData: false`, `hidden: true`; output: identity `output_{slug}_{random}`, same flags as studio; `exp − nbf` = 10 min ± 5 s (spec 7, `LiveKit:TokenTtl` [GAP-01], DOC-03); random parts differ per call; no secret or metadata with secrets inside the token; token never contains the API secret.
 
 **INT-LK-01** · P0 · xunit — Token endpoints
 - Steps: device, studio and output `livekit-token` endpoints: valid, blocked device, wrong key, unknown production; call twice.
-- Expect: `LiveKitTokenDto { url: wss://<host>, token, identity, room, expiresAt }` where `url` is the same origin as `PublicBaseUrl`; blocked → 403; fresh token and (for studio/output) fresh identity per call, stable identity for devices; unknown production 404; `expiresAt` ≈ now + 2 h.
+- Expect: `LiveKitTokenDto { url: wss://<host>, token, identity, room, expiresAt }` where `url` is the same origin as `PublicBaseUrl`; blocked → 403; fresh token and (for studio/output) fresh identity per call, stable identity for devices; unknown production 404; `expiresAt` ≈ now + 10 min.
 
 **INT-LK-02** · P1 · xunit — Room service calls
 - Steps: block (fake HTTP server standing in for `http://livekit:7880/twirp/livekit.RoomService/…`); key rotation; startup seed; LiveKit returns 404/500/timeout.
@@ -2193,7 +2203,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | Phone redeem → «Verbunden» | ≤ 2 s | ≤ 3 s | — |
 | `T-VIDEO-START` | Track published → first decoded frame in a Regie monitor / the output (source already in the scene) | ≤ 2 s | ≤ 3 s | — |
 | `T-DETECT-CLEAN` | Connection closed cleanly (setOffline, container stop, tab close) → outage shown in all six places | ≤ 2 s | ≤ 3 s | plan §6 (2–5 s) |
-| `T-DETECT-SILENT` | Packets silently dropped (pause, disconnect, 100 % loss) → outage shown in all six places (device hub: keep-alive 2 s, timeout 6 s) | ≤ 5 s | ≤ 6,5 s [GAP-12] | plan §6 vs spec 6 |
+| `T-DETECT-SILENT` | Packets silently dropped (pause, disconnect, 100 % loss) → outage shown in all six places (device hub: keep-alive 2 s, timeout 5 s) | ≤ 5 s | ≤ 6,5 s [GAP-12] | plan §6, spec 6/12 |
 | | Media-only loss while the hub stays up → outage shown | ≤ 6 s | ≤ 10 s | LiveKit ICE timeouts |
 | `T-RECOVER-SHORT` | Outage ≤ 10 s: network back → output frames advancing | ≤ 2 s (p95) | ≤ 3 s | plan §9 phase 0 («Reconnect unter 3 s») |
 | | …→ Regie shows `ok` + «wieder da» after frames advance | ≤ 0,5 s | ≤ 1 s | — |
@@ -2215,6 +2225,8 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | With `netem` delay 200 ms (both directions) | baseline + 400 ms | baseline + 400 ± 100 ms | — |
 | `T-RESTART-API` | API healthy → Regie, output, senders connected and consistent | ≤ 6 s | ≤ 15 s | plan §6 |
 | | `docker restart api` → healthy | ≤ 15 s | ≤ 30 s | — |
+| `T-SHUTDOWN` | SIGTERM / `docker restart api` with hub clients connected → API process ended | ≤ 2 s | ≤ 5 s (`HostOptions.ShutdownTimeout`) | OBS-01 |
+| `T-DB-OUTAGE` | PostgreSQL stopped or silent → request answered 503 ProblemDetails: direct API / through Caddy | ≤ 5 s / ≤ 5 s | ≤ 6 s / ≤ 10 s | GAP-32, BUG-21 |
 | `T-RESTART-LK` | LiveKit healthy → output and senders playing again | ≤ 6 s | ≤ 10 s | spec 7, 8.4 |
 | `T-RESTART-STACK` | All containers healthy → all browsers back; time to healthy after the command | ≤ 10 s; ≤ 60 s | ≤ 15 s; ≤ 90 s | plan §6 |
 | `T-SYNC-DELTA` | Hub reconnected → state consistent: delta / snapshot | ≤ 1 s / ≤ 2 s | ≤ 1,5 s / ≤ 3 s | spec 6 |
@@ -2230,7 +2242,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | API / LiveKit / PostgreSQL container RSS growth over 60 min | ≤ 50 MB | ≤ 100 MB | — |
 | | PostgreSQL connections | ≤ 10 | ≤ pool max (20) | — |
 | | Uncaught exceptions, container restarts, OOM kills | 0 | 0 | — |
-| `T-LIMITS` | Constants asserted exactly (no tolerance): lockout 5 failures / IP, 15 min window and lock, 20 / username; pairing 10 requests and 20 redeems / IP / 10 min, 20 pending; fade steps 200/300/500/800/1000/1500/2000 ms; scenes 99, items 32, screens 9; invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min; keep-alive 2 s, server timeout 6 s, ring buffer 500 events, token TTL 2 h | exact | exact | spec 4–7 |
+| `T-LIMITS` | Constants asserted exactly (no tolerance): lockout 5 failures / IP, 15 min window and lock, 20 / username; pairing 10 requests and 20 redeems / IP / 10 min, 20 pending; fade steps 200/300/500/800/1000/1500/2000 ms; scenes 99, items 32, screens 9; invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min; keep-alive 2 s, client timeout 5 s, ring buffer 500 events, token TTL 10 min, telemetry at most 1 message per device and 2 s | exact | exact | spec 4–7, 12 |
 
 ---
 
@@ -2285,7 +2297,7 @@ Docker with Compose v2 (`--wait`), Node ≥ 22.12, .NET 10 SDK, Playwright brows
 Each entry: where the sources are silent or disagree, what this plan pins (and tests assert), and what the implementation must provide or decide. When a gap is resolved, update the pin here and the tests that cite it.
 "Spec" = `docs/architecture/implementation-spec.md`; "Plan" = `plan/FlowStudio Architekturplan.html`; "ApiSurface" = `apps/api/src/Opten.FlowStudio.Web/Endpoints/ApiSurface.cs`.
 
-**GAP-01 · Time-based rules can be faked but not configured.** Spec 4.6 (invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min), 5 (lockout 15 min, sliding cookie 12 h), 7 (token TTL 2 h, `empty_timeout` 300 s), 4.2 (fade guard). The working tree injects `TimeProvider` into the services (so expiry tests can use `FakeTimeProvider`), but the durations are `static readonly` constants (`Invite.Lifetime`, `Invite.ReplayWindow`, `PairingRequest.PendingLifetime`/`DecisionLifetime`, `LoginThrottle.Window`/`Lockout`, `PairingRequestStore.MaxPending`), so no short-TTL stack can be built.
+**GAP-01 · Time-based rules can be faked but not configured.** Spec 4.6 (invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min), 5 (lockout 15 min, sliding cookie 12 h), 7 (token TTL 10 min, `empty_timeout` 300 s), 4.2 (fade guard). The working tree injects `TimeProvider` into the services (so expiry tests can use `FakeTimeProvider`), but the durations are `static readonly` constants (`Invite.Lifetime`, `Invite.ReplayWindow`, `PairingRequest.PendingLifetime`/`DecisionLifetime`, `LoginThrottle.Window`/`Lockout`, `PairingRequestStore.MaxPending`), so no short-TTL stack can be built.
 Pin: every duration and limit becomes an option with the spec default; configuration keys: `Pairing:InviteTtl`, `Pairing:RequestTtl`, `Pairing:CredentialsWindow`, `Pairing:RedeemIdempotencyWindow`, `Pairing:Limits:RequestsPerIpPer10Min` (10), `Pairing:Limits:PendingTotal` (20), `Pairing:Limits:RedeemPerIpPer10Min` (20), `Admin:Lockout:*`, `LiveKit:TokenTtl` (LiveKit's own `room.empty_timeout` is set in the `LIVEKIT_CONFIG` block of the compose file). Without them `E2E-PAIR-05/06/07`, `E2E-LK-03`, `E2E-NET-26` and all expiry integration tests cannot run.
 
 **GAP-02 · Production lifecycle beyond the first start.** Spec 4.2 describes only the default production «Webinar»; `createProduction` (ApiSurface) says nothing about content, activation or slug rules; there is no delete route.
@@ -2306,7 +2318,7 @@ Pin: unknown slug returns the same 403 as a wrong key (byte-identical body); rem
 Pin: output snapshot sources carry `status: ok`, `statusSince: null`; health-only changes of a source are `revisionOnly` for the output; label/code changes are delivered. The output derives hold/lost purely from LiveKit track presence.
 
 **GAP-08 · Source status and incident transitions beyond "ok → x".** Spec 4.5 defines only `ok → reconnecting|ended|lost` and recovery. Missing: media loss that only the device report shows (`rtc: reconnecting|disconnected` while the hub is up; a frozen LiveKit sends no webhook), `reconnecting → ended|lost`, `ended`/`lost` + hub disconnect, slot states `starting` and `paused`, unblock recovery, ack of an open incident, and the API restart (the in-memory health and incident history are lost; a device that does not come back is never flagged).
-Pin: see `UNIT-SRC-01/02/03` (the working tree's `SourceStatusRules`/`SourceHealth` already do this, except for media-only loss: `SlotSignals.IsLive` stays true while the track is `Published`, so a device report `rtc: reconnecting` alone is ignored until LiveKit notices, about 21 s per the code comment): ended/lost are sticky; `reconnecting → ended|lost` updates the open incident in place; `starting` has no rule of its own; `paused` → `ended` («Kamera beendet» in the log); the prototype's log entries «K2 bestätigt» and «S1 gebeten, neu zu teilen» do not exist in spec 4.9 or `LogTexts` and are not expected; unblock → `offline` without incident; ack of an open incident → 409; second ack → 404; after an API start the sources go `offline` → `ok` as the devices reconnect, without any incident; a device that never returns stays `offline` (grey, no incident) – the plan pins this behaviour of the working tree but flags it, because "no outage goes unnoticed" (PRODUCT.md) suggests the Regie should mark such a station.
+Resolved by implementation-spec 4.5 and 12 (decided 2026-10-22, DOC-06), pinned in `UNIT-SRC-01/02/03`: ended/lost are sticky (across hub disconnects of the same session, not across a new session); `reconnecting → ended|lost` updates the open incident in place; `starting` has no rule of its own; `paused` (the OS suspended the capture) is not live and expected back → `reconnecting` if the slot was live, never `ended`; only a deliberate stop is `ended` («Kamera beendet» / «Teilen beendet»); every report replaces all slot states and a new `Hello` session starts without them; a device report `rtc: reconnecting|disconnected` while the hub is up marks the live slots `reconnecting` at once (GAP-08 a); the prototype's log entries «K2 bestätigt» and «S1 gebeten, neu zu teilen» do not exist in spec 4.9 or `LogTexts` and are not expected; unblock → `offline` without incident; ack of an open incident → 409; second ack → 404; a graceful API shutdown is no outage (no evaluation, no log entry, no incident, BUG-20); after an API start the sources go `offline` → `ok` as the devices reconnect, without any incident, and a source that was live within 12 h, is used in the program or preview scene and whose device does not reconnect within 15 s becomes `reconnecting` with an incident (GAP-08 b) – no outage goes unnoticed across a restart.
 
 **GAP-09 · Switching and broadcast edge rules.** Spec 4.2 is silent on: program switch/take/preview in standby or ended; `start` while live, `end` when not live, a direct switch to the preview scene; `setPreview` during a fade; double approval of a pairing request (Spec 4.6, ApiSurface approve 404/410).
 Pin: switching is allowed in every broadcast state (the output shows the slate; tally stays `off`); `start` while live, `end` while ended and `reset` while in standby are idempotent no-ops, `end` while standby → 409 `conflict` (as implemented in `Production.cs`); a direct switch to the scene that is currently the preview swaps program and preview like a take; `setPreview` is not guarded by the fade guard; the second of two concurrent approvals → 404 `not_found` with exactly one device created.
@@ -2318,7 +2330,7 @@ Pin: `cut` with any duration is normalised to 0; `fade` with a duration outside 
 Pin: the Studio clamps exactly like the server (radius 200, min 16 for typed values; a larger UI minimum for dragging is allowed but must be documented); display name «Screen + Kamera-Spalte» (id `col`); in Auto-Grid only the first 9 available items are rendered, the rest are not rendered.
 
 **GAP-12 · Failure detection time.** Plan §6 "Heartbeats … erkennen einen Abbruch nach 2–5 s" vs Spec 6 (keep-alive 2 s, server timeout 6 s).
-Pin: `T-DETECT-SILENT` target 5 s (plan), hard limit 6,5 s (spec parameters + propagation). To meet the plan, lower the timeout to 5 s or relax the plan text.
+Resolved (spec 6/12): server `ClientTimeoutInterval` 5 s, keep-alive 2 s, clients `serverTimeoutInMilliseconds` 5000. Pin: `T-DETECT-SILENT` target 5 s, hard limit 6,5 s (timeout + propagation).
 
 **GAP-13 · Asset validation details.** Spec 4.7 does not define: allowed MP4 `ftyp` brands (HEIC/AVIF use `ftyp`), WebM vs Matroska (both EBML), image dimension limits, how names are sanitised, the fallback name, rename validation, and the HTTP status for a content request without credentials or with another production's key.
 Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; image width/height must be 1…16384; names: single path-free segment, 1–80 chars, no control/bidi characters, fallback `Medium`, rename uses the same rules; content: no credential → 401, wrong or foreign key → 403; response carries the verified type, `nosniff`, `Content-Disposition: inline`, and (recommended) `Content-Security-Policy: default-src 'none'; sandbox`.
@@ -2326,7 +2338,7 @@ Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; im
 **GAP-14 · Content-Security-Policy is not specified.** Spec 10 says "strict CSP (see security review)", but no security-review document exists (`docs/` has only `architecture/`).
 Pin: invariants **I-CSP** (see `E2E-AUTH-09`); the exact policy is to be written in the security review; Angular's inline styles may require `style-src 'unsafe-inline'` (allowed, flagged P2); Safari needs the explicit `wss://<host>` in `connect-src`.
 
-**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__fsStudio|__fsSender|__fsOutput`, `flowstudio.device`, `flowstudio.pairing`, `flowstudio.sender.settings`).
+**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__fsStudio|__fsSender`); spec 12 adds: tests prefer roles, labels and visible German text; the two global state views exist only with the opt-in flag `localStorage['flowstudio.testHooks'] = '1'`; there is no `window.__fsOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `flowstudio.sender.v1` (credentials, before pairing the redeem client id), `flowstudio.sender.settings`, sessionStorage `flowstudio.pairing`; Regie localStorage `flowstudio.studio`, `flowstudio.layout`, `flowstudio.transition`; the opt-in flag `flowstudio.testHooks`.
 
 **GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `FLOWSTUDIO_PUBLIC_BASE_URL`, `FLOWSTUDIO_SUBNET`, `FLOWSTUDIO_TRUSTED_PROXIES`, `FLOWSTUDIO_MAX_UPLOAD`, `FLOWSTUDIO_MAX_BODY`, `FLOWSTUDIO_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
 Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags.
@@ -2362,7 +2374,7 @@ Pin: the sequence 0, 300, 600, 1200, 2400, 4800, 5000 (+ jitter 0–250 from the
 Pin: the output client subscribes only to sources of scenes (`E2E-OUT-22`); a server-side per-track restriction is not required but should be considered because the output link is a bearer secret that can be extracted from the page.
 
 **GAP-27 · German UI strings the spec does not define.** Login title, labels, error and lockout message; logout action; confirmation text of «Sendung beenden»; reset-broadcast action; connection-lost banner in the Regie; generic request-failure toast; messages for expired/denied/limited pairing and expired invite; «Neue Szene», «Duplizieren», upload and asset-delete controls and errors; slate editor; message composer and offline toast; sender banners for removed device and camera restart; technical-check re-run button; session-expired notice; the shape of `flowstudio.transition`.
-Pin: tests locate these by role/regex or `data-testid` as written in each entry; implementers must choose the final texts (German CH, «ss», « ») and report them so the tests can assert them exactly.
+Pin: tests locate these by role/regex or `data-testid` as written in each entry; implementers must choose the final texts (German CH, «ss», « ») and report them so the tests can assert them exactly. Reported so far (assert exactly): state word «Kamera beendet» for a camera stopped on purpose (screens «Teilen beendet»); Regie element view button «Zur Szene» (accessible name «Auswahl aufheben, zurück zur Szene», tooltip «Auswahl aufheben (Esc)»), upload toast action «Zur Szene hinzufügen»; logout failure toast «Abmelden hat nicht geklappt. {Grund}»; Regie strip without an active production «Keine aktive Produktion gefunden.», when the server cannot be reached «Der Server ist nicht erreichbar. Die Regie verbindet neu …»; toasts «K1 gesperrt und getrennt» / «K1 entsperrt» (codes only); sender slot errors «Ein Handy kann keinen Bildschirm teilen. Dafür bitte einen Laptop koppeln.», «Pro Gerät sind höchstens 9 Bildschirme möglich.», «Dieses Gerät hat schon eine Kamera.», «Die Kamera eines Handys lässt sich nicht entfernen. Die Regie kann das ganze Gerät entfernen.»; database outage «Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.» (ProblemDetails `detail`, title «Vorübergehend nicht verfügbar»); binding errors «Ungültiger Wert.» per field.
 
 **GAP-28 · Reduced motion scope.** Spec 8.3 gives the renderer a `reducedMotion` option; the Regie must honour `prefers-reduced-motion`; whether the *output page* does is open.
 Pin: Regie monitors/thumbnails and the sender honour the OS setting; the output page does not (the programme must look the same for the audience whatever the proxy machine's accessibility setting is).
@@ -2377,7 +2389,7 @@ Pin: trimmed 1–140 chars; always 202; delivered only to a connected device, ne
 Pin: the API image provides `broadcast-status` (exit codes 0/3, other = unknown) and spec 5 is extended; the scripts refuse while live or unknown unless `--force`; backup folders contain `database.dump`, `media.tar.gz`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt`, `SHA256SUMS` (suffix `-2` on a name clash); `restore.sh <dir>` verifies the checksums, writes a `…_vor-restore` safety backup, restores the database into a new database before swapping, and asks for confirmation unless `--yes`.
 
 **GAP-32 · Database outage behaviour.** Spec 5 defines `/health/live` and `/health/ready` but not behaviour of writes and hubs while PostgreSQL is down.
-Pin: writes/reads needing the DB → 503 ProblemDetails; in-memory hubs stay up; readiness recovers by itself (Npgsql retry) without restarting the API.
+Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE`: connect timeout 3 s, command timeout 5 s; once an outage is known every request fails at once instead of waiting for its own timeout and queueing behind device reports; options `Database:ConnectTimeout`, `Database:CommandTimeout`, `Database:ProbeInterval`, `Database:StartupWait`; BUG-21); in-memory hubs stay up; readiness recovers by itself (probe connection every second) without restarting the API.
 
 **GAP-33 · `LiveSince` across restarts.** Pin: persisted with the production; the LIVE runtime continues after a restart.
 
@@ -2396,7 +2408,7 @@ Pin: writes/reads needing the DB → 503 ProblemDetails; in-memory hubs stay up;
 | # | Documents | Conflict | Pin |
 |---|---|---|---|
 | 1 | Plan §8 ("SignalR mit MessagePack") vs Spec 6 | Wire protocol | Spec wins: JSON protocol, camelCase, string enums (`INT-SYNC-03`) |
-| 2 | Plan §6 (2–5 s) vs Spec 6 (6 s) | Failure detection | GAP-12 |
+| 2 | Plan §6 (2–5 s) vs Spec 6 (6 s) | Failure detection | GAP-12 – resolved: 5 s |
 | 3 | Spec 4.8 vs ApiSurface (`getOutputSnapshot` 404) | Slug oracle | GAP-06 |
 | 4 | `ErrorCodes.LimitReached` doc vs Spec 4.6/4.3 | Which code for limits | GAP-05 |
 | 5 | Spec 4.3 / `ITEM_BOUNDS` vs prototype | Radius 200 vs 80; min size 16 vs 96×54; template name | GAP-11 |
@@ -2406,3 +2418,23 @@ Pin: writes/reads needing the DB → 503 ProblemDetails; in-memory hubs stay up;
 | 9 | Spec 4.5 vs `SlotState.Paused`/`Starting` (Contracts/Enums.cs) | Unmapped states | GAP-08 |
 | 10 | Spec 10 (TLS modes `dns \| internal \| public`, ports 80/443) vs `.env.example`/`setup.sh`/`docker-compose.yml` (`internal \| acme \| custom \| dns-<provider>`, 443/udp too) | TLS mode names, ports | GAP-16 |
 | 11 | Spec 5 (only `hash-password`) vs `update.sh`/`restore.sh` (`broadcast-status`) | API CLI commands | GAP-31 |
+
+### 7.2 Findings of the E2E run (`tests/e2e/known-bugs.json`)
+
+The registry lists confirmed product bugs and documentation differences; an `open` entry makes its test an expected failure, a `fixed` entry turns it into a regression guard.
+Resolved on 2026-10-22 (product engineer; each with unit or integration tests in `apps/**`):
+
+| Entry | Resolution | Pinned in |
+|---|---|---|
+| BUG-05 | The webhook accepts `application/json` next to `application/webhook+json`; other types 415 | INT-AUTH-25 |
+| BUG-08 | A body that cannot be bound is 400 `validation_failed` with `errors` naming the camelCase field path, no serializer text | INT-PAIR-08 |
+| BUG-10 | Intended deviation: log texts keep the device name («K1 Handy 1 gesperrt / entsperrt / entfernt»), more informative for multi-slot devices («S1 S2 Laptop Mia gesperrt») | INT-PAIR-12, 2.5 strings |
+| BUG-16 | `HEAD` on the asset content: headers of GET without body, range-aware | INT-MEDIA-06, E2E-AUTH-17 |
+| BUG-18 | `X-Content-Type-Options` exactly once through Caddy (Caddy drops the upstream copy, `header_down`) | INT-AUTH-21 |
+| BUG-19 | Telemetry to the Regie at most once per device and 2 s, latest value wins | INT-SRC-03, INT-SYNC-05 |
+| BUG-20 | A graceful API shutdown is no outage: no «verbindet neu», no incident | UNIT-SRC-03, INT-NET-05, E2E-NET-12 |
+| BUG-21 | PostgreSQL down: 503 within 5 s (timeouts, fail-fast circuit, probe), no 504 from Caddy | INT-NET-04, E2E-NET-11, `T-DB-OUTAGE` |
+| BUG-22 | postgres runs with `cap_drop: ALL` plus the five capabilities of its entrypoint | E2E-OPS-01, E2E-OPS-13 |
+| OBS-01 | Hub connections aborted on `ApplicationStopping`, `HostOptions.ShutdownTimeout` 5 s, maintenance loops stop at once | INT-NET-05, `T-SHUTDOWN` |
+| DOC-01 … DOC-07 | This plan now follows the implementation (microphone policy, redeem event order, token TTL, crash method, empty domain, paused semantics, healthcheck method) | see the entries cited above |
+

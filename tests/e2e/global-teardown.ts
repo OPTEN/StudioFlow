@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { StackState } from './global-setup';
-import { OUTPUT_DIR, STATE_FILE } from './support/env';
+import { OUTPUT_DIR, PROJECT, STATE_FILE } from './support/env';
 import { compose, dumpLogs } from './support/stack';
 
 function log(message: string): void {
@@ -21,9 +21,9 @@ export default async function globalTeardown(): Promise<void> {
     log(`could not collect logs: ${String(error)}`);
   }
   if (process.env['E2E_KEEP_STACK'] === '1' || process.env['E2E_REUSE_STACK'] === '1' || state?.keepStack) {
-    log('keeping the stack (E2E_KEEP_STACK=1 / E2E_REUSE_STACK=1)');
+    log(`keeping the stack ${PROJECT} (E2E_KEEP_STACK=1 / E2E_REUSE_STACK=1)`);
     return;
   }
-  log('removing containers, networks and volumes of the fs-e2e project');
+  log(`removing containers, networks and volumes of the ${PROJECT} project`);
   await compose(['down', '--volumes', '--remove-orphans', '--timeout', '30'], { profiles: ['chaos', 'tools'] });
 }

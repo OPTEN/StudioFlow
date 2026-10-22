@@ -1,11 +1,14 @@
-# Test-only override of docker-compose.yml for the compose project "fs-e2e" (see tests/e2e/global-setup.ts).
+# Test-only override of docker-compose.yml for the compose project of the stack under test: "fs-e2e" by default, "fs-e2e-N"
+# for numbered stacks (E2E_STACK=N) - see tests/e2e/global-setup.ts and the README, "Parallel stacks".
 # The production compose file is never edited by tests; everything the tests need on top is here:
 #   - 127.0.0.1-only published ports for the API (header-trust tests), LiveKit signalling/Twirp (the `lk` helper) and
 #     PostgreSQL (audit and DB assertions);
 #   - fixed addresses on the compose network, so `docker network connect --ip` restores the same address after a
 #     disconnect;
-#   - Caddy's host ports can be moved with E2E_HTTP_PORT / E2E_HTTPS_PORT (then also set FLOWSTUDIO_PUBLIC_BASE_URL).
-# Values come from tests/e2e/.env.e2e (generated, git-ignored).
+#   - Caddy's host ports can be moved with E2E_HTTP_PORT / E2E_HTTPS_PORT (the generated env file then also sets
+#     FLOWSTUDIO_PUBLIC_BASE_URL); the LiveKit media ports with FLOWSTUDIO_RTC_TCP_PORT / FLOWSTUDIO_RTC_UDP_PORT
+#     (docker-compose.yml: host and container port are the same number).
+# Values come from tests/e2e/.env.e2e (default stack) or tests/e2e/.env.e2e.<project> (generated, git-ignored).
 services:
   caddy:
     ports: !override

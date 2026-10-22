@@ -5,17 +5,20 @@ using System.Net.Sockets;
 namespace Opten.FlowStudio.Web.Tests.Support;
 
 /// <summary>
-/// A TCP forwarder in front of PostgreSQL that a test can switch off (every open connection is cut and new ones are
-/// closed at once) and on again – a database outage for one app without stopping the shared container.
+/// A TCP forwarder in front of PostgreSQL that a test can switch off and on again – a database outage for one app
+/// without stopping the shared container. <see cref="Down"/> refuses at once (a stopped server on a reachable host);
+/// <see cref="Blackhole"/> accepts connections and never answers (a hanging server, a silent network or a name that
+/// takes long to resolve), which is the case that made requests wait for 45 s (BUG-21).
 /// </summary>
 public sealed class TcpProxy : IAsyncDisposable
 {
     private readonly TcpListener listener = new(IPAddress.Loopback, 0);
     private readonly ConcurrentDictionary<TcpClient, byte> open = new();
+    private readonly ConcurrentDictionary<TcpClient, byte> held = new();
     private readonly CancellationTokenSource stopping = new();
     private readonly string targetHost;
     private readonly int targetPort;
-    private volatile bool up = true;
+    private volatile Mode mode = Mode.Forward;
 
     public TcpProxy(string targetHost, int targetPort)
     {
@@ -25,29 +28,58 @@ public sealed class TcpProxy : IAsyncDisposable
         _ = AcceptAsync();
     }
 
+    private enum Mode
+    {
+        Forward,
+        Refuse,
+        Blackhole,
+    }
+
     public int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
 
     /// <summary>Cuts every connection and refuses new ones.</summary>
     public void Down()
     {
-        up = false;
-        foreach (var client in open.Keys)
+        mode = Mode.Refuse;
+        CutAll();
+    }
+
+    /// <summary>Cuts every connection; new ones are accepted but never get an answer.</summary>
+    public void Blackhole()
+    {
+        mode = Mode.Blackhole;
+        CutAll();
+    }
+
+    /// <summary>Forwards again (connections held by the blackhole are closed).</summary>
+    public void Up()
+    {
+        mode = Mode.Forward;
+        foreach (var client in held.Keys)
         {
             client.Dispose();
         }
 
-        open.Clear();
+        held.Clear();
     }
-
-    /// <summary>Forwards again.</summary>
-    public void Up() => up = true;
 
     public async ValueTask DisposeAsync()
     {
         await stopping.CancelAsync();
         listener.Stop();
         Down();
+        Up();
         stopping.Dispose();
+    }
+
+    private void CutAll()
+    {
+        foreach (var client in open.Keys)
+        {
+            client.Dispose();
+        }
+
+        open.Clear();
     }
 
     private async Task AcceptAsync()
@@ -64,13 +96,18 @@ public sealed class TcpProxy : IAsyncDisposable
                 return;
             }
 
-            if (!up)
+            switch (mode)
             {
-                incoming.Dispose();
-                continue;
+                case Mode.Refuse:
+                    incoming.Dispose();
+                    break;
+                case Mode.Blackhole:
+                    held[incoming] = 0;
+                    break;
+                default:
+                    _ = ForwardAsync(incoming);
+                    break;
             }
-
-            _ = ForwardAsync(incoming);
         }
     }
 

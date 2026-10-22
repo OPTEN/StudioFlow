@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
   ProductionSync,
@@ -41,7 +42,9 @@ import {
 import { ApiError } from '../api/api-error';
 import { StudioApiService } from '../api/studio-api.service';
 import { AuthService } from '../auth/auth.service';
+import { BROWSER_STORAGE } from '../ui/preferences.service';
 import { STUDIO_HUB_FACTORY, type StudioHub } from './studio-hub';
+import { exposeTestHook, testHooksEnabled } from './test-hooks';
 
 /** A program switch that arrived as a live event (not from a snapshot): drives transitions, the flash and toasts. */
 export interface ProgramSwitchNotice {
@@ -59,6 +62,22 @@ export interface ProgramSwitchNotice {
 
 /** Listener for every state change with its cause (see `SyncCause` of `@flowstudio/realtime-client`). */
 export type StoreChangeListener = (state: ProductionState, cause: SyncCause) => void;
+
+/** What the last subscribe answer carried: missed events (`delta`) or a full `snapshot`; null before the first one. */
+export type LastSyncKind = 'delta' | 'snapshot' | null;
+
+/**
+ * `window.__fsStudio` (spec 12, docs/testing.md 1.7): read-only view for the E2E tests, only with the opt-in flag
+ * `localStorage['flowstudio.testHooks'] = '1'`.
+ */
+export interface StudioTestHook {
+  /** Revision of the local state, null before the first snapshot. */
+  readonly revision: number | null;
+  /** Kind of the last subscribe answer. */
+  readonly lastSync: LastSyncKind;
+  /** State of the hub connection. */
+  readonly hub: HubState;
+}
 
 const EMPTY_LIST: readonly never[] = [];
 const EMPTY_MAP: ReadonlyMap<string, never> = new Map<string, never>();
@@ -106,6 +125,8 @@ export class ProductionStoreService {
   private readonly api = inject(StudioApiService);
   private readonly auth = inject(AuthService);
   private readonly hubFactory = inject(STUDIO_HUB_FACTORY);
+  private readonly storage = inject(BROWSER_STORAGE);
+  private readonly document = inject(DOCUMENT);
   private readonly changeListeners = new Set<StoreChangeListener>();
 
   private hub: StudioHub | null = null;
@@ -126,6 +147,7 @@ export class ProductionStoreService {
   private readonly discoveryErrorSignal = signal<string | null>(null);
   private readonly programSwitchSignal = signal<ProgramSwitchNotice | null>(null);
   private readonly lastSyncAtSignal = signal<number | null>(null);
+  private readonly lastSyncKindSignal = signal<LastSyncKind>(null);
 
   /** Id of the production the Regie follows (the active one), or null before discovery. */
   readonly productionId = this.productionIdSignal.asReadonly();
@@ -141,6 +163,8 @@ export class ProductionStoreService {
   readonly programSwitch = this.programSwitchSignal.asReadonly();
   /** Local time of the last applied subscribe answer. */
   readonly lastSyncAt = this.lastSyncAtSignal.asReadonly();
+  /** Kind of the last subscribe answer (`delta` or `snapshot`). */
+  readonly lastSyncKind = this.lastSyncKindSignal.asReadonly();
 
   /** The hub is connected. */
   readonly online = computed(() => this.hubStateSignal() === 'connected');
@@ -230,8 +254,10 @@ export class ProductionStoreService {
 
   constructor() {
     const unregister = this.auth.onSignedOut(() => this.stop());
+    const removeTestHook = this.installTestHook();
     inject(DestroyRef).onDestroy(() => {
       unregister();
+      removeTestHook();
       this.stop();
     });
   }
@@ -273,6 +299,7 @@ export class ProductionStoreService {
     this.hubStateSignal.set('idle');
     this.discoveryErrorSignal.set(null);
     this.programSwitchSignal.set(null);
+    this.lastSyncKindSignal.set(null);
   }
 
   /** Forces a full snapshot («Neu laden»). Resolves when it was applied; never rejects. */
@@ -385,6 +412,28 @@ export class ProductionStoreService {
 
   // ---------------------------------------------------------------- Internals
 
+  /** Installs `window.__fsStudio` when the opt-in flag is set; returns the function that removes it. */
+  private installTestHook(): () => void {
+    if (!testHooksEnabled(this.storage)) {
+      return () => undefined;
+    }
+    const revision = () => this.stateSignal()?.revision ?? null;
+    const lastSync = () => this.lastSyncKindSignal();
+    const hub = () => this.hubStateSignal();
+    const view: StudioTestHook = {
+      get revision() {
+        return revision();
+      },
+      get lastSync() {
+        return lastSync();
+      },
+      get hub() {
+        return hub();
+      },
+    };
+    return exposeTestHook(this.document.defaultView, '__fsStudio', view);
+  }
+
   private async discover(run: number): Promise<void> {
     try {
       const active = await this.api.getActiveProduction();
@@ -472,11 +521,15 @@ export class ProductionStoreService {
     since: number | null,
   ): Promise<ProductionChangesDto> {
     try {
-      return await hub.invoke<ProductionChangesDto>(
+      const changes = await hub.invoke<ProductionChangesDto>(
         HUB.subscribe,
         this.productionIdSignal(),
         since,
       );
+      if (run === this.run) {
+        this.lastSyncKindSignal.set(changes.snapshot ? 'snapshot' : 'delta');
+      }
+      return changes;
     } catch (error) {
       if (run === this.run && hubErrorCode(error) === ERROR_CODES.notFound) {
         void this.rediscover(run);

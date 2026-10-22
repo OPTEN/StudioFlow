@@ -39,10 +39,10 @@ public sealed class PinnedBehaviourTests : IDisposable
         var pushed = harness.Publisher.Telemetry.Count;
 
         harness.Clock.Advance(TimeSpan.FromSeconds(6));
-        await harness.Devices.ExpireStaleReportsAsync(CancellationToken.None);
+        await harness.Devices.TickAsync(CancellationToken.None);
         Assert.Equal(SourceStatus.Ok, harness.Source(Camera(device)).Status);
         harness.Clock.Advance(TimeSpan.FromSeconds(1));
-        await harness.Devices.ExpireStaleReportsAsync(CancellationToken.None);
+        await harness.Devices.TickAsync(CancellationToken.None);
         var telemetry = await harness.Productions.GetTelemetryAsync(harness.Production.Id, CancellationToken.None);
 
         Assert.Equal(SourceStatus.Reconnecting, harness.Source(Camera(device)).Status);

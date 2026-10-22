@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Opten.FlowStudio.Core.Application;
+using Opten.FlowStudio.Core.Application.Runtime;
 using Opten.FlowStudio.Core.Application.Services;
 using Opten.FlowStudio.Infrastructure.LiveKit;
 using Opten.FlowStudio.Infrastructure.Media;
@@ -26,13 +27,14 @@ internal sealed class StartupInitializer(
     IOptions<SourceMonitorOptions> sources,
     IOptions<OutputMonitorOptions> output,
     IOptions<RealtimeOptions> realtime,
+    IOptions<DatabaseOptions> database,
     ILogger<StartupInitializer> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
         _ = (admin.Value, liveKit.Value, media.Value, studio.Value);
-        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value);
+        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         if (admin.Value.UsesPlainPassword)
@@ -46,9 +48,11 @@ internal sealed class StartupInitializer(
 
 /// <summary>
 /// Periodic maintenance in independent loops, so a slow step (LiveKit unreachable, database down) never delays the
-/// others: every second output staleness, expired knocks, silent devices and the restart watch; invites every 10 s;
-/// LiveKit reconcile at startup and every 15 s; last-live times every <c>Sources:LiveMarkInterval</c>; lockout cleanup
-/// every minute. A failing step is logged and retried on the next tick.
+/// others: every second output staleness, expired knocks, silent devices with held-back telemetry and the restart
+/// watch; invites every 10 s; LiveKit reconcile at startup and every 15 s; last-live times every
+/// <c>Sources:LiveMarkInterval</c>; lockout cleanup every minute. A failing step is logged and retried on the next tick.
+/// The loops end as soon as the host begins to stop (OBS-01): a tick during the shutdown would only see the hub
+/// connections closing and must not evaluate sources.
 /// </summary>
 internal sealed class MaintenanceWorker(
     OutputService outputs,
@@ -58,6 +62,7 @@ internal sealed class MaintenanceWorker(
     LiveKitSyncService liveKit,
     LoginThrottle throttle,
     SourceMonitorOptions sources,
+    HostShutdown shutdown,
     TimeProvider clock,
     ILogger<MaintenanceWorker> logger) : BackgroundService
 {
@@ -69,20 +74,35 @@ internal sealed class MaintenanceWorker(
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> outageWarnings = new(StringComparer.Ordinal);
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken) => Task.WhenAll(
-        LoopAsync(Second, stoppingToken, ("output status", outputs.TickAsync), ("pairing requests", pairing.ExpireRequestsAsync), ("device reports", devices.ExpireStaleReportsAsync), ("restart watch", restartWatch.CheckAfterStartAsync)),
-        LoopAsync(InviteInterval, stoppingToken, ("invites", pairing.MaintainInvitesAsync)),
-        ReconcileLoopAsync(stoppingToken),
-        LoopAsync(sources.LiveMarkInterval, stoppingToken, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
-        LoopAsync(PruneInterval, stoppingToken, ("lockout cleanup", _ =>
-        {
-            throttle.Prune();
-            return Task.CompletedTask;
-        })));
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, shutdown.Token);
+        var token = stopping.Token;
+        await Task.WhenAll(
+            LoopAsync(Second, token, ("output status", outputs.TickAsync), ("pairing requests", pairing.ExpireRequestsAsync), ("devices", devices.TickAsync), ("restart watch", restartWatch.CheckAfterStartAsync)),
+            LoopAsync(InviteInterval, token, ("invites", pairing.MaintainInvitesAsync)),
+            ReconcileLoopAsync(token),
+            LoopAsync(sources.LiveMarkInterval, token, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
+            LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)));
+    }
+
+    private Task PruneLockoutsAsync(CancellationToken cancellationToken)
+    {
+        throttle.Prune();
+        return Task.CompletedTask;
+    }
 
     private async Task ReconcileLoopAsync(CancellationToken stoppingToken)
     {
-        await RunAsync("LiveKit reconcile", liveKit.ReconcileAsync, stoppingToken);
+        try
+        {
+            await RunAsync("LiveKit reconcile", liveKit.ReconcileAsync, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         await LoopAsync(ReconcileInterval, stoppingToken, ("LiveKit reconcile", liveKit.ReconcileAsync));
     }
 

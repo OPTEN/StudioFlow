@@ -31,7 +31,7 @@ internal static class ApiSurface
         MapDevice(app.MapGroup("/api/device").WithTags("Device (sender)").RequireAuthorization(Policies.Device));
         MapOutputPublic(app.MapGroup("/api/output/{slug}").WithTags("Output (public)"));
         app.MapPost("/api/livekit/webhook", LiveKitEndpoints.ReceiveWebhookAsync).WithName("receiveLiveKitWebhook").WithTags("LiveKit")
-            .Accepts<object>("application/webhook+json").Produces(200)
+            .Accepts<object>("application/webhook+json", "application/json").Produces(200)
             .WithMetadata(new RequestBodyLimit(Infrastructure.LiveKit.LiveKitWebhookReceiver.MaxBodyBytes));
         return app;
     }
@@ -146,6 +146,10 @@ internal static class ApiSurface
         g.MapGet("/{assetId}/content", AssetEndpoints.GetContentAsync)
             .WithName("getAssetContent").Produces(200, contentType: "application/octet-stream").ProducesProblem(401).ProducesProblem(403).ProducesProblem(404)
             .AllowAnonymous();
+
+        // HEAD (BUG-16): the headers of GET (type, length, ETag, ranges) without the body; not part of the contract.
+        g.MapMethods("/{assetId}/content", [HttpMethods.Head], AssetEndpoints.GetContentAsync)
+            .ExcludeFromDescription().AllowAnonymous();
     }
 
     private static void MapOutputAdmin(RouteGroupBuilder g)
