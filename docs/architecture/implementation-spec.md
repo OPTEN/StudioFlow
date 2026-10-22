@@ -555,6 +555,29 @@ no-referrer`, `Permissions-Policy` (camera/display-capture only on `/join`), `fr
 (`FLOWSTUDIO_FRAME_ANCESTORS`). Hashed assets `immutable`, `index.html`/`ngsw*.json` `no-cache`. Upload body limit
 1 GB on the asset route only.
 
+Configuration contract (`.env` → compose → containers). The API reads ASP.NET Core configuration; compose passes
+these variables to the `api` service (double underscore = section separator):
+
+| Variable | Used by | Meaning / default |
+|---|---|---|
+| `FLOWSTUDIO_DOMAIN` | caddy, api | Public host name, e.g. `flowstudio.opten.ch` (tests: `localhost`) |
+| `FLOWSTUDIO__PUBLICBASEURL` | api | `https://${FLOWSTUDIO_DOMAIN}` – used in invite, QR and output URLs |
+| `FLOWSTUDIO_NODE_IP` | livekit | LAN IPv4 advertised for media (`NODE_IP`) |
+| `FLOWSTUDIO_TLS_MODE` | caddy | `dns` \| `internal` \| `public` |
+| `FLOWSTUDIO_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (dns/public) |
+| `FLOWSTUDIO_DNS_PROVIDER`, `FLOWSTUDIO_DNS_API_TOKEN` | caddy | DNS challenge provider (build arg selects the module; default `cloudflare`) and token |
+| `FLOWSTUDIO_FRAME_ANCESTORS` | caddy, api | Space-separated CSP sources allowed to embed `/o/*`, default `'self'`; the API exposes it read-only (`FLOWSTUDIO__FRAMEANCESTORS`) |
+| `ADMIN__USERNAME` | api | Admin user name |
+| `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` | api | Identity v3 hash (preferred) or plain password (local only) |
+| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api | Key pair; the API gets them as `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET`; `LIVEKIT__INTERNALURL=http://livekit:7880` |
+| `POSTGRES_PASSWORD` | postgres, api | DB password; the API gets `CONNECTIONSTRINGS__FLOWSTUDIO=Host=postgres;Database=flowstudio;Username=flowstudio;Password=…` |
+| `MEDIA__PATH`, `DATAPROTECTION__KEYSPATH` | api | `/data/media`, `/data/keys` (volumes) |
+| `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | 26214400, 1073741824 |
+| `FORWARDEDHEADERS__KNOWNNETWORKS__0` | api | Compose network subnet `172.30.0.0/24` (only Caddy can reach the API) |
+
+The compose network `flowstudio` has the fixed subnet `172.30.0.0/24`. The API listens on 8080 inside the network
+only; nothing but Caddy (80/443) and LiveKit media (7881/tcp, 7882/udp) is published.
+
 Scripts (bash for Linux, PowerShell equivalents where marked): `setup.sh`/`setup.ps1` (asks domain, node IP
 (auto-detected), TLS mode + DNS token, admin user and password; writes `.env` with random secrets; hashes the password
 via the API image), `backup.sh` (pg_dump + media volume to `backups/YYYY-MM-DD_HHMM/`), `restore.sh`, `update.sh`
