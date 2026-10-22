@@ -1,0 +1,31 @@
+# Short-TTL profile (docs/testing.md 1.2.6, GAP-01). Added on top of docker-compose.e2e.yml by the specs tagged
+# @short-ttl, which recreate the api container with these keys and recreate it again without them afterwards.
+# A key the API does not know yet is ignored by ASP.NET Core; the specs probe for support and skip with a reason.
+services:
+  api:
+    environment:
+      PAIRING__INVITETTL: "00:00:20"
+      PAIRING__REQUESTTTL: "00:00:20"
+      PAIRING__CREDENTIALSWINDOW: "00:00:15"
+      PAIRING__REDEEMIDEMPOTENCYWINDOW: "00:00:10"
+      PAIRING__LIMITS__PENDINGTOTAL: "3"
+      LIVEKIT__TOKENTTL: "00:01:00"
+  livekit:
+    environment:
+      # Same block as docker-compose.yml with room.empty_timeout 10 (the base file has 300).
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: false
+        room:
+          auto_create: true
+          empty_timeout: 10
+          departure_timeout: 20
+        logging:
+          level: info
+        webhook:
+          api_key: ${LIVEKIT_API_KEY:?fehlt in .env}
+          urls:
+            - http://api:8080/api/livekit/webhook

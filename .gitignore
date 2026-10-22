@@ -29,6 +29,13 @@ TestResults/
 /playwright-report
 __screenshots__/
 
+# E2E harness: generated test-only environment (throwaway credentials), generated assets, results
+/tests/e2e/.env.e2e
+/tests/e2e/.env.e2e.*
+/tests/e2e/.output/
+/tests/e2e/assets/generated/
+/tests/e2e/results/
+
 # Local data and backups
 /backups
 /data

@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "noPropertyAccessFromIndexSignature": false,
+    "experimentalDecorators": false,
+    "importHelpers": false,
+    "isolatedModules": true,
+    "allowJs": false
+  },
+  "files": [],
+  "include": ["./**/*.ts"],
+  "exclude": ["./.output", "./node_modules"],
+  "references": []
+}
