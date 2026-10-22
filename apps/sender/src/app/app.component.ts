@@ -9,6 +9,6 @@ import { HUB } from '@flowstudio/scene-model';
   template: '<router-outlet />',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
+export class AppComponent {
   protected readonly hubPath = HUB.studioPath;
 }

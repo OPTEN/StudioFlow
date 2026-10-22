@@ -66,7 +66,14 @@ Commands: `npm run gen:contracts` (build API → OpenAPI → `packages/scene-mod
   `inject()`, built-in control flow, typed reactive forms, SCSS with BEMIT (`c-`, `o-`, `u-`, `is-`/`has-`),
   component styles next to components, shared tokens in `src/styles/`.
 - `TreatWarningsAsErrors` is on for .NET. Keep it green.
-- No external CDNs, fonts or services at runtime. Fonts are self-hosted (copy from `prototype/fonts/`).
+- No external CDNs, fonts or services at runtime. Fonts are self-hosted: copy `prototype/fonts/*.woff2` (+ OFL
+  license texts) to `apps/<app>/src/fonts/` and reference them relatively from the global stylesheet
+  (`url('./fonts/sofia-sans-semi-condensed-latin.woff2')`, `font-weight: 1 1000`; JetBrains Mono `100 800`,
+  `font-display: swap`) so esbuild hashes them and the URLs work under `/join/`.
+- QR codes: `uqr` (`encode(url, { ecc: 'M', border: 0 })`), rendered as one SVG `<path>` (dark on white, 4-module
+  quiet zone) – never via `[innerHTML]` (Angular strips SVG).
+- `getBattery` and `navigator.connection` are missing from TS 6 `lib.dom`; declare them in an ambient `.d.ts` and
+  feature-detect.
 - Security: never log secrets (device secrets, output keys, tokens, passwords). Compare secrets in constant time.
 - Every user-visible string is German (CH). IDs, enums and API fields are English.
 
@@ -275,6 +282,20 @@ Hubs: `/hubs/studio` (Admin), `/hubs/device` (Device), `/hubs/output` (Output). 
 6 s; clients set `serverTimeoutInMilliseconds = 6000`, `keepAliveIntervalInMilliseconds = 2000` and reconnect
 forever (0, 300, 600, 1200 … max 5000 ms + jitter); `online` and `visibilitychange` trigger an immediate attempt.
 
+Verified details (research 2026-10-22):
+- JSON hub protocol, not MessagePack: MessagePack would send PascalCase keys and break the generated contracts. The
+  server must configure `AddJsonProtocol(o => { o.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+  o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)); })` – by default
+  the hub protocol writes enums as numbers. Use the same options object as for HTTP JSON.
+- The default `withAutomaticReconnect()` gives up after ~42 s; use a custom `IRetryPolicy` that never returns null,
+  except for authorization failures: the policy returns null when `retryContext.retryReason.message` matches
+  `/Status code '(401|403)'/` (blocked device, rotated output key, expired session). `start()` never retries by
+  itself, so the first connect is wrapped in a loop.
+- Do not use `skipNegotiation`: only the negotiate request surfaces 401/403 distinctly.
+- Browsers send the hub token as `?access_token=` on the WebSocket URL: the API reads it for `/hubs/*` only, and Caddy
+  redacts `access_token` (and `k`) from access logs.
+- Write to Angular signals inside hub callbacks (zoneless change detection).
+
 Studio: `Subscribe(productionId, sinceRevision?) → ProductionChangesDto`. The server keeps the last 500 events per
 production in a ring buffer: if `sinceRevision` is known and all later events are buffered, it returns them
 (`events`), else a `snapshot`. After subscribing, the connection receives `event` (one `ProductionEvent`),
@@ -296,12 +317,33 @@ Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `
 - Identities: device id for senders; `studio_{random}` for Regie sessions; `output_{slug}_{random}` for output pages.
 - Grants: sender – roomJoin, canPublish, canPublishSources [camera, screen_share], canSubscribe false,
   canPublishData false; studio and output – roomJoin, canSubscribe, canPublish false, canPublishData false,
-  hidden true. TTL 2 h (LiveKit refreshes tokens of running connections); clients fetch a fresh token for every
-  rejoin.
-- Webhooks: LiveKit posts to `http://api:8080/api/livekit/webhook`; the API verifies the JWT in `Authorization`
-  (HS256 with the API secret, `iss` = API key) and the `sha256` claim against the body; invalid → 401.
-- Room service (Twirp over HTTP, `http://livekit:7880/twirp/livekit.RoomService/…`): RemoveParticipant (block,
-  output key rotation), ListParticipants (startup seed).
+  hidden true. TTL 10 min: the server refreshes tokens of connected participants every 5 min (validity
+  max(10 min, remaining)), and clients fetch a fresh token from the API for every rejoin. Tokens: HS256 JWT,
+  `iss` = API key, `sub` = identity, `nbf`, `exp`, `name`, `metadata` (JSON), nested `video` grant object
+  (`roomJoin`, `room`, `canPublish`, `canSubscribe`, `canPublishData`, `canPublishSources` lowercase, `hidden`);
+  admin token for Twirp: `video = { roomAdmin: true, room }`. Created with `Microsoft.IdentityModel.JsonWebTokens`
+  (`JsonWebTokenHandler`, `SetDefaultTimesOnTokenCreation = false`).
+- `RemoveParticipant` is a kick, not a ban: blocked devices are refused by the token endpoint, and a
+  `participant_joined` webhook for a blocked device triggers `RemoveParticipant` again.
+- Webhooks: LiveKit posts to `http://api:8080/api/livekit/webhook` (`application/webhook+json`). `Authorization`
+  carries the raw JWT (no `Bearer`), HS256 with the API secret, `iss` = API key, claim `sha256` = standard base64 of
+  SHA-256 over the raw body bytes (compare in constant time); invalid → 401. Body: camelCase, enums as strings,
+  int64 as strings (`createdAt`), defaults omitted → deserialize with web defaults + `AllowReadingFromString`.
+  Webhooks are lossy (queue max age 30 s) and may interleave across rooms: key state by `participant.sid`, tolerate
+  `participant_left` for unknown participants, and reconcile with `ListParticipants` on startup and every 15 s.
+  An abruptly killed client is only reported after ~21 s (`CONNECTION_TIMEOUT`); the device hub timeout (6 s) is the
+  fast signal. Never log webhook bodies (they contain `turnPassword`).
+- Room service (Twirp, `POST http://livekit:7880/twirp/livekit.RoomService/{Method}`, `Authorization: Bearer
+  {admin JWT}`, JSON; requests camelCase or snake_case, **responses snake_case**, int64 as strings):
+  RemoveParticipant (block, output key rotation; 404 if absent is fine), ListParticipants (seed + reconcile).
+- Server: `livekit/livekit-server:v1.13.10`, config passed as `LIVEKIT_CONFIG` (YAML body; compose interpolates the
+  key) – `port 7880`, `rtc.tcp_port 7881`, `rtc.udp_port 7882`, `rtc.use_external_ip false`, node IP via `NODE_IP`
+  env, `room.empty_timeout 300`, `room.departure_timeout 20`, `webhook.api_key` (must equal the key) +
+  `webhook.urls`. `LIVEKIT_KEYS: "{key}: {secret}"` – the secret must start with a letter and be ≥ 32 chars (YAML
+  parses an all-digit secret as a number and drops it): `sk` + 40 hex chars. Healthcheck
+  `wget -q -O /dev/null http://127.0.0.1:7880/`. Caddy forwards the whole `/rtc` prefix (`/rtc`, `/rtc/v1`,
+  `…/validate`); never expose `/twirp`. `NODE_IP` = the host's LAN IPv4 (works for LAN and same-host clients);
+  `127.0.0.1` only for single-machine tests.
 - Publishing (sender): camera H.264, simulcast layers 1080p/540p/270p (or 720p/360p/180p), `contentHint = 'motion'`;
   screens VP9 with H.264 backup codec, `contentHint = 'detail'`, simulcast off, max 1440p/15–30 fps;
   dynacast on; no audio.
@@ -311,6 +353,41 @@ Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `
   items), preview scene items → HIGH (preload before a take), all other scenes' sources → LOW; jitter buffer ≈ 50 ms.
 - The LiveKit URL for clients is the same origin (`wss://{host}`); Caddy proxies `/rtc` to LiveKit 7880. Media goes
   directly to 7881/tcp and 7882/udp on `FLOWSTUDIO_NODE_IP`.
+
+Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) that the implementation must respect:
+- `DefaultReconnectPolicy` gives up after ~40 s. Use a policy that never returns null (cap 5 s). The SDK still gives
+  up on unrecoverable errors and then emits `Disconnected` with `reason === undefined`: treat that as «gave up» and
+  rejoin with a fresh token and a **new `Room`**.
+- `ReconnectContext` only carries `retryCount` and `elapsedMs`.
+- `CLIENT_INITIATED` is not proof of an intentional stop: the SDK disconnects on `pagehide`/`beforeunload` and on
+  Chromium's `freeze` event. Track «stop requested by us» yourself; reconnect on `visibilitychange`/`pageshow`/`resume`.
+- `signalReconnecting` can last ~14 s while the server is completely down: treat `signalReconnecting` and
+  `reconnecting` as degraded.
+- A full reconnect synthesizes `ParticipantDisconnected(undefined)`, `TrackUnpublished`, `TrackUnsubscribed` and
+  re-publishes local tracks with the same names and new SIDs; quality settings and attachments are lost. Re-apply
+  everything in `TrackSubscribed`.
+- `TrackUnsubscribed` makes the SDK call `detach()` on elements attached with `track.attach()` (srcObject → null,
+  black). Therefore `LiveKitSourceProvider` sets `video.srcObject = new MediaStream([track.mediaStreamTrack])` itself
+  (never `track.attach`) and keeps it on loss; the renderer additionally snapshots the current frame into a canvas
+  overlay at the moment a source becomes `lost` (one copy, not per frame) so the hold frame survives in every browser.
+- `setVideoQuality(LOW|MEDIUM|HIGH)` and `setVideoDimensions` work with `adaptiveStream: false`; dynacast pauses
+  unused layers with ≥ 5 s lag. `publication.videoQuality` is unreliable after `setVideoDimensions`.
+- Playout: `track.setPlayoutDelay(seconds)` (Chromium) and `receiver.jitterBufferTarget` (ms, 0–4000, Chrome 124+,
+  Firefox 115+); set both, guarded.
+- Publishing: camera `{ name: 'camera', source: Track.Source.Camera, simulcast: true, videoCodec: 'h264',
+  backupCodec: false, videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360] }` (720p source → 3 layers);
+  the SDK restarts an ended camera itself (`TrackEvent.Restarted`) and re-acquires it when a phone returns to the
+  foreground. Screens via `room.localParticipant.createScreenTracks({ audio: false, contentHint: 'detail',
+  selfBrowserSurface: 'exclude', surfaceSwitching: 'include' })` (the standalone `createLocalScreenTracks` ignores
+  `contentHint`), published with `{ name: 'screen-n', source: Track.Source.ScreenShare, videoCodec: 'vp9',
+  backupCodec: { codec: 'vp8' }, simulcast: false, degradationPreference: 'maintain-resolution',
+  screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 } }`. Several screens per participant work
+  (find them with `getTrackPublicationByName`). VP9 falls back to VP8 automatically where unsupported.
+- `livekit-client` is not tree-shakable (~150 KB gzip). The Regie loads it lazily (`await import('livekit-client')`)
+  so the login page stays small.
+- Chromium fake media on this machine needs `--disable-gpu` in addition to `--use-fake-device-for-media-stream
+  --use-fake-ui-for-media-stream` (otherwise the fake camera track ends after 0.4 s); headless screen capture works
+  with `--auto-select-desktop-capture-source="Entire screen"`.
 
 ## 8. Shared packages (public APIs)
 
