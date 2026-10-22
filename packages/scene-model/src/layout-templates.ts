@@ -48,7 +48,7 @@ export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [
   },
   {
     id: 'col',
-    name: 'Screen + Spalte',
+    name: 'Screen + Kamera-Spalte',
     description: 'Präsentation mit zwei Personen',
     slots: [
       [40, 158, 1360, 765],

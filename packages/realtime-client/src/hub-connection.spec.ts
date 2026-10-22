@@ -100,7 +100,7 @@ describe('createHubConnection', () => {
     expect(connection.state).toBe(HubConnectionState.Disconnected);
     expect(connection.serverTimeoutInMilliseconds).toBe(SERVER_TIMEOUT_MS);
     expect(connection.keepAliveIntervalInMilliseconds).toBe(KEEP_ALIVE_INTERVAL_MS);
-    expect(SERVER_TIMEOUT_MS).toBe(6000);
+    expect(SERVER_TIMEOUT_MS).toBe(5000);
     expect(KEEP_ALIVE_INTERVAL_MS).toBe(2000);
   });
 });

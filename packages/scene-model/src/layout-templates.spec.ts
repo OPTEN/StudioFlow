@@ -46,7 +46,7 @@ describe('LAYOUT_TEMPLATES', () => {
       'Vollbild',
       'Nebeneinander',
       'Bild-in-Bild',
-      'Screen + Spalte',
+      'Screen + Kamera-Spalte',
       'Eins plus zwei',
       '2 × 2',
       '3 × 3',

@@ -11,8 +11,8 @@ import {
 import { backoffDelay } from './backoff';
 import { consoleLogger, redactingLogger } from './logging';
 
-/** Client timeout: the server sends a keep-alive every 2 s, so 6 s of silence means the connection is gone (spec 6). */
-export const SERVER_TIMEOUT_MS = 6000;
+/** Client timeout: the server sends a keep-alive every 2 s, so 5 s of silence means the connection is gone (spec 6, 12). */
+export const SERVER_TIMEOUT_MS = 5000;
 
 /** Client keep-alive interval; the server's client timeout is 6 s. */
 export const KEEP_ALIVE_INTERVAL_MS = 2000;
