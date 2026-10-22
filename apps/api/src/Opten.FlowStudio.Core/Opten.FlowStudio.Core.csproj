@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain model, application services and contracts. No reference to web, database or LiveKit code. -->
+  <PropertyGroup>
+    <RootNamespace>Opten.FlowStudio.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Opten.FlowStudio.Core.Tests" />
+  </ItemGroup>
+</Project>

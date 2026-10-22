@@ -1,0 +1,43 @@
+# Secrets: the real .env is created by setup.sh / setup.ps1 and never committed.
+.env
+.env.*
+!.env.example
+
+# Node / Angular / Vite
+/node_modules
+/dist
+/.angular/cache
+/tmp
+/out-tsc
+/coverage
+npm-debug.log
+.sass-cache/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+TestResults/
+.vs/
+
+# Playwright and test output
+/tests/e2e/.output
+/tests/e2e/playwright-report
+/tests/e2e/test-results
+/test-results
+/playwright-report
+__screenshots__/
+
+# Local data and backups
+/backups
+/data
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.history/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- HTTP host: REST endpoints, SignalR hubs, authentication, LiveKit webhooks. -->
+  <PropertyGroup>
+    <RootNamespace>Opten.FlowStudio.Web</RootNamespace>
+    <AssemblyName>Opten.FlowStudio.Web</AssemblyName>
+    <UserSecretsId>flowstudio-web</UserSecretsId>
+    <!-- Build-time OpenAPI document; the TypeScript contracts in packages/scene-model are generated from it. -->
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name flowstudio</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Opten.FlowStudio.Core\Opten.FlowStudio.Core.csproj" />
+    <ProjectReference Include="..\Opten.FlowStudio.Infrastructure\Opten.FlowStudio.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Opten.FlowStudio.Web.Tests" />
+  </ItemGroup>
+</Project>

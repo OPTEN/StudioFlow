@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Opten.FlowStudio.Core/Opten.FlowStudio.Core.csproj" />
+    <Project Path="src/Opten.FlowStudio.Infrastructure/Opten.FlowStudio.Infrastructure.csproj" />
+    <Project Path="src/Opten.FlowStudio.Web/Opten.FlowStudio.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Opten.FlowStudio.Core.Tests/Opten.FlowStudio.Core.Tests.csproj" />
+    <Project Path="tests/Opten.FlowStudio.Web.Tests/Opten.FlowStudio.Web.Tests.csproj" />
+  </Folder>
+</Solution>
