@@ -5,7 +5,9 @@ namespace Opten.FlowStudio.Core.Domain;
 /// <summary>
 /// German texts of «Letzte Ereignisse» derived from audit entries (spec 4.9), e.g. «K2 verbindet neu»,
 /// «K2 wieder da, war 9 s weg», «Szene «Pause» ist live». Entries without a text (logins, phone QR renewals) are not
-/// shown in the Regie.
+/// shown in the Regie. Source outages follow spec 4.5: a slot stopped on purpose is «S1 Teilen beendet» for a screen and
+/// «K1 Kamera beendet» for a camera (the kind is stored with the entry); a camera paused by the operating system is an
+/// outage that is expected back, «K1 verbindet neu».
 /// </summary>
 public static class LogTexts
 {

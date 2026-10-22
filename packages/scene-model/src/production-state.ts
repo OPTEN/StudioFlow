@@ -221,7 +221,7 @@ function switchProgram(
 }
 
 /** Exhaustiveness check: fails to compile when an event type is not handled. */
-function unhandledEvent(event: never, state: ProductionState): ProductionState {
+function unhandledEvent(_event: never, state: ProductionState): ProductionState {
   // A newer server may send an event type this client does not know yet: advancing the revision keeps the sync going.
   return state;
 }

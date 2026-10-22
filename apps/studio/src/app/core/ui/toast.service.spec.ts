@@ -44,6 +44,27 @@ describe('ToastService', () => {
     expect(toasts.current()?.message).toBe('Neu');
   });
 
+  it('keeps one toast for a message that repeats while it is shown (no announcement storm)', () => {
+    const unavailable = new ApiError({ status: 503, code: 'service_unavailable' });
+    toasts.error(unavailable);
+    const first = toasts.current();
+    vi.advanceTimersByTime(TOAST_MS - 100);
+    toasts.error(unavailable);
+    toasts.error(unavailable);
+    expect(toasts.current()).toBe(first);
+    expect(first?.message).toBe(
+      'Der Server ist gerade nicht erreichbar. Bitte gleich nochmals versuchen.',
+    );
+    // The timer restarted with the repeat.
+    vi.advanceTimersByTime(TOAST_MS - 1);
+    expect(toasts.current()).toBe(first);
+    vi.advanceTimersByTime(1);
+    expect(toasts.current()).toBeNull();
+    // Once gone, the same message is a new toast (announced again).
+    toasts.error(unavailable);
+    expect(toasts.current()?.id).not.toBe(first?.id);
+  });
+
   it('turns errors into German messages', () => {
     toasts.error(new ApiError({ status: 409, code: 'scene_is_live' }));
     expect(toasts.current()?.message).toBe('Die Live-Szene lässt sich nicht löschen.');

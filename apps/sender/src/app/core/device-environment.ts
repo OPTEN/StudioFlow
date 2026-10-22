@@ -6,7 +6,7 @@ import {
   isLikelyPhone,
   networkType,
   platformLabel,
-} from '@flowstudio/media-client';
+} from '@flowstudio/media-client/device';
 
 /** Browser facts the sender depends on; a token so tests can describe any device. */
 export interface DeviceEnvironment {

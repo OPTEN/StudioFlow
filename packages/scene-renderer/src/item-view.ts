@@ -1,4 +1,4 @@
-import type { SceneItemDto } from '@flowstudio/scene-model';
+import { parseSourceRef, slotKind, type SceneItemDto } from '@flowstudio/scene-model';
 
 import { SMALL_PICTURE, type DesiredSizeCollector } from './desired-sizes';
 import { createElement, FILL, px, setStyle, setStyles, setVisible } from './dom';
@@ -504,11 +504,13 @@ export class ItemView {
     // The earliest known start of the outage: the provider's lost time or the moment the status was first seen.
     const statusSince = this.ctx.statusSince(source.sourceId, status, frame.now);
     const since = isLostState(state) ? Math.min(state.since, statusSince) : statusSince;
+    const ref = parseSourceRef(source.sourceId);
     return alertPresentation(
       status,
       this.ctx.codeOf(source.sourceId),
       frame.now - since,
       rect.w * frame.scale,
+      ref?.kind === 'device' ? slotKind(ref.slot) : null,
     );
   }
 }

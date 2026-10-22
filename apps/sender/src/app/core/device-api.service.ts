@@ -77,7 +77,10 @@ export class DeviceApiService {
     return this.call(this.http.get<DeviceSelfDto>('/api/device/me'));
   }
 
-  /** `GET /api/device/me` with the measured round trip time (used as the RTT probe and the tech check ping). */
+  /**
+   * `GET /api/device/me` with the measured round trip time: the tech check ping, and the first RTT before the station's
+   * `Report` round trips take over.
+   */
   async getSelfTimed(): Promise<{ readonly self: DeviceSelfDto; readonly rttMs: number }> {
     const started = nowMs();
     const self = await this.getSelf();

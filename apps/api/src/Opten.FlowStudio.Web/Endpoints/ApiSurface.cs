@@ -171,6 +171,11 @@ internal static class ApiSurface
             .RequireRateLimiting(RedeemLimit);
     }
 
+    /// <summary>
+    /// The sender's routes (device bearer). <c>POST /slots</c> hands out the lowest free screen slot of the device
+    /// (<c>screen-1</c> … <c>screen-9</c>, released numbers are reused) or the laptop camera; the sender relies on that to
+    /// open the share dialog for the slot before the response arrives. See <see cref="AllocateSlotRequest"/>.
+    /// </summary>
     private static void MapDevice(RouteGroupBuilder g)
     {
         g.MapGet("/me", DeviceEndpoints.GetSelfAsync).WithName("getDeviceSelf").Produces<DeviceSelfDto>().ProducesProblem(401).ProducesProblem(403);

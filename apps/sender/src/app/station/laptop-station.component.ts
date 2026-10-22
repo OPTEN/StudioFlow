@@ -88,7 +88,7 @@ export class LaptopStationComponent {
 
   protected cameraProblem(slot: StationSlot): CameraProblem | null {
     return slot.kind === 'camera' && slot.state === 'failed'
-      ? describeCameraProblem(slot.message ?? undefined, this.environment.userAgent())
+      ? describeCameraProblem(slot.failure, slot.message, this.environment.userAgent())
       : null;
   }
 

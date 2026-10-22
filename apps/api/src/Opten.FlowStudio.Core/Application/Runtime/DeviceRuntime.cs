@@ -20,6 +20,9 @@ public sealed class DeviceRuntime(string deviceId)
     private readonly Dictionary<string, SlotState> slotStates = new(StringComparer.Ordinal);
     private readonly Queue<string> replacedSessions = new();
 
+    /// <summary>Session of the latest Hello; unlike <see cref="SessionId"/> it survives a disconnect.</summary>
+    private string? lastSessionId;
+
     /// <summary>Device id.</summary>
     public string DeviceId { get; } = deviceId;
 
@@ -29,7 +32,7 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>Browser tab of the active session.</summary>
     public string? SessionId { get; private set; }
 
-    /// <summary>Media connection state from the last report.</summary>
+    /// <summary>Media connection state from the latest report of the current session.</summary>
     public RtcState? Rtc { get; private set; }
 
     /// <summary>Last telemetry.</summary>
@@ -61,7 +64,10 @@ public sealed class DeviceRuntime(string deviceId)
 
     /// <summary>
     /// Makes <paramref name="connectionId"/> the active session (newer Hello wins). A different tab is told that it was
-    /// replaced; a reconnect of the same tab just drops the stale connection.
+    /// replaced; a reconnect of the same tab just drops the stale connection. A new session (another tab, or the same
+    /// tab after a reload: every page load has its own session id) starts without reported slot states and without a
+    /// media state, because what the previous page reported does not describe this one; until it reports, only LiveKit
+    /// can make its slots live. A reconnect of the same session keeps them until its next report.
     /// </summary>
     public SessionTakeover Attach(string connectionId, string sessionId, DateTimeOffset now)
     {
@@ -70,8 +76,14 @@ public sealed class DeviceRuntime(string deviceId)
         var replaced = previous is not null && isNewConnection ? previous : null;
         var notify = replaced is not null && !string.Equals(SessionId, sessionId, StringComparison.Ordinal);
 
-        // The last report stays valid until the new session reports (about 2 s): a takeover by another tab must not
-        // look like an outage while the old media session still sends.
+        if (!string.Equals(lastSessionId, sessionId, StringComparison.Ordinal))
+        {
+            slotStates.Clear();
+            Rtc = null;
+        }
+
+        // The stale-report clock keeps running across a takeover (GAP-29): a new session that never reports is noticed
+        // as early as the old one would have been.
         if (isNewConnection)
         {
             LastTally = null;
@@ -85,6 +97,7 @@ public sealed class DeviceRuntime(string deviceId)
 
         ConnectionId = connectionId;
         SessionId = sessionId;
+        lastSessionId = sessionId;
         LastSeenAt = now;
         return new SessionTakeover(replaced, notify);
     }
@@ -131,8 +144,10 @@ public sealed class DeviceRuntime(string deviceId)
     }
 
     /// <summary>
-    /// Applies a report (GAP-29): only slots the device owns count (at most 10), out-of-range numbers become null.
-    /// Returns the telemetry built from it and whether the technical check changed.
+    /// Applies a report (GAP-29): only slots the device owns count (at most 10), out-of-range numbers become null. The
+    /// report replaces all slot states: a slot missing from it has no state (not live) from now on, so a stale
+    /// <c>live</c> can never outlast the capture it described. Returns the telemetry built from it and whether the
+    /// technical check changed.
     /// </summary>
     public (DeviceTelemetryDto Telemetry, bool TechCheckChanged) ApplyReport(DeviceReportDto report, IReadOnlyCollection<string> ownSlots, DateTimeOffset now)
     {
@@ -144,6 +159,7 @@ public sealed class DeviceRuntime(string deviceId)
             .Take(DeviceSlots.MaxScreens + 1)
             .Select(Sanitize)
             .ToList();
+        slotStates.Clear();
         foreach (var slot in slots)
         {
             slotStates[slot.Slot] = slot.State;
@@ -170,7 +186,11 @@ public sealed class DeviceRuntime(string deviceId)
         return (Telemetry, techCheckChanged);
     }
 
-    /// <summary>Reported state of a slot, if any. Ended and failed states survive a disconnect; live does not count without a connected media session.</summary>
+    /// <summary>
+    /// State of a slot in the latest report of the current session; null when the slot was missing from it or the
+    /// session has not reported yet. Ended and failed states survive a hub disconnect of the same session (not a new
+    /// session); live does not count without a connected media session.
+    /// </summary>
     public SlotState? SlotStateOf(string slot) => slotStates.TryGetValue(slot, out var state) ? state : null;
 
     /// <summary>Forgets the reported state of a removed slot.</summary>

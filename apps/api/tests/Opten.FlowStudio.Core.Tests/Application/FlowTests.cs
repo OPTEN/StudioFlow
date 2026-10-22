@@ -227,7 +227,8 @@ public sealed class DeviceFlowTests : IDisposable
     [Fact]
     public async Task Hello_FromOtherTab_ReplacesOldSessionWithoutPingPong()
     {
-        var (_, identity) = await LiveDeviceAsync("c1");
+        var (device, identity) = await LiveDeviceAsync("c1");
+        await harness.LiveKit.HandleAsync(new LiveKitEvent(LiveKitEventKind.TrackPublished, harness.Production.Id, "RM_1", "PA_1", device.Id, "camera"), CancellationToken.None);
 
         await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-2", "iPhone", "1.0"), CancellationToken.None);
         await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Failed), CancellationToken.None);
@@ -236,7 +237,95 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(["c1"], harness.Publisher.Replaced);
         Assert.Equal(["c1"], harness.Publisher.AbortedAfterDelivery);
         Assert.Equal("c2", harness.Runtime.FindDevice(identity.DeviceId)!.ConnectionId);
+        Assert.Equal(SourceStatus.Ok, harness.Source($"{device.Id}/camera").Status);
         Assert.Empty(harness.Events.OfType<IncidentUpsertedEvent>());
+    }
+
+    [Fact]
+    public async Task Hello_AfterReload_OldDeadConnectionIsReplacedWithoutEffectOnTheNewSession()
+    {
+        var (device, identity) = await LiveDeviceAsync("c1");
+        var camera = $"{device.Id}/camera";
+
+        // The page reloads: the server has not noticed yet that c1 is gone, and the new page has a new session id.
+        await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-2", "iPhone", "1.0"), CancellationToken.None);
+        var afterHello = harness.Source(camera).Status;
+        await harness.Devices.ReportAsync(identity, "c2", ServiceHarness.Report("camera", SlotState.Live), CancellationToken.None);
+        var events = harness.Events.Count;
+        var tallies = harness.Publisher.Tallies.Count;
+        await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Failed), CancellationToken.None);
+        await harness.Devices.DisconnectedAsync(identity, "c1", CancellationToken.None);
+
+        Assert.Equal(SourceStatus.Reconnecting, afterHello);
+        Assert.Equal(["c1"], harness.Publisher.Replaced);
+        Assert.Equal(["c1"], harness.Publisher.AbortedAfterDelivery);
+        Assert.Empty(harness.Publisher.Aborted);
+        Assert.Equal((events, tallies), (harness.Events.Count, harness.Publisher.Tallies.Count));
+        Assert.Equal(SourceStatus.Ok, harness.Source(camera).Status);
+        var live = harness.Runtime.FindDevice(device.Id)!;
+        Assert.Equal(("c2", "tab-2", DeviceConnection.Online), (live.ConnectionId, live.SessionId, live.PublishedConnection));
+    }
+
+    [Fact]
+    public async Task Report_SlotMissingFromReport_IsNoLongerOk()
+    {
+        var (device, identity) = await harness.PairLaptopAsync();
+        await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "Windows", "1.0"), CancellationToken.None);
+        await harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Camera), CancellationToken.None);
+        await harness.Devices.ReportAsync(identity, "c1", Report(("screen-1", SlotState.Live), ("camera", SlotState.Live)), CancellationToken.None);
+        Assert.Equal(SourceStatus.Ok, harness.Source($"{device.Id}/camera").Status);
+
+        await harness.Devices.ReportAsync(identity, "c1", Report(("screen-1", SlotState.Live)), CancellationToken.None);
+
+        Assert.Equal(SourceStatus.Reconnecting, harness.Source($"{device.Id}/camera").Status);
+        Assert.Equal(SourceStatus.Ok, harness.Source($"{device.Id}/screen-1").Status);
+        Assert.Equal($"{device.Id}/camera", harness.Events.OfType<IncidentUpsertedEvent>().Single().Incident.SourceId);
+        Assert.Contains("K1 verbindet neu", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+    }
+
+    [Fact]
+    public async Task Report_CameraPausedByTheSystem_IsReconnectingAndAStopIsKameraBeendet()
+    {
+        var (device, identity) = await LiveDeviceAsync("c1");
+        var camera = $"{device.Id}/camera";
+
+        harness.Clock.Advance(TimeSpan.FromSeconds(1));
+        await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Paused), CancellationToken.None);
+        var paused = harness.Source(camera).Status;
+        var connection = harness.Runtime.FindDevice(device.Id)!.PublishedConnection;
+        harness.Clock.Advance(TimeSpan.FromSeconds(5));
+        await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Live), CancellationToken.None);
+        var back = harness.Source(camera).Status;
+        harness.Clock.Advance(TimeSpan.FromSeconds(1));
+        await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Paused), CancellationToken.None);
+        await harness.Devices.ReportAsync(identity, "c1", ServiceHarness.Report("camera", SlotState.Ended), CancellationToken.None);
+
+        Assert.Equal((SourceStatus.Reconnecting, SourceStatus.Ok, SourceStatus.Ended), (paused, back, harness.Source(camera).Status));
+        Assert.Equal(DeviceConnection.Online, connection);
+        var incidents = harness.Events.OfType<IncidentUpsertedEvent>().Select(e => e.Incident).ToList();
+        Assert.Equal([IncidentKind.Reconnecting, IncidentKind.Reconnecting, IncidentKind.Reconnecting, IncidentKind.Ended], incidents.Select(i => i.Kind));
+        Assert.NotNull(incidents[1].EndedAt);
+        Assert.Equal(incidents[2].Id, incidents[3].Id);
+        var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).Where(t => !t.EndsWith(" gekoppelt", StringComparison.Ordinal));
+        Assert.Equal(["K1 verbindet neu", "K1 wieder da, war 5 s weg", "K1 verbindet neu", "K1 Kamera beendet"], logs);
+    }
+
+    [Fact]
+    public async Task Report_StoppedOnPurpose_LogsTeilenBeendetForScreensAndKameraBeendetForCameras()
+    {
+        var (device, identity) = await harness.PairLaptopAsync();
+        await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "Windows", "1.0"), CancellationToken.None);
+        await harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Camera), CancellationToken.None);
+        await harness.Devices.ReportAsync(identity, "c1", Report(("screen-1", SlotState.Live), ("camera", SlotState.Live)), CancellationToken.None);
+
+        await harness.Devices.ReportAsync(identity, "c1", Report(("screen-1", SlotState.Ended), ("camera", SlotState.Ended)), CancellationToken.None);
+
+        Assert.Equal(SourceStatus.Ended, harness.Source($"{device.Id}/screen-1").Status);
+        Assert.Equal(SourceStatus.Ended, harness.Source($"{device.Id}/camera").Status);
+        Assert.All(harness.Events.OfType<IncidentUpsertedEvent>(), e => Assert.Equal(IncidentKind.Ended, e.Incident.Kind));
+        var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).ToList();
+        Assert.Contains("S1 Teilen beendet", logs);
+        Assert.Contains("K1 Kamera beendet", logs);
     }
 
     [Fact]
@@ -405,6 +494,9 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal("In 10 s live", command.Text);
         Assert.True(EntityIds.IsValid(command.Id, EntityIds.Command));
     }
+
+    private static DeviceReportDto Report(params (string Slot, SlotState State)[] slots) =>
+        new(RtcState.Connected, [.. slots.Select(s => new SlotTelemetryDto(s.Slot, s.State, 1280, 720, 30, 2500, 0, "h264"))], 80, false, "wifi", 20, null);
 
     private async Task<(Device Device, Core.Application.Services.DeviceIdentity Identity)> LiveDeviceAsync(string connectionId)
     {

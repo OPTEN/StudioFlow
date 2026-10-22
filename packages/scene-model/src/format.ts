@@ -1,4 +1,4 @@
-import type { IncidentKind, SourceStatus } from './contracts';
+import type { IncidentKind, SourceKind, SourceStatus } from './contracts';
 
 /**
  * German (Switzerland) formatting for everything the Regie, the sender and the output page show: decimal comma,
@@ -120,14 +120,15 @@ export function formatBytes(bytes: number): string {
 
 /**
  * Short German word for a source status as used on lamps, rows and labels («K2 verbindet neu»).
- * `ok` has no word (empty string).
+ * `ok` has no word (empty string). `ended` depends on the kind of the source: a camera that was stopped on purpose
+ * is «Kamera beendet», a screen share (and a source of unknown kind) «Teilen beendet».
  */
-export function statusWord(status: SourceStatus): string {
+export function statusWord(status: SourceStatus, kind?: SourceKind | null): string {
   switch (status) {
     case 'reconnecting':
       return 'verbindet neu';
     case 'ended':
-      return 'Teilen beendet';
+      return kind === 'camera' ? 'Kamera beendet' : 'Teilen beendet';
     case 'blocked':
       return 'gesperrt';
     case 'connecting':
@@ -141,9 +142,12 @@ export function statusWord(status: SourceStatus): string {
   }
 }
 
-/** Word for an incident in the message strip; identical to the status word of the source state it reports. */
-export function incidentWord(kind: IncidentKind): string {
-  return statusWord(kind);
+/**
+ * Word for an incident in the message strip; identical to the status word of the source state it reports
+ * (`sourceKind` as in {@link statusWord}: «Kamera beendet» / «Teilen beendet»).
+ */
+export function incidentWord(kind: IncidentKind, sourceKind?: SourceKind | null): string {
+  return statusWord(kind, sourceKind);
 }
 
 /** Count with the matching noun: (1, 'Element', 'Elemente') → «1 Element», (3, …) → «3 Elemente». */

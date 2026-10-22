@@ -23,6 +23,9 @@ public sealed class HubConnectionRegistry(RealtimeOptions options, TimeProvider 
     /// <summary>Number of open connections (diagnostics, tests).</summary>
     public int Count => connections.Count;
 
+    /// <summary>True while <paramref name="connectionId"/> is registered, i.e. not closed or aborted yet (diagnostics, tests).</summary>
+    public bool IsOpen(string connectionId) => connections.ContainsKey(connectionId);
+
     /// <summary>Tracks a connection; <paramref name="sessionId"/> is the admin session of a Regie connection (logout closes it).</summary>
     public void Register(HubCallerContext context, string? sessionId = null)
     {

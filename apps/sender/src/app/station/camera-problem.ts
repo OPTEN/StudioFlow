@@ -1,4 +1,6 @@
-/** What went wrong with the camera, derived from the publisher's German slot message. */
+import type { SlotFailure } from '@flowstudio/media-client/device';
+
+/** What went wrong with the camera, derived from the publisher's failure code. */
 export type CameraProblemKind = 'denied' | 'busy' | 'missing' | 'lost' | 'publish' | 'other';
 
 /** A camera problem as shown on the station. */
@@ -19,28 +21,23 @@ export type PermissionPlatform =
   | 'desktop-chromium'
   | 'other';
 
-/**
- * Classifies a `failed` slot message of `@flowstudio/media-client` (`SLOT_MESSAGES`, not exported by the package,
- * so the classification matches the German texts).
- */
-export function classifyCameraMessage(message: string | undefined): CameraProblemKind {
-  const text = message ?? '';
-  if (text.includes('Kein Zugriff')) {
-    return 'denied';
+/** Classifies the failure code of a `failed` camera slot (`SlotFailure` of `@flowstudio/media-client`). */
+export function classifyCameraFailure(failure: SlotFailure | null | undefined): CameraProblemKind {
+  switch (failure) {
+    case 'permission-denied':
+      return 'denied';
+    case 'in-use':
+      return 'busy';
+    case 'not-found':
+    case 'not-supported':
+      return 'missing';
+    case 'track-lost':
+      return 'lost';
+    case 'publish-failed':
+      return 'publish';
+    default:
+      return 'other';
   }
-  if (text.includes('anderen App') || text.includes('nicht verfügbar')) {
-    return 'busy';
-  }
-  if (text.includes('Keine Kamera')) {
-    return 'missing';
-  }
-  if (text.includes('kein Bild mehr')) {
-    return 'lost';
-  }
-  if (text.includes('gesendet')) {
-    return 'publish';
-  }
-  return 'other';
 }
 
 /** Permission platform from the user agent. */
@@ -102,12 +99,18 @@ const PERMISSION_STEPS: Readonly<Record<PermissionPlatform, readonly string[]>> 
   ],
 };
 
-/** The problem with German title and steps for the station. */
+/**
+ * The problem with German title and steps for the station.
+ *
+ * @param failure failure code of the slot
+ * @param message German message of the slot, the title when the failure has no specific explanation
+ */
 export function describeCameraProblem(
-  message: string | undefined,
+  failure: SlotFailure | null | undefined,
+  message: string | null | undefined,
   userAgent: string,
 ): CameraProblem {
-  const kind = classifyCameraMessage(message);
+  const kind = classifyCameraFailure(failure);
   const platform = permissionPlatform(userAgent);
   const touch = platform === 'ios' || platform.startsWith('android');
   const retry = `Dann auf «Erneut versuchen» ${touch ? 'tippen' : 'klicken'}.`;

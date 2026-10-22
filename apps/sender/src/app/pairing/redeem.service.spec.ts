@@ -4,7 +4,12 @@ import { ApiError } from '../core/api-error';
 import { LOCAL_STORAGE, STORAGE_KEYS } from '../core/browser-storage';
 import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';
-import { REDEEM_ATTEMPTS, RedeemService } from './redeem.service';
+import {
+  REDEEM_ATTEMPTS,
+  REDEEM_MAX_RETRY_MS,
+  REDEEM_OUTAGE_ATTEMPTS,
+  RedeemService,
+} from './redeem.service';
 
 const CREDENTIALS = {
   deviceId: 'dev_phone0001',
@@ -90,6 +95,38 @@ describe('RedeemService', () => {
 
     expect(redeemInvite).toHaveBeenCalledTimes(REDEEM_ATTEMPTS);
     expect(outcome).toMatchObject({ kind: 'failed', error: { status: 0 } });
+  });
+
+  it('keeps retrying calmly for about a minute while the server is briefly unavailable (503)', async () => {
+    redeemInvite.mockRejectedValue(
+      new ApiError(503, 'service_unavailable', 'Der Server ist gerade nicht erreichbar.'),
+    );
+    const delays: number[] = [];
+
+    const outcome = await create().redeem('tok123', 'phone', 'x', (ms) => {
+      delays.push(ms);
+      return Promise.resolve();
+    });
+
+    expect(redeemInvite).toHaveBeenCalledTimes(REDEEM_OUTAGE_ATTEMPTS);
+    expect(Math.max(...delays)).toBe(REDEEM_MAX_RETRY_MS);
+    expect(delays.reduce((sum, ms) => sum + ms, 0)).toBeGreaterThanOrEqual(60_000);
+    expect(outcome).toMatchObject({ kind: 'failed', error: { status: 503 } });
+  });
+
+  it('succeeds when the database is back during the retries', async () => {
+    redeemInvite
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockResolvedValueOnce(CREDENTIALS);
+
+    await expect(create().redeem('tok123', 'phone', 'x', noDelay)).resolves.toEqual({
+      kind: 'paired',
+    });
+    expect(redeemInvite).toHaveBeenCalledTimes(6);
   });
 
   it('410 pairing_expired is final (no retry)', async () => {

@@ -1,3 +1,5 @@
+import { formatDuration, statusWord, type SourceKind } from '@flowstudio/scene-model';
+
 import { PALETTE } from './palette';
 import type { MonitorSourceStatus } from './types';
 
@@ -31,26 +33,21 @@ export function isAlertStatus(status: MonitorSourceStatus | undefined): status i
   );
 }
 
-function pad2(value: number): string {
-  return String(value).padStart(2, '0');
-}
-
-/** Elapsed time as mm:ss (minutes keep counting beyond 59; negative and malformed values count as 0). */
-export function formatElapsed(ms: number): string {
-  const seconds = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
-  return `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`;
-}
-
-function alertWord(status: AlertStatus, elapsedMs: number, narrow: boolean): string {
+function alertWord(
+  status: AlertStatus,
+  elapsedMs: number,
+  narrow: boolean,
+  kind: SourceKind | null | undefined,
+): string {
   switch (status) {
     case 'reconnecting':
-      return narrow ? formatElapsed(elapsedMs) : `Standbild ${formatElapsed(elapsedMs)}`;
+      // The same timer as everywhere in the Regie: mm:ss, from one hour on h:mm:ss.
+      return narrow ? formatDuration(elapsedMs) : `Standbild ${formatDuration(elapsedMs)}`;
     case 'ended':
-      return narrow ? 'beendet' : 'Teilen beendet';
+      return narrow ? 'beendet' : statusWord(status, kind);
     case 'blocked':
-      return 'gesperrt';
     case 'lost':
-      return 'kein Bild';
+      return statusWord(status);
   }
 }
 
@@ -60,17 +57,19 @@ function alertWord(status: AlertStatus, elapsedMs: number, narrow: boolean): str
  * @param code slot code («K2»); omitted from the label when unknown
  * @param elapsedMs time since the source went down (timer of «reconnecting»)
  * @param screenWidth item width in screen pixels (short variants below {@link NARROW_ALERT_SCREEN_PX})
+ * @param kind kind of the source: an ended camera reads «Kamera beendet», an ended screen «Teilen beendet»
  */
 export function alertPresentation(
   status: MonitorSourceStatus | undefined,
   code: string | undefined,
   elapsedMs: number,
   screenWidth: number,
+  kind?: SourceKind | null,
 ): AlertPresentation | null {
   if (!isAlertStatus(status)) {
     return null;
   }
-  const word = alertWord(status, elapsedMs, screenWidth < NARROW_ALERT_SCREEN_PX);
+  const word = alertWord(status, elapsedMs, screenWidth < NARROW_ALERT_SCREEN_PX, kind);
   return {
     color: status === 'reconnecting' ? PALETTE.amber : PALETTE.red,
     text: code ? `${code} · ${word}` : word,

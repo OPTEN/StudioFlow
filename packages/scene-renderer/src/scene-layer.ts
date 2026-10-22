@@ -1,9 +1,9 @@
-import type { SceneDto, SceneItemDto } from '@flowstudio/scene-model';
+import { isHexColor, type SceneDto, type SceneItemDto } from '@flowstudio/scene-model';
 
 import { autoGridRects } from './auto-grid';
 import type { DesiredSizeCollector } from './desired-sizes';
 import { createElement, FILL, setStyle, setVisible } from './dom';
-import { isHexColor, itemRect } from './geometry';
+import { itemRect } from './geometry';
 import { ItemView, type MediaFactory } from './item-view';
 import { AssetLoader } from './asset-loader';
 import { createImage, MediaView } from './media-view';

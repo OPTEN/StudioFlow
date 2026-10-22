@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { LIMITS, type DeviceDto, type IncidentDto, type SourceDto } from '@flowstudio/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
+import { IncidentAckService } from '../../core/state/incident-ack.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
@@ -20,6 +21,7 @@ export class StationCommandsService {
   private readonly store = inject(ProductionStoreService);
   private readonly commands = inject(DockCommandService);
   private readonly toasts = inject(ToastService);
+  private readonly acks = inject(IncidentAckService);
 
   /** True while the command `kind` for the device runs (e.g. `block`, `message`, `reshare:screen-1`). */
   busy(deviceId: string, kind: string): boolean {
@@ -139,17 +141,21 @@ export class StationCommandsService {
     return done;
   }
 
-  /** «Gesehen»: acknowledges the recovered incidents of the station (shared by every Regie session). */
+  /**
+   * «Gesehen»: acknowledges the recovered incidents of the station (shared by every Regie session). Incidents that are
+   * open again are left alone (see {@link IncidentAckService}).
+   */
   async acknowledge(device: DeviceDto, incidents: readonly IncidentDto[]): Promise<boolean> {
-    if (incidents.length === 0) {
+    const recovered = incidents.filter((incident) => this.acks.canAcknowledge(incident.id));
+    if (recovered.length === 0) {
       return false;
     }
-    return this.run(device, 'ack', async (productionId) => {
-      for (const incident of incidents) {
-        await this.api.acknowledgeIncident(productionId, incident.id);
-      }
-      return true;
-    });
+    return this.run(device, 'ack', (productionId) =>
+      this.acks.acknowledge(
+        productionId,
+        recovered.map((incident) => incident.id),
+      ),
+    );
   }
 
   /** «K2» or «S1 S2» for toasts; the name for devices without slots. */

@@ -18,7 +18,7 @@ function input(overrides: Partial<DeviceReportInput> = {}): DeviceReportInput {
     mediaState: 'connected',
     telemetry: [CAMERA],
     deviceSlots: ['camera'],
-    synthetic: new Map(),
+    endedSlots: new Set(),
     battery: { pct: 77.6, charging: false },
     network: 'wifi',
     rttMs: 12.4,
@@ -51,27 +51,23 @@ describe('buildDeviceReport', () => {
     expect(buildDeviceReport(input({ mediaState })).rtc).toBe(rtc);
   });
 
-  it('adds synthetic states for slots without telemetry and sorts camera before screens', () => {
+  it('reports slots stopped on purpose as ended and sorts camera before screens', () => {
     const report = buildDeviceReport(
       input({
         telemetry: [{ ...CAMERA, slot: 'screen-2', state: 'live' }],
         deviceSlots: ['camera', 'screen-1', 'screen-2', 'screen-10'],
-        synthetic: new Map([
-          ['screen-1', 'ended'],
-          ['camera', 'paused'],
-          ['screen-2', 'ended'],
-        ]),
+        endedSlots: new Set(['screen-1', 'camera', 'screen-2']),
       }),
     );
 
     expect(report.slots.map((slot) => [slot.slot, slot.state])).toEqual([
-      ['camera', 'paused'],
+      ['camera', 'ended'],
       ['screen-1', 'ended'],
       ['screen-2', 'live'],
     ]);
     expect(report.slots[0]).toEqual({
       slot: 'camera',
-      state: 'paused',
+      state: 'ended',
       width: null,
       height: null,
       fps: null,

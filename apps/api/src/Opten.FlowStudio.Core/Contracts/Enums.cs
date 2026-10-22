@@ -151,10 +151,13 @@ public enum SlotState
     /// <summary>Track is published and sending.</summary>
     Live,
 
-    /// <summary>The sender paused the slot on purpose.</summary>
+    /// <summary>
+    /// The capture is suspended but expected back: the operating system paused the camera (e.g. the phone app went to
+    /// the background). The Regie shows the source as <c>reconnecting</c>; a stop on purpose is <see cref="Ended"/>.
+    /// </summary>
     Paused,
 
-    /// <summary>The user ended the capture (screen share stop button).</summary>
+    /// <summary>The user stopped the capture on purpose («Teilen beenden», browser stop button, camera stopped).</summary>
     Ended,
 
     /// <summary>Capture failed (camera taken by another app, permission revoked).</summary>

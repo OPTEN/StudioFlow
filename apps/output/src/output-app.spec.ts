@@ -264,6 +264,32 @@ describe('output app: state → picture', () => {
   });
 });
 
+describe('output app: short database outage', () => {
+  it('keeps the picture while SubscribeOutput answers service_unavailable and catches up afterwards', async () => {
+    const ctx = await boot();
+    ctx.renderer.reset();
+    let refusals = 3;
+    ctx.hub.onInvoke = () =>
+      refusals-- > 0
+        ? Promise.reject(
+            new Error(
+              "An unexpected error occurred invoking 'SubscribeOutput' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+            ),
+          )
+        : Promise.resolve(deltaChanges(101, [programSwitched(101, 'scn_c', FADE)]));
+
+    ctx.hub.drop();
+    ctx.hub.connect();
+    await flush(10_000);
+
+    expect(ctx.hub.invoked.filter((call) => call.method === HUB.subscribeOutput)).toHaveLength(5);
+    expect(ctx.renderer.currentSlate()).not.toBe(NO_ACCESS_SLATE);
+    expect(ctx.renderer.summary()).not.toContain('show null');
+    expect(ctx.renderer.summary()).toContain('show scn_c');
+    expect(ctx.media.session.stops).toBe(0);
+  });
+});
+
 describe('output app: «Kein Zugang»', () => {
   it('shows «Kein Zugang» on a refused hub and retries at most every 30 s', async () => {
     const { hub, renderer, media } = await boot();

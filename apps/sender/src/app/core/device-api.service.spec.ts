@@ -132,6 +132,24 @@ describe('DeviceApiService', () => {
     expect(error.message).toContain('nicht erreichbar');
   });
 
+  it('maps 503 service_unavailable to a calm, retryable message', async () => {
+    const self = api.getSelf();
+    http
+      .expectOne('/api/device/me')
+      .flush(
+        { code: 'service_unavailable', detail: 'Die Datenbank ist nicht erreichbar.' },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
+    const error = (await self.catch((reason: unknown) => reason)) as ApiError;
+    expect(error.isUnavailable).toBe(true);
+    expect(error.isTransient).toBe(true);
+    expect(error.message).toBe(
+      'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
+    );
+    expect(new ApiError(502, null, 'x').isUnavailable).toBe(true);
+    expect(new ApiError(500, 'internal_error', 'x').isUnavailable).toBe(false);
+  });
+
   it('uses the first field error of a validation problem', async () => {
     const created = api.createPairingRequest({ name: '', kind: 'laptop', platform: 'x' });
     http

@@ -9,7 +9,7 @@ export interface ToastAction {
 
 /** The toast currently shown. */
 export interface Toast {
-  /** Increments with every toast, so equal messages still re-announce. */
+  /** Increments with every new toast, so an equal message re-announces once the previous one has gone. */
   readonly id: number;
   readonly message: string;
   readonly action: ToastAction | null;
@@ -23,6 +23,10 @@ export const TOAST_WITH_ACTION_MS = 6000;
 /**
  * One toast at a time, centred at the bottom (prototype `toast()`): a new toast replaces the current one. Rendered by
  * `ToastHostComponent` in a polite live region. Use {@link error} for failed API calls.
+ *
+ * The same message (without action) while it is still shown keeps that toast and only restarts its timer: requests
+ * that fail again and again during a short outage (a drag sends many) give one calm message, not a storm of identical
+ * announcements.
  */
 @Injectable({ providedIn: 'root' })
 export class ToastService {
@@ -40,7 +44,12 @@ export class ToastService {
   /** Shows a message, optionally with an action button; replaces the current toast. */
   show(message: string, action?: ToastAction): void {
     this.clearTimer();
-    const toast: Toast = { id: this.nextId++, message, action: action ?? null };
+    const current = this.currentToast();
+    const repeated =
+      !action && current !== null && current.action === null && current.message === message;
+    const toast: Toast = repeated
+      ? current
+      : { id: this.nextId++, message, action: action ?? null };
     this.currentToast.set(toast);
     this.timer = setTimeout(
       () => {

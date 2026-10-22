@@ -174,6 +174,16 @@ describe('statusWord / incidentWord', () => {
     expect(incidentWord('ended')).toBe('Teilen beendet');
     expect(incidentWord('lost')).toBe('kein Bild');
   });
+
+  it('names an ended camera «Kamera beendet» and an ended screen «Teilen beendet»', () => {
+    expect(statusWord('ended', 'camera')).toBe('Kamera beendet');
+    expect(statusWord('ended', 'screen')).toBe('Teilen beendet');
+    expect(statusWord('ended', null)).toBe('Teilen beendet');
+    expect(incidentWord('ended', 'camera')).toBe('Kamera beendet');
+    expect(incidentWord('ended', 'screen')).toBe('Teilen beendet');
+    expect(statusWord('reconnecting', 'camera')).toBe('verbindet neu');
+    expect(incidentWord('lost', 'camera')).toBe('kein Bild');
+  });
 });
 
 describe('pluralize / formatItemCount', () => {

@@ -12,6 +12,7 @@ import type { MediaRoom } from './livekit-port';
 import { silentLogger } from './logger';
 import type { MediaSessionState, SessionStateSource } from './media-session';
 import { Publisher, type LocalSlotState, type PublisherOptions } from './publisher';
+import type { SlotFailure } from './slot-failure';
 import {
   FakeLocalVideoTrack,
   FakeMediaStream,
@@ -733,6 +734,90 @@ describe('Publisher', () => {
           codec: null,
         },
       ]);
+    });
+  });
+
+  describe('failure codes', () => {
+    function failures(publisher: Publisher): [string, LocalSlotState, string?, SlotFailure?][] {
+      const seen: [string, LocalSlotState, string?, SlotFailure?][] = [];
+      publisher.onSlotState((...args) => seen.push(args));
+      return seen;
+    }
+
+    it.each([
+      ['NotAllowedError', 'permission-denied'],
+      ['SecurityError', 'permission-denied'],
+      ['NotFoundError', 'not-found'],
+      ['OverconstrainedError', 'not-found'],
+    ] as const)('reports a camera %s as %s next to the German message', async (name, failure) => {
+      const { publisher, createCameraTrack } = setup();
+      const seen = failures(publisher);
+      createCameraTrack.mockRejectedValue(domError(name));
+      await publisher.publishCamera('camera', PHONE);
+      expect(seen.at(-1)).toEqual(['camera', 'failed', expect.any(String), failure]);
+    });
+
+    it('reports a busy camera as in-use after the retries', async () => {
+      const { publisher, createCameraTrack } = setup();
+      const seen = failures(publisher);
+      createCameraTrack.mockRejectedValue(domError('NotReadableError'));
+      const done = publisher.publishCamera('camera', PHONE);
+      await vi.advanceTimersByTimeAsync(300 + 600 + 1200);
+      await done;
+      expect(seen.at(-1)?.[3]).toBe('in-use');
+    });
+
+    it('reports a camera that could not be re-acquired as track-lost', async () => {
+      const { session, publisher, cameras } = setup();
+      const seen = failures(publisher);
+      session.connect();
+      await publisher.publishCamera('camera', PHONE);
+      cameras[0].restartError = domError('NotReadableError');
+      cameras[0].endFromDevice();
+      await vi.advanceTimersByTimeAsync(3000 + 300 + 600 + 1200);
+      expect(seen.at(-1)).toEqual([
+        'camera',
+        'failed',
+        'Die Kamera liefert kein Bild mehr.',
+        'track-lost',
+      ]);
+    });
+
+    it.each([
+      ['DeviceUnsupportedError', 'not-supported'],
+      ['TypeError', 'not-supported'],
+      ['InvalidStateError', 'needs-gesture'],
+      ['NotReadableError', 'unknown'],
+    ] as const)('reports a screen capture %s as %s', async (name, failure) => {
+      const { publisher, createScreenTrack } = setup();
+      const seen = failures(publisher);
+      createScreenTrack.mockRejectedValueOnce(Object.assign(new Error(name), { name }));
+      await publisher.publishScreen('screen-1');
+      expect(seen.at(-1)).toEqual(['screen-1', 'failed', expect.any(String), failure]);
+    });
+
+    it('reports a cancelled picker as cancelled and an ended share without a failure', async () => {
+      const { session, publisher, screens, createScreenTrack } = setup();
+      const seen = failures(publisher);
+      createScreenTrack.mockRejectedValueOnce(domError('NotAllowedError'));
+      await publisher.publishScreen('screen-1');
+      expect(seen.at(-1)).toEqual(['screen-1', 'idle', 'Freigabe abgebrochen', 'cancelled']);
+
+      session.connect();
+      await publisher.publishScreen('screen-1');
+      screens[0].endFromDevice();
+      await flushMicrotasks();
+      expect(seen.at(-1)).toEqual(['screen-1', 'ended', 'Freigabe beendet']);
+    });
+
+    it('drops the failure code once the slot starts again', async () => {
+      const { session, publisher, createCameraTrack } = setup();
+      const seen = failures(publisher);
+      session.connect();
+      createCameraTrack.mockRejectedValueOnce(domError('NotAllowedError'));
+      await publisher.publishCamera('camera', PHONE);
+      await publisher.publishCamera('camera', PHONE);
+      expect(seen.at(-1)).toEqual(['camera', 'live']);
     });
   });
 

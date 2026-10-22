@@ -6,9 +6,6 @@ import type {
   TechCheckDto,
 } from '@flowstudio/scene-model';
 
-/** Slot states the sender reports for slots the publisher does not hold (stopped on purpose, lost by a reload). */
-export type SyntheticSlotState = Extract<SlotState, 'ended' | 'paused'>;
-
 /** Everything a periodic device report is built from. */
 export interface DeviceReportInput {
   readonly mediaState: MediaSessionState;
@@ -16,8 +13,12 @@ export interface DeviceReportInput {
   readonly telemetry: readonly SlotTelemetryDto[];
   /** Slot names of the device (`DeviceSelfDto.slots`); null while unknown (then every telemetry entry counts). */
   readonly deviceSlots: readonly string[] | null;
-  /** States for slots without telemetry: a stopped camera is `paused`, an ended or lost screen share `ended`. */
-  readonly synthetic: ReadonlyMap<string, SyntheticSlotState>;
+  /**
+   * Slots without telemetry that are reported `ended`: a camera stopped on purpose, a screen share ended with
+   * «Teilen beenden» or lost by a reload. (`paused` comes only from the publisher: the OS or browser suspended the
+   * camera, e.g. the phone app went to the background.)
+   */
+  readonly endedSlots: ReadonlySet<string>;
   readonly battery: { readonly pct: number; readonly charging: boolean } | null;
   readonly network: string | null;
   readonly rttMs: number | null;
@@ -47,8 +48,8 @@ function finiteOrNull(value: number | null): number | null {
 
 /**
  * Builds the `Report` payload sent every 2 s over the device hub (spec 6): media state, one entry per slot of the
- * device (telemetry from the publisher, or a synthetic `paused`/`ended` for slots stopped on purpose, so the Regie
- * sees «Teilen beendet» instead of an endless «verbindet neu»), battery, network type, RTT and the last tech check.
+ * device (telemetry from the publisher, or `ended` for slots stopped on purpose, so the Regie sees «Kamera beendet» /
+ * «Teilen beendet» instead of an endless «verbindet neu»), battery, network type, RTT and the last tech check.
  */
 export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
   const allowed = input.deviceSlots === null ? null : new Set(input.deviceSlots);
@@ -58,9 +59,9 @@ export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
       slots.set(entry.slot, entry);
     }
   }
-  for (const [slot, state] of input.synthetic) {
+  for (const slot of input.endedSlots) {
     if (!slots.has(slot) && (allowed === null || allowed.has(slot))) {
-      slots.set(slot, emptyTelemetry(slot, state));
+      slots.set(slot, emptyTelemetry(slot, 'ended'));
     }
   }
   const battery = input.battery;

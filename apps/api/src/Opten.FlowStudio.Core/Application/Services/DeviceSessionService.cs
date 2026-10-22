@@ -92,7 +92,9 @@ public sealed class DeviceSessionService(
     /// Starts a hub session. A newer Hello wins: another tab's connection gets <c>sessionReplaced</c> and is aborted; a
     /// stale connection of the same tab is just aborted. A Hello of a tab that was replaced before is answered with
     /// <c>sessionReplaced</c> and a <c>conflict</c> error and the current session stays (GAP-21, no ping-pong): a tab
-    /// that wants to take over again starts a new session id.
+    /// that wants to take over again starts a new session id. After a reload the replaced connection is usually dead
+    /// already; the <c>sessionReplaced</c> to it is dropped or never read, and its late disconnect or report changes
+    /// nothing. A new session starts without the slot states of the previous one (spec 4.5).
     /// </summary>
     public async Task<DeviceSessionDto> HelloAsync(DeviceIdentity identity, string connectionId, DeviceHelloDto hello, CancellationToken cancellationToken)
     {
@@ -177,8 +179,10 @@ public sealed class DeviceSessionService(
     }
 
     /// <summary>
-    /// Applies a periodic report: updates source statuses and relays telemetry to the Regie. Reports of a replaced hub
-    /// connection are ignored; REST reports (<paramref name="connectionId"/> null) always count.
+    /// Applies a periodic report: replaces the reported slot states, updates source statuses and relays telemetry to
+    /// the Regie. Reports of a replaced hub connection are ignored; REST reports (<paramref name="connectionId"/> null)
+    /// always count. The sender measures its RTT with this call, so it stays cheap: one device read, a database write
+    /// only when a source status changes (audit entry, last-live time), delivery to the Regie after the call.
     /// </summary>
     public Task ReportAsync(DeviceIdentity identity, string? connectionId, DeviceReportDto report, CancellationToken cancellationToken)
     {

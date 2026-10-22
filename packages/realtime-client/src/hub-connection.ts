@@ -14,7 +14,7 @@ import { consoleLogger, redactingLogger } from './logging';
 /** Client timeout: the server sends a keep-alive every 2 s, so 5 s of silence means the connection is gone (spec 6, 12). */
 export const SERVER_TIMEOUT_MS = 5000;
 
-/** Client keep-alive interval; the server's client timeout is 6 s. */
+/** Client keep-alive interval; the server's client timeout is 5 s (spec 12, GAP-12). */
 export const KEEP_ALIVE_INTERVAL_MS = 2000;
 
 /** Options for a hub connection. */
@@ -71,7 +71,7 @@ export const hubRetryPolicy: IRetryPolicy = {
 /**
  * Builds (does not start) a SignalR connection configured as spec 6 requires: JSON hub protocol (camelCase, string
  * enums), transport negotiated by SignalR (WebSockets first, falling back to SSE or long polling; never
- * `skipNegotiation`), 6 s server timeout, 2 s keep-alive and the endless {@link hubRetryPolicy}.
+ * `skipNegotiation`), 5 s server timeout, 2 s keep-alive and the endless {@link hubRetryPolicy}.
  * Log lines are redacted because SignalR logs WebSocket URLs including `access_token`.
  */
 export function createHubConnection(options: HubConnectionOptions): HubConnection {

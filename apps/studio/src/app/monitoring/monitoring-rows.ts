@@ -18,7 +18,7 @@ import { networkLabel, totalBitrateKbps, worstSource } from '../docks/stations/s
  * slots, and sorting by any column. No Angular, no DOM.
  */
 
-/** Telemetry older than this counts as stale (device reports every 2 s; server timeout 6 s). */
+/** Telemetry older than this counts as stale (device reports every 2 s; a device silent for 6 s is disconnected, GAP-29). */
 export const STALE_AFTER_MS = 6000;
 
 /** Sortable columns. */
@@ -140,7 +140,8 @@ export function monitoringRows(
     const telemetry = device.telemetry;
     const slots = telemetry?.slots ?? [];
     const blocked = device.state === 'blocked';
-    const status: SourceStatus = blocked ? 'blocked' : (worstSource(sources)?.status ?? 'offline');
+    const worst = worstSource(sources);
+    const status: SourceStatus = blocked ? 'blocked' : (worst?.status ?? 'offline');
     const telemetryAt = parseTime(telemetry?.at);
     const seenAt = telemetryAt ?? parseTime(device.lastSeenAt);
     const online = device.connection !== 'offline' && !blocked;
@@ -173,7 +174,7 @@ export function monitoringRows(
       platform: device.platform,
       order,
       status,
-      stateWord: status === 'ok' ? 'sendet' : statusWord(status),
+      stateWord: status === 'ok' ? 'sendet' : statusWord(status, worst?.kind),
       // Healthy rows stay calm: the green lamp says enough.
       stateTone: status === 'ok' ? 'muted' : tone,
       lamp: statusLamp(status),

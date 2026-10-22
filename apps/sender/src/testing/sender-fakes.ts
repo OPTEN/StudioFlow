@@ -2,7 +2,7 @@
  * Test doubles for the sender's unit tests (happy-dom has no WebRTC and no SignalR server). They implement the narrow
  * port types of `station-ports.ts` and are injected through the DI tokens there – never used by the app itself.
  */
-import type { LocalSlotState, MediaSessionState } from '@flowstudio/media-client';
+import type { LocalSlotState, MediaSessionState, SlotFailure } from '@flowstudio/media-client';
 import type { HubHandler, HubState } from '@flowstudio/realtime-client';
 import type {
   DeviceSelfDto,
@@ -149,9 +149,9 @@ export class FakeHub implements DeviceHub {
     }
   }
 
-  /** Reports sent so far. */
+  /** Reports sent so far (`Report` is invoked, so its round trip gives the RTT). */
   reports(): unknown[] {
-    return this.sent.filter((entry) => entry.method === 'Report').map((entry) => entry.args[0]);
+    return this.invoked.filter((entry) => entry.method === 'Report').map((entry) => entry.args[0]);
   }
 }
 
@@ -203,7 +203,7 @@ export class FakePublisher implements SenderPublisher {
   telemetry: SlotTelemetryDto[] = [];
   disposed = false;
   private readonly listeners = new Set<
-    (slot: string, state: LocalSlotState, message?: string) => void
+    (slot: string, state: LocalSlotState, message?: string, failure?: SlotFailure) => void
   >();
 
   publishCamera(slot: string, settings: { facingMode: string; resolution: number }): Promise<void> {
@@ -241,7 +241,12 @@ export class FakePublisher implements SenderPublisher {
   }
 
   onSlotState(
-    listener: (slot: string, state: LocalSlotState, message?: string) => void,
+    listener: (
+      slot: string,
+      state: LocalSlotState,
+      message?: string,
+      failure?: SlotFailure,
+    ) => void,
   ): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -264,10 +269,10 @@ export class FakePublisher implements SenderPublisher {
   }
 
   /** Drives a slot state as the real publisher would. */
-  emitSlot(slot: string, state: LocalSlotState, message?: string): void {
+  emitSlot(slot: string, state: LocalSlotState, message?: string, failure?: SlotFailure): void {
     this.states.set(slot, state);
     for (const listener of [...this.listeners]) {
-      listener(slot, state, message);
+      listener(slot, state, message, failure);
     }
   }
 }

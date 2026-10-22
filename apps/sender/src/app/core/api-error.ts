@@ -35,6 +35,19 @@ export class ApiError extends Error {
     return this.status === 0 || this.status === 408 || this.status >= 500;
   }
 
+  /**
+   * The server is up but cannot serve right now (503 `service_unavailable`, e.g. a short database outage, or a
+   * gateway error while the API restarts): retry calmly, never show an error screen for it.
+   */
+  get isUnavailable(): boolean {
+    return (
+      this.code === ERROR_CODES.serviceUnavailable ||
+      this.status === 502 ||
+      this.status === 503 ||
+      this.status === 504
+    );
+  }
+
   /** The device credentials are unknown or wrong (removed by the Regie). */
   get isUnauthorized(): boolean {
     return this.status === 401;
@@ -60,6 +73,7 @@ export const API_MESSAGES = {
   invalid: 'Die Eingabe ist ungültig.',
   tooLarge: 'Die Daten sind zu gross.',
   server: 'Der Server hat einen Fehler gemeldet. Bitte gleich noch einmal versuchen.',
+  unavailable: 'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
 } as const;
 
 /** «in 40 Sekunden» / «in 3 Minuten» for a Retry-After value. */
@@ -137,6 +151,8 @@ function messageFor(
       return detail ?? API_MESSAGES.limit;
     case ERROR_CODES.validationFailed:
       return Object.values(fieldErrors).flat()[0] ?? detail ?? API_MESSAGES.invalid;
+    case ERROR_CODES.serviceUnavailable:
+      return API_MESSAGES.unavailable;
     default:
       break;
   }
@@ -163,6 +179,9 @@ function messageFor(
   }
   if (status === 400 || status === 422) {
     return Object.values(fieldErrors).flat()[0] ?? detail ?? API_MESSAGES.invalid;
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return API_MESSAGES.unavailable;
   }
   return API_MESSAGES.server;
 }

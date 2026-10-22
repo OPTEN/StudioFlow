@@ -36,6 +36,11 @@ const BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
 const ID_RANDOM_LENGTH = 16;
 const NO_CROP: CropDto = { top: 0, right: 0, bottom: 0, left: 0 };
 
+/** True for `#rrggbb`, the only colour format the API accepts (borders, scene backgrounds). */
+export function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && HEX_COLOR_PATTERN.test(value);
+}
+
 /** Rounds and clamps an integer field; NaN (e.g. from an empty number input) becomes `fallback`. */
 function clampInteger(value: number, min: number, max: number, fallback: number): number {
   const known = typeof value === 'number' && !Number.isNaN(value) ? Math.round(value) : fallback;
@@ -203,7 +208,7 @@ export function validateItem(
     if (!isIntegerIn(item.border.width, 1, ITEM_BOUNDS.maxBorderWidth)) {
       messages.push(integerRangeMessage('Rahmenbreite', 1, ITEM_BOUNDS.maxBorderWidth));
     }
-    if (!HEX_COLOR_PATTERN.test(item.border.color)) {
+    if (!isHexColor(item.border.color)) {
       messages.push('Die Rahmenfarbe muss eine Hex-Farbe wie #e3b341 sein.');
     }
   }

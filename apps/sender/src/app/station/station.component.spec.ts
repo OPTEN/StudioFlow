@@ -219,6 +219,7 @@ describe('StationComponent', () => {
       'camera',
       'failed',
       'Kein Zugriff auf die Kamera. Bitte den Zugriff im Browser erlauben.',
+      'permission-denied',
     );
     fixture.detectChanges();
 

@@ -2,11 +2,13 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import {
   ProductionSync,
   backoffDelay,
+  hubErrorCode,
   type HubState,
   type SyncCause,
   type SyncStatus,
 } from '@flowstudio/realtime-client';
 import {
+  ERROR_CODES,
   HUB,
   applyChanges,
   healthSummary,
@@ -64,6 +66,8 @@ const NO_HEALTH: HealthSummary = { active: 0, bad: false, text: 'Stationen …' 
 
 /** Wait before asking for the active production again after a failure, at least this long. */
 const MIN_DISCOVERY_RETRY_MS = 1000;
+/** Discovery message when no production is active. */
+const NO_ACTIVE_PRODUCTION = 'Keine aktive Produktion gefunden.';
 
 function incidentSeverity(incident: IncidentDto): number {
   return incident.kind === 'reconnecting' ? 1 : 2;
@@ -89,8 +93,11 @@ export function sortIncidents(incidents: readonly IncidentDto[]): IncidentDto[] 
  * components read e.g. `store.programScene()` and update automatically (zoneless: every hub callback writes signals).
  *
  * Lifecycle: {@link start} (idempotent) is called by the pages that need live data; signing out stops it. On
- * `resync` the store follows the active production. While the hub is not connected the last state stays visible
- * (`status()` is `offline`) and {@link canCommand} is false, so commands that need the server are disabled.
+ * `resync` the store follows the active production, and when `Subscribe` answers `not_found` (the production was
+ * deleted or deactivated while this Regie was away) it asks for the active production again instead of retrying the
+ * old id forever. A failing subscribe (e.g. `service_unavailable` during a short database outage) is retried with the
+ * shared backoff and never toasted. While the hub is not connected the last state stays visible (`status()` is
+ * `offline`) and {@link canCommand} is false, so commands that need the server are disabled.
  *
  * The lookup methods (`sceneById`, `sourceById`, …) read the state signal and can be used inside `computed`.
  */
@@ -106,6 +113,7 @@ export class ProductionStoreService {
   private disposers: (() => void)[] = [];
   private discoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private discoveryAttempt = 0;
+  private rediscovering = false;
   private running = false;
   /** Incremented on every start/stop; async continuations of older runs are ignored. */
   private run = 0;
@@ -396,7 +404,7 @@ export class ProductionStoreService {
       }
       this.discoveryErrorSignal.set(
         apiError.status === 404
-          ? 'Keine aktive Produktion gefunden.'
+          ? NO_ACTIVE_PRODUCTION
           : 'Der Server ist nicht erreichbar. Die Regie verbindet neu …',
       );
       this.statusSignal.set('connecting');
@@ -434,8 +442,7 @@ export class ProductionStoreService {
     );
     const sync = new ProductionSync<ProductionChangesDto>({
       hub,
-      subscribe: (since) =>
-        hub.invoke<ProductionChangesDto>(HUB.subscribe, this.productionIdSignal(), since),
+      subscribe: (since) => this.subscribe(run, hub, since),
       apply: applyChanges,
     });
     this.sync = sync;
@@ -458,10 +465,60 @@ export class ProductionStoreService {
     hub.start();
   }
 
+  /** `Subscribe(productionId, since)`; a `not_found` answer starts {@link rediscover} (the sync retries meanwhile). */
+  private async subscribe(
+    run: number,
+    hub: StudioHub,
+    since: number | null,
+  ): Promise<ProductionChangesDto> {
+    try {
+      return await hub.invoke<ProductionChangesDto>(
+        HUB.subscribe,
+        this.productionIdSignal(),
+        since,
+      );
+    } catch (error) {
+      if (run === this.run && hubErrorCode(error) === ERROR_CODES.notFound) {
+        void this.rediscover(run);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * The followed production does not exist (any more): asks for the active one and, when it is another one, follows it
+   * with a fresh snapshot (the local revision belongs to the old production). Without an active production the strip
+   * says so; the next `not_found` of the retrying sync asks again.
+   */
+  private async rediscover(run: number): Promise<void> {
+    if (this.rediscovering) {
+      return;
+    }
+    this.rediscovering = true;
+    try {
+      const active = await this.api.getActiveProduction();
+      if (run !== this.run) {
+        return;
+      }
+      this.discoveryErrorSignal.set(null);
+      if (active.id !== this.productionIdSignal()) {
+        this.productionIdSignal.set(active.id);
+        void this.resync();
+      }
+    } catch (error) {
+      if (run === this.run && ApiError.from(error).status === 404) {
+        this.discoveryErrorSignal.set(NO_ACTIVE_PRODUCTION);
+      }
+    } finally {
+      this.rediscovering = false;
+    }
+  }
+
   private applyChange(state: ProductionState, cause: SyncCause): void {
     const previousProgram = this.stateSignal()?.production.programSceneId ?? null;
     this.stateSignal.set(state);
     if (cause.kind === 'snapshot') {
+      this.discoveryErrorSignal.set(null);
       this.lastSyncAtSignal.set(this.sync?.lastSyncAt ?? Date.now());
       if (state.production.id !== this.productionIdSignal()) {
         this.productionIdSignal.set(state.production.id);

@@ -3,9 +3,10 @@
  * plus the sender's device helpers (technical check, wake lock, device info).
  *
  * Importing this entry point loads livekit-client (~150 KB gzip, not tree-shakable): the Regie imports it lazily.
+ * The device helpers alone are available without livekit-client from `@flowstudio/media-client/device`.
  */
 export { systemClock, type Clock, type TimerHandle } from './clock';
-export { battery, canShareScreen, isLikelyPhone, networkType, platformLabel } from './device-info';
+export * from './device';
 export {
   disconnectOutcome,
   isAuthorizationError,
@@ -49,5 +50,4 @@ export {
   type LiveKitSourceProviderOptions,
   type SourceStats,
 } from './source-provider';
-export { TECH_CHECK, runTechCheck, type TechCheckOptions } from './tech-check';
-export { ScreenWakeLock, type WakeLockEnvironment } from './wake-lock';
+export { SLOT_MESSAGES } from './slot-failure';

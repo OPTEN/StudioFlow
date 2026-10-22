@@ -95,4 +95,12 @@ public sealed record DeviceSelfDto(
 public sealed record DeviceSlotDto(string Slot, string Code, SourceKind Kind);
 
 /// <summary>Allocates a new slot on the device (another screen, or the optional laptop camera).</summary>
+/// <remarks>
+/// Contract of <c>POST /api/device/slots</c> (spec 4.4): <see cref="SourceKind.Screen"/> returns the lowest free screen
+/// slot of the device – <c>screen-1</c> … <c>screen-9</c>, a released number is handed out again – so the sender can
+/// open the share dialog for that slot in the click, before the response arrives; parallel requests are serialized and
+/// get distinct slots. <see cref="SourceKind.Camera"/> returns <c>camera</c> (laptops, once). The slot code is the
+/// lowest free S or K number in the production. No slot of the kind left → 409 <c>limit_reached</c>; a kind the device
+/// cannot have (a screen on a phone, media) → 400 <c>validation_failed</c>.
+/// </remarks>
 public sealed record AllocateSlotRequest(SourceKind Kind);

@@ -92,7 +92,7 @@ export function sourceStateView(source: SourceDto | null | undefined): SourceSta
     return null;
   }
   return {
-    word: statusWord(source.status),
+    word: statusWord(source.status, source.kind),
     tone: statusTone(source.status),
     timer: statusHasTimer(source.status),
   };

@@ -5,7 +5,9 @@ const fromRoot = (path: string): string => fileURLToPath(new URL(`../../${path}`
 
 /**
  * Output page: framework-free, served by Caddy under /o/ (one index.html for every /o/{slug}).
- * Shared packages are consumed as TypeScript source, like in the Angular apps.
+ * Shared packages are consumed as TypeScript source, like in the Angular apps (aliases mirror the tsconfig.json
+ * `paths`; a key also matches its subpaths and the first match wins, so the `/device` entry comes first).
+ * No source maps are published: nothing in production needs them, and they would expose the source under /o/.
  */
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
@@ -15,6 +17,7 @@ export default defineConfig({
     alias: {
       '@flowstudio/scene-model': fromRoot('packages/scene-model/src/index.ts'),
       '@flowstudio/scene-renderer': fromRoot('packages/scene-renderer/src/index.ts'),
+      '@flowstudio/media-client/device': fromRoot('packages/media-client/src/device.ts'),
       '@flowstudio/media-client': fromRoot('packages/media-client/src/index.ts'),
       '@flowstudio/realtime-client': fromRoot('packages/realtime-client/src/index.ts'),
     },
@@ -23,7 +26,7 @@ export default defineConfig({
     outDir: fromRoot('dist/output'),
     emptyOutDir: true,
     target: 'es2022',
-    sourcemap: true,
+    sourcemap: false,
     assetsInlineLimit: 0,
     // The lazy livekit-media chunk is ~550 KB minified (~145 KB gzip): livekit-client is not tree-shakable.
     chunkSizeWarningLimit: 650,

@@ -1,14 +1,13 @@
+import { isHexColor } from '@flowstudio/scene-model';
 import {
   clampNumber,
   cropBox,
   desiredPixelSize,
   heldBlurPx,
-  isHexColor,
   itemLook,
   itemRect,
   maxDesiredSize,
   mediaBox,
-  normalizeRotation,
   sanitizeCrop,
 } from './geometry';
 import { sceneItem } from './testing/fixtures';
@@ -56,7 +55,7 @@ describe('mediaBox', () => {
   });
 });
 
-describe('normalizeRotation', () => {
+describe('rotation of the item look', () => {
   it.each([
     [0, 0],
     [90, 90],
@@ -68,7 +67,7 @@ describe('normalizeRotation', () => {
     [Number.NaN, 0],
     ['90', 0],
   ])('maps %s to %s', (input, expected) => {
-    expect(normalizeRotation(input)).toBe(expected);
+    expect(itemLook(sceneItem('a', 'x', { rotation: input as never })).rotation).toBe(expected);
   });
 });
 

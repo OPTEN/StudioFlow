@@ -312,8 +312,66 @@ public sealed class DeviceRuntimeTests
     }
 
     [Fact]
+    public void ApplyReport_SlotMissingFromNextReport_HasNoState()
+    {
+        device.Attach("c1", "tab-1", Build.T0);
+        device.ApplyReport(Report(("camera", SlotState.Live), ("screen-1", SlotState.Live)), OwnSlots, Build.T0);
+
+        device.ApplyReport(Report(("screen-1", SlotState.Ended)), OwnSlots, Build.T0.AddSeconds(2));
+
+        Assert.Null(device.SlotStateOf("camera"));
+        Assert.Equal(SlotState.Ended, device.SlotStateOf("screen-1"));
+    }
+
+    [Fact]
+    public void Attach_NewSession_StartsWithoutReportedStates()
+    {
+        device.Attach("c1", "tab-1", Build.T0);
+        device.ApplyReport(Report(("camera", SlotState.Live), ("screen-1", SlotState.Ended)), OwnSlots, Build.T0);
+
+        device.Attach("c2", "tab-2", Build.T0.AddSeconds(1));
+
+        Assert.Null(device.SlotStateOf("camera"));
+        Assert.Null(device.SlotStateOf("screen-1"));
+        Assert.Null(device.Rtc);
+    }
+
+    [Fact]
+    public void Attach_ReloadAfterDisconnect_StartsWithoutReportedStates()
+    {
+        device.Attach("c1", "page-1", Build.T0);
+        device.ApplyReport(Report(("screen-1", SlotState.Ended)), OwnSlots, Build.T0);
+        device.Detach("c1", Build.T0.AddSeconds(1));
+
+        device.Attach("c2", "page-2", Build.T0.AddSeconds(2));
+
+        Assert.Null(device.SlotStateOf("screen-1"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Attach_SameSessionReconnect_KeepsReportedStates(bool disconnectedBefore)
+    {
+        device.Attach("c1", "tab-1", Build.T0);
+        device.ApplyReport(Report(("camera", SlotState.Failed), ("screen-1", SlotState.Ended)), OwnSlots, Build.T0);
+        if (disconnectedBefore)
+        {
+            device.Detach("c1", Build.T0.AddSeconds(1));
+        }
+
+        device.Attach("c2", "tab-1", Build.T0.AddSeconds(2));
+
+        Assert.Equal(SlotState.Failed, device.SlotStateOf("camera"));
+        Assert.Equal(SlotState.Ended, device.SlotStateOf("screen-1"));
+    }
+
+    [Fact]
     public void ApplyReport_NullSlots_AreTolerated() =>
         Assert.Empty(device.ApplyReport(new DeviceReportDto((RtcState)99, null!, null, null, null, null, null), OwnSlots, Build.T0).Telemetry.Slots);
+
+    private static DeviceReportDto Report(params (string Slot, SlotState State)[] slots) =>
+        new(RtcState.Connected, [.. slots.Select(s => new SlotTelemetryDto(s.Slot, s.State, 1280, 720, 30, 2500, 0, "h264"))], null, null, null, null, null);
 }
 
 public sealed class OutputViewTests

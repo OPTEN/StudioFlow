@@ -377,8 +377,9 @@ export class StudioApiService {
 
   /**
    * `POST …/assets` (multipart field `file`) with upload progress. Uses XMLHttpRequest because the default Fetch
-   * backend of HttpClient cannot report upload progress; sets the CSRF header itself. Rejects with an
-   * {@link ApiError}: 413 too large, 415 type not allowed, `aborted` when `signal` fires.
+   * backend of HttpClient cannot report upload progress; sets the CSRF header itself. The interceptors do not run, so
+   * the caller handles a 401 (`AssetUploadService` sends the operator to the login page). Rejects with an
+   * {@link ApiError}: 401 signed out, 413 too large, 415 type not allowed, `aborted` when `signal` fires.
    */
   uploadAsset(
     productionId: string,

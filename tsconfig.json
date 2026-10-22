@@ -21,6 +21,7 @@
       "@flowstudio/scene-model": ["./packages/scene-model/src/index.ts"],
       "@flowstudio/scene-renderer": ["./packages/scene-renderer/src/index.ts"],
       "@flowstudio/media-client": ["./packages/media-client/src/index.ts"],
+      "@flowstudio/media-client/device": ["./packages/media-client/src/device.ts"],
       "@flowstudio/realtime-client": ["./packages/realtime-client/src/index.ts"]
     }
   },

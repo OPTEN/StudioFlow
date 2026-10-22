@@ -1,14 +1,17 @@
 /**
  * Page lifecycle signals relevant for reconnecting media:
- * - «wake» moments where an immediate retry is worthwhile: `online`, the document becoming visible, `pageshow`
- *   (bfcache restore) and `resume` (Chromium un-freeze);
- * - «suspended» phases where no connect attempt should start: between `pagehide`/`freeze` and the matching
- *   `pageshow`/`resume`. livekit-client itself disconnects on `pagehide` and `freeze` (CLIENT_INITIATED), so a retry
- *   during that phase would only open a socket that the browser is about to freeze.
+ * - «wake» moments where an immediate retry is worthwhile: the wake signals shared with the hubs (`pageWakeSignals`
+ *   of `@flowstudio/realtime-client`: `online`, the document becoming visible, `pageshow` and `resume`);
+ * - «suspended» phases where no connect attempt should start: between `pagehide`/`freeze` and the next wake signal.
+ *   livekit-client itself disconnects on `pagehide` and `freeze` (CLIENT_INITIATED), so a retry during that phase
+ *   would only open a socket that the browser is about to freeze.
  *
  * Visibility alone never suspends: a laptop sharing its screen usually has the sender tab in the background, and it
  * must keep reconnecting there.
  */
+import { browserWakeTargets, pageWakeSignals, type WakeTargets } from '@flowstudio/realtime-client';
+
+/** Wake signals plus the suspended phase of the page (see the module comment). */
 export interface PageLifecycle {
   /** True while the page is frozen or in the back/forward cache. */
   readonly suspended: boolean;
@@ -19,10 +22,7 @@ export interface PageLifecycle {
 }
 
 /** Event targets the lifecycle watcher listens to (injectable for tests). */
-export interface PageLifecycleTargets {
-  readonly window: EventTarget;
-  readonly document: EventTarget & { readonly visibilityState: DocumentVisibilityState };
-}
+export type PageLifecycleTargets = WakeTargets;
 
 const NOOP_LIFECYCLE: PageLifecycle = {
   suspended: false,
@@ -30,45 +30,30 @@ const NOOP_LIFECYCLE: PageLifecycle = {
   dispose: () => undefined,
 };
 
-function defaultTargets(): PageLifecycleTargets | null {
-  return typeof window === 'undefined' || typeof document === 'undefined'
-    ? null
-    : { window, document };
-}
-
 /** Starts watching the page lifecycle. Outside a browser it returns an inert watcher. */
 export function watchPageLifecycle(
-  targets: PageLifecycleTargets | null = defaultTargets(),
+  targets: PageLifecycleTargets | null = browserWakeTargets(),
 ): PageLifecycle {
   if (targets === null) {
     return NOOP_LIFECYCLE;
   }
   const wakeListeners = new Set<() => void>();
   let suspended = false;
-  const wake = (): void => {
+  const suspend = (): void => {
+    suspended = true;
+  };
+  const stopWakeSignals = pageWakeSignals(targets)(() => {
     suspended = false;
     for (const listener of [...wakeListeners]) {
       listener();
     }
-  };
-  const suspend = (): void => {
-    suspended = true;
-  };
-  const onVisibility = (): void => {
-    if (targets.document.visibilityState === 'visible') {
-      wake();
-    }
-  };
-  const bindings: readonly (readonly [EventTarget, string, () => void])[] = [
-    [targets.window, 'online', wake],
-    [targets.window, 'pageshow', wake],
-    [targets.window, 'pagehide', suspend],
-    [targets.document, 'resume', wake],
-    [targets.document, 'freeze', suspend],
-    [targets.document, 'visibilitychange', onVisibility],
+  });
+  const suspensions: readonly (readonly [EventTarget, string])[] = [
+    [targets.window, 'pagehide'],
+    [targets.document, 'freeze'],
   ];
-  for (const [target, type, handler] of bindings) {
-    target.addEventListener(type, handler);
+  for (const [target, type] of suspensions) {
+    target.addEventListener(type, suspend);
   }
   return {
     get suspended() {
@@ -82,8 +67,9 @@ export function watchPageLifecycle(
     },
     dispose: () => {
       wakeListeners.clear();
-      for (const [target, type, handler] of bindings) {
-        target.removeEventListener(type, handler);
+      stopWakeSignals();
+      for (const [target, type] of suspensions) {
+        target.removeEventListener(type, suspend);
       }
     },
   };

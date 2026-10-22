@@ -6,16 +6,22 @@ namespace Opten.FlowStudio.Core.Domain;
 /// <param name="Blocked">The device is blocked.</param>
 /// <param name="Connected">The device hub connection is up (the fast signal; LiveKit only notices after ~21 s).</param>
 /// <param name="Published">LiveKit reports a published track with the slot name for the device identity.</param>
-/// <param name="Reported">Slot state from the last device report, if any.</param>
-/// <param name="Rtc">Media connection state from the last device report, if any.</param>
+/// <param name="Reported">
+/// Slot state in the latest report of the device's current session; null («no state») when the slot was missing from
+/// that report or the session has not reported yet – a new session starts without states, so nothing a previous page
+/// or tab reported can make the slot look live.
+/// </param>
+/// <param name="Rtc">Media connection state in the latest report of the current session, if any.</param>
 public sealed record SlotSignals(bool Blocked, bool Connected, bool Published, SlotState? Reported, RtcState? Rtc)
 {
     /// <summary>
-    /// True when the track is published or the device itself reports the slot live over a connected media session – and
-    /// the device does not report its media session as reconnecting or disconnected. A frozen or cut-off LiveKit
-    /// connection sends no webhook for about 21 s, so the device report is the fast signal (GAP-08, spec 12).
+    /// True when the slot is sending: the track is published (LiveKit) or the device reports the slot live over a
+    /// connected media session. Never while the device reports the slot <c>paused</c> (the operating system suspended
+    /// the capture) or its media session as reconnecting or disconnected: a frozen or cut-off LiveKit connection sends
+    /// no webhook for about 21 s, so the device report is the fast signal (GAP-08, spec 12).
     /// </summary>
-    public bool IsLive => Rtc is not (RtcState.Reconnecting or RtcState.Disconnected)
+    public bool IsLive => Reported != SlotState.Paused
+        && Rtc is not (RtcState.Reconnecting or RtcState.Disconnected)
         && (Published || (Reported == SlotState.Live && Rtc == RtcState.Connected));
 }
 
@@ -25,7 +31,11 @@ public static class SourceStatusRules
     /// <summary>
     /// Evaluates the status. <paramref name="wasLive"/> is true when the slot was <c>ok</c> before and has not been
     /// blocked or removed since; it distinguishes an outage (<c>reconnecting</c>, no escalation) from a slot that never
-    /// went live (<c>connecting</c> / <c>offline</c>). A paused slot counts as ended by the sender.
+    /// went live (<c>connecting</c> / <c>offline</c>). A slot reported <c>ended</c> (stopped on purpose: «Teilen
+    /// beenden», camera stopped) is <c>ended</c> and <c>failed</c> is <c>lost</c>, whatever the connection; a slot
+    /// reported <c>paused</c> (the operating system suspended the camera, e.g. the phone app went to the background) is
+    /// not live but expected back, so it is <c>reconnecting</c> when it was live. <c>ok</c> needs a connected device
+    /// hub and a live slot (<see cref="SlotSignals.IsLive"/>).
     /// </summary>
     public static SourceStatus Evaluate(SlotSignals signals, bool wasLive)
     {
@@ -35,7 +45,7 @@ public static class SourceStatusRules
             return SourceStatus.Blocked;
         }
 
-        if (signals.Reported is SlotState.Ended or SlotState.Paused)
+        if (signals.Reported == SlotState.Ended)
         {
             return SourceStatus.Ended;
         }
@@ -84,8 +94,9 @@ public sealed record SourceHealthChange(bool StatusChanged, IncidentDto? Removed
 /// <summary>
 /// The status and incident state machine of one source (spec 4.5). Only a transition from <c>ok</c> to an outage opens
 /// an incident (replacing an earlier one of the same source); an escalation of an open incident from
-/// <c>reconnecting</c> to <c>ended</c> or <c>lost</c> updates its kind; returning to <c>ok</c> sets <c>endedAt</c>
-/// until someone acknowledges it; blocking removes it.
+/// <c>reconnecting</c> to <c>ended</c> or <c>lost</c> updates its kind (a paused camera that is then stopped on purpose:
+/// «K1 verbindet neu», then «K1 Kamera beendet»); the way back from <c>ended</c> or <c>lost</c> to <c>reconnecting</c>
+/// keeps the kind; returning to <c>ok</c> sets <c>endedAt</c> until someone acknowledges it; blocking removes it.
 /// </summary>
 public sealed class SourceHealth(string sourceId, string code, SourceStatus initial, DateTimeOffset? since = null)
 {

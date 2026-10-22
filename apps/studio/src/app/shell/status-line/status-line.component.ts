@@ -9,6 +9,7 @@ import {
 } from '@flowstudio/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { StudioMediaService } from '../../core/media/studio-media.service';
+import { IncidentAckService } from '../../core/state/incident-ack.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -26,7 +27,7 @@ interface IncidentRow {
   readonly place: IncidentPlace;
   /** «war 9 s weg» for recovered incidents. */
   readonly downFor: string;
-  /** «Neu teilen lassen» is offered (ended screen share of a device slot). */
+  /** «Neu teilen lassen» is offered (ended screen share of a device slot; never for a camera). */
   readonly reshare: boolean;
 }
 
@@ -61,6 +62,7 @@ export class StatusLineComponent {
   private readonly api = inject(StudioApiService);
   private readonly toasts = inject(ToastService);
   private readonly stationFocus = inject(StationFocusService);
+  private readonly acks = inject(IncidentAckService);
 
   /** Incidents with an action request in flight (double-click protection). */
   protected readonly pending = signal<ReadonlySet<string>>(new Set());
@@ -81,12 +83,17 @@ export class StatusLineComponent {
         incident,
         code: incident.code,
         name: source?.label ?? 'Quelle fehlt',
-        word: incidentWord(incident.kind),
+        word: incidentWord(incident.kind, source?.kind),
         bad: incident.kind !== 'reconnecting',
         recovered,
         place: this.store.incidentPlace(incident.sourceId),
         downFor: `war ${seconds} s weg`,
-        reshare: !recovered && incident.kind === 'ended' && !!source?.deviceId && !!source.slot,
+        reshare:
+          !recovered &&
+          incident.kind === 'ended' &&
+          source?.kind === 'screen' &&
+          !!source.deviceId &&
+          !!source.slot,
       };
     }),
   );
@@ -143,10 +150,11 @@ export class StatusLineComponent {
     this.stationFocus.showSource(row.incident.sourceId);
   }
 
+  /** «Gesehen» (only offered for recovered incidents; see {@link IncidentAckService}). */
   protected acknowledge(row: IncidentRow): Promise<void> {
-    return this.withPending(row.incident.id, async (productionId) => {
-      await this.api.acknowledgeIncident(productionId, row.incident.id);
-    });
+    return this.withPending(row.incident.id, (productionId) =>
+      this.acks.acknowledge(productionId, [row.incident.id]),
+    );
   }
 
   protected reshare(row: IncidentRow): Promise<void> {

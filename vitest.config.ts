@@ -3,10 +3,14 @@ import { defineConfig } from 'vitest/config';
 
 const fromRoot = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
 
-/** Aliases mirror the `paths` in tsconfig.json so packages are consumed as TypeScript source. */
+/**
+ * Aliases mirror the `paths` in tsconfig.json so packages are consumed as TypeScript source. A key also matches its
+ * subpaths and the first match wins, so `@flowstudio/media-client/device` must come before `@flowstudio/media-client`.
+ */
 const alias = {
   '@flowstudio/scene-model': fromRoot('./packages/scene-model/src/index.ts'),
   '@flowstudio/scene-renderer': fromRoot('./packages/scene-renderer/src/index.ts'),
+  '@flowstudio/media-client/device': fromRoot('./packages/media-client/src/device.ts'),
   '@flowstudio/media-client': fromRoot('./packages/media-client/src/index.ts'),
   '@flowstudio/realtime-client': fromRoot('./packages/realtime-client/src/index.ts'),
 };

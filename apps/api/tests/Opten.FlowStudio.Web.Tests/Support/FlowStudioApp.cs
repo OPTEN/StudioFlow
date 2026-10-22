@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Opten.FlowStudio.Core.Application.Ports;
 using Opten.FlowStudio.Core.Contracts;
@@ -69,6 +70,12 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
     private string connectionString = string.Empty;
 
     public FakeLiveKitRooms Rooms { get; } = new();
+
+    /// <summary>Warnings and errors the app logged.</summary>
+    public LogCapture Logs { get; } = new();
+
+    /// <summary>Name of the app's own database (for <see cref="SqlCommandRecorder"/>).</summary>
+    public string DatabaseName => new NpgsqlConnectionStringBuilder(connectionString).Database!;
 
     public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "fs-media-" + Guid.NewGuid().ToString("N"));
 
@@ -162,6 +169,7 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
         builder.UseSetting("FlowStudio:PublicBaseUrl", PublicBaseUrl);
         builder.UseSetting("FlowStudio:FrameAncestors", "'self' https://stream.example");
         builder.UseSetting("ForwardedHeaders:KnownNetworks:0", "10.99.0.0/16");
+        builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<ILiveKitRoomClient>();

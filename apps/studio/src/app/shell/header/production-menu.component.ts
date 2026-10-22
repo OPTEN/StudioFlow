@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@flowstudio/scene-model';
+import { toGermanMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -188,7 +189,12 @@ export class ProductionMenuComponent {
 
   protected logout(): void {
     this.popovers.close(this.popoverId);
-    void this.auth.logout();
+    // A refused logout keeps the session (see AuthService.logout): say so instead of pretending.
+    this.auth
+      .logout()
+      .catch((error: unknown) =>
+        this.toasts.show(`Abmelden hat nicht geklappt. ${toGermanMessage(error)}`),
+      );
   }
 
   private async loadProductions(): Promise<void> {

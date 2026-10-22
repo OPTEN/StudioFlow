@@ -1,5 +1,6 @@
 /**
- * Default camera / screen capture of the {@link Publisher} and the German explanations of capture failures.
+ * Default camera / screen capture of the {@link Publisher}. The explanations of capture failures (codes and German
+ * messages) are in `slot-failure.ts`, which does not load livekit-client.
  */
 import {
   LocalVideoTrack,
@@ -8,21 +9,6 @@ import {
   type ScreenShareCaptureOptions,
   type VideoCaptureOptions,
 } from 'livekit-client';
-
-/** German slot messages shown by the sender. */
-export const SLOT_MESSAGES = {
-  cameraDenied: 'Kein Zugriff auf die Kamera. Bitte den Zugriff im Browser erlauben.',
-  cameraMissing: 'Keine Kamera gefunden.',
-  cameraBusy: 'Die Kamera ist nicht verfügbar. Wird sie von einer anderen App verwendet?',
-  cameraLost: 'Die Kamera liefert kein Bild mehr.',
-  cameraSwitchFailed: 'Kamerawechsel fehlgeschlagen.',
-  publishFailed: 'Das Bild konnte nicht gesendet werden.',
-  shareCancelled: 'Freigabe abgebrochen',
-  shareEnded: 'Freigabe beendet',
-  shareUnsupported: 'Dieser Browser kann den Bildschirm nicht teilen.',
-  shareNeedsClick: 'Bitte die Freigabe direkt per Klick starten.',
-  shareFailed: 'Der Bildschirm konnte nicht geteilt werden.',
-} as const;
 
 /** Camera capture with livekit's `createLocalVideoTrack` (the SDK then restarts an ended camera by itself). */
 export function captureCamera(options: VideoCaptureOptions): Promise<LocalVideoTrack> {
@@ -55,46 +41,5 @@ export function setContentHint(track: MediaStreamTrack, hint: 'motion' | 'detail
     track.contentHint = hint;
   } catch {
     // Only an encoder hint: nothing to do where the browser rejects it.
-  }
-}
-
-/** DOMException / Error name, '' for non-errors. */
-export function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : '';
-}
-
-/** True when the user (or a policy) refused a capture, e.g. cancelled the screen picker. */
-export function isPermissionRefusal(error: unknown): boolean {
-  return errorName(error) === 'NotAllowedError';
-}
-
-/** Whether a camera error may go away by retrying (busy device) and how to explain it. */
-export function describeCameraFailure(error: unknown): {
-  readonly transient: boolean;
-  readonly message: string;
-} {
-  switch (errorName(error)) {
-    case 'NotAllowedError':
-    case 'SecurityError':
-      return { transient: false, message: SLOT_MESSAGES.cameraDenied };
-    case 'NotFoundError':
-    case 'OverconstrainedError':
-    case 'DeviceUnsupportedError':
-      return { transient: false, message: SLOT_MESSAGES.cameraMissing };
-    default:
-      return { transient: true, message: SLOT_MESSAGES.cameraBusy };
-  }
-}
-
-/** Explanation of a failed screen capture (other than a cancelled picker). */
-export function describeScreenFailure(error: unknown): string {
-  switch (errorName(error)) {
-    case 'DeviceUnsupportedError':
-    case 'TypeError':
-      return SLOT_MESSAGES.shareUnsupported;
-    case 'InvalidStateError':
-      return SLOT_MESSAGES.shareNeedsClick;
-    default:
-      return SLOT_MESSAGES.shareFailed;
   }
 }

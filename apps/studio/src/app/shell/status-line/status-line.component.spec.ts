@@ -151,6 +151,22 @@ describe('StatusLineComponent', () => {
     await render();
   });
 
+  it('names an ended camera «Kamera beendet» and offers «Neu teilen lassen» only for screens', async () => {
+    await setup(
+      snapshotFixture({
+        incidents: [
+          incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', { kind: 'ended' }),
+          incidentFixture('inc_2', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', { kind: 'ended' }),
+        ],
+      }),
+    );
+    const [camera, screen] = segments();
+    expect(camera).toContain('Kamera beendet');
+    expect(camera).not.toContain('Neu teilen lassen');
+    expect(screen).toContain('Teilen beendet');
+    expect(screen).toContain('Neu teilen lassen');
+  });
+
   it('points at the station of an incident', async () => {
     await setup(
       snapshotFixture({

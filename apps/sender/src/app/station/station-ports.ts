@@ -1,11 +1,10 @@
 import { InjectionToken } from '@angular/core';
+import { MediaSession, Publisher } from '@flowstudio/media-client';
 import {
-  MediaSession,
-  Publisher,
   ScreenWakeLock,
   runTechCheck,
   type TechCheckOptions,
-} from '@flowstudio/media-client';
+} from '@flowstudio/media-client/device';
 import { ResilientHub, type ResilientHubOptions } from '@flowstudio/realtime-client';
 import type { LiveKitTokenDto, TechCheckDto } from '@flowstudio/scene-model';
 

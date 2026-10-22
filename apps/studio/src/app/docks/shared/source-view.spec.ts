@@ -47,6 +47,8 @@ describe('source view helpers', () => {
       timer: false,
     });
     expect(sourceStateView(source('connecting'))?.tone).toBe('muted');
+    const camera = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'ended' });
+    expect(sourceStateView(camera)?.word).toBe('Kamera beendet');
     expect(statusHasTimer('offline')).toBe(false);
     expect(toneClass('warn')).toBe('c-state--warn');
   });

@@ -47,7 +47,8 @@ interface QueuedFile {
  * edit scene («Zur Szene hinzufügen»).
  *
  * Lives at root, so an upload keeps running when the media popover closes or the dock moves. Signing out cancels
- * every upload.
+ * every upload. The upload bypasses the HTTP interceptors (XMLHttpRequest for the progress), so a 401 is handled here
+ * like the auth interceptor does: back to the login page (which also cancels the queue).
  */
 @Injectable({ providedIn: 'root' })
 export class AssetUploadService {
@@ -55,6 +56,7 @@ export class AssetUploadService {
   private readonly store = inject(ProductionStoreService);
   private readonly editor = inject(EditorService);
   private readonly toasts = inject(ToastService);
+  private readonly auth = inject(AuthService);
 
   private readonly entriesSignal = signal<readonly UploadEntry[]>([]);
   private readonly queue: QueuedFile[] = [];
@@ -73,7 +75,7 @@ export class AssetUploadService {
   );
 
   constructor() {
-    const unregister = inject(AuthService).onSignedOut(() => this.cancelAll());
+    const unregister = this.auth.onSignedOut(() => this.cancelAll());
     inject(DestroyRef).onDestroy(() => {
       unregister();
       this.cancelAll();
@@ -189,7 +191,10 @@ export class AssetUploadService {
       this.announce(asset);
     } catch (error) {
       const apiError = ApiError.from(error);
-      if (apiError.is('aborted')) {
+      if (apiError.status === 401) {
+        this.patch(item.id, { state: 'failed', error: toGermanMessage(apiError) });
+        this.auth.handleUnauthorized();
+      } else if (apiError.is('aborted')) {
         this.patch(item.id, { state: 'aborted', error: null });
         this.toasts.show(`Hochladen von «${item.file.name}» abgebrochen`);
       } else {

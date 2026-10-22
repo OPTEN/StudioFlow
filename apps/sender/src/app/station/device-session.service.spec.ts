@@ -13,7 +13,8 @@ import {
   phoneSelf,
   settle,
 } from '../../testing/sender-fakes';
-import { ApiError } from '../core/api-error';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ApiError, toApiError } from '../core/api-error';
 import { LOCAL_STORAGE, SESSION_STORAGE, STORAGE_KEYS } from '../core/browser-storage';
 import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';
@@ -24,8 +25,11 @@ import {
   BLOCKED_RETRY_MS,
   DeviceSessionService,
   MESSAGE_DISMISS_MS,
+  OUTAGE_PROBE_MS,
   REPORT_INTERVAL_MS,
+  REPORT_STALE_MS,
 } from './device-session.service';
+import { SLOT_ERROR_MESSAGES } from './slot-errors';
 import {
   DEVICE_HUB_FACTORY,
   SENDER_MEDIA_FACTORY,
@@ -191,7 +195,12 @@ describe('DeviceSessionService', () => {
         techCheck: { deviceId: CREDENTIALS.deviceId, result: TECH_CHECK_OK },
       },
     });
+    hub.responder = (method) =>
+      method === 'Hello'
+        ? Promise.resolve({ device: self, tally: { overall: 'off', slots: {} } })
+        : new Promise((resolve) => setTimeout(resolve, 14));
     await online(service);
+    await vi.advanceTimersByTimeAsync(20);
     media.publisher.telemetry = [
       {
         slot: 'camera',
@@ -205,7 +214,7 @@ describe('DeviceSessionService', () => {
       },
     ];
     await settle();
-    hub.sent.length = 0;
+    hub.invoked.length = 0;
 
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
 
@@ -224,19 +233,35 @@ describe('DeviceSessionService', () => {
     expect(hub.reports()).toHaveLength(2);
   });
 
-  it('reports a camera stopped on purpose as paused', async () => {
+  it('reports a camera stopped on purpose as ended («Kamera beendet»), not paused', async () => {
     const service = setup();
     await online(service);
     service.stopCamera();
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
 
     expect(lastReport().slots).toEqual([
-      expect.objectContaining({ slot: 'camera', state: 'paused' }),
+      expect.objectContaining({ slot: 'camera', state: 'ended' }),
     ]);
     expect(service.camera()?.state).toBe('idle');
     expect(TestBed.inject(LOCAL_STORAGE).readJson(STORAGE_KEYS.settings)).toMatchObject({
       cameraOn: false,
     });
+  });
+
+  it('keeps reporting a camera stopped before a reload as ended (each report replaces the slot states)', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    await online(service);
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+    expect(lastReport().slots).toEqual([
+      expect.objectContaining({ slot: 'camera', state: 'ended' }),
+    ]);
+    expect(service.camera()?.state).toBe('idle');
+
+    service.startCamera();
+    media.publisher.telemetry = [];
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+    expect(lastReport().slots).toEqual([]);
   });
 
   it('blocked: hub refused → /me 403 → stops media, retries every 15 s and continues when unblocked', async () => {
@@ -304,9 +329,10 @@ describe('DeviceSessionService', () => {
     expect(hub.calls.filter((call) => call === 'restart')).toEqual([]);
   });
 
-  it('«Hier weitermachen» says Hello again with the same session id and takes over', async () => {
+  it('«Hier weitermachen» says Hello again with a new session id and takes over (GAP-21)', async () => {
     const service = setup();
     await online(service);
+    const replacedSession = service.sessionId;
     hub.emit('sessionReplaced');
 
     service.takeOver();
@@ -318,7 +344,10 @@ describe('DeviceSessionService', () => {
 
     const hellos = hub.invoked.filter((call) => call.method === 'Hello');
     expect(hellos).toHaveLength(2);
+    expect(hellos[0].args[0]).toMatchObject({ sessionId: replacedSession });
     expect(hellos[1].args[0]).toMatchObject({ sessionId: service.sessionId });
+    expect(service.sessionId).not.toBe(replacedSession);
+    expect(service.sessionId).toMatch(/^ses_[a-z0-9]{20}$/);
     expect(service.phase()).toBe('online');
   });
 
@@ -490,7 +519,7 @@ describe('DeviceSessionService', () => {
 
     service.addScreen();
     await settle();
-    media.publisher.emitSlot('screen-2', 'idle', 'Freigabe abgebrochen');
+    media.publisher.emitSlot('screen-2', 'idle', 'Freigabe abgebrochen', 'cancelled');
     await settle();
 
     expect(api.releaseSlot).toHaveBeenCalledWith('screen-2');
@@ -582,5 +611,191 @@ describe('DeviceSessionService', () => {
     expect(hook.slots()).toEqual({ camera: 'live' });
     expect(hook.rtc()).toBe('connected');
     expect(hook.sessionId).toBe(service.sessionId);
+
+    hub.emit('sessionReplaced');
+    service.takeOver();
+    expect(hook.sessionId).toBe(service.sessionId);
+  });
+
+  it('measures the RTT from the Report round trip and never polls /me while connected', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    let delayMs = 40;
+    hub.responder = (method) =>
+      method === 'Hello'
+        ? Promise.resolve({ device: self, tally: { overall: 'off', slots: {} } })
+        : new Promise((resolve) => setTimeout(resolve, delayMs));
+    await online(service);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(service.rttMs()).toBe(40);
+    const probes = api.getSelfTimed.mock.calls.length;
+
+    delayMs = 75;
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS + 100);
+    expect(service.rttMs()).toBe(75);
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+    expect(lastReport().rttMs).toBe(75);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(api.getSelfTimed.mock.calls.length).toBe(probes);
+  });
+
+  it('sends one report at a time, unless the previous one hangs', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    hub.responder = (method) =>
+      method === 'Hello'
+        ? Promise.resolve({ device: self, tally: { overall: 'off', slots: {} } })
+        : new Promise(() => undefined);
+    await online(service);
+    const first = hub.reports().length;
+
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS * 2);
+    expect(hub.reports()).toHaveLength(first);
+
+    await vi.advanceTimersByTimeAsync(REPORT_STALE_MS);
+    expect(hub.reports().length).toBeGreaterThan(first);
+  });
+
+  it('reports at once when LiveKit leaves connected (rtc reconnecting)', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    await online(service);
+    hub.invoked.length = 0;
+
+    media.session.setState('reconnecting');
+    await settle();
+
+    expect(hub.reports()).toHaveLength(1);
+    expect(lastReport().rtc).toBe('reconnecting');
+    expect(service.connection()).toBe('reconnecting');
+  });
+
+  it('keeps reporting rtc connected only while the LiveKit room is connected', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    await online(service);
+    media.session.setState('waiting');
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+    expect(lastReport().rtc).toBe('reconnecting');
+
+    media.session.setState('connected');
+    await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+    expect(lastReport().rtc).toBe('connected');
+    expect(service.phase()).toBe('online');
+  });
+
+  it('asks /me after a hub reconnect and while the hub is down, not before', async () => {
+    const service = setup({ settings: { cameraOn: false } });
+    await online(service);
+    const initial = api.getSelfTimed.mock.calls.length;
+    expect(initial).toBe(1);
+
+    hub.setState('reconnecting');
+    await vi.advanceTimersByTimeAsync(OUTAGE_PROBE_MS);
+    expect(api.getSelfTimed.mock.calls.length).toBe(initial + 1);
+
+    hub.connect();
+    await settle();
+    expect(api.getSelfTimed.mock.calls.length).toBe(initial + 2);
+    expect(service.connection()).toBe('connected');
+  });
+
+  it('a Hello refused with service_unavailable is retried calmly, without an error screen', async () => {
+    const service = setup();
+    let refusals = 2;
+    hub.responder = (method) => {
+      if (method === 'Hello' && refusals-- > 0) {
+        return Promise.reject(
+          new Error(
+            "An unexpected error occurred invoking 'Hello' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+          ),
+        );
+      }
+      return method === 'Hello'
+        ? Promise.resolve({ device: self, tally: { overall: 'off', slots: {} } })
+        : Promise.resolve(undefined);
+    };
+    await online(service);
+    expect(service.phase()).toBe('connecting');
+    expect(service.connection()).toBe('connecting');
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(service.phase()).toBe('online');
+    expect(hub.invoked.filter((call) => call.method === 'Hello')).toHaveLength(3);
+  });
+
+  it('a short database outage (503) on /me keeps the station calm', async () => {
+    const service = setup();
+    api.getSelfTimed.mockRejectedValue(
+      new ApiError(503, 'service_unavailable', 'Der Server ist gerade nicht erreichbar.'),
+    );
+    service.start();
+    await settle();
+
+    expect(service.phase()).toBe('connecting');
+    expect(service.serverUnreachable()).toBe(false);
+    hub.connect();
+    media.session.setState('connected');
+    await settle();
+    expect(service.phase()).toBe('online');
+  });
+
+  it.each([
+    [400, 'validation_failed', SLOT_ERROR_MESSAGES.phoneScreen],
+    [409, 'limit_reached', SLOT_ERROR_MESSAGES.screenLimit],
+    [
+      503,
+      'service_unavailable',
+      'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
+    ],
+  ] as const)(
+    'a refused screen allocation (%s %s) shows a clear German message',
+    async (status, code, message) => {
+      const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+      await online(service);
+      media.publisher.emitSlot('screen-1', 'live');
+      api.allocateSlot.mockRejectedValue(
+        toApiError(new HttpErrorResponse({ status, error: { code, detail: 'Detail' } })),
+      );
+
+      service.addScreen();
+      await settle();
+
+      expect(service.actionError()).toBe(message);
+      expect(media.publisher.calls).toContain('unpublish:screen-2');
+      expect(service.screens().map((slot) => slot.slot)).toEqual(['screen-1']);
+    },
+  );
+
+  it('a second laptop camera (409 limit_reached) is explained', async () => {
+    const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+    await online(service);
+    api.allocateSlot.mockRejectedValue(new ApiError(409, 'limit_reached', 'x'));
+
+    await service.addCamera();
+
+    expect(service.actionError()).toBe(SLOT_ERROR_MESSAGES.cameraLimit);
+  });
+
+  it('releasing a phone camera (409 conflict) keeps the slot and explains why', async () => {
+    const service = setup();
+    await online(service);
+    api.releaseSlot.mockRejectedValue(new ApiError(409, 'conflict', 'x'));
+
+    await service.removeSlot('camera');
+
+    expect(service.actionError()).toBe(SLOT_ERROR_MESSAGES.phoneCamera);
+    expect(service.camera()).not.toBeNull();
+  });
+
+  it('keeps the failure code of a failed camera for the explanation', async () => {
+    const service = setup();
+    await online(service);
+
+    media.publisher.emitSlot('camera', 'failed', 'Kein Zugriff', 'permission-denied');
+
+    expect(service.camera()).toMatchObject({
+      state: 'failed',
+      message: 'Kein Zugriff',
+      failure: 'permission-denied',
+    });
   });
 });

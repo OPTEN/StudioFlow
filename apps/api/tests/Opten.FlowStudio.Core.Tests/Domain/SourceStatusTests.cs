@@ -10,7 +10,15 @@ public sealed class SourceStatusRulesTests
         { new SlotSignals(Blocked: true, Connected: true, Published: true, SlotState.Live, RtcState.Connected), true, SourceStatus.Blocked },
         { new SlotSignals(false, true, true, SlotState.Ended, RtcState.Connected), true, SourceStatus.Ended },
         { new SlotSignals(false, false, false, SlotState.Ended, null), false, SourceStatus.Ended },
-        { new SlotSignals(false, true, false, SlotState.Paused, RtcState.Connected), true, SourceStatus.Ended },
+        { new SlotSignals(false, true, false, SlotState.Paused, RtcState.Connected), true, SourceStatus.Reconnecting },
+        { new SlotSignals(false, true, true, SlotState.Paused, RtcState.Connected), true, SourceStatus.Reconnecting },
+        { new SlotSignals(false, true, true, SlotState.Paused, RtcState.Connected), false, SourceStatus.Connecting },
+        { new SlotSignals(false, false, false, SlotState.Paused, null), true, SourceStatus.Reconnecting },
+        { new SlotSignals(false, false, false, SlotState.Paused, null), false, SourceStatus.Offline },
+        { new SlotSignals(false, true, false, null, RtcState.Connected), true, SourceStatus.Reconnecting },
+        { new SlotSignals(false, true, false, null, RtcState.Connected), false, SourceStatus.Connecting },
+        { new SlotSignals(false, true, true, null, RtcState.Connected), true, SourceStatus.Ok },
+        { new SlotSignals(false, true, true, SlotState.Starting, null), false, SourceStatus.Ok },
         { new SlotSignals(false, true, true, SlotState.Failed, RtcState.Connected), true, SourceStatus.Lost },
         { new SlotSignals(false, true, true, null, null), false, SourceStatus.Ok },
         { new SlotSignals(false, true, false, SlotState.Live, RtcState.Connected), false, SourceStatus.Ok },
@@ -28,6 +36,24 @@ public sealed class SourceStatusRulesTests
     [MemberData(nameof(Cases))]
     public void Evaluate_Signals_FollowsSpecification(SlotSignals signals, bool wasLive, SourceStatus expected) =>
         Assert.Equal(expected, SourceStatusRules.Evaluate(signals, wasLive));
+
+    [Theory]
+    [InlineData(true, null, null)]
+    [InlineData(true, SlotState.Starting, RtcState.Connected)]
+    [InlineData(false, SlotState.Live, RtcState.Connected)]
+    [InlineData(true, SlotState.Live, null)]
+    public void IsLive_PublishedTrackOrReportedLiveOverConnectedMedia_IsTrue(bool published, SlotState? reported, RtcState? rtc) =>
+        Assert.True(new SlotSignals(false, true, published, reported, rtc).IsLive);
+
+    [Theory]
+    [InlineData(false, null, RtcState.Connected)]
+    [InlineData(false, SlotState.Live, null)]
+    [InlineData(false, SlotState.Starting, RtcState.Connected)]
+    [InlineData(true, SlotState.Paused, RtcState.Connected)]
+    [InlineData(false, SlotState.Paused, RtcState.Connected)]
+    [InlineData(true, SlotState.Live, RtcState.Reconnecting)]
+    public void IsLive_NothingPublishedAndNoLiveReportOrPaused_IsFalse(bool published, SlotState? reported, RtcState? rtc) =>
+        Assert.False(new SlotSignals(false, true, published, reported, rtc).IsLive);
 
     [Theory]
     [InlineData(SourceStatus.Reconnecting, true)]
@@ -122,6 +148,33 @@ public sealed class SourceHealthTests
         Assert.Equal(IncidentKind.Lost, escalated.UpsertedIncident.Kind);
         Assert.Equal(Build.T0.AddSeconds(1), escalated.UpsertedIncident.StartedAt);
         Assert.Equal(AuditActions.SourceLost, escalated.LogAction);
+    }
+
+    [Fact]
+    public void Apply_PausedThenStoppedOnPurpose_EscalatesReconnectingToEnded()
+    {
+        health.Apply(SourceStatus.Ok, Build.T0);
+        var paused = health.Apply(SourceStatusRules.Evaluate(new SlotSignals(false, true, true, SlotState.Paused, RtcState.Connected), health.WasLive), Build.T0.AddSeconds(1));
+
+        var stopped = health.Apply(SourceStatusRules.Evaluate(new SlotSignals(false, true, false, SlotState.Ended, RtcState.Connected), health.WasLive), Build.T0.AddSeconds(4));
+
+        Assert.Equal((IncidentKind.Reconnecting, AuditActions.SourceReconnecting), (paused.UpsertedIncident!.Kind, paused.LogAction));
+        Assert.Equal(paused.UpsertedIncident.Id, stopped.UpsertedIncident!.Id);
+        Assert.Equal((IncidentKind.Ended, AuditActions.SourceEnded), (stopped.UpsertedIncident.Kind, stopped.LogAction));
+        Assert.Equal(Build.T0.AddSeconds(1), stopped.UpsertedIncident.StartedAt);
+    }
+
+    [Fact]
+    public void Apply_PausedThenBack_RecoversTheReconnectingIncident()
+    {
+        health.Apply(SourceStatus.Ok, Build.T0);
+        var paused = health.Apply(SourceStatusRules.Evaluate(new SlotSignals(false, true, true, SlotState.Paused, RtcState.Connected), health.WasLive), Build.T0.AddSeconds(1));
+
+        var back = health.Apply(SourceStatusRules.Evaluate(new SlotSignals(false, true, true, SlotState.Live, RtcState.Connected), health.WasLive), Build.T0.AddSeconds(8));
+
+        Assert.Equal(SourceStatus.Ok, health.Status);
+        Assert.Equal(paused.UpsertedIncident!.Id, back.UpsertedIncident!.Id);
+        Assert.Equal((Build.T0.AddSeconds(8), AuditActions.SourceRecovered), (back.UpsertedIncident.EndedAt, back.LogAction));
     }
 
     [Fact]

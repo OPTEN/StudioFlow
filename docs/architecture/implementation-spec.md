@@ -148,27 +148,49 @@ keeps its slot (state ended) so the Regie can ask for a reshare and the picture 
 
 ### 4.5 Source status (server, in memory, see `SourceStatus`)
 
-Inputs: device hub connection (keep-alive 2 s, server timeout 6 s), LiveKit webhooks (participant_joined/left,
+Inputs: device hub connection (keep-alive 2 s, client timeout 5 s, section 12 GAP-12; a connected session without a
+report for 6 s counts as `rtc: disconnected`, GAP-29), LiveKit webhooks (participant_joined/left,
 track_published/unpublished; track name = slot), device reports (slot states, rtc state), block state.
 At startup the API seeds published tracks with `ListParticipants`.
 
+Reported slot states (decided 2026-10-22, sender open questions 1 and 2; this overrides the GAP-08 pin «`paused` →
+`ended`» in `docs/testing.md`):
+- Every report carries the state of each slot the session captures and **replaces** all earlier states: a slot that
+  is missing from a report has no state (not live). Only the slots of the device count.
+- A **new session** (`Hello` with another session id: another tab, or the same tab after a reload – every page load
+  has its own id) starts without slot states and without rtc state; until it reports, only a published track makes a
+  slot live. A reconnect of the same session keeps the states until its next report; `ended` and `failed` therefore
+  survive a hub disconnect of the same session, but not a reload.
+- `ended` = stopped on purpose (screen: «Teilen beenden» or the browser's stop button; camera: stopped by the user).
+- `paused` = the operating system suspended the capture and it is expected back (e.g. the phone app went to the
+  background). It is not live, never `ended`.
+- `starting` has no rule of its own.
+
 Per device slot:
 - `blocked` if the device is blocked.
-- `ok` if the track for the slot is published (webhook or report says live) and the device is not disconnected.
-- `ended` if the device reports the slot `ended` (user stopped sharing).
-- `lost` if the device reports the slot `failed`.
-- `reconnecting` if the slot was `ok` and the track/connection went away without `ended`/`failed` (hub disconnected,
-  participant left unintentionally, track unpublished while the device reports rtc reconnecting). Stays amber until it
-  is back or the device is blocked or the slot removed – there is no automatic escalation.
-- `connecting` if the device is online but the slot never went live since the device connected.
+- `ended` if the device reports the slot `ended` – wins over a published track and over the connection.
+- `lost` if the device reports the slot `failed` – likewise.
+- `ok` if the slot is live and the device hub is connected. Live = the track is published (webhook or
+  `ListParticipants`) or the current session reports the slot `live` with `rtc: connected`; never while the session
+  reports the slot `paused` or its rtc state `reconnecting`/`disconnected` (section 12, GAP-08 a).
+- `reconnecting` if the slot was `ok` and is no longer live without `ended`/`failed`: hub disconnected, participant
+  left unintentionally, track unpublished while the device reports rtc reconnecting, rtc reconnecting/disconnected
+  reported, slot `paused`, slot missing from the report while no track is published, a new session that has not
+  published yet. Stays amber until it is back or the device is blocked or the slot removed – there is no automatic
+  escalation.
+- `connecting` if the device is online but the slot never went live since the device connected (also a slot that is
+  `paused` before it was ever live).
 - `offline` if the device is not connected and the slot was not live before (no incident).
 Media sources are always `ok`.
 
 Incidents: a transition from `ok` to `reconnecting`, `ended` or `lost` opens an incident (replacing any earlier
-incident of the same source). Back to `ok` sets `endedAt` («wieder da · war 9 s weg») until someone acknowledges
-it («Gesehen», `POST …/incidents/{id}/ack`, shared by both Regie sessions). Blocking a device or removing a source
-removes its incidents. Each change emits `sourceUpserted` / `incidentUpserted` / `incidentRemovedEvent` and a log
-entry («K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet»).
+incident of the same source). An open `reconnecting` incident that turns `ended` or `lost` keeps its id and start and
+only changes its kind (a paused camera that is then stopped: «K1 verbindet neu», then «K1 Kamera beendet»); the way
+back from `ended`/`lost` to `reconnecting` keeps the kind. Back to `ok` sets `endedAt` («wieder da · war 9 s weg»)
+until someone acknowledges it («Gesehen», `POST …/incidents/{id}/ack`, shared by both Regie sessions). Blocking a
+device or removing a source removes its incidents. Each change emits `sourceUpserted` / `incidentUpserted` /
+`incidentRemovedEvent` and a log entry: «K2 verbindet neu» (also a paused camera), «K2 wieder da, war 9 s weg»,
+«S1 Teilen beendet» (screen `ended`), «K1 Kamera beendet» (camera `ended`), «K1 kein Bild» (`failed`).
 
 ### 4.6 Devices and pairing
 
@@ -725,3 +747,8 @@ The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decision
 - GAP-15: tests prefer roles, labels and visible German text; `data-testid` attributes may be added where roles are
   ambiguous. No global debug objects in production builds except the output page's opt-in `?latency=1` test aid.
 - GAP-25: the backoff sequence is 0, 300, 600, 1200, 2400, 4800, 5000 ms (+ 0–250 ms jitter from the second retry).
+- GAP-08 (camera pause): a slot reported `paused` (the OS suspended the camera) means «not live, expected back» →
+  `reconnecting` if it was live; only a deliberate stop is `ended` («K1 Kamera beendet», «S1 Teilen beendet»). Every
+  device report lists every slot; a new Hello session clears the reported slot states (section 4.5).
+- Test hooks (`window.__fsStudio`, `window.__fsSender`) are read-only state views that exist only when the opt-in
+  flag `localStorage['flowstudio.testHooks'] = '1'` is set (E2E sets it with an init script).

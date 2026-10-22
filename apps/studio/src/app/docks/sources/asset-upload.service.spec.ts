@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import type { AssetDto } from '@flowstudio/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { ApiError } from '../../core/api/api-error';
 import { StudioApiService, type UploadOptions } from '../../core/api/studio-api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AssetUploadService } from './asset-upload.service';
 
@@ -125,5 +127,20 @@ describe('AssetUploadService', () => {
       'Die Datei ist zu gross. Bilder dürfen höchstens 25 MB, Videos höchstens 1 GB gross sein.',
     );
     expect(toasts.current()?.message).toContain('«b.png» wurde nicht hochgeladen');
+  });
+
+  it('sends the operator to the login page on 401 like every other request and stops the queue', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const handle = vi.spyOn(TestBed.inject(AuthService), 'handleUnauthorized');
+    uploads.add([png('a.png'), png('b.png')]);
+    await flushMicrotasks();
+
+    pending[0].reject(new ApiError({ status: 401, code: 'unauthorized' }));
+    await flushMicrotasks();
+
+    expect(handle).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: {} });
+    expect(uploads.uploads().map((entry) => entry.state)).toEqual(['failed', 'aborted']);
+    expect(pending).toHaveLength(1);
   });
 });

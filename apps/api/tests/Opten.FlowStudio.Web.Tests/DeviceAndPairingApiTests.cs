@@ -117,6 +117,31 @@ public sealed class DeviceApiTests(FlowStudioApp app) : IClassFixture<FlowStudio
     }
 
     [Fact]
+    public async Task Slots_AfterRelease_LowestFreeScreenIsHandedOutEvenInParallel()
+    {
+        var admin = await app.AdminAsync();
+        var credentials = await app.PairLaptopAsync(admin);
+        var device = app.DeviceClient(credentials);
+        var first = new List<string>();
+        for (var i = 0; i < 3; i++)
+        {
+            first.Add((await device.PostJsonAsync("/api/device/slots", new AllocateSlotRequest(SourceKind.Screen)).ExpectAsync<DeviceSlotDto>()).Slot);
+        }
+
+        await device.DeleteAsync("/api/device/slots/screen-3", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
+        await device.DeleteAsync("/api/device/slots/screen-2", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
+        var next = await device.PostJsonAsync("/api/device/slots", new AllocateSlotRequest(SourceKind.Screen)).ExpectAsync<DeviceSlotDto>();
+        var parallel = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => device.PostJsonAsync("/api/device/slots", new AllocateSlotRequest(SourceKind.Screen)).ExpectAsync<DeviceSlotDto>()));
+        var self = await device.GetAsync("/api/device/me", TestContext.Current.CancellationToken).ExpectAsync<DeviceSelfDto>();
+
+        Assert.Equal(["screen-2", "screen-3", "screen-4"], first);
+        Assert.Equal("screen-2", next.Slot);
+        Assert.Equal(["screen-3", "screen-5", "screen-6"], parallel.Select(s => s.Slot).Order(StringComparer.Ordinal));
+        Assert.Equal(["screen-1", "screen-2", "screen-3", "screen-4", "screen-5", "screen-6"], self.Slots.Select(s => s.Slot).Order(StringComparer.Ordinal));
+        Assert.Equal(6, self.Slots.Select(s => s.Code).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public async Task BandwidthTest_UploadOfOneMegabyte_ReportsBytes()
     {
         var admin = await app.AdminAsync();

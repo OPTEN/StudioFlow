@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import {
   ITEM_BOUNDS,
   ROTATIONS,
+  isHexColor,
   snapRotation,
   type ItemFit,
   type SceneItemDto,
@@ -132,7 +133,7 @@ export class ElementInspectorComponent {
   protected setBorderColor(event: Event): void {
     const border = this.item().border;
     const color = (event.target as HTMLInputElement).value;
-    if (border && /^#[0-9a-fA-F]{6}$/.test(color) && color !== border.color) {
+    if (border && isHexColor(color) && color !== border.color) {
       this.commit({ ...this.item(), border: { ...border, color } });
     }
   }

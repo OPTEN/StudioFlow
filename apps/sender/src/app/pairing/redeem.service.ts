@@ -7,8 +7,15 @@ import { NoticeService } from '../core/notice.service';
 
 /** Attempts of one redeem before the page offers «Erneut versuchen». */
 export const REDEEM_ATTEMPTS = 5;
-/** First pause between attempts; doubles each time. */
+/**
+ * Attempts while the server answers «gerade nicht erreichbar» (503, e.g. a short database outage, or a gateway error
+ * while the API restarts): about a minute of calm retrying instead of an error screen.
+ */
+export const REDEEM_OUTAGE_ATTEMPTS = 12;
+/** First pause between attempts; doubles each time up to {@link REDEEM_MAX_RETRY_MS}. */
 export const REDEEM_RETRY_MS = 1000;
+/** Longest pause between two attempts (unless the server asks for more with Retry-After). */
+export const REDEEM_MAX_RETRY_MS = 8000;
 
 /** Result of {@link RedeemService.redeem}. */
 export type RedeemOutcome =
@@ -20,6 +27,11 @@ export type RedeemOutcome =
 export type Delay = (ms: number) => Promise<void>;
 
 const defaultDelay: Delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Attempts allowed so far: more while the server only says it is briefly unavailable. */
+function attemptLimit(lastError: ApiError | null): number {
+  return lastError?.isUnavailable ? REDEEM_OUTAGE_ATTEMPTS : REDEEM_ATTEMPTS;
+}
 
 /**
  * Redeems a QR code or invite link (spec 4.6, ways 1 and 3). The client id is stored before the first request, so a
@@ -41,10 +53,11 @@ export class RedeemService {
   ): Promise<RedeemOutcome> {
     const clientId = this.credentials.clientId();
     let lastError: ApiError | null = null;
-    for (let attempt = 0; attempt < REDEEM_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < attemptLimit(lastError); attempt++) {
       if (attempt > 0) {
         const retryAfterMs = (lastError?.retryAfterSeconds ?? 0) * 1000;
-        await delay(Math.max(REDEEM_RETRY_MS * 2 ** (attempt - 1), retryAfterMs));
+        const backoffMs = Math.min(REDEEM_RETRY_MS * 2 ** (attempt - 1), REDEEM_MAX_RETRY_MS);
+        await delay(Math.max(backoffMs, retryAfterMs));
       }
       try {
         const credentials = await this.api.redeemInvite(token, {

@@ -137,7 +137,7 @@ function stateLine(
     case 'reconnecting':
       return {
         kind: 'state',
-        word: statusWord(status),
+        word: statusWord(status, worst?.kind),
         tone: 'warn',
         code,
         since: worst?.statusSince ?? null,
@@ -147,7 +147,7 @@ function stateLine(
     case 'lost':
       return {
         kind: 'state',
-        word: statusWord(status),
+        word: statusWord(status, worst?.kind),
         tone: 'bad',
         code,
         since: worst?.statusSince ?? null,
@@ -239,7 +239,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     ariaLabel:
       `${codes.join(' ')} ${device.name}`.trim() +
       (tally === 'program' ? ', im Program' : tally === 'preview' ? ', in der Preview' : '') +
-      (status !== 'ok' ? `, ${statusWord(status)}` : ''),
+      (status !== 'ok' ? `, ${statusWord(status, worst?.kind)}` : ''),
   };
 }
 

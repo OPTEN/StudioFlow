@@ -13,15 +13,7 @@ import {
   type TrackPublishOptions,
   type VideoCaptureOptions,
 } from 'livekit-client';
-import {
-  SLOT_MESSAGES,
-  captureCamera,
-  captureScreen,
-  describeCameraFailure,
-  describeScreenFailure,
-  isPermissionRefusal,
-  setContentHint,
-} from './capture';
+import { captureCamera, captureScreen, setContentHint } from './capture';
 import {
   cancellableDelay,
   systemClock,
@@ -43,13 +35,30 @@ import {
   type CameraResolution,
   type CameraSettings,
 } from './publish-options';
+import {
+  SLOT_MESSAGES,
+  SLOT_PROBLEMS,
+  describeCameraFailure,
+  describeScreenFailure,
+  isPermissionRefusal,
+  type SlotFailure,
+  type SlotProblem,
+} from './slot-failure';
 import { slotTelemetry } from './slot-telemetry';
 
 /** Local slot state: the wire `SlotState` plus `idle` (no local state, e.g. after «Teilen beenden» or a cancel). */
 export type LocalSlotState = SlotState | 'idle';
 
-/** Slot state listener; `message` is a German explanation for `failed`, cancelled or ended shares. */
-export type SlotStateListener = (slot: string, state: LocalSlotState, message?: string) => void;
+/**
+ * Slot state listener. `message` is a German explanation for `failed`, cancelled or ended shares; `failure` is the
+ * stable cause of a `failed` slot or a cancelled share (`cancelled`), for program logic instead of the text.
+ */
+export type SlotStateListener = (
+  slot: string,
+  state: LocalSlotState,
+  message?: string,
+  failure?: SlotFailure,
+) => void;
 
 /** Construction options of {@link Publisher}. */
 export interface PublisherOptions {
@@ -83,6 +92,7 @@ interface SlotRecord {
   readonly kind: 'camera' | 'screen';
   state: LocalSlotState;
   message: string | undefined;
+  failure: SlotFailure | undefined;
   track: LocalVideoTrack | null;
   /** Camera settings requested by the user. */
   camera: CameraSettings | null;
@@ -144,7 +154,9 @@ export class Publisher {
   readonly #random: () => number;
   readonly #graceMs: number;
   readonly #records = new Map<string, SlotRecord>();
-  readonly #slotListeners: Listeners<[string, LocalSlotState, string | undefined]>;
+  readonly #slotListeners: Listeners<
+    [string, LocalSlotState, string | undefined, SlotFailure | undefined]
+  >;
   readonly #delays = new Set<CancellableDelay>();
   readonly #loss = new DeltaRatio();
   readonly #unsubscribe: readonly (() => void)[];
@@ -172,9 +184,15 @@ export class Publisher {
 
   /** Notifies about slot state changes; also re-notifies (same state) when a slot's local preview track changed. */
   onSlotState(listener: SlotStateListener): () => void {
-    return this.#slotListeners.add((slot, state, message) =>
-      message === undefined ? listener(slot, state) : listener(slot, state, message),
-    );
+    return this.#slotListeners.add((slot, state, message, failure) => {
+      if (message === undefined) {
+        listener(slot, state);
+      } else if (failure === undefined) {
+        listener(slot, state, message);
+      } else {
+        listener(slot, state, message, failure);
+      }
+    });
   }
 
   /** Current state of a slot (`idle` if unknown). */
@@ -339,6 +357,7 @@ export class Publisher {
       kind,
       state: 'idle',
       message: undefined,
+      failure: undefined,
       track: null,
       camera: null,
       appliedCamera: null,
@@ -409,7 +428,7 @@ export class Publisher {
         const failure = describeCameraFailure(error);
         this.#logger.warn('camera acquisition failed', { attempt, ...errorContext(error) });
         if (!failure.transient || attempt >= MAX_RETRIES) {
-          this.#fail(record, failure.message);
+          this.#fail(record, failure);
           return null;
         }
         if (!(await this.#sleep(backoffDelay(attempt + 1, this.#random)))) {
@@ -454,7 +473,7 @@ export class Publisher {
     if (next === 'idle') {
       this.#records.delete(record.slot);
     }
-    this.#setState(record, next, SLOT_MESSAGES.shareCancelled);
+    this.#setState(record, next, SLOT_PROBLEMS.shareCancelled);
   }
 
   /** Applies `record.camera` to the running track via restartTrack (facing mode or resolution change). */
@@ -517,7 +536,7 @@ export class Publisher {
           }
         }
         if (!this.#isStale(record, epoch)) {
-          this.#fail(record, SLOT_MESSAGES.cameraLost);
+          this.#fail(record, SLOT_PROBLEMS.cameraLost);
         }
       } finally {
         if (record.recovering === epoch) {
@@ -596,7 +615,7 @@ export class Publisher {
       ...errorContext(error),
     });
     if (record.publishFailures > MAX_RETRIES) {
-      this.#fail(record, SLOT_MESSAGES.publishFailed);
+      this.#fail(record, SLOT_PROBLEMS.publishFailed);
       return;
     }
     if (
@@ -725,9 +744,9 @@ export class Publisher {
     await this.#releaseTrack(record);
   }
 
-  #fail(record: SlotRecord, message: string): void {
+  #fail(record: SlotRecord, problem: SlotProblem): void {
     record.epoch += 1;
-    this.#setState(record, 'failed', message);
+    this.#setState(record, 'failed', problem);
     void this.#releaseTrack(record);
   }
 
@@ -817,16 +836,20 @@ export class Publisher {
   }
 
   #notifyPreview(record: SlotRecord): void {
-    this.#slotListeners.emit(record.slot, record.state, record.message);
+    this.#slotListeners.emit(record.slot, record.state, record.message, record.failure);
   }
 
-  #setState(record: SlotRecord, state: LocalSlotState, message?: string): void {
-    if (record.state === state && record.message === message) {
+  /** Sets the state with an optional German message (a string) or a problem (message plus failure code). */
+  #setState(record: SlotRecord, state: LocalSlotState, detail?: string | SlotProblem): void {
+    const message = typeof detail === 'string' ? detail : detail?.message;
+    const failure = typeof detail === 'object' ? detail.failure : undefined;
+    if (record.state === state && record.message === message && record.failure === failure) {
       return;
     }
     record.state = state;
     record.message = message;
-    this.#slotListeners.emit(record.slot, state, message);
+    record.failure = failure;
+    this.#slotListeners.emit(record.slot, state, message, failure);
   }
 
   #clearGrace(record: SlotRecord): void {

@@ -99,12 +99,12 @@ describe('scene renderer: monitor alerts', () => {
     expect(label('itm_k2')?.textContent).toBe('K2 · Standbild 00:00');
   });
 
-  it('draws red outlines with fixed words for ended, lost and blocked', () => {
+  it('draws red outlines with fixed words for ended, lost and blocked (an ended camera is «Kamera beendet»)', () => {
     mountMonitor();
     setStatus(CAMERA, 'ended');
     setStatus(CAMERA_2, 'blocked');
     expect(outline('itm_k1')?.style.borderColor).toBe('#f85149');
-    expect(label('itm_k1')?.textContent).toBe('K1 · Teilen beendet');
+    expect(label('itm_k1')?.textContent).toBe('K1 · Kamera beendet');
     expect(label('itm_k2')?.textContent).toBe('K2 · gesperrt');
     setStatus(CAMERA_2, 'lost');
     expect(label('itm_k2')?.textContent).toBe('K2 · kein Bild');

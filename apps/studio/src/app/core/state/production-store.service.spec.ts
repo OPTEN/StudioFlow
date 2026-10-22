@@ -119,6 +119,87 @@ describe('ProductionStoreService', () => {
     expect(harness.store.production()?.name).toBe('Workshop');
   });
 
+  it('asks for the active production again when Subscribe answers not_found', async () => {
+    const harness = await startStore(hub);
+    const other = snapshotFixture({
+      revision: 5,
+      production: { ...snapshotFixture().production, id: 'prd_bbbbbbbbbbbbbbbb', name: 'Workshop' },
+    });
+    hub.subscribe = (productionId) =>
+      productionId === 'prd_bbbbbbbbbbbbbbbb'
+        ? Promise.resolve(snapshotChanges(other))
+        : Promise.reject(
+            new Error(
+              "An unexpected error occurred invoking 'Subscribe' on the server. HubException: not_found: Die Produktion gibt es nicht.",
+            ),
+          );
+
+    hub.drop();
+    hub.connect();
+    await flushMicrotasks();
+    harness.http.expectOne('/api/productions/active').flush({
+      id: 'prd_bbbbbbbbbbbbbbbb',
+      name: 'Workshop',
+      slug: 'workshop',
+      isActive: true,
+      createdAt: '2026-10-22T08:00:00.000Z',
+    });
+    await flushMicrotasks();
+
+    expect(hub.subscribeCalls.at(-1)).toEqual({
+      productionId: 'prd_bbbbbbbbbbbbbbbb',
+      since: null,
+    });
+    expect(harness.store.productionId()).toBe('prd_bbbbbbbbbbbbbbbb');
+    expect(harness.store.production()?.name).toBe('Workshop');
+    expect(harness.store.status()).toBe('live');
+  });
+
+  it('says so when no production is active after a not_found', async () => {
+    const harness = await startStore(hub);
+    hub.subscribe = () => Promise.reject(new Error('HubException: not_found: weg'));
+
+    hub.drop();
+    hub.connect();
+    await flushMicrotasks();
+    harness.http
+      .expectOne('/api/productions/active')
+      .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
+    await flushMicrotasks();
+
+    expect(harness.store.discoveryError()).toBe('Keine aktive Produktion gefunden.');
+    harness.store.stop();
+  });
+
+  it('retries a Subscribe refused with service_unavailable calmly, without asking for the production', async () => {
+    const harness = await startStore(hub);
+    vi.useFakeTimers();
+    try {
+      let refusals = 2;
+      hub.subscribe = () =>
+        refusals-- > 0
+          ? Promise.reject(
+              new Error(
+                "An unexpected error occurred invoking 'Subscribe' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+              ),
+            )
+          : Promise.resolve(snapshotChanges(snapshotFixture()));
+
+      hub.drop();
+      hub.connect();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(harness.store.status()).toBe('syncing');
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(hub.subscribeCalls).toHaveLength(4);
+      harness.http.expectNone('/api/productions/active');
+      expect(harness.store.status()).toBe('live');
+      expect(harness.store.discoveryError()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('applies presence and telemetry without a revision', async () => {
     const { store } = await startStore(hub);
     hub.emit(HUB.presence, 2);

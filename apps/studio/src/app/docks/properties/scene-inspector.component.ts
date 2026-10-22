@@ -9,15 +9,13 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { LIMITS, type LayoutTemplateId, type SceneDto } from '@flowstudio/scene-model';
+import { LIMITS, isHexColor, type LayoutTemplateId, type SceneDto } from '@flowstudio/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { EditorService } from '../../stage/editor.service';
 import { SwitcherService } from '../../stage/switcher.service';
 import { SceneCommandsService } from '../scenes/scene-commands.service';
 import { TemplatePickerComponent } from './template-picker.component';
-
-const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 /**
  * Scene inspector (prototype `renderInspector` without a selection): name, background colour and optional image,
@@ -122,7 +120,7 @@ export class SceneInspectorComponent {
   protected setColor(event: Event): void {
     const color = (event.target as HTMLInputElement).value;
     const background = this.scene().background;
-    if (HEX_COLOR.test(color) && color.toLowerCase() !== background.color.toLowerCase()) {
+    if (isHexColor(color) && color.toLowerCase() !== background.color.toLowerCase()) {
       void this.commands.setBackground(this.scene().id, { ...background, color });
     }
   }

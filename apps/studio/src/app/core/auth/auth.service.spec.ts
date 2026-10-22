@@ -29,6 +29,12 @@ describe('AuthService and authGuard', () => {
 
   afterEach(() => http.verify());
 
+  async function signIn(): Promise<void> {
+    const login = auth.login('admin', 'secret');
+    http.expectOne('/api/auth/login').flush({ username: 'admin' });
+    await login;
+  }
+
   function runGuard(url: string): Promise<boolean | UrlTree> {
     return TestBed.runInInjectionContext(
       () => authGuard({} as never, { url } as never) as Promise<boolean | UrlTree>,
@@ -93,6 +99,51 @@ describe('AuthService and authGuard', () => {
     await done;
     expect(auth.status()).toBe('anonymous');
     expect(navigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('stays signed in and rejects when the logout did not reach the server (the session is still valid)', async () => {
+    await signIn();
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const stopped = vi.fn();
+    auth.onSignedOut(stopped);
+    const done = auth.logout().catch((error: unknown) => error);
+    http
+      .expectOne('/api/auth/logout')
+      .flush({ code: 'service_unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+    await expect(done).resolves.toMatchObject({ status: 503, code: 'service_unavailable' });
+    expect(auth.status()).toBe('authenticated');
+    expect(stopped).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('a hub 401 during the logout stops the connections once and opens the plain login page', async () => {
+    await signIn();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/monitoring');
+    const stopped = vi.fn();
+    auth.onSignedOut(stopped);
+
+    const done = auth.logout();
+    // The server closed the hub of the session; its reconnect met a 401 before the logout answered.
+    auth.handleUnauthorized();
+    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+
+    expect(stopped).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(navigateByUrl).toHaveBeenCalledWith('/login');
+    expect(auth.status()).toBe('anonymous');
+  });
+
+  it('runs the sign-out handlers only once for repeated refusals', async () => {
+    await signIn();
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const stopped = vi.fn();
+    auth.onSignedOut(stopped);
+    auth.handleUnauthorized();
+    auth.handleUnauthorized();
+    expect(stopped).toHaveBeenCalledTimes(1);
   });
 
   it('accepts only in-app paths as next', () => {

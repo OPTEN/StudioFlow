@@ -54,7 +54,11 @@ export class PhoneStationComponent {
   );
   protected readonly problem = computed(() =>
     this.cameraState() === 'failed'
-      ? describeCameraProblem(this.camera()?.message ?? undefined, this.environment.userAgent())
+      ? describeCameraProblem(
+          this.camera()?.failure,
+          this.camera()?.message,
+          this.environment.userAgent(),
+        )
       : null,
   );
   protected readonly controlsVisible = computed(() => !this.dark() || this.awake());

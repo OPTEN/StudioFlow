@@ -77,6 +77,24 @@ public sealed class DeviceTests
     }
 
     [Fact]
+    public void AllocateSlot_ReleasedScreens_LowestFreeNumberIsHandedOutFirst()
+    {
+        var laptop = Build.Laptop(production);
+        for (var i = 2; i <= 5; i++)
+        {
+            laptop.AllocateSlot(SourceKind.Screen, laptop.Slots.Select(s => s.Code));
+        }
+
+        laptop.ReleaseSlot("screen-4");
+        laptop.ReleaseSlot("screen-2");
+        laptop.ReleaseSlot("screen-1");
+
+        Assert.Equal(
+            ["screen-1", "screen-2", "screen-4", "screen-6"],
+            Enumerable.Range(0, 4).Select(_ => laptop.AllocateSlot(SourceKind.Screen, laptop.Slots.Select(s => s.Code)).Slot));
+    }
+
+    [Fact]
     public void DefaultName_ExistingNames_PicksLowestFreeNumber()
     {
         Assert.Equal("Handy 2", Device.DefaultName(DeviceKind.Phone, ["Handy 1", "Handy 3", "Laptop 2"]));

@@ -1,4 +1,4 @@
-import { ITEM_BOUNDS } from '@flowstudio/scene-model';
+import { ITEM_BOUNDS, isHexColor, snapRotation, type Rotation } from '@flowstudio/scene-model';
 import type { BorderDto, CropDto, ItemFit, SceneItemDto } from '@flowstudio/scene-model';
 
 import type { CanvasRect, DesiredSize } from './types';
@@ -6,10 +6,12 @@ import type { CanvasRect, DesiredSize } from './types';
 /**
  * Pure geometry of one item: sanitising wire values (the renderer must never produce NaN styles or divide by zero for
  * a malformed item) and the box math for crop, rotation, blur and desired picture sizes.
+ *
+ * Rotation snapping and the colour check are the scene-model ones (`snapRotation`, `isHexColor`). The clamping here
+ * deliberately differs from scene-model's `clampItem`, which prepares editor input for the server: the renderer
+ * sanitises whatever arrives over the wire without rounding, falls back to 0 instead of the new-item defaults and
+ * tolerates a missing crop or an invalid border.
  */
-
-/** Rotation in degrees after normalisation. */
-export type Rotation = 0 | 90 | 180 | 270;
 
 /** A box relative to its parent, in canvas pixels. */
 export interface Box {
@@ -35,7 +37,6 @@ export interface ItemLook {
   readonly border: Border | null;
 }
 
-const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const HELD_BLUR_FRACTION = 0.025;
 const HELD_BLUR_MIN_PX = 3;
 const DESIRED_SIZE_STEP = 16;
@@ -48,11 +49,6 @@ export function clampNumber(value: unknown, min: number, max: number, fallback: 
   return Math.min(max, Math.max(min, value));
 }
 
-/** True for `#rrggbb` (the only colour format the API accepts); anything else is not written into styles. */
-export function isHexColor(value: unknown): value is string {
-  return typeof value === 'string' && HEX_COLOR.test(value);
-}
-
 /** Stored geometry of an item, clamped to the API bounds. */
 export function itemRect(item: SceneItemDto): CanvasRect {
   return {
@@ -61,15 +57,6 @@ export function itemRect(item: SceneItemDto): CanvasRect {
     w: clampNumber(item.w, ITEM_BOUNDS.minW, ITEM_BOUNDS.maxW, ITEM_BOUNDS.minW),
     h: clampNumber(item.h, ITEM_BOUNDS.minH, ITEM_BOUNDS.maxH, ITEM_BOUNDS.minH),
   };
-}
-
-/** Rotation snapped to a quarter turn (malformed values become 0). */
-export function normalizeRotation(rotation: unknown): Rotation {
-  if (typeof rotation !== 'number' || !Number.isFinite(rotation)) {
-    return 0;
-  }
-  const quarter = ((Math.round(rotation / 90) % 4) + 4) % 4;
-  return (quarter * 90) as Rotation;
 }
 
 function cropSide(value: unknown): number {
@@ -94,7 +81,7 @@ export function itemLook(item: SceneItemDto): ItemLook {
     crop: sanitizeCrop(item.crop),
     radius: clampNumber(item.radius, 0, ITEM_BOUNDS.maxRadius, 0),
     mirror: item.mirror === true,
-    rotation: normalizeRotation(item.rotation),
+    rotation: snapRotation(item.rotation),
     border:
       border && isHexColor(border.color)
         ? {

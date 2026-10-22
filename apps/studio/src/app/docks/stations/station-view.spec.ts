@@ -76,6 +76,14 @@ describe('station view', () => {
     expect(charging.line).toMatchObject({ lowBattery: null });
   });
 
+  it('names a camera stopped on purpose «Kamera beendet» and offers no reshare for it', () => {
+    const ended = { ...camera, status: 'ended' as const, statusSince: '2026-10-22T10:00:00Z' };
+    const view = stationView(deviceFixture(DEVICE, 'Handy'), context([ended]));
+    expect(view.line).toMatchObject({ kind: 'state', word: 'Kamera beendet', tone: 'bad' });
+    expect(view.endedScreens).toEqual([]);
+    expect(view.ariaLabel).toBe('K1 Handy, Kamera beendet');
+  });
+
   it('shows «verbindet neu» with timer and «Standbild» while reconnecting', () => {
     const reconnecting = {
       ...camera,

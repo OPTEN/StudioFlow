@@ -29,6 +29,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly signedOutHandlers = new Set<() => void>();
   private pendingCheck: Promise<AuthStatus> | null = null;
+  private signingOut = false;
 
   /** The signed-in admin, or null. */
   readonly session = signal<SessionDto | null>(null);
@@ -76,12 +77,22 @@ export class AuthService {
     return session;
   }
 
-  /** Signs out (best effort on the server), stops all connections and shows the login page. */
+  /**
+   * Signs out: the server ends the session and closes its hub connections (GAP-04), then every connection stops and
+   * the login page opens. A 401 means the session had already ended (expired, or signed out in another tab): signed
+   * out as well. Any other failure (server unreachable, 503) leaves the session valid on the server, so the operator
+   * stays signed in and the call rejects with an `ApiError` for a message.
+   */
   async logout(): Promise<void> {
+    this.signingOut = true;
     try {
       await this.api.logout();
-    } catch {
-      // The cookie may already be gone; signing out locally is what matters.
+    } catch (error) {
+      if (ApiError.from(error).status !== 401) {
+        throw error;
+      }
+    } finally {
+      this.signingOut = false;
     }
     this.signOutLocally();
     await this.router.navigateByUrl(LOGIN_PATH);
@@ -89,12 +100,14 @@ export class AuthService {
 
   /**
    * The server refused the session (401 from REST, 401/403 from a hub): forget it, stop connections and navigate to
-   * the login page, remembering the current page as `next`. Idempotent while already signed out.
+   * the login page, remembering the current page as `next`. Idempotent while already signed out. During
+   * {@link logout} (the server closes the hub, its reconnect meets a 401) it only stops the connections: the logout
+   * opens the login page itself, without a `next` page.
    */
   handleUnauthorized(): void {
     this.signOutLocally();
     const url = this.router.url;
-    if (url.startsWith(LOGIN_PATH)) {
+    if (this.signingOut || url.startsWith(LOGIN_PATH)) {
       return;
     }
     void this.router.navigate([LOGIN_PATH], {
@@ -108,9 +121,14 @@ export class AuthService {
     return () => this.signedOutHandlers.delete(handler);
   }
 
+  /** Forgets the session and runs the sign-out handlers once (again only after a new sign-in or session check). */
   private signOutLocally(): void {
+    const alreadySignedOut = this.status() === 'anonymous';
     this.session.set(null);
     this.status.set('anonymous');
+    if (alreadySignedOut) {
+      return;
+    }
     for (const handler of [...this.signedOutHandlers]) {
       try {
         handler();

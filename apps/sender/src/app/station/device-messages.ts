@@ -1,9 +1,11 @@
-import type {
-  DeviceCommandDto,
-  DeviceSelfDto,
-  DeviceSlotDto,
-  TallyDto,
-  TallyState,
+import { hubErrorCode } from '@flowstudio/realtime-client';
+import {
+  ERROR_CODES,
+  type DeviceCommandDto,
+  type DeviceSelfDto,
+  type DeviceSlotDto,
+  type TallyDto,
+  type TallyState,
 } from '@flowstudio/scene-model';
 
 /** Tally while nothing is known or nothing is on air. */
@@ -86,7 +88,7 @@ export function isDeviceSelf(value: unknown): value is DeviceSelfDto {
 
 /** True for a hub error that says the device is blocked (`HubException` text «device_blocked: …»). */
 export function isBlockedHubError(error: unknown): boolean {
-  return error instanceof Error && error.message.includes('device_blocked');
+  return hubErrorCode(error) === ERROR_CODES.deviceBlocked;
 }
 
 /** Number of a screen slot (`screen-3` → 3), 0 for the camera. */
