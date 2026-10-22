@@ -1,1 +1,135 @@
-/* You can add global styles to this file, and also import other style files */
+// Global styles of the sender PWA: self-hosted fonts, colour tokens (DESIGN.md), base rules, shared components.
+@use 'mixins' as *;
+@use 'tokens' as *;
+@use 'components';
+
+// Fonts ship with the build (SIL Open Font License, see fonts/OFL-*.txt); esbuild hashes them so they work under /join/.
+@font-face {
+  font-display: swap;
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('./fonts/sofia-sans-semi-condensed-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-display: swap;
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
+:root {
+  --amber: #e3b341;
+  --amber-halo: rgba(227, 179, 65, 0.22);
+  --amber-wash: rgba(227, 179, 65, 0.1);
+  --blue: #79c0ff;
+  --blue-fill: #1f6feb;
+  --blue-fill-hover: #1a5fd0;
+  --blue-wash: rgba(121, 192, 255, 0.08);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font-ui: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --green: #56d364;
+  --green-hover: #6fe07c;
+  --green-wash: rgba(86, 211, 100, 0.08);
+  --ground: #0d1117;
+  --muted: #8b949e;
+  --on-fill: #ffffff;
+  --on-state: #0d1117;
+  --panel: #151a22;
+  --raised: #1b212b;
+  --raised-2: #232a36;
+  --red: #f85149;
+  --red-halo: rgba(248, 81, 73, 0.25);
+  --red-wash: rgba(248, 81, 73, 0.1);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --scrim: rgba(13, 17, 23, 0.72);
+  --seam: #262c36;
+  --seam-hover: #445064;
+  --seam-strong: #353d4a;
+  --shadow-pop: 0 4px 10px rgba(1, 4, 9, 0.5);
+  --text: #e6edf3;
+  --text-2: #b4bdc8;
+  --well: #05070a;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--ground);
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  background: var(--ground);
+  color: var(--text);
+  font: 400 16px/1.45 var(--font-ui);
+  margin: 0;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(121, 192, 255, 0.3);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+// Headings focused on route changes must not show a ring for the programmatic focus.
+[tabindex='-1']:focus:not(:focus-visible) {
+  outline: none;
+}
+
+button,
+input,
+select {
+  color: inherit;
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--blue);
+}
+
+// Utilities.
+.u-sr-only {
+  @include sr-only;
+}
+
+.u-mono {
+  @include mono;
+}
+
+// Motion: every animation and transition of the sender is declared inside
+// `@media (prefers-reduced-motion: no-preference)`, so the OS setting turns all of it off (testing GAP-28).
+
+// Forced colours: keep borders and focus visible.
+@media (forced-colors: active) {
+  .c-button,
+  .c-segmented__options {
+    border-color: ButtonText;
+  }
+}

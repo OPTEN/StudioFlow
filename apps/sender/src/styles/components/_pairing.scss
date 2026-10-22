@@ -1,0 +1,56 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Page layout of the pairing screens (form, waiting, redeem): one centred column on the ground colour, phone first.
+.c-pairing {
+  display: grid;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-right))
+    calc(var(--safe-bottom) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-left));
+  place-items: start center;
+
+  @include respond-to(md) {
+    place-items: center;
+  }
+}
+
+.c-pairing__inner {
+  display: grid;
+  gap: $SPACE_STAGE;
+  max-width: 440px;
+  min-width: 0;
+  width: 100%;
+}
+
+.c-pairing__brand {
+  color: var(--text);
+}
+
+.c-pairing__title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.c-pairing__lead {
+  color: var(--text-2);
+  font-size: 16px;
+}
+
+.c-pairing__form {
+  display: grid;
+  gap: $SPACE_STAGE;
+}
+
+.c-pairing__actions {
+  display: grid;
+  gap: $SPACE_LG;
+}
+
+.c-pairing__foot {
+  border-top: 1px solid var(--seam);
+  color: var(--muted);
+  font-size: 14px;
+  padding-top: $SPACE_GUTTER;
+}

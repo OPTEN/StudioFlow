@@ -1,0 +1,113 @@
+/*
+ * Output page: one fixed 1920 × 1080 stage (scene renderer), letterboxed into the window or iframe.
+ * Fonts are self-hosted (spec 3, DESIGN.md «Font delivery»); Vite hashes them and the URLs work under /o/.
+ * No `color-scheme` on purpose: an iframe whose colour scheme differs from its embedder gets an opaque backdrop in
+ * Chromium, which would break ?bg=transparent.
+ */
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  src: url('./fonts/sofia-sans-semi-condensed-latin.woff2') format('woff2');
+  font-weight: 1 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  font-family: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ?bg=transparent: overlays in OBS or vMix see through the page, the stage and the letterbox. */
+html.is-transparent,
+html.is-transparent body {
+  background: transparent;
+}
+
+/* The proxy often shows the page full screen: no cursor after a few seconds without movement. */
+html.is-cursor-idle,
+html.is-cursor-idle * {
+  cursor: none !important;
+}
+
+.c-output {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ?debug=1: measuring panel above the stage; fixed, so it never moves the stage. */
+.c-debug {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: rgba(13, 17, 23, 0.82);
+  color: #e6edf3;
+  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* /o/_uhr: running clock for glass-to-glass measurements (plan phase 0). */
+.c-clock {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4vh;
+  padding: 0 4vw;
+  background: #000;
+  color: #fff;
+  text-align: center;
+}
+
+.c-clock__time {
+  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: min(11.5vw, 30vh);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.c-clock__hint {
+  max-width: 60ch;
+  margin: 0;
+  color: #b4bdc8;
+  font-size: clamp(14px, 1.7vw, 30px);
+  font-weight: 400;
+  line-height: 1.4;
+}

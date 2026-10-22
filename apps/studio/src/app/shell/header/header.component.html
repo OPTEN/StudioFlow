@@ -1,0 +1,56 @@
+<header class="c-header">
+  <div class="c-header__brand"><svg fsIcon="mark"></svg>FlowStudio</div>
+  <fs-production-menu />
+
+  <div class="c-header__right">
+    <fs-broadcast-control />
+
+    <div class="c-pop-wrap">
+      <button
+        class="c-chipbtn"
+        type="button"
+        aria-haspopup="dialog"
+        [fsPopoverTrigger]="outputPopover"
+      >
+        <svg fsIcon="output"></svg>
+        <span class="c-header__out-label">Output an Proxy</span>
+        <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
+        <span class="u-mono">{{ outputLatency() }}</span>
+        <svg fsIcon="chev" [size]="13"></svg>
+      </button>
+      @if (popovers.isOpen(outputPopover)) {
+        <fs-output-popover />
+      }
+    </div>
+
+    <button class="c-chipbtn" type="button" (click)="showHealth()">
+      <span class="c-lamp" aria-hidden="true" [class]="healthLamp()"></span>
+      <span>{{ health().text }}</span>
+    </button>
+
+    <div class="c-pop-wrap">
+      <button
+        class="c-ibtn"
+        type="button"
+        aria-haspopup="dialog"
+        aria-label="Docks und Layout"
+        title="Docks und Layout"
+        [fsPopoverTrigger]="layoutPopover"
+      >
+        <svg fsIcon="layout"></svg>
+      </button>
+      @if (popovers.isOpen(layoutPopover)) {
+        <fs-layout-popover />
+      }
+    </div>
+
+    <span class="c-header__presence" [title]="presenceText()">
+      <svg fsIcon="users"></svg>
+      <span class="c-header__presence-label" aria-hidden="true"
+        >{{ operators() }} in der Regie</span
+      >
+      <span class="u-sr-only">{{ presenceText() }}</span>
+    </span>
+    <span class="c-header__clock u-mono">{{ clockText() }}</span>
+  </div>
+</header>

@@ -1,0 +1,60 @@
+// Layout templates (prototype .presets, .preset, .preset-n).
+@use 'mixins' as *;
+
+:host {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  @include presets-compact {
+    gap: 4px;
+  }
+
+  @include narrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.c-preset {
+  @include state-transition(background-color, color);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  text-align: left;
+
+  &:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  // Auto-Grid while the scene uses it: selected underline like a pressed segment.
+  &.is-active {
+    background: var(--raised);
+    box-shadow: var(--shadow-selected);
+    color: var(--text);
+  }
+
+  @include presets-compact {
+    padding: 4px;
+  }
+}
+
+.c-preset__name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  @include presets-compact {
+    font-size: 11.5px;
+  }
+}

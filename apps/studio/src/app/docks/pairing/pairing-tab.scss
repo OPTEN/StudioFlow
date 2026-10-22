@@ -1,0 +1,157 @@
+// Shared content styles of the pairing tabs (prototype .pair-main h3/p, .qr-wrap, .big-url, .mini, .sec-label).
+@use 'mixins' as *;
+
+:host {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+
+  @include short-laptop {
+    gap: 8px;
+  }
+}
+
+.c-pair__title {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin: 0;
+
+  @include short-laptop {
+    display: none;
+  }
+}
+
+.c-pair__text {
+  color: var(--text-2);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.c-pair__qr-wrap {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.c-pair__qr-empty {
+  align-items: center;
+  background: var(--well);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  display: grid;
+  font-size: 12.5px;
+  height: 168px;
+  padding: 12px;
+  text-align: center;
+  width: 168px;
+}
+
+.c-pair__qr-side {
+  align-content: start;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.c-pair__big-url {
+  align-items: center;
+  border-block: 1px solid var(--seam);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+
+  @include short-laptop {
+    padding-block: 6px;
+  }
+}
+
+.c-pair__url {
+  color: var(--text);
+  flex: 1 1 auto;
+  font: 600 15px var(--font-mono);
+  white-space: nowrap;
+}
+
+.c-pair__url--wrap {
+  font-size: 13.5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.c-pair__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.c-pair__danger {
+  margin-left: auto;
+}
+
+.c-pair__mini {
+  display: grid;
+  gap: 8px;
+}
+
+.c-pair__mini-bar {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.c-pair__mini-body {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.c-pair__mini-field {
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  flex: 1 1 120px;
+  font-size: 13px;
+  height: 28px;
+  padding: 4px 9px;
+
+  &.is-example {
+    color: var(--muted);
+  }
+}
+
+.c-pair__mini-cap {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.c-pair__mini-code {
+  font: 600 18px / 1 var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
+.c-pair__invites {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.c-pair__invite {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 30px;
+}
+
+.c-pair__invite-url {
+  @include ellipsis;
+  flex: 1 1 160px;
+  font: 500 12.5px var(--font-mono);
+}

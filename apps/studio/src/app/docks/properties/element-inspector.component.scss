@@ -1,0 +1,52 @@
+// Element inspector (prototype #insp with a selection).
+@use 'inspector';
+
+.c-insp__row--top {
+  align-items: start;
+
+  .c-insp__label {
+    padding-top: 7px;
+  }
+}
+
+.c-insp__crop {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.c-insp__crop .c-insp__pair {
+  width: 100%;
+}
+
+.c-num__label--word {
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.c-insp__border {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.c-insp__border-width {
+  flex: 0 1 92px;
+}
+
+.c-insp__color {
+  background: var(--ground);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex: none;
+  height: 30px;
+  padding: 3px;
+  width: 36px;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}

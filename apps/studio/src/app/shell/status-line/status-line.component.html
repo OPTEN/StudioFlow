@@ -1,0 +1,85 @@
+@if (banner(); as banner) {
+  <div
+    class="c-status__net"
+    [class.is-warn]="banner.tone === 'warn'"
+    [class.is-bad]="banner.tone === 'bad'"
+  >
+    <span
+      class="c-lamp"
+      aria-hidden="true"
+      [class.is-idle]="banner.tone === 'idle'"
+      [class.is-warn]="banner.tone === 'warn'"
+      [class.is-bad]="banner.tone === 'bad'"
+    ></span>
+    <span>{{ banner.text }}</span>
+    @if (banner.action === 'media') {
+      <button class="c-btn c-btn--sm" type="button" (click)="media.restart()">Neu verbinden</button>
+    }
+  </div>
+}
+
+@for (row of rows(); track row.incident.id) {
+  @if (row.recovered) {
+    <div class="c-status__inc is-ok">
+      <button
+        class="c-status__target"
+        type="button"
+        [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
+        (click)="show(row)"
+      >
+        <svg fsIcon="check"></svg><span class="c-code">{{ row.code }}</span
+        >{{ row.name }}
+      </button>
+      <strong class="c-state--ok">wieder da</strong>
+      <span class="c-status__where">{{ row.downFor }}</span>
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="pending().has(row.incident.id)"
+        (click)="acknowledge(row)"
+      >
+        Gesehen
+      </button>
+    </div>
+  } @else {
+    <div class="c-status__inc" [class.is-bad]="row.bad" [class.is-warn]="!row.bad">
+      <button
+        class="c-status__target"
+        type="button"
+        [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
+        (click)="show(row)"
+      >
+        <svg fsIcon="alert"></svg><span class="c-code">{{ row.code }}</span
+        >{{ row.name }}
+      </button>
+      <strong [class.c-state--bad]="row.bad" [class.c-state--warn]="!row.bad">{{
+        row.word
+      }}</strong>
+      <span class="c-status__where">{{ row.place }}</span>
+      <span class="c-status__time">{{ timer(row.incident) }}</span>
+      @if (row.reshare) {
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="pending().has(row.incident.id)"
+          (click)="reshare(row)"
+        >
+          <svg fsIcon="send" [size]="13"></svg>Neu teilen lassen
+        </button>
+      }
+    </div>
+  }
+} @empty {
+  <span class="c-status__ok"><svg fsIcon="check"></svg>Keine offenen Meldungen</span>
+  @if (logEntries().length > 0) {
+    <span class="c-status__label">Letzte Ereignisse</span>
+    <span class="c-status__log">
+      @for (entry of logEntries(); track entry.key) {
+        <span class="c-status__entry"
+          ><span class="u-mono">{{ entry.time }}</span
+          >{{ entry.text }}</span
+        >
+      }
+    </span>
+  }
+}

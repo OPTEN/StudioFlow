@@ -1,0 +1,67 @@
+// Header (prototype .top, .brand, .mark, .top-r, .presence, .clock).
+@use 'mixins' as *;
+
+:host {
+  background: var(--panel);
+  display: block;
+  min-width: 0;
+}
+
+.c-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-height: 50px;
+  min-width: 0;
+  padding: 6px var(--gr) 6px var(--gl);
+
+  @include stacked {
+    flex-wrap: wrap;
+  }
+}
+
+.c-header__brand {
+  align-items: center;
+  display: flex;
+  font-size: 16.5px;
+  font-weight: 700;
+  gap: 9px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.c-header__right {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 6px;
+  min-width: 0;
+
+  @include stacked {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+}
+
+.c-header__presence {
+  align-items: center;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.c-header__presence-label {
+  @include presence-compact {
+    display: none;
+  }
+}
+
+.c-header__clock {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 0 0 6px;
+}

@@ -1,0 +1,13 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.c-redeem__status {
+  align-items: center;
+  color: var(--text-2);
+  display: flex;
+  font-size: 16px;
+  gap: $SPACE_LG;
+}

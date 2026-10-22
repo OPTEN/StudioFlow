@@ -1,0 +1,66 @@
+<label class="c-switch c-control-column__switch" [for]="switchId">
+  <input
+    type="checkbox"
+    role="switch"
+    [id]="switchId"
+    [checked]="switcher.studioMode()"
+    (change)="onStudioModeChange($event)"
+  />Studio-Modus
+</label>
+<span class="c-control-column__label">Übergang</span>
+<div class="c-transition" role="group" aria-label="Art des Übergangs">
+  <button
+    class="c-transition__option"
+    type="button"
+    [attr.aria-pressed]="switcher.transitionKind() === 'cut'"
+    (click)="setKind('cut')"
+  >
+    Schnitt
+  </button>
+  <button
+    class="c-transition__option"
+    type="button"
+    [attr.aria-pressed]="switcher.transitionKind() === 'fade'"
+    (click)="setKind('fade')"
+  >
+    Blende
+  </button>
+</div>
+<div
+  class="c-duration"
+  role="group"
+  aria-label="Dauer der Blende"
+  [class.is-off]="switcher.transitionKind() === 'cut'"
+>
+  <button
+    class="c-duration__btn"
+    type="button"
+    aria-label="Blende kürzer"
+    [disabled]="!switcher.canStepDuration(-1)"
+    (click)="step(-1)"
+  >
+    <svg fsIcon="minus" [size]="14"></svg>
+  </button>
+  <span class="c-duration__value">{{ switcher.durationLabel() }}</span>
+  <button
+    class="c-duration__btn"
+    type="button"
+    aria-label="Blende länger"
+    [disabled]="!switcher.canStepDuration(1)"
+    (click)="step(1)"
+  >
+    <svg fsIcon="plus" [size]="14"></svg>
+  </button>
+</div>
+@if (switcher.studioMode()) {
+  <button
+    class="c-take"
+    type="button"
+    aria-keyshortcuts="Space"
+    [disabled]="!switcher.canTake()"
+    (click)="take()"
+  >
+    Take <small class="c-take__hint">Leerschlag</small>
+  </button>
+}
+<span class="c-control-column__hint">{{ switcher.hint() }}</span>

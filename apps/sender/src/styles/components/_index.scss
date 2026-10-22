@@ -1,0 +1,6 @@
+// Shared UI components of the sender (BEMIT `c-`), used by several Angular components.
+@forward 'button';
+@forward 'segmented';
+@forward 'status';
+@forward 'field';
+@forward 'pairing';

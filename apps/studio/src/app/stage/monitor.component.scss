@@ -1,0 +1,145 @@
+// One monitor of the stage (prototype .mon, .mon-h, .tally, .mon-name, .mon-meta, .live-edit, .screen, .live-note).
+@use 'mixins' as *;
+
+:host {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+// Widths come from the stage (monitor-layout.ts): 16:9 from the stage's width and height, never overflowing.
+:host(.c-monitor--preview) {
+  width: var(--fs-preview-w, 50%);
+}
+
+:host(.c-monitor--program) {
+  width: var(--fs-program-w, 100%);
+}
+
+.c-monitor__head {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-height: 24px;
+  min-width: 0;
+}
+
+.c-monitor__tally {
+  @include label-text;
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+
+  i {
+    background: currentColor;
+    border-radius: 50%;
+    height: 8px;
+    width: 8px;
+  }
+}
+
+:host(.c-monitor--preview) .c-monitor__tally {
+  color: var(--green);
+}
+
+:host(.c-monitor--program) .c-monitor__tally {
+  color: var(--red);
+}
+
+.c-monitor__name {
+  @include ellipsis;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.c-monitor__live-edit {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.c-monitor__meta {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.c-monitor__meta--mono {
+  @include mono;
+  font-size: 11.5px;
+}
+
+// The 16:9 well with the tally outline (2 px; the Program flashes on a switch, see MonitorComponent).
+.c-monitor__screen {
+  aspect-ratio: 16 / 9;
+  background: var(--well);
+  border-radius: var(--radius-screen);
+  position: relative;
+  width: 100%;
+}
+
+:host(.c-monitor--preview) .c-monitor__screen {
+  outline: 2px solid var(--green);
+}
+
+:host(.c-monitor--program) .c-monitor__screen {
+  outline: 2px solid var(--red);
+}
+
+.c-monitor__view {
+  border-radius: var(--radius-screen);
+  inset: 0;
+  position: absolute;
+}
+
+.c-monitor__empty {
+  color: var(--muted);
+  display: grid;
+  font-size: 12.5px;
+  inset: 0;
+  place-items: center;
+  pointer-events: none;
+  position: absolute;
+}
+
+.c-monitor__live-note {
+  background: rgba(13, 17, 23, 0.92);
+  border: 1px solid rgba(248, 81, 73, 0.5);
+  border-radius: var(--radius-md);
+  bottom: 10px;
+  color: var(--text);
+  font-size: 13px;
+  left: 10px;
+  padding: 8px 10px;
+  position: absolute;
+  right: 10px;
+}
+
+// ≤ 900 px: full width, priority order Program (1), controls (2), Preview (3); no meta.
+@include narrow {
+  :host(.c-monitor--preview),
+  :host(.c-monitor--program) {
+    width: 100%;
+  }
+
+  :host(.c-monitor--program) {
+    order: 1;
+  }
+
+  :host(.c-monitor--preview) {
+    order: 3;
+  }
+
+  .c-monitor__head {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .c-monitor__meta {
+    display: none;
+  }
+}

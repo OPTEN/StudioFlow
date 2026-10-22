@@ -1,0 +1,153 @@
+// Message strip (prototype .statusline, .sl-ok, .sl-label, .sl-log, .sl-entry, .sl-inc, .sl-target, .sl-where,
+// .sl-time) plus the connection banner.
+@use 'mixins' as *;
+
+:host {
+  align-items: stretch;
+  background: var(--panel);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  min-height: 38px;
+  min-width: 0;
+  padding: 0 var(--gr) 0 var(--gl);
+
+  @include narrow {
+    flex-direction: column;
+  }
+}
+
+.c-status__ok {
+  align-items: center;
+  border-right: 1px solid var(--seam);
+  color: var(--text-2);
+  display: flex;
+  gap: 8px;
+  padding: 0 14px 0 0;
+  white-space: nowrap;
+
+  .c-icon {
+    color: var(--green);
+  }
+}
+
+.c-status__label {
+  @include label-text(11px);
+  align-items: center;
+  display: flex;
+  padding: 0 4px 0 14px;
+}
+
+.c-status__log {
+  align-items: stretch;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.c-status__entry {
+  align-items: center;
+  border-right: 1px solid var(--seam);
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  padding: 0 14px;
+  white-space: nowrap;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  .u-mono {
+    font-size: 12px;
+  }
+}
+
+.c-status__inc,
+.c-status__net {
+  align-items: center;
+  border-right: 1px solid var(--seam);
+  display: flex;
+  gap: 10px;
+  min-height: 38px;
+  padding: 5px 10px 5px 4px;
+
+  &.is-warn {
+    background: var(--amber-wash);
+  }
+
+  &.is-bad {
+    background: var(--red-wash);
+  }
+
+  &.is-ok {
+    background: var(--green-wash);
+  }
+}
+
+.c-status__net {
+  color: var(--text-2);
+  padding-left: 0;
+  padding-right: 14px;
+}
+
+.c-status__target {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 600;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.c-status__inc.is-warn .c-status__target > .c-icon {
+  color: var(--amber);
+}
+
+.c-status__inc.is-bad .c-status__target > .c-icon {
+  color: var(--red);
+}
+
+.c-status__inc.is-ok .c-status__target > .c-icon {
+  color: var(--green);
+}
+
+.c-status__where {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.c-status__time {
+  color: var(--text-2);
+  font: 500 12px var(--font-mono);
+  white-space: nowrap;
+}
+
+// ≤ 900 px: one segment per line; only the ok state and incidents.
+@include narrow {
+  .c-status__ok,
+  .c-status__inc,
+  .c-status__net {
+    border-bottom: 1px solid var(--seam);
+    border-right: 0;
+    flex-wrap: wrap;
+  }
+
+  .c-status__log,
+  .c-status__label {
+    display: none;
+  }
+}

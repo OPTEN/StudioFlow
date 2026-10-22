@@ -1,0 +1,117 @@
+// One dock in a zone (prototype .panel, .zone > .panel, .edge-l/.edge-r, .split between docks, .is-moving).
+@use 'mixins' as *;
+
+:host {
+  background: var(--panel);
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+// Bottom zone: docks side by side.
+:host-context(.c-workspace__zone--bottom) {
+  min-width: 180px;
+}
+
+// Side zones: docks stacked.
+:host-context(.c-workspace__zone--left),
+:host-context(.c-workspace__zone--right) {
+  min-height: 110px;
+}
+
+// The hairline to the previous dock: a 1 px seam (border) with the splitter on top of it.
+:host(.has-split-across) {
+  border-left: 1px solid var(--seam);
+}
+
+:host(.has-split-down) {
+  border-top: 1px solid var(--seam);
+}
+
+:host(.is-edge-l) {
+  padding-left: calc(var(--gl) - 6px);
+}
+
+:host(.is-edge-r) {
+  padding-right: calc(var(--gr) - 8px);
+}
+
+:host(.is-moving) {
+  opacity: 0.4;
+}
+
+:host(.is-pair) {
+  container-type: inline-size;
+}
+
+.c-dock-slot__split {
+  background: transparent;
+  cursor: row-resize;
+  height: 1px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: -1px;
+  touch-action: none;
+  transition:
+    background-color var(--dur-state) var(--ease) var(--dur-splitter-delay),
+    box-shadow var(--dur-state) var(--ease) var(--dur-splitter-delay);
+  z-index: 2;
+
+  // 9 px hit area.
+  &::before {
+    content: '';
+    inset: -4px 0;
+    position: absolute;
+  }
+
+  &:hover,
+  &:focus-visible,
+  &.is-drag {
+    background: var(--blue);
+    box-shadow: var(--shadow-splitter);
+    outline: none;
+  }
+}
+
+.c-dock-slot__split--across {
+  bottom: 0;
+  cursor: col-resize;
+  height: auto;
+  left: -1px;
+  right: auto;
+  top: 0;
+  width: 1px;
+
+  &::before {
+    inset: 0 -4px;
+  }
+}
+
+@include stacked {
+  :host {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  :host(.has-split-across),
+  :host(.has-split-down) {
+    border: 0;
+  }
+
+  :host(.is-edge-l),
+  :host(.is-edge-r) {
+    padding-inline: 0;
+  }
+
+  :host(.is-pair) {
+    grid-column: 1 / -1;
+  }
+
+  .c-dock-slot__split {
+    display: none;
+  }
+}

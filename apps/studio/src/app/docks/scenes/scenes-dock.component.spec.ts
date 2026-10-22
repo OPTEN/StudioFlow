@@ -1,0 +1,158 @@
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
+import {
+  PRODUCTION_ID,
+  sceneFixture,
+  snapshotFixture,
+  sourceFixture,
+} from '../../../testing/fixtures';
+import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ScenesDockComponent } from './scenes-dock.component';
+
+const BASE = `/api/productions/${PRODUCTION_ID}`;
+
+describe('ScenesDockComponent', () => {
+  let harness: StoreHarness;
+  let fixture: ComponentFixture<ScenesDockComponent>;
+  let element: HTMLElement;
+
+  async function setup(snapshot = snapshotFixture()): Promise<void> {
+    const hub = new FakeStudioHub();
+    TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
+    harness = await startStore(hub, snapshot);
+    fixture = TestBed.createComponent(ScenesDockComponent);
+    element = fixture.nativeElement as HTMLElement;
+    await render();
+  }
+
+  async function render(): Promise<void> {
+    await flushMicrotasks();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  function rows(): HTMLButtonElement[] {
+    return Array.from(element.querySelectorAll<HTMLButtonElement>('button.c-scene'));
+  }
+
+  function text(node: Element | null | undefined): string {
+    return (node?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /** Texts of the child elements, joined with spaces (Angular removes the whitespace between elements). */
+  function parts(node: Element | null | undefined): string {
+    return Array.from(node?.children ?? [])
+      .map((child) => text(child))
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  afterEach(() => harness.http.verify());
+
+  it('lists the scenes with keycap, name, PGM tag, codes and the prototype labels', async () => {
+    await setup();
+    const [first, second, third] = rows();
+    expect(rows()).toHaveLength(3);
+    expect(text(first.querySelector('.c-keycap'))).toBe('1');
+    expect(text(first.querySelector('.c-scene__name'))).toBe('Begrüssung');
+    expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
+    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1');
+    expect(first.getAttribute('aria-pressed')).toBe('true');
+    expect(first.getAttribute('aria-label')).toBe('Begrüssung, live im Program');
+    expect(first.getAttribute('aria-keyshortcuts')).toBe('1');
+    expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 · K1');
+    expect(second.getAttribute('aria-pressed')).toBe('false');
+    expect(parts(third.querySelector('.c-scene__meta'))).toBe('leer');
+    expect(text(element.querySelector('.c-dock-frame__count'))).toBe('3');
+  });
+
+  it('shows the worst outage of a scene as «K1 gestört»', async () => {
+    await setup(
+      snapshotFixture({
+        sources: [
+          sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'reconnecting' }),
+          sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { status: 'ended' }),
+        ],
+      }),
+    );
+    const [first, second] = rows();
+    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1 gestört');
+    expect(first.querySelector('.c-lamp')?.className).toContain('is-warn');
+    expect(first.getAttribute('aria-label')).toBe('Begrüssung, live im Program, K1 gestört');
+    expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 gestört');
+    expect(second.querySelector('.c-lamp')?.className).toContain('is-bad');
+  });
+
+  it('puts a scene live with a click (Studio-Modus off)', async () => {
+    await setup();
+    rows()[1].click();
+    const request = harness.http.expectOne(`${BASE}/program`);
+    expect(request.request.body).toEqual({
+      sceneId: 'scn_b',
+      transition: { kind: 'fade', durationMs: 300 },
+    });
+    request.flush(snapshotFixture().production);
+    await render();
+  });
+
+  it('creates a scene and opens its name; Enter saves the new name', async () => {
+    await setup();
+    const add = element.querySelector<HTMLButtonElement>('button[aria-label="Szene hinzufügen"]');
+    add?.click();
+    const create = harness.http.expectOne(`${BASE}/scenes`);
+    const created = sceneFixture('scn_d', 'Neue Szene 4', 3);
+    harness.emitEvent({ type: 'sceneUpserted', scene: created });
+    create.flush(created, { status: 201, statusText: 'Created' });
+    await harness.settle();
+    await render();
+    const input = element.querySelector<HTMLInputElement>('fs-inline-edit input');
+    expect(input?.value).toBe('Neue Szene 4');
+    expect(input?.getAttribute('aria-label')).toBe('Name der Szene');
+    expect(document.activeElement).toBe(input);
+    if (input) {
+      input.value = 'Abschluss';
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    }
+    const rename = harness.http.expectOne(`${BASE}/scenes/scn_d`);
+    expect(rename.request.body).toEqual({ name: 'Abschluss', layoutMode: null, background: null });
+    await render();
+    expect(element.querySelector('fs-inline-edit')).toBeNull();
+    expect(text(rows()[3].querySelector('.c-scene__name'))).toBe('Abschluss');
+    rename.flush({ ...created, name: 'Abschluss' });
+    await render();
+  });
+
+  it('renames with F2 and cancels with Escape without a request', async () => {
+    await setup();
+    rows()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    await render();
+    const input = element.querySelector<HTMLInputElement>('fs-inline-edit input');
+    expect(input?.value).toBe('Begrüssung');
+    input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await render();
+    expect(element.querySelector('fs-inline-edit')).toBeNull();
+    harness.http.expectNone(() => true);
+  });
+
+  it('moves a scene with Alt+ArrowDown', async () => {
+    await setup();
+    rows()[0].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }),
+    );
+    const request = harness.http.expectOne(`${BASE}/scenes/order`);
+    expect(request.request.body).toEqual({ sceneIds: ['scn_b', 'scn_a', 'scn_c'] });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+  });
+
+  it('shows a loading state before the first snapshot', async () => {
+    const hub = new FakeStudioHub();
+    TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
+    fixture = TestBed.createComponent(ScenesDockComponent);
+    element = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    expect(text(element.querySelector('.c-empty'))).toContain('Szenen werden geladen');
+    harness = { http: { verify: () => undefined } } as unknown as StoreHarness;
+  });
+});

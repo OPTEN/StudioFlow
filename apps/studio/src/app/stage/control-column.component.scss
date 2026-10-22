@@ -1,0 +1,168 @@
+// Control column (prototype .ctrl, .ctrl-l, .tr-seg, .dur, .take-btn, .ctrl-hint). The switch uses .c-switch.
+@use 'mixins' as *;
+
+:host {
+  align-content: start;
+  display: grid;
+  flex: 0 0 var(--control-column);
+  gap: 8px;
+}
+
+.c-control-column__label {
+  @include label-text(11px);
+}
+
+.c-control-column__hint {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+// Übergang: Schnitt | Blende (the active segment is blue-wash with a blue underline).
+.c-transition {
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.c-transition__option {
+  @include state-transition(background-color, color);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--seam-strong);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  height: 30px;
+  padding: 0 4px;
+  white-space: nowrap;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  &:focus-visible {
+    outline-offset: -3px;
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--blue-wash);
+    box-shadow: var(--shadow-selected);
+    color: var(--blue);
+  }
+}
+
+// Duration stepper: violet mono value, muted under Schnitt.
+.c-duration {
+  align-items: center;
+  border: 1px solid var(--seam);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  height: 30px;
+  padding: 1px;
+
+  &.is-off .c-duration__value {
+    color: var(--muted);
+  }
+}
+
+.c-duration__btn {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  height: 26px;
+  place-items: center;
+
+  &:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+
+  &:disabled {
+    background: transparent;
+    color: var(--muted);
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}
+
+.c-duration__value {
+  @include mono;
+  color: var(--violet);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+}
+
+// TAKE: the only large filled control (Studio-Modus only).
+.c-take {
+  @include state-transition(background-color);
+  background: var(--blue-fill);
+  border: 1px solid var(--blue-fill);
+  border-radius: var(--radius-md);
+  color: var(--on-fill);
+  cursor: pointer;
+  display: grid;
+  font-size: 15px;
+  font-weight: 700;
+  gap: 2px;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+  min-height: 56px;
+  place-content: center;
+  text-transform: uppercase;
+
+  &:hover:not(:disabled) {
+    background: var(--blue-fill-hover);
+    border-color: var(--blue-fill-hover);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+.c-take__hint {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  text-transform: none;
+}
+
+// ≤ 900 px: controls in two columns below the Program, Take full width.
+@include narrow {
+  :host {
+    flex: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    order: 2;
+  }
+
+  .c-control-column__switch,
+  .c-control-column__label,
+  .c-control-column__hint {
+    grid-column: 1 / -1;
+  }
+
+  .c-take {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    min-height: 48px;
+  }
+}

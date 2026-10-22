@@ -1,0 +1,59 @@
+<section
+  class="c-check"
+  role="dialog"
+  aria-labelledby="tech-check-title"
+  aria-describedby="tech-check-summary"
+>
+  <header class="c-check__head">
+    <h2 class="c-check__title" id="tech-check-title" tabindex="-1">Technik-Check</h2>
+    <button
+      class="c-button c-check__close"
+      type="button"
+      aria-label="Technik-Check schliessen"
+      (click)="closed.emit()"
+    >
+      <fs-icon name="close" />
+    </button>
+  </header>
+
+  <p class="c-check__summary" id="tech-check-summary" role="status" aria-live="polite">
+    @if (running()) {
+      Prüft Kamera, Netzwerk und Upload …
+    } @else {
+      {{ summary() }}
+      @if (checkedAt(); as time) {
+        <span class="c-check__time"
+          >Geprüft um <span class="u-mono">{{ time }}</span></span
+        >
+      }
+    }
+  </p>
+
+  <ul class="c-check__rows">
+    @for (row of rows(); track row.key) {
+      <li class="c-check__row" [attr.data-level]="row.level">
+        <span [class]="lampClass(row.level)" aria-hidden="true"></span>
+        <span class="c-check__label">{{ row.label }}</span>
+        <span class="c-check__level">
+          {{ levelWord(row.level) }}
+          @if (row.value; as value) {
+            · <span class="u-mono">{{ value }}</span>
+          }
+        </span>
+      </li>
+    }
+  </ul>
+
+  @if (result()?.note; as note) {
+    <p class="c-check__note">{{ note }}</p>
+  }
+
+  <button
+    class="c-button c-button--primary c-button--block"
+    type="button"
+    [disabled]="running()"
+    (click)="run.emit()"
+  >
+    {{ running() ? 'Prüft …' : result() ? 'Erneut prüfen' : 'Jetzt prüfen' }}
+  </button>
+</section>

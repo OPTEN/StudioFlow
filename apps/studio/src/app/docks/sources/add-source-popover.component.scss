@@ -1,0 +1,32 @@
+// «+ Quelle» menu (prototype #addSrcPop) with groups.
+@use 'mixins' as *;
+
+.c-add-pop {
+  max-width: min(360px, calc(100vw - 32px));
+  overflow: auto;
+  width: 320px;
+}
+
+.c-add-pop__group {
+  display: grid;
+}
+
+.c-add-pop__label {
+  @include label-text(11px);
+  padding: 8px 8px 2px;
+}
+
+.c-add-pop__name {
+  @include ellipsis;
+  flex: 1 1 auto;
+}
+
+.c-add-pop__state {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.c-state--muted {
+  color: var(--muted);
+}

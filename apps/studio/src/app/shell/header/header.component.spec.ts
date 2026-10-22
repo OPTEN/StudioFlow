@@ -1,0 +1,172 @@
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
+import {
+  PRODUCTION_ID,
+  incidentFixture,
+  productionFixture,
+  snapshotFixture,
+  sourceFixture,
+} from '../../../testing/fixtures';
+import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { StationFocusService } from '../station-focus.service';
+import { HeaderComponent } from './header.component';
+import { maskOutputUrl } from './output-popover.component';
+import { isIpOrCidr } from './ip-address';
+
+const BASE = `/api/productions/${PRODUCTION_ID}`;
+
+describe('HeaderComponent', () => {
+  let hub: FakeStudioHub;
+  let harness: StoreHarness;
+  let fixture: ComponentFixture<HeaderComponent>;
+  let element: HTMLElement;
+
+  async function setup(snapshot = snapshotFixture()): Promise<void> {
+    hub = new FakeStudioHub();
+    TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
+    harness = await startStore(hub, snapshot);
+    fixture = TestBed.createComponent(HeaderComponent);
+    element = fixture.nativeElement as HTMLElement;
+    await render();
+  }
+
+  async function render(): Promise<void> {
+    await flushMicrotasks();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  function text(): string {
+    return (element.textContent ?? '').replace(/\s+/g, ' ');
+  }
+
+  function button(label: string): HTMLButtonElement {
+    const found = Array.from(element.querySelectorAll('button')).find(
+      (entry) => entry.textContent?.trim() === label,
+    );
+    if (!found) {
+      throw new Error(`no button «${label}»`);
+    }
+    return found;
+  }
+
+  afterEach(() => harness?.http.verify());
+
+  it('shows brand, production, quiet BEREIT, output, health, presence and clock', async () => {
+    await setup();
+    expect(text()).toContain('FlowStudio');
+    expect(text()).toContain('Webinar');
+    expect(text()).toContain('BEREIT');
+    expect(button('Sendung starten').disabled).toBe(false);
+    expect(text()).toContain('Output an Proxy');
+    expect(text()).toContain('Alle 2 Stationen ok');
+    expect(text()).toContain('1 in der Regie');
+    expect(element.querySelector('.c-header__clock')?.textContent).toMatch(/^\d\d:\d\d:\d\d$/);
+  });
+
+  it('starts the broadcast', async () => {
+    await setup();
+    button('Sendung starten').click();
+    harness.http
+      .expectOne(`${BASE}/broadcast/start`)
+      .flush(productionFixture({ broadcast: 'live' }));
+    await render();
+  });
+
+  it('shows LIVE with the runtime and ends the broadcast after confirmation', async () => {
+    const liveSince = new Date(Date.now() - (42 * 60 + 13) * 1000).toISOString();
+    await setup(
+      snapshotFixture({ production: productionFixture({ broadcast: 'live', liveSince }) }),
+    );
+    expect(text()).toContain('LIVE');
+    expect(element.querySelector('.c-live__time')?.textContent).toMatch(/^00:42:1[34]$/);
+    button('Sendung beenden').click();
+    await render();
+    expect(text()).toContain('Der Output zeigt danach «Danke fürs Zuschauen».');
+    harness.http.expectNone(`${BASE}/broadcast/end`);
+    const confirm = Array.from(
+      element.querySelectorAll<HTMLButtonElement>('.c-btn--danger-fill'),
+    )[0];
+    confirm.click();
+    harness.http
+      .expectOne(`${BASE}/broadcast/end`)
+      .flush(productionFixture({ broadcast: 'ended' }));
+    await render();
+  });
+
+  it('offers «Zurück auf Bereit» after the end', async () => {
+    await setup(snapshotFixture({ production: productionFixture({ broadcast: 'ended' }) }));
+    expect(text()).toContain('BEENDET');
+    button('Zurück auf Bereit').click();
+    harness.http.expectOne(`${BASE}/broadcast/reset`).flush(productionFixture());
+    await render();
+  });
+
+  it('summarises outages and jumps to the most severe one', async () => {
+    await setup(
+      snapshotFixture({
+        sources: [
+          sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'reconnecting' }),
+          sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { status: 'ended' }),
+        ],
+        incidents: [
+          incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', {
+            startedAt: '2026-10-22T09:00:00Z',
+          }),
+          incidentFixture('inc_2', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', { kind: 'ended' }),
+        ],
+      }),
+    );
+    expect(text()).toContain('2 Störungen');
+    expect(element.querySelector('.c-chipbtn .c-lamp.is-bad')).not.toBeNull();
+    button('2 Störungen').click();
+    expect(TestBed.inject(StationFocusService).request()?.deviceId).toBe('dev_bbbbbbbbbbbbbbbb');
+  });
+
+  it('opens the output popover with the masked link', async () => {
+    await setup(
+      snapshotFixture({
+        outputStatus: {
+          state: 'connected',
+          consumers: 1,
+          addresses: ['10.0.0.42'],
+          latencyMs: 148,
+          fps: 30,
+          lastReportAt: null,
+        },
+      }),
+    );
+    expect(text()).toContain('148 ms');
+    element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
+    await render();
+    harness.http.expectOne(`${BASE}/output`).flush({
+      url: 'https://flowstudio.opten.ch/o/webinar?k=geheim123',
+      keyCreatedAt: '2026-10-22T08:00:00Z',
+      allowedIps: [],
+      frameAncestors: ["'self'"],
+    });
+    await render();
+    expect(text()).toContain('verbunden, 1 Abnehmer');
+    expect(text()).toContain('10.0.0.42');
+    expect(text()).toContain('1920 × 1080 · 30 fps');
+    expect(text()).toContain('flowstudio.opten.ch/o/webinar?k=••••••');
+    expect(text()).not.toContain('geheim123');
+  });
+
+  it('masks output links and validates IP entries', () => {
+    expect(maskOutputUrl('https://a.b/o/x?k=123&bg=transparent')).toBe(
+      'a.b/o/x?k=••••••&bg=transparent',
+    );
+    expect(isIpOrCidr('10.0.0.42')).toBe(true);
+    expect(isIpOrCidr('10.0.0.0/24')).toBe(true);
+    expect(isIpOrCidr('fd00::/64')).toBe(true);
+    expect(isIpOrCidr('::1')).toBe(true);
+    expect(isIpOrCidr('::ffff:10.0.0.1')).toBe(true);
+    expect(isIpOrCidr('2001:db8:0:0:0:0:0:1')).toBe(true);
+    expect(isIpOrCidr('256.0.0.1')).toBe(false);
+    expect(isIpOrCidr('10.0.0.0/33')).toBe(false);
+    expect(isIpOrCidr('1:2:3:4:5:6:7::8')).toBe(false);
+    expect(isIpOrCidr('proxy.local')).toBe(false);
+    expect(isIpOrCidr('')).toBe(false);
+  });
+});

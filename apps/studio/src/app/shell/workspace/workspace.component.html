@@ -1,0 +1,76 @@
+<div
+  class="c-workspace__zone c-workspace__zone--left"
+  #left
+  data-zone="left"
+  [class.is-empty]="zones().left.length === 0"
+  [style.width.px]="viewport.stacked() ? null : layout.layout().leftW"
+>
+  <ng-container #leftOutlet />
+</div>
+@if (zones().left.length > 0) {
+  <div
+    class="c-workspace__split c-workspace__split--v"
+    orientation="vertical"
+    aria-label="Breite der Docks links"
+    [fsSplitter]="leftSplit"
+    [splitterDisabled]="viewport.stacked()"
+  ></div>
+}
+<div class="c-workspace__center" #center>
+  <section class="c-workspace__stage" #stage aria-label="Monitore">
+    <fs-stage />
+  </section>
+  @if (zones().bottom.length > 0) {
+    <div
+      class="c-workspace__split c-workspace__split--h"
+      orientation="horizontal"
+      aria-label="Höhe der Docks unten"
+      [fsSplitter]="bottomSplit"
+      [splitterDisabled]="viewport.stacked()"
+    ></div>
+  }
+  <div
+    class="c-workspace__zone c-workspace__zone--bottom"
+    #bottom
+    data-zone="bottom"
+    [class.is-empty]="zones().bottom.length === 0"
+    [style.height]="bottomHeight()"
+  >
+    <ng-container #bottomOutlet />
+  </div>
+</div>
+@if (zones().right.length > 0) {
+  <div
+    class="c-workspace__split c-workspace__split--v"
+    orientation="vertical"
+    aria-label="Breite der Docks rechts"
+    [fsSplitter]="rightSplit"
+    [splitterDisabled]="viewport.stacked()"
+  ></div>
+}
+<div
+  class="c-workspace__zone c-workspace__zone--right"
+  #right
+  data-zone="right"
+  [class.is-empty]="zones().right.length === 0"
+  [style.width.px]="viewport.stacked() ? null : layout.layout().rightW"
+>
+  <ng-container #rightOutlet />
+</div>
+
+@if (drag.dragging(); as dragging) {
+  @for (zone of dragging.strips; track zone) {
+    <div
+      class="c-drop-zone c-drop-zone--{{ zone }}"
+      aria-hidden="true"
+      [attr.data-strip]="zone"
+      [class.is-hot]="drag.hotStrip() === zone"
+    >
+      {{ stripLabel(zone) }}
+    </div>
+  }
+  <div class="c-dock-ghost" aria-hidden="true">
+    <svg fsIcon="grip" [size]="14"></svg>{{ titles[dragging.id] }}
+  </div>
+  <div class="c-drop-line" aria-hidden="true"></div>
+}

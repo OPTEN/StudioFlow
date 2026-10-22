@@ -1,0 +1,32 @@
+<div class="c-stage__monitors" #monitors>
+  @if (switcher.studioMode()) {
+    <fs-monitor
+      kind="preview"
+      [scene]="previewScene()"
+      [editable]="true"
+      [locked]="editor.editLocked()"
+      [emptyText]="emptyText()"
+    />
+    <div
+      class="c-stage__split"
+      orientation="vertical"
+      aria-label="Grösse von Preview und Program"
+      [fsSplitter]="splitBehavior"
+      [splitterDisabled]="viewport.stacked()"
+    ></div>
+  } @else {
+    <div class="c-stage__preview-off" aria-hidden="true">
+      <b class="c-stage__preview-off-title">Preview aus</b>
+      <span>Mit Studio-Modus erscheint hier die Preview.</span>
+    </div>
+  }
+  <fs-monitor
+    kind="program"
+    [scene]="programScene()"
+    [editable]="!switcher.studioMode()"
+    [liveEdit]="!switcher.studioMode()"
+    [cue]="cue()"
+    [emptyText]="emptyText()"
+  />
+</div>
+<fs-control-column />

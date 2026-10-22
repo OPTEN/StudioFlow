@@ -1,0 +1,42 @@
+<fs-dock-frame dock="st" [count]="loading() ? null : entries().length">
+  <button
+    #pairButton
+    fsDockActions
+    class="c-btn c-btn--sm c-btn--primary"
+    type="button"
+    aria-controls="fs-pairing-dock"
+    [attr.aria-expanded]="layout.pairingOpen()"
+    (click)="layout.togglePairing()"
+  >
+    <svg fsIcon="plus" [size]="14"></svg>Gerät koppeln
+  </button>
+
+  @for (knock of knocks(); track knock.id) {
+    <fs-knock-card [request]="knock" />
+  }
+
+  @if (loading()) {
+    <div class="c-empty">
+      <strong>Stationen werden geladen …</strong>Die Regie verbindet mit dem Server.
+    </div>
+  } @else {
+    <div class="c-st-dock__list">
+      @for (entry of entries(); track entry.view.id) {
+        <fs-station-row
+          [device]="entry.device"
+          [sources]="entry.sources"
+          [view]="entry.view"
+          [open]="openId() === entry.view.id"
+          [pulse]="pulsing().has(entry.view.id)"
+          [flash]="flashFor(entry.view.id)"
+          (toggle)="toggle(entry.view.id)"
+        />
+      } @empty {
+        <div class="c-empty">
+          <strong>Noch keine Stationen.</strong>Mit «Gerät koppeln» ein Handy als Kamera oder einen
+          Laptop mit Bildschirm verbinden.
+        </div>
+      }
+    </div>
+  }
+</fs-dock-frame>

@@ -1,0 +1,236 @@
+<div
+  #station
+  class="c-st"
+  [class.is-warn]="view().tone === 'is-warn'"
+  [class.is-bad]="view().tone === 'is-bad'"
+  [class.is-open]="open()"
+  [attr.data-device]="view().id"
+>
+  <button
+    class="c-st__row"
+    type="button"
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="detailId()"
+    [attr.aria-label]="view().ariaLabel"
+    (click)="toggle.emit()"
+  >
+    <span class="c-lamp" aria-hidden="true" [class]="view().lamp" [class.is-pulse]="pulse()"></span>
+    <span class="c-st__codes">
+      @for (code of view().codes; track code) {
+        <span class="c-code">{{ code }}</span>
+      }
+    </span>
+    <span class="c-st__main">
+      <span class="c-st__l1">
+        <span class="c-st__name">{{ view().name }}</span>
+        @if (view().tally === 'program') {
+          <span class="c-tag c-tag--pgm">PGM</span>
+        } @else if (view().tally === 'preview') {
+          <span class="c-tag c-tag--pvw">PVW</span>
+        }
+      </span>
+      <span class="c-st__l2">
+        @let line = view().line;
+        @switch (line.kind) {
+          @case ('state') {
+            @if (line.code) {
+              <span class="u-mono">{{ line.code }}</span>
+            }
+            <span [class]="toneClass(line.tone)">{{ line.word }}</span>
+            @if (line.since) {
+              <span class="u-mono" [fsElapsed]="line.since"></span>
+            }
+            @if (line.extra) {
+              <span>{{ line.extra }}</span>
+            }
+          }
+          @case ('recovered') {
+            <span class="c-state--ok">wieder da</span>
+            <span
+              >war <span class="u-mono">{{ line.seconds }}</span> s weg</span
+            >
+          }
+          @case ('metrics') {
+            <span class="c-st__met"
+              ><b>{{ line.rate }}</b
+              >Mbit/s</span
+            >
+            <span class="c-st__met"
+              ><b>{{ line.rtt }}</b
+              >ms</span
+            >
+            @if (line.lowBattery !== null) {
+              <span class="c-state--warn">Akku {{ line.lowBattery }} %</span>
+            }
+          }
+        }
+      </span>
+    </span>
+    <fs-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
+    <svg class="c-st__chev" fsIcon="chev"></svg>
+  </button>
+
+  @if (view().recovered.length > 0) {
+    <div class="c-st__ack">
+      <svg fsIcon="check" [size]="14"></svg>
+      <span class="u-spacer"
+        >Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.</span
+      >
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="busy('ack')"
+        (click)="acknowledge()"
+      >
+        Gesehen
+      </button>
+    </div>
+  }
+
+  <div class="c-st__detail" [id]="detailId()" [attr.inert]="open() ? null : ''">
+    <div class="c-st__clip">
+      <div class="c-st__detail-in">
+        <dl class="c-kv c-st__kv">
+          @for (entry of details(); track entry.label) {
+            <dt>{{ entry.label }}</dt>
+            <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
+          }
+          <dt>Technik</dt>
+          <dd class="c-st__tech">
+            @if (tech(); as lamps) {
+              @for (lamp of lamps; track lamp.label) {
+                <span class="c-st__tech-item">
+                  <span class="c-lamp" aria-hidden="true" [class]="lamp.lamp"></span>
+                  {{ lamp.label }} {{ lamp.word }}
+                </span>
+              }
+            } @else {
+              <span class="c-st__muted">noch nicht gelaufen</span>
+            }
+          </dd>
+        </dl>
+
+        <div class="c-st__actions">
+          @for (source of view().endedScreens; track source.id) {
+            <button
+              class="c-btn c-btn--sm c-btn--primary"
+              type="button"
+              [disabled]="busy('reshare:' + source.slot)"
+              (click)="reshare(source)"
+            >
+              <svg fsIcon="send" [size]="14"></svg
+              >{{
+                view().endedScreens.length > 1
+                  ? source.code + ' neu teilen lassen'
+                  : 'Neu teilen lassen'
+              }}
+            </button>
+          }
+          @if (view().canSwitchCamera) {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [disabled]="busy('camera')"
+              (click)="switchCamera()"
+            >
+              Kamera wechseln
+            </button>
+          }
+          @if (!view().blocked) {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [attr.aria-expanded]="composing()"
+              [disabled]="busy('message')"
+              (click)="toggleComposer()"
+            >
+              <svg fsIcon="send" [size]="14"></svg>Nachricht senden
+            </button>
+          }
+          <button
+            class="c-btn c-btn--sm"
+            type="button"
+            [disabled]="busy('rename')"
+            (click)="startRename()"
+          >
+            Umbenennen
+          </button>
+          @if (view().blocked) {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [disabled]="busy('unblock')"
+              (click)="unblock()"
+            >
+              Entsperren
+            </button>
+          }
+          <span class="c-st__danger">
+            @if (view().blocked || view().offline) {
+              <button
+                class="c-btn c-btn--sm c-btn--danger"
+                type="button"
+                [disabled]="busy('remove')"
+                (click)="askConfirm('remove')"
+              >
+                Entfernen
+              </button>
+            }
+            @if (!view().blocked) {
+              <button
+                class="c-btn c-btn--sm c-btn--danger"
+                type="button"
+                [disabled]="busy('block')"
+                (click)="askConfirm('block')"
+              >
+                Gerät sperren
+              </button>
+            }
+          </span>
+        </div>
+
+        @if (confirm() === 'block') {
+          <fs-confirm-box
+            label="Gerät sperren"
+            confirmLabel="Jetzt sperren"
+            [flush]="true"
+            [message]="
+              label() +
+              ' wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.'
+            "
+            [busy]="busy('block')"
+            (confirm)="block()"
+            (cancel)="confirm.set(null)"
+          />
+        }
+        @if (confirm() === 'remove') {
+          <fs-confirm-box
+            label="Gerät entfernen"
+            confirmLabel="Entfernen"
+            [flush]="true"
+            [message]="
+              '«' +
+              view().name +
+              '» wird entfernt. Elemente mit seinen Quellen zeigen danach «Quelle fehlt». Neu koppeln geht jederzeit.'
+            "
+            [busy]="busy('remove')"
+            (confirm)="remove()"
+            (cancel)="confirm.set(null)"
+          />
+        }
+        @if (composing()) {
+          <fs-message-composer [device]="device()" (closed)="composing.set(false)" />
+        }
+        @if (renaming()) {
+          <fs-inline-edit
+            label="Name der Station"
+            [value]="device().name"
+            [maxLength]="maxNameLength"
+            (save)="rename($event)"
+            (cancel)="renaming.set(false)"
+          />
+        }
+      </div>
+    </div>
+  </div>
+</div>

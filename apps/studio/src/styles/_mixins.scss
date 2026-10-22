@@ -1,0 +1,119 @@
+// Shared mixins of the Regie. Emits no CSS by itself; component stylesheets `@use 'mixins' as *;`.
+//
+// Responsive strategy (documented exception to the OPTEN mobile-first rule): the Regie is designed for 14–16"
+// laptops first (1280 × 720 … 1920 × 1080, DESIGN.md «Responsive»), and the approved prototype describes every
+// adaptation as a max-width / max-height step down from that desktop layout. The desktop-first mixins below are the
+// single place where those breakpoints live. `respond-to` (min-width, mobile-first) exists for new code that grows
+// from small screens up, e.g. a sender-like page.
+
+@use 'sass:list';
+@use 'sass:map';
+
+/// Mobile-first breakpoints (min-width) for `respond-to`.
+$BREAKPOINTS: (
+  mobile: 0,
+  tablet: 768px,
+  desktop: 1024px,
+  laptop: 1280px,
+  wide: 1501px,
+) !default;
+
+/// Desktop-first breakpoints of DESIGN.md / .impeccable/design.json («breakpoints»).
+$DESKTOP_BREAKPOINTS: (
+  // Header presence label hides.
+  presence-compact: 1500px,
+  // Layout template tiles tighten.
+  presets-compact: 1380px,
+  // Docks stop dragging and stack as a two-column hairline grid; the page scrolls.
+  stacked: 1180px,
+  // Single column by priority: Program, controls, Preview, docks.
+  narrow: 900px,
+  // Short laptops (height): one-line scene rows, 36 px dock headers. Applies only above `stacked`.
+  short-height: 820px
+) !default;
+
+/// Mobile-first media query: styles apply from `$point` upwards.
+/// @param {String} $point - key of `$BREAKPOINTS`
+@mixin respond-to($point) {
+  @media (min-width: map.get($BREAKPOINTS, $point)) {
+    @content;
+  }
+}
+
+/// Desktop-first: viewports up to 1500 px wide (presence label hidden).
+@mixin presence-compact {
+  @media (max-width: map.get($DESKTOP_BREAKPOINTS, presence-compact)) {
+    @content;
+  }
+}
+
+/// Desktop-first: viewports up to 1380 px wide (layout template tiles tighten).
+@mixin presets-compact {
+  @media (max-width: map.get($DESKTOP_BREAKPOINTS, presets-compact)) {
+    @content;
+  }
+}
+
+/// Short laptops: height ≤ 820 px on screens wider than 1180 px (one-line scene rows, 36 px dock headers).
+@mixin short-laptop {
+  @media (max-height: map.get($DESKTOP_BREAKPOINTS, short-height)) and (min-width: map.get($DESKTOP_BREAKPOINTS, stacked) + 1px) {
+    @content;
+  }
+}
+
+/// Desktop-first: width ≤ 1180 px. Docks stack below the stage as a two-column grid and the page scrolls.
+@mixin stacked {
+  @media (max-width: map.get($DESKTOP_BREAKPOINTS, stacked)) {
+    @content;
+  }
+}
+
+/// Desktop-first: width ≤ 900 px. Everything stacks by priority in one column.
+@mixin narrow {
+  @media (max-width: map.get($DESKTOP_BREAKPOINTS, narrow)) {
+    @content;
+  }
+}
+
+/// prefers-reduced-motion: reduce. Durations already drop to 0s through the `--dur-*` custom properties; use this
+/// mixin for everything else (e.g. switching a fade off entirely).
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+/// Uppercase group label (DESIGN.md «Label»): dock titles, tally names, ÜBERGANG, VORLAGE ANWENDEN.
+/// @param {Length} $size - 11.5px for dock titles and tally names, 11px for control-group labels
+@mixin label-text($size: 11.5px) {
+  color: var(--muted);
+  font-size: $size;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/// Mono figures (DESIGN.md «The Instrument Mono Rule»).
+@mixin mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/// Single-line text with an ellipsis.
+@mixin ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/// Transition of colour-like properties with the shared state duration and ease.
+/// @param {List} $properties - CSS properties to transition
+@mixin state-transition($properties...) {
+  $list: ();
+  @each $property in $properties {
+    $list: list.append($list, $property var(--dur-state) var(--ease), comma);
+  }
+  transition: $list;
+}

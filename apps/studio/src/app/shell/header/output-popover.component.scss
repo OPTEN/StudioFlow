@@ -1,0 +1,78 @@
+// Output popover (prototype #outPop) with the IP restriction editor.
+.c-output-pop {
+  width: 420px;
+}
+
+.c-output-pop__muted {
+  color: var(--muted);
+}
+
+.c-output-pop__error {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 8px 8px;
+}
+
+.c-output-pop__section {
+  border-top: 1px solid var(--seam-strong);
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+.c-output-pop__ips {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 6px 8px;
+}
+
+.c-output-pop__ip {
+  align-items: center;
+  display: flex;
+  font-size: 12.5px;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.c-output-pop__add {
+  display: flex;
+  gap: 6px;
+  padding: 0 8px 6px;
+
+  .c-input {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    height: 28px;
+  }
+
+  .c-btn {
+    flex: none;
+    height: 28px;
+  }
+}
+
+.c-output-pop__note {
+  padding: 0 8px 6px;
+}
+
+.c-output-pop__row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 8px 8px;
+}
+
+.c-output-pop__danger {
+  align-items: center;
+  border-top: 1px solid var(--seam-strong);
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 8px 4px;
+
+  .c-hint {
+    flex: 1;
+  }
+}

@@ -1,0 +1,307 @@
+<div class="c-insp">
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="fs-insp-pos">Position</span>
+    <div class="c-insp__pair" role="group" aria-labelledby="fs-insp-pos">
+      <div class="c-num">
+        <label class="c-num__label" for="fs-insp-x">X</label>
+        <input
+          class="c-num__input"
+          id="fs-insp-x"
+          type="number"
+          step="1"
+          [min]="bounds.minX"
+          [max]="bounds.maxX"
+          [disabled]="disabled()"
+          [fsNumberField]="item().x"
+          (numberChange)="setNumber('x', $event)"
+          (editStart)="beginEdit()"
+          (editEnd)="endEdit()"
+        />
+        <span class="c-num__unit">px</span>
+      </div>
+      <div class="c-num">
+        <label class="c-num__label" for="fs-insp-y">Y</label>
+        <input
+          class="c-num__input"
+          id="fs-insp-y"
+          type="number"
+          step="1"
+          [min]="bounds.minY"
+          [max]="bounds.maxY"
+          [disabled]="disabled()"
+          [fsNumberField]="item().y"
+          (numberChange)="setNumber('y', $event)"
+          (editStart)="beginEdit()"
+          (editEnd)="endEdit()"
+        />
+        <span class="c-num__unit">px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="fs-insp-size">Grösse</span>
+    <div class="c-insp__pair" role="group" aria-labelledby="fs-insp-size">
+      <div class="c-num">
+        <label class="c-num__label" for="fs-insp-w">B</label>
+        <input
+          class="c-num__input"
+          id="fs-insp-w"
+          type="number"
+          step="1"
+          [min]="bounds.minW"
+          [max]="bounds.maxW"
+          [disabled]="disabled()"
+          [fsNumberField]="item().w"
+          (numberChange)="setNumber('w', $event)"
+          (editStart)="beginEdit()"
+          (editEnd)="endEdit()"
+        />
+        <span class="c-num__unit">px</span>
+      </div>
+      <div class="c-num">
+        <label class="c-num__label" for="fs-insp-h">H</label>
+        <input
+          class="c-num__input"
+          id="fs-insp-h"
+          type="number"
+          step="1"
+          [min]="bounds.minH"
+          [max]="bounds.maxH"
+          [disabled]="disabled()"
+          [fsNumberField]="item().h"
+          (numberChange)="setNumber('h', $event)"
+          (editStart)="beginEdit()"
+          (editEnd)="endEdit()"
+        />
+        <span class="c-num__unit">px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="fs-insp-fit">Einpassen</span>
+    <div class="c-seg" role="group" aria-labelledby="fs-insp-fit">
+      <button
+        type="button"
+        [attr.aria-pressed]="item().fit === 'cover'"
+        [disabled]="disabled()"
+        (click)="setFit('cover')"
+      >
+        Füllen
+      </button>
+      <button
+        type="button"
+        [attr.aria-pressed]="item().fit === 'contain'"
+        [disabled]="disabled()"
+        (click)="setFit('contain')"
+      >
+        Ganz zeigen
+      </button>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label">Ecken</span>
+    <div class="c-insp__pair">
+      <div class="c-num">
+        <input
+          class="c-num__input"
+          type="number"
+          step="1"
+          min="0"
+          aria-label="Eckenradius"
+          [max]="bounds.maxRadius"
+          [disabled]="disabled()"
+          [fsNumberField]="item().radius"
+          (numberChange)="setNumber('radius', $event)"
+          (editStart)="beginEdit()"
+          (editEnd)="endEdit()"
+        />
+        <span class="c-num__unit">px</span>
+      </div>
+      <label class="c-check">
+        <input
+          type="checkbox"
+          [checked]="item().mirror"
+          [disabled]="disabled()"
+          (change)="setMirror($event)"
+        />Spiegeln
+      </label>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="fs-insp-rot">Drehen</span>
+    <div class="c-seg" role="group" aria-labelledby="fs-insp-rot">
+      @for (degrees of rotations; track degrees) {
+        <button
+          type="button"
+          [attr.aria-pressed]="rotation() === degrees"
+          [attr.aria-label]="'Drehen um ' + degrees + ' Grad'"
+          [disabled]="disabled()"
+          (click)="setRotation(degrees)"
+        >
+          {{ degrees }}°
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="c-insp__row c-insp__row--top">
+    <span class="c-insp__label" id="fs-insp-crop">Zuschnitt</span>
+    <div class="c-insp__crop" role="group" aria-labelledby="fs-insp-crop">
+      <div class="c-insp__pair">
+        @for (entry of cropSides; track entry.side) {
+          <div class="c-num">
+            <label class="c-num__label c-num__label--word" [for]="'fs-insp-crop-' + entry.side">{{
+              entry.label
+            }}</label>
+            <input
+              class="c-num__input"
+              type="number"
+              step="1"
+              min="0"
+              [id]="'fs-insp-crop-' + entry.side"
+              [max]="maxCrop"
+              [disabled]="disabled()"
+              [fractionDigits]="1"
+              [fsNumberField]="cropPercent(entry.side)"
+              (numberChange)="setCrop(entry.side, $event)"
+              (editStart)="beginEdit()"
+              (editEnd)="endEdit()"
+            />
+            <span class="c-num__unit">%</span>
+          </div>
+        }
+      </div>
+      <button
+        class="c-btn c-btn--sm c-insp__reset"
+        type="button"
+        [disabled]="disabled() || !cropped()"
+        (click)="resetCrop()"
+      >
+        Zurücksetzen
+      </button>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label">Rahmen</span>
+    <div class="c-insp__border">
+      <label class="c-check">
+        <input
+          type="checkbox"
+          [checked]="item().border !== null"
+          [disabled]="disabled()"
+          (change)="setBorderEnabled($event)"
+        />anzeigen
+      </label>
+      @if (item().border; as border) {
+        <div class="c-num c-insp__border-width">
+          <input
+            class="c-num__input"
+            type="number"
+            step="1"
+            min="1"
+            aria-label="Breite des Rahmens"
+            [max]="bounds.maxBorderWidth"
+            [disabled]="disabled()"
+            [fsNumberField]="border.width"
+            (numberChange)="setBorderWidth($event)"
+            (editStart)="beginEdit()"
+            (editEnd)="endEdit()"
+          />
+          <span class="c-num__unit">px</span>
+        </div>
+        <input
+          class="c-insp__color"
+          type="color"
+          aria-label="Farbe des Rahmens"
+          [value]="border.color"
+          [disabled]="disabled()"
+          (change)="setBorderColor($event)"
+        />
+      }
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <label class="c-insp__label" for="fs-insp-hold">Bei Ausfall</label>
+    <select class="c-select" id="fs-insp-hold" [disabled]="disabled()" (change)="setHold($event)">
+      @for (choice of holdChoices(); track choice.value) {
+        <option [value]="choice.value" [selected]="choice.value === holdValue()">
+          {{ choice.label }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="c-insp__row">
+    <label class="c-insp__label" for="fs-insp-fallback">Ersatzquelle</label>
+    <select
+      class="c-select"
+      id="fs-insp-fallback"
+      [title]="
+        item().onLost.holdMs === null
+          ? 'Mit «Standbild halten» bleibt das letzte Bild stehen.'
+          : 'Erscheint nach der Haltezeit statt des Standbilds.'
+      "
+      [disabled]="disabled() || item().onLost.holdMs === null"
+      (change)="setFallback($event)"
+    >
+      <option value="" [selected]="item().onLost.fallbackSource === null">Keine</option>
+      @if (fallbackMissing()) {
+        <option [value]="item().onLost.fallbackSource" selected>Quelle fehlt</option>
+      }
+      @for (group of fallbackGroups(); track group.label) {
+        <optgroup [label]="group.label">
+          @for (option of group.options; track option.id) {
+            <option [value]="option.id" [selected]="option.id === item().onLost.fallbackSource">
+              {{ option.label }}
+            </option>
+          }
+        </optgroup>
+      }
+    </select>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label">Ebene</span>
+    <div class="c-insp__buttons">
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="disabled() || !canFront()"
+        (click)="moveLayer('up')"
+      >
+        <svg fsIcon="up" [size]="14"></svg>Nach vorne
+      </button>
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="disabled() || !canBack()"
+        (click)="moveLayer('down')"
+      >
+        <svg fsIcon="down" [size]="14"></svg>Nach hinten
+      </button>
+    </div>
+  </div>
+
+  <p class="c-hint c-insp__note">
+    Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um 1
+    px.
+  </p>
+
+  <div class="c-insp__danger">
+    <span class="c-hint">Lässt sich mit Ctrl+Z zurückholen.</span>
+    <button
+      class="c-btn c-btn--danger c-btn--sm"
+      type="button"
+      [disabled]="disabled()"
+      (click)="remove()"
+    >
+      Aus Szene entfernen
+    </button>
+  </div>
+</div>

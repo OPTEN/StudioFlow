@@ -1,0 +1,133 @@
+// Global base: reset, typography, focus ring, scrollbars, utilities and reduced motion (prototype/regie.html).
+@use 'mixins' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+// Fallback only: templates use @if instead of the hidden attribute, because component display rules would win.
+[hidden] {
+  display: none;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  background: var(--panel);
+  color: var(--text);
+  font: 400 14px / 1.4 var(--font-ui);
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+
+  @include stacked {
+    overflow: auto;
+  }
+}
+
+::selection {
+  background: rgba(121, 192, 255, 0.3);
+  color: var(--text);
+}
+
+* {
+  scrollbar-color: var(--seam-strong) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--seam-strong);
+  border: 3px solid var(--panel);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input,
+select,
+textarea {
+  caret-color: var(--blue);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+// Utilities
+.u-mono {
+  @include mono;
+}
+
+.u-spacer {
+  flex: 1 1 auto;
+}
+
+.u-sr-only {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+// Full-screen layer that holds the cursor and blocks text selection while a splitter or dock is dragged
+// (DragCursorService). Replaces the prototype's `cursor: … !important` rules on body.
+.c-drag-cursor {
+  inset: 0;
+  position: fixed;
+  user-select: none;
+  z-index: 78;
+}
+
+.is-dragging-ui {
+  user-select: none;
+}
+
+// Reduced motion: every duration token drops to 0s; the universal rule catches third-party animations.
+@include reduced-motion {
+  :root {
+    --dur-state: 0s;
+    --dur-splitter-delay: 0s;
+    --dur-reveal: 0s;
+    --dur-tally-flash: 0s;
+    --dur-lamp-pulse: 0s;
+    --dur-station-flash: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s;
+    transition-duration: 0s;
+  }
+}

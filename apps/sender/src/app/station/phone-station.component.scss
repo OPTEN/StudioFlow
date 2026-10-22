@@ -1,0 +1,184 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+// Full-screen camera station; bars float over the picture with scrims.
+.c-phone {
+  background: var(--well);
+  inset: 0;
+  overflow: hidden;
+  position: fixed;
+}
+
+.c-phone__stage {
+  display: grid;
+  inset: 0;
+  place-items: center;
+  position: absolute;
+  z-index: z(video);
+}
+
+// The whole camera picture (what the Regie gets), letterboxed on the well.
+.c-phone__video {
+  background: var(--well);
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+
+  &.is-mirrored {
+    transform: scaleX(-1);
+  }
+
+  .is-dark & {
+    visibility: hidden;
+  }
+}
+
+.c-phone__placeholder {
+  color: var(--muted);
+  display: grid;
+  font-size: 16px;
+  gap: $SPACE_MD;
+  justify-items: center;
+  padding: $SPACE_GUTTER;
+  text-align: center;
+}
+
+.c-phone__placeholder-icon {
+  --icon-size: 40px;
+}
+
+// Dark mode: black, only the code; a tap shows the controls for a while.
+.c-phone__dark {
+  align-content: center;
+  background: #000000;
+  color: var(--muted);
+  display: grid;
+  gap: $SPACE_MD;
+  inset: 0;
+  justify-items: center;
+  position: absolute;
+  z-index: z(overlay);
+}
+
+.c-phone__dark-code {
+  font-size: 28px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.c-phone__dark-hint {
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+.c-phone__top {
+  background: linear-gradient(rgba(5, 7, 10, 0.82), rgba(5, 7, 10, 0));
+  display: grid;
+  gap: $SPACE_SM;
+  left: 0;
+  padding: calc(var(--safe-top) + #{$SPACE_GUTTER}) max(#{$SPACE_GUTTER}, var(--safe-right))
+    $SPACE_XXL max(#{$SPACE_GUTTER}, var(--safe-left));
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: z(controls);
+
+  .has-tally & {
+    padding-top: calc(var(--safe-top) + 64px);
+  }
+}
+
+.c-phone__identity {
+  align-items: center;
+  display: flex;
+  gap: $SPACE_ROW;
+  min-width: 0;
+}
+
+.c-phone__name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-phone__problem {
+  display: grid;
+  gap: $SPACE_LG;
+  left: 50%;
+  max-height: calc(100% - 220px);
+  max-width: 480px;
+  overflow: auto;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 2 * #{$SPACE_GUTTER});
+  z-index: z(controls);
+
+  .c-notice {
+    background: var(--raised-2);
+    box-shadow: inset 0 0 0 999px var(--red-wash);
+  }
+}
+
+.c-phone__steps {
+  color: var(--text-2);
+  display: grid;
+  gap: $SPACE_XS;
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+// Controls: two columns on narrow phones, one row from 600 px (landscape phones, tablets).
+.c-phone__controls {
+  background: linear-gradient(rgba(5, 7, 10, 0), rgba(5, 7, 10, 0.86) 40%);
+  bottom: 0;
+  display: grid;
+  gap: $SPACE_MD;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  left: 0;
+  padding: $SPACE_XXL max(#{$SPACE_GUTTER}, var(--safe-right))
+    calc(var(--safe-bottom) + #{$SPACE_GUTTER}) max(#{$SPACE_GUTTER}, var(--safe-left));
+  position: absolute;
+  right: 0;
+  z-index: z(controls);
+
+  @media (min-width: 600px) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  }
+}
+
+.c-phone__toggle {
+  grid-column: 1 / -1;
+
+  @media (min-width: 600px) {
+    grid-column: auto;
+  }
+}
+
+.c-phone__top.is-hidden,
+.c-phone__controls.is-hidden {
+  visibility: hidden;
+}
+
+.c-phone__check,
+.c-phone__dark-toggle {
+  white-space: nowrap;
+}
+
+@include landscape-low {
+  .c-phone__top {
+    padding-bottom: $SPACE_GUTTER;
+  }
+
+  .c-phone__controls {
+    padding-top: $SPACE_GUTTER;
+  }
+}

@@ -9,6 +9,7 @@ import {
   type ProductionEvent,
 } from '@flowstudio/scene-model';
 import { snapshotFixture } from '../../scene-model/src/testing/fixtures';
+import { SERVER_TIMEOUT_MS } from './hub-connection';
 import { ProductionSync } from './production-sync';
 import { ResilientHub, type HubState } from './resilient-hub';
 import { RecordingLogger } from './testing/fakes';
@@ -151,7 +152,7 @@ describe('realtime client against a SignalR server', () => {
   });
 
   it(
-    'detects a silent server with the 6 s server timeout and reconnects',
+    'detects a silent server with the 5 s server timeout and reconnects',
     { timeout: 20_000 },
     async () => {
       server.sendPings = false;
@@ -162,8 +163,9 @@ describe('realtime client against a SignalR server', () => {
       });
       const detectedAfter = Date.now() - startedAt;
       server.sendPings = true;
-      expect(detectedAfter).toBeGreaterThanOrEqual(5000);
-      expect(detectedAfter).toBeLessThan(9000);
+      // SERVER_TIMEOUT_MS minus timer granularity; the plan's detection target is 2–5 s (spec 12).
+      expect(detectedAfter).toBeGreaterThanOrEqual(SERVER_TIMEOUT_MS - 250);
+      expect(detectedAfter).toBeLessThan(SERVER_TIMEOUT_MS + 3000);
       await vi.waitFor(() => expect(sync.status).toBe('live'), WAIT);
       expect(model.subscribeCalls).toEqual([null, 100]);
     },

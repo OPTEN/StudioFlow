@@ -1,0 +1,46 @@
+@use 'sass:map';
+@use 'tokens' as *;
+
+// Mobile-first media query for a named breakpoint of $BREAKPOINTS.
+// @param {String} $point - sm | md | lg
+@mixin respond-to($point) {
+  @media (min-width: map.get($BREAKPOINTS, $point)) {
+    @content;
+  }
+}
+
+// Landscape phones: wide and low.
+@mixin landscape-low {
+  @media (orientation: landscape) and (max-height: 520px) {
+    @content;
+  }
+}
+
+// Visually hidden but readable by screen readers.
+@mixin sr-only {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+// Smallest comfortable touch target.
+@mixin touch-target {
+  min-height: $TOUCH_TARGET;
+  min-width: $TOUCH_TARGET;
+  touch-action: manipulation;
+}
+
+// Mono font for codes, measurements and times (The Instrument Mono Rule).
+@mixin mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+// Z-index of a named layer of $Z_INDEX_VALUES.
+// @param {String} $layer - layer name
+@function z($layer) {
+  @return map.get($Z_INDEX_VALUES, $layer);
+}

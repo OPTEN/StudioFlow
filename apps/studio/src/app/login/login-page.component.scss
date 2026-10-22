@@ -1,0 +1,62 @@
+// Login: the console surface with the brand mark and one quiet form column (no card, no frame).
+@use 'mixins' as *;
+
+:host {
+  background: var(--panel);
+  display: block;
+  height: 100%;
+  overflow: auto;
+}
+
+.c-login {
+  display: grid;
+  min-height: 100%;
+  padding: 32px var(--gr) 32px var(--gl);
+  place-items: center;
+}
+
+.c-login__form {
+  display: grid;
+  gap: 14px;
+  width: min(320px, 100%);
+}
+
+.c-login__brand {
+  align-items: center;
+  display: flex;
+  font-size: 22px;
+  font-weight: 700;
+  gap: 10px;
+  letter-spacing: 0.01em;
+}
+
+.c-login__lead {
+  @include label-text;
+  border-bottom: 1px solid var(--seam);
+  margin-top: -8px;
+  padding-bottom: 14px;
+}
+
+.c-login__field {
+  display: grid;
+  gap: 6px;
+}
+
+.c-login__label {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-login__error {
+  align-items: center;
+  color: var(--red);
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  min-height: 20px;
+}
+
+.c-login__submit {
+  height: 34px;
+  width: 100%;
+}

@@ -1,0 +1,161 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Slot code chip (K1, S2): mono on raised-2.
+.c-code {
+  @include mono;
+  background: var(--raised-2);
+  border-radius: $RADIUS_XS;
+  color: var(--text);
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 7px;
+  white-space: nowrap;
+}
+
+// Lamps: green ok, muted idle, amber reconnecting (halo), red down (halo).
+.c-lamp {
+  background: var(--green);
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  height: 9px;
+  width: 9px;
+}
+
+.c-lamp--idle {
+  background: var(--muted);
+}
+
+.c-lamp--warn {
+  background: var(--amber);
+  height: 11px;
+  outline: 3px solid var(--amber-halo);
+  width: 11px;
+}
+
+.c-lamp--bad {
+  background: var(--red);
+  height: 12px;
+  outline: 3px solid var(--red-halo);
+  width: 12px;
+}
+
+// Tally tags on slot rows.
+.c-tag {
+  border-radius: $RADIUS_XS;
+  display: inline-flex;
+  flex: none;
+  font: 700 14px/1 var(--font-ui);
+  letter-spacing: 0.08em;
+  padding: 4px 7px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.c-tag--program {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.c-tag--preview {
+  background: var(--green-wash);
+  color: var(--green);
+}
+
+// Notices: a wash tints the whole block, the icon carries the colour (The Wash Rule).
+.c-notice {
+  align-items: flex-start;
+  background: var(--raised);
+  border-radius: $RADIUS_LG;
+  color: var(--text);
+  display: flex;
+  font-size: 15px;
+  gap: $SPACE_LG;
+  line-height: 1.45;
+  padding: $SPACE_LG $SPACE_GUTTER;
+}
+
+.c-notice--ok {
+  background: var(--green-wash);
+}
+
+.c-notice--warn {
+  background: var(--amber-wash);
+}
+
+.c-notice--bad {
+  background: var(--red-wash);
+}
+
+.c-notice__icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.c-notice--ok .c-notice__icon {
+  color: var(--green);
+}
+
+.c-notice--warn .c-notice__icon {
+  color: var(--amber);
+}
+
+.c-notice--bad .c-notice__icon {
+  color: var(--red);
+}
+
+.c-notice__body {
+  display: grid;
+  gap: $SPACE_SM;
+  min-width: 0;
+}
+
+.c-notice__title {
+  font-weight: 700;
+}
+
+.c-notice__text {
+  color: var(--text-2);
+  margin: 0;
+}
+
+// Waiting indicator: three muted dots breathing; static when the OS asks for reduced motion.
+.c-pulse {
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+}
+
+.c-pulse__dot {
+  background: var(--muted);
+  border-radius: 50%;
+  height: 7px;
+  opacity: 0.45;
+  width: 7px;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: c-pulse-breathe 1.8s var(--ease) infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+  }
+}
+
+@keyframes c-pulse-breathe {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  40% {
+    opacity: 0.9;
+  }
+}

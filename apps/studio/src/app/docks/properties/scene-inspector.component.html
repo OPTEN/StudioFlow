@@ -1,0 +1,84 @@
+<div class="c-insp">
+  <div class="c-insp__row">
+    <label class="c-insp__label" for="fs-insp-name">Name</label>
+    <input
+      class="c-input"
+      id="fs-insp-name"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      [attr.maxlength]="maxNameLength"
+      [class.is-invalid]="nameControl.invalid && nameControl.dirty"
+      [formControl]="nameControl"
+      (focus)="onNameFocus()"
+      (blur)="onNameBlur()"
+      (keydown)="onNameKeyDown($event)"
+    />
+  </div>
+
+  <div class="c-insp__sub">
+    Vorlage anwenden
+    @if (autoGrid()) {
+      <span class="c-insp__mode">Auto-Grid aktiv</span>
+    }
+  </div>
+  <fs-template-picker
+    [autoGridActive]="autoGrid()"
+    [disabled]="disabled()"
+    (pick)="applyTemplate($event)"
+  />
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="fs-insp-bg">Hintergrund</span>
+    <div class="c-insp__background" role="group" aria-labelledby="fs-insp-bg">
+      <input
+        class="c-insp__color"
+        type="color"
+        aria-label="Hintergrundfarbe"
+        [value]="scene().background.color"
+        [disabled]="disabled()"
+        (change)="setColor($event)"
+      />
+      <select
+        class="c-select"
+        aria-label="Hintergrundbild"
+        [disabled]="disabled()"
+        (change)="setBackgroundImage($event)"
+      >
+        <option value="" [selected]="scene().background.assetId === null">Kein Bild</option>
+        @if (backgroundMissing()) {
+          <option [value]="scene().background.assetId" selected>Bild fehlt</option>
+        }
+        @for (asset of imageAssets(); track asset.id) {
+          <option [value]="asset.id" [selected]="asset.id === scene().background.assetId">
+            {{ asset.code }} · {{ asset.name }}
+          </option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="c-insp__danger">
+    @if (confirming()) {
+      <fs-confirm-box
+        label="Szene löschen"
+        confirmLabel="Szene löschen"
+        [flush]="true"
+        [message]="'«' + scene().name + '» wird gelöscht. Das lässt sich nicht rückgängig machen.'"
+        [busy]="deleting()"
+        (confirm)="deleteScene()"
+        (cancel)="confirming.set(false)"
+      />
+    } @else {
+      <span class="c-hint">{{ deleteHint() }}</span>
+      <button
+        class="c-btn c-btn--danger c-btn--sm"
+        type="button"
+        [disabled]="isLiveScene() || disabled()"
+        (click)="confirming.set(true)"
+      >
+        Szene löschen
+      </button>
+    }
+  </div>
+</div>

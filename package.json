@@ -2,6 +2,7 @@
   "name": "flowstudio",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "FlowStudio: web-based live studio (Regie, sender PWA, output page) for webinars.",
   "packageManager": "npm@10.9.8",
   "engines": {

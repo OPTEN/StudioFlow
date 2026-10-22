@@ -1,0 +1,56 @@
+<div
+  class="c-pop c-add-pop"
+  role="menu"
+  aria-label="Quelle hinzufügen"
+  [fsPopover]="popoverId"
+  (keydown)="onKeyDown($event)"
+>
+  <div class="c-pop-h">Zu «{{ sceneName() }}» hinzufügen</div>
+  @if (locked()) {
+    <p class="c-pop-note">{{ lockedMessage }}</p>
+  } @else if (offline()) {
+    <p class="c-pop-note">
+      Keine Verbindung zum Server. Hinzufügen geht wieder, sobald die Regie verbunden ist.
+    </p>
+  }
+
+  @for (group of groups(); track group.id) {
+    <div class="c-add-pop__group" role="group" [attr.aria-labelledby]="'fs-add-src-' + group.id">
+      <div class="c-add-pop__label" [id]="'fs-add-src-' + group.id">{{ group.label }}</div>
+      @for (source of group.sources; track source.id) {
+        <button
+          class="c-menu-item"
+          type="button"
+          role="menuitem"
+          [disabled]="!canAdd()"
+          (click)="add(source)"
+        >
+          <svg [fsIcon]="icon(source)"></svg>
+          <span class="c-code">{{ source.code }}</span>
+          <span class="c-add-pop__name">{{ source.label }}</span>
+          @if (stateOf(source); as state) {
+            <span class="c-add-pop__state" [class]="state.className">{{ state.word }}</span>
+          }
+        </button>
+      }
+    </div>
+  } @empty {
+    <p class="c-pop-note">
+      @if (hasSources()) {
+        Alle Quellen sind schon in dieser Szene.
+      } @else {
+        Noch keine Quellen. Geräte unter Stationen koppeln oder ein Bild oder Video hochladen.
+      }
+    </p>
+  }
+
+  <div class="c-menu-sep" role="separator"></div>
+  <button class="c-menu-item" type="button" role="menuitem" (click)="upload.emit()">
+    <svg fsIcon="upload"></svg>Bild oder Video hochladen …
+  </button>
+  @if (hasMedia()) {
+    <button class="c-menu-item" type="button" role="menuitem" (click)="manage.emit()">
+      <svg fsIcon="image"></svg>Medien verwalten …
+    </button>
+  }
+</div>

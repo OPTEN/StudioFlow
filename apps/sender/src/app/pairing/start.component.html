@@ -1,0 +1,89 @@
+<main class="c-pairing">
+  <div class="c-pairing__inner">
+    <fs-brand-mark class="c-pairing__brand" />
+
+    <h1 class="c-pairing__title" data-route-focus tabindex="-1">Gerät koppeln</h1>
+    <p class="c-pairing__lead">
+      Gib diesem Gerät einen Namen. Die Regie sieht ihn zusammen mit einem Prüfcode und gibt das
+      Gerät frei.
+    </p>
+
+    @if (notice(); as text) {
+      <div class="c-notice c-notice--warn" role="status">
+        <fs-icon class="c-notice__icon" name="alert" />
+        <p class="c-notice__text">{{ text }}</p>
+      </div>
+    }
+
+    <form class="c-pairing__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="c-field">
+        <label class="c-field__label" for="device-name">Name des Geräts</label>
+        <input
+          class="c-field__input"
+          id="device-name"
+          type="text"
+          formControlName="name"
+          [attr.maxlength]="nameMax"
+          autocomplete="off"
+          autocapitalize="words"
+          enterkeyhint="go"
+          spellcheck="false"
+          [attr.aria-invalid]="nameError() ? 'true' : null"
+          [attr.aria-describedby]="
+            nameError() ? 'device-name-hint device-name-error' : 'device-name-hint'
+          "
+        />
+        <p class="c-field__hint" id="device-name-hint">
+          Zum Beispiel «Laptop Anna» oder «Handy Bühne links».
+        </p>
+        @if (nameError(); as message) {
+          <p class="c-field__error" id="device-name-error">{{ message }}</p>
+        }
+      </div>
+
+      <fieldset class="c-segmented">
+        <legend class="c-segmented__legend">Was sendet dieses Gerät?</legend>
+        <div class="c-segmented__options">
+          <label class="c-segmented__option">
+            <input class="c-segmented__input" type="radio" formControlName="kind" value="phone" />
+            <span>Handy (Kamera)</span>
+          </label>
+          <label class="c-segmented__option">
+            <input class="c-segmented__input" type="radio" formControlName="kind" value="laptop" />
+            <span>Laptop (Bildschirm)</span>
+          </label>
+        </div>
+      </fieldset>
+
+      @if (kind() === 'laptop' && !canShareScreen) {
+        <div class="c-notice c-notice--warn" role="status">
+          <fs-icon class="c-notice__icon" name="alert" />
+          <p class="c-notice__text">
+            Bildschirm teilen geht nur auf Laptops und Desktop-Browsern. Auf diesem Gerät kannst du
+            die Kamera senden.
+          </p>
+        </div>
+      }
+
+      @if (error(); as message) {
+        <div class="c-notice c-notice--bad" role="alert">
+          <fs-icon class="c-notice__icon" name="alert" />
+          <p class="c-notice__text">{{ message }}</p>
+        </div>
+      }
+
+      <button
+        class="c-button c-button--fill c-button--large c-button--block"
+        type="submit"
+        [disabled]="busy()"
+      >
+        {{ busy() ? 'Wird gesendet …' : 'Weiter' }}
+      </button>
+    </form>
+
+    <p class="c-pairing__foot">
+      Mit dem QR-Code der Regie geht es noch schneller: einfach mit der Kamera-App des Handys
+      scannen.
+    </p>
+  </div>
+</main>

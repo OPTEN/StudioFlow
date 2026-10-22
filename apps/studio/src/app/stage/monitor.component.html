@@ -1,0 +1,29 @@
+<div class="c-monitor__head">
+  <span class="c-monitor__tally" [id]="labelId"><i aria-hidden="true"></i>{{ title() }}</span>
+  <span class="c-monitor__name">{{ scene()?.name }}</span>
+  @if (liveEdit()) {
+    <span class="c-monitor__live-edit">Änderungen gehen sofort live</span>
+  }
+  <span class="c-monitor__meta" [class.c-monitor__meta--mono]="kind() === 'program'">{{
+    meta()
+  }}</span>
+</div>
+<div class="c-monitor__screen" #screen>
+  <fs-scene-view
+    class="c-monitor__view"
+    mode="monitor"
+    [scene]="scene()"
+    [label]="viewLabel()"
+    [cue]="cue()"
+    (transitionEnd)="onTransitionEnd()"
+  />
+  @if (!scene() && emptyText(); as text) {
+    <span class="c-monitor__empty">{{ text }}</span>
+  }
+  @if (editable()) {
+    <fs-edit-overlay [view]="view() ?? null" />
+  }
+  @if (locked()) {
+    <div class="c-monitor__live-note">{{ liveNote }}</div>
+  }
+</div>

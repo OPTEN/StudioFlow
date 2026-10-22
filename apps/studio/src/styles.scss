@@ -1,1 +1,27 @@
-/* You can add global styles to this file, and also import other style files */
+// Global stylesheet of the Regie: fonts, design tokens, base and shared primitives.
+// Component styles live next to their components and `@use 'mixins'` / `@use 'tokens'` from src/styles.
+@use 'tokens';
+@use 'base';
+@use 'primitives';
+
+// Self-hosted variable fonts (SIL Open Font License, see fonts/OFL-*.txt). Relative URLs so esbuild hashes the files
+// and no external CDN is needed in the LAN.
+@font-face {
+  font-display: swap;
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('./fonts/sofia-sans-semi-condensed-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-display: swap;
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
+:root {
+  @include tokens.custom-properties;
+}

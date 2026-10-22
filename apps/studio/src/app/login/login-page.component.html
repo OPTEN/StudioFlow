@@ -1,0 +1,43 @@
+<main class="c-login">
+  <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
+    <h1 class="c-login__brand"><svg fsIcon="mark"></svg>FlowStudio</h1>
+    <p class="c-login__lead">Regie</p>
+
+    <label class="c-login__field">
+      <span class="c-login__label">Benutzername</span>
+      <input
+        class="c-input"
+        type="text"
+        autocomplete="username"
+        autocapitalize="off"
+        spellcheck="false"
+        formControlName="username"
+        [class.is-invalid]="form.controls.username.invalid && form.controls.username.touched"
+      />
+    </label>
+    <label class="c-login__field">
+      <span class="c-login__label">Passwort</span>
+      <input
+        class="c-input"
+        type="password"
+        autocomplete="current-password"
+        formControlName="password"
+        [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched"
+      />
+    </label>
+
+    <p class="c-login__error" role="alert" aria-live="assertive">
+      @if (message(); as message) {
+        <svg fsIcon="alert" [size]="14"></svg>{{ message }}
+      }
+    </p>
+
+    <button
+      class="c-btn c-btn--fill c-login__submit"
+      type="submit"
+      [disabled]="submitting() || locked()"
+    >
+      {{ submitting() ? 'Anmelden …' : 'Anmelden' }}
+    </button>
+  </form>
+</main>

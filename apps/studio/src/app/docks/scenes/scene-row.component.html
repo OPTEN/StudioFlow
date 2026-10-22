@@ -1,0 +1,118 @@
+@if (renaming()) {
+  <div class="c-scene c-scene--editing">
+    <span class="c-scene__thumb" aria-hidden="true">
+      <fs-scene-thumb [scene]="scene()" />
+      @if (view().key) {
+        <span class="c-keycap">{{ view().key }}</span>
+      }
+    </span>
+    <fs-inline-edit
+      label="Name der Szene"
+      [value]="view().name"
+      [maxLength]="maxNameLength"
+      (save)="rename($event)"
+      (cancel)="cancelRename()"
+    />
+  </div>
+} @else {
+  <button
+    class="c-scene"
+    type="button"
+    [attr.aria-pressed]="view().pressed"
+    [attr.aria-keyshortcuts]="view().key"
+    [attr.aria-label]="view().ariaLabel"
+    (click)="choose.emit(view().id)"
+    (keydown)="onRowKeyDown($event)"
+  >
+    <span class="c-scene__thumb" aria-hidden="true">
+      <fs-scene-thumb [scene]="scene()" />
+      @if (view().key) {
+        <span class="c-keycap">{{ view().key }}</span>
+      }
+    </span>
+    <span class="c-scene__text">
+      <span class="c-scene__name">{{ displayName() }}</span>
+      <span class="c-scene__meta">
+        @if (view().isProgram) {
+          <span class="c-tag c-tag--pgm">PGM</span>
+        } @else if (view().isPreview) {
+          <span class="c-tag c-tag--pvw">PVW</span>
+        }
+        @if (view().health; as health) {
+          <span
+            class="c-lamp"
+            aria-hidden="true"
+            [class.is-bad]="health.bad"
+            [class.is-warn]="!health.bad"
+          ></span>
+          <span class="u-mono">{{ health.code }}</span>
+          <span [class.c-state--bad]="health.bad" [class.c-state--warn]="!health.bad">gestört</span>
+        } @else {
+          <span class="u-mono">{{ view().codes }}</span>
+        }
+      </span>
+    </span>
+  </button>
+  <button
+    class="c-ibtn c-scene__more"
+    type="button"
+    aria-haspopup="menu"
+    [attr.aria-label]="'Aktionen für Szene ' + displayName()"
+    [fsPopoverTrigger]="menuId()"
+    (click)="placeMenu($event)"
+  >
+    <svg fsIcon="more"></svg>
+  </button>
+  @if (menuOpen()) {
+    <div
+      class="c-pop c-scene__menu"
+      role="menu"
+      [attr.aria-label]="'Szene ' + displayName()"
+      [fsPopover]="menuId()"
+      [style.top.px]="menuPosition().top"
+      [style.left.px]="menuPosition().left"
+      (keydown)="onMenuKeyDown($event)"
+    >
+      <button
+        class="c-menu-item"
+        type="button"
+        role="menuitem"
+        aria-keyshortcuts="F2"
+        [disabled]="!commands.online()"
+        (click)="startRename()"
+      >
+        <svg fsIcon="pencil"></svg>Umbenennen<kbd class="c-scene__shortcut">F2</kbd>
+      </button>
+      <button
+        class="c-menu-item"
+        type="button"
+        role="menuitem"
+        [disabled]="!commands.canCreate() || commands.blocked('scene:' + view().id + ':duplicate')"
+        (click)="duplicate()"
+      >
+        <svg fsIcon="copy"></svg>Duplizieren
+      </button>
+      <div class="c-menu-sep" role="separator"></div>
+      <button
+        class="c-menu-item"
+        type="button"
+        role="menuitem"
+        aria-keyshortcuts="Alt+ArrowUp"
+        [disabled]="!canMoveUp() || commands.blocked('scene:order')"
+        (click)="move(-1)"
+      >
+        <svg fsIcon="up"></svg>Nach oben<kbd class="c-scene__shortcut">Alt+↑</kbd>
+      </button>
+      <button
+        class="c-menu-item"
+        type="button"
+        role="menuitem"
+        aria-keyshortcuts="Alt+ArrowDown"
+        [disabled]="!canMoveDown() || commands.blocked('scene:order')"
+        (click)="move(1)"
+      >
+        <svg fsIcon="down"></svg>Nach unten<kbd class="c-scene__shortcut">Alt+↓</kbd>
+      </button>
+    </div>
+  }
+}

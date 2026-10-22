@@ -1,0 +1,147 @@
+// Media popover: upload drop zone, upload progress, media list with rename and delete.
+@use 'mixins' as *;
+
+.c-media-pop {
+  max-width: calc(100vw - 32px);
+  overflow: auto;
+  width: 380px;
+}
+
+.c-media-pop__head {
+  border-top: 1px solid var(--seam-strong);
+  margin-top: 6px;
+  padding-top: 10px;
+}
+
+.c-media-pop__drop {
+  @include state-transition(background-color, border-color);
+  align-items: center;
+  border: 1px dashed var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+  justify-items: center;
+  margin: 2px 8px 8px;
+  padding: 14px 10px;
+  text-align: center;
+
+  &:hover,
+  &.is-over {
+    background: var(--blue-wash);
+    border-color: var(--blue);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  .c-icon {
+    color: var(--muted);
+    height: 20px;
+    width: 20px;
+  }
+}
+
+.c-media-pop__pick {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.c-media-pop__note {
+  padding: 0 8px 6px;
+}
+
+.c-media-pop__list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 4px;
+}
+
+.c-media-pop__upload,
+.c-media-pop__asset {
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 6px;
+  padding: 6px 4px;
+}
+
+.c-media-pop__asset:hover {
+  background: var(--raised-2);
+}
+
+.c-media-pop__row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-height: 28px;
+  min-width: 0;
+
+  > .c-icon {
+    color: var(--muted);
+  }
+}
+
+.c-media-pop__text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.c-media-pop__name {
+  @include ellipsis;
+  flex: 1 1 auto;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.c-media-pop__meta {
+  @include ellipsis;
+  color: var(--muted);
+  flex: none;
+  font-size: 12px;
+}
+
+.c-media-pop__edit {
+  flex: 1 1 auto;
+}
+
+.c-media-pop__delete:hover {
+  color: var(--red);
+}
+
+.c-media-pop__progress {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+}
+
+.c-media-pop__bar {
+  background: var(--ground);
+  border-radius: 2px;
+  flex: 1 1 auto;
+  height: 4px;
+  overflow: hidden;
+}
+
+.c-media-pop__fill {
+  background: var(--blue);
+  display: block;
+  height: 100%;
+  transition: width var(--dur-state) linear;
+}
+
+.c-media-pop__inuse {
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin: 0;
+  padding: 0 4px;
+}

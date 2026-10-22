@@ -1,0 +1,19 @@
+// The console surface (prototype .app): header, message strip, workspace; the 1 px grid gap shows the seam colour.
+@use 'mixins' as *;
+
+:host {
+  background: var(--seam);
+  display: grid;
+  gap: 1px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  overflow: hidden;
+
+  @include stacked {
+    grid-template-rows: auto auto auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+}

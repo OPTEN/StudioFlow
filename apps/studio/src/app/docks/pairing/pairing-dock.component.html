@@ -1,0 +1,69 @@
+<fs-dock-frame dock="pair" [draggable]="false" [scroll]="false">
+  <button
+    fsDockActions
+    class="c-ibtn"
+    type="button"
+    aria-label="Gerät koppeln schliessen"
+    (click)="layout.closePairing()"
+  >
+    <svg fsIcon="close"></svg>
+  </button>
+
+  <div class="c-pair">
+    <div class="c-pair__main">
+      <div
+        class="c-tabs"
+        role="tablist"
+        aria-label="Art des Geräts"
+        (keydown)="onTabKeyDown($event)"
+      >
+        @for (tab of tabs; track tab.id) {
+          <button
+            class="c-tab"
+            type="button"
+            role="tab"
+            [id]="'fs-pair-tab-' + tab.id"
+            [attr.aria-selected]="layout.pairingTab() === tab.id"
+            [attr.aria-controls]="'fs-pair-panel'"
+            [attr.tabindex]="layout.pairingTab() === tab.id ? 0 : -1"
+            (click)="select(tab.id)"
+          >
+            <svg [fsIcon]="tab.icon"></svg>{{ tab.label }}
+          </button>
+        }
+      </div>
+      <div
+        class="c-pair__panel"
+        id="fs-pair-panel"
+        role="tabpanel"
+        [attr.aria-labelledby]="'fs-pair-tab-' + layout.pairingTab()"
+      >
+        @switch (layout.pairingTab()) {
+          @case ('phone') {
+            <fs-phone-tab />
+          }
+          @case ('laptop') {
+            <fs-laptop-tab />
+          }
+          @case ('link') {
+            <fs-link-tab />
+          }
+        }
+      </div>
+    </div>
+    <div class="c-pair__side">
+      @if (layout.pairingTab() === 'phone') {
+        <h3 class="c-pair__side-title">Tipps für fest montierte Handys</h3>
+        <p class="c-pair__side-text">
+          Ans Ladekabel hängen und im Querformat montieren. FlowStudio hält den Bildschirm selbst
+          wach und startet nach einem Neuladen mit den letzten Einstellungen.
+        </p>
+        @if (requests.pending().length > 0) {
+          <fs-pairing-requests />
+        }
+      } @else {
+        <fs-pairing-requests />
+      }
+    </div>
+  </div>
+</fs-dock-frame>

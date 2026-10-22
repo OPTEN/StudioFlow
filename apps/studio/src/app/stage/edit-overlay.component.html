@@ -1,0 +1,36 @@
+@for (box of boxes(); track box.id) {
+  <div
+    class="c-edit-box"
+    [attr.data-item-id]="box.id"
+    [class.is-sel]="box.selected"
+    [class.is-locked]="box.locked"
+    [class.is-alert]="box.alert !== null"
+    [class.is-bad]="box.alert === 'bad'"
+    [style.left.%]="box.percent.left"
+    [style.top.%]="box.percent.top"
+    [style.width.%]="box.percent.width"
+    [style.height.%]="box.percent.height"
+  >
+    <span class="c-edit-box__label">{{ box.label }}</span>
+    @if (box.handles) {
+      @for (edge of edges; track edge) {
+        <span
+          class="c-edit-box__edge c-edit-box__edge--{{ edge }}"
+          [attr.data-handle]="edge"
+        ></span>
+      }
+      @for (corner of corners; track corner) {
+        <span
+          class="c-edit-box__handle c-edit-box__handle--{{ corner }}"
+          [attr.data-handle]="corner"
+        ></span>
+      }
+    }
+  </div>
+}
+@if (guideX() !== null) {
+  <div class="c-edit-overlay__guide c-edit-overlay__guide--v" [style.left.%]="guideX()"></div>
+}
+@if (guideY() !== null) {
+  <div class="c-edit-overlay__guide c-edit-overlay__guide--h" [style.top.%]="guideY()"></div>
+}

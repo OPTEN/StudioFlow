@@ -1,0 +1,203 @@
+// Monitoring page: header bar like the Regie, one hairline, then the station table.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.c-mon {
+  background: var(--seam);
+  display: grid;
+  gap: 1px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.c-mon__top {
+  align-items: center;
+  background: var(--panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 50px;
+  padding: 6px var(--gr) 6px var(--gl);
+}
+
+.c-mon__brand {
+  align-items: center;
+  display: flex;
+  font-size: 16.5px;
+  font-weight: 700;
+  gap: 9px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.c-mon__title {
+  @include label-text;
+  margin: 0;
+}
+
+.c-mon__prod {
+  @include ellipsis;
+  color: var(--text-2);
+  flex: 1 1 auto;
+  font-size: 14px;
+}
+
+.c-mon__conn {
+  align-items: center;
+  color: var(--text-2);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.c-mon__clock {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.c-mon__back {
+  text-decoration: none;
+}
+
+.c-mon__main {
+  background: var(--panel);
+  overflow: auto;
+  padding: 12px var(--gr) 24px var(--gl);
+}
+
+.c-mon__bar {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 8px;
+}
+
+.c-mon__summary {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.c-mon__note {
+  margin-left: auto;
+}
+
+.c-mon__scroll {
+  overflow-x: auto;
+}
+
+.c-mon-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 980px;
+  width: 100%;
+
+  th,
+  td {
+    border-bottom: 1px solid var(--seam);
+    line-height: 22px;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  thead th {
+    @include label-text(11px);
+    background: var(--panel);
+    padding-block: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .is-num {
+    text-align: right;
+  }
+
+  tbody tr.is-warn {
+    background: var(--amber-wash);
+  }
+
+  tbody tr.is-bad {
+    background: var(--red-wash);
+  }
+
+  tbody td.u-mono {
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  tbody tr.is-stale td.u-mono {
+    color: var(--muted);
+  }
+}
+
+.c-mon-table__sort {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 4px;
+  letter-spacing: inherit;
+  min-height: 28px;
+  padding: 0;
+  text-transform: inherit;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.c-mon-table__dir {
+  transition: transform var(--dur-state) var(--ease);
+
+  &.is-up {
+    transform: rotate(180deg);
+  }
+}
+
+.c-mon-table__name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.c-mon-table__sub {
+  color: var(--muted);
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.c-mon-table__line {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.is-num .c-mon-table__line {
+  justify-content: flex-end;
+}
+
+.c-mon-table__state {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.c-state--muted {
+  color: var(--muted);
+}

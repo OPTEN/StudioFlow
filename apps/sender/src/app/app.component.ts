@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { HUB } from '@flowstudio/scene-model';
+import { AppUpdateService } from './core/app-update.service';
+import { RouteFocusService } from './core/route-focus.service';
 
-/** Root component: hosts the router outlet. */
+/** Root component: hosts the screens; starts the focus handling and the service worker update logic. */
 @Component({
   selector: 'fs-root',
   imports: [RouterOutlet],
@@ -10,5 +11,8 @@ import { HUB } from '@flowstudio/scene-model';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {
-  protected readonly hubPath = HUB.studioPath;
+  constructor() {
+    inject(RouteFocusService).start();
+    inject(AppUpdateService);
+  }
 }

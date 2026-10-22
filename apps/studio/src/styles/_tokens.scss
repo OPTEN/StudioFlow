@@ -1,0 +1,170 @@
+// Design tokens of the Regie (DESIGN.md, .impeccable/design.json).
+//
+// Every token exists twice:
+// - as a Sass variable with `!default` for compile-time use (mixins, calculations);
+// - as a CSS custom property on `:root` for runtime use in every component stylesheet (`var(--panel)`).
+//   The custom property names are identical to the prototype (prototype/regie.html), so prototype CSS ports 1:1.
+//
+// This file emits no CSS by itself. `styles.scss` includes `custom-properties` exactly once; component stylesheets
+// may `@use 'tokens'` for the Sass variables without duplicating the `:root` block.
+
+// Colours: neutral graphite ladder
+$color-ground: #0d1117 !default;
+$color-panel: #151a22 !default;
+$color-raised: #1b212b !default;
+$color-raised-2: #232a36 !default;
+$color-seam: #262c36 !default;
+$color-seam-strong: #353d4a !default;
+$color-well: #05070a !default;
+$color-text: #e6edf3 !default;
+$color-text-2: #b4bdc8 !default;
+$color-muted: #8b949e !default;
+
+// Colours: state hues (each has exactly one meaning, see DESIGN.md «The State-Only Colour Rule»)
+$color-blue: #79c0ff !default;
+$color-blue-fill: #1f6feb !default;
+$color-blue-fill-hover: #1a5fd0 !default;
+$color-green: #56d364 !default;
+$color-green-hover: #6fe07c !default;
+$color-red: #f85149 !default;
+$color-red-flash: #ff8a80 !default;
+$color-amber: #e3b341 !default;
+$color-violet: #c678dd !default;
+
+// Colours: layout-template previews, text on fills, washes
+$color-slot: #3a4352 !default;
+$color-slot-strong: #5a6578 !default;
+$color-on-fill: #ffffff !default;
+$color-on-state: #0d1117 !default;
+$color-red-wash: rgba(248, 81, 73, 0.1) !default;
+$color-amber-wash: rgba(227, 179, 65, 0.1) !default;
+$color-green-wash: rgba(86, 211, 100, 0.08) !default;
+$color-blue-wash: rgba(121, 192, 255, 0.08) !default;
+$color-btn-hover-border: #445064 !default;
+
+// Typography
+$font-ui: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif !default;
+$font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace !default;
+$font-size-brand: 16.5px !default;
+$font-size-title: 15px !default;
+$font-size-body: 14px !default;
+$font-size-control: 13px !default;
+$font-size-control-sm: 12.5px !default;
+$font-size-meta: 12.5px !default;
+$font-size-label: 11.5px !default;
+$font-size-label-sm: 11px !default;
+$font-size-tag: 10.5px !default;
+$font-size-take: 15px !default;
+$font-size-mono-value: 12.5px !default;
+$font-size-mono-meta: 11.5px !default;
+$font-size-mono-code: 11.5px !default;
+$font-size-mono-pair-code: 24px !default;
+$letter-spacing-label: 0.09em !default;
+$letter-spacing-tag: 0.08em !default;
+$line-height-body: 1.4 !default;
+
+// Shapes
+$radius-screen: 2px !default;
+$radius-xs: 3px !default;
+$radius-md: 4px !default;
+$radius-lg: 6px !default;
+$radius-switch: 10px !default;
+
+// Spacing scale (4 / 6 / 8 / 10 / 12 / 16 / 20)
+$space-hairline: 1px !default;
+$space-xs: 4px !default;
+$space-sm: 6px !default;
+$space-md: 8px !default;
+$space-row: 10px !default;
+$space-lg: 12px !default;
+$space-gutter: 16px !default;
+$space-stage: 20px !default;
+
+// Elevation (only floating layers have shadows)
+$shadow-pop: 0 4px 10px rgba(1, 4, 9, 0.5) !default;
+$shadow-selected: inset 0 -2px 0 $color-blue !default;
+$shadow-splitter: 0 0 0 1px $color-blue !default;
+
+// Motion
+$ease: cubic-bezier(0.2, 0.8, 0.2, 1) !default;
+$duration-state: 150ms !default;
+$duration-splitter-delay: 100ms !default;
+$duration-reveal: 200ms !default;
+$duration-tally-flash: 500ms !default;
+$duration-lamp-pulse: 1200ms !default;
+$duration-station-flash: 1000ms !default;
+
+// Layout
+$layout-header-height: 50px !default;
+$layout-status-height: 38px !default;
+$layout-dock-header-height: 40px !default;
+$layout-dock-header-height-short: 36px !default;
+$layout-control-column: 172px !default;
+$layout-monitor-split: 20px !default;
+$layout-side-width: 320px !default;
+$layout-side-min: 220px !default;
+$layout-side-max: 42% !default;
+$layout-bottom-min: 150px !default;
+$layout-stage-min: 160px !default;
+$layout-splitter-hit: 9px !default;
+
+/// Emits every token as a CSS custom property. Include once, on `:root` (styles.scss).
+@mixin custom-properties {
+  color-scheme: dark;
+  --ground: #{$color-ground};
+  --panel: #{$color-panel};
+  --raised: #{$color-raised};
+  --raised-2: #{$color-raised-2};
+  --seam: #{$color-seam};
+  --seam-strong: #{$color-seam-strong};
+  --well: #{$color-well};
+  --text: #{$color-text};
+  --text-2: #{$color-text-2};
+  --muted: #{$color-muted};
+  --blue: #{$color-blue};
+  --blue-fill: #{$color-blue-fill};
+  --blue-fill-hover: #{$color-blue-fill-hover};
+  --green: #{$color-green};
+  --green-hover: #{$color-green-hover};
+  --red: #{$color-red};
+  --red-flash: #{$color-red-flash};
+  --amber: #{$color-amber};
+  --violet: #{$color-violet};
+  --slot: #{$color-slot};
+  --slot-strong: #{$color-slot-strong};
+  --on-fill: #{$color-on-fill};
+  --on-state: #{$color-on-state};
+  --red-wash: #{$color-red-wash};
+  --amber-wash: #{$color-amber-wash};
+  --green-wash: #{$color-green-wash};
+  --blue-wash: #{$color-blue-wash};
+  --btn-hover-border: #{$color-btn-hover-border};
+  --font-ui: #{$font-ui};
+  --font-mono: #{$font-mono};
+  --radius-screen: #{$radius-screen};
+  --radius-xs: #{$radius-xs};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-switch: #{$radius-switch};
+  --shadow-pop: #{$shadow-pop};
+  --shadow-selected: #{$shadow-selected};
+  --shadow-splitter: #{$shadow-splitter};
+  --ease: #{$ease};
+  // Durations become 0s under prefers-reduced-motion (see _base.scss); always animate with these variables.
+  --dur-state: #{$duration-state};
+  --dur-splitter-delay: #{$duration-splitter-delay};
+  --dur-reveal: #{$duration-reveal};
+  --dur-tally-flash: #{$duration-tally-flash};
+  --dur-lamp-pulse: #{$duration-lamp-pulse};
+  --dur-station-flash: #{$duration-station-flash};
+  --header-h: #{$layout-header-height};
+  --status-h: #{$layout-status-height};
+  --dock-header-h: #{$layout-dock-header-height};
+  --control-column: #{$layout-control-column};
+  --monitor-split: #{$layout-monitor-split};
+  // Height of the bottom dock zone by default (DESIGN.md «Docks»).
+  --dock-h: clamp(240px, 42dvh, 420px);
+  // Content gutter left/right: 16 px or the safe-area inset if larger.
+  --gl: max(#{$space-gutter}, env(safe-area-inset-left, 0px));
+  --gr: max(#{$space-gutter}, env(safe-area-inset-right, 0px));
+}

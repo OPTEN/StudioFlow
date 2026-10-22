@@ -1,0 +1,134 @@
+<div
+  class="c-pop c-output-pop"
+  role="dialog"
+  aria-label="Output"
+  [fsPopover]="popoverId"
+  [popoverFocus]="false"
+>
+  <div class="c-pop-h">Output an Proxy</div>
+  <dl class="c-kv">
+    <dt>Zustand</dt>
+    <dd [class]="stateClass()">{{ stateText() }}</dd>
+    <dt>Abnehmer</dt>
+    <dd class="u-mono">{{ addresses() }}</dd>
+    <dt>Format</dt>
+    <dd class="u-mono">{{ format }}</dd>
+    <dt>Latenz</dt>
+    <dd>
+      @if (latency(); as latency) {
+        <span class="u-mono">{{ latency }}</span> gemessen
+      } @else {
+        <span class="c-output-pop__muted">noch nicht gemessen</span>
+      }
+    </dd>
+  </dl>
+
+  @if (loadError(); as error) {
+    <div class="c-output-pop__error">
+      <span class="c-field-error">{{ error }}</span>
+      <button class="c-btn c-btn--sm" type="button" (click)="load()">Nochmals</button>
+    </div>
+  } @else {
+    <div class="c-linkbox">
+      <span class="c-linkbox__text" #url>{{ displayUrl() ?? 'Link wird geladen …' }}</span>
+      <button class="c-btn c-btn--sm" type="button" [disabled]="!settings()" (click)="copy()">
+        <svg fsIcon="copy" [size]="14"></svg>Kopieren
+      </button>
+    </div>
+  }
+
+  <section class="c-output-pop__section" aria-labelledby="fs-output-access">
+    <div class="c-pop-h" id="fs-output-access">Zugriff</div>
+    <p class="c-pop-note">
+      @if (ips().length === 0) {
+        Jede Adresse darf den Output öffnen. Für mehr Sicherheit die Adresse des Proxys eintragen.
+      } @else {
+        Nur diese Adressen dürfen den Output öffnen.
+      }
+    </p>
+    @if (ips().length > 0) {
+      <ul class="c-output-pop__ips">
+        @for (ip of ips(); track ip) {
+          <li class="c-output-pop__ip">
+            <span class="u-mono">{{ ip }}</span>
+            <button
+              class="c-ibtn"
+              type="button"
+              [attr.aria-label]="ip + ' entfernen'"
+              (click)="removeIp(ip)"
+            >
+              <svg fsIcon="close" [size]="14"></svg>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+    <form class="c-output-pop__add" (submit)="addIp($event)">
+      <input
+        class="c-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="10.0.0.42 oder 10.0.0.0/24"
+        aria-label="IP-Adresse oder Netz (CIDR)"
+        [class.is-invalid]="ipControl.invalid && ipControl.touched"
+        [formControl]="ipControl"
+      />
+      <button class="c-btn c-btn--sm" type="submit" [disabled]="!settings()">Hinzufügen</button>
+    </form>
+    @if (ipControl.invalid && ipControl.touched) {
+      <p class="c-field-error c-output-pop__note">
+        Bitte eine IP-Adresse wie 10.0.0.42 oder ein Netz wie 10.0.0.0/24 eingeben.
+      </p>
+    }
+    @if (ipsDirty()) {
+      <div class="c-output-pop__row">
+        <button
+          class="c-btn c-btn--sm c-btn--fill"
+          type="button"
+          [disabled]="savingIps()"
+          (click)="saveIps()"
+        >
+          Speichern
+        </button>
+        <button
+          class="c-btn c-btn--sm"
+          type="button"
+          [disabled]="savingIps()"
+          (click)="discardIps()"
+        >
+          Verwerfen
+        </button>
+      </div>
+    }
+    @if (settings()?.frameAncestors?.length) {
+      <p class="c-pop-note">
+        Einbetten erlaubt für
+        <span class="u-mono">{{ settings()?.frameAncestors?.join(' ') }}</span>
+      </p>
+    }
+  </section>
+
+  @if (confirming()) {
+    <fs-confirm-box
+      label="Link neu erzeugen"
+      message="Der alte Link hört sofort auf. Der Proxy braucht danach den neuen."
+      confirmLabel="Neu erzeugen"
+      [busy]="regenerating()"
+      (confirm)="regenerate()"
+      (cancel)="confirming.set(false)"
+    />
+  } @else {
+    <div class="c-output-pop__danger">
+      <span class="c-hint">Bei Verdacht auf Weitergabe</span>
+      <button
+        class="c-btn c-btn--sm c-btn--danger"
+        type="button"
+        [disabled]="!settings()"
+        (click)="confirming.set(true)"
+      >
+        Link neu erzeugen
+      </button>
+    </div>
+  }
+</div>

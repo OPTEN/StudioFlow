@@ -1,0 +1,19 @@
+// Szenen dock (prototype .scene-list; horizontal strip ≤ 900 px).
+@use 'mixins' as *;
+
+.c-scenes-dock__list {
+  align-content: start;
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+
+  @include narrow {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+}
+
+.c-scenes-dock__keys {
+  white-space: nowrap;
+}

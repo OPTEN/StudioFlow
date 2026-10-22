@@ -1,0 +1,118 @@
+<fs-dock-frame dock="src" [count]="count()">
+  <button
+    fsDockActions
+    class="c-ibtn"
+    type="button"
+    aria-label="Rückgängig (Ctrl+Z)"
+    title="Rückgängig (Ctrl+Z)"
+    aria-keyshortcuts="Control+Z"
+    [disabled]="!editor.canUndo()"
+    (click)="editor.undo()"
+  >
+    <svg fsIcon="undo"></svg>
+  </button>
+  <div fsDockActions class="c-pop-wrap">
+    <button
+      #addTrigger
+      class="c-btn c-btn--sm"
+      type="button"
+      aria-haspopup="menu"
+      [fsPopoverTrigger]="addPopover"
+    >
+      <svg fsIcon="plus" [size]="14"></svg>Quelle
+    </button>
+    @if (popovers.isOpen(addPopover)) {
+      <fs-add-source-popover (upload)="openUpload()" (manage)="openMedia()" />
+    }
+    @if (popovers.isOpen(mediaPopover)) {
+      <fs-media-popover [pickOnOpen]="pickOnOpen()" (picked)="pickOnOpen.set(false)" />
+    }
+  </div>
+
+  <div
+    class="c-src-dock"
+    [class.is-drop]="dropActive()"
+    (dragenter)="onDragOver($event)"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    @if (loading()) {
+      <div class="c-empty">
+        <strong>Quellen werden geladen …</strong>Die Regie verbindet mit dem Server.
+      </div>
+    } @else if (!scene()) {
+      <div class="c-empty">
+        <strong>Keine Szene.</strong>Unter Szenen mit «+ Szene» eine Szene anlegen.
+      </div>
+    } @else {
+      <div class="c-src-dock__list" role="list" aria-label="Elemente der Szene">
+        @for (row of rows(); track row.itemId) {
+          <div
+            class="c-src"
+            role="listitem"
+            [class.is-sel]="row.selected"
+            [class.is-hidden]="row.hidden"
+            (click)="select(row)"
+          >
+            <button
+              class="c-ibtn"
+              type="button"
+              [attr.aria-pressed]="!row.hidden"
+              [attr.aria-label]="(row.hidden ? 'Einblenden: ' : 'Ausblenden: ') + row.name"
+              (click)="toggleHidden(row, $event)"
+            >
+              <svg [fsIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
+            </button>
+            <button
+              class="c-src__select"
+              type="button"
+              [attr.aria-pressed]="row.selected"
+              [attr.aria-disabled]="row.hidden ? 'true' : null"
+              [attr.aria-label]="'Auswählen: ' + row.code + ' ' + row.name"
+              (click)="select(row, $event)"
+            >
+              <span class="c-src__kind"><svg [fsIcon]="row.icon"></svg></span>
+              <span class="c-code">{{ row.code }}</span>
+              <span class="c-src__main">
+                <span class="c-src__name">{{ row.name }}</span>
+                @if (row.state; as state) {
+                  <span class="c-src__state">
+                    <span [class]="toneClass(state.tone)">{{ state.word }}</span>
+                    @if (state.timer) {
+                      <span class="u-mono" [fsElapsed]="row.statusSince"></span>
+                    }
+                  </span>
+                }
+              </span>
+            </button>
+            @if (row.lamp !== null) {
+              <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+            } @else {
+              <span aria-hidden="true"></span>
+            }
+            <button
+              class="c-ibtn"
+              type="button"
+              [attr.aria-pressed]="row.locked"
+              [attr.aria-label]="(row.locked ? 'Entsperren: ' : 'Sperren: ') + row.name"
+              (click)="toggleLocked(row, $event)"
+            >
+              <svg [fsIcon]="row.locked ? 'lock' : 'unlock'"></svg>
+            </button>
+          </div>
+        } @empty {
+          <div class="c-empty">
+            <strong>Diese Szene ist leer.</strong>Füge eine Quelle hinzu oder wende eine Vorlage an.
+          </div>
+        }
+      </div>
+      @if (hint(); as hint) {
+        <p class="c-hint c-src-dock__hint">{{ hint }}</p>
+      }
+    }
+    @if (dropActive()) {
+      <div class="c-src-dock__drop" aria-hidden="true">Bild oder Video hier ablegen</div>
+    }
+  </div>
+</fs-dock-frame>

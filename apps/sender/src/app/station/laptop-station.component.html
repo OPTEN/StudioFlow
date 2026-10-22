@@ -1,0 +1,266 @@
+<div class="c-laptop">
+  <header class="c-laptop__bar">
+    <fs-brand-mark class="c-laptop__brand" />
+    <fs-connection-status
+      class="c-laptop__connection"
+      [view]="session.connection()"
+      [since]="session.degradedSince()"
+      [now]="session.now()"
+    />
+    <button class="c-button c-laptop__check" type="button" (click)="openTechCheck.emit()">
+      <span
+        class="c-lamp"
+        [class.c-lamp--idle]="techLevel() === 'unknown'"
+        [class.c-lamp--warn]="techLevel() === 'warn'"
+        [class.c-lamp--bad]="techLevel() === 'bad'"
+        aria-hidden="true"
+      ></span>
+      Technik-Check
+    </button>
+  </header>
+
+  <main class="c-laptop__main">
+    <div class="c-laptop__intro">
+      <h1 class="c-laptop__title" data-route-focus tabindex="-1">
+        {{ justPaired() ? 'Gekoppelt' : self()?.name }}
+      </h1>
+      <p class="c-laptop__lead">
+        @if (justPaired()) {
+          «{{ self()?.name }}» ist mit der Regie verbunden. Beim nächsten Mal erkennt FlowStudio
+          diesen Laptop wieder.
+        } @else {
+          Gekoppelt mit «{{ self()?.productionName }}».
+        }
+      </p>
+    </div>
+
+    @if (!canShareScreen) {
+      <div class="c-notice c-notice--warn" role="status">
+        <fs-icon class="c-notice__icon" name="alert" />
+        <p class="c-notice__text">
+          Bildschirm teilen geht nur auf Laptops und Desktop-Browsern. Auf diesem Gerät kannst du
+          die Kamera senden.
+        </p>
+      </div>
+    }
+
+    @for (slot of reshare(); track slot.slot) {
+      <section
+        class="c-laptop__reshare"
+        role="alert"
+        [attr.aria-labelledby]="'reshare-' + slot.slot"
+      >
+        <p class="c-laptop__reshare-text" [id]="'reshare-' + slot.slot">
+          Die Regie bittet dich, den Bildschirm erneut zu teilen
+          <span class="c-code">{{ slot.code }}</span>
+        </p>
+        <div class="c-laptop__reshare-actions">
+          <button
+            class="c-button c-button--fill c-button--large"
+            type="button"
+            (click)="share(slot)"
+          >
+            <fs-icon name="screen" />
+            Erneut teilen
+          </button>
+          <button class="c-button" type="button" (click)="session.dismissReshare(slot.slot)">
+            Später
+          </button>
+        </div>
+      </section>
+    }
+
+    <h2 class="c-laptop__section">Quellen dieses Laptops</h2>
+    <ul class="c-laptop__slots">
+      @for (slot of screens(); track slot.slot) {
+        <li
+          class="c-slot"
+          [attr.data-testid]="'slot-' + slot.slot"
+          [attr.data-state]="slot.state"
+          [class.is-program]="slot.tally === 'program'"
+          [class.is-preview]="slot.tally === 'preview'"
+        >
+          <div class="c-slot__thumb">
+            @if (preview(slot); as stream) {
+              <video class="c-slot__video" [fsMediaPreview]="stream" aria-hidden="true"></video>
+            } @else {
+              <fs-icon class="c-slot__placeholder" name="screen" />
+            }
+          </div>
+          <div class="c-slot__info">
+            <p class="c-slot__head">
+              <span class="c-code">{{ slot.code ?? '…' }}</span>
+              <span class="c-slot__name">{{ label(slot) }}</span>
+              @if (slot.tally === 'program') {
+                <span class="c-tag c-tag--program">LIVE</span>
+              } @else if (slot.tally === 'preview') {
+                <span class="c-tag c-tag--preview">Als Nächstes</span>
+              }
+            </p>
+            <p
+              class="c-slot__state"
+              [class.is-bad]="slot.state === 'ended' || slot.state === 'failed'"
+            >
+              {{ stateText(slot) }}
+            </p>
+            @if (slot.message && slot.state !== 'live' && slot.state !== 'ended') {
+              <p class="c-slot__message">{{ slot.message }}</p>
+            }
+          </div>
+          <div class="c-slot__actions">
+            @switch (slot.state) {
+              @case ('starting') {
+                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
+                  Teilen beenden
+                </button>
+              }
+              @case ('live') {
+                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
+                  Teilen beenden
+                </button>
+              }
+              @case ('paused') {
+                <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
+                  Teilen beenden
+                </button>
+              }
+              @case ('ended') {
+                <button
+                  class="c-button c-button--fill c-button--large"
+                  type="button"
+                  (click)="share(slot)"
+                >
+                  Erneut teilen
+                </button>
+              }
+              @case ('failed') {
+                <button
+                  class="c-button c-button--fill c-button--large"
+                  type="button"
+                  (click)="share(slot)"
+                >
+                  Erneut teilen
+                </button>
+              }
+              @default {
+                <button
+                  class="c-button c-button--fill c-button--large"
+                  type="button"
+                  [disabled]="!canShareScreen"
+                  (click)="share(slot)"
+                >
+                  Bildschirm teilen
+                </button>
+              }
+            }
+            @if (slot.code !== null) {
+              <button
+                class="c-button c-button--danger c-slot__remove"
+                type="button"
+                (click)="session.removeSlot(slot.slot)"
+              >
+                Entfernen
+              </button>
+            }
+          </div>
+        </li>
+      }
+
+      @if (camera(); as slot) {
+        <li
+          class="c-slot"
+          data-testid="slot-camera"
+          [attr.data-state]="slot.state"
+          [class.is-program]="slot.tally === 'program'"
+          [class.is-preview]="slot.tally === 'preview'"
+        >
+          <div class="c-slot__thumb">
+            @if (preview(slot); as stream) {
+              <video
+                class="c-slot__video"
+                [class.is-mirrored]="facing() === 'user'"
+                [fsMediaPreview]="stream"
+                aria-hidden="true"
+              ></video>
+            } @else {
+              <fs-icon class="c-slot__placeholder" name="camera" />
+            }
+          </div>
+          <div class="c-slot__info">
+            <p class="c-slot__head">
+              <span class="c-code">{{ slot.code }}</span>
+              <span class="c-slot__name">Kamera</span>
+              @if (slot.tally === 'program') {
+                <span class="c-tag c-tag--program">LIVE</span>
+              } @else if (slot.tally === 'preview') {
+                <span class="c-tag c-tag--preview">Als Nächstes</span>
+              }
+            </p>
+            <p class="c-slot__state" [class.is-bad]="slot.state === 'failed'">
+              {{ stateText(slot) }}
+            </p>
+            @if (cameraProblem(slot); as issue) {
+              <div class="c-slot__problem">
+                <p class="c-slot__message">{{ issue.title }}</p>
+                <ol class="c-slot__steps">
+                  @for (step of issue.steps; track $index) {
+                    <li>{{ step }}</li>
+                  }
+                </ol>
+              </div>
+            }
+          </div>
+          <div class="c-slot__actions">
+            @if (busy(slot)) {
+              <button class="c-button" type="button" (click)="session.stopCamera()">
+                Kamera beenden
+              </button>
+            } @else {
+              <button
+                class="c-button c-button--primary"
+                type="button"
+                (click)="session.startCamera()"
+              >
+                {{ slot.state === 'failed' ? 'Erneut versuchen' : 'Kamera starten' }}
+              </button>
+            }
+            <button
+              class="c-button c-button--danger c-slot__remove"
+              type="button"
+              (click)="session.removeSlot(slot.slot)"
+            >
+              Entfernen
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+
+    <div class="c-laptop__add">
+      @if (screens().length === 0 && canShareScreen) {
+        <button class="c-button c-button--fill c-button--large" type="button" (click)="addScreen()">
+          <fs-icon name="screen" />
+          Bildschirm teilen
+        </button>
+      }
+      @if (canAddScreen()) {
+        <button class="c-button c-button--primary" type="button" (click)="addScreen()">
+          + weiteren Bildschirm
+        </button>
+      }
+      @if (camera() === null) {
+        <button class="c-button" type="button" (click)="session.addCamera()">
+          <fs-icon name="camera" />
+          Kamera hinzufügen
+        </button>
+      }
+    </div>
+
+    @if (session.actionError(); as error) {
+      <div class="c-notice c-notice--bad" role="alert">
+        <fs-icon class="c-notice__icon" name="alert" />
+        <p class="c-notice__text">{{ error }}</p>
+      </div>
+    }
+  </main>
+</div>

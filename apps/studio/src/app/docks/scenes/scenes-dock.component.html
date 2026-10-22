@@ -1,0 +1,30 @@
+<fs-dock-frame dock="scenes" [count]="loading() ? null : entries().length">
+  <span fsDockActions class="c-hint c-scenes-dock__keys">Tasten 1–9</span>
+  <button
+    fsDockActions
+    class="c-btn c-btn--sm"
+    type="button"
+    aria-label="Szene hinzufügen"
+    [title]="createTitle()"
+    [disabled]="!commands.canCreate() || commands.blocked('scene:create')"
+    (click)="create()"
+  >
+    <svg fsIcon="plus" [size]="14"></svg>Szene
+  </button>
+
+  @if (loading()) {
+    <div class="c-empty">
+      <strong>Szenen werden geladen …</strong>Die Regie verbindet mit dem Server.
+    </div>
+  } @else {
+    <div class="c-scenes-dock__list">
+      @for (entry of entries(); track entry.view.id) {
+        <fs-scene-row [scene]="entry.scene" [view]="entry.view" (choose)="choose($event)" />
+      } @empty {
+        <div class="c-empty">
+          <strong>Noch keine Szenen.</strong>Mit «+ Szene» die erste Szene anlegen.
+        </div>
+      }
+    </div>
+  }
+</fs-dock-frame>

@@ -1,0 +1,238 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.c-laptop {
+  min-height: 100dvh;
+}
+
+// Header bar on panel graphite with a seam underline (DESIGN «Header»).
+.c-laptop__bar {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--seam);
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD $SPACE_GUTTER;
+  min-height: 56px;
+  padding: calc(var(--safe-top) + #{$SPACE_SM}) max(#{$SPACE_GUTTER}, var(--safe-right)) $SPACE_SM
+    max(#{$SPACE_GUTTER}, var(--safe-left));
+}
+
+// Narrow screens: brand and «Technik-Check» on the first row, the connection line below.
+.c-laptop__connection {
+  flex: 1 0 100%;
+  order: 3;
+
+  @include respond-to(sm) {
+    flex: 1 1 auto;
+    order: 0;
+  }
+}
+
+.c-laptop__check {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.c-laptop__main {
+  display: grid;
+  gap: $SPACE_STAGE;
+  margin: 0 auto;
+  max-width: 880px;
+  padding: $SPACE_XL max(#{$SPACE_GUTTER}, var(--safe-right))
+    calc(var(--safe-bottom) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-left));
+}
+
+.c-laptop__intro {
+  display: grid;
+  gap: $SPACE_SM;
+}
+
+.c-laptop__title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.c-laptop__lead {
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.c-laptop__section {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+// The Regie asks for the screen again: red wash, one big action.
+.c-laptop__reshare {
+  background: var(--red-wash);
+  border-radius: $RADIUS_LG;
+  display: grid;
+  gap: $SPACE_LG;
+  padding: $SPACE_GUTTER;
+}
+
+.c-laptop__reshare-text {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 18px;
+  font-weight: 700;
+  gap: $SPACE_MD;
+}
+
+.c-laptop__reshare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_LG;
+}
+
+.c-laptop__slots {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// One row per source, divided by seam hairlines (Stationen rows of the Regie).
+.c-slot {
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: $SPACE_LG $SPACE_GUTTER;
+  grid-template-areas:
+    'thumb info'
+    'actions actions';
+  grid-template-columns: 112px minmax(0, 1fr);
+  padding: $SPACE_GUTTER 0;
+
+  &:last-child {
+    border-bottom: 1px solid var(--seam);
+  }
+
+  @include respond-to(md) {
+    align-items: center;
+    grid-template-areas: 'thumb info actions';
+    grid-template-columns: 160px minmax(0, 1fr) auto;
+  }
+}
+
+.c-slot__thumb {
+  aspect-ratio: 16 / 9;
+  background: var(--well);
+  border-radius: $RADIUS_SCREEN;
+  color: var(--muted);
+  display: grid;
+  grid-area: thumb;
+  overflow: hidden;
+  place-items: center;
+
+  .is-program & {
+    outline: 2px solid var(--red);
+  }
+
+  .is-preview & {
+    outline: 2px solid var(--green);
+  }
+}
+
+.c-slot__video {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+
+  &.is-mirrored {
+    transform: scaleX(-1);
+  }
+}
+
+.c-slot__placeholder {
+  --icon-size: 28px;
+}
+
+.c-slot__info {
+  display: grid;
+  gap: $SPACE_XS;
+  grid-area: info;
+  min-width: 0;
+}
+
+.c-slot__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD;
+  min-width: 0;
+}
+
+.c-slot__name {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.c-slot__state {
+  color: var(--text-2);
+  font-size: 15px;
+
+  &.is-bad {
+    color: var(--red);
+    font-weight: 700;
+  }
+}
+
+.c-slot__message {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.c-slot__steps {
+  color: var(--text-2);
+  display: grid;
+  font-size: 14px;
+  gap: 2px;
+  margin: $SPACE_XS 0 0;
+  padding-left: 1.2em;
+}
+
+.c-slot__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_LG;
+  grid-area: actions;
+
+  > .c-button:first-child {
+    flex: 1 1 auto;
+
+    @include respond-to(md) {
+      flex: none;
+    }
+  }
+}
+
+// Risky action apart from the others (DESIGN «Danger»).
+.c-slot__remove {
+  margin-left: auto;
+}
+
+.c-laptop__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_LG;
+
+  > .c-button {
+    flex: 1 1 220px;
+
+    @include respond-to(md) {
+      flex: none;
+    }
+  }
+}

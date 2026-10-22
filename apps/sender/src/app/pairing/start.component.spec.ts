@@ -1,0 +1,147 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+import { MemoryStorage, fakeEnvironment, settle } from '../../testing/sender-fakes';
+import { LOCAL_STORAGE, SESSION_STORAGE } from '../core/browser-storage';
+import { DeviceApiService } from '../core/device-api.service';
+import {
+  DEVICE_ENVIRONMENT,
+  defaultDeviceName,
+  detectDeviceKind,
+  type DeviceEnvironment,
+} from '../core/device-environment';
+import { NoticeService } from '../core/notice.service';
+import { StartComponent } from './start.component';
+
+describe('StartComponent (pairing form)', () => {
+  let createPairingRequest: ReturnType<typeof vi.fn>;
+
+  async function render(
+    environment: Partial<DeviceEnvironment>,
+    notices: NoticeService = new NoticeService(),
+  ): Promise<HTMLElement> {
+    createPairingRequest = vi.fn(() =>
+      Promise.resolve({
+        requestId: 'prq_1',
+        pollToken: 't',
+        checkCode: '4712',
+        expiresAt: '2026-10-22T12:00:00Z',
+      }),
+    );
+    TestBed.configureTestingModule({
+      imports: [StartComponent],
+      providers: [
+        provideRouter([]),
+        { provide: LOCAL_STORAGE, useValue: new MemoryStorage() },
+        { provide: SESSION_STORAGE, useValue: new MemoryStorage() },
+        { provide: DEVICE_ENVIRONMENT, useValue: fakeEnvironment(environment) },
+        { provide: NoticeService, useValue: notices },
+        {
+          provide: DeviceApiService,
+          useValue: {
+            createPairingRequest,
+            getPairingRequestStatus: () => new Promise(() => undefined),
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(StartComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function nameInput(element: HTMLElement): HTMLInputElement {
+    return element.querySelector<HTMLInputElement>('#device-name')!;
+  }
+
+  function checkedKind(element: HTMLElement): string | undefined {
+    return element.querySelector<HTMLInputElement>(
+      'input[name="kind"]:checked, input[type=radio]:checked',
+    )?.value;
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('defaults a desktop browser to laptop with a name from the platform', async () => {
+    const element = await render({
+      isPhone: () => false,
+      canShareScreen: () => true,
+      platform: () => 'Windows · Edge',
+    });
+
+    expect(checkedKind(element)).toBe('laptop');
+    expect(nameInput(element).value).toBe('Laptop Windows');
+    expect(nameInput(element).maxLength).toBe(60);
+  });
+
+  it('defaults a phone (or a browser without getDisplayMedia) to phone', async () => {
+    const element = await render({ isPhone: () => true, platform: () => 'Android · Chrome' });
+
+    expect(checkedKind(element)).toBe('phone');
+    expect(nameInput(element).value).toBe('Handy Android');
+  });
+
+  it('knocks and opens the waiting screen', async () => {
+    const element = await render({
+      isPhone: () => false,
+      canShareScreen: () => true,
+      platform: () => 'Windows · Edge',
+    });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const input = nameInput(element);
+    input.value = '  Laptop Anna ';
+    input.dispatchEvent(new Event('input'));
+
+    element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    await settle(10);
+
+    expect(createPairingRequest).toHaveBeenCalledWith({
+      name: 'Laptop Anna',
+      kind: 'laptop',
+      platform: 'Windows · Edge',
+    });
+    expect(navigate).toHaveBeenCalledWith(['/warten']);
+  });
+
+  it('requires a name', async () => {
+    const element = await render({ isPhone: () => false, canShareScreen: () => true });
+    const input = nameInput(element);
+    input.value = '   ';
+    input.dispatchEvent(new Event('input'));
+
+    element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    await settle();
+    TestBed.tick();
+
+    expect(createPairingRequest).not.toHaveBeenCalled();
+    expect(element.textContent).toContain('Bitte einen Namen eingeben.');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('shows the notice of a removed device', async () => {
+    const notices = new NoticeService();
+    notices.pairingNotice.set('Die Regie hat dieses Gerät entfernt.');
+    const element = await render({}, notices);
+
+    expect(element.textContent).toContain('Die Regie hat dieses Gerät entfernt.');
+  });
+});
+
+describe('device kind and default name', () => {
+  it.each([
+    [{ isPhone: () => true, canShareScreen: () => false }, 'phone'],
+    [{ isPhone: () => false, canShareScreen: () => false }, 'phone'],
+    [{ isPhone: () => false, canShareScreen: () => true }, 'laptop'],
+  ])('detects the kind', (environment, kind) => {
+    expect(detectDeviceKind(fakeEnvironment(environment))).toBe(kind);
+  });
+
+  it.each([
+    ['phone', 'iPhone · Safari', 'iPhone'],
+    ['phone', 'Android · Chrome', 'Handy Android'],
+    ['laptop', 'macOS · Chrome', 'Laptop macOS'],
+    ['laptop', 'Unbekannte Plattform', 'Laptop'],
+  ] as const)('suggests a name for %s on %s', (kind, platform, name) => {
+    expect(defaultDeviceName(kind, platform)).toBe(name);
+  });
+});

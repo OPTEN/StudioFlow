@@ -1,0 +1,225 @@
+// Workspace: stage and dock zones (prototype .work, .center, .stage, .zone, .split, .dock-ghost, .drop-line,
+// .drop-zone and the responsive stacking at 1180 / 900 px).
+@use 'mixins' as *;
+
+:host {
+  background: var(--panel);
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+
+  @include stacked {
+    flex-direction: column;
+  }
+}
+
+.c-workspace__center {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+
+  @include stacked {
+    display: contents;
+  }
+}
+
+// The stage area: monitors and control column (StageComponent). Container queries inside refer to this box.
+.c-workspace__stage {
+  background: var(--panel);
+  container-type: size;
+  flex: 1 1 auto;
+  min-height: 160px;
+  min-width: 0;
+  padding: 0 var(--gr) 0 var(--gl);
+
+  @include stacked {
+    container-type: inline-size;
+    min-height: 0;
+    order: 0;
+  }
+}
+
+.c-workspace__zone {
+  display: flex;
+  flex: none;
+  min-height: 0;
+  min-width: 0;
+
+  &.is-empty {
+    display: none;
+  }
+}
+
+.c-workspace__zone--bottom {
+  flex-direction: row;
+  height: var(--dock-h);
+  max-height: calc(100% - 160px);
+  min-height: 150px;
+}
+
+.c-workspace__zone--left,
+.c-workspace__zone--right {
+  flex-direction: column;
+  max-width: 42%;
+  min-width: 220px;
+  width: 320px;
+}
+
+// Hairlines between the stage and the zones; widened 9 px hit area, blue on hover/focus/drag after a short delay.
+.c-workspace__split {
+  background: var(--seam);
+  flex: none;
+  position: relative;
+  touch-action: none;
+  transition:
+    background-color var(--dur-state) var(--ease) var(--dur-splitter-delay),
+    box-shadow var(--dur-state) var(--ease) var(--dur-splitter-delay);
+  z-index: 2;
+
+  &::before {
+    content: '';
+    inset: 0 -4px;
+    position: absolute;
+  }
+
+  &:hover,
+  &:focus-visible,
+  &.is-drag {
+    background: var(--blue);
+    box-shadow: var(--shadow-splitter);
+    outline: none;
+  }
+}
+
+.c-workspace__split--v {
+  cursor: col-resize;
+  width: 1px;
+}
+
+.c-workspace__split--h {
+  cursor: row-resize;
+  height: 1px;
+
+  &::before {
+    inset: -4px 0;
+  }
+}
+
+// Dock drag: ghost, insertion line, drop strips for empty zones.
+.c-dock-ghost {
+  @include label-text;
+  align-items: center;
+  background: var(--raised-2);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  display: inline-flex;
+  gap: 8px;
+  height: 30px;
+  left: -999px;
+  padding: 0 10px;
+  pointer-events: none;
+  position: fixed;
+  top: -999px;
+  transform: translate(14px, 10px);
+  z-index: 80;
+}
+
+.c-drop-line {
+  background: var(--blue);
+  border-radius: 2px;
+  display: none;
+  pointer-events: none;
+  position: fixed;
+  z-index: 79;
+}
+
+.c-drop-zone {
+  background: var(--blue-wash);
+  border: 1px dashed var(--blue);
+  color: var(--blue);
+  display: grid;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px;
+  place-items: center;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  z-index: 30;
+
+  &.is-hot {
+    background: rgba(121, 192, 255, 0.2);
+  }
+}
+
+.c-drop-zone--left {
+  bottom: 0;
+  left: 0;
+  top: 0;
+  width: 92px;
+}
+
+.c-drop-zone--right {
+  bottom: 0;
+  right: 0;
+  top: 0;
+  width: 92px;
+}
+
+.c-drop-zone--bottom {
+  bottom: 0;
+  height: 72px;
+  left: 0;
+  right: 0;
+}
+
+// ≤ 1180 px: no dragging; zones become two-column grids of hairline-separated docks below the stage.
+@include stacked {
+  .c-workspace__zone {
+    background:
+      linear-gradient(var(--seam), var(--seam)) content-box,
+      var(--panel);
+    border-top: 1px solid var(--seam);
+    display: grid;
+    gap: 1px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: auto;
+    max-height: none;
+    max-width: none;
+    min-height: 0;
+    min-width: 0;
+    padding-inline: var(--gl) var(--gr);
+    width: auto;
+
+    &.is-empty {
+      display: none;
+    }
+  }
+
+  .c-workspace__zone--bottom {
+    order: 1;
+  }
+
+  .c-workspace__zone--left {
+    order: 2;
+  }
+
+  .c-workspace__zone--right {
+    order: 3;
+  }
+
+  .c-workspace__split {
+    display: none;
+  }
+}
+
+// ≤ 900 px: one column by priority.
+@include narrow {
+  .c-workspace__zone {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

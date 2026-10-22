@@ -1,0 +1,169 @@
+<div
+  class="c-pop c-media-pop"
+  role="dialog"
+  aria-label="Medien"
+  [fsPopover]="popoverId"
+  [popoverFocus]="!pickOnOpen()"
+>
+  <div class="c-pop-h">Bild oder Video hochladen</div>
+  <label
+    class="c-media-pop__drop"
+    [class.is-over]="dragOver()"
+    (dragenter)="onDragOver($event)"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <input
+      #file
+      class="u-sr-only"
+      type="file"
+      multiple
+      [accept]="accept"
+      (change)="onFiles($event)"
+    />
+    <svg fsIcon="upload"></svg>
+    <span>Hierher ziehen oder <span class="c-media-pop__pick">Datei wählen</span></span>
+    <span class="c-hint">{{ hint }}</span>
+  </label>
+
+  @for (message of rejected(); track $index) {
+    <p class="c-field-error c-media-pop__note">{{ message }}</p>
+  }
+
+  @if (uploads.uploads().length > 0) {
+    <ul class="c-media-pop__list" aria-label="Uploads">
+      @for (entry of uploads.uploads(); track entry.id) {
+        <li class="c-media-pop__upload">
+          <div class="c-media-pop__row">
+            <svg [fsIcon]="entry.kind"></svg>
+            <span class="c-media-pop__name" [title]="entry.name">{{ entry.name }}</span>
+            <span class="c-media-pop__meta u-mono">{{ sizeText(entry.size) }}</span>
+            @if (entry.state === 'queued' || entry.state === 'uploading') {
+              <button class="c-btn c-btn--sm" type="button" (click)="uploads.cancel(entry.id)">
+                Abbrechen
+              </button>
+            } @else {
+              <button
+                class="c-ibtn"
+                type="button"
+                [attr.aria-label]="'Aus der Liste entfernen: ' + entry.name"
+                (click)="uploads.dismiss(entry.id)"
+              >
+                <svg fsIcon="close" [size]="14"></svg>
+              </button>
+            }
+          </div>
+          @switch (entry.state) {
+            @case ('queued') {
+              <span class="c-hint">wartet …</span>
+            }
+            @case ('uploading') {
+              <div class="c-media-pop__progress">
+                <div
+                  class="c-media-pop__bar"
+                  role="progressbar"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  [attr.aria-valuenow]="percent(entry)"
+                  [attr.aria-label]="'Hochladen von ' + entry.name"
+                >
+                  <i class="c-media-pop__fill" [style.width.%]="percent(entry)"></i>
+                </div>
+                <span class="u-mono">{{ percent(entry) }} %</span>
+              </div>
+            }
+            @case ('done') {
+              @if (entry.asset; as asset) {
+                <div class="c-media-pop__row">
+                  <span class="c-state--ok">hochgeladen</span>
+                  <span class="c-code">{{ asset.code }}</span>
+                  <span class="u-spacer"></span>
+                  @if (canAddToScene(asset)) {
+                    <button
+                      class="c-btn c-btn--sm c-btn--primary"
+                      type="button"
+                      (click)="addToScene(asset)"
+                    >
+                      <svg fsIcon="plus" [size]="14"></svg>Zu «{{ sceneName() }}»
+                    </button>
+                  }
+                </div>
+              }
+            }
+            @case ('failed') {
+              <span class="c-field-error">{{ entry.error }}</span>
+            }
+            @case ('aborted') {
+              <span class="c-hint">abgebrochen</span>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="c-pop-h c-media-pop__head">Medien der Produktion</div>
+  <div class="c-media-pop__list">
+    @for (asset of assets(); track asset.id) {
+      <div class="c-media-pop__asset">
+        <div class="c-media-pop__row">
+          <svg [fsIcon]="asset.kind"></svg>
+          <span class="c-code">{{ asset.code }}</span>
+          @if (renamingId() === asset.id) {
+            <fs-inline-edit
+              class="c-media-pop__edit"
+              label="Name der Datei"
+              [value]="asset.name"
+              [maxLength]="maxNameLength"
+              (save)="rename(asset, $event)"
+              (cancel)="renamingId.set(null)"
+            />
+          } @else {
+            <span class="c-media-pop__text">
+              <span class="c-media-pop__name" [title]="asset.name">{{ asset.name }}</span>
+              <span class="c-media-pop__meta">{{ assetMeta(asset) }}</span>
+            </span>
+            <button
+              class="c-ibtn"
+              type="button"
+              [attr.aria-label]="'Umbenennen: ' + asset.name"
+              [disabled]="commands.blocked('asset:' + asset.id + ':rename')"
+              (click)="startRename(asset)"
+            >
+              <svg fsIcon="pencil" [size]="14"></svg>
+            </button>
+            <button
+              class="c-ibtn c-media-pop__delete"
+              type="button"
+              [attr.aria-label]="'Löschen: ' + asset.name"
+              (click)="askDelete(asset)"
+            >
+              <svg fsIcon="trash" [size]="14"></svg>
+            </button>
+          }
+        </div>
+        @if (inUseMessage(asset.id); as message) {
+          <p class="c-media-pop__inuse">
+            <strong class="c-state--bad">wird verwendet</strong> {{ message }} Erst dort entfernen.
+          </p>
+        }
+        @if (confirmingId() === asset.id) {
+          <fs-confirm-box
+            label="Datei löschen"
+            confirmLabel="Löschen"
+            [flush]="true"
+            [message]="
+              '«' + asset.name + '» wird gelöscht. Das lässt sich nicht rückgängig machen.'
+            "
+            [busy]="commands.blocked('asset:' + asset.id + ':delete')"
+            (confirm)="remove(asset)"
+            (cancel)="confirmingId.set(null)"
+          />
+        }
+      </div>
+    } @empty {
+      <p class="c-pop-note">Noch keine Medien hochgeladen.</p>
+    }
+  </div>
+</div>

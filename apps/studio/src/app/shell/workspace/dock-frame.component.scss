@@ -1,0 +1,121 @@
+// Dock chrome (prototype .panel-h, .panel-t, .panel-sub, .panel-b, .grip, .count).
+@use 'mixins' as *;
+
+:host {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.c-dock-frame__head {
+  align-items: center;
+  border-bottom: 1px solid var(--seam);
+  display: flex;
+  flex: none;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px 6px 6px;
+
+  &.is-draggable {
+    cursor: grab;
+    user-select: none;
+  }
+
+  @include short-laptop {
+    min-height: 36px;
+    padding-block: 4px;
+  }
+
+  @include stacked {
+    &.is-draggable {
+      cursor: auto;
+      padding-left: 12px;
+    }
+  }
+}
+
+.c-dock-frame__grip {
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--muted);
+  cursor: grab;
+  display: inline-grid;
+  flex: none;
+  height: 26px;
+  margin-right: -2px;
+  opacity: 0.6;
+  padding: 0;
+  place-items: center;
+  touch-action: none;
+  width: 16px;
+
+  .c-icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  &:focus-visible {
+    color: var(--text-2);
+    opacity: 1;
+  }
+
+  @include stacked {
+    display: none;
+  }
+}
+
+.c-dock-frame__head:hover .c-dock-frame__grip {
+  color: var(--text-2);
+  opacity: 1;
+}
+
+.c-dock-frame__title {
+  @include label-text;
+}
+
+.c-dock-frame__title--solo {
+  padding-left: 6px;
+}
+
+.c-dock-frame__sub {
+  @include ellipsis;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.c-dock-frame__count {
+  color: var(--muted);
+  font: 500 11px var(--font-mono);
+}
+
+// Scroll-edge fades: panel-coloured masks scroll with the content (local), the dark fades stay (scroll), so the
+// fade only shows while there is more to scroll (DESIGN.md «Scroll edge»).
+.c-dock-frame__body {
+  background:
+    linear-gradient(var(--panel), rgba(21, 26, 34, 0)) top / 100% 18px no-repeat local,
+    linear-gradient(rgba(21, 26, 34, 0), var(--panel)) bottom / 100% 18px no-repeat local,
+    linear-gradient(rgba(1, 4, 9, 0.65), rgba(1, 4, 9, 0)) top / 100% 10px no-repeat scroll,
+    linear-gradient(rgba(1, 4, 9, 0), rgba(1, 4, 9, 0.65)) bottom / 100% 10px no-repeat scroll;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+
+  @include stacked {
+    background: none;
+    overflow: visible;
+  }
+}
+
+.c-dock-frame__body--static {
+  background: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  @include stacked {
+    overflow: visible;
+  }
+}

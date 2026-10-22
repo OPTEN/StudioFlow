@@ -1,0 +1,77 @@
+// Shared layout of the element and scene inspector (prototype .insp, .frow, .flabel, .pair, .sub-h, .hint,
+// .danger-zone). Used with `@use 'inspector';` by both inspector components (encapsulated styles).
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.c-insp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  padding: 12px;
+
+  @include short-laptop {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  @include stacked {
+    min-height: 0;
+  }
+}
+
+.c-insp__row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
+.c-insp__label {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-insp__pair {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.c-insp__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.c-insp__sub {
+  @include label-text(11px);
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  margin: 2px 0 -4px;
+  min-width: 0;
+}
+
+.c-insp__note {
+  margin: 0;
+}
+
+.c-insp__danger {
+  align-items: center;
+  border-top: 1px solid var(--seam);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+
+  .c-hint {
+    flex: 1 1 160px;
+  }
+}

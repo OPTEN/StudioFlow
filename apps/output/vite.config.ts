@@ -25,6 +25,8 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     assetsInlineLimit: 0,
+    // The lazy livekit-media chunk is ~550 KB minified (~145 KB gzip): livekit-client is not tree-shakable.
+    chunkSizeWarningLimit: 650,
   },
   server: {
     port: 4202,

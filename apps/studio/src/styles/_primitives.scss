@@ -1,0 +1,687 @@
+// Shared UI primitives of the Regie, visually identical to prototype/regie.html. Global on purpose: every dock,
+// popover and form uses them. Mapping prototype → BEMIT: .btn → .c-btn, .btn-sm → .c-btn--sm, .ibtn → .c-ibtn,
+// .code → .c-code, .lamp → .c-lamp, .tag → .c-tag, .state-* → .c-state--*, .pop → .c-pop, .menu-item → .c-menu-item,
+// .kv → .c-kv, .confirm → .c-confirm, .seg → .c-seg, .switch → .c-switch, .num → .c-num, .select → .c-select,
+// .textin → .c-input, .check → .c-check, .hint → .c-hint, .empty → .c-empty, .key → .c-keycap, .ico → .c-icon,
+// .tabs/.tab → .c-tabs/.c-tab, .linkbox → .c-linkbox, .chipbtn → .c-chipbtn, .sub-h/.sec-label/.ctrl-l → .c-label.
+@use 'mixins' as *;
+
+// Icons (IconComponent renders <svg class="c-icon">)
+.c-icon {
+  fill: none;
+  flex: none;
+  height: 16px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+  width: 16px;
+}
+
+.c-icon--mark {
+  height: 18px;
+  width: 22px;
+}
+
+// Buttons
+.c-btn {
+  @include state-transition(background-color, border-color, color);
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  height: 30px;
+  justify-content: center;
+  padding: 0 11px;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--raised);
+    border-color: var(--btn-hover-border);
+  }
+
+  &:active {
+    background: var(--raised-2);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .c-icon {
+    height: 14px;
+    width: 14px;
+  }
+}
+
+.c-btn--sm {
+  font-size: 12.5px;
+  height: 26px;
+  padding: 0 9px;
+}
+
+.c-btn--primary {
+  border-color: var(--blue);
+  color: var(--blue);
+
+  &:hover {
+    background: var(--blue-fill);
+    border-color: var(--blue-fill);
+    color: var(--on-fill);
+  }
+}
+
+.c-btn--fill {
+  background: var(--blue-fill);
+  border-color: var(--blue-fill);
+  color: var(--on-fill);
+
+  &:hover {
+    background: var(--blue-fill-hover);
+    border-color: var(--blue-fill-hover);
+  }
+}
+
+.c-btn--go {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--on-state);
+
+  &:hover {
+    background: var(--green-hover);
+    border-color: var(--green-hover);
+  }
+}
+
+.c-btn--danger {
+  background: transparent;
+  border: 1px dashed var(--red);
+  color: var(--red);
+
+  &:hover {
+    background: var(--red-wash);
+    border-color: var(--red);
+  }
+}
+
+.c-btn--danger-fill {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--on-state);
+
+  &:hover {
+    background: var(--red);
+    border-color: var(--red);
+  }
+}
+
+// Icon button (28 px square)
+.c-ibtn {
+  @include state-transition(background-color, color);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-grid;
+  flex: none;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  width: 28px;
+
+  &:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+// Header chip button (output, health)
+.c-chipbtn {
+  @include state-transition(background-color);
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  .u-mono {
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+  }
+}
+
+// Slot code chip (K1, S2, M3)
+.c-code {
+  background: var(--raised-2);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  font: 600 11.5px / 1 var(--font-mono);
+  padding: 3px 5px;
+  white-space: nowrap;
+}
+
+// Status lamp
+.c-lamp {
+  background: var(--green);
+  border-radius: 50%;
+  flex: none;
+  height: 7px;
+  justify-self: center;
+  width: 7px;
+
+  &.is-idle {
+    background: var(--muted);
+  }
+
+  &.is-warn {
+    background: var(--amber);
+    height: 9px;
+    outline: 3px solid rgba(227, 179, 65, 0.22);
+    width: 9px;
+  }
+
+  &.is-bad {
+    background: var(--red);
+    height: 11px;
+    outline: 3px solid rgba(248, 81, 73, 0.25);
+    width: 11px;
+  }
+
+  &.is-pulse {
+    animation: c-lamp-pulse var(--dur-lamp-pulse) var(--ease) 1;
+  }
+}
+
+@keyframes c-lamp-pulse {
+  35% {
+    outline-color: rgba(248, 81, 73, 0.05);
+    outline-width: 9px;
+  }
+}
+
+// PGM / PVW tags
+.c-tag {
+  align-items: center;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  flex: none;
+  font: 700 10.5px / 1 var(--font-ui);
+  letter-spacing: 0.08em;
+  padding: 3px 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.c-tag--pgm {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.c-tag--pvw {
+  background: var(--green-wash);
+  color: var(--green);
+}
+
+// State words («verbindet neu», «Teilen beendet», «wieder da»)
+.c-state--warn {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.c-state--bad {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.c-state--ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+// Uppercase group label (ÜBERGANG, VORLAGE ANWENDEN, WARTENDE ANFRAGEN)
+.c-label {
+  @include label-text(11px);
+}
+
+// Popovers and menus
+.c-pop-wrap {
+  flex: none;
+  position: relative;
+}
+
+.c-pop {
+  background: var(--raised);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  min-width: 260px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+}
+
+.c-pop--left {
+  left: 0;
+  right: auto;
+}
+
+.c-pop-h {
+  @include label-text;
+  padding: 6px 8px 4px;
+}
+
+.c-pop-note {
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 2px 8px 8px;
+}
+
+.c-menu-item {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13.5px;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--raised-2);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .c-icon {
+    color: var(--muted);
+  }
+
+  input {
+    accent-color: var(--blue-fill);
+    height: 15px;
+    margin: 0;
+    width: 15px;
+  }
+}
+
+.c-menu-sep {
+  background: var(--seam-strong);
+  height: 1px;
+  margin: 6px 2px;
+}
+
+// Key-value list
+.c-kv {
+  display: grid;
+  font-size: 13px;
+  gap: 6px 10px;
+  grid-template-columns: 82px minmax(0, 1fr);
+  margin: 0;
+  padding: 6px 8px;
+
+  dt {
+    color: var(--muted);
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+  }
+}
+
+// Link box with copy button
+.c-linkbox {
+  align-items: center;
+  background: var(--ground);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 6px;
+  height: 34px;
+  margin: 4px 8px 8px;
+  padding: 0 4px 0 10px;
+}
+
+.c-linkbox__text {
+  @include ellipsis;
+  flex: 1;
+  font: 500 12.5px var(--font-mono);
+}
+
+// Dashed red confirmation box
+.c-confirm {
+  border: 1px dashed var(--red);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  display: grid;
+  font-size: 13px;
+  gap: 8px;
+  margin: 8px;
+  padding: 10px;
+}
+
+.c-confirm--flush {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.c-confirm__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+// Segmented control (Füllen | Ganz zeigen)
+.c-seg {
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  overflow: hidden;
+
+  button {
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--seam-strong);
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    height: 28px;
+    padding: 0 10px;
+    white-space: nowrap;
+
+    &:last-child {
+      border-right: 0;
+    }
+
+    &:hover {
+      background: var(--raised);
+    }
+
+    &:focus-visible {
+      outline-offset: -3px;
+    }
+
+    &[aria-pressed='true'] {
+      background: var(--raised-2);
+      box-shadow: var(--shadow-selected);
+      color: var(--text);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+}
+
+// Tabs (Handy | Laptop | Link)
+.c-tabs {
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  overflow: hidden;
+}
+
+.c-tab {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--seam-strong);
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13.5px;
+  font-weight: 600;
+  gap: 7px;
+  height: 32px;
+  justify-content: center;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  &:focus-visible {
+    outline-offset: -3px;
+  }
+
+  &[aria-selected='true'] {
+    background: var(--blue-wash);
+    box-shadow: var(--shadow-selected);
+    color: var(--blue);
+  }
+}
+
+// Toggle switch (Studio-Modus)
+.c-switch {
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13.5px;
+  font-weight: 600;
+  gap: 10px;
+  min-height: 24px;
+
+  input {
+    @include state-transition(background-color);
+    appearance: none;
+    background: var(--seam-strong);
+    border-radius: var(--radius-switch);
+    cursor: pointer;
+    flex: none;
+    height: 20px;
+    margin: 0;
+    position: relative;
+    width: 36px;
+
+    &::after {
+      background: var(--text);
+      border-radius: 50%;
+      content: '';
+      height: 14px;
+      left: 3px;
+      position: absolute;
+      top: 3px;
+      transition: transform var(--dur-state) var(--ease);
+      width: 14px;
+    }
+
+    &:checked {
+      background: var(--blue-fill);
+    }
+
+    &:checked::after {
+      transform: translateX(16px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+}
+
+// Inputs
+.c-input,
+.c-select {
+  background: var(--ground);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  height: 30px;
+  width: 100%;
+
+  &:focus {
+    border-color: var(--blue);
+    outline: none;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &.is-invalid {
+    border-color: var(--red);
+  }
+}
+
+.c-input {
+  font: 500 13.5px var(--font-ui);
+  padding: 0 9px;
+}
+
+.c-select {
+  font: 500 13px var(--font-ui);
+  padding: 0 8px;
+}
+
+// Number field with mono label, violet value and unit
+.c-num {
+  align-items: center;
+  background: var(--ground);
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 6px;
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+
+  &:focus-within {
+    border-color: var(--blue);
+  }
+}
+
+.c-num__label,
+.c-num__unit {
+  color: var(--muted);
+  font: 500 11px var(--font-mono);
+}
+
+.c-num__input {
+  background: transparent;
+  border: 0;
+  color: var(--violet);
+  font: 500 13px var(--font-mono);
+  min-width: 0;
+  outline: none;
+  padding: 0;
+  width: 100%;
+
+  &:disabled {
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+}
+
+.c-check {
+  align-items: center;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 8px;
+
+  input {
+    accent-color: var(--blue-fill);
+    height: 15px;
+    margin: 0;
+    width: 15px;
+  }
+}
+
+// Hint text, empty state, field error
+.c-hint {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-field-error {
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+.c-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 16px 14px;
+
+  strong {
+    color: var(--text-2);
+    display: block;
+    margin-bottom: 4px;
+  }
+}
+
+// Keycap number on scene thumbnails
+.c-keycap {
+  background: rgba(13, 17, 23, 0.88);
+  border-radius: 2px;
+  bottom: 2px;
+  color: var(--text-2);
+  font: 600 9.5px / 1 var(--font-mono);
+  padding: 2px 3px;
+  position: absolute;
+  right: 2px;
+
+  @include short-laptop {
+    font-size: 8.5px;
+    padding: 1px 2px;
+  }
+}

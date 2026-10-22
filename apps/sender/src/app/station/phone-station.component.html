@@ -1,0 +1,163 @@
+<main
+  class="c-phone"
+  aria-labelledby="phone-station-title"
+  [class.is-dark]="dark()"
+  [class.is-awake]="awake()"
+  [class.has-tally]="tally() !== 'off'"
+  (click)="wake()"
+>
+  <div class="c-phone__stage" data-testid="slot-camera" [attr.data-state]="cameraState()">
+    @if (preview(); as stream) {
+      <video
+        class="c-phone__video"
+        [class.is-mirrored]="facing() === 'user'"
+        [fsMediaPreview]="stream"
+        aria-label="Vorschau der Kamera"
+      ></video>
+    } @else if (!problem()) {
+      <div class="c-phone__placeholder">
+        <fs-icon class="c-phone__placeholder-icon" name="camera" />
+        <p>{{ cameraState() === 'starting' ? 'Kamera startet …' : 'Die Kamera ist aus.' }}</p>
+      </div>
+    }
+  </div>
+
+  @if (dark() && !awake()) {
+    <div class="c-phone__dark" aria-hidden="true">
+      <span class="c-phone__dark-code u-mono">{{ camera()?.code ?? '' }}</span>
+      <span class="c-phone__dark-hint">Tippen zum Bedienen</span>
+    </div>
+  }
+
+  <header class="c-phone__top" [class.is-hidden]="!controlsVisible()">
+    <div class="c-phone__identity">
+      @if (camera()?.code; as code) {
+        <span class="c-code">{{ code }}</span>
+      }
+      <h1 class="c-phone__name" id="phone-station-title" data-route-focus tabindex="-1">
+        {{ name() }}
+      </h1>
+    </div>
+    <fs-connection-status
+      [view]="session.connection()"
+      [since]="session.degradedSince()"
+      [now]="session.now()"
+    />
+  </header>
+
+  @if (problem(); as issue) {
+    <div class="c-phone__problem" role="alert">
+      <div class="c-notice c-notice--bad">
+        <fs-icon class="c-notice__icon" name="alert" />
+        <div class="c-notice__body">
+          <p class="c-notice__title">{{ issue.title }}</p>
+          <ol class="c-phone__steps">
+            @for (step of issue.steps; track $index) {
+              <li>{{ step }}</li>
+            }
+          </ol>
+        </div>
+      </div>
+      <button
+        class="c-button c-button--fill c-button--large c-button--block"
+        type="button"
+        (click)="session.startCamera()"
+      >
+        Erneut versuchen
+      </button>
+    </div>
+  }
+
+  <div
+    class="c-phone__controls"
+    role="group"
+    aria-label="Kamera steuern"
+    [class.is-hidden]="!controlsVisible()"
+  >
+    <button
+      class="c-button c-phone__toggle"
+      type="button"
+      [class.c-button--overlay]="running()"
+      [class.c-button--fill]="!running()"
+      (click)="toggleCamera()"
+    >
+      <fs-icon [name]="running() ? 'close' : 'camera'" />
+      {{ running() ? 'Kamera stoppen' : 'Kamera starten' }}
+    </button>
+
+    <fieldset class="c-segmented c-segmented--overlay c-phone__facing">
+      <legend class="u-sr-only">Kamera</legend>
+      <div class="c-segmented__options">
+        <label class="c-segmented__option">
+          <input
+            class="c-segmented__input"
+            type="radio"
+            name="facing"
+            value="user"
+            [checked]="facing() === 'user'"
+            (change)="setFacing('user')"
+          />
+          <span>Front</span>
+        </label>
+        <label class="c-segmented__option">
+          <input
+            class="c-segmented__input"
+            type="radio"
+            name="facing"
+            value="environment"
+            [checked]="facing() === 'environment'"
+            (change)="setFacing('environment')"
+          />
+          <span>Rück</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="c-segmented c-segmented--overlay c-phone__resolution">
+      <legend class="u-sr-only">Auflösung</legend>
+      <div class="c-segmented__options">
+        <label class="c-segmented__option">
+          <input
+            class="c-segmented__input"
+            type="radio"
+            name="resolution"
+            value="720"
+            [checked]="resolution() === 720"
+            (change)="setResolution(720)"
+          />
+          <span class="u-mono">720p</span>
+        </label>
+        <label class="c-segmented__option">
+          <input
+            class="c-segmented__input"
+            type="radio"
+            name="resolution"
+            value="1080"
+            [checked]="resolution() === 1080"
+            (change)="setResolution(1080)"
+          />
+          <span class="u-mono">1080p</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <button
+      class="c-button c-button--overlay c-phone__dark-toggle"
+      type="button"
+      [attr.aria-pressed]="dark()"
+      (click)="toggleDark(); $event.stopPropagation()"
+    >
+      <fs-icon name="moon" />
+      Dunkel
+    </button>
+
+    <button
+      class="c-button c-button--overlay c-phone__check"
+      type="button"
+      (click)="openTechCheck.emit()"
+    >
+      <fs-icon name="gauge" />
+      Technik-Check
+    </button>
+  </div>
+</main>

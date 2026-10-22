@@ -1,0 +1,44 @@
+// Design tokens of the sender. Colours and type come from DESIGN.md (same console as the Regie); the sender scales
+// sizes up for phones (touch targets of at least 44 px, text of at least 14 px).
+
+// Breakpoints (mobile first, min-width only).
+$BREAKPOINTS: (
+  sm: 480px,
+  md: 768px,
+  lg: 1024px,
+) !default;
+
+// Smallest touch target (spec 9.2).
+$TOUCH_TARGET: 44px !default;
+
+// Spacing scale of DESIGN.md (4 / 6 / 8 / 10 / 12 / 16 / 20 px), plus larger steps for the phone layout.
+$SPACE_XS: 4px !default;
+$SPACE_SM: 6px !default;
+$SPACE_MD: 8px !default;
+$SPACE_ROW: 10px !default;
+$SPACE_LG: 12px !default;
+$SPACE_GUTTER: 16px !default;
+$SPACE_STAGE: 20px !default;
+$SPACE_XL: 24px !default;
+$SPACE_XXL: 32px !default;
+
+// Corner radii of DESIGN.md.
+$RADIUS_SCREEN: 2px !default;
+$RADIUS_XS: 3px !default;
+$RADIUS_MD: 4px !default;
+$RADIUS_LG: 6px !default;
+
+// Tally frame widths.
+$TALLY_FRAME: 10px !default;
+$TALLY_FRAME_LAPTOP: 6px !default;
+$TALLY_FRAME_THIN: 3px !default;
+
+// Stacking order of the fixed layers.
+$Z_INDEX_VALUES: (
+  video: 0,
+  overlay: 10,
+  controls: 20,
+  banner: 40,
+  dialog: 50,
+  tally: 60,
+) !default;

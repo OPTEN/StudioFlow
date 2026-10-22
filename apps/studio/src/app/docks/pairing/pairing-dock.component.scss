@@ -1,0 +1,76 @@
+// Pairing dock layout (prototype .pair-grid, .pair-main, .pair-side; one column below 560 px dock width).
+@use 'mixins' as *;
+
+.c-pair {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-height: 0;
+
+  @include narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.c-pair__main,
+.c-pair__side {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  overflow-anchor: none;
+  padding: 12px 14px 16px;
+
+  @include short-laptop {
+    gap: 8px;
+    padding-block: 10px 12px;
+  }
+
+  @include stacked {
+    overflow: visible;
+  }
+}
+
+.c-pair__main {
+  border-right: 1px solid var(--seam);
+
+  @include narrow {
+    border-bottom: 1px solid var(--seam);
+    border-right: 0;
+  }
+}
+
+.c-pair__panel {
+  display: grid;
+}
+
+.c-pair__side-title {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.c-pair__side-text {
+  color: var(--text-2);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+// The dock slot is the size container (dock-slot `.is-pair`): a narrow pairing dock stacks its columns.
+@container (max-width: 560px) {
+  .c-pair {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .c-pair__main,
+  .c-pair__side {
+    overflow: visible;
+  }
+
+  .c-pair__main {
+    border-bottom: 1px solid var(--seam);
+    border-right: 0;
+  }
+}

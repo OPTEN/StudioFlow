@@ -1,0 +1,202 @@
+// Edit overlay on the editable monitor (prototype .ovl, .box, .box-label, .hdl, .guide).
+@use 'mixins' as *;
+
+// The overlay covers the 16:9 screen exactly; percentages refer to the 1920 × 1080 canvas.
+:host {
+  border-radius: var(--radius-screen);
+  // Elements may reach beyond the canvas: their boxes are clipped at the screen (they must not cover the control
+  // column), except a margin for the corner handles and, above, for the label tab of elements at the top edge.
+  clip-path: inset(-24px -6px -6px);
+  inset: 0;
+  position: absolute;
+  // Panning the page stays possible on the empty area (stacked layouts scroll); boxes take every touch.
+  touch-action: manipulation;
+
+  // Faint dashed safe-area guide (40 px margin), shown while hovering or dragging.
+  &::after {
+    @include state-transition(border-color);
+    border: 1px dashed transparent;
+    bottom: 3.704%;
+    content: '';
+    left: 2.083%;
+    pointer-events: none;
+    position: absolute;
+    right: 2.083%;
+    top: 3.704%;
+  }
+}
+
+:host(:hover)::after,
+:host(.is-dragging)::after {
+  border-color: rgba(139, 148, 158, 0.4);
+}
+
+// 1 px dot raster while an element is dragged (pitch: 40 canvas px, set as --grid by the component).
+:host(.is-dragging) {
+  background-image: radial-gradient(circle, rgba(139, 148, 158, 0.55) 1px, transparent 1.4px);
+  background-size: var(--grid, 20px) var(--grid, 20px);
+}
+
+:host(.is-locked) {
+  cursor: not-allowed;
+
+  &::after {
+    display: none;
+  }
+}
+
+.c-edit-box {
+  border: 1px solid transparent;
+  cursor: move;
+  position: absolute;
+  touch-action: none;
+
+  &:hover {
+    border-color: rgba(121, 192, 255, 0.55);
+  }
+
+  &.is-sel {
+    border-color: var(--blue);
+  }
+
+  &.is-locked {
+    cursor: default;
+  }
+
+  // Down source: dashed like the renderer's alert outline (amber reconnecting, red otherwise).
+  &.is-alert {
+    border: 1px dashed var(--amber);
+  }
+
+  &.is-alert.is-bad {
+    border-color: var(--red);
+  }
+}
+
+.c-edit-box__label {
+  background: var(--blue);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  color: var(--on-state);
+  display: none;
+  font: 600 10.5px / 1 var(--font-mono);
+  left: -1px;
+  padding: 3px 5px;
+  pointer-events: none;
+  position: absolute;
+  top: -1px;
+  transform: translateY(-100%);
+  white-space: nowrap;
+
+  .c-edit-box.is-sel > & {
+    display: block;
+  }
+}
+
+// Corner handles: 11 px squares on the corners; a wider invisible hit area on touch screens.
+.c-edit-box__handle {
+  background: var(--ground);
+  border: 1.5px solid var(--blue);
+  border-radius: 2px;
+  height: 11px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 11px;
+
+  @media (pointer: coarse) {
+    &::before {
+      content: '';
+      inset: -10px;
+      position: absolute;
+    }
+  }
+}
+
+.c-edit-box__handle--nw {
+  cursor: nwse-resize;
+  left: 0;
+  top: 0;
+}
+
+.c-edit-box__handle--ne {
+  cursor: nesw-resize;
+  left: 100%;
+  top: 0;
+}
+
+.c-edit-box__handle--sw {
+  cursor: nesw-resize;
+  left: 0;
+  top: 100%;
+}
+
+.c-edit-box__handle--se {
+  cursor: nwse-resize;
+  left: 100%;
+  top: 100%;
+}
+
+// Invisible hit strips along the outline: Alt+drag on an edge crops that side (like OBS); without Alt they move.
+.c-edit-box__edge {
+  position: absolute;
+}
+
+.c-edit-box__edge--n,
+.c-edit-box__edge--s {
+  height: 8px;
+  left: 6px;
+  right: 6px;
+}
+
+.c-edit-box__edge--e,
+.c-edit-box__edge--w {
+  bottom: 6px;
+  top: 6px;
+  width: 8px;
+}
+
+.c-edit-box__edge--n {
+  top: -5px;
+}
+
+.c-edit-box__edge--s {
+  bottom: -5px;
+}
+
+.c-edit-box__edge--e {
+  right: -5px;
+}
+
+.c-edit-box__edge--w {
+  left: -5px;
+}
+
+// While Alt is held the edges show where a crop drag goes.
+:host(.is-alt) {
+  .c-edit-box__edge--n,
+  .c-edit-box__edge--s {
+    cursor: row-resize;
+  }
+
+  .c-edit-box__edge--e,
+  .c-edit-box__edge--w {
+    cursor: col-resize;
+  }
+}
+
+.c-edit-overlay__guide {
+  background: var(--blue);
+  pointer-events: none;
+  position: absolute;
+}
+
+.c-edit-overlay__guide--v {
+  bottom: 0;
+  top: 0;
+  width: 1px;
+}
+
+.c-edit-overlay__guide--h {
+  height: 1px;
+  left: 0;
+  right: 0;
+}

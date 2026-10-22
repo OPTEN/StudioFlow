@@ -1,0 +1,217 @@
+<div class="c-pop-wrap c-prod">
+  <button
+    class="c-prod__trigger"
+    type="button"
+    aria-haspopup="dialog"
+    [attr.aria-label]="'Produktion ' + name() + ', Menü'"
+    [fsPopoverTrigger]="popoverId"
+  >
+    <span class="c-prod__name">{{ name() }}</span>
+    <svg fsIcon="chev" [size]="13"></svg>
+  </button>
+
+  @if (popovers.isOpen(popoverId)) {
+    <div
+      class="c-pop c-pop--left c-prod__pop"
+      role="dialog"
+      aria-label="Produktion"
+      [fsPopover]="popoverId"
+    >
+      @switch (mode()) {
+        @case ('rename') {
+          <form class="c-prod__form" (submit)="rename($event)">
+            <div class="c-pop-h">Produktion umbenennen</div>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Name</span>
+              <input
+                class="c-input"
+                type="text"
+                maxlength="80"
+                autocomplete="off"
+                [class.is-invalid]="renameControl.invalid && renameControl.touched"
+                [formControl]="renameControl"
+              />
+            </label>
+            @if (renameControl.invalid && renameControl.touched) {
+              <p class="c-field-error">Bitte einen Namen mit höchstens 80 Zeichen eingeben.</p>
+            }
+            <div class="c-prod__row">
+              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
+                Speichern
+              </button>
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                [disabled]="busy()"
+                (click)="mode.set('menu')"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        }
+        @case ('slates') {
+          <form class="c-prod__form" [formGroup]="slatesForm" (submit)="saveSlates($event)">
+            <div class="c-pop-h">Vor der Sendung</div>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Titel</span>
+              <input class="c-input" type="text" maxlength="120" formControlName="standbyTitle" />
+            </label>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Untertitel</span>
+              <input
+                class="c-input"
+                type="text"
+                maxlength="120"
+                formControlName="standbySubtitle"
+              />
+            </label>
+            @if (imageAssets().length > 0) {
+              <label class="c-prod__field">
+                <span class="c-prod__label">Hintergrund</span>
+                <select class="c-select" formControlName="standbyBackground">
+                  <option value="">Kein Bild</option>
+                  @for (asset of imageAssets(); track asset.id) {
+                    <option [value]="asset.id">{{ asset.code }} · {{ asset.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <div class="c-pop-h">Nach der Sendung</div>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Titel</span>
+              <input class="c-input" type="text" maxlength="120" formControlName="endTitle" />
+            </label>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Untertitel</span>
+              <input class="c-input" type="text" maxlength="120" formControlName="endSubtitle" />
+            </label>
+            @if (imageAssets().length > 0) {
+              <label class="c-prod__field">
+                <span class="c-prod__label">Hintergrund</span>
+                <select class="c-select" formControlName="endBackground">
+                  <option value="">Kein Bild</option>
+                  @for (asset of imageAssets(); track asset.id) {
+                    <option [value]="asset.id">{{ asset.code }} · {{ asset.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+            @if (slatesForm.invalid && slatesForm.touched) {
+              <p class="c-field-error">Beide Slates brauchen einen Titel.</p>
+            }
+            <p class="c-hint">
+              Der Output zeigt die Slate vor dem Start und nach dem Ende der Sendung.
+            </p>
+            <div class="c-prod__row">
+              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
+                Speichern
+              </button>
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                [disabled]="busy()"
+                (click)="mode.set('menu')"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        }
+        @case ('create') {
+          <form class="c-prod__form" (submit)="create($event)">
+            <div class="c-pop-h">Neue Produktion</div>
+            <label class="c-prod__field">
+              <span class="c-prod__label">Name</span>
+              <input
+                class="c-input"
+                type="text"
+                maxlength="80"
+                autocomplete="off"
+                placeholder="z. B. Webinar «Headless mit Umbraco»"
+                [class.is-invalid]="createControl.invalid && createControl.touched"
+                [formControl]="createControl"
+              />
+            </label>
+            @if (createControl.invalid && createControl.touched) {
+              <p class="c-field-error">Bitte einen Namen mit höchstens 80 Zeichen eingeben.</p>
+            }
+            <div class="c-prod__row">
+              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
+                Erstellen
+              </button>
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                [disabled]="busy()"
+                (click)="mode.set('menu')"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        }
+        @default {
+          <div class="c-pop-h">Produktion</div>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('rename')"
+          >
+            <svg fsIcon="pencil"></svg>Umbenennen
+          </button>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('slates')"
+          >
+            <svg fsIcon="image"></svg>Slates bearbeiten
+          </button>
+          <div class="c-menu-sep"></div>
+          <div class="c-pop-h">Produktion wechseln</div>
+          @if (productions(); as list) {
+            @for (production of list; track production.id) {
+              <button
+                class="c-menu-item"
+                type="button"
+                [attr.aria-current]="production.isActive ? 'true' : null"
+                [disabled]="production.isActive || live() || busy() || !store.canCommand()"
+                (click)="switchTo(production)"
+              >
+                @if (production.isActive) {
+                  <svg fsIcon="check"></svg>
+                } @else {
+                  <span class="c-prod__spacer" aria-hidden="true"></span>
+                }
+                <span class="c-prod__item-name">{{ production.name }}</span>
+              </button>
+            }
+          } @else if (listError()) {
+            <div class="c-pop-note">Die Produktionen konnten nicht geladen werden.</div>
+          } @else {
+            <div class="c-pop-note">Wird geladen …</div>
+          }
+          @if (live()) {
+            <div class="c-pop-note">
+              Während der Sendung lässt sich die Produktion nicht wechseln.
+            </div>
+          }
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('create')"
+          >
+            <svg fsIcon="plus"></svg>Neue Produktion …
+          </button>
+          <div class="c-menu-sep"></div>
+          <button class="c-menu-item" type="button" (click)="logout()">
+            <svg fsIcon="logout"></svg>Abmelden
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

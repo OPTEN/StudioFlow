@@ -1,0 +1,50 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Text field: ground fill, strong-seam border, blue on focus. 16 px text so iOS does not zoom on focus.
+.c-field {
+  display: grid;
+  gap: $SPACE_SM;
+  min-width: 0;
+}
+
+.c-field__label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.c-field__input {
+  background: var(--ground);
+  border: 1px solid var(--seam-strong);
+  border-radius: $RADIUS_MD;
+  caret-color: var(--blue);
+  color: var(--text);
+  font: 400 16px/1.3 var(--font-ui);
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 $SPACE_LG;
+  width: 100%;
+
+  &:focus {
+    border-color: var(--blue);
+    outline: none;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--red);
+  }
+}
+
+.c-field__hint {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.c-field__error {
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}

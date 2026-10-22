@@ -1,6 +1,11 @@
+import { registerLocaleData } from '@angular/common';
+import localeDeCh from '@angular/common/locales/de-CH';
+import localeDeChExtra from '@angular/common/locales/extra/de-CH';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
+import { appConfig } from './app/app.config';
 
-bootstrapApplication(AppComponent, appConfig)
-  .catch((err) => console.error(err));
+// German (Switzerland) formats for Angular pipes; FlowStudio's own formatting lives in @flowstudio/scene-model.
+registerLocaleData(localeDeCh, 'de-CH', localeDeChExtra);
+
+bootstrapApplication(AppComponent, appConfig).catch((error: unknown) => console.error(error));
