@@ -599,3 +599,20 @@ via the API image), `backup.sh` (pg_dump + media volume to `backups/YYYY-MM-DD_H
 - Angular: store, dock layout (persist/validate/move/reset), editor math (snap, resize with ratio, crop), keyboard,
   key components.
 - E2E (Playwright, real stack, fake media): see `docs/testing.md`.
+
+## 12. Decisions on open points (test planning, 2026-10-22)
+
+The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decisions unless overridden here:
+
+- GAP-08: additionally, (a) a device report with `rtc: reconnecting|disconnected` while the hub is up marks its live
+  slots `reconnecting` immediately (do not wait for LiveKit's ~21 s timeout); (b) sources persist `lastLiveAt`; after
+  an API start, a source that was live within the last 12 h and is used in the program or preview scene and whose
+  device does not reconnect within 15 s becomes `reconnecting` with an incident – no outage goes unnoticed, even
+  across a restart.
+- GAP-11: the template is named «Screen + Kamera-Spalte» (plan wording, id `col`). The Regie clamps typed values to the
+  server bounds; dragging keeps the prototype minimum of 96 × 54.
+- GAP-12: detection target 2–5 s as in the plan: server `ClientTimeoutInterval` 5 s, keep-alive 2 s; clients
+  `serverTimeoutInMilliseconds` 5000.
+- GAP-15: tests prefer roles, labels and visible German text; `data-testid` attributes may be added where roles are
+  ambiguous. No global debug objects in production builds except the output page's opt-in `?latency=1` test aid.
+- GAP-25: the backoff sequence is 0, 300, 600, 1200, 2400, 4800, 5000 ms (+ 0–250 ms jitter from the second retry).
