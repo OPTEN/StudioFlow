@@ -1,0 +1,125 @@
+{
+  "_comment": "Product bugs and documentation differences found by the OUT specs (tests/e2e/specs/output). Same schema as tests/e2e/known-bugs.json; the orchestrator merges the entries. support/output/bugs.ts (outBug) reads this file until they are merged: an `open` entry makes the test named in `test` an expected failure. Entries without a marked test (severity info) document a difference between docs/testing.md and the product that the specs already assert as implemented. Evidence files are written by the specs to tests/e2e/.output/<project>/results/ (git-ignored), traces and screenshots of a failing run to .output/<project>/artifacts/ (run with E2E_BUG_REPORT=1 to get the raw failure of an open entry).",
+  "bugs": {
+    "OUT-01": {
+      "status": "open",
+      "severity": "high",
+      "area": "OUT",
+      "title": "A cut to a scene whose camera is not in the program shows 1-5 frames (16-95 ms) of the empty scene ground (rgb 13,17,23) before the picture: the new <video> has no decoded frame when its layer appears",
+      "test": "E2E-SWITCH-09 [output, cut, no dark frame] (specs/output/out-transitions.spec.ts); E2E-SWITCH-09 [output, cut, picture within N ms] guards the timing and the LOW-layer floor",
+      "steps": "1. Two phones K1, K2 publish a camera; scene A = K1 full canvas, scene B = K2 full canvas; start the broadcast; open /o/{slug}?k={key} (1280x720). 2. POST /api/productions/{id}/program {sceneId: B, transition: cut}, then back to A, 50 times, 800 ms apart. 3. Record every animation frame (requestAnimationFrame: layers, item state, video.readyState/videoWidth, luminance of the picture) and a CDP screencast of the page.",
+      "expected": "E2E-SWITCH-09 / plan section 2 «Vorladen fürs Umschalten»: in every frame after a switch the item rectangle has a mean luminance >= 20; at switch time the target <video> already has readyState >= 2 and videoWidth > 0 (preloaded).",
+      "actual": "The new SceneLayer is built with a brand-new <video> (ItemView -> MediaView -> provider.attach). Until the first frame is decoded the item is transparent over the scene ground #0d1117 (luma 16.5). 50 cuts: 47 of 50 cuts had at least one dark frame in the screencast (rgb 13,17,23 in the item rectangle), 1 animation frame without picture in the median, 4 at p95, 5 at most; the first picture appears 28 ms (p50), 67 ms (p95), 94 ms (max) after the layer; the new video has readyState 0 at insertion in most cuts. Fades are not affected (the new layer starts at opacity 0 over the old picture).",
+      "evidence": "tests/e2e/.output/fs-e2e-3/results/out-switch-09-dark-frames.json (per cut: animation frames without picture, readyState and width at insertion; screencast frames below luma 20) and out-switch-09-cut.json (timing p50/p95/max, frames without picture)",
+      "fix": "Keep a decoding <video> per source of the other scenes in the DOM (hidden, not display:none) and move it into the new layer like MediaPool already does for sources that two scenes share, or insert the new layer only after requestVideoFrameCallback / loadeddata of its videos (with a timeout of about 100 ms); fades can stay as they are."
+    },
+    "OUT-02": {
+      "status": "open",
+      "severity": "low",
+      "area": "OUT",
+      "title": "Renaming a production does not change the subtitle of the standby slate (it is a copy of the name taken when the production was created)",
+      "test": "E2E-OUT-11 [output, rename] (specs/output/out-transitions.spec.ts)",
+      "steps": "1. Create a production \"Webinar Q4\" (standby slate subtitle = \"Webinar Q4\"), open the output (standby). 2. PATCH /api/productions/{id} {name: \"Webinar Q4 neu\"}.",
+      "expected": "docs/testing.md E2E-OUT-11: «renamed production updates the subtitle live»; spec 4.2: standbySlate subtitle = production name.",
+      "actual": "Production.Update(...) only copies the name; StandbySlate keeps the subtitle of the creation (Production.Create sets new SlateDto(\"Gleich geht's los\", validName, null)). The output keeps showing the old name for ever; only an explicit PATCH of standbySlate changes it.",
+      "evidence": "raw failure with E2E_BUG_REPORT=1: «subtitle follows the production name», received the old name after 5 s",
+      "fix": "Either derive the default subtitle from the current name while the slate subtitle was never edited (store null/«use the name»), or update the subtitle in Production.Update when it still equals the old name."
+    },
+    "OUT-03": {
+      "status": "open",
+      "severity": "medium",
+      "area": "OUT",
+      "title": "The output preloads the sources of the preview scene at the lowest simulcast layer (320x180), not at the highest as spec 7 and E2E-SWITCH-10 require; after a cut the first picture is always 320 px wide",
+      "test": "E2E-SWITCH-10 [output, preview at the highest layer] (specs/output/out-media.spec.ts)",
+      "steps": "1. K1 in scene A (program), K2 in scene B only; broadcast live, output open. 2. PUT /api/productions/{id}/preview {sceneId: B}. 3. Read the inbound-rtp frameWidth of K2 on the output's peer connection for 3 s.",
+      "expected": "Spec 7: «preview scene items -> HIGH (preload before a take)»; E2E-SWITCH-10: that camera arrives at the highest layer (>= 1280 px) within 3 s of selecting the preview.",
+      "actual": "ProgramView.preloadScenesFor puts the preview scene first, but SceneRenderer.preloadRequests asks for SMALL_PICTURE (320x180) for every preloaded scene, so K2 stays at 320x180. Consequence for the audience: after a take or cut the new camera is shown at 320 px (scaled up to the item) in 50 of 50 cuts and reaches 1280 px only 100-200 ms later.",
+      "evidence": "raw failure with E2E_BUG_REPORT=1: «K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview», received 320; tests/e2e/.output/fs-e2e-3/results/out-switch-09-cut.json (fullResolution: time to >= 1280 px after the layer appears, firstWidth 320 in all cuts)",
+      "fix": "Pass the desired size of the item (or the highest layer) for the sources of the preview scene in the renderer's preload requests; keep LOW for the other scenes."
+    },
+    "OUT-04": {
+      "status": "open",
+      "severity": "medium",
+      "area": "OUT",
+      "title": "The output subscribes to every published track (autoSubscribe), also to sources that are in no scene",
+      "test": "E2E-OUT-22 [output, subscriptions] (specs/output/out-media.spec.ts)",
+      "steps": "1. One camera in the program scene, one laptop screen S1 live but in no scene; output open. 2. Read the inbound-rtp video streams of the output page (remote SDP msid -> track SID).",
+      "expected": "docs/testing.md GAP-26 / E2E-OUT-22: the output subscribes only to sources of scenes; no track and no bytes for S1.",
+      "actual": "MediaSession connects with autoSubscribe: this.role !== 'sender' (true for the output), the provider sets LOW only for tracks without a desired size, it never unsubscribes. Two inbound video streams for one source in a scene; S1 delivered 148093 bytes (1280 px wide, a screen has no simulcast) in about 6 s. Because the output link is a bearer secret, anybody holding it can also receive sources that were never put on air.",
+      "evidence": "tests/e2e/.output/fs-e2e-3/results/out-out-22-subscriptions.json (streams with sid, width, bytes)",
+      "fix": "Connect the output with autoSubscribe: false and subscribe/unsubscribe the publications of the sources that appear in a scene (plus a server-side restriction of the output token if possible)."
+    },
+    "OUT-05": {
+      "status": "open",
+      "severity": "low",
+      "area": "NET",
+      "title": "The uplink loss a sender reports (Regie «Verlust») is net of retransmissions: 0.1-0.3 % with 5 % and 20 % packet loss on the link, the plan expects 2-9 %",
+      "test": "E2E-NET-04 [sender uplink loss] (specs/output/out-resilience.disruptive.spec.ts)",
+      "steps": "netem loss 5 % on LiveKit (both directions) for 40 s with one camera on air; read GET /api/productions/{id}/telemetry every 2 s.",
+      "expected": "E2E-NET-04: Regie station «Verlust» (uplink, reported by the sender) between 2 and 9 %.",
+      "actual": "slotTelemetry/summarizeSenderStats uses the cumulative packetsLost of the remote-inbound report over packetsSent; NACK retransmissions that arrive later reduce the cumulative count, so the figure stays near 0.3 % although 5 % of the packets were lost on the link (downlink inbound-rtp on the output: 3.5 % over the same window). The Regie hardly warns about a bad uplink.",
+      "evidence": "tests/e2e/.output/fs-e2e-3/results/out-net-04-uplink-loss.json (sender-reported values over time) and out-e2e-net-04.json (lossPct downlink, uplinkLossPct)",
+      "fix": "Report loss per interval from the RTCP fraction lost (before retransmission), or document the metric as «Verlust nach Wiederholung» and adjust the plan."
+    },
+    "OUT-06": {
+      "status": "open",
+      "severity": "medium",
+      "area": "NET",
+      "title": "With 20 % packet loss on the media path the output picture freezes for up to 6.1 s (plan: longest freeze <= 5 s hard, 2 s target) and drops to 320 px / 10 fps",
+      "test": "E2E-NET-05 [output, netem loss 20 %] (specs/output/out-resilience.disruptive.spec.ts)",
+      "steps": "One camera on air, output open with ?latency=1; netem loss 20 % on the LiveKit container (ingress and egress) for 40 s after an 8 s settle; observe the picture of the output (luminance does not change = frozen).",
+      "expected": "E2E-NET-05 / T-FREEZE: picture continues, longest freeze <= 5 s (soft 2 s), full quality <= 10 s after clearing.",
+      "actual": "Longest frozen picture 6117 ms, 10 freezes of >= 300 ms (one >= 1 s), inbound freezeCount 50 with 20.6 s total freeze time in 40 s, the picture drops to the 320 px layer at about 10 fps. The output asks for a 50 ms jitter buffer (jitterBufferTarget / playout delay hint of the role output), which leaves no room for retransmissions. The picture never went black, the page stayed up, full quality was back after clearing.",
+      "evidence": "tests/e2e/.output/fs-e2e-3/results/out-e2e-net-05.json (longestGapMs = longest still picture, freezeCount/freezeSeconds, widths, fps)",
+      "fix": "Raise the playout delay hint of the output under loss (adaptive jitter buffer, e.g. 150-300 ms when packetsLost > 2 %), or accept and relax the plan's hard limit for 20 % loss."
+    },
+    "OUT-11": {
+      "status": "open",
+      "severity": "medium",
+      "area": "OUT",
+      "title": "Every program switch leaves the removed device <video> alive with its live MediaStream track: about 150 DOM nodes and one <video> element leak per switch (20 switches: 20 removed videos, 260 -> 3235 nodes), the page grows without bound during a show",
+      "test": "E2E-NET-18 [output, soak] (specs/output/out-soak.soak.spec.ts, 20 minutes); E2E-NET-18 [output, soak, guard] covers the rest of T-MEM without the node and removed-video counts",
+      "steps": "1. Two cameras K1, K2; scene A = K1, scene B = K2; broadcast live; output open (no probe needed). 2. Switch A <-> B 20 times (cut and 300 ms fade alternating, 1.2 s apart). 3. In the output page: HeapProfiler.collectGarbage twice, Runtime.queryObjects(HTMLVideoElement.prototype), Performance.getMetrics Nodes.",
+      "expected": "T-MEM: DOM nodes growth <= 5 % (hard), video elements constant (+- 0): the video count equals the item count of the current scene.",
+      "actual": "After 20 switches 21 HTMLVideoElement objects are alive: 1 attached and 20 removed ones whose srcObject still holds a live MediaStreamTrack (detachedWithLiveTrack 20); Nodes 260 -> 3235 (+149 per switch), JS heap flat (4.3 -> 4.5 MB), listeners and documents flat. In the 3 minute soak (17 switches): nodes 868 -> 2665 -> 3412 (+28 % per minute). MediaView.dispose() only detaches the element from the provider and removes it from the DOM (device sources); unlike the asset branch it neither pauses it nor clears srcObject, so the media pipeline keeps the element, its sink and its detached ancestor chain (the whole old layer) alive.",
+      "evidence": "tests/e2e/.output/fs-e2e-3/results/out-net-18-soak*.json and soak-*.csv (nodes, removed_videos_alive per minute); reproduce without the probe with a plain context and the Runtime.queryObjects count above",
+      "fix": "In MediaView.dispose() for device sources: video.pause(); video.srcObject = null (after provider.detach) and video.load(); the same for the fallback media and for videos handed to MediaPool.disposeRest()."
+    },
+    "OUT-07": {
+      "status": "open",
+      "severity": "info",
+      "area": "OUT",
+      "title": "docs/testing.md 1.7 / GAP-24 pin hooks and a debug overlay format the output page does not have: no data-state, data-source, data-slate, slate-title/-subtitle or debug-overlay test ids; the overlay is <pre class=\"c-debug\"> with German lines",
+      "steps": "Open /o/{slug}?k={key}&debug=1 and read the DOM.",
+      "expected": "[data-item-id][data-source][data-state=live|hold|held|fallback|missing|connecting], [data-slate=...], [data-testid=slate-title], [data-testid=debug-overlay] with lines `scene`, `revision`, `hub`, `livekit`, `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`.",
+      "actual": "Only data-item-id and data-scene-id exist. The specs derive the item state from the computed styles the renderer toggles (hold-frame canvas shown = hold, .fs-r-held shown = held, .fs-r-fallback shown = fallback; support/output/browser/output-probe.js) and read the overlay as it is: «<Produktion> · Szene «Name»», «Revision n · Sendung live», «Hub verbunden · Sync aktuell», «LiveKit verbunden», «Latenz ≈ n ms · Renderer n fps», «K1 Name · 1280×720 · 30 fps · 1,7 Mbit/s · Verlust 0,0 % · Puffer 31 ms». Update the plan or add the attributes."
+    },
+    "OUT-08": {
+      "status": "open",
+      "severity": "info",
+      "area": "OUT",
+      "title": "The output reports the animation frame rate of the page (about 60 fps) as OutputReport.fps and the popover says «1920 × 1080 · 30 fps»; E2E-OUT-20 expects 20-31",
+      "steps": "Observe the Report invocations of the output hub for 12 s.",
+      "expected": "E2E-OUT-20: fps between 20 and 31 (the 30 fps of the program).",
+      "actual": "FpsMeter counts requestAnimationFrame callbacks, so the report is 60 on a 60 Hz display regardless of the content. The spec asserts 20..144. Whether «fps» should mean the page's frame rate or the program's is open; the number says nothing about dropped video frames (use the decoded frame rate)."
+    },
+    "OUT-09": {
+      "status": "open",
+      "severity": "info",
+      "area": "OUT",
+      "title": "E2E-OUT-15 expects a main-thread-blocked output page to turn «stale»; the API drops its hub connection after 5 s, so the Regie shows «nicht verbunden» (state none) after about 3.5-5.3 s and the page reconnects at once when it runs again",
+      "steps": "Block the main thread of the output page for 10 s (busy loop) while watching GET /snapshot outputStatus.",
+      "expected": "E2E-OUT-15: state stale after <= 8 s, connected again afterwards.",
+      "actual": "States: connected -> none/0 consumers (+3.5 to +5.3 s, SignalR client timeout 5 s < Output:StaleAfter 6 s) -> connected (about 0.2 s after the block ended). «stale» is only reachable by a connected hub client that stops reporting (asserted with a silent Node hub client: lamp warning, «verbunden, kein aktuelles Bild»)."
+    },
+    "OUT-10": {
+      "status": "open",
+      "severity": "info",
+      "area": "OUT",
+      "title": "E2E-OUT-02 expects no audio receiver on any peer connection; LiveKit negotiates three receive-only audio transceivers (muted, no RTP) and three video transceivers up front",
+      "steps": "Open the output with a camera on air and list peer.getReceivers() / getStats().",
+      "expected": "No audio receiver.",
+      "actual": "3 audio receivers (all muted, no inbound-rtp audio, no bytes). The spec asserts that no audio track carries data and no audio RTP stream exists."
+    }
+  }
+}

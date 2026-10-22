@@ -1,0 +1,89 @@
+{
+  "_comment": "Entries of the devices test engineer (PAIR UI, SRC, DEV sender, Regie-Chat), same schema as tests/e2e/known-bugs.json; the orchestrator merges them. support/devices/bugs.ts (knownDevBug) reads this file until then. DEV-01 ... DEV-05 are open product bugs (their tests are expected failures); DEV-06 ... DEV-08 are documentation differences (the tests assert the product behaviour, the plan text is to be aligned).",
+  "bugs": {
+    "DEV-01": {
+      "status": "open",
+      "severity": "medium",
+      "area": "SRC",
+      "title": "A phone that comes back reports a false recovery for a few milliseconds: «K1 wieder da, war N s weg», then «K1 verbindet neu» again with a new incident whose timer restarts at 00:00",
+      "test": "E2E-SRC-03 [ui, no false recovery]",
+      "steps": "Phone K1 live in the program scene; cut its network (net.cut: setOffline + close WebSockets and peer connections); wait 3-20 s; restore. Read the studio hub events and the production log.",
+      "expected": "One «K1 verbindet neu» at the start of the outage, one «K1 wieder da, war N s weg» when the picture is really back; N is the length of the outage; the incident timer keeps counting in between.",
+      "actual": "30-40 ms after the network is back (hub reconnected, the track is still published at LiveKit, the old session state says live) the API emits sourceUpserted K1 ok + incidentUpserted(endedAt) + log «K1 wieder da, war N s weg»; 7-10 ms later the first report of the reconnected sender says rtc: reconnecting: sourceUpserted K1 reconnecting + incidentRemoved + a NEW incidentUpserted + log «K1 verbindet neu». The real recovery follows 7-9 s later with «K1 wieder da, war 8 s weg» (the first 4-20 s of the outage are not counted). Log shows two «verbindet neu» and two «wieder da» entries for one outage; the strip timer jumps back to 00:00. Reproduced 5 times (outage 3, 4, 5, 9, 20 s).",
+      "evidence": "The test attaches hub-events.txt (log entries and K1 source events); studio hub timeline of the five runs (relative to net.restore): +32 ms sourceUpserted K1 ok, incidentUpserted(endedAt), log «K1 wieder da, war 9 s weg»; +41 ms sourceUpserted K1 reconnecting, incidentRemoved, incidentUpserted(open), log «K1 verbindet neu»; +8531 ms sourceUpserted K1 ok, log «K1 wieder da, war 8 s weg».",
+      "fix": "A hub reconnect (Hello of the same session) must not turn a slot `ok` before the session has reported again: keep rtc/slot state `reconnecting` until the first report after the reconnect, or do not count a published track as live while the last known device rtc state was reconnecting/disconnected."
+    },
+    "DEV-02": {
+      "status": "open",
+      "severity": "medium",
+      "area": "SRC",
+      "title": "After a short phone outage the picture is back 7-9 s after the network returns (T-RECOVER-SHORT hard limit 3 s): the SDK reconnect backoff is not reset when the network is back",
+      "test": "E2E-SRC-03 [ui, T-RECOVER-SHORT]",
+      "steps": "Phone K1 live; net.cut(phone context); wait 3 / 5 / 9 / 20 s; net.restore; poll the Regie (station row, strip) every 100 ms.",
+      "expected": "T-RECOVER-SHORT: outage <= 10 s: network back -> picture and «wieder da» within 3 s (target 2 s).",
+      "actual": "7.1 s (5 s outage), 7.4 s (20 s), 7.8 s (4 s), 8.5 s (9 s), 8.9 s (3 s) until `ok`. Phone console: LiveKit `detected network reconnected` at +11 ms, `resuming signal connection, attempt 4` at +1138 ms, signal connected at +1146 ms, `reconnect disconnected` at +1147 ms (the resume cannot succeed: the peer connection was closed), then `reconnecting, attempt: 5` only at +5968 ms (EndlessReconnectPolicy: backoffDelay(5) = 4800 ms + jitter), connected at +7992 ms.",
+      "evidence": "The test attaches recover-short.json; E2E_BUG_REPORT=1 run: frames advancing 6405 ms and «wieder da» 8379 ms after the network is back (outage 9 s). Phone console timeline (+ms after net.restore): detected network reconnected +11, resuming signal connection attempt 4 +1138, signal connected +1146, reconnect disconnected +1147, reconnecting attempt 5 +5968, connection state reconnecting -> connected +7992.",
+      "fix": "Reset the SDK reconnect attempt (and with it the escalated delay) when the page reports `online` / wakes, e.g. restart the media session on the wake signal while it is `reconnecting`, not only while it is `waiting`; or cap the SDK policy lower while the network is known to be back."
+    },
+    "DEV-03": {
+      "status": "open",
+      "severity": "low",
+      "area": "SRC",
+      "title": "A phone tab that was replaced by another tab («In einem anderen Tab geöffnet») keeps its screen wake lock",
+      "test": "E2E-SRC-11 [ui, wake lock]",
+      "steps": "Phone live in tab 1 (wake lock held); open the sender in tab 2 of the same browser; tab 1 shows «In einem anderen Tab geöffnet»; read navigator.wakeLock (stub counting request/release).",
+      "expected": "docs/testing.md E2E-SRC-11: tab 1 releases camera and wake lock; the live tab holds it; after «Hier weitermachen» the roles swap.",
+      "actual": "Tab 1 released the camera (slot paused) but its wake lock stays active (request count 1, released 0) for as long as the tab is replaced: DeviceSessionService.updateDerived() only treats removed/stopped as terminal; the camera slot is `paused` after the release, which counts as sending, so wakeLock.enable() runs again. Reproduced twice.",
+      "evidence": "tests/e2e/.output/fs-e2e-2/artifacts/devices-src-device-ops-SRC-*wake-lock* (run with E2E_BUG_REPORT=1); failing line: tab 1 released the wake lock, expected 0, received 1.",
+      "fix": "In updateDerived() treat phase `replaced` (and `blocked`) like a terminal phase for the wake lock: disable it while the session is not the active one."
+    },
+    "DEV-04": {
+      "status": "open",
+      "severity": "medium",
+      "area": "PAIR",
+      "title": "At 1280 x 720 the tab row of the pairing dock (Handy / Laptop / Link) collapses to 2 px height while the Handy tab shows its QR code; the tab buttons are covered by the panel and cannot be clicked",
+      "test": "E2E-PAIR-01 [ui, dock tabs]",
+      "steps": "Regie at 1280 x 720 (the default Desktop Chrome viewport of the harness), «Gerät koppeln», wait for the QR code, try to click the tab «Laptop» or «Link».",
+      "expected": "The tabs are visible and clickable (a tab button is 32 px high); DEV-01: critical controls reachable at 1280 x 720.",
+      "actual": "getBoundingClientRect: .c-tabs 320 x 2 px at (307,465), tab buttons 106 x 32 px overflowing it, the panel (.c-pair__panel, 282 px) starts at y=475 and covers them; Playwright: the click on the tab is intercepted by the panel text (<p class=c-pair__text>) or the dock header, 15 s timeout. On the Laptop and Link tabs the row is 34 px high (the panels are shorter). Only the keyboard (focus + Enter) switches tabs from the Handy tab. Reproduced in every run that clicked a tab after the QR code had loaded.",
+      "evidence": "tests/e2e/.output/fs-e2e-2/artifacts/devices-pair-ui-PAIR-phone-74a92--Regie-the-code-is-replaced-smoke/test-failed-1.png (the tab row is a hairline above the QR code); measurement printed by the scratch run: tabs 307,465 320x2, tabPhone 308,466 106x32, panel 307,475 320x282.",
+      "fix": "Give the tab row flex: none (or min-height) so the panel scrolls instead of the tabs shrinking; or scroll the dock body, not the tab row."
+    },
+    "DEV-05": {
+      "status": "open",
+      "severity": "low",
+      "area": "DEV",
+      "title": "Sender dark mode: the slot code («K1») and the hint «Tippen zum Bedienen» are dim grey on black, below the WCAG AA contrast (2.96:1 and 2.35:1)",
+      "test": "E2E-DEV-15 [ui, sender, dark mode]",
+      "steps": "Pair a phone, start the camera, press «Dunkel»; run axe (wcag2a, wcag2aa) on the black screen.",
+      "expected": "docs/testing.md E2E-DEV-15: 0 critical/serious axe violations (colour-contrast findings reviewed individually).",
+      "actual": "axe color-contrast (serious): .c-phone__dark-code #53595f on #000000 = 2.96:1 (needs 3:1 for large text); .c-phone__dark-hint #464a4f on #000000 = 2.35:1 (needs 4.5:1). Every other state of the phone and laptop sender passes axe (wcag2a, wcag2aa) without findings. The dimness is probably intended (no glare on a stage); it needs either a decision (accepted finding with reason) or a lighter grey.",
+      "evidence": "tests/e2e/.output/fs-e2e-2/artifacts/devices-dev-sender-modes-D-25a30-contrast-of-WCAG-AA-DEV-05--desktop-chromium/axe-dark-contrast.json (attached by the test)",
+      "fix": "Lighten the text colours of .c-phone__dark-code (to about #767c84 or lighter, 4.5:1 on black) and .c-phone__dark-hint, or accept the colour-contrast rule for the dark screen with a written reason."
+    },
+    "DEV-06": {
+      "status": "fixed",
+      "severity": "info",
+      "area": "SRC",
+      "title": "docs/testing.md E2E-SRC-01 pins the health chip «Alle N Stationen ok» (regex ^Alle d+ Stationen ok$); the product writes «1 Station ok» for exactly one station (selectors.ts stationsOkText) and «Keine Stationen» for none",
+      "resolution": "The tests of this folder accept «Alle N Stationen ok» and «1 Station ok». The plan text (E2E-SRC-01, E2E-SRC-03, E2E-PAIR-17) should say «1 Station ok» for one station.",
+      "expected": "docs/testing.md E2E-SRC-01 / -03: «1 Station ok» for one station."
+    },
+    "DEV-07": {
+      "status": "fixed",
+      "severity": "info",
+      "area": "PAIR",
+      "title": "Several UI texts and measures of docs/testing.md differ from the product (all intended, the tests assert the product): link box shows «host/j/{token}» without https:// (the clipboard holds the full https URL); after «Teilen beenden» the sender offers «Erneut teilen» (not «Bildschirm teilen»); the pending-cap notice is «Zu viele Versuche. Bitte in N Sekunden noch einmal versuchen.» (plan: /später/); the check code on the sender is at least 24 px mono (clamp 36-56 px, plan: 24 px); the title «Handy als Kamera» of the pairing dock is hidden on short laptops (height <= 820 px, by design); the platform text of Chrome on Android is «Android · Chrome» (Chrome reduces the user agent, no model); Chrome on an iPad profile keeps getDisplayMedia, so it is a laptop unless the API is absent as in Safari",
+      "resolution": "Tests assert the product texts and measures; GAP-27 style regexes of the plan should be replaced by the exact strings.",
+      "expected": "docs/testing.md E2E-PAIR-10 (URL box), E2E-SRC-08, E2E-PAIR-16, E2E-DEV-10, E2E-PAIR-01, E2E-PAIR-15 to follow the product."
+    },
+    "DEV-08": {
+      "status": "fixed",
+      "severity": "info",
+      "area": "DEV",
+      "title": "docs/testing.md E2E-DEV-11 asks for 8 px between adjacent tap targets and E2E-DEV-17 lists «Station(s)» as an English word: the options of a segmented control (Front/Rück, 720p/1080p, Handy/Laptop) are joined by design (0 px apart, each option is 44 px or more high and wide), and «Station» is a German word («Station startet», «Diese Station läuft jetzt in einem anderen Tab»)",
+      "resolution": "E2E-DEV-11 checks the 8 px gap between separate controls only (options of one fieldset are excluded); E2E-DEV-17 leaves «Station» out of the English word list.",
+      "expected": "docs/testing.md E2E-DEV-11 and E2E-DEV-17 to name the exceptions."
+    }
+  }
+}
