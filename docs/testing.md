@@ -928,6 +928,14 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Steps: feed 200 drag updates for one item at 5 ms intervals while the fake API resolves after 40–400 ms random; feed updates for two items interleaved; fail one request (500) mid-drag.
 - Expect: never more than one request in flight per item; after each response the newest state is sent (intermediate states skipped); the last request carries the final geometry; requests are issued in order; on error the store re-adopts the last server state for that item and reports one error (no retry storm).
 
+**UNIT-SCENE-21** · P1 · ng — Sortable list (`sortable-list.component.spec.ts`, `sortable-geometry.spec.ts`, `reorder.spec.ts`, issue #19)
+- Steps: drag with mouse, pen and touch emulation (handle, row, press and hold, a swipe), below and above the 4 px threshold, to the ends, to the own position, away from the list; Escape; pointer cancel; the list changing (another tab) or the held entry vanishing mid-drag; two drags in a row; a second pointer; auto-scroll near both edges and after the drag ended; keyboard (Space/Enter, arrows, Home/End, Escape, blur, Alt+Up/Down, Alt+Shift, no Alt, at the ends, focus kept); a single entry; German announcements; pure helpers (`moveEntry`, `stepTarget`, `isPermutation`, `sortByOrder`, drop index, shifts, line, edge speed).
+- Expect: one `reorder` with the complete new order per finished move and none for a cancelled or unchanged one; the click that ends a drag is swallowed and a short click still reaches the row; the held row is lifted, the others make room, the line shows only for a changed target; touch scrolling and the context menu are suppressed only while a held row is dragged; announcements read “… moved to position 2 of 5.”; no listener is left after the component is destroyed.
+
+**UNIT-SCENE-22** · P1 · ng — Reordering in the docks and the editor (`editor.service.spec.ts`, `sources-dock.reorder.spec.ts`, `scenes-dock.reorder.spec.ts`, `scene-commands.service.spec.ts`, `properties-dock.component.spec.ts`)
+- Steps: drop a row; short click; Escape; request fails (409/400); Alt+Arrow; hidden and locked items; a session adds an item meanwhile; rapid reorders; geometry edit queued behind a reorder; live scene in Studio Mode; Auto grid; undo; file drop onto the Sources dock; Move up/down in the scene menu; “Bring to front” / “Send to back”.
+- Expect: the new order is shown at once and one `PUT …/items/order` (ids only) or `PUT …/scenes/order` follows (later moves merged into one follow-up); a failed request restores the server's order with a toast; the dragged row is neither selected nor switched; the live scene in Studio Mode refuses with the toast and sends nothing; the Auto grid keeps its layout mode and the dock says the order is the cell; undo is one step through `ReplaceSceneItems`; the file drop still uploads or reports a rejected file.
+
 **INT-SCENE-01** · P0 · xunit — Scene CRUD, events and audit
 - Steps: via REST create, rename (`PATCH`), change layout mode and background, add/update/remove items, `PUT items`, reorder, delete; a studio hub client records events.
 - Expect: each call returns the documented type/status (201 created, 200 scene, 204 delete/order); one event per mutation in order; audit `scene.created`, `scene.deleted`; ProblemDetails `errors` use JSON paths (`items[0].x`).
@@ -955,6 +963,10 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 **INT-SCENE-07** · P2 · xunit — Scene list order and clone placement
 - Steps: create, clone, reorder, delete; read `SortOrder`.
 - Expect: new and cloned scenes are appended (cloned scenes do not jump next to the source); `SortOrder` always 0…n−1.
+
+**INT-SCENE-08** · P1 · xunit — Reorder the items of a scene (`PUT …/scenes/{sceneId}/items/order`, issue #19)
+- Steps: reorder with the exact set of item ids; the same order again; a single item and an empty scene; missing, extra, unknown and duplicate ids; no list; unknown scene; reorder after another session changed an item's geometry; three parallel reorders; reorder the program scene with a Regie hub and an output hub subscribed. Domain level (`Scene.ReorderItems`): the same cases plus hidden and locked items.
+- Expect: a valid order is stored, the version increases by one and `sceneUpserted` carries the new order; the same order changes nothing (no version, no event); a list that is not exactly the scene's ids is 409 `conflict` with nothing changed, a missing list is 400 `validation_failed`, an unknown scene 404; the other session's geometry edit survives (the request carries ids only); parallel requests are serialised (distinct versions, the last one stored); the Regie hub and the output hub both receive the new order of the program scene.
 
 **E2E-SCENE-01** · P1 · pw — Rename a scene
 - Steps: select the scene in the Szenen dock (inspector shows «Szene»), change field «Name», blur.
@@ -1053,6 +1065,30 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 **E2E-SCENE-24** · P2 · pw — Scene background colour and image [GAP-37]
 - Steps: set background colour `#102030` and an image asset through the API.
 - Expect: output stage shows the colour under items (and the image cover-fitted on top when set); invalid colour rejected by the API; with `bg=transparent` see `E2E-OUT-04`.
+
+**E2E-SCENE-30** · P1 · pw — Reorder the sources by dragging (issue #19)
+- Steps: three overlapping flat-colour images (red back, blue front); start the broadcast and open the output and a second Regie; drag the back row to the top of the Sources dock with the mouse; Ctrl+Z.
+- Expect: nothing is sent while dragging, a blue insertion line shows the target; one `PUT …/items/order` on drop (no `PUT …/items`), no element changed, dragging does not select; the Program monitor and the output show red in front (pixels, z-index = array position), the other operator's list follows within 4 s; undo restores the order everywhere.
+
+**E2E-SCENE-31** · P1 · pw — A click is a click, Escape and a drop away from the list restore the order
+- Steps: click a row; start a drag and press Escape; start a drag and drop far to the side of the list.
+- Expect: the click selects; Escape and the drop away put the row back, leave the selection and send no request.
+
+**E2E-SCENE-32** · P1 · pw — Reorder from the keyboard, announced [a11y]
+- Steps: Space on a handle, ArrowUp twice, Space; Enter, ArrowDown, Escape; Alt+ArrowDown and Alt+Shift+ArrowUp on a row.
+- Expect: the live region says “picked up at position 3 of 3”, “moved to position 1 of 3”, “Move cancelled”; the order in the API follows only the drops; Alt+Arrow moves one place or to the very front and the focus stays on the same control.
+
+**E2E-SCENE-33** · P1 · pw — Auto grid: the order is the cell
+- Steps: Auto grid scene with three items; drag the first item to the top of the Sources dock.
+- Expect: the dock shows the Auto grid hint; the item moves to the last cell and the others move up; the layout mode stays Auto grid.
+
+**E2E-SCENE-34** · P1 · pw — Reorder the scenes by dragging
+- Steps: drag the last scene to the top of the Scenes dock; press key 1.
+- Expect: one `PUT …/scenes/order`, no switch of the dragged scene, API order, keycaps and the other operator follow; key 1 puts the new first scene live.
+
+**E2E-SCENE-35** · P1 · pw — Reorder on a touch screen (`pixel-7`)
+- Steps: with a finger: drag from the handle; start a swipe at once; press and hold on a row, then drag.
+- Expect: the handle drags at once, the swipe drags nothing and sends nothing, the held row is lifted after the hold and dropped at the new place.
 
 ### 2.4 SWITCH – Switching, broadcast, tally
 

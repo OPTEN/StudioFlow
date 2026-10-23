@@ -147,6 +147,17 @@ whose source is available (live, or lost but still inside its hold time; media a
 (prototype `autoSlots`), in item order; editing an item's geometry in the editor switches the scene back to `free`
 with the current computed rectangles.
 
+Reordering: the z-order changes through `PUT /api/productions/{id}/scenes/{sceneId}/items/order` (`reorderSceneItems`),
+body `{ itemIds }` = the ids of all items back to front. Only the order is written, never an item, so a reorder cannot
+overwrite a geometry edit of a second Regie session (`ReplaceSceneItems` would). The list must be exactly the scene's
+current item ids, each once; anything else (missing, extra, unknown or duplicate id: the list was made from an
+outdated scene) is 409 `conflict` and nothing changes, a missing list is 400 `validation_failed`. An order that equals
+the current one changes nothing (no version bump, no event). Otherwise the scene version increments and `sceneUpserted`
+follows like for every scene edit; the live scene is no exception, so with Studio Mode off a reorder reaches the output
+at once (the renderer paints by array position) – only the Regie refuses it while the scene is live in Studio Mode
+(preview = program). Hidden and locked items can be reordered (locking protects geometry only). In an Auto grid scene the
+item order is the cell order and the layout mode stays. The scene order uses `PUT …/scenes/order` the same way.
+
 ### 4.4 Sources and slot codes
 
 A source is a device slot (`{deviceId}/{slot}`) or an asset (`{assetId}`). Slots: `camera`, `screen-1` … `screen-9`.
@@ -570,7 +581,20 @@ language and appearance (Dark | Light | System) settings, presence, clock, logou
 Everything in the prototype menu “Prototype” is replaced by real events (no demo data).
 State: one `ProductionStore` service wrapping `ProductionSync` in signals; commands go through `StudioApi` (typed
 HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceSceneItems`. Keyboard as prototype
-(1–9, Space, arrows 1 px / Shift 10 px, Escape). Editing: drag, corner resize (aspect ratio locked, Shift frees),
+(1–9, Space, arrows 1 px / Shift 10 px, Escape).
+Reordering rows (Sources dock: the items front to back, the top row is the front layer; Scenes dock: the scenes) is one
+reusable sortable list on pointer events (mouse, pen, touch; no HTML5 drag and drop, so the file drop of the Sources
+dock is unaffected). A row is dragged by its handle (grip, shown on hover and focus, always on touch screens) or by a
+press on the row that moves 4 px; a finger needs a press and hold of 350 ms on the row (the handle drags at once), so
+swiping still scrolls. The row follows the pointer, the others make room, a Signal Blue line marks the target, the
+list scrolls near its edges, Escape or a drop away from the list restores the order, and the click that ends a drag
+never selects the row. Keyboard: Space/Enter on the handle picks the row up, arrows/Home/End move it, Space/Enter
+drops it, Escape or leaving the handle cancels; Alt+Up/Down anywhere in a row moves it one place (with Shift to the
+very front or back). Every step is announced in a live region (“K1 Phone stage left moved to position 2 of 5.”,
+`aria-live`, English and de-CH). The new order is shown at once and sent once on drop; moves made while a request runs
+are merged into one follow-up with the newest order; a failed request restores the server's order and shows a toast.
+Properties offers “Bring to front” and “Send to back” next to “Bring forward” / “Send backward”. No layer dragging in
+the monitor (dragging there moves the element). Editing: drag, corner resize (aspect ratio locked, Shift frees),
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
 Studio Mode and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
