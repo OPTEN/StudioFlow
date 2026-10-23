@@ -13,9 +13,9 @@ Stand 22.10.2026: Plan und klickbarer Regie-Prototyp sind fertig. Es gibt noch k
 
 | Pfad | Inhalt |
 |---|---|
-| `plan/StudioFlow Architekturplan.html` | Architektur und Plan, Entwurf 2. Im Browser öffnen. |
-| `plan/regie-*.png` | Bilder der Regie im Plan |
-| `plan/archiv/` | ältere Fassung (Entwurf 1 vom 21.10.2026) |
+| `docs/history/FlowStudio Architekturplan.html` | Architektur und Plan, Entwurf 2 (historisch, deutsch, nicht gepflegt). Im Browser öffnen. |
+| `docs/history/regie-*.png` | Bilder der Regie im Plan |
+| `docs/history/archiv/` | ältere Fassung (Entwurf 1 vom 21.10.2026) |
 | `prototype/regie.html` | klickbarer Regie-Prototyp mit Beispieldaten |
 | `prototype/fonts/` | Schriften des Prototyps mit Lizenztexten (SIL Open Font License) |
 | `PRODUCT.md` | Produktkontext: Nutzer, Zweck, Grundsätze |
