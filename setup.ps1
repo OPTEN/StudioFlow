@@ -1,55 +1,55 @@
-﻿<#
+<#
 .SYNOPSIS
-    StudioFlow einrichten: schreibt die .env mit zufälligen Secrets und dem Hash des Admin-Passworts.
+    Set up StudioFlow: writes .env with random secrets and the hash of the admin password.
 
 .DESCRIPTION
-    Gleiches Verhalten wie setup.sh. Fragt Domain, LAN-IPv4 (automatisch erkannt), TLS-Modus (+ E-Mail und
-    Zugangsdaten des DNS-Anbieters), weitere Adressen, frame-ancestors und das Admin-Konto ab und erzeugt
-    LiveKit-Schlüssel und Datenbank-Passwort. Den Passwort-Hash erzeugt das API-Image («hash-password»).
-    Eine bestehende .env wird nur mit -Force ersetzt (Kopie .env.backup-<zeit>; Secrets werden übernommen).
+    Same behaviour as setup.sh. Asks for the domain, LAN IPv4 (detected automatically), TLS mode (plus e-mail and
+    DNS provider credentials), extra hosts, frame-ancestors and the admin account, and generates the LiveKit keys
+    and the database password. The API image ("hash-password") creates the password hash.
+    An existing .env is replaced only with -Force (copy .env.backup-<time>; secrets are carried over).
 
-    Zugangsdaten der DNS-Anbieter (dns-*) kommen aus der Umgebung, aus der bestehenden .env oder werden verdeckt
-    abgefragt: CF_API_TOKEN, INFOMANIAK_API_TOKEN, HETZNER_API_TOKEN, DESEC_TOKEN, GANDI_BEARER_TOKEN,
+    Credentials of the DNS providers (dns-*) come from the environment, from the existing .env or are asked for
+    without echo: CF_API_TOKEN, INFOMANIAK_API_TOKEN, HETZNER_API_TOKEN, DESEC_TOKEN, GANDI_BEARER_TOKEN,
     AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_REGION, OVH_ENDPOINT + OVH_APPLICATION_KEY +
     OVH_APPLICATION_SECRET + OVH_CONSUMER_KEY.
 
-    Danach: docker compose up -d --build (Details: docs/runbook.md).
+    Then: docker compose up -d --build (details: docs/runbook.md).
 
 .PARAMETER Domain
-    Hostname der Regie, z. B. studioflow.opten.ch (Test: localhost).
+    Host name of the Regie, e.g. studioflow.opten.ch (test: localhost).
 .PARAMETER NodeIp
-    LAN-IPv4 des Servers für die Medien (Standard: automatisch erkannt).
+    LAN IPv4 of the server for media (default: detected automatically).
 .PARAMETER TlsMode
     internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh
 .PARAMETER AcmeEmail
-    E-Mail für Let's Encrypt (acme, dns-*).
+    E-mail for Let's Encrypt (acme, dns-*).
 .PARAMETER DnsChallengeDomain
-    CNAME-Ziel, wenn _acme-challenge delegiert ist (dns-*; z. B. für Hostpoint, cyon).
+    CNAME target if _acme-challenge is delegated (dns-*; e.g. for Hostpoint, cyon).
 .PARAMETER ExtraHosts
-    Weitere Adressen derselben Site, mit Leerzeichen getrennt, z. B. die IP (nur internal).
+    Further addresses of the same site, separated by spaces, e.g. the IP (internal only).
 .PARAMETER FrameAncestors
-    Origins, die den Output einbetten dürfen, mit Leerzeichen getrennt ('self' ist immer erlaubt).
+    Origins allowed to embed the output, separated by spaces ('self' is always allowed).
 .PARAMETER AdminUser
-    Benutzername des Admin-Kontos (Standard: admin).
+    User name of the admin account (default: admin).
 .PARAMETER AdminPasswordStdin
-    Admin-Passwort von der Standardeingabe lesen (eine Zeile; nur mit -NonInteractive).
+    Read the admin password from standard input (one line; only with -NonInteractive).
 .PARAMETER GeneratePassword
-    Starkes Admin-Passwort erzeugen und einmal anzeigen.
+    Generate a strong admin password and show it once.
 .PARAMETER PlainPassword
-    Passwort im Klartext speichern statt als Hash (nur lokale Entwicklung).
+    Store the password in plain text instead of as a hash (local development only).
 .PARAMETER EnvFile
-    Ziel statt ./.env.
+    Target file instead of ./.env.
 .PARAMETER NonInteractive
-    Nichts fragen; fehlende Pflichtwerte sind ein Fehler.
+    Ask nothing; missing required values are an error.
 .PARAMETER Force
-    Bestehende .env ersetzen.
+    Replace an existing .env.
 
 .EXAMPLE
     ./setup.ps1
 .EXAMPLE
     ./setup.ps1 -NonInteractive -Domain studioflow.opten.ch -TlsMode dns-cloudflare -GeneratePassword
 .EXAMPLE
-    $passwort | pwsh -NoProfile -File ./setup.ps1 -NonInteractive -Domain localhost -NodeIp 127.0.0.1 -TlsMode internal -AdminPasswordStdin
+    $password | pwsh -NoProfile -File ./setup.ps1 -NonInteractive -Domain localhost -NodeIp 127.0.0.1 -TlsMode internal -AdminPasswordStdin
 #>
 #Requires -Version 7.4
 [CmdletBinding(PositionalBinding = $false)]
@@ -147,7 +147,7 @@ function Read-EnvFile([string] $Path)
 # KEY=VALUE for .env; values with other characters than [A-Za-z0-9_.,:/@+=-] in single quotes (literal).
 function Format-EnvLine([string] $Key, [string] $Value)
 {
-    if ($Value -match "['`r`n]") { throw "Der Wert für $Key enthält ein Hochkomma oder einen Zeilenumbruch; das ist in .env nicht möglich." }
+    if ($Value -match "['`r`n]") { throw "The value for $Key contains a single quote or a line break; that is not possible in .env." }
     if ($Value -cmatch '^[A-Za-z0-9_.,:/@+=-]*$') { "$Key=$Value" } else { "$Key='$Value'" }
 }
 
@@ -189,11 +189,11 @@ function Get-PasswordHash
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password')]
     param([string] $EnvPath, [string] $Password)
 
-    Write-SfInfo 'API-Image wird gebaut (für den Passwort-Hash) …'
+    Write-SfInfo 'Building the API image (for the password hash) ...'
     $build = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
     if ($build.ExitCode -ne 0)
     {
-        Write-SfWarn 'Das API-Image liess sich nicht bauen.'
+        Write-SfWarn 'The API image could not be built.'
         return $null
     }
 
@@ -229,7 +229,7 @@ try
     if ($UnknownArguments)
     {
         if ($UnknownArguments | Where-Object { $_ -in @('--help', '-help', '/?') }) { $Help = $true }
-        else { throw "Unbekannte Option: $($UnknownArguments -join ' ') (siehe Get-Help ./setup.ps1 -Full)." }
+        else { throw "Unknown option: $($UnknownArguments -join ' ') (see Get-Help ./setup.ps1 -Full)." }
     }
     if ($Help)
     {
@@ -238,26 +238,26 @@ try
     }
 
     $interactive = -not $NonInteractive
-    if ($AdminPasswordStdin -and $interactive) { throw '-AdminPasswordStdin geht nur zusammen mit -NonInteractive.' }
+    if ($AdminPasswordStdin -and $interactive) { throw '-AdminPasswordStdin only works together with -NonInteractive.' }
     if ($interactive -and ([Console]::IsInputRedirected -or -not [Environment]::UserInteractive))
     {
-        throw 'Kein Terminal für Rückfragen. Mit -NonInteractive und den Optionen aufrufen (siehe Get-Help ./setup.ps1 -Full).'
+        throw 'No terminal for questions. Run with -NonInteractive and the options (see Get-Help ./setup.ps1 -Full).'
     }
 
     if (-not $EnvFile) { $EnvFile = Join-Path (Get-SfRoot) '.env' }
     $envDirectory = Split-Path -Parent ([IO.Path]::GetFullPath($EnvFile))
-    if (-not (Test-Path -LiteralPath $envDirectory -PathType Container)) { throw "Verzeichnis $envDirectory existiert nicht." }
+    if (-not (Test-Path -LiteralPath $envDirectory -PathType Container)) { throw "Directory $envDirectory does not exist." }
     $EnvFile = [IO.Path]::GetFullPath($EnvFile)
 
     if ((Test-Path -LiteralPath $EnvFile) -and -not $Force)
     {
-        throw "$EnvFile existiert bereits. Mit -Force ersetzen (eine Kopie bleibt erhalten, Secrets werden übernommen)."
+        throw "$EnvFile already exists. Replace it with -Force (a copy is kept, secrets are carried over)."
     }
     $existing = Read-EnvFile $EnvFile
     function Get-Existing([string] $Key) { if ($existing.ContainsKey($Key)) { [string]$existing[$Key] } else { '' } }
 
-    Write-SfStep 'StudioFlow einrichten'
-    if (Test-Path -LiteralPath $EnvFile) { Write-SfInfo "Bestehende $(Split-Path -Leaf $EnvFile) wird ersetzt; Secrets und Admin-Konto werden übernommen." }
+    Write-SfStep 'Set up StudioFlow'
+    if (Test-Path -LiteralPath $EnvFile) { Write-SfInfo "The existing $(Split-Path -Leaf $EnvFile) will be replaced; secrets and admin account are carried over." }
 
     # Node IP
     $nodeIpValue = $NodeIp
@@ -268,12 +268,12 @@ try
         if (-not $defaultIp) { $defaultIp = $detectedIp }
         if ($interactive)
         {
-            if ($detectedIp) { Write-SfInfo "Erkannte LAN-IPv4 dieses Rechners: $detectedIp" }
-            $nodeIpValue = Read-Prompt 'LAN-IPv4 des Servers (Medien für Handys und Laptops)' $defaultIp
+            if ($detectedIp) { Write-SfInfo "Detected LAN IPv4 of this machine: $detectedIp" }
+            $nodeIpValue = Read-Prompt 'LAN IPv4 of the server (media for phones and laptops)' $defaultIp
         }
         else { $nodeIpValue = $defaultIp }
     }
-    if (-not (Test-Ipv4 $nodeIpValue)) { throw "Ungültige oder fehlende LAN-IPv4: «$nodeIpValue» (Option -NodeIp)." }
+    if (-not (Test-Ipv4 $nodeIpValue)) { throw "Invalid or missing LAN IPv4: '$nodeIpValue' (option -NodeIp)." }
 
     # TLS mode
     $tlsModeValue = $TlsMode
@@ -283,12 +283,12 @@ try
         if (-not $tlsModeValue) { $tlsModeValue = 'internal' }
         if ($interactive)
         {
-            Write-SfInfo 'TLS-Modi: internal (lokale CA, Test) | acme (VPS, öffentlich erreichbar) | custom (eigenes Zertifikat)'
-            Write-SfInfo '          dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh'
-            $tlsModeValue = Read-Prompt 'TLS-Modus' $tlsModeValue
+            Write-SfInfo 'TLS modes: internal (local CA, test) | acme (VPS, publicly reachable) | custom (own certificate)'
+            Write-SfInfo '           dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh'
+            $tlsModeValue = Read-Prompt 'TLS mode' $tlsModeValue
         }
     }
-    if ($tlsModeValue -cnotin $TlsModes) { throw "Unbekannter TLS-Modus: «$tlsModeValue». Erlaubt: $($TlsModes -join ' ')" }
+    if ($tlsModeValue -cnotin $TlsModes) { throw "Unknown TLS mode: '$tlsModeValue'. Allowed: $($TlsModes -join ' ')" }
 
     # Domain
     $domainValue = $Domain
@@ -296,13 +296,13 @@ try
     {
         $domainValue = Get-Existing 'STUDIOFLOW_DOMAIN'
         if (-not $domainValue -and $tlsModeValue -eq 'internal') { $domainValue = $nodeIpValue }
-        if ($interactive) { $domainValue = Read-Prompt 'Domain der Regie (z. B. studioflow.opten.ch; im Modus internal auch die IP)' $domainValue }
+        if ($interactive) { $domainValue = Read-Prompt 'Domain of the Regie (e.g. studioflow.opten.ch; in mode internal also the IP)' $domainValue }
     }
     $domainValue = "$domainValue".ToLowerInvariant()
-    if (-not (Test-Host $domainValue)) { throw "Ungültige oder fehlende Domain: «$domainValue» (Option -Domain)." }
+    if (-not (Test-Host $domainValue)) { throw "Invalid or missing domain: '$domainValue' (option -Domain)." }
     if ((Test-Ipv4 $domainValue) -and $tlsModeValue -notin @('internal', 'custom'))
     {
-        throw "Für eine IP-Adresse gibt es kein Zertifikat per $tlsModeValue. TLS-Modus internal verwenden."
+        throw "No certificate can be issued for an IP address with $tlsModeValue. Use TLS mode internal."
     }
 
     # ACME e-mail and DNS challenge delegation
@@ -314,9 +314,9 @@ try
         else
         {
             $acmeEmailValue = Get-Existing 'STUDIOFLOW_ACME_EMAIL'
-            if ($interactive) { $acmeEmailValue = Read-Prompt "E-Mail für Let's Encrypt (leer erlaubt)" $acmeEmailValue }
+            if ($interactive) { $acmeEmailValue = Read-Prompt "E-mail for Let's Encrypt (may be empty)" $acmeEmailValue }
         }
-        if ($acmeEmailValue -and -not (Test-Email $acmeEmailValue)) { throw "Ungültige E-Mail: «$acmeEmailValue»." }
+        if ($acmeEmailValue -and -not (Test-Email $acmeEmailValue)) { throw "Invalid e-mail: '$acmeEmailValue'." }
     }
     if ($tlsModeValue -like 'dns-*')
     {
@@ -324,12 +324,12 @@ try
         else
         {
             $challengeDomainValue = Get-Existing 'STUDIOFLOW_DNS_CHALLENGE_DOMAIN'
-            if ($interactive) { $challengeDomainValue = Read-Prompt '_acme-challenge per CNAME delegiert? Dann das CNAME-Ziel, sonst leer' $challengeDomainValue }
+            if ($interactive) { $challengeDomainValue = Read-Prompt 'Is _acme-challenge delegated by CNAME? Then enter the CNAME target, otherwise leave empty' $challengeDomainValue }
         }
         $challengeDomainValue = "$challengeDomainValue".ToLowerInvariant()
         if ($challengeDomainValue -and -not (Test-Hostname ($challengeDomainValue -replace '^_acme-challenge\.', '')))
         {
-            throw "Ungültiges CNAME-Ziel: «$challengeDomainValue»."
+            throw "Invalid CNAME target: '$challengeDomainValue'."
         }
     }
 
@@ -341,9 +341,9 @@ try
         if (-not $value) { $value = Get-Existing $variable }
         if (-not $value -and $interactive)
         {
-            $value = if (Test-SecretVariable $variable) { Read-SecretPrompt "$variable (wird verdeckt eingegeben)" } else { Read-Prompt $variable }
+            $value = if (Test-SecretVariable $variable) { Read-SecretPrompt "$variable (input is hidden)" } else { Read-Prompt $variable }
         }
-        if (-not $value) { throw "$variable fehlt für den TLS-Modus $tlsModeValue (Umgebungsvariable setzen oder interaktiv eingeben)." }
+        if (-not $value) { throw "$variable is missing for TLS mode $tlsModeValue (set the environment variable or enter it interactively)." }
         $providerLines.Add((Format-EnvLine $variable $value))
     }
 
@@ -356,18 +356,18 @@ try
         $extraHostsValue = Get-Existing 'STUDIOFLOW_EXTRA_HOSTS'
         if ($interactive -and -not (Test-Ipv4 $domainValue))
         {
-            $extraHostsValue = Read-Prompt "Weitere Adressen, z. B. $nodeIpValue für den Zugriff per IP (leer = keine)" $extraHostsValue
+            $extraHostsValue = Read-Prompt "Extra hosts, e.g. $nodeIpValue for access by IP (empty = none)" $extraHostsValue
         }
     }
     $extraHostsValue = ConvertTo-WordList "$extraHostsValue".ToLowerInvariant()
     foreach ($extraHost in @($extraHostsValue -split ' ' | Where-Object { $_ }))
     {
-        if (-not (Test-Host $extraHost)) { throw "Ungültige weitere Adresse: «$extraHost»." }
+        if (-not (Test-Host $extraHost)) { throw "Invalid extra host: '$extraHost'." }
         if (-not $defaultSni -and (Test-Ipv4 $extraHost)) { $defaultSni = $extraHost }
     }
     if ($extraHostsValue -and $tlsModeValue -ne 'internal')
     {
-        Write-SfWarn "Weitere Adressen sind nur im Modus internal sinnvoll; für $tlsModeValue braucht jede ein eigenes Zertifikat."
+        Write-SfWarn "Extra hosts only make sense in mode internal; with $tlsModeValue each one needs its own certificate."
     }
 
     # Frame ancestors
@@ -377,14 +377,14 @@ try
         $frameAncestorsValue = Get-Existing 'STUDIOFLOW_FRAME_ANCESTORS'
         if ($interactive)
         {
-            $frameAncestorsValue = Read-Prompt 'Origins, die den Output einbetten dürfen (z. B. https://proxy.example.ch; leer = nur StudioFlow selbst)' $frameAncestorsValue
+            $frameAncestorsValue = Read-Prompt 'Origins allowed to embed the output (e.g. https://proxy.example.ch; empty = StudioFlow only)' $frameAncestorsValue
         }
     }
     $frameAncestorsValue = ConvertTo-WordList $frameAncestorsValue
     foreach ($origin in @($frameAncestorsValue -split ' ' | Where-Object { $_ }))
     {
-        if ($origin -eq "'self'") { throw "'self' ist immer erlaubt und gehört nicht in -FrameAncestors." }
-        if (-not (Test-FrameAncestor $origin)) { throw "Ungültige Quelle für frame-ancestors: «$origin» (Beispiel: https://proxy.example.ch)." }
+        if ($origin -eq "'self'") { throw "'self' is always allowed and does not belong in -FrameAncestors." }
+        if (-not (Test-FrameAncestor $origin)) { throw "Invalid source for frame-ancestors: '$origin' (example: https://proxy.example.ch)." }
     }
 
     # Admin account
@@ -393,9 +393,9 @@ try
     {
         $adminUserValue = Get-Existing 'ADMIN__USERNAME'
         if (-not $adminUserValue) { $adminUserValue = 'admin' }
-        if ($interactive) { $adminUserValue = Read-Prompt 'Benutzername des Admin-Kontos' $adminUserValue }
+        if ($interactive) { $adminUserValue = Read-Prompt 'User name of the admin account' $adminUserValue }
     }
-    if (-not (Test-AdminUser $adminUserValue)) { throw "Ungültiger Benutzername «$adminUserValue» (1–64 Zeichen: Buchstaben, Ziffern, . _ @ -)." }
+    if (-not (Test-AdminUser $adminUserValue)) { throw "Invalid user name '$adminUserValue' (1-64 characters: letters, digits, . _ @ -)." }
 
     $existingHash = Get-Existing 'ADMIN__PASSWORDHASH'
     $existingPlain = Get-Existing 'ADMIN__PASSWORD'
@@ -405,11 +405,11 @@ try
     if ($AdminPasswordStdin)
     {
         $password = [Console]::In.ReadLine()
-        if ($null -eq $password) { throw 'Kein Passwort auf der Standardeingabe.' }
+        if ($null -eq $password) { throw 'No password on standard input.' }
         $password = $password.TrimEnd("`r")
     }
     elseif ($GeneratePassword) { $passwordGenerated = $true }
-    elseif (($existingHash -or $existingPlain) -and (-not $interactive -or (Read-SfConfirm 'Bestehendes Admin-Passwort behalten?' 'j')))
+    elseif (($existingHash -or $existingPlain) -and (-not $interactive -or (Read-SfConfirm 'Keep the existing admin password?' 'y')))
     {
         $keepCredentials = $true
     }
@@ -417,11 +417,11 @@ try
     {
         while ($true)
         {
-            $password = Read-SecretPrompt "Admin-Passwort (mind. $MinPasswordLength Zeichen; leer = starkes Passwort erzeugen)"
+            $password = Read-SecretPrompt "Admin password (at least $MinPasswordLength characters; empty = generate a strong password)"
             if (-not $password) { break }
-            if ($password.Length -lt $MinPasswordLength) { Write-SfWarn 'Zu kurz.'; continue }
-            if ((Read-SecretPrompt 'Admin-Passwort wiederholen') -ceq $password) { break }
-            Write-SfWarn 'Die Eingaben stimmen nicht überein.'
+            if ($password.Length -lt $MinPasswordLength) { Write-SfWarn 'Too short.'; continue }
+            if ((Read-SecretPrompt 'Repeat the admin password') -ceq $password) { break }
+            Write-SfWarn 'The entries do not match.'
         }
         if (-not $password) { $passwordGenerated = $true }
     }
@@ -430,7 +430,7 @@ try
     if ($passwordGenerated) { $password = New-RandomAlphanumeric $GeneratedPasswordLength }
     elseif (-not $keepCredentials -and $password.Length -lt $MinPasswordLength)
     {
-        throw "Das Admin-Passwort braucht mindestens $MinPasswordLength Zeichen."
+        throw "The admin password needs at least $MinPasswordLength characters."
     }
 
     # Secrets: keep existing ones (the database password is fixed once PostgreSQL is initialised).
@@ -446,8 +446,8 @@ try
     function New-EnvContent([string[]] $AdminLines)
     {
         $lines = [Collections.Generic.List[string]]::new()
-        $lines.Add("# StudioFlow – erzeugt von setup.ps1 am $(Get-Date -Format 'yyyy-MM-dd HH:mm'). Nie ins Git; Kopie in den Passwort-Tresor.")
-        $lines.Add('# Alle Variablen: .env.example und docs/architecture/implementation-spec.md (Abschnitt 10).')
+        $lines.Add("# StudioFlow - generated by setup.ps1 on $(Get-Date -Format 'yyyy-MM-dd HH:mm'). Never commit it to Git; keep a copy in the password vault.")
+        $lines.Add('# All variables: .env.example and docs/architecture/implementation-spec.md (section 10).')
         $lines.Add('')
         $lines.Add((Format-EnvLine 'STUDIOFLOW_DOMAIN' $domainValue))
         $lines.Add((Format-EnvLine 'STUDIOFLOW_NODE_IP' $nodeIpValue))
@@ -488,7 +488,7 @@ try
         }
         elseif ($PlainPassword)
         {
-            Write-SfWarn 'Das Admin-Passwort wird im Klartext gespeichert (-PlainPassword). Nur für lokale Entwicklung.'
+            Write-SfWarn 'The admin password is stored in plain text (-PlainPassword). For local development only.'
             Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
         }
         else
@@ -499,13 +499,13 @@ try
             if ($hash)
             {
                 Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORDHASH' $hash)
-                Write-SfInfo 'Admin-Passwort als Hash gespeichert.'
+                Write-SfInfo 'Admin password stored as a hash.'
             }
             else
             {
-                if (-not $dockerAvailable) { Write-SfWarn 'Docker ist nicht verfügbar; der Passwort-Hash braucht das API-Image.' }
-                Write-SfWarn 'Der Passwort-Hash konnte nicht über das API-Image erzeugt werden (Build fehlgeschlagen oder «hash-password» fehlt).'
-                Write-SfWarn 'Das Passwort wird vorerst im Klartext (ADMIN__PASSWORD) gespeichert. Später ./setup.ps1 -Force ausführen und ein neues Passwort setzen.'
+                if (-not $dockerAvailable) { Write-SfWarn 'Docker is not available; the password hash needs the API image.' }
+                Write-SfWarn "The password hash could not be generated with the API image (build failed or 'hash-password' is missing)."
+                Write-SfWarn 'The password is stored in plain text (ADMIN__PASSWORD) for now. Later run ./setup.ps1 -Force and set a new password.'
                 Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
             }
         }
@@ -515,7 +515,7 @@ try
             $backupFile = "$EnvFile.backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
             Copy-Item -LiteralPath $EnvFile -Destination $backupFile
             Protect-SfPath -Path $backupFile
-            Write-SfInfo "Bisherige Datei gesichert: $backupFile (eigene Ergänzungen von dort übernehmen)."
+            Write-SfInfo "Previous file saved as: $backupFile (copy your own additions from there)."
         }
         Move-Item -LiteralPath $tmpEnv -Destination $EnvFile -Force
     }
@@ -526,29 +526,29 @@ try
 
     # --- summary ----------------------------------------------------------------------------------------------------
 
-    Write-SfStep "Fertig: $EnvFile"
-    Write-SfInfo "Regie:      https://$domainValue/"
-    Write-SfInfo "Sender:     https://$domainValue/join"
-    Write-SfInfo "Medien:     $nodeIpValue (7881/tcp, 7882/udp)   TLS: $tlsModeValue"
+    Write-SfStep "Done: $EnvFile"
+    Write-SfInfo "Regie:       https://$domainValue/"
+    Write-SfInfo "Sender:      https://$domainValue/join"
+    Write-SfInfo "Media:       $nodeIpValue (7881/tcp, 7882/udp)   TLS: $tlsModeValue"
     switch -Wildcard ($tlsModeValue)
     {
-        'internal' { Write-SfInfo "Zertifikat: lokale CA – auf jedem Gerät einmal https://$domainValue/ca.crt installieren (docs/runbook.md)." }
-        'dns-*' { Write-SfInfo "Zertifikat: Let's Encrypt per DNS-Challenge; der A-Record von $domainValue zeigt auf $nodeIpValue." }
-        'acme' { Write-SfInfo "Zertifikat: Let's Encrypt per HTTP-01; 80/tcp und 443/tcp müssen öffentlich erreichbar sein." }
-        'custom' { Write-SfInfo 'Zertifikat: ./certs/fullchain.pem und privkey.pem nach /certs mounten (docker-compose.override.example.yml).' }
+        'internal' { Write-SfInfo "Certificate: local CA - install https://$domainValue/ca.crt once on every device (docs/runbook.md)." }
+        'dns-*' { Write-SfInfo "Certificate: Let's Encrypt via DNS challenge; the A record of $domainValue points to $nodeIpValue." }
+        'acme' { Write-SfInfo "Certificate: Let's Encrypt via HTTP-01; 80/tcp and 443/tcp must be publicly reachable." }
+        'custom' { Write-SfInfo 'Certificate: mount ./certs/fullchain.pem and privkey.pem to /certs (docker-compose.override.example.yml).' }
     }
     if ($passwordGenerated)
     {
         Write-SfInfo ''
-        Write-SfInfo "Admin-Konto: $adminUserValue"
-        Write-SfInfo "Passwort:    $password"
-        Write-SfInfo 'Das Passwort wird nur jetzt angezeigt. Im Passwort-Tresor ablegen.'
+        Write-SfInfo "Admin user:  $adminUserValue"
+        Write-SfInfo "Password:    $password"
+        Write-SfInfo 'The password is shown only now. Store it in the password vault.'
     }
     Write-SfInfo ''
-    Write-SfInfo 'Nächster Schritt: docker compose up -d --build'
+    Write-SfInfo 'Next step: docker compose up -d --build'
 }
 catch
 {
-    Write-Host "Fehler: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

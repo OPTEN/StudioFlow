@@ -1,18 +1,18 @@
-﻿<#
+<#
 .SYNOPSIS
-    StudioFlow aktualisieren: neuen Stand holen, Images bauen, Stack neu starten. Nie während einer Sendung.
+    Update StudioFlow: fetch the new version, build the images, restart the stack. Never during a broadcast.
 
 .DESCRIPTION
-    Gleiches Verhalten wie update.sh. Ablauf: Sendestatus prüfen (API: broadcast-status) → optional Sicherung →
-    git pull --ff-only → docker compose up -d --build → warten, bis alle Dienste gesund sind → Status anzeigen.
-    Volumes bleiben erhalten.
+    Same behaviour as update.sh. Sequence: check the broadcast status (API: broadcast-status) -> optional backup ->
+    git pull --ff-only -> docker compose up -d --build -> wait until all services are healthy -> show the status.
+    Volumes are kept.
 
 .PARAMETER Backup
-    Vorher eine Sicherung anlegen (./backup.ps1 -Label vor-update).
+    Back up first (./backup.ps1 -Label pre-update).
 .PARAMETER NoPull
-    Kein git pull, nur neu bauen und starten (z. B. nach einer Änderung an .env).
+    No git pull, only rebuild and restart (e.g. after a change to .env).
 .PARAMETER Force
-    Auch wenn eine Sendung live ist oder der Sendestatus unbekannt ist (das Bild bricht ab).
+    Even if a broadcast is live or the broadcast status is unknown (the picture will drop out).
 
 .EXAMPLE
     ./update.ps1
@@ -40,7 +40,7 @@ try
     if ($UnknownArguments)
     {
         if ($UnknownArguments | Where-Object { $_ -in @('--help', '-help', '/?') }) { $Help = $true }
-        else { throw "Unbekannte Option: $($UnknownArguments -join ' ') (siehe Get-Help ./update.ps1 -Full)." }
+        else { throw "Unknown option: $($UnknownArguments -join ' ') (see Get-Help ./update.ps1 -Full)." }
     }
     if ($Help)
     {
@@ -52,41 +52,41 @@ try
     Assert-SfEnvFile
     $root = Get-SfRoot
 
-    Write-SfStep 'Sendestatus prüfen'
-    Assert-SfBroadcastIdle -Action 'Das Update' -Force $Force.IsPresent
+    Write-SfStep 'Check the broadcast status'
+    Assert-SfBroadcastIdle -Action 'The update' -Force $Force.IsPresent
 
     if ($Backup)
     {
-        Write-SfStep 'Sicherung vor dem Update'
-        & pwsh -NoProfile -File (Join-Path $root 'backup.ps1') -Label 'vor-update'
-        if ($LASTEXITCODE -ne 0) { throw 'Die Sicherung ist fehlgeschlagen; Update abgebrochen.' }
+        Write-SfStep 'Back up before the update'
+        & pwsh -NoProfile -File (Join-Path $root 'backup.ps1') -Label 'pre-update'
+        if ($LASTEXITCODE -ne 0) { throw 'The backup failed; update aborted.' }
     }
 
     if (-not $NoPull)
     {
-        Write-SfStep 'Neuen Stand holen (git pull --ff-only)'
-        if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git wurde nicht gefunden. Neuen Stand von Hand einspielen und ./update.ps1 -NoPull ausführen.' }
+        Write-SfStep 'Pull the new version (git pull --ff-only)'
+        if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git was not found. Apply the new version by hand and run ./update.ps1 -NoPull.' }
         & git -C $root rev-parse --is-inside-work-tree *> $null
-        if ($LASTEXITCODE -ne 0) { throw "$root ist kein Git-Arbeitsverzeichnis. Neuen Stand von Hand einspielen und ./update.ps1 -NoPull ausführen." }
+        if ($LASTEXITCODE -ne 0) { throw "$root is not a Git working directory. Apply the new version by hand and run ./update.ps1 -NoPull." }
         $before = & git -C $root rev-parse --short HEAD
         Invoke-SfNative -FilePath 'git' -ArgumentList @('-C', $root, 'pull', '--ff-only') `
-            -FailMessage 'git pull --ff-only ist fehlgeschlagen (lokale Änderungen oder abweichender Stand). Nichts neu gestartet.'
+            -FailMessage 'git pull --ff-only failed (local changes or diverged history). Nothing was restarted.'
         $after = & git -C $root rev-parse --short HEAD
-        if ($before -eq $after) { Write-SfInfo "Bereits aktuell ($after); die Images werden trotzdem neu gebaut und geprüft." }
-        else { Write-SfInfo "Aktualisiert: $before → $after" }
+        if ($before -eq $after) { Write-SfInfo "Already up to date ($after); the images are rebuilt and checked anyway." }
+        else { Write-SfInfo "Updated: $before -> $after" }
     }
 
-    Write-SfStep 'Images bauen und Stack neu starten'
+    Write-SfStep 'Build the images and restart the stack'
     Invoke-SfCompose -Arguments @('config', '--quiet') `
-        -FailMessage 'Die Konfiguration ist ungültig – fehlt eine neue Variable? .env mit .env.example vergleichen.'
+        -FailMessage 'The configuration is invalid - is a new variable missing? Compare .env with .env.example.'
     Start-SfStackAndWait -ExtraArguments @('--build', '--remove-orphans')
 
     Write-SfStep 'Status'
     Invoke-SfCompose -Arguments @('ps')
-    Write-SfInfo 'Update abgeschlossen.'
+    Write-SfInfo 'Update complete.'
 }
 catch
 {
-    Write-Host "Fehler: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

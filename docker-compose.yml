@@ -40,13 +40,13 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      STUDIOFLOW_DOMAIN: ${STUDIOFLOW_DOMAIN:?fehlt in .env - zuerst ./setup.sh (oder setup.ps1) ausfuehren}
+      STUDIOFLOW_DOMAIN: ${STUDIOFLOW_DOMAIN:?set it in .env - run ./setup.sh (or setup.ps1) first}
       STUDIOFLOW_EXTRA_HOSTS: ${STUDIOFLOW_EXTRA_HOSTS:-}
-      STUDIOFLOW_DEFAULT_SNI: ${STUDIOFLOW_DEFAULT_SNI:-${STUDIOFLOW_DOMAIN:?fehlt in .env}}
-      STUDIOFLOW_TLS_MODE: ${STUDIOFLOW_TLS_MODE:?fehlt in .env (internal, acme, custom oder dns-<anbieter>)}
+      STUDIOFLOW_DEFAULT_SNI: ${STUDIOFLOW_DEFAULT_SNI:-${STUDIOFLOW_DOMAIN:?set it in .env}}
+      STUDIOFLOW_TLS_MODE: ${STUDIOFLOW_TLS_MODE:?set it in .env (internal, acme, custom or dns-<provider>)}
       STUDIOFLOW_ACME_EMAIL: ${STUDIOFLOW_ACME_EMAIL:-}
       STUDIOFLOW_DNS_RESOLVERS: ${STUDIOFLOW_DNS_RESOLVERS:-1.1.1.1 9.9.9.9}
-      STUDIOFLOW_DNS_CHALLENGE_DOMAIN: ${STUDIOFLOW_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${STUDIOFLOW_DOMAIN:?fehlt in .env}}
+      STUDIOFLOW_DNS_CHALLENGE_DOMAIN: ${STUDIOFLOW_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${STUDIOFLOW_DOMAIN:?set it in .env}}
       STUDIOFLOW_FRAME_ANCESTORS: ${STUDIOFLOW_FRAME_ANCESTORS:-}
       STUDIOFLOW_HSTS_MAX_AGE: ${STUDIOFLOW_HSTS_MAX_AGE:-31536000}
       STUDIOFLOW_TRUSTED_PROXIES: ${STUDIOFLOW_TRUSTED_PROXIES:-127.0.0.1/32}
@@ -83,17 +83,17 @@ services:
     cap_drop:
       - ALL
     environment:
-      STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?fehlt in .env}}
+      STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?set it in .env}}
       # The effective list Caddy enforces for /o/ (shown read-only in the Regie).
       STUDIOFLOW__FRAMEANCESTORS: "'self'${STUDIOFLOW_FRAME_ANCESTORS:+ $STUDIOFLOW_FRAME_ANCESTORS}"
-      ADMIN__USERNAME: ${ADMIN__USERNAME:?fehlt in .env}
+      ADMIN__USERNAME: ${ADMIN__USERNAME:?set it in .env}
       # One of the two must be set (the API refuses to start otherwise); setup writes the hash.
       ADMIN__PASSWORDHASH: ${ADMIN__PASSWORDHASH:-}
       ADMIN__PASSWORD: ${ADMIN__PASSWORD:-}
-      LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?fehlt in .env}
-      LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?fehlt in .env}
+      LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?set it in .env}
+      LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?set it in .env}
       LIVEKIT__INTERNALURL: http://livekit:7880
-      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Password=${POSTGRES_PASSWORD:?fehlt in .env}
+      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Password=${POSTGRES_PASSWORD:?set it in .env}
       MEDIA__PATH: /data/media
       MEDIA__MAXIMAGEBYTES: ${MEDIA__MAXIMAGEBYTES:-26214400}
       MEDIA__MAXVIDEOBYTES: ${MEDIA__MAXVIDEOBYTES:-1073741824}
@@ -127,9 +127,9 @@ services:
       - "${STUDIOFLOW_RTC_UDP_PORT:-7882}:${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp"
     environment:
       # The address LiveKit announces to the devices: the server's LAN IPv4 (127.0.0.1 only for single-machine tests).
-      NODE_IP: ${STUDIOFLOW_NODE_IP:?fehlt in .env (LAN-IPv4 des Servers)}
+      NODE_IP: ${STUDIOFLOW_NODE_IP:?set it in .env (LAN IPv4 of the server)}
       # YAML "key: secret" - the secret starts with a letter (an all-digit value would be parsed as a number).
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?fehlt in .env}: ${LIVEKIT_API_SECRET:?fehlt in .env}"
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set it in .env}: ${LIVEKIT_API_SECRET:?set it in .env}"
       LIVEKIT_CONFIG: |
         port: 7880
         rtc:
@@ -143,7 +143,7 @@ services:
         logging:
           level: info
         webhook:
-          api_key: ${LIVEKIT_API_KEY:?fehlt in .env}
+          api_key: ${LIVEKIT_API_KEY:?set it in .env}
           urls:
             - http://api:8080/api/livekit/webhook
     healthcheck:
@@ -171,7 +171,7 @@ services:
     environment:
       POSTGRES_DB: studioflow
       POSTGRES_USER: studioflow
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?fehlt in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     # TCP, not the socket: during the first initialisation the server listens only on the socket.

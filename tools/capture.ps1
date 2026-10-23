@@ -1,7 +1,7 @@
-# Nimmt die Ansichten des Regie-Prototyps mit Edge (headless) auf und legt sie in .impeccable/review ab.
-# Aufruf:  pwsh tools/capture.ps1                    alle Ansichten
+# Captures the views of the Regie prototype with Edge (headless) and stores them in .impeccable/review.
+# Usage:   pwsh tools/capture.ps1                    all views
 #          pwsh tools/capture.ps1 -Only desktop, user-1280
-# Braucht Microsoft Edge und für mobile.png zusätzlich ffmpeg.
+# Needs Microsoft Edge, and ffmpeg in addition for mobile.png.
 param([string[]]$Only)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -22,7 +22,7 @@ $shots = @(
   @{ n = 'user-1280-studio'; w = 1280; h = 720; u = "$base#studio" },
   @{ n = 'user-1280-stoerung'; w = 1280; h = 720; u = "$base#stoerung" },
   @{ n = 'user-1280-koppeln'; w = 1280; h = 720; u = "$base#koppeln" },
-  # Edge headless wird nicht schmaler als rund 500 px; das Handy-Format kommt deshalb über einen 390 px breiten iframe
+  # Edge headless does not get narrower than about 500 px; the phone format therefore comes from a 390 px wide iframe
   @{ n = 'mobile-raw'; w = 1000; h = 3400; u = $wrap }
 )
 foreach ($s in $shots) {
@@ -31,7 +31,7 @@ foreach ($s in $shots) {
   if (Test-Path $file) { Remove-Item $file }
   $argv = @('--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', "--user-data-dir=$tmp\edge-profile", '--virtual-time-budget=9000', "--window-size=$($s.w),$($s.h)", "--screenshot=$file", $s.u)
   Start-Process -FilePath $edge -ArgumentList $argv -Wait -WindowStyle Hidden
-  "$($s.n): $(if (Test-Path $file) { (Get-Item $file).Length } else { 'FEHLT' })"
+  "$($s.n): $(if (Test-Path $file) { (Get-Item $file).Length } else { 'MISSING' })"
 }
 if (-not $Only -or $Only -contains 'mobile-raw') {
   ffmpeg -y -loglevel error -i (Join-Path $tmp 'mobile-raw.png') -vf crop=390:3400:0:0 (Join-Path $out 'mobile.png')

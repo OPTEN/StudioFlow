@@ -1,6 +1,6 @@
-﻿#Requires -Version 7.4
-# Shared helpers for setup.ps1, backup.ps1, restore.ps1 and update.ps1 – the PowerShell twin of common.sh.
-# Every function throws on failure; the scripts catch at the top level and print «Fehler: …».
+#Requires -Version 7.4
+# Shared helpers for setup.ps1, backup.ps1, restore.ps1 and update.ps1 - the PowerShell twin of common.sh.
+# Every function throws on failure; the scripts catch at the top level and print "Error: ...".
 
 Set-StrictMode -Version 3.0
 
@@ -18,7 +18,7 @@ Set-Variable -Name BackupInfoName -Option Constant -Value 'backup-info.txt'
 $script:Root = $null
 
 # Called first by every script: remembers the repository root and writes UTF-8 when the output is redirected
-# (log files of scheduled backups would otherwise use the console code page and garble «» and umlauts).
+# (log files of scheduled backups would otherwise use the console code page and garble non-ASCII tool output).
 function Initialize-StudioFlow
 {
     param([Parameter(Mandatory)][string] $Root)
@@ -30,7 +30,7 @@ function Get-SfRoot { $script:Root }
 
 function Write-SfInfo { param([string] $Message = '') Write-Host $Message }
 function Write-SfStep { param([string] $Message) Write-Host ''; Write-Host "==> $Message" }
-function Write-SfWarn { param([string] $Message) Write-Host "Warnung: $Message" -ForegroundColor Yellow }
+function Write-SfWarn { param([string] $Message) Write-Host "Warning: $Message" -ForegroundColor Yellow }
 
 # Runs a native command; throws with $FailMessage when it exits with a non-zero code.
 function Invoke-SfNative
@@ -38,7 +38,7 @@ function Invoke-SfNative
     param(
         [Parameter(Mandatory)][string] $FilePath,
         [string[]] $ArgumentList = @(),
-        [string] $FailMessage = "$FilePath ist fehlgeschlagen.",
+        [string] $FailMessage = "$FilePath failed.",
         [switch] $Quiet
     )
     if ($Quiet) { & $FilePath @ArgumentList *> $null } else { & $FilePath @ArgumentList }
@@ -50,7 +50,7 @@ function Invoke-SfCompose
 {
     param(
         [Parameter(Mandatory)][string[]] $Arguments,
-        [string] $FailMessage = "docker compose $($Arguments -join ' ') ist fehlgeschlagen.",
+        [string] $FailMessage = "docker compose $($Arguments -join ' ') failed.",
         [switch] $Quiet
     )
     Push-Location -LiteralPath $script:Root
@@ -84,31 +84,31 @@ function Assert-SfDocker
 {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue))
     {
-        throw 'docker wurde nicht gefunden. Docker installieren (Linux: Docker Engine, Windows/macOS: Docker Desktop).'
+        throw 'docker was not found. Install Docker (Linux: Docker Engine, Windows/macOS: Docker Desktop).'
     }
     & docker compose version *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Docker Compose v2 fehlt («docker compose version» schlägt fehl).' }
+    if ($LASTEXITCODE -ne 0) { throw "Docker Compose v2 is missing ('docker compose version' fails)." }
     & docker info *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Docker läuft nicht oder dieser Benutzer darf es nicht verwenden (Linux: Gruppe «docker»).' }
+    if ($LASTEXITCODE -ne 0) { throw "Docker is not running, or this user is not allowed to use it (Linux: group 'docker')." }
 }
 
 function Assert-SfEnvFile
 {
     if (-not (Test-Path -LiteralPath (Join-Path $script:Root '.env') -PathType Leaf))
     {
-        throw ".env fehlt in $($script:Root). Zuerst ./setup.ps1 ausführen."
+        throw ".env is missing in $($script:Root). Run ./setup.ps1 first."
     }
 }
 
 # Yes/no question. Without an interactive host the default applies.
 function Read-SfConfirm
 {
-    param([Parameter(Mandatory)][string] $Question, [ValidateSet('j', 'n')][string] $Default = 'n')
-    if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) { return $Default -eq 'j' }
-    $hint = if ($Default -eq 'j') { '[J/n]' } else { '[j/N]' }
+    param([Parameter(Mandatory)][string] $Question, [ValidateSet('y', 'n')][string] $Default = 'n')
+    if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) { return $Default -eq 'y' }
+    $hint = if ($Default -eq 'y') { '[Y/n]' } else { '[y/N]' }
     $answer = Read-Host "$Question $hint"
     if ([string]::IsNullOrWhiteSpace($answer)) { $answer = $Default }
-    $answer.Trim() -in @('j', 'J', 'ja', 'Ja', 'JA', 'y', 'Y', 'yes')
+    $answer.Trim() -in @('y', 'Y', 'yes', 'Yes', 'YES')
 }
 
 function Get-SfRunningService
@@ -137,29 +137,29 @@ function Get-SfBroadcastStatus
     }
 }
 
-# Refuses to continue while a broadcast may be on air. $Action = German noun («Das Update»).
+# Refuses to continue while a broadcast may be on air. $Action = a noun phrase such as "The update".
 function Assert-SfBroadcastIdle
 {
     param([Parameter(Mandatory)][string] $Action, [bool] $Force = $false)
     switch (Get-SfBroadcastStatus)
     {
-        'idle' { Write-SfInfo 'Sendestatus: keine Sendung live.' }
-        'stopped' { Write-SfInfo 'Sendestatus: Stack läuft nicht, keine Sendung live.' }
+        'idle' { Write-SfInfo 'Broadcast status: no broadcast is live.' }
+        'stopped' { Write-SfInfo 'Broadcast status: the stack is not running, no broadcast is live.' }
         'live'
         {
             if (-not $Force)
             {
-                throw "Eine Sendung ist LIVE. $Action ist während einer Sendung gesperrt. Zuerst «Sendung beenden» in der Regie (oder -Force, wenn es wirklich sein muss)."
+                throw "A broadcast is LIVE. $Action is blocked during a broadcast. First click 'End broadcast' in the Regie (or use -Force if you really must)."
             }
-            Write-SfWarn "Eine Sendung ist LIVE. $Action wird wegen -Force trotzdem ausgeführt – das Bild beim Proxy bricht ab."
+            Write-SfWarn "A broadcast is LIVE. $Action will run anyway because of -Force - the picture at the proxy will drop out."
         }
         default
         {
             if (-not $Force)
             {
-                throw 'Sendestatus unbekannt: die API läuft nicht oder antwortet nicht. Prüfen mit «docker compose ps» und «docker compose logs api»; mit -Force trotzdem fortfahren.'
+                throw "Broadcast status unknown: the API is not running or does not answer. Check with 'docker compose ps' and 'docker compose logs api'; use -Force to continue anyway."
             }
-            Write-SfWarn "Sendestatus unbekannt (API antwortet nicht). $Action wird wegen -Force trotzdem ausgeführt."
+            Write-SfWarn "Broadcast status unknown (the API does not answer). $Action will run anyway because of -Force."
         }
     }
 }
@@ -175,7 +175,7 @@ function Start-SfStackAndWait
         if ($LASTEXITCODE -ne 0)
         {
             & docker compose ps
-            throw 'Nicht alle Dienste sind gesund. Logs: docker compose logs --tail 100 <dienst>'
+            throw 'Not all services are healthy. Logs: docker compose logs --tail 100 <service>'
         }
     }
     finally { Pop-Location }
@@ -186,7 +186,7 @@ function Start-SfToolbox
 {
     $result = Get-SfComposeOutput -Arguments @('--profile', 'tools', 'run', '-d', '--rm', '--no-deps', 'toolbox')
     $id = $result.Lines | Where-Object { $_ -match '^[0-9a-f]{12,64}$' } | Select-Object -Last 1
-    if ($result.ExitCode -ne 0 -or -not $id) { throw 'Der Hilfscontainer (toolbox) liess sich nicht starten.' }
+    if ($result.ExitCode -ne 0 -or -not $id) { throw 'The helper container (toolbox) could not be started.' }
     $id
 }
 

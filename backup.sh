@@ -9,19 +9,19 @@ SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
 	cat <<'EOF'
-StudioFlow sichern: Datenbank (pg_dump) und die Volumes media, keys und caddy_data.
+Back up StudioFlow: database (pg_dump) and the volumes media, keys and caddy_data.
 
-Aufruf: ./backup.sh [Optionen]
+Usage: ./backup.sh [options]
 
-  --dir PFAD      Basisordner der Sicherungen (Standard: ./backups)
-  --keep N        nur die neusten N Sicherungen im Basisordner behalten, ältere löschen
-  --label TEXT    Zusatz zum Ordnernamen, z. B. vor-update (Buchstaben, Ziffern, -)
-  -h, --help      diese Hilfe
+  --dir PATH      base folder of the backups (default: ./backups)
+  --keep N        keep only the newest N backups in the base folder, delete older ones
+  --label TEXT    suffix for the folder name, e.g. pre-update (letters, digits, -)
+  -h, --help      this help
 
-Ergebnis: <basis>/YYYY-MM-DD_HHMM[_label]/ mit database.dump, media.tar.gz, keys.tar.gz, caddy_data.tar.gz,
-backup-info.txt und SHA256SUMS. Die .env ist nicht dabei (Secrets): sie gehört in den Passwort-Tresor.
-Die Sicherung enthält private Schlüssel (Login, Zertifikate) – Ordner geschützt aufbewahren.
-Der Stack muss laufen (mindestens postgres); eine laufende Sendung wird nicht gestört.
+Result: <base>/YYYY-MM-DD_HHMM[_label]/ with database.dump, media.tar.gz, keys.tar.gz, caddy_data.tar.gz,
+backup-info.txt and SHA256SUMS. The .env is not included (secrets): keep it in the password vault.
+The backup contains private keys (login, certificates) - store the folder protected.
+The stack must be running (at least postgres); a running broadcast is not disturbed.
 EOF
 }
 
@@ -31,7 +31,7 @@ while [ $# -gt 0 ]; do
 	case "$arg" in
 		--*=*) value="${arg#*=}" arg="${arg%%=*}" ;;
 		--dir | --keep | --label)
-			[ $# -ge 2 ] || sf_die "Option $arg braucht einen Wert (siehe --help)."
+			[ $# -ge 2 ] || sf_die "Option $arg needs a value (see --help)."
 			value="$2"
 			shift
 			;;
@@ -44,16 +44,16 @@ while [ $# -gt 0 ]; do
 			usage
 			exit 0
 			;;
-		*) sf_die "Unbekannte Option: $1 (siehe --help)." ;;
+		*) sf_die "Unknown option: $1 (see --help)." ;;
 	esac
 	shift
 done
-[ -z "$keep" ] || [[ "$keep" =~ ^[1-9][0-9]*$ ]] || sf_die "--keep erwartet eine Zahl ab 1."
-[ -z "$label" ] || [[ "$label" =~ ^[A-Za-z0-9-]{1,40}$ ]] || sf_die "--label erlaubt nur Buchstaben, Ziffern und - (max. 40)."
+[ -z "$keep" ] || [[ "$keep" =~ ^[1-9][0-9]*$ ]] || sf_die "--keep expects a number of 1 or more."
+[ -z "$label" ] || [[ "$label" =~ ^[A-Za-z0-9-]{1,40}$ ]] || sf_die "--label allows only letters, digits and - (max. 40)."
 
 sf_require_docker
 sf_require_env_file
-sf_service_running postgres || sf_die "PostgreSQL läuft nicht. Zuerst den Stack starten: docker compose up -d"
+sf_service_running postgres || sf_die "PostgreSQL is not running. Start the stack first: docker compose up -d"
 
 sha256_file() {
 	if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | awk '{ print $1 }'
@@ -85,44 +85,44 @@ on_exit() {
 	sf_compose exec -T postgres rm -f /tmp/studioflow-backup.dump >/dev/null 2>&1 || true
 	if [ "$completed" != true ]; then
 		rm -rf "$target"
-		sf_warn "Die unvollständige Sicherung wurde entfernt."
+		sf_warn "The incomplete backup was removed."
 	fi
 }
 trap on_exit EXIT
 
-sf_step "Sicherung nach $target"
+sf_step "Backing up to $target"
 
 # --- database -------------------------------------------------------------------------------------------------------
 
-sf_info "Datenbank (pg_dump) …"
+sf_info "Database (pg_dump) ..."
 sf_compose exec -T postgres pg_dump -U studioflow -d studioflow -Fc -f /tmp/studioflow-backup.dump ||
-	sf_die "pg_dump ist fehlgeschlagen."
+	sf_die "pg_dump failed."
 sf_quiet sf_compose cp postgres:/tmp/studioflow-backup.dump "$host_target/$SF_DB_DUMP" ||
-	sf_die "Die Datenbanksicherung konnte nicht kopiert werden."
+	sf_die "The database dump could not be copied."
 postgres_version="$(sf_compose exec -T postgres psql -U studioflow -d studioflow -tAc 'SHOW server_version' 2>/dev/null | tr -d '\r' || true)"
 project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$(sf_compose ps -q postgres)" 2>/dev/null || true)"
 
 # --- volumes --------------------------------------------------------------------------------------------------------
 
-toolbox="$(sf_toolbox_start)" || sf_die "Der Hilfscontainer (toolbox) liess sich nicht starten."
+toolbox="$(sf_toolbox_start)" || sf_die "The helper container (toolbox) could not be started."
 for volume in $SF_BACKUP_VOLUMES; do
-	sf_info "Volume $volume …"
+	sf_info "Volume $volume ..."
 	docker exec "$toolbox" tar -czf "/tmp/$volume.tar.gz" -C "/volumes/$volume" . ||
-		sf_die "Das Archiv für $volume konnte nicht erstellt werden."
+		sf_die "The archive for $volume could not be created."
 	sf_quiet docker cp "$toolbox:/tmp/$volume.tar.gz" "$host_target/$volume.tar.gz" ||
-		sf_die "Das Archiv für $volume konnte nicht kopiert werden."
+		sf_die "The archive for $volume could not be copied."
 done
 
 # --- description and checksums ------------------------------------------------------------------------------------
 
 {
-	echo "StudioFlow-Sicherung"
-	echo "erstellt:  $(date '+%Y-%m-%d %H:%M:%S %z')"
-	echo "rechner:   $(hostname 2>/dev/null || echo unbekannt)"
-	echo "projekt:   ${project:-unbekannt}"
-	echo "git:       $(sf_git rev-parse --short HEAD 2>/dev/null || echo unbekannt)"
-	echo "postgres:  ${postgres_version:-unbekannt}"
-	echo "inhalt:    $SF_DB_DUMP $(archives | tr '\n' ' ')"
+	echo "StudioFlow backup"
+	echo "created:   $(date '+%Y-%m-%d %H:%M:%S %z')"
+	echo "host:      $(hostname 2>/dev/null || echo unknown)"
+	echo "project:   ${project:-unknown}"
+	echo "git:       $(sf_git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+	echo "postgres:  ${postgres_version:-unknown}"
+	echo "contents:  $SF_DB_DUMP $(archives | tr '\n' ' ')"
 } >"$target/$SF_BACKUP_INFO"
 
 (
@@ -147,9 +147,9 @@ if [ -n "$keep" ]; then
 	for ((i = keep; i < ${#backups[@]}; i++)); do
 		[ "${backups[i]}" = "$target" ] && continue
 		rm -rf "${backups[i]}"
-		sf_info "Alte Sicherung entfernt: $(basename "${backups[i]}")"
+		sf_info "Old backup removed: $(basename "${backups[i]}")"
 	done
 fi
 
-sf_step "Sicherung fertig: $target ($(du -sh "$target" | awk '{ print $1 }'))"
-sf_info "Wiederherstellen mit: ./restore.sh \"$target\""
+sf_step "Backup complete: $target ($(du -sh "$target" | awk '{ print $1 }'))"
+sf_info "Restore with: ./restore.sh \"$target\""

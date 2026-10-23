@@ -3,7 +3,7 @@
 # Same behaviour as update.ps1. ./update.sh --help for the options.
 #
 # The whole script runs inside main(): `git pull` may replace this file while it runs, and bash reads scripts
-# incrementally – the last line is parsed completely before main starts.
+# incrementally - the last line is parsed completely before main starts.
 set -euo pipefail
 
 SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,17 +12,17 @@ SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
 	cat <<'EOF'
-StudioFlow aktualisieren: neuen Stand holen, Images bauen, Stack neu starten. Nie während einer Sendung.
+Update StudioFlow: fetch the new version, build the images, restart the stack. Never during a broadcast.
 
-Aufruf: ./update.sh [Optionen]
+Usage: ./update.sh [options]
 
-  --backup      vorher eine Sicherung anlegen (./backup.sh --label vor-update)
-  --no-pull     kein git pull, nur neu bauen und starten (z. B. nach einer Änderung an .env)
-  --force       auch wenn eine Sendung live ist oder der Sendestatus unbekannt ist (das Bild bricht ab)
-  -h, --help    diese Hilfe
+  --backup      back up first (./backup.sh --label pre-update)
+  --no-pull     no git pull, only rebuild and restart (e.g. after a change to .env)
+  --force       even if a broadcast is live or the broadcast status is unknown (the picture will drop out)
+  -h, --help    this help
 
-Ablauf: Sendestatus prüfen (API: broadcast-status) → optional Sicherung → git pull --ff-only →
-docker compose up -d --build → warten, bis alle Dienste gesund sind → Status anzeigen. Volumes bleiben erhalten.
+Sequence: check the broadcast status (API: broadcast-status) -> optional backup -> git pull --ff-only ->
+docker compose up -d --build -> wait until all services are healthy -> show the status. Volumes are kept.
 EOF
 }
 
@@ -37,7 +37,7 @@ main() {
 				usage
 				return 0
 				;;
-			*) sf_die "Unbekannte Option: $1 (siehe --help)." ;;
+			*) sf_die "Unknown option: $1 (see --help)." ;;
 		esac
 		shift
 	done
@@ -45,38 +45,38 @@ main() {
 	sf_require_docker
 	sf_require_env_file
 
-	sf_step "Sendestatus prüfen"
-	sf_guard_broadcast "Das Update" "$force"
+	sf_step "Check the broadcast status"
+	sf_guard_broadcast "The update" "$force"
 
 	if [ "$backup" = true ]; then
-		sf_step "Sicherung vor dem Update"
-		bash "$SF_ROOT/backup.sh" --label vor-update || sf_die "Die Sicherung ist fehlgeschlagen; Update abgebrochen."
+		sf_step "Back up before the update"
+		bash "$SF_ROOT/backup.sh" --label pre-update || sf_die "The backup failed; update aborted."
 	fi
 
 	if [ "$pull" = true ]; then
-		sf_step "Neuen Stand holen (git pull --ff-only)"
+		sf_step "Pull the new version (git pull --ff-only)"
 		sf_git rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
-			sf_die "$SF_ROOT ist kein Git-Arbeitsverzeichnis. Neuen Stand von Hand einspielen und ./update.sh --no-pull ausführen."
+			sf_die "$SF_ROOT is not a Git working directory. Apply the new version by hand and run ./update.sh --no-pull."
 		local before after
 		before="$(sf_git rev-parse --short HEAD)"
 		sf_git pull --ff-only ||
-			sf_die "git pull --ff-only ist fehlgeschlagen (lokale Änderungen oder abweichender Stand). Nichts neu gestartet."
+			sf_die "git pull --ff-only failed (local changes or diverged history). Nothing was restarted."
 		after="$(sf_git rev-parse --short HEAD)"
 		if [ "$before" = "$after" ]; then
-			sf_info "Bereits aktuell ($after); die Images werden trotzdem neu gebaut und geprüft."
+			sf_info "Already up to date ($after); the images are rebuilt and checked anyway."
 		else
-			sf_info "Aktualisiert: $before → $after"
+			sf_info "Updated: $before -> $after"
 		fi
 	fi
 
-	sf_step "Images bauen und Stack neu starten"
+	sf_step "Build the images and restart the stack"
 	sf_compose config --quiet ||
-		sf_die "Die Konfiguration ist ungültig – fehlt eine neue Variable? .env mit .env.example vergleichen."
+		sf_die "The configuration is invalid - is a new variable missing? Compare .env with .env.example."
 	sf_up_and_wait --build --remove-orphans
 
 	sf_step "Status"
 	sf_compose ps
-	sf_info "Update abgeschlossen."
+	sf_info "Update complete."
 }
 
 { main "$@"; exit; }
