@@ -574,8 +574,9 @@ are made: `docs/releasing.md`.
 |---|---|
 | `ghcr.io/opten/studioflow-web` | Caddy (TLS, DNS modules) with the Regie, sender and output frontends |
 | `ghcr.io/opten/studioflow-api` | The API with its commands (`hash-password`, `broadcast-status`) |
+| `ghcr.io/opten/studioflow-backup` | The automatic backups (profile `backup`, section 7); pulled only when `COMPOSE_PROFILES=backup` is set in `.env` |
 
-Both always have the same version (`0.4.2`): they are built from one commit and must match. `livekit` and `postgres`
+All three always have the same version (`0.4.2`): they are built from one commit and must match. `livekit` and `postgres`
 are third-party images with a fixed version in the Compose file.
 
 ### 14.1 Install from a release
