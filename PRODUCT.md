@@ -8,59 +8,59 @@ web
 
 ## Stack
 
-Angular (Standalone, Signals, OnPush) für Regie und Sender-PWA, ASP.NET Core (.NET 10) mit SignalR als API, LiveKit als WebRTC-SFU, PostgreSQL als Datenbank. Alles läuft in einem Docker-Compose-Stack auf einem Linux-Server oder lokal per Docker; Daten liegen in Volumes, es gibt keine Cloud-Dienste. Der aktuelle Regie-Entwurf ist ein klickbarer HTML-Prototyp unter `prototype/`.
+Angular (standalone, signals, OnPush) for the Regie (control room) and the sender PWA, ASP.NET Core (.NET 10) with SignalR as the API, LiveKit as the WebRTC SFU, PostgreSQL as the database. Everything runs in one Docker Compose stack on a Linux server or locally with Docker; data lives in volumes and there are no cloud services. The current Regie design is a clickable HTML prototype under `prototype/`.
 
 ## Users
 
-- **Regie (primär):** eine Person, höchstens zwei gleichzeitig, OPTEN-intern. Arbeitet während eines Webinars vor Ort an einem 14–16-Zoll-Laptop bei normalem Raumlicht, baut vorher Szenen und schaltet während der Sendung zwischen ihnen um.
-- **Sprecherinnen und Sprecher:** teilen einen oder mehrere Bildschirme vom eigenen Laptop über die Sender-Seite im Browser.
-- **Kamera-Handys:** fest montierte Smartphones, die über die Sender-PWA als Kameras dienen und nach dem Einrichten unbeaufsichtigt laufen.
-- **Abnehmer des Outputs:** ein Proxy öffnet die Output-Seite (16:9, als iframe) und verteilt das Bild an rund 30 Personen.
+- **Regie operator (primary):** one person, at most two at the same time, internal to OPTEN. Works on site during a webinar on a 14–16 inch laptop in normal room light, builds scenes beforehand and switches between them during the broadcast.
+- **Speakers:** share one or more screens from their own laptop through the sender page in the browser.
+- **Camera phones:** permanently mounted smartphones that act as cameras through the sender PWA and run unattended once set up.
+- **Output consumer:** a proxy opens the output page (16:9, as an iframe) and distributes the picture to about 30 people.
 
 ## Product Purpose
 
-StudioFlow ist eine Web-Regie nach dem Vorbild von OBS für Webinare. Browser-Clients senden Kamera und Bildschirm mit möglichst kleiner Latenz, die Regie stellt daraus Szenen zusammen (Layout-Vorlagen und freies Verschieben, Skalieren, Zuschneiden), und ein fester 16:9-Output liefert das Program als Webseite.
+StudioFlow is a web-based control room modelled on OBS, for webinars. Browser clients send camera and screen with the lowest possible latency, the Regie composes scenes from them (layout templates plus free moving, scaling and cropping), and a fixed 16:9 output delivers the program as a web page.
 
-Erfolg heisst: Einrichten geht schnell, Umschalten ist sicher, und kein Ausfall einer Quelle bleibt unbemerkt.
+Success means: setup is quick, switching is safe, and no source failure goes unnoticed.
 
 ## Positioning
 
-Alles läuft im Browser und auf einem eigenen Server: Handys und Laptops werden ohne App-Installation zu Quellen, das Program ist eine einbettbare Webseite, und der ganze Stack startet mit `docker compose up`. Es braucht weder einen OBS-Rechner noch Cloud-Dienste.
+Everything runs in the browser and on your own server: phones and laptops become sources without installing an app, the program is an embeddable web page, and the whole stack starts with `docker compose up`. It needs neither an OBS machine nor cloud services.
 
 ## Operating Context
 
-- Vor Ort, alle Geräte im selben WLAN; der Server läuft lokal (PC mit Docker) oder als VPS im eigenen Betrieb.
-- Vor dem Webinar: Geräte koppeln (Handys per QR-Code, Laptops per Kurz-URL mit Code und Freigabe oder per Einladungslink) und Szenen bauen.
-- Während des Webinars: Szenen mit einem Klick live schalten oder, mit eingeschaltetem Studio-Modus, zuerst in der Preview prüfen und per Take ins Program schalten.
-- Ton läuft ausserhalb von StudioFlow über ein Mischpult; die Architektur bleibt für Ton vorbereitet.
-- Begriffe aus OBS und dem Broadcast: Szene, Quelle, Element, Preview, Program, Take, Tally, Slate, Fallback.
+- On site, all devices on the same Wi-Fi; the server runs locally (a PC with Docker) or as a VPS under the operator's own control.
+- Before the webinar: pair devices (phones by QR code, laptops by short URL with a code and approval, or by invite link) and build scenes.
+- During the webinar: take a scene live with one click or, with Studio Mode on, check it in the preview first and send it to the program with Take.
+- Audio runs outside StudioFlow through a mixing desk; the architecture stays prepared for audio.
+- Terms from OBS and broadcasting: scene, source, item, preview, program, take, tally, slate, fallback.
 
 ## Capabilities and Constraints
 
-- Quellen: Kamera, Screen (mehrere pro Laptop), Bild, Video; später Text, Overlays und Webseiten.
-- Output: fester Canvas 1920 × 1080, immer 16:9, als iframe einbettbar, ohne Bedienelemente.
-- Latenz-Ziel vor Ort rund 0,15 s Glass-to-Glass (Schätzung, noch nicht gemessen).
-- Login: ein Admin-Konto aus appsettings bzw. `.env`, kein SSO.
-- Stabilität: automatischer Reconnect ohne Limit; Quellen kehren über Geräte-ID und Slot an ihren Platz in der Szene zurück.
-- Regie-Arbeitsfläche wie bei OBS: Docks (Szenen, Quellen, Eigenschaften, Stationen) lassen sich frei anordnen, in der Grösse ändern und ausblenden; das Layout bleibt pro Browser gespeichert.
-- Schriften und Assets kommen aus dem eigenen Build, ohne externe CDNs, weil die Regie im LAN läuft.
-- Mandantenfähigkeit wird im Datenmodell vorgesehen, vorerst nutzt nur OPTEN das System.
-- Später, nicht jetzt: Restream, Aufnahme, Ton in StudioFlow, öffentlicher Air-Modus für Zuschauer ohne Proxy.
+- Sources: camera, screen (several per laptop), image, video; later text, overlays and web pages.
+- Output: fixed canvas of 1920 × 1080, always 16:9, embeddable as an iframe, without controls.
+- Latency target on site: about 0.15 s glass to glass (estimate, not yet measured).
+- Login: one admin account from appsettings or `.env`, no SSO.
+- Stability: automatic reconnect without limit; sources return to their place in the scene through device ID and slot.
+- Regie workspace like OBS: docks (Scenes, Sources, Properties, Stations) can be arranged freely, resized and hidden; the layout is stored per browser.
+- Fonts and assets come from the project's own build, without external CDNs, because the Regie runs on the LAN.
+- Multi-tenancy is provided for in the data model; for now only OPTEN uses the system.
+- Later, not now: restream, recording, audio in StudioFlow, public air mode for viewers without a proxy.
 
 ## Brand Commitments
 
 - Name: StudioFlow.
-- Eigenständiges Werkzeug mit eigenem Look, nicht an das OPTEN-Website-CI gebunden.
-- Sprache der Oberfläche: Deutsch (Schweiz), mit «ss» statt «ß» und Guillemets « ».
+- A standalone tool with its own look, not bound to the OPTEN website corporate design.
+- Interface language: English by default; German (Switzerland) as the first translation; follows the user setting, browser language by default; Swiss spelling with ss, « », decimal comma.
 
 ## Evidence on Hand
 
-Keine echten Inhalte, Kundendaten oder Screenshots. Beispielinhalte in Entwürfen (Personennamen, Folien, Kamerabilder) sind synthetisch und als solche zu kennzeichnen. Architektur und Plan: https://claude.ai/artifact/FKKxDiTsDcu2nfYqfEQRGP
+No real content, customer data or screenshots. Sample content in designs (names of people, slides, camera images) is synthetic and must be labelled as such. Architecture and plan: https://claude.ai/artifact/FKKxDiTsDcu2nfYqfEQRGP
 
 ## Product Principles
 
-1. Ausfälle sind sofort sichtbar: Jede Quelle zeigt ihren Zustand dort, wo man ohnehin hinschaut.
-2. Einrichten in Minuten: Koppeln, Szenen bauen und Layouts anwenden mit möglichst wenigen Schritten.
-3. Umschalten wie bei OBS: Ohne Studio-Modus geht eine Szene mit einem Klick live. Mit Studio-Modus wird in der Preview gebaut, und live geht erst, was mit Take geschaltet wird. Eine Blende läuft immer ganz durch, halbe Mischungen gibt es nicht.
-4. Begriffe und Abläufe kommen von OBS, damit niemand umlernen muss.
-5. Bei einem Unterbruch läuft alles weiter: Standbild statt Schwarzbild, Reconnect ohne Zutun.
+1. Failures are visible immediately: every source shows its state where you are already looking.
+2. Setup in minutes: pairing, building scenes and applying layouts take as few steps as possible.
+3. Switching like OBS: without Studio Mode a scene goes live with one click. With Studio Mode you build in the preview, and only what is sent with Take goes live. A fade always runs to the end; there are no half mixes.
+4. Terms and workflows come from OBS, so nobody has to relearn anything.
+5. On an interruption everything keeps running: a freeze frame instead of a black picture, reconnect without any action.

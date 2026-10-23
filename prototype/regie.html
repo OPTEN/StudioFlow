@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="de-CH">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>StudioFlow Regie</title>
+<title>StudioFlow control room</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: eine flache Fläche ohne Rahmen. Kopfzeile, Meldungszeile, Bühne mit Program (und im Studio-Modus Preview), unten Szenen | Quellen | Eigenschaften | Stationen, getrennt durch 1-px-Linien. */
-/* Schriften liegen neben dem Prototyp, damit die Regie ohne Internet im LAN läuft (SIL Open Font License, siehe fonts/OFL-*.txt) */
+/* Layout: one flat surface without a frame. Header, message strip, stage with Program (and Preview in Studio Mode), and Scenes | Sources | Properties | Stations at the bottom, separated by 1px lines. */
+/* The fonts sit next to the prototype so the control room runs on the LAN without internet (SIL Open Font License, see fonts/OFL-*.txt) */
 @font-face { font-family: "Sofia Sans Semi Condensed"; font-style: normal; font-weight: 1 1000; font-display: swap; src: url("fonts/sofia-sans-semi-condensed-latin.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap; src: url("fonts/jetbrains-mono-latin.woff2") format("woff2"); }
 :root {
@@ -71,7 +71,7 @@ button { font: inherit; color: inherit; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ico { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-/* Fläche: Bereiche stossen ohne Abstand aneinander, getrennt durch 1-px-Linien bis an den Fensterrand; nur der Inhalt hält den Rand von 16 px */
+/* Surface: regions butt against each other without gaps, separated by 1px lines to the window edge; only the content keeps the 16px margin */
 .app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 1px; background: var(--seam); overflow: hidden; }
 .panel { background: var(--panel); min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .panel-h { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 8px 6px 6px; border-bottom: 1px solid var(--seam); flex: none; }
@@ -79,14 +79,14 @@ button { font: inherit; color: inherit; }
 .panel-h[data-drag] :is(button, input, select, label, a) { cursor: pointer; }
 .panel-t { font-weight: 700; font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .panel-sub { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-/* Schatten oben und unten zeigen an, dass ein Dock weiter scrollt */
+/* Shadows at the top and bottom show that a dock scrolls further */
 .panel-b { overflow: auto; flex: 1 1 auto; min-height: 0; background: linear-gradient(var(--panel), rgba(21, 26, 34, 0)) top / 100% 18px no-repeat local, linear-gradient(rgba(21, 26, 34, 0), var(--panel)) bottom / 100% 18px no-repeat local, linear-gradient(rgba(1, 4, 9, .65), rgba(1, 4, 9, 0)) top / 100% 10px no-repeat scroll, linear-gradient(rgba(1, 4, 9, 0), rgba(1, 4, 9, .65)) bottom / 100% 10px no-repeat scroll; }
 .panel-h[data-drag] .grip { display: inline-grid; place-items: center; width: 16px; height: 26px; margin-right: -2px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--muted); opacity: .6; cursor: grab; touch-action: none; flex: none; }
 .panel-h:hover .grip, .grip:focus-visible { opacity: 1; color: var(--text-2); }
 .grip .ico { width: 14px; height: 14px; }
 .count { font: 500 11px var(--font-mono); color: var(--muted); }
 
-/* Bedienelemente */
+/* Controls */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 4px; border: 1px solid var(--seam-strong); background: transparent; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background-color .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease); }
 .btn:hover { background: var(--raised); border-color: #445064; }
 .btn:active { background: var(--raised-2); }
@@ -118,7 +118,7 @@ button { font: inherit; color: inherit; }
 .state-bad { color: var(--red); font-weight: 700; }
 .state-ok { color: var(--green); font-weight: 700; }
 
-/* Kopfzeile */
+/* Header */
 .top { display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 6px var(--gr) 6px var(--gl); background: var(--panel); min-width: 0; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16.5px; letter-spacing: .01em; white-space: nowrap; }
 .mark { width: 22px; height: 18px; flex: none; }
@@ -137,7 +137,7 @@ button { font: inherit; color: inherit; }
 .presence { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; white-space: nowrap; padding: 0 6px; }
 .clock { font: 500 13px var(--font-mono); color: var(--text-2); padding: 0 0 0 6px; }
 
-/* Meldungszeile */
+/* Message strip */
 .statusline { display: flex; flex-wrap: wrap; align-items: stretch; min-height: 38px; padding: 0 var(--gr) 0 var(--gl); background: var(--panel); font-size: 13px; }
 .sl-ok { display: flex; align-items: center; gap: 8px; padding: 0 14px 0 0; color: var(--text-2); white-space: nowrap; border-right: 1px solid var(--seam); }
 .sl-ok .ico { color: var(--green); }
@@ -176,11 +176,11 @@ button { font: inherit; color: inherit; }
 .confirm { margin: 8px; padding: 10px; border: 1px dashed var(--red); border-radius: 4px; display: grid; gap: 8px; font-size: 13px; color: var(--text-2); }
 .confirm-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Bühne: links die Monitore, rechts eine feste Spalte mit Studio-Modus, Übergang und Take. Die Spalte bleibt beim Umschalten des Modus stehen */
+/* Stage: monitors on the left, a fixed column on the right with Studio Mode, Transition and Take. The column stays in place when the mode toggles */
 .stage { flex: 1 1 auto; background: var(--panel); min-width: 0; min-height: 160px; padding: 0 var(--gr) 0 var(--gl); container-type: size; }
 .stage-in { height: 100%; display: flex; align-items: flex-start; gap: 20px; padding: 12px 0; min-width: 0; }
 .mons { flex: 1 1 auto; min-width: 0; display: flex; justify-content: flex-end; }
-/* Ohne Studio-Modus bleibt links der Platz der Preview frei, mit einem leisen Hinweis */
+/* Without Studio Mode the Preview area on the left stays free, with a quiet note */
 .pvw-off { flex: 1 1 0px; min-width: 0; align-self: stretch; display: grid; place-content: center; gap: 4px; padding: 32px 20px 0 0; text-align: center; color: var(--muted); font-size: 12.5px; container-type: inline-size; }
 .pvw-off b { font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
 @container (max-width: 220px) { .pvw-off > * { display: none; } }
@@ -214,7 +214,7 @@ button { font: inherit; color: inherit; }
 @keyframes tallyflash { 0% { outline-width: 6px; outline-color: #ff8a80; } 100% { outline-width: 2px; } }
 .live-note { position: absolute; left: 10px; right: 10px; bottom: 10px; padding: 8px 10px; border-radius: 4px; background: rgba(13, 17, 23, .92); border: 1px solid rgba(248, 81, 73, .5); color: var(--text); font-size: 13px; }
 
-/* Bearbeiten im Monitor */
+/* Editing in the monitor */
 .ovl { position: absolute; inset: 0; touch-action: none; border-radius: 2px; }
 .ovl::after { content: ""; position: absolute; left: 2.083%; right: 2.083%; top: 3.704%; bottom: 3.704%; border: 1px dashed transparent; pointer-events: none; transition: border-color .15s var(--ease); }
 .ovl:hover::after, .ovl.is-dragging::after { border-color: rgba(139, 148, 158, .4); }
@@ -238,7 +238,7 @@ button { font: inherit; color: inherit; }
 .guide-v { width: 1px; top: 0; bottom: 0; }
 .guide-h { height: 1px; left: 0; right: 0; }
 
-/* Übergang und Studio-Modus */
+/* Transition and Studio Mode */
 .ctrl { flex: 0 0 172px; display: grid; gap: 8px; align-content: start; }
 .ctrl-l { font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 .tr-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--seam-strong); border-radius: 4px; overflow: hidden; }
@@ -266,7 +266,7 @@ button { font: inherit; color: inherit; }
 .switch input:checked::after { transform: translateX(16px); }
 .switch input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-/* Arbeitsfläche: Bühne und Docks. Docks lassen sich an der Kopfzeile nach unten, links oder rechts ziehen; die Trennlinien ändern die Grösse */
+/* Workspace: stage and docks. Docks can be dragged by their header to the bottom, left or right; the dividers change the size */
 .work { display: flex; min-height: 0; background: var(--panel); position: relative; }
 .center { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .zone { display: flex; min-width: 0; min-height: 0; flex: none; }
@@ -297,7 +297,7 @@ button { font: inherit; color: inherit; }
 .drop-right { right: 0; top: 0; bottom: 0; width: 92px; }
 .drop-bottom { left: 0; right: 0; bottom: 0; height: 72px; }
 
-/* Szenen */
+/* Scenes */
 .scene-list { padding: 4px; display: grid; gap: 2px; align-content: start; }
 .scene { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; padding: 4px 6px; border-radius: 4px; border: 0; background: transparent; text-align: left; cursor: pointer; color: var(--text); transition: background-color .15s var(--ease); }
 .scene:hover { background: var(--raised); }
@@ -314,7 +314,7 @@ button { font: inherit; color: inherit; }
 .scene-meta .mono { font-size: 11.5px; }
 .scene-meta .tag { padding: 2px 5px; font-size: 10px; }
 
-/* Quellen */
+/* Sources */
 .src-list { padding: 6px; display: grid; gap: 2px; align-content: start; }
 .src { display: grid; grid-template-columns: 28px 16px auto minmax(0, 1fr) 12px 28px; gap: 8px; align-items: center; min-height: 40px; padding: 3px 4px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
 .src-main { min-width: 0; display: grid; }
@@ -329,7 +329,7 @@ button { font: inherit; color: inherit; }
 .empty { padding: 16px 14px; color: var(--muted); font-size: 13px; }
 .empty strong { display: block; color: var(--text-2); margin-bottom: 4px; }
 
-/* Eigenschaften */
+/* Properties */
 .insp { padding: 12px; display: flex; flex-direction: column; gap: 12px; min-height: 100%; }
 .frow { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 10px; }
 .flabel { font-size: 12.5px; color: var(--muted); }
@@ -362,7 +362,7 @@ button { font: inherit; color: inherit; }
 .danger-zone { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--seam); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .danger-zone .hint { flex: 1 1 160px; }
 
-/* Stationen */
+/* Stations */
 .st-list { display: grid; align-content: start; }
 .st { border-bottom: 1px solid var(--seam); }
 .st-row { display: grid; grid-template-columns: 14px auto minmax(0, 1fr) 56px 20px; gap: 9px; align-items: center; width: 100%; padding: 8px 6px 8px 10px; background: transparent; border: 0; text-align: left; cursor: pointer; color: var(--text); }
@@ -395,7 +395,7 @@ button { font: inherit; color: inherit; }
 .knock-q { font-size: 12.5px; color: var(--text-2); }
 .knock-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Gerät koppeln (angedockt) */
+/* Pair device (docked) */
 .pair-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .pair-main { padding: 12px 14px 16px; display: grid; gap: 12px; align-content: start; border-right: 1px solid var(--seam); overflow: auto; overflow-anchor: none; min-height: 0; }
 .pair-side { padding: 12px 14px 16px; display: grid; gap: 12px; align-content: start; overflow: auto; overflow-anchor: none; min-height: 0; }
@@ -423,7 +423,7 @@ button { font: inherit; color: inherit; }
 .mini-cap { font-size: 12px; color: var(--muted); }
 .sec-label { font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 
-/* Meldungen */
+/* Messages */
 .toast { position: fixed; z-index: 60; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 9px 10px 9px 14px; background: var(--raised-2); border: 1px solid var(--seam-strong); border-radius: 6px; box-shadow: var(--shadow-pop); font-size: 13.5px; }
 .toast .btn { height: 26px; }
 
@@ -435,7 +435,7 @@ button { font: inherit; color: inherit; }
   .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
   .preset { padding: 4px; }
 }
-/* Laptop mit wenig Höhe: Szenen einzeilig, damit sieben Szenen ohne Scrollen Platz haben */
+/* Laptop with little height: single-line scenes so seven scenes fit without scrolling */
 @media (max-height: 820px) and (min-width: 1181px) {
   .panel-h { min-height: 36px; padding-block: 4px; }
   .scene { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; padding: 3px 6px; }
@@ -537,104 +537,104 @@ button { font: inherit; color: inherit; }
   </defs>
 </svg>
 
-<div class="app" id="app" lang="de-CH">
+<div class="app" id="app" lang="en">
   <header class="top">
     <div class="brand">
       <svg class="mark" viewBox="0 0 22 18" aria-hidden="true"><rect x="1" y="1" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7" y="7" width="14" height="10" rx="1.5" fill="currentColor"/></svg>
       StudioFlow
     </div>
-    <span class="prod">Webinar «Headless mit Umbraco»</span>
+    <span class="prod">Webinar “Headless with Umbraco”</span>
     <div class="pop-wrap">
-      <button class="proto" id="protoBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="protoMenu"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-flask"/></svg>Prototyp<span class="proto-more"> · Beispieldaten</span><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chev"/></svg></button>
+      <button class="proto" id="protoBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="protoMenu"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-flask"/></svg>Prototype<span class="proto-more"> · Sample data</span><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chev"/></svg></button>
       <div class="pop pop-left" id="protoMenu" role="menu" hidden>
-        <div class="pop-h">Ereignis simulieren</div>
-        <button class="menu-item" role="menuitem" type="button" data-demo="k2"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg>K2 verliert 9 s das WLAN</button>
-        <button class="menu-item" role="menuitem" type="button" data-demo="s1"><svg class="ico" aria-hidden="true"><use href="#i-screen"/></svg>Lea beendet das Teilen (S1)</button>
-        <button class="menu-item" role="menuitem" type="button" data-demo="knock"><svg class="ico" aria-hidden="true"><use href="#i-laptop"/></svg>Ein neuer Laptop klopft an</button>
+        <div class="pop-h">Simulate an event</div>
+        <button class="menu-item" role="menuitem" type="button" data-demo="k2"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg>K2 loses Wi-Fi for 9 s</button>
+        <button class="menu-item" role="menuitem" type="button" data-demo="s1"><svg class="ico" aria-hidden="true"><use href="#i-screen"/></svg>Lea stops sharing (S1)</button>
+        <button class="menu-item" role="menuitem" type="button" data-demo="knock"><svg class="ico" aria-hidden="true"><use href="#i-laptop"/></svg>A new laptop asks to join</button>
         <div class="menu-sep"></div>
-        <button class="menu-item" role="menuitem" type="button" data-demo="reset"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Alles zurücksetzen</button>
-        <div class="pop-note">Nur im Prototyp. Alle Bilder, Namen und Werte sind synthetisch.</div>
+        <button class="menu-item" role="menuitem" type="button" data-demo="reset"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Reset everything</button>
+        <div class="pop-note">Prototype only. All images, names and values are synthetic.</div>
       </div>
     </div>
     <div class="top-r">
-      <span class="live" title="Seit Start des Outputs"><span class="live-dot" aria-hidden="true"></span><b>LIVE</b><span class="mono" id="liveTime">00:42:13</span></span>
+      <span class="live" title="Since the output started"><span class="live-dot" aria-hidden="true"></span><b>LIVE</b><span class="mono" id="liveTime">00:42:13</span></span>
       <div class="pop-wrap">
-        <button class="chipbtn" id="outBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="outPop"><svg class="ico" aria-hidden="true"><use href="#i-output"/></svg><span class="out-label">Output an Proxy</span><span class="lamp" aria-hidden="true"></span><span class="mono" id="outLat">148 ms</span><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chev"/></svg></button>
+        <button class="chipbtn" id="outBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="outPop"><svg class="ico" aria-hidden="true"><use href="#i-output"/></svg><span class="out-label">Output to proxy</span><span class="lamp" aria-hidden="true"></span><span class="mono" id="outLat">148 ms</span><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chev"/></svg></button>
         <div class="pop" id="outPop" role="dialog" aria-label="Output" hidden></div>
       </div>
-      <button class="chipbtn" id="healthBtn" type="button"><span class="lamp" id="healthLamp" aria-hidden="true"></span><span id="healthText">Alle Stationen ok</span></button>
+      <button class="chipbtn" id="healthBtn" type="button"><span class="lamp" id="healthLamp" aria-hidden="true"></span><span id="healthText">All stations ok</span></button>
       <div class="pop-wrap">
-        <button class="ibtn" id="layoutBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="layoutPop" aria-label="Docks und Layout" title="Docks und Layout"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg></button>
-        <div class="pop" id="layoutPop" role="dialog" aria-label="Docks und Layout" hidden></div>
+        <button class="ibtn" id="layoutBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="layoutPop" aria-label="Docks and layout" title="Docks and layout"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg></button>
+        <div class="pop" id="layoutPop" role="dialog" aria-label="Docks and layout" hidden></div>
       </div>
-      <span class="presence" title="Zwei Personen in der Regie"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="presence-label" aria-hidden="true">2 in der Regie</span><span class="sr">Zwei Personen in der Regie</span></span>
+      <span class="presence" title="Two people in the control room"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="presence-label" aria-hidden="true">2 in the control room</span><span class="sr">Two people in the control room</span></span>
       <span class="clock" id="clock">14:32:08</span>
     </div>
   </header>
 
-  <div class="statusline" id="statusline" aria-label="Meldungen"></div>
+  <div class="statusline" id="statusline" aria-label="Messages"></div>
 
   <div class="work" id="work">
     <div class="zone zone-left" data-zone="left" hidden></div>
-    <div class="split split-v split-zone" id="splitLeft" data-split="left" role="separator" aria-orientation="vertical" aria-label="Breite der Docks links" tabindex="0" hidden></div>
+    <div class="split split-v split-zone" id="splitLeft" data-split="left" role="separator" aria-orientation="vertical" aria-label="Width of the left docks" tabindex="0" hidden></div>
     <div class="center" id="center">
-      <section class="stage" aria-label="Monitore">
+      <section class="stage" aria-label="Monitors">
         <div class="stage-in">
           <div class="mons" id="mons">
-            <div class="pvw-off" aria-hidden="true"><b>Preview aus</b><span>Mit Studio-Modus erscheint hier die Preview.</span></div>
+            <div class="pvw-off" aria-hidden="true"><b>Preview off</b><span>With Studio Mode the preview appears here.</span></div>
             <section class="mon mon-pvw" aria-labelledby="pvwLabel">
               <div class="mon-h"><span class="tally tally-pvw" id="pvwLabel"><i aria-hidden="true"></i>Preview</span><span class="mon-name" id="pvwName"></span><span class="mon-meta" id="pvwMeta"></span></div>
               <div class="screen screen-pvw" id="pvwScreen">
-                <canvas id="pvwCanvas" role="img" aria-label="Preview-Monitor"></canvas>
-                <div class="live-note" id="liveNote" hidden>Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.</div>
+                <canvas id="pvwCanvas" role="img" aria-label="Preview monitor"></canvas>
+                <div class="live-note" id="liveNote" hidden>This scene is live right now. You can edit it once another scene is in Program.</div>
               </div>
             </section>
-            <div class="split-mon" role="separator" aria-orientation="vertical" aria-label="Grösse von Preview und Program" tabindex="0"></div>
+            <div class="split-mon" role="separator" aria-orientation="vertical" aria-label="Size of Preview and Program" tabindex="0"></div>
             <section class="mon mon-pgm" aria-labelledby="pgmLabel">
-              <div class="mon-h"><span class="tally tally-pgm" id="pgmLabel"><i aria-hidden="true"></i>Program</span><span class="mon-name" id="pgmName"></span><span class="live-edit" id="liveEdit" hidden>Änderungen gehen sofort live</span><span class="mon-meta mono" id="pgmMeta"></span></div>
+              <div class="mon-h"><span class="tally tally-pgm" id="pgmLabel"><i aria-hidden="true"></i>Program</span><span class="mon-name" id="pgmName"></span><span class="live-edit" id="liveEdit" hidden>Changes go live immediately</span><span class="mon-meta mono" id="pgmMeta"></span></div>
               <div class="screen screen-pgm" id="pgmScreen">
-                <canvas id="pgmCanvas" role="img" aria-label="Program-Monitor, zeigt genau den Output"></canvas>
-                <div class="ovl" id="ovl" tabindex="0" aria-label="Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren."></div>
+                <canvas id="pgmCanvas" role="img" aria-label="Program monitor, shows exactly the output"></canvas>
+                <div class="ovl" id="ovl" tabindex="0" aria-label="Items in the scene. Drag to move, drag corners to scale, use the arrow keys to fine-tune."></div>
               </div>
             </section>
           </div>
 
           <div class="ctrl" id="ctrl">
-            <label class="switch" for="studioSw"><input type="checkbox" role="switch" id="studioSw">Studio-Modus</label>
-            <span class="ctrl-l">Übergang</span>
-            <div class="tr-seg" role="group" aria-label="Art des Übergangs">
-              <button type="button" data-tr="cut" aria-pressed="false">Schnitt</button>
-              <button type="button" data-tr="fade" aria-pressed="true">Blende</button>
+            <label class="switch" for="studioSw"><input type="checkbox" role="switch" id="studioSw">Studio Mode</label>
+            <span class="ctrl-l">Transition</span>
+            <div class="tr-seg" role="group" aria-label="Transition type">
+              <button type="button" data-tr="cut" aria-pressed="false">Cut</button>
+              <button type="button" data-tr="fade" aria-pressed="true">Fade</button>
             </div>
-            <div class="dur" id="dur" role="group" aria-label="Dauer der Blende">
-              <button class="dur-btn" type="button" data-dur="-1" aria-label="Blende kürzer"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-minus"/></svg></button>
-              <span class="dur-val" id="durVal">0,3 s</span>
-              <button class="dur-btn" type="button" data-dur="1" aria-label="Blende länger"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <div class="dur" id="dur" role="group" aria-label="Fade duration">
+              <button class="dur-btn" type="button" data-dur="-1" aria-label="Shorter fade"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-minus"/></svg></button>
+              <span class="dur-val" id="durVal">0.3 s</span>
+              <button class="dur-btn" type="button" data-dur="1" aria-label="Longer fade"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg></button>
             </div>
-            <button class="take-btn" id="takeBtn" type="button" aria-keyshortcuts="Space">Take<small>Leerschlag</small></button>
-            <span class="ctrl-hint" id="ctrlHint">Klick auf eine Szene schaltet sie direkt live.</span>
+            <button class="take-btn" id="takeBtn" type="button" aria-keyshortcuts="Space">Take<small>Space</small></button>
+            <span class="ctrl-hint" id="ctrlHint">Clicking a scene sends it live directly.</span>
           </div>
         </div>
       </section>
-      <div class="split split-h split-zone" id="splitBottom" data-split="bottom" role="separator" aria-orientation="horizontal" aria-label="Höhe der Docks unten" tabindex="0"></div>
+      <div class="split split-h split-zone" id="splitBottom" data-split="bottom" role="separator" aria-orientation="horizontal" aria-label="Height of the bottom docks" tabindex="0"></div>
       <div class="zone zone-bottom" data-zone="bottom"></div>
     </div>
-    <div class="split split-v split-zone" id="splitRight" data-split="right" role="separator" aria-orientation="vertical" aria-label="Breite der Docks rechts" tabindex="0" hidden></div>
+    <div class="split split-v split-zone" id="splitRight" data-split="right" role="separator" aria-orientation="vertical" aria-label="Width of the right docks" tabindex="0" hidden></div>
     <div class="zone zone-right" data-zone="right" hidden></div>
   </div>
 
   <div class="dock-park" id="dockPark">
-    <section class="panel dock-scenes" data-dock="scenes" aria-label="Szenen">
-      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Dock Szenen verschieben, mit Pfeiltasten"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Szenen</span><span class="count" id="sceneCount">7</span><span class="spacer"></span><span class="hint">Tasten 1–9</span></div>
+    <section class="panel dock-scenes" data-dock="scenes" aria-label="Scenes">
+      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Move the Scenes dock with the arrow keys"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Scenes</span><span class="count" id="sceneCount">7</span><span class="spacer"></span><span class="hint">Keys 1–9</span></div>
       <div class="panel-b"><div class="scene-list" id="sceneList"></div></div>
     </section>
 
-    <section class="panel dock-pair" id="pairDock" data-dock="pair" aria-label="Gerät koppeln">
-      <div class="panel-h"><span class="panel-t" style="padding-left:6px">Gerät koppeln</span><span class="spacer"></span><button class="ibtn" type="button" id="pairClose" aria-label="Gerät koppeln schliessen"><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+    <section class="panel dock-pair" id="pairDock" data-dock="pair" aria-label="Pair device">
+      <div class="panel-h"><span class="panel-t" style="padding-left:6px">Pair device</span><span class="spacer"></span><button class="ibtn" type="button" id="pairClose" aria-label="Close Pair device"><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button></div>
       <div class="pair-grid">
         <div class="pair-main">
-          <div class="tabs" role="tablist" aria-label="Art des Geräts">
-            <button class="tab" type="button" role="tab" id="tab-phone" data-tab="phone" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Handy</button>
+          <div class="tabs" role="tablist" aria-label="Device type">
+            <button class="tab" type="button" role="tab" id="tab-phone" data-tab="phone" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Phone</button>
             <button class="tab" type="button" role="tab" id="tab-laptop" data-tab="laptop" aria-selected="true"><svg class="ico" aria-hidden="true"><use href="#i-laptop"/></svg>Laptop</button>
             <button class="tab" type="button" role="tab" id="tab-link" data-tab="link" aria-selected="false"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg>Link</button>
           </div>
@@ -644,37 +644,37 @@ button { font: inherit; color: inherit; }
       </div>
     </section>
 
-    <section class="panel dock-src" data-dock="src" aria-label="Quellen der Szene">
+    <section class="panel dock-src" data-dock="src" aria-label="Scene sources">
       <div class="panel-h" data-drag>
-        <button class="grip" type="button" aria-label="Dock Quellen verschieben, mit Pfeiltasten"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Quellen</span><span class="count" id="srcCount"></span><span class="spacer"></span>
-        <button class="ibtn" type="button" id="undoBtn" aria-label="Rückgängig (Ctrl+Z)" title="Rückgängig (Ctrl+Z)"><svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg></button>
+        <button class="grip" type="button" aria-label="Move the Sources dock with the arrow keys"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Sources</span><span class="count" id="srcCount"></span><span class="spacer"></span>
+        <button class="ibtn" type="button" id="undoBtn" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)"><svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg></button>
         <div class="pop-wrap">
-          <button class="btn btn-sm" type="button" id="addSrcBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="addSrcPop"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg>Quelle</button>
+          <button class="btn btn-sm" type="button" id="addSrcBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="addSrcPop"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg>Source</button>
           <div class="pop" id="addSrcPop" role="menu" hidden></div>
         </div>
       </div>
       <div class="panel-b"><div class="src-list" id="srcList" role="list"></div></div>
     </section>
 
-    <section class="panel dock-insp" data-dock="insp" aria-label="Eigenschaften">
-      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Dock Eigenschaften verschieben, mit Pfeiltasten"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t" id="inspTitle">Szene</span><span class="panel-sub" id="inspSub"></span></div>
+    <section class="panel dock-insp" data-dock="insp" aria-label="Properties">
+      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Move the Properties dock with the arrow keys"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t" id="inspTitle">Scene</span><span class="panel-sub" id="inspSub"></span></div>
       <div class="panel-b"><div class="insp" id="insp"></div></div>
     </section>
 
-    <section class="panel dock-st" data-dock="st" aria-label="Stationen">
-      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Dock Stationen verschieben, mit Pfeiltasten"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Stationen</span><span class="count" id="stCount"></span><span class="spacer"></span><button class="btn btn-sm btn-primary" type="button" id="pairBtn" aria-expanded="false" aria-controls="pairDock"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg>Gerät koppeln</button></div>
+    <section class="panel dock-st" data-dock="st" aria-label="Stations">
+      <div class="panel-h" data-drag><button class="grip" type="button" aria-label="Move the Stations dock with the arrow keys"><svg class="ico" aria-hidden="true"><use href="#i-grip"/></svg></button><span class="panel-t">Stations</span><span class="count" id="stCount"></span><span class="spacer"></span><button class="btn btn-sm btn-primary" type="button" id="pairBtn" aria-expanded="false" aria-controls="pairDock"><svg class="ico" style="width:14px;height:14px" aria-hidden="true"><use href="#i-plus"/></svg>Pair device</button></div>
       <div class="panel-b" id="stBody"><div id="knockSlot"></div><div class="st-list" id="stList"></div></div>
     </section>
   </div>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite" lang="de-CH" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" lang="en" hidden></div>
 
 <script>
 (() => {
 'use strict';
 
-/* ---------- Grundlagen ---------- */
+/* ---------- Basics ---------- */
 const CW = 1920, CH = 1080;
 const DPR = Math.min(2, window.devicePixelRatio || 1);
 const $ = (s, el = document) => el.querySelector(s);
@@ -687,46 +687,46 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const fmtDur = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return pad2(Math.floor(s / 60)) + ':' + pad2(s % 60); };
 const fmtClock = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
 const fmtHM = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-const fmtRate = (v) => v.toFixed(1).replace('.', ',');
-const fmtSec = (ms) => String(ms / 1000).replace('.', ',') + ' s';
+const fmtRate = (v) => v.toFixed(1);
+const fmtSec = (ms) => String(ms / 1000) + ' s';
 const minsAgo = (m) => new Date(Date.now() - m * 60000);
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const icon = (id, size) => `<svg class="ico" ${size ? `style="width:${size}px;height:${size}px"` : ''} aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const KIND_ICON = { camera: 'camera', screen: 'screen', image: 'image', video: 'video' };
-const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ohne Speicher weiter */ } } };
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* carry on without storage */ } } };
 
-/* ---------- Daten (synthetisch) ---------- */
+/* ---------- Data (synthetic) ---------- */
 const SOURCES = {
-  K1: { code: 'K1', kind: 'camera', name: 'Handy Bühne links', device: 'iPhone 13 · Safari', res: '1080p', rate: 2.8, rtt: 31, loss: 0, battery: 78, status: 'ok', paired: fmtHM(minsAgo(58)) },
-  K2: { code: 'K2', kind: 'camera', name: 'Handy Bühne rechts', device: 'Pixel 7 · Chrome', res: '1080p', rate: 2.6, rtt: 34, loss: 0, battery: 64, status: 'ok', paired: fmtHM(minsAgo(56)) },
-  K3: { code: 'K3', kind: 'camera', name: 'Handy Totale', device: 'iPhone 12 · Safari', res: '1080p', rate: 3.1, rtt: 29, loss: 0, battery: 91, status: 'ok', paired: fmtHM(minsAgo(55)) },
-  S1: { code: 'S1', kind: 'screen', name: 'Laptop Lea · Folien', device: 'Windows · Edge', res: '1440p', rate: 1.9, rtt: 12, loss: 0, status: 'ok', paired: fmtHM(minsAgo(49)) },
+  K1: { code: 'K1', kind: 'camera', name: 'Phone stage left', device: 'iPhone 13 · Safari', res: '1080p', rate: 2.8, rtt: 31, loss: 0, battery: 78, status: 'ok', paired: fmtHM(minsAgo(58)) },
+  K2: { code: 'K2', kind: 'camera', name: 'Phone stage right', device: 'Pixel 7 · Chrome', res: '1080p', rate: 2.6, rtt: 34, loss: 0, battery: 64, status: 'ok', paired: fmtHM(minsAgo(56)) },
+  K3: { code: 'K3', kind: 'camera', name: 'Phone wide shot', device: 'iPhone 12 · Safari', res: '1080p', rate: 3.1, rtt: 29, loss: 0, battery: 91, status: 'ok', paired: fmtHM(minsAgo(55)) },
+  S1: { code: 'S1', kind: 'screen', name: 'Laptop Lea · Slides', device: 'Windows · Edge', res: '1440p', rate: 1.9, rtt: 12, loss: 0, status: 'ok', paired: fmtHM(minsAgo(49)) },
   S2: { code: 'S2', kind: 'screen', name: 'Laptop Jonas · Demo', device: 'macOS · Chrome', res: '1080p', rate: 2.2, rtt: 14, loss: 0, status: 'ok', paired: fmtHM(minsAgo(47)) },
-  M1: { code: 'M1', kind: 'image', name: 'Titelfolie', media: true, status: 'ok' },
-  M2: { code: 'M2', kind: 'video', name: 'Intro-Loop', media: true, status: 'ok' },
-  M3: { code: 'M3', kind: 'image', name: 'Pause-Slate', media: true, status: 'ok' },
+  M1: { code: 'M1', kind: 'image', name: 'Title slide', media: true, status: 'ok' },
+  M2: { code: 'M2', kind: 'video', name: 'Intro loop', media: true, status: 'ok' },
+  M3: { code: 'M3', kind: 'image', name: 'Break slate', media: true, status: 'ok' },
 };
 let uid = 1;
 const item = (src, x, y, w, h, o = {}) => ({ id: 'it' + (uid++), src, x, y, w, h, fit: o.fit || 'cover', radius: o.radius ?? 0, mirror: false, hidden: false, locked: false, hold: 3000 });
 const SCENES = [
   { id: 'intro', name: 'Intro', items: [item('M2', 0, 0, 1920, 1080)] },
-  { id: 'welcome', name: 'Begrüssung', items: [item('K3', 0, 0, 1920, 1080)] },
-  { id: 'lea', name: 'Lea präsentiert', items: [item('S1', 40, 40, 1360, 765, { fit: 'contain', radius: 12 }), item('K1', 1440, 40, 440, 248, { radius: 12 })] },
-  { id: 'demo', name: 'Live-Demo Jonas', items: [item('S2', 40, 40, 1360, 765, { fit: 'contain', radius: 12 }), item('K2', 1440, 40, 440, 248, { radius: 12 })] },
-  { id: 'talk', name: 'Gespräch', items: [item('K1', 40, 287, 900, 506, { radius: 12 }), item('K2', 980, 287, 900, 506, { radius: 12 })] },
-  { id: 'qa', name: 'Fragerunde', items: [item('K3', 62, 208, 1180, 664, { radius: 12 }), item('K1', 1282, 208, 576, 324, { radius: 12 }), item('K2', 1282, 548, 576, 324, { radius: 12 })] },
-  { id: 'pause', name: 'Pause', items: [item('M3', 0, 0, 1920, 1080)] },
+  { id: 'welcome', name: 'Welcome', items: [item('K3', 0, 0, 1920, 1080)] },
+  { id: 'lea', name: 'Lea presents', items: [item('S1', 40, 40, 1360, 765, { fit: 'contain', radius: 12 }), item('K1', 1440, 40, 440, 248, { radius: 12 })] },
+  { id: 'demo', name: 'Live demo Jonas', items: [item('S2', 40, 40, 1360, 765, { fit: 'contain', radius: 12 }), item('K2', 1440, 40, 440, 248, { radius: 12 })] },
+  { id: 'talk', name: 'Conversation', items: [item('K1', 40, 287, 900, 506, { radius: 12 }), item('K2', 980, 287, 900, 506, { radius: 12 })] },
+  { id: 'qa', name: 'Q&A', items: [item('K3', 62, 208, 1180, 664, { radius: 12 }), item('K1', 1282, 208, 576, 324, { radius: 12 }), item('K2', 1282, 548, 576, 324, { radius: 12 })] },
+  { id: 'pause', name: 'Break', items: [item('M3', 0, 0, 1920, 1080)] },
 ];
 const GRID3 = [40, 378, 716].flatMap((y) => [86, 674, 1262].map((x) => [x, y, 572, 322]));
 const PRESETS = [
-  { id: 'full', name: 'Vollbild', slots: [[0, 0, 1920, 1080]] },
-  { id: 'two', name: 'Nebeneinander', slots: [[40, 287, 900, 506], [980, 287, 900, 506]] },
-  { id: 'pip', name: 'Bild-in-Bild', slots: [[0, 0, 1920, 1080], [1400, 772, 480, 270]] },
-  { id: 'col', name: 'Screen + Spalte', slots: [[40, 158, 1360, 765], [1440, 283, 440, 248], [1440, 551, 440, 248]] },
-  { id: 'onetwo', name: 'Eins plus zwei', slots: [[40, 196, 1225, 689], [1285, 196, 595, 335], [1285, 551, 595, 335]] },
+  { id: 'full', name: 'Full screen', slots: [[0, 0, 1920, 1080]] },
+  { id: 'two', name: 'Side by side', slots: [[40, 287, 900, 506], [980, 287, 900, 506]] },
+  { id: 'pip', name: 'Picture in picture', slots: [[0, 0, 1920, 1080], [1400, 772, 480, 270]] },
+  { id: 'col', name: 'Screen + column', slots: [[40, 158, 1360, 765], [1440, 283, 440, 248], [1440, 551, 440, 248]] },
+  { id: 'onetwo', name: 'One plus two', slots: [[40, 196, 1225, 689], [1285, 196, 595, 335], [1285, 551, 595, 335]] },
   { id: 'grid', name: '2 × 2', slots: [[79, 40, 871, 490], [970, 40, 871, 490], [79, 550, 871, 490], [970, 550, 871, 490]] },
   { id: 'grid3', name: '3 × 3', slots: GRID3 },
-  { id: 'auto', name: 'Auto-Grid', slots: null },
+  { id: 'auto', name: 'Auto grid', slots: null },
 ];
 const autoSlots = (n) => {
   if (n <= 1) return PRESETS[0].slots;
@@ -744,9 +744,9 @@ const S = {
   incidents: [], pending: null, tab: 'laptop', pairOpen: false, undo: [], open: null, linkMade: false, outConfirm: false, sceneConfirm: false, blockConfirm: null,
   qrIssued: Date.now(),
   log: [
-    { t: minsAgo(4), text: 'Szene «Lea präsentiert» ist live' },
-    { t: minsAgo(21), text: 'Szene «Begrüssung» ist live' },
-    { t: minsAgo(47), text: 'S2 Laptop Jonas gekoppelt' },
+    { t: minsAgo(4), text: 'Scene “Lea presents” is live' },
+    { t: minsAgo(21), text: 'Scene “Welcome” is live' },
+    { t: minsAgo(47), text: 'S2 Laptop Jonas paired' },
   ],
 };
 const scene = (id) => SCENES.find((s) => s.id === id);
@@ -761,9 +761,9 @@ const devices = () => Object.values(SOURCES).filter((s) => !s.media);
 const inScene = (sc, code) => !!sc && sc.items.some((i) => i.src === code && !i.hidden);
 const inPreview = (code) => S.studio && inScene(pvwScene(), code);
 const addLog = (text) => { S.log.unshift({ t: new Date(), text }); S.log.length = Math.min(S.log.length, 20); };
-const stateWord = (src) => src.status === 'reconnecting' ? 'verbindet neu' : src.status === 'ended' ? 'Teilen beendet' : src.status === 'blocked' ? 'gesperrt' : src.status === 'connecting' ? 'verbindet …' : '';
+const stateWord = (src) => src.status === 'reconnecting' ? 'reconnecting' : src.status === 'ended' ? 'sharing stopped' : src.status === 'blocked' ? 'blocked' : src.status === 'connecting' ? 'connecting…' : '';
 
-/* ---------- Synthetische Bildquellen ---------- */
+/* ---------- Synthetic picture sources ---------- */
 const noise = document.createElement('canvas');
 noise.width = noise.height = 128;
 {
@@ -872,14 +872,14 @@ const UI = '"Sofia Sans Semi Condensed", "Arial Narrow", sans-serif';
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
 const DECKS = {
-  S1: { footer: 'Lea Brunner · Beispielfolien', slides: [
-    { n: 6, kind: 'title', title: 'Headless mit Umbraco', sub: 'Wie Inhalte zu jedem Frontend kommen' },
-    { n: 7, kind: 'diagram', title: 'So fliessen die Inhalte' },
-    { n: 8, kind: 'bullets', title: 'Was wir heute bauen', bullets: ['Inhalte im Backoffice pflegen', 'Über die Delivery API abrufen', 'Im Frontend live anzeigen'] },
+  S1: { footer: 'Lea Brunner · Sample slides', slides: [
+    { n: 6, kind: 'title', title: 'Headless with Umbraco', sub: 'How content reaches any frontend' },
+    { n: 7, kind: 'diagram', title: 'How content flows' },
+    { n: 8, kind: 'bullets', title: 'What we build today', bullets: ['Manage content in the backoffice', 'Fetch it through the Delivery API', 'Show it live in the frontend'] },
   ] },
-  S3: { footer: 'Mia Keller · Beispielfolien', slides: [
-    { n: 2, kind: 'title', title: 'Kundenbeispiel', sub: 'Ein Shop, drei Kanäle, eine Quelle' },
-    { n: 3, kind: 'bullets', title: 'Was sich verändert hat', bullets: ['Ein Redaktionsprozess statt drei', 'Neue Kanäle ohne neues CMS', 'Inhalte in Sekunden live'] },
+  S3: { footer: 'Mia Keller · Sample slides', slides: [
+    { n: 2, kind: 'title', title: 'Customer example', sub: 'One shop, three channels, one source' },
+    { n: 3, kind: 'bullets', title: 'What has changed', bullets: ['One editorial process instead of three', 'New channels without a new CMS', 'Content live in seconds'] },
   ] },
 };
 function drawSlide(ctx, w, h, deck, s) {
@@ -892,7 +892,7 @@ function drawSlide(ctx, w, h, deck, s) {
     ctx.fillStyle = '#4a5463'; ctx.font = `500 40px ${UI}`; ctx.fillText(s.sub, 82, 400);
   } else if (s.kind === 'diagram') {
     ctx.fillStyle = '#12161c'; ctx.font = `700 60px ${UI}`; ctx.fillText(s.title, 80, 170);
-    const boxes = [['Backoffice', 'Inhalte pflegen'], ['Delivery API', 'JSON ausliefern'], ['Frontend', 'Seiten darstellen']];
+    const boxes = [['Backoffice', 'Manage content'], ['Delivery API', 'Serve JSON'], ['Frontend', 'Render pages']];
     boxes.forEach(([a, b], i) => {
       const x = 80 + i * 390, y = 290, bw = 320, bh = 170;
       ctx.fillStyle = i === 1 ? '#e3edfc' : '#ffffff'; rr(ctx, x, y, bw, bh, 14); ctx.fill();
@@ -918,13 +918,13 @@ const CODE = [
   [],
   [['export async function ', '#ff7b72'], ['getPage', '#d2a8ff'], ['(path: ', '#e6edf3'], ['string', '#ff7b72'], [') {', '#e6edf3']],
   [['  const ', '#ff7b72'], ['res = ', '#e6edf3'], ['await ', '#ff7b72'], ['fetch', '#d2a8ff'], ['(`${api}/content/item${path}`, {', '#a5d6ff']],
-  [['    headers: { ', '#e6edf3'], ["'Accept-Language'", '#a5d6ff'], [': ', '#e6edf3'], ["'de-CH'", '#a5d6ff'], [' },', '#e6edf3']],
+  [['    headers: { ', '#e6edf3'], ["'Accept-Language'", '#a5d6ff'], [': ', '#e6edf3'], ["'en'", '#a5d6ff'], [' },', '#e6edf3']],
   [['  });', '#e6edf3']],
-  [['  if ', '#ff7b72'], ['(!res.ok) ', '#e6edf3'], ['throw new ', '#ff7b72'], ['Error', '#d2a8ff'], ['(`Seite fehlt: ${path}`);', '#a5d6ff']],
+  [['  if ', '#ff7b72'], ['(!res.ok) ', '#e6edf3'], ['throw new ', '#ff7b72'], ['Error', '#d2a8ff'], ['(`Page missing: ${path}`);', '#a5d6ff']],
   [['  return ', '#ff7b72'], ['res.', '#e6edf3'], ['json', '#d2a8ff'], ['();', '#e6edf3']],
   [['}', '#e6edf3']],
   [],
-  [['// Live im Webinar: die Startseite holen', '#8b949e']],
+  [['// Live in the webinar: fetch the home page', '#8b949e']],
   [['const ', '#ff7b72'], ['page = ', '#e6edf3'], ['await ', '#ff7b72'], ['getPage', '#d2a8ff'], ["('/webinar')", '#a5d6ff'], [';', '#e6edf3']],
   [['console.', '#e6edf3'], ['log', '#d2a8ff'], ['(page.name);', '#e6edf3']],
 ];
@@ -1021,8 +1021,8 @@ function drawTitle(ctx, w, h) {
   ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, 0, w, h);
   ctx.strokeStyle = 'rgba(121,192,255,0.16)'; ctx.lineWidth = 1;
   for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); ctx.stroke(); }
-  ctx.fillStyle = '#e6edf3'; ctx.font = `700 96px ${UI}`; ctx.fillText('Headless mit Umbraco', 90, 360);
-  ctx.fillStyle = '#8b949e'; ctx.font = `500 38px ${UI}`; ctx.fillText('Webinar · Beispielinhalt', 94, 430);
+  ctx.fillStyle = '#e6edf3'; ctx.font = `700 96px ${UI}`; ctx.fillText('Headless with Umbraco', 90, 360);
+  ctx.fillStyle = '#8b949e'; ctx.font = `500 38px ${UI}`; ctx.fillText('Webinar · Sample content', 94, 430);
 }
 function drawIntro(ctx, w, h, t) {
   ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, 0, w, h);
@@ -1031,14 +1031,14 @@ function drawIntro(ctx, w, h, t) {
   for (let x = -h; x < w + h; x += 80) { ctx.beginPath(); ctx.moveTo(x + off, h); ctx.lineTo(x + off + h * 0.6, 0); ctx.stroke(); }
   const a = 0.5 + 0.5 * Math.sin(t / 1300);
   ctx.fillStyle = `rgba(230,237,243,${0.55 + a * 0.45})`; ctx.font = `700 98px ${UI}`; ctx.textAlign = 'center';
-  ctx.fillText('Headless mit Umbraco', w / 2, h / 2 + 10);
-  ctx.fillStyle = '#8b949e'; ctx.font = `500 36px ${UI}`; ctx.fillText('Wir starten gleich', w / 2, h / 2 + 80);
+  ctx.fillText('Headless with Umbraco', w / 2, h / 2 + 10);
+  ctx.fillStyle = '#8b949e'; ctx.font = `500 36px ${UI}`; ctx.fillText('Starting soon', w / 2, h / 2 + 80);
   ctx.textAlign = 'left';
 }
 function drawPause(ctx, w, h, t) {
   ctx.fillStyle = '#11161d'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#e6edf3'; ctx.font = `700 88px ${UI}`; ctx.textAlign = 'center'; ctx.fillText('Kurze Pause', w / 2, h / 2);
-  ctx.fillStyle = '#8b949e'; ctx.font = `500 36px ${UI}`; ctx.fillText('Gleich geht es weiter', w / 2, h / 2 + 64);
+  ctx.fillStyle = '#e6edf3'; ctx.font = `700 88px ${UI}`; ctx.textAlign = 'center'; ctx.fillText('Short break', w / 2, h / 2);
+  ctx.fillStyle = '#8b949e'; ctx.font = `500 36px ${UI}`; ctx.fillText('Back in a moment', w / 2, h / 2 + 64);
   const p = (t % 6000) / 6000;
   ctx.fillStyle = '#262c36'; ctx.fillRect(w / 2 - 160, h / 2 + 112, 320, 4);
   ctx.fillStyle = '#79c0ff'; ctx.fillRect(w / 2 - 160, h / 2 + 112, 320 * p, 4);
@@ -1071,7 +1071,7 @@ function updateFeeds(t) {
   }
 }
 
-/* ---------- Szenen zeichnen ---------- */
+/* ---------- Drawing scenes ---------- */
 function drawFit(ctx, img, x, y, w, h, fit, mirror) {
   const iw = img.width, ih = img.height;
   const sc = fit === 'contain' ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih);
@@ -1103,7 +1103,7 @@ function drawScene(ctx, sc, w, h, studio, t) {
     ctx.clip();
     const held = down && downFor(src) > it.hold;
     if (feed && !(src && src.status === 'connecting')) {
-      // Nach der Haltezeit wird das Standbild stark verwischt, damit nichts wie überlagerter Text wirkt
+      // After the hold time the freeze frame is heavily blurred so nothing reads like overlaid text
       if (held && HAS_FILTER) { ctx.filter = `blur(${Math.max(3, Math.round(iw * 0.025))}px)`; drawFit(ctx, feed.canvas, x, y, iw, ih, it.fit, it.mirror); ctx.filter = 'none'; }
       else drawFit(ctx, feed.canvas, x, y, iw, ih, it.fit, it.mirror);
     } else { ctx.fillStyle = '#121821'; ctx.fillRect(x, y, iw, ih); }
@@ -1112,7 +1112,7 @@ function drawScene(ctx, sc, w, h, studio, t) {
       const minW = studio ? 240 * DPR : 320;
       if (iw >= minW) {
         const fs = studio ? Math.max(11 * DPR, 30 * s) : 30 * s;
-        const label = 'Bild kommt gleich zurück';
+        const label = 'Picture returns shortly';
         ctx.font = `600 ${fs}px ${UI}`;
         if (ctx.measureText(label).width < iw * 0.9) {
           ctx.fillStyle = '#e6edf3'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1125,7 +1125,7 @@ function drawScene(ctx, sc, w, h, studio, t) {
     if (studio && down) {
       const bad = src.status !== 'reconnecting';
       const small = iw / DPR < 190;
-      const word = src.status === 'ended' ? (small ? 'beendet' : 'Teilen beendet') : src.status === 'blocked' ? 'gesperrt' : (small ? '' : 'Standbild ');
+      const word = src.status === 'ended' ? (small ? 'stopped' : 'sharing stopped') : src.status === 'blocked' ? 'blocked' : (small ? '' : 'freeze frame ');
       const label = src.code + ' · ' + word + (src.status === 'reconnecting' ? fmtDur(downFor(src)) : '');
       ctx.font = `700 ${11.5 * DPR}px ${UI}`;
       const tw = ctx.measureText(label).width, bh = 18 * DPR, bx = x + 6 * DPR, by = y + 6 * DPR;
@@ -1138,7 +1138,7 @@ function drawScene(ctx, sc, w, h, studio, t) {
   }
 }
 
-/* ---------- Monitore und Miniaturen ---------- */
+/* ---------- Monitors and thumbnails ---------- */
 const app = $('#app');
 const pvwCanvas = $('#pvwCanvas'), pgmCanvas = $('#pgmCanvas');
 const pvwCtx = pvwCanvas.getContext('2d'), pgmCtx = pgmCanvas.getContext('2d');
@@ -1148,7 +1148,7 @@ function fitCanvas(c) {
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
 }
 let thumbs = [];
-// Neue Grösse leert ein Canvas; deshalb sofort neu zeichnen, damit beim Ziehen nichts schwarz aufblitzt
+// A new size clears a canvas, so redraw immediately to avoid black flashes while dragging
 const ro = new ResizeObserver(() => { fitCanvas(pvwCanvas); fitCanvas(pgmCanvas); positionBoxes(); thumbs.forEach((c) => fitCanvas(c)); $$('canvas[data-station]').forEach((c) => fitCanvas(c)); drawMonitors(tnow()); drawThumbs(tnow()); });
 ro.observe($('#pvwScreen'));
 ro.observe($('#pgmScreen'));
@@ -1189,7 +1189,7 @@ function drawThumbs(t) {
   }
 }
 
-/* ---------- Szenenliste ---------- */
+/* ---------- Scene list ---------- */
 function sceneHealth(sc) {
   let worst = null;
   for (const it of sc.items) {
@@ -1206,10 +1206,10 @@ function renderScenes() {
     const isP = sc.id === S.program, isV = S.studio && sc.id === S.preview;
     const hl = sceneHealth(sc);
     const srcs = sc.items.filter((it) => !it.hidden).map((it) => it.src).join(' · ');
-    return `<button class="scene${isP ? ' is-pgm' : ''}${isV ? ' is-pvw' : ''}" type="button" data-scene="${sc.id}" aria-pressed="${S.studio ? isV : isP}" aria-keyshortcuts="${i + 1}" aria-label="${esc(sc.name)}${isP ? ', live im Program' : ''}${isV ? ', in der Preview' : ''}${hl ? ', ' + hl.code + ' gestört' : ''}">
+    return `<button class="scene${isP ? ' is-pgm' : ''}${isV ? ' is-pvw' : ''}" type="button" data-scene="${sc.id}" aria-pressed="${S.studio ? isV : isP}" aria-keyshortcuts="${i + 1}" aria-label="${esc(sc.name)}${isP ? ', live in Program' : ''}${isV ? ', in Preview' : ''}${hl ? ', ' + hl.code + ' disrupted' : ''}">
       <span class="thumb"><canvas data-scene="${sc.id}" aria-hidden="true"></canvas><span class="key" aria-hidden="true">${i + 1}</span></span>
       <span class="scene-text"><span class="scene-name">${esc(sc.name)}</span><span class="scene-meta">${isP ? '<span class="tag tag-pgm">PGM</span>' : isV ? '<span class="tag tag-pvw">PVW</span>' : ''}${hl
-        ? `<span class="lamp ${hl.bad ? 'is-bad' : 'is-warn'}" aria-hidden="true"></span><span class="mono">${hl.code}</span><span class="${hl.bad ? 'state-bad' : 'state-warn'}">gestört</span>`
+        ? `<span class="lamp ${hl.bad ? 'is-bad' : 'is-warn'}" aria-hidden="true"></span><span class="mono">${hl.code}</span><span class="${hl.bad ? 'state-bad' : 'state-warn'}">disrupted</span>`
         : `<span class="mono">${esc(srcs)}</span>`}</span></span>
     </button>`;
   }).join('');
@@ -1218,7 +1218,7 @@ function renderScenes() {
   drawThumbs(tnow());
 }
 
-/* ---------- Monitor-Köpfe und Modus ---------- */
+/* ---------- Monitor headers and mode ---------- */
 const ovl = $('#ovl');
 function placeOverlay() {
   const host = S.studio ? $('#pvwScreen') : $('#pgmScreen');
@@ -1228,7 +1228,7 @@ function renderMode() {
   app.classList.toggle('is-studio', S.studio);
   $('#studioSw').checked = S.studio;
   $('#takeBtn').hidden = !S.studio;
-  $('#ctrlHint').textContent = S.studio ? 'Klick auf eine Szene lädt sie in die Preview. Take schaltet live.' : 'Klick auf eine Szene schaltet sie direkt live.';
+  $('#ctrlHint').textContent = S.studio ? 'Clicking a scene loads it into Preview. Take sends it live.' : 'Clicking a scene sends it live directly.';
   placeOverlay();
 }
 function renderMonitorHeads() {
@@ -1236,18 +1236,18 @@ function renderMonitorHeads() {
   $('#pvwName').textContent = pv.name;
   $('#pgmName').textContent = pg.name;
   const n = pv.items.filter((i) => !i.hidden).length;
-  $('#pvwMeta').textContent = n === 1 ? '1 Element' : n + ' Elemente';
+  $('#pvwMeta').textContent = n === 1 ? '1 item' : n + ' items';
   $('#pgmMeta').textContent = '1920 × 1080 · 30 fps';
   $('#liveEdit').hidden = S.studio;
-  pvwCanvas.setAttribute('aria-label', 'Preview-Monitor: ' + pv.name);
-  pgmCanvas.setAttribute('aria-label', 'Program-Monitor: ' + pg.name + ', entspricht dem Output');
+  pvwCanvas.setAttribute('aria-label', 'Preview monitor: ' + pv.name);
+  pgmCanvas.setAttribute('aria-label', 'Program monitor: ' + pg.name + ', matches the output');
   const locked = editLocked();
   $('#liveNote').hidden = !locked;
   ovl.classList.toggle('is-locked', locked);
   $('#takeBtn').disabled = locked || !!S.trans;
 }
 
-/* ---------- Overlay: Elemente bearbeiten ---------- */
+/* ---------- Overlay: editing items ---------- */
 let drag = null;
 function renderOverlay() {
   const sc = editScene();
@@ -1309,14 +1309,14 @@ function pushUndo(before) {
 }
 function undo() {
   const u = S.undo.pop();
-  if (!u) { toast('Nichts zum Rückgängigmachen'); return; }
+  if (!u) { toast('Nothing to undo'); return; }
   const sc = scene(u.scene);
-  if (!sc || (S.studio && u.scene === S.program)) { toast('Diese Szene ist live und bleibt unverändert'); return; }
+  if (!sc || (S.studio && u.scene === S.program)) { toast('This scene is live and stays unchanged'); return; }
   sc.items = u.items;
   if (S.studio && S.preview !== u.scene) S.preview = u.scene;
   if (S.sel && !sc.items.some((i) => i.id === S.sel)) S.sel = null;
   renderAll();
-  toast('Rückgängig gemacht');
+  toast('Undone');
 }
 $('#undoBtn').addEventListener('click', undo);
 ovl.addEventListener('pointerdown', (e) => {
@@ -1400,7 +1400,7 @@ function scheduleInspector() {
   requestAnimationFrame(() => { inspQueued = false; syncInspectorNumbers(); });
 }
 
-/* ---------- Auswahl und Quellenliste ---------- */
+/* ---------- Selection and source list ---------- */
 function select(id) {
   S.sel = id;
   renderOverlay();
@@ -1425,27 +1425,27 @@ function renderSources() {
   $('#srcCount').textContent = sc.items.length;
   const rows = [...sc.items].reverse();
   if (!rows.length) {
-    $('#srcList').innerHTML = '<div class="empty"><strong>Diese Szene ist leer.</strong>Füge eine Quelle hinzu oder wende eine Vorlage an.</div>';
+    $('#srcList').innerHTML = '<div class="empty"><strong>This scene is empty.</strong>Add a source or apply a template.</div>';
     return;
   }
   $('#srcList').innerHTML = rows.map((it) => {
     const src = SOURCES[it.src];
     const st = srcState(src);
     return `<div class="src${it.id === S.sel ? ' is-sel' : ''}${it.hidden ? ' is-hidden' : ''}" role="listitem" data-item="${it.id}">
-      <button class="ibtn" type="button" data-vis="${it.id}" aria-pressed="${!it.hidden}" aria-label="${it.hidden ? 'Einblenden' : 'Ausblenden'}: ${esc(src ? src.name : it.src)}">${icon(it.hidden ? 'eye-off' : 'eye')}</button>
+      <button class="ibtn" type="button" data-vis="${it.id}" aria-pressed="${!it.hidden}" aria-label="${it.hidden ? 'Show' : 'Hide'}: ${esc(src ? src.name : it.src)}">${icon(it.hidden ? 'eye-off' : 'eye')}</button>
       <span class="ico-k">${icon(KIND_ICON[src ? src.kind : 'image'])}</span>
       <span class="code">${esc(it.src)}</span>
       <span class="src-main"><span class="src-name">${esc(src ? src.name : it.src)}</span>${st}</span>
       ${src && !src.media ? `<span class="lamp ${lampClass(src)}" aria-hidden="true"></span>` : '<span></span>'}
-      <button class="ibtn" type="button" data-lock="${it.id}" aria-pressed="${it.locked}" aria-label="${it.locked ? 'Entsperren' : 'Sperren'}: ${esc(src ? src.name : it.src)}">${icon(it.locked ? 'lock' : 'unlock')}</button>
+      <button class="ibtn" type="button" data-lock="${it.id}" aria-pressed="${it.locked}" aria-label="${it.locked ? 'Unlock' : 'Lock'}: ${esc(src ? src.name : it.src)}">${icon(it.locked ? 'lock' : 'unlock')}</button>
     </div>`;
-  }).join('') + (S.sel || editLocked() ? '' : `<p class="hint src-hint">Ein Element im ${S.studio ? 'Preview' : 'Program'}-Monitor anklicken, dann ziehen oder an den Ecken skalieren.${S.studio ? '' : ' Ohne Studio-Modus wirkt jede Änderung sofort live.'}</p>`);
+  }).join('') + (S.sel || editLocked() ? '' : `<p class="hint src-hint">Click an item in the ${S.studio ? 'Preview' : 'Program'} monitor, then drag it or scale it at the corners.${S.studio ? '' : ' Without Studio Mode every change goes live immediately.'}</p>`);
 }
 $('#srcList').addEventListener('click', (e) => {
   const vis = e.target.closest('[data-vis]');
   const lock = e.target.closest('[data-lock]');
   if (vis) {
-    if (editLocked()) { toast('Diese Szene ist live. Erst eine andere Szene ins Program schalten.'); return; }
+    if (editLocked()) { toast('This scene is live. Switch another scene to Program first.'); return; }
     const it = findItem(vis.dataset.vis); pushUndo(); it.hidden = !it.hidden; if (it.hidden && S.sel === it.id) S.sel = null; renderAll(); return;
   }
   if (lock) { const it = findItem(lock.dataset.lock); it.locked = !it.locked; renderOverlay(); renderSources(); renderInspector(); return; }
@@ -1453,7 +1453,7 @@ $('#srcList').addEventListener('click', (e) => {
   if (row) { const it = findItem(row.dataset.item); if (it && !it.hidden) select(it.id); }
 });
 
-/* ---------- Eigenschaften ---------- */
+/* ---------- Properties ---------- */
 function presetThumb(p) {
   const slots = p.slots || autoSlots(3);
   const strong = ['full', 'pip', 'col', 'onetwo'].includes(p.id);
@@ -1466,41 +1466,41 @@ function renderInspector() {
   const host = $('#insp');
   if (it) {
     const src = SOURCES[it.src];
-    $('#inspTitle').textContent = 'Element';
+    $('#inspTitle').textContent = 'Item';
     $('#inspSub').textContent = it.src + ' · ' + (src ? src.name : '');
     host.innerHTML = `
       <div class="frow"><span class="flabel">Position</span><div class="pair">
         <div class="num"><label for="f-x">X</label><input id="f-x" type="number" data-f="x" value="${Math.round(it.x)}"></div>
         <div class="num"><label for="f-y">Y</label><input id="f-y" type="number" data-f="y" value="${Math.round(it.y)}"></div></div></div>
-      <div class="frow"><span class="flabel">Grösse</span><div class="pair">
-        <div class="num"><label for="f-w">B</label><input id="f-w" type="number" data-f="w" value="${Math.round(it.w)}"></div>
+      <div class="frow"><span class="flabel">Size</span><div class="pair">
+        <div class="num"><label for="f-w">W</label><input id="f-w" type="number" data-f="w" value="${Math.round(it.w)}"></div>
         <div class="num"><label for="f-h">H</label><input id="f-h" type="number" data-f="h" value="${Math.round(it.h)}"></div></div></div>
-      <div class="frow"><span class="flabel">Einpassen</span><div class="seg" role="group" aria-label="Einpassen">
-        <button type="button" data-fit="cover" aria-pressed="${it.fit === 'cover'}">Füllen</button><button type="button" data-fit="contain" aria-pressed="${it.fit === 'contain'}">Ganz zeigen</button></div></div>
-      <div class="frow"><span class="flabel">Ecken</span><div class="pair" style="align-items:center">
-        <div class="num"><input id="f-r" aria-label="Eckenradius" type="number" min="0" max="80" data-f="radius" value="${it.radius}"><span class="unit">px</span></div>
-        <label class="check"><input type="checkbox" id="f-mirror" ${it.mirror ? 'checked' : ''}>Spiegeln</label></div></div>
-      <div class="frow"><label class="flabel" for="f-hold">Bei Ausfall</label><select class="select" id="f-hold">
-        <option value="3000" ${it.hold === 3000 ? 'selected' : ''}>Standbild 3 s, dann abgedunkelt</option>
-        <option value="10000" ${it.hold === 10000 ? 'selected' : ''}>Standbild 10 s, dann abgedunkelt</option>
-        <option value="999999999" ${it.hold > 100000 ? 'selected' : ''}>Standbild halten</option></select></div>
-      <div class="frow"><span class="flabel">Ebene</span><div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-sm" type="button" data-z="up">${icon('up', 14)}Nach vorne</button><button class="btn btn-sm" type="button" data-z="down">${icon('down', 14)}Nach hinten</button></div></div>
-      <p class="hint" style="margin:0">Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um 1 px.</p>
-      <div class="danger-zone"><span class="hint">Lässt sich mit Ctrl+Z zurückholen.</span><button class="btn btn-danger btn-sm" type="button" data-remove="${it.id}">Aus Szene entfernen</button></div>`;
+      <div class="frow"><span class="flabel">Fit</span><div class="seg" role="group" aria-label="Fit">
+        <button type="button" data-fit="cover" aria-pressed="${it.fit === 'cover'}">Fill</button><button type="button" data-fit="contain" aria-pressed="${it.fit === 'contain'}">Show all</button></div></div>
+      <div class="frow"><span class="flabel">Corners</span><div class="pair" style="align-items:center">
+        <div class="num"><input id="f-r" aria-label="Corner radius" type="number" min="0" max="80" data-f="radius" value="${it.radius}"><span class="unit">px</span></div>
+        <label class="check"><input type="checkbox" id="f-mirror" ${it.mirror ? 'checked' : ''}>Mirror</label></div></div>
+      <div class="frow"><label class="flabel" for="f-hold">On failure</label><select class="select" id="f-hold">
+        <option value="3000" ${it.hold === 3000 ? 'selected' : ''}>Freeze frame 3 s, then dimmed</option>
+        <option value="10000" ${it.hold === 10000 ? 'selected' : ''}>Freeze frame 10 s, then dimmed</option>
+        <option value="999999999" ${it.hold > 100000 ? 'selected' : ''}>Hold freeze frame</option></select></div>
+      <div class="frow"><span class="flabel">Layer</span><div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-sm" type="button" data-z="up">${icon('up', 14)}Bring forward</button><button class="btn btn-sm" type="button" data-z="down">${icon('down', 14)}Send backward</button></div></div>
+      <p class="hint" style="margin:0">Shift releases the aspect ratio, Alt turns off snapping, arrow keys move by 1 px.</p>
+      <div class="danger-zone"><span class="hint">Can be restored with Ctrl+Z.</span><button class="btn btn-danger btn-sm" type="button" data-remove="${it.id}">Remove from scene</button></div>`;
     $$('input,select', host).forEach((el) => { if (live) el.disabled = true; });
     return;
   }
-  $('#inspTitle').textContent = 'Szene';
+  $('#inspTitle').textContent = 'Scene';
   $('#inspSub').textContent = sc.name;
   const isLiveScene = sc.id === S.program;
   host.innerHTML = `
     <div class="frow"><label class="flabel" for="f-name">Name</label><input class="textin" id="f-name" value="${esc(sc.name)}" ${live ? 'disabled' : ''}></div>
-    <div class="sub-h">Vorlage anwenden</div>
+    <div class="sub-h">Apply template</div>
     <div class="presets">${PRESETS.map((p) => `<button class="preset" type="button" data-preset="${p.id}" ${live ? 'disabled' : ''}>${presetThumb(p)}<span class="preset-n">${esc(p.name)}</span></button>`).join('')}</div>
     <div class="danger-zone">${S.sceneConfirm
-      ? `<div class="confirm" style="margin:0;flex:1 1 100%"><span>«${esc(sc.name)}» wird gelöscht. Das lässt sich nicht rückgängig machen.</span><div class="confirm-row"><button class="btn btn-danger-fill btn-sm" type="button" data-scene-del="yes">Szene löschen</button><button class="btn btn-sm" type="button" data-scene-del="no">Abbrechen</button></div></div>`
-      : `<span class="hint">${isLiveScene ? (S.studio ? 'Die Live-Szene lässt sich nicht löschen.' : 'Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.') : 'Löschen entfernt die Szene mit allen Elementen.'}</span><button class="btn btn-danger btn-sm" type="button" data-scene-del="ask" ${isLiveScene ? 'disabled' : ''}>Szene löschen</button>`}</div>`;
+      ? `<div class="confirm" style="margin:0;flex:1 1 100%"><span>“${esc(sc.name)}” will be deleted. This cannot be undone.</span><div class="confirm-row"><button class="btn btn-danger-fill btn-sm" type="button" data-scene-del="yes">Delete scene</button><button class="btn btn-sm" type="button" data-scene-del="no">Cancel</button></div></div>`
+      : `<span class="hint">${isLiveScene ? (S.studio ? 'The live scene cannot be deleted.' : 'The live scene cannot be deleted. Edit other scenes in Studio Mode.') : 'Deleting removes the scene with all its items.'}</span><button class="btn btn-danger btn-sm" type="button" data-scene-del="ask" ${isLiveScene ? 'disabled' : ''}>Delete scene</button>`}</div>`;
 }
 function syncInspectorNumbers() {
   const it = S.sel && findItem(S.sel);
@@ -1514,7 +1514,7 @@ $('#insp').addEventListener('input', (e) => {
     const v = parseFloat(e.target.value);
     if (Number.isFinite(v)) { it[f] = f === 'radius' ? clamp(v, 0, 80) : v; positionBoxes(); }
   }
-  if (e.target.id === 'f-name') { const sc = editScene(); sc.name = e.target.value || 'Ohne Namen'; renderScenes(); renderMonitorHeads(); $('#inspSub').textContent = sc.name; }
+  if (e.target.id === 'f-name') { const sc = editScene(); sc.name = e.target.value || 'Untitled'; renderScenes(); renderMonitorHeads(); $('#inspSub').textContent = sc.name; }
 });
 $('#insp').addEventListener('focusin', (e) => { if (e.target.dataset.f) pushUndo(); });
 $('#insp').addEventListener('change', (e) => {
@@ -1531,7 +1531,7 @@ $('#insp').addEventListener('click', (e) => {
   const rm = e.target.closest('[data-remove]');
   const pre = e.target.closest('[data-preset]');
   const del = e.target.closest('[data-scene-del]');
-  if (editLocked() && (fit || z || rm || pre)) { toast('Diese Szene ist live. Erst eine andere Szene ins Program schalten.'); return; }
+  if (editLocked() && (fit || z || rm || pre)) { toast('This scene is live. Switch another scene to Program first.'); return; }
   if (fit && it) { pushUndo(); it.fit = fit.dataset.fit; renderInspector(); return; }
   if (z && it) {
     pushUndo();
@@ -1544,7 +1544,7 @@ $('#insp').addEventListener('click', (e) => {
     const sc = editScene();
     sc.items = sc.items.filter((x) => x.id !== it.id);
     S.sel = null; renderAll();
-    toast(`${it.src} aus «${sc.name}» entfernt`, 'Rückgängig', undo);
+    toast(`${it.src} removed from “${sc.name}”`, 'Undo', undo);
     return;
   }
   if (pre) { applyPreset(pre.dataset.preset); return; }
@@ -1559,9 +1559,9 @@ $('#insp').addEventListener('click', (e) => {
     S.preview = (SCENES[idx] || SCENES[idx - 1] || SCENES[0]).id;
     if (S.preview === S.program && SCENES.length > 1) S.preview = SCENES.find((s) => s.id !== S.program).id;
     S.undo = S.undo.filter((u) => u.scene !== gone.id);
-    addLog(`Szene «${gone.name}» gelöscht`);
+    addLog(`Scene “${gone.name}” deleted`);
     renderAll();
-    toast(`Szene «${gone.name}» gelöscht`);
+    toast(`Scene “${gone.name}” deleted`);
   }
 });
 function applyPreset(id) {
@@ -1569,7 +1569,7 @@ function applyPreset(id) {
   const p = PRESETS.find((x) => x.id === id);
   const sc = editScene();
   const vis = sc.items.filter((i) => !i.hidden);
-  if (!vis.length) { toast('Erst eine Quelle hinzufügen'); return; }
+  if (!vis.length) { toast('Add a source first'); return; }
   pushUndo();
   const rank = (it) => { const k = SOURCES[it.src] ? SOURCES[it.src].kind : 'image'; return k === 'screen' ? 0 : k === 'video' || k === 'image' ? 1 : 2; };
   const order = [...vis].sort((a, b) => rank(a) - rank(b));
@@ -1587,7 +1587,7 @@ function applyPreset(id) {
   if (!reduced) animateOverlayFor(260);
   renderOverlay();
   renderSources();
-  toast(`Vorlage «${p.name}» angewendet`, 'Rückgängig', undo);
+  toast(`Template “${p.name}” applied`, 'Undo', undo);
 }
 function animateOverlayFor(ms) {
   const end = tnow() + ms;
@@ -1595,19 +1595,19 @@ function animateOverlayFor(ms) {
   requestAnimationFrame(step);
 }
 
-/* ---------- Quelle hinzufügen ---------- */
+/* ---------- Adding a source ---------- */
 function renderAddSource() {
   const sc = editScene();
   const used = new Set(sc.items.map((i) => i.src));
   const list = Object.values(SOURCES).filter((s) => !used.has(s.code) && s.status !== 'blocked');
-  $('#addSrcPop').innerHTML = `<div class="pop-h">Zu «${esc(sc.name)}» hinzufügen</div>` + (list.length
+  $('#addSrcPop').innerHTML = `<div class="pop-h">Add to “${esc(sc.name)}”</div>` + (list.length
     ? list.map((s) => `<button class="menu-item" role="menuitem" type="button" data-add="${s.code}">${icon(KIND_ICON[s.kind])}<span class="code">${s.code}</span>${esc(s.name)}</button>`).join('')
-    : '<div class="pop-note">Alle Quellen sind schon in dieser Szene.</div>');
+    : '<div class="pop-note">All sources are already in this scene.</div>');
 }
 $('#addSrcPop').addEventListener('click', (e) => {
   const b = e.target.closest('[data-add]');
   if (!b) return;
-  if (editLocked()) { toast('Diese Szene ist live. Erst eine andere Szene ins Program schalten.'); closePops(); return; }
+  if (editLocked()) { toast('This scene is live. Switch another scene to Program first.'); closePops(); return; }
   pushUndo();
   const src = SOURCES[b.dataset.add];
   const it = item(src.code, 1240, 680, 600, 338, { radius: 12, fit: src.kind === 'screen' ? 'contain' : 'cover' });
@@ -1615,10 +1615,10 @@ $('#addSrcPop').addEventListener('click', (e) => {
   closePops();
   S.sel = it.id;
   renderAll();
-  toast(`${src.code} in «${editScene().name}» eingefügt`);
+  toast(`${src.code} added to “${editScene().name}”`);
 });
 
-/* ---------- Übergang, Take und direktes Schalten ---------- */
+/* ---------- Transition, Take and direct switching ---------- */
 const DURS = [200, 300, 500, 800, 1000, 1500, 2000];
 function renderTransition() {
   $$('[data-tr]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tr === S.transition)));
@@ -1646,11 +1646,11 @@ function finishTransition() {
   if (tr.swap) S.preview = tr.from;
   S.sel = null;
   S.sceneConfirm = false;
-  addLog(`Szene «${pgmScene().name}» ist live`);
+  addLog(`Scene “${pgmScene().name}” is live`);
   renderAll();
   const scr = $('#pgmScreen');
   scr.classList.remove('is-flash'); void scr.offsetWidth; scr.classList.add('is-flash');
-  toast(`«${pgmScene().name}» ist live`);
+  toast(`“${pgmScene().name}” is live`);
 }
 function take() {
   if (!S.studio || S.trans || S.preview === S.program) return;
@@ -1669,7 +1669,7 @@ function setStudio(on) {
   renderMode();
   renderAll();
   requestAnimationFrame(() => { fitCanvas(pvwCanvas); fitCanvas(pgmCanvas); positionBoxes(); });
-  toast(on ? 'Studio-Modus an: Preview und Take' : 'Studio-Modus aus: Szenen schalten direkt live');
+  toast(on ? 'Studio Mode on: Preview and Take' : 'Studio Mode off: scenes go live directly');
 }
 $('#studioSw').addEventListener('change', (e) => setStudio(e.target.checked));
 function chooseScene(id) {
@@ -1681,7 +1681,7 @@ function chooseScene(id) {
   }
 }
 
-/* ---------- Störungen und Meldungszeile ---------- */
+/* ---------- Incidents and message strip ---------- */
 function startIncident(code, kind) {
   const src = SOURCES[code];
   src.status = kind;
@@ -1699,13 +1699,13 @@ function resolveIncident(code) {
   src.status = 'ok';
   src.since = null;
   const inc = S.incidents.find((i) => i.code === code && !i.end);
-  if (inc) { inc.end = Date.now(); addLog(`${code} wieder da, war ${Math.max(1, Math.round((inc.end - inc.start) / 1000))} s weg`); }
+  if (inc) { inc.end = Date.now(); addLog(`${code} recovered, gone for ${Math.max(1, Math.round((inc.end - inc.start) / 1000))} s`); }
   if (FEEDS[code]) FEEDS[code].dirty = true;
   renderAll();
 }
 function ackIncident(code) {
   S.incidents = S.incidents.filter((i) => !(i.code === code && i.end));
-  addLog(`${code} bestätigt`);
+  addLog(`${code} acknowledged`);
   renderAll();
 }
 function activeIncidents() { return S.incidents.filter((i) => !i.end); }
@@ -1717,17 +1717,17 @@ function renderStatus() {
   const el = $('#statusline');
   const incs = sortedIncidents();
   if (!incs.length) {
-    el.innerHTML = `<span class="sl-ok">${icon('check')}Keine offenen Meldungen</span><span class="sl-label">Letzte Ereignisse</span><span class="sl-log">${S.log.slice(0, 4).map((l) => `<span class="sl-entry"><span class="mono">${fmtHM(l.t)}</span>${esc(l.text)}</span>`).join('')}</span>`;
+    el.innerHTML = `<span class="sl-ok">${icon('check')}No open messages</span><span class="sl-label">Recent events</span><span class="sl-log">${S.log.slice(0, 4).map((l) => `<span class="sl-entry"><span class="mono">${fmtHM(l.t)}</span>${esc(l.text)}</span>`).join('')}</span>`;
     return;
   }
   el.innerHTML = incs.map((inc) => {
     const src = SOURCES[inc.code];
-    const where = inScene(pgmScene(), inc.code) ? 'im Program' : inPreview(inc.code) ? 'in der Preview' : 'nicht live';
+    const where = inScene(pgmScene(), inc.code) ? 'in Program' : inPreview(inc.code) ? 'in Preview' : 'not live';
     if (inc.end) {
-      return `<div class="sl-inc is-ok"><button class="sl-target" type="button" data-show="${inc.code}" aria-label="${inc.code} bei den Stationen zeigen">${icon('check')}<span class="code">${inc.code}</span>${esc(src.name)}</button><strong class="state-ok">wieder da</strong><span class="sl-where">war ${Math.max(1, Math.round((inc.end - inc.start) / 1000))} s weg</span><button class="btn btn-sm" type="button" data-ack="${inc.code}">Gesehen</button></div>`;
+      return `<div class="sl-inc is-ok"><button class="sl-target" type="button" data-show="${inc.code}" aria-label="Show ${inc.code} in Stations">${icon('check')}<span class="code">${inc.code}</span>${esc(src.name)}</button><strong class="state-ok">recovered</strong><span class="sl-where">gone for ${Math.max(1, Math.round((inc.end - inc.start) / 1000))} s</span><button class="btn btn-sm" type="button" data-ack="${inc.code}">Seen</button></div>`;
     }
     const bad = sev(inc) > 1;
-    return `<div class="sl-inc ${bad ? 'is-bad' : 'is-warn'}"><button class="sl-target" type="button" data-show="${inc.code}" aria-label="${inc.code} bei den Stationen zeigen">${icon('alert')}<span class="code">${inc.code}</span>${esc(src.name)}</button><strong class="${bad ? 'state-bad' : 'state-warn'}">${stateWord(src)}</strong><span class="sl-where">${where}</span><span class="sl-time" data-inc="${inc.code}">${fmtDur(Date.now() - inc.start)}</span>${inc.kind === 'ended' ? `<button class="btn btn-sm" type="button" data-ask="${inc.code}">${icon('send', 13)}Neu teilen lassen</button>` : ''}</div>`;
+    return `<div class="sl-inc ${bad ? 'is-bad' : 'is-warn'}"><button class="sl-target" type="button" data-show="${inc.code}" aria-label="Show ${inc.code} in Stations">${icon('alert')}<span class="code">${inc.code}</span>${esc(src.name)}</button><strong class="${bad ? 'state-bad' : 'state-warn'}">${stateWord(src)}</strong><span class="sl-where">${where}</span><span class="sl-time" data-inc="${inc.code}">${fmtDur(Date.now() - inc.start)}</span>${inc.kind === 'ended' ? `<button class="btn btn-sm" type="button" data-ask="${inc.code}">${icon('send', 13)}Ask to share again</button>` : ''}</div>`;
   }).join('');
 }
 function renderHealth() {
@@ -1737,10 +1737,10 @@ function renderHealth() {
   if (act.length) {
     const bad = act.some((i) => sev(i) > 1);
     lamp.className = 'lamp ' + (bad ? 'is-bad' : 'is-warn');
-    $('#healthText').textContent = act.length === 1 ? '1 Störung' : act.length + ' Störungen';
+    $('#healthText').textContent = act.length === 1 ? '1 incident' : act.length + ' incidents';
   } else {
     lamp.className = 'lamp';
-    $('#healthText').textContent = `Alle ${devs.length} Stationen ok`;
+    $('#healthText').textContent = `All ${devs.length} stations ok`;
   }
 }
 function showStation(code) {
@@ -1761,16 +1761,16 @@ $('#statusline').addEventListener('click', (e) => {
 $('#healthBtn').addEventListener('click', () => {
   const inc = sortedIncidents()[0];
   if (inc) showStation(inc.code);
-  else toast('Alle Stationen senden');
+  else toast('All stations are sending');
 });
 function askReshare(code) {
   const src = SOURCES[code];
-  toast(`Bitte an ${src.name} geschickt: «Bildschirm erneut teilen»`);
-  addLog(`${code} gebeten, neu zu teilen`);
+  toast(`Request sent to ${src.name}: “Share screen again”`);
+  addLog(`${code} asked to share again`);
   setTimeout(() => { if (src.status === 'ended') resolveIncident(code); }, 3500);
 }
 
-/* ---------- Stationen ---------- */
+/* ---------- Stations ---------- */
 function stationOrder(a, b) {
   const r = (s) => {
     const inc = S.incidents.find((i) => i.code === s.code);
@@ -1785,12 +1785,12 @@ function stationOrder(a, b) {
 }
 function stationLine(s) {
   const inc = S.incidents.find((i) => i.code === s.code);
-  if (s.status === 'reconnecting') return `<span class="state-warn">verbindet neu</span><span class="mono" data-since="${s.code}">${fmtDur(downFor(s))}</span><span>Standbild</span>`;
-  if (s.status === 'ended') return `<span class="state-bad">Teilen beendet</span><span class="mono" data-since="${s.code}">${fmtDur(downFor(s))}</span>`;
-  if (s.status === 'blocked') return '<span class="state-bad">gesperrt</span><span>kann sich nicht verbinden</span>';
-  if (s.status === 'connecting') return '<span>verbindet …</span>';
-  if (inc && inc.end) return `<span class="state-ok">wieder da</span><span>war <span class="mono">${Math.max(1, Math.round((inc.end - inc.start) / 1000))}</span> s weg</span>`;
-  const lowBat = s.battery && s.battery < 20 ? `<span class="state-warn">Akku ${s.battery} %</span>` : '';
+  if (s.status === 'reconnecting') return `<span class="state-warn">reconnecting</span><span class="mono" data-since="${s.code}">${fmtDur(downFor(s))}</span><span>freeze frame</span>`;
+  if (s.status === 'ended') return `<span class="state-bad">sharing stopped</span><span class="mono" data-since="${s.code}">${fmtDur(downFor(s))}</span>`;
+  if (s.status === 'blocked') return '<span class="state-bad">blocked</span><span>cannot connect</span>';
+  if (s.status === 'connecting') return '<span>connecting…</span>';
+  if (inc && inc.end) return `<span class="state-ok">recovered</span><span>gone for <span class="mono">${Math.max(1, Math.round((inc.end - inc.start) / 1000))}</span> s</span>`;
+  const lowBat = s.battery && s.battery < 20 ? `<span class="state-warn">Battery ${s.battery}%</span>` : '';
   return `<span class="met" data-met="rate-${s.code}"><b>${fmtRate(s.rate)}</b>Mbit/s</span><span class="met" data-met="rtt-${s.code}"><b>${s.rtt}</b>ms</span>${lowBat}`;
 }
 function renderStations() {
@@ -1803,22 +1803,22 @@ function renderStations() {
     const stateCls = s.status === 'reconnecting' ? ' is-warn' : (s.status === 'ended' || s.status === 'blocked') ? ' is-bad' : '';
     const blockConfirm = S.blockConfirm === s.code;
     return `<div class="st${stateCls}${open ? ' is-open' : ''}" data-code="${s.code}">
-      <button class="st-row" type="button" data-toggle="${s.code}" aria-expanded="${open}" aria-label="${s.code} ${esc(s.name)}${pgm ? ', im Program' : pvw ? ', in der Preview' : ''}${s.status !== 'ok' ? ', ' + stateWord(s) : ''}">
+      <button class="st-row" type="button" data-toggle="${s.code}" aria-expanded="${open}" aria-label="${s.code} ${esc(s.name)}${pgm ? ', in Program' : pvw ? ', in Preview' : ''}${s.status !== 'ok' ? ', ' + stateWord(s) : ''}">
         <span class="lamp ${lampClass(s)}" aria-hidden="true"></span>
         <span class="code">${s.code}</span>
         <span class="st-main"><span class="st-l1"><span class="st-name">${esc(s.name)}</span>${pgm ? '<span class="tag tag-pgm">PGM</span>' : pvw ? '<span class="tag tag-pvw">PVW</span>' : ''}</span><span class="st-l2" data-line="${s.code}">${stationLine(s)}</span></span>
         <canvas class="st-thumb" data-station="${s.code}" aria-hidden="true"></canvas>
         <svg class="ico st-chev" aria-hidden="true"><use href="#i-chev"/></svg>
       </button>
-      ${inc && inc.end ? `<div class="st-ack">${icon('check', 14)}<span style="flex:1">Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.</span><button class="btn btn-sm" type="button" data-ack="${s.code}">Gesehen</button></div>` : ''}
+      ${inc && inc.end ? `<div class="st-ack">${icon('check', 14)}<span style="flex:1">The station is back. Acknowledge to clear the message.</span><button class="btn btn-sm" type="button" data-ack="${s.code}">Seen</button></div>` : ''}
       <div class="st-detail"><div><div class="st-detail-in">
-        <dl class="kv"><dt>Gerät</dt><dd>${esc(s.device || '–')}</dd><dt>Auflösung</dt><dd class="mono">${esc(s.res || '–')}</dd><dt>Gekoppelt</dt><dd>heute <span class="mono">${esc(s.paired || '–')}</span></dd><dt>Verlust</dt><dd class="mono">${s.status === 'ok' ? fmtRate(s.loss) + ' %' : '–'}</dd>${s.battery ? `<dt>Akku</dt><dd class="mono">${s.battery} %</dd>` : ''}</dl>
+        <dl class="kv"><dt>Device</dt><dd>${esc(s.device || '–')}</dd><dt>Resolution</dt><dd class="mono">${esc(s.res || '–')}</dd><dt>Paired</dt><dd>today <span class="mono">${esc(s.paired || '–')}</span></dd><dt>Loss</dt><dd class="mono">${s.status === 'ok' ? fmtRate(s.loss) + '%' : '–'}</dd>${s.battery ? `<dt>Battery</dt><dd class="mono">${s.battery}%</dd>` : ''}</dl>
         <div class="st-actions">
-          ${s.status === 'ended' ? `<button class="btn btn-sm btn-primary" type="button" data-ask="${s.code}">${icon('send', 14)}Neu teilen lassen</button>` : ''}
-          ${s.kind === 'camera' && s.status === 'ok' ? `<button class="btn btn-sm" type="button" data-cam="${s.code}">Kamera wechseln</button>` : ''}
-          ${s.status === 'blocked' ? `<button class="btn btn-sm" type="button" data-unblock="${s.code}">Entsperren</button>` : `<button class="btn btn-sm btn-danger" type="button" data-block="${s.code}">Gerät sperren</button>`}
+          ${s.status === 'ended' ? `<button class="btn btn-sm btn-primary" type="button" data-ask="${s.code}">${icon('send', 14)}Ask to share again</button>` : ''}
+          ${s.kind === 'camera' && s.status === 'ok' ? `<button class="btn btn-sm" type="button" data-cam="${s.code}">Switch camera</button>` : ''}
+          ${s.status === 'blocked' ? `<button class="btn btn-sm" type="button" data-unblock="${s.code}">Unblock</button>` : `<button class="btn btn-sm btn-danger" type="button" data-block="${s.code}">Block device</button>`}
         </div>
-        ${blockConfirm ? `<div class="confirm" style="margin:0"><span>${s.code} wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-block-yes="${s.code}">Jetzt sperren</button><button class="btn btn-sm" type="button" data-block-no="${s.code}">Abbrechen</button></div></div>` : ''}
+        ${blockConfirm ? `<div class="confirm" style="margin:0"><span>${s.code} is disconnected immediately and cannot connect again until you unblock it.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-block-yes="${s.code}">Block now</button><button class="btn btn-sm" type="button" data-block-no="${s.code}">Cancel</button></div></div>` : ''}
       </div></div></div>
     </div>`;
   }).join('');
@@ -1831,11 +1831,11 @@ function renderKnock() {
   $('#knockSlot').innerHTML = p && !S.pairOpen ? knockCard(p) : '';
 }
 function knockCard(p) {
-  return `<div class="knock" role="group" aria-label="Kopplungsanfrage">
-    <span class="knock-t">${esc(p.name)} möchte beitreten</span>
-    <span class="knock-code" aria-label="Prüfcode ${p.code.replace(' ', '').split('').join(' ')}">${p.code}</span>
-    <span class="knock-q">Steht derselbe Prüfcode auf dem Laptop? Dann zulassen.</span>
-    <div class="knock-row"><button class="btn btn-go btn-sm" type="button" data-knock="yes">${icon('check', 14)}Zulassen</button><button class="btn btn-sm" type="button" data-knock="no">Ablehnen</button></div>
+  return `<div class="knock" role="group" aria-label="Pairing request">
+    <span class="knock-t">${esc(p.name)} wants to join</span>
+    <span class="knock-code" aria-label="Verification code ${p.code.replace(' ', '').split('').join(' ')}">${p.code}</span>
+    <span class="knock-q">Does the laptop show the same verification code? Then allow.</span>
+    <div class="knock-row"><button class="btn btn-go btn-sm" type="button" data-knock="yes">${icon('check', 14)}Allow</button><button class="btn btn-sm" type="button" data-knock="no">Deny</button></div>
   </div>`;
 }
 $('#stBody').addEventListener('click', (e) => {
@@ -1849,21 +1849,21 @@ $('#stBody').addEventListener('click', (e) => {
   if (knock) { answerKnock(knock.dataset.knock === 'yes'); return; }
   if (ack) { ackIncident(ack.dataset.ack); return; }
   if (ask) { askReshare(ask.dataset.ask); return; }
-  if (cam) { toast(`${cam.dataset.cam}: Kamera wird gewechselt`); return; }
+  if (cam) { toast(`${cam.dataset.cam}: switching camera`); return; }
   if (block) { S.blockConfirm = block.dataset.block; renderStations(); return; }
   if (no) { S.blockConfirm = null; renderStations(); return; }
   if (yes) {
     const s = SOURCES[yes.dataset.blockYes];
     S.blockConfirm = null; s.status = 'blocked'; s.since = Date.now();
     S.incidents = S.incidents.filter((i) => i.code !== s.code);
-    addLog(`${s.code} gesperrt`);
-    renderAll(); toast(`${s.code} gesperrt und getrennt`); return;
+    addLog(`${s.code} blocked`);
+    renderAll(); toast(`${s.code} blocked and disconnected`); return;
   }
-  if (unb) { const s = SOURCES[unb.dataset.unblock]; s.status = 'ok'; s.since = null; if (FEEDS[s.code]) FEEDS[s.code].dirty = true; addLog(`${s.code} entsperrt`); renderAll(); toast(`${s.code} entsperrt`); return; }
+  if (unb) { const s = SOURCES[unb.dataset.unblock]; s.status = 'ok'; s.since = null; if (FEEDS[s.code]) FEEDS[s.code].dirty = true; addLog(`${s.code} unblocked`); renderAll(); toast(`${s.code} unblocked`); return; }
   if (tog) { S.open = S.open === tog.dataset.toggle ? null : tog.dataset.toggle; S.blockConfirm = null; renderStations(); }
 });
 
-/* ---------- Gerät koppeln (angedockt) ---------- */
+/* ---------- Pair device (docked) ---------- */
 function openPair(tab, focus = true) {
   if (tab) S.tab = tab;
   S.pairOpen = true;
@@ -1901,7 +1901,7 @@ function drawQR(c, seed) {
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (m[y][x]) ctx.fillRect(Math.floor((x + q) * cell), Math.floor((y + q) * cell), Math.ceil(cell), Math.ceil(cell));
 }
 function requestsHtml() {
-  return `<span class="sec-label">Wartende Anfragen</span>${S.pending ? knockCard(S.pending) : '<p class="hint">Noch keine Anfrage. Sobald jemand die Adresse öffnet und einen Namen eingibt, erscheint sie hier mit Prüfcode.</p>'}`;
+  return `<span class="sec-label">Waiting requests</span>${S.pending ? knockCard(S.pending) : '<p class="hint">No requests yet. As soon as someone opens the address and enters a name, it appears here with a verification code.</p>'}`;
 }
 function renderPair() {
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === S.tab)));
@@ -1909,21 +1909,21 @@ function renderPair() {
   const b = $('#pairBody'), side = $('#pairSide');
   if (S.tab === 'phone') {
     const left = Math.max(0, 30 * 60 * 1000 - (Date.now() - S.qrIssued));
-    b.innerHTML = `<h3>Handy als Kamera</h3><p>Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.</p>
-      <div class="qr-wrap"><canvas class="qr" id="qr" role="img" aria-label="QR-Code zum Koppeln (Beispiel)"></canvas><div style="display:grid;gap:10px"><span class="hint">Gilt einmal, noch <span class="mono" id="qrLeft">${fmtDur(left)}</span> min.</span><button class="btn btn-sm" type="button" data-newqr>${icon('refresh', 14)}Neuen Code erzeugen</button></div></div>`;
-    side.innerHTML = `<h3>Tipps für fest montierte Handys</h3><p>Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm selbst wach und startet nach einem Neuladen mit den letzten Einstellungen.</p>`;
+    b.innerHTML = `<h3>Phone as camera</h3><p>Scan with the camera app. The phone opens StudioFlow and then appears under Stations.</p>
+      <div class="qr-wrap"><canvas class="qr" id="qr" role="img" aria-label="QR code for pairing (example)"></canvas><div style="display:grid;gap:10px"><span class="hint">Valid once, <span class="mono" id="qrLeft">${fmtDur(left)}</span> min left.</span><button class="btn btn-sm" type="button" data-newqr>${icon('refresh', 14)}Generate new code</button></div></div>`;
+    side.innerHTML = `<h3>Tips for permanently mounted phones</h3><p>Connect it to a charging cable and mount it in landscape. StudioFlow keeps the screen awake by itself and restarts with the last settings after a reload.</p>`;
     drawQR($('#qr'), (S.qrIssued % 100000) + 7);
   } else if (S.tab === 'laptop') {
-    b.innerHTML = `<h3>Laptop ohne QR-Code</h3><p>Auf dem Laptop im Browser diese Adresse öffnen:</p>
-      <div class="big-url"><span id="joinUrl">studioflow.opten.ch/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Kopieren</button></div>
-      <p>Dort einen Namen eingeben. Die Anfrage erscheint rechts mit einem Prüfcode.</p>
-      <div class="mini" aria-hidden="true"><div class="mini-bar">So sieht es auf dem Laptop aus</div><div class="mini-b"><span class="mini-field">Laptop Mia</span><span class="mini-cap">Prüfcode für die Regie</span><span class="mini-code">${S.pending ? S.pending.code : '47 12'}</span></div></div>`;
+    b.innerHTML = `<h3>Laptop without a QR code</h3><p>Open this address in the browser on the laptop:</p>
+      <div class="big-url"><span id="joinUrl">studioflow.opten.ch/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Copy</button></div>
+      <p>Enter a name there. The request appears on the right with a verification code.</p>
+      <div class="mini" aria-hidden="true"><div class="mini-bar">What it looks like on the laptop</div><div class="mini-b"><span class="mini-field">Laptop Mia</span><span class="mini-cap">Verification code for the control room</span><span class="mini-code">${S.pending ? S.pending.code : '47 12'}</span></div></div>`;
     side.innerHTML = requestsHtml();
   } else {
-    b.innerHTML = `<h3>Einladungslink</h3><p>Für Laptops, die schon vor dem Webinar gekoppelt werden sollen. Den Link per Teams oder Mail schicken.</p>
+    b.innerHTML = `<h3>Invite link</h3><p>For laptops that should be paired before the webinar. Send the link by Teams or email.</p>
       ${S.linkMade
-        ? `<div class="big-url"><span id="inviteUrl">studioflow.opten.ch/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Kopieren</button></div><p class="hint">Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Link widerrufen</button></div>`
-        : `<div><button class="btn btn-fill" type="button" data-mklink>${icon('link', 15)}Link erstellen</button></div>`}`;
+        ? `<div class="big-url"><span id="inviteUrl">studioflow.opten.ch/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Copy</button></div><p class="hint">Valid once and expires in 30 minutes. Whoever opens it is paired right away.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Revoke link</button></div>`
+        : `<div><button class="btn btn-fill" type="button" data-mklink>${icon('link', 15)}Create link</button></div>`}`;
     side.innerHTML = requestsHtml();
   }
 }
@@ -1938,9 +1938,9 @@ $('.tabs').addEventListener('keydown', (e) => {
 });
 $('#pairDock').addEventListener('click', (e) => {
   const t = e.target;
-  if (t.closest('[data-newqr]')) { S.qrIssued = Date.now(); renderPair(); toast('Neuer QR-Code, der alte gilt nicht mehr'); }
-  if (t.closest('[data-mklink]')) { S.linkMade = true; addLog('Einladungslink erstellt'); renderPair(); }
-  if (t.closest('[data-unlink]')) { S.linkMade = false; renderPair(); toast('Einladungslink widerrufen'); }
+  if (t.closest('[data-newqr]')) { S.qrIssued = Date.now(); renderPair(); toast('New QR code, the old one is no longer valid'); }
+  if (t.closest('[data-mklink]')) { S.linkMade = true; addLog('Invite link created'); renderPair(); }
+  if (t.closest('[data-unlink]')) { S.linkMade = false; renderPair(); toast('Invite link revoked'); }
   const cp = t.closest('[data-copy]');
   if (cp) copyText($('#' + cp.dataset.copy));
   const k = t.closest('[data-knock]');
@@ -1948,40 +1948,40 @@ $('#pairDock').addEventListener('click', (e) => {
 });
 function copyText(el) {
   const text = el.textContent;
-  const fallback = () => { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); toast('Markiert. Mit Ctrl+C kopieren.'); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selected. Copy with Ctrl+C.'); };
   try {
     if (!navigator.clipboard) { fallback(); return; }
-    navigator.clipboard.writeText('https://' + text).then(() => toast('Kopiert: ' + text), fallback);
+    navigator.clipboard.writeText('https://' + text).then(() => toast('Copied: ' + text), fallback);
   } catch (err) { fallback(); }
 }
 function knockNow() {
   S.pending = { name: 'Laptop Mia', code: '47 12' };
   renderKnock();
   if (S.pairOpen) renderPair();
-  toast('Laptop Mia möchte beitreten');
+  toast('Laptop Mia wants to join');
 }
 function answerKnock(ok) {
   const p = S.pending;
   if (!p) return;
   S.pending = null;
-  if (!ok) { renderKnock(); if (S.pairOpen) renderPair(); addLog(`Anfrage von ${p.name} abgelehnt`); renderStatus(); toast(`Anfrage von ${p.name} abgelehnt`); return; }
+  if (!ok) { renderKnock(); if (S.pairOpen) renderPair(); addLog(`Request from ${p.name} denied`); renderStatus(); toast(`Request from ${p.name} denied`); return; }
   SOURCES.S3 = { code: 'S3', kind: 'screen', name: 'Laptop Mia · Screen 1', device: 'Windows · Chrome', res: '1080p', rate: 2.0, rtt: 13, loss: 0, status: 'connecting', paired: fmtHM(new Date()) };
   addFeedS3();
-  addLog('S3 Laptop Mia gekoppelt');
+  addLog('S3 Laptop Mia paired');
   renderAll();
   if (S.pairOpen) renderPair();
-  toast(`${p.name} ist gekoppelt und kommt als S3`);
+  toast(`${p.name} is paired and arrives as S3`);
   setTimeout(() => { SOURCES.S3.status = 'ok'; FEEDS.S3.dirty = true; renderAll(); }, 1600);
 }
 
-/* ---------- Output-Popover ---------- */
+/* ---------- Output popover ---------- */
 function renderOutPop() {
-  $('#outPop').innerHTML = `<div class="pop-h">Output an Proxy</div>
-    <dl class="kv"><dt>Zustand</dt><dd class="state-ok">verbunden, 1 Abnehmer</dd><dt>Abnehmer</dt><dd class="mono">10.0.0.42</dd><dt>Format</dt><dd class="mono">1920 × 1080 · 30 fps</dd><dt>Latenz</dt><dd><span class="mono">${$('#outLat').textContent}</span> gemessen</dd></dl>
-    <div class="linkbox"><span id="outUrl">studioflow.opten.ch/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Kopieren</button></div>
+  $('#outPop').innerHTML = `<div class="pop-h">Output to proxy</div>
+    <dl class="kv"><dt>State</dt><dd class="state-ok">connected, 1 consumer</dd><dt>Consumer</dt><dd class="mono">10.0.0.42</dd><dt>Format</dt><dd class="mono">1920 × 1080 · 30 fps</dd><dt>Latency</dt><dd><span class="mono">${$('#outLat').textContent}</span> measured</dd></dl>
+    <div class="linkbox"><span id="outUrl">studioflow.opten.ch/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Copy</button></div>
     ${S.outConfirm
-      ? `<div class="confirm"><span>Der alte Link hört sofort auf. Der Proxy braucht danach den neuen.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-out="yes">Neu erzeugen</button><button class="btn btn-sm" type="button" data-out="no">Abbrechen</button></div></div>`
-      : `<div style="padding:10px 8px 4px;border-top:1px solid var(--seam-strong);margin-top:6px;display:flex;align-items:center;gap:10px"><span class="hint" style="flex:1">Bei Verdacht auf Weitergabe</span><button class="btn btn-sm btn-danger" type="button" data-out="ask">Link neu erzeugen</button></div>`}`;
+      ? `<div class="confirm"><span>The old link stops working immediately. The proxy then needs the new one.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-out="yes">Regenerate</button><button class="btn btn-sm" type="button" data-out="no">Cancel</button></div></div>`
+      : `<div style="padding:10px 8px 4px;border-top:1px solid var(--seam-strong);margin-top:6px;display:flex;align-items:center;gap:10px"><span class="hint" style="flex:1">If you suspect it was shared</span><button class="btn btn-sm btn-danger" type="button" data-out="ask">Regenerate link</button></div>`}`;
 }
 $('#outPop').addEventListener('click', (e) => {
   const o = e.target.closest('[data-out]');
@@ -1989,11 +1989,11 @@ $('#outPop').addEventListener('click', (e) => {
   if (!o) return;
   if (o.dataset.out === 'ask') S.outConfirm = true;
   if (o.dataset.out === 'no') S.outConfirm = false;
-  if (o.dataset.out === 'yes') { S.outConfirm = false; addLog('Output-Link neu erzeugt'); renderStatus(); toast('Neuer Output-Link erzeugt. Der alte ist ungültig.'); }
+  if (o.dataset.out === 'yes') { S.outConfirm = false; addLog('Output link regenerated'); renderStatus(); toast('New output link created. The old one is invalid.'); }
   renderOutPop();
 });
 
-/* ---------- Popover allgemein ---------- */
+/* ---------- Popovers in general ---------- */
 const POPS = [['#protoBtn', '#protoMenu', null], ['#outBtn', '#outPop', renderOutPop], ['#addSrcBtn', '#addSrcPop', renderAddSource], ['#layoutBtn', '#layoutPop', renderLayoutPop]];
 function closePops(except) {
   for (const [b, p] of POPS) { if (p === except) continue; $(p).hidden = true; $(b).setAttribute('aria-expanded', 'false'); }
@@ -2019,7 +2019,7 @@ $('#protoMenu').addEventListener('click', (e) => {
   if (d.dataset.demo === 'reset') { store.set('studioflow.layout', ''); store.set('studioflow.studio', '0'); location.reload(); }
 });
 
-/* ---------- Meldung ---------- */
+/* ---------- Toast ---------- */
 let toastTimer = null;
 function toast(msg, actionLabel, action) {
   const el = $('#toast');
@@ -2030,13 +2030,13 @@ function toast(msg, actionLabel, action) {
   toastTimer = setTimeout(() => { el.hidden = true; }, actionLabel ? 6000 : 3200);
 }
 
-/* ---------- Szenenwahl ---------- */
+/* ---------- Scene selection ---------- */
 $('#sceneList').addEventListener('click', (e) => {
   const b = e.target.closest('[data-scene]');
   if (b) chooseScene(b.dataset.scene);
 });
 
-/* ---------- Tastatur ---------- */
+/* ---------- Keyboard ---------- */
 document.addEventListener('keydown', (e) => {
   const tag = (document.activeElement && document.activeElement.tagName) || '';
   const typing = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
@@ -2080,10 +2080,10 @@ setInterval(() => {
   $('#outLat').textContent = (140 + Math.round(Math.random() * 16)) + ' ms';
 }, 2000);
 
-/* ---------- Layout: Docks verschieben und Grössen ändern ---------- */
-const DOCKS = { scenes: 'Szenen', src: 'Quellen', insp: 'Eigenschaften', st: 'Stationen' };
+/* ---------- Layout: moving docks and changing sizes ---------- */
+const DOCKS = { scenes: 'Scenes', src: 'Sources', insp: 'Properties', st: 'Stations' };
 const ZONES = ['left', 'bottom', 'right'];
-const ZONE_WORD = { left: 'links', bottom: 'unten', right: 'rechts' };
+const ZONE_WORD = { left: 'left', bottom: 'bottom', right: 'right' };
 const defaultLayout = () => ({ v: 1, zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st'], right: [] }, weights: { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, pair: 2.2 }, hidden: [], bottomH: null, leftW: 320, rightW: 340, split: 0.5 });
 function loadLayout() {
   const D = defaultLayout();
@@ -2098,14 +2098,14 @@ function loadLayout() {
 }
 let L = loadLayout();
 const saveLayout = () => store.set('studioflow.layout', JSON.stringify(L));
-const dockTitle = (id) => DOCKS[id] || 'Gerät koppeln';
+const dockTitle = (id) => DOCKS[id] || 'Pair device';
 const zoneEl = (z) => $(`.zone-${z}`);
 const dockEl = (id) => $(`[data-dock="${id}"]`);
 const zoneOf = (id) => ZONES.find((z) => L.zones[z].includes(id));
 const shown = (id) => !L.hidden.includes(id);
 const narrow = () => window.matchMedia('(max-width: 1180px)').matches;
 
-// Gerät koppeln ersetzt vorübergehend Quellen und Eigenschaften und erscheint an deren Platz
+// Pair device temporarily replaces Sources and Properties and appears in their place
 function pairSlot() {
   for (const z of ZONES) {
     const i = L.zones[z].filter(shown).findIndex((id) => id === 'src' || id === 'insp');
@@ -2132,7 +2132,7 @@ function makeSplit(z, a, b) {
   sp.tabIndex = 0;
   sp.setAttribute('role', 'separator');
   sp.setAttribute('aria-orientation', across ? 'vertical' : 'horizontal');
-  sp.setAttribute('aria-label', `Grösse von ${dockTitle(a)} und ${dockTitle(b)}`);
+  sp.setAttribute('aria-label', `Size of ${dockTitle(a)} and ${dockTitle(b)}`);
   return sp;
 }
 function applyLayout() {
@@ -2158,13 +2158,13 @@ function applyLayout() {
   zoneEl('right').style.width = L.rightW + 'px';
   zoneEl('bottom').style.height = L.bottomH ? (L.bottomH * 100).toFixed(2) + '%' : '';
   app.style.setProperty('--split', L.split);
-  // Docks am Fensterrand halten innen den Rand von 16 px
+  // Docks at the window edge keep a 16px inner margin
   (lists.left.length ? lists.left : lists.bottom.slice(0, 1)).forEach((id) => dockEl(id).classList.add('edge-l'));
   (lists.right.length ? lists.right : lists.bottom.slice(-1)).forEach((id) => dockEl(id).classList.add('edge-r'));
   fitStage();
 }
-// Ohne Seiten-Docks bleibt die Standardhöhe, damit der Program-Monitor ohne Studio-Modus gross bleibt.
-// Mit Seiten-Docks richtet sich die Bühne nach den Monitoren im Studio-Modus; der übrige Platz geht an die Docks statt an ein leeres Band
+// Without side docks the default height stays, so the Program monitor stays large without Studio Mode.
+// With side docks the stage follows the monitors in Studio Mode; the remaining space goes to the docks instead of an empty band
 function fitStage() {
   const zb = zoneEl('bottom');
   const sideDocks = !zoneEl('left').hidden || !zoneEl('right').hidden;
@@ -2186,20 +2186,20 @@ function moveDock(id, zone, index) {
   if (JSON.stringify(L.zones) === before) return;
   applyLayout();
   saveLayout();
-  toast(`${dockTitle(id)} ist ${ZONE_WORD[zone]} angedockt`, 'Layout zurücksetzen', resetLayout);
+  toast(`${dockTitle(id)} docked to the ${ZONE_WORD[zone]}`, 'Reset layout', resetLayout);
 }
 function resetLayout() {
   L = defaultLayout();
   applyLayout();
   saveLayout();
-  toast('Layout zurückgesetzt');
+  toast('Layout reset');
 }
 function renderLayoutPop() {
   $('#layoutPop').innerHTML = `<div class="pop-h">Docks</div>
     ${Object.entries(DOCKS).map(([id, t]) => `<label class="menu-item"><input type="checkbox" data-show-dock="${id}" ${shown(id) ? 'checked' : ''}>${t}</label>`).join('')}
     <div class="menu-sep"></div>
-    <button class="menu-item" type="button" data-layout-reset>${icon('refresh')}Layout zurücksetzen</button>
-    <div class="pop-note">Ein Dock an der Kopfzeile nach unten, links oder rechts ziehen. Trennlinien ziehen ändert die Grösse, ein Doppelklick setzt sie zurück.</div>`;
+    <button class="menu-item" type="button" data-layout-reset>${icon('refresh')}Reset layout</button>
+    <div class="pop-note">Drag a dock by its header to the bottom, left or right. Dragging the dividers changes the size, a double-click resets it.</div>`;
 }
 $('#layoutPop').addEventListener('change', (e) => {
   const id = e.target.dataset.showDock;
@@ -2212,7 +2212,7 @@ $('#layoutPop').addEventListener('click', (e) => {
   if (e.target.closest('[data-layout-reset]')) { resetLayout(); renderLayoutPop(); }
 });
 
-// Dock an der Kopfzeile ziehen
+// Drag a dock by its header
 let ddrag = null;
 $('#work').addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || narrow()) return;
@@ -2243,12 +2243,12 @@ function startDockDrag() {
   d.line.className = 'drop-line';
   d.line.hidden = true;
   document.body.append(d.ghost, d.line);
-  // leere Zonen werden während des Ziehens als Ablagestreifen sichtbar
+  // empty zones become visible as drop strips while dragging
   d.strips = ZONES.filter((z) => !zoneList(z).some((id) => id !== d.id)).map((z) => {
     const s = document.createElement('div');
     s.className = 'drop-zone drop-' + z;
     s.dataset.zone = z;
-    s.textContent = ZONE_WORD[z][0].toUpperCase() + ZONE_WORD[z].slice(1) + ' andocken';
+    s.textContent = 'Dock ' + ZONE_WORD[z];
     $('#work').appendChild(s);
     return s;
   });
@@ -2290,7 +2290,7 @@ function endDockDrag(commit) {
   if (commit && d.target) moveDock(d.id, d.target.zone, d.target.index);
 }
 
-// Trennlinien ziehen: Höhe der Docks unten, Breite links und rechts, Docks untereinander, Preview und Program
+// Drag dividers: height of the bottom docks, width left and right, docks among themselves, Preview and Program
 let sdrag = null;
 function splitStart(sp) {
   if (sp.classList.contains('split-mon')) return { kind: 'mon', w: Math.max(1, $('#mons').getBoundingClientRect().width - 20), r: L.split };
@@ -2339,7 +2339,7 @@ $('#work').addEventListener('pointerdown', (e) => {
   const sp = e.target.closest('.split, .split-mon');
   if (!sp || e.button !== 0 || narrow()) return;
   e.preventDefault();
-  try { sp.setPointerCapture(e.pointerId); } catch (err) { /* ohne Capture weiter */ }
+  try { sp.setPointerCapture(e.pointerId); } catch (err) { /* carry on without capture */ }
   sp.classList.add('is-drag');
   document.body.classList.add(sp.classList.contains('split-h') ? 'is-row-resize' : 'is-col-resize');
   sdrag = { sp, x: e.clientX, y: e.clientY, st: splitStart(sp) };
@@ -2361,7 +2361,7 @@ $('#work').addEventListener('keydown', (e) => {
     saveLayout();
     return;
   }
-  // Griff mit Pfeiltasten: ein Dock wandert durch links, unten und rechts
+  // Grip with arrow keys: a dock moves through left, bottom and right
   const g = e.target.closest('.grip');
   const dir = g && { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key];
   if (!dir) return;
@@ -2375,7 +2375,7 @@ $('#work').addEventListener('keydown', (e) => {
   dockEl(id).querySelector('.grip').focus();
 });
 
-/* ---------- Alles neu zeichnen ---------- */
+/* ---------- Redraw everything ---------- */
 function renderAll() {
   renderScenes();
   renderMonitorHeads();
@@ -2387,7 +2387,7 @@ function renderAll() {
   renderHealth();
 }
 
-/* ---------- Schleife ---------- */
+/* ---------- Loop ---------- */
 let lastThumb = 0, lastFrame = 0;
 function render(t) {
   lastFrame = t;
@@ -2410,8 +2410,9 @@ tick();
 fitCanvas(pvwCanvas); fitCanvas(pgmCanvas);
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { for (const f of Object.values(FEEDS)) f.dirty = true; });
-if (demo.has('stoerung')) { startIncident('S1', 'ended'); startIncident('K2', 'reconnecting'); }
-if (demo.has('koppeln')) { knockNow(); openPair('laptop', false); }
+// 'stoerung' and 'koppeln' are the former German anchor names, kept so existing scripts (tools/capture.ps1) keep working
+if (demo.has('incident') || demo.has('stoerung')) { startIncident('S1', 'ended'); startIncident('K2', 'reconnecting'); }
+if (demo.has('pair') || demo.has('koppeln')) { knockNow(); openPair('laptop', false); }
 })();
 </script>
 </body>

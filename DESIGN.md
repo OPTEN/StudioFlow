@@ -1,6 +1,6 @@
 ---
 name: StudioFlow
-description: Web-Regie nach dem Vorbild von OBS für Webinare. Eine durchgehende Konsole auf Graphit, in der Farbe nur Zuständen gehört.
+description: A web-based control room (Regie) modelled on OBS, for webinars. One continuous graphite console where colour belongs only to state.
 colors:
   ground: "#0d1117"
   panel: "#151a22"
@@ -254,7 +254,7 @@ components:
 
 **Creative North Star: "The Continuous Console"**
 
-The Regie is one continuous graphite console. There are no boxed panels, no gaps between regions and no outer frame. Header, message strip, stage and docks butt against each other and are separated only by 1px hairlines that run all the way to the window edge. The hairlines are also the handles: dragging one resizes the regions it divides. Only the content keeps a 16px gutter from the window edge. The density matches a broadcast tool on a 14–16 inch laptop: 14px body text, 30px controls and 40px dock headers.
+The Regie (control room) is one continuous graphite console. There are no boxed panels, no gaps between regions and no outer frame. Header, message strip, stage and docks butt against each other and are separated only by 1px hairlines that run all the way to the window edge. The hairlines are also the handles: dragging one resizes the regions it divides. Only the content keeps a 16px gutter from the window edge. The density matches a broadcast tool on a 14–16 inch laptop: 14px body text, 30px controls and 40px dock headers.
 
 Colour belongs to state. The neutral graphite steps carry the structure, and every saturated hue has a fixed meaning: red is Program and live, green is Preview and ok, amber is a station reconnecting, blue is selection, the primary action and the active hairline, and violet is an editable number. An outage therefore reads as colour that was not there a moment ago. Risky actions sit apart from everything else, behind a dashed red outline.
 
@@ -266,7 +266,7 @@ The system explicitly rejects two things. One is OBS's clutter of equal-ranking 
 - Saturated colour appears only as state: tally, lamps, washes, dashed alert outlines and the primary action.
 - One compact semi-condensed grotesk for everything. Mono only for measurements, time codes and slot codes.
 - Depth comes from tonal steps. Shadows appear only on floating layers.
-- Motion is 150–200ms ease-out for state changes. An outage flashes once and then holds its light. The only longer motion is the Blende itself, and it always runs to completion.
+- Motion is 150–200ms ease-out for state changes. An outage flashes once and then holds its light. The only longer motion is the fade itself, and it always runs to completion.
 
 ## Colors
 
@@ -274,15 +274,15 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 
 ### Primary
 - **Signal Blue** (blue): selection outlines, focus rings, the active hairline while resizing, dock insertion lines, drop strips, the selected-segment underline and the text of outline primary buttons.
-- **Action Blue** (blue-fill): the one filled primary action per context (Take, filled primary buttons, the on state of the Studio-Modus switch). Hover deepens to **Action Blue Pressed** (blue-fill-hover).
+- **Action Blue** (blue-fill): the one filled primary action per context (Take, filled primary buttons, the on state of the Studio Mode switch). Hover deepens to **Action Blue Pressed** (blue-fill-hover).
 
 ### Secondary
-- **Tally Red** (red): Program, LIVE, the outage state, the "Änderungen gehen sofort live" warning and danger actions. Its wash (red-wash) tints rows and message entries for an outage.
-- **Tally Green** (green): Preview, ok lamps, the "Keine offenen Meldungen" check and the recovered state. Its wash (green-wash) marks a recovered station until someone confirms it with "Gesehen".
+- **Tally Red** (red): Program, LIVE, the outage state, the "Changes go live immediately" warning (German: "Änderungen gehen sofort live") and danger actions. Its wash (red-wash) tints rows and message entries for an outage.
+- **Tally Green** (green): Preview, ok lamps, the "No open messages" check (German: "Keine offenen Meldungen") and the recovered state. Its wash (green-wash) marks a recovered station until someone confirms it with "Seen" (German: "Gesehen").
 
 ### Tertiary
-- **Reconnect Amber** (amber): "verbindet neu". A source that is reconnecting gets an amber lamp, an amber dashed outline on its element and an amber-wash row.
-- **Value Violet** (violet): editable numeric values only, such as the Blende duration and the X/Y/size fields in Eigenschaften. It turns muted when the value is inactive (Schnitt).
+- **Reconnect Amber** (amber): "reconnecting" (German: "verbindet neu"). A source that is reconnecting gets an amber lamp, an amber dashed outline on its element and an amber-wash row.
+- **Value Violet** (violet): editable numeric values only, such as the fade duration and the X/Y/size fields in Properties. It turns muted when the value is inactive (Cut).
 
 ### Neutral
 - **Ground** (ground): the field behind inputs and the link box. It is also the base colour for overlay scrims on monitors.
@@ -305,7 +305,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 **UI Font:** Sofia Sans Semi Condensed (with Arial Narrow, system-ui, sans-serif)
 **Mono Font:** JetBrains Mono (with ui-monospace, Cascadia Mono, Consolas, monospace), tabular numerals
 
-**Character:** a compact semi-condensed grotesk keeps long German labels and dense dock rows on one line. The mono font is a measuring instrument, not a style. It appears only where digits must align or codes must be read exactly.
+**Character:** a compact semi-condensed grotesk keeps long labels (German ones in particular) and dense dock rows on one line. The mono font is a measuring instrument, not a style. It appears only where digits must align or codes must be read exactly.
 
 **Font delivery:** both families are self-hosted. The prototype loads them from `prototype/fonts/` with `@font-face`. These are variable latin woff2 files under the SIL Open Font License; the license texts sit next to them. Sofia Sans Semi Condensed is used at weights 400–700 and JetBrains Mono at 400–600. The Angular build ships the same files, with no external CDN, because the Regie runs in a LAN.
 
@@ -315,10 +315,10 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 - **Body** (400, 14px, line-height 1.4): default text and scene names (600, 14px).
 - **Control** (600, 13px): buttons, header chips, segmented controls and tabs (13–13.5px). Small buttons use 12.5px.
 - **Meta** (400, 12.5px, muted): hints, scene and source meta lines, field labels and control-column help text.
-- **Label** (700, 11.5px, +0.09em, uppercase, muted): dock titles (SZENEN, QUELLEN, STATIONEN), monitor tally names (PREVIEW, PROGRAM), and form-group labels such as ÜBERGANG or VORLAGE ANWENDEN (11px). The label always names the region or control group it sits on.
+- **Label** (700, 11.5px, +0.09em, uppercase, muted): dock titles (SCENES, SOURCES, STATIONS), monitor tally names (PREVIEW, PROGRAM), and form-group labels such as TRANSITION or APPLY TEMPLATE (11px). The label always names the region or control group it sits on.
 - **Tag** (700, 10.5px, +0.08em, uppercase): the PGM and PVW tags on scene and station rows.
-- **Take** (700, 15px, +0.08em, uppercase): only the TAKE button. Its shortcut hint "Leerschlag" is set at 11px/600 below it.
-- **Mono value** (500, 12.5–13px): the Blende duration, number inputs, the clock, the LIVE runtime and output latency.
+- **Take** (700, 15px, +0.08em, uppercase): only the TAKE button. Its shortcut hint "Space" is set at 11px/600 below it.
+- **Mono value** (500, 12.5–13px): the fade duration, number inputs, the clock, the LIVE runtime and output latency.
 - **Mono meta** (500, 11.5–12px): resolution and fps, bitrate and latency metrics, and timestamps in the message strip.
 - **Mono code** (600, 11.5px): slot codes such as K1, S2 and M3, on a raised-2 chip.
 - **Mono pairing code** (600, 24px, +0.14em): the verification code shown while a laptop pairs (18px in the mini preview).
@@ -332,14 +332,14 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 
 **Surface model.** The app is a CSS grid of header (min 50px), message strip (min 38px) and workspace. A 1px grid gap shows the seam colour through, which forms the hairlines. Inside the workspace a center column holds the stage and the bottom dock zone, with optional left and right dock zones. Every divider between zones and docks is a 1px separator element. Region backgrounds run edge to edge, and only content is inset by the 16px gutter (which also respects the safe-area insets).
 
-**Stage.** On the left are the monitors and on the right is a fixed control column (172px) with the Studio-Modus switch, Übergang (Schnitt | Blende), the duration stepper and, in Studio-Modus, Take. The column and the docks never move when the mode toggles.
-- Studio-Modus off (default): a single Program monitor, right-aligned against the control column. The vacated Preview area shows a quiet muted note ("Preview aus"). The Program header carries "Änderungen gehen sofort live" in red. A scene click or key 1–9 goes live directly.
-- Studio-Modus on: Preview and Program side by side with a 20px resizable split between them. Take (Space) switches Preview to Program.
+**Stage.** On the left are the monitors and on the right is a fixed control column (172px) with the Studio Mode switch, Transition (Cut | Fade), the duration stepper and, in Studio Mode, Take. The column and the docks never move when the mode toggles.
+- Studio Mode off (default): a single Program monitor, right-aligned against the control column. The vacated Preview area shows a quiet muted note ("Preview off"). The Program header carries "Changes go live immediately" in red. A scene click or key 1–9 goes live directly.
+- Studio Mode on: Preview and Program side by side with a 20px resizable split between them. Take (Space) switches Preview to Program.
 - Monitors are always 16:9. They are sized from the stage's container width and height so they never overflow.
 
-**Docks.** The default arrangement is Szenen | Quellen | Eigenschaften | Stationen along the bottom (height clamp(240px, 42dvh, 420px), at least 150px). Side zones start at 320px wide (220px min, 42% max). Docks move between the bottom, left and right zones by dragging their header grip, or with arrow keys on the grip. A blue insertion line shows the target, and dashed blue drop strips (92px wide at the sides, 72px tall at the bottom) appear at empty edges. Every hairline between docks and zones is a resize handle with a widened 9px hit area. It turns blue on hover or focus, a double-click or Enter resets it, and arrow keys move it in 16px steps (64px with Shift). "Docks und Layout" in the header shows or hides each dock and resets the layout. The layout and the Studio-Modus state persist per browser. The pairing dock (Gerät koppeln) temporarily takes the place of Quellen and Eigenschaften.
+**Docks.** The default arrangement is Scenes | Sources | Properties | Stations along the bottom (height clamp(240px, 42dvh, 420px), at least 150px). Side zones start at 320px wide (220px min, 42% max). Docks move between the bottom, left and right zones by dragging their header grip, or with arrow keys on the grip. A blue insertion line shows the target, and dashed blue drop strips (92px wide at the sides, 72px tall at the bottom) appear at empty edges. Every hairline between docks and zones is a resize handle with a widened 9px hit area. It turns blue on hover or focus, a double-click or Enter resets it, and arrow keys move it in 16px steps (64px with Shift). "Docks and layout" in the header shows or hides each dock and resets the layout. The layout and the Studio Mode state persist per browser. The pairing dock (Pair device) temporarily takes the place of Sources and Properties.
 
-**Spacing rhythm.** The scale is 4 / 6 / 8 / 10 / 12 / 16 / 20px. Rows inside docks are separated by 2px gaps or by seam hairlines (Stationen). Docks pad their content by 12px (Eigenschaften) or 4–6px (lists).
+**Spacing rhythm.** The scale is 4 / 6 / 8 / 10 / 12 / 16 / 20px. Rows inside docks are separated by 2px gaps or by seam hairlines (Stations). Docks pad their content by 12px (Properties) or 4–6px (lists).
 
 **Responsive.**
 - The design holds from 1280 × 720 to 1920 × 1080.
@@ -352,7 +352,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 The console is flat. Depth comes from tonal steps (well, ground, panel, raised, raised-2) and from hairlines, not from shadows. A shadow appears only on layers that float above the surface: popovers, the toast and the dock-drag ghost. Scrollable docks show a soft inner fade at the top and bottom edges to indicate overflow.
 
 ### Shadow Vocabulary
-- **Pop** (`box-shadow: 0 4px 10px rgba(1, 4, 9, .5)`): popovers (Output, Docks und Layout, Stationen), the toast and the dragged dock ghost.
+- **Pop** (`box-shadow: 0 4px 10px rgba(1, 4, 9, .5)`): popovers (Output, Docks and layout, Stations), the toast and the dragged dock ghost.
 - **Scroll edge** (background `linear-gradient(rgba(1, 4, 9, .65), transparent)` at 10px, masked by panel at 18px): top and bottom of scrolling dock bodies, shown only while there is more to scroll.
 - **Selected underline** (`box-shadow: inset 0 -2px 0 #79c0ff`): the active segment or tab.
 - **Active hairline glow** (`box-shadow: 0 0 0 1px #79c0ff`): a splitter being hovered, focused or dragged becomes a 3px blue line.
@@ -362,7 +362,7 @@ The console is flat. Depth comes from tonal steps (well, ground, panel, raised, 
 
 ## Shapes
 
-Small, tool-like corners. Monitor screens, thumbnails and layout previews use 2px. Slot codes, tags and keycap badges use 3px. Buttons, inputs, list rows and segmented groups use 4px. Popovers and the toast use 6px. Only the Studio-Modus switch (10px track) and lamps or tally dots (circles) are round. Regions themselves have no corners and no borders, only hairlines.
+Small, tool-like corners. Monitor screens, thumbnails and layout previews use 2px. Slot codes, tags and keycap badges use 3px. Buttons, inputs, list rows and segmented groups use 4px. Popovers and the toast use 6px. Only the Studio Mode switch (10px track) and lamps or tally dots (circles) are round. Regions themselves have no corners and no borders, only hairlines.
 
 Dashed lines are the conditional outline of this world, and they always signal something that needs attention:
 - red dashed: danger actions and confirmations;
@@ -379,18 +379,18 @@ Monitor tally is a solid 2px outline (red for Program, green for Preview). A 1px
 Quiet outlines on the surface. Fills are reserved for the action that matters.
 - **Shape:** gently squared (4px). The default height is 30px with 11px side padding. The small size is 26px with 9px padding.
 - **Default:** transparent with a strong-seam border and Text-coloured label. Hover shows Raised, active shows Raised Higher, and disabled is at 45% opacity.
-- **Primary (outline):** blue border and blue text. Hover fills it with Action Blue and white text. Used for "Gerät koppeln" and "+ Quelle".
+- **Primary (outline):** blue border and blue text. Hover fills it with Action Blue and white text. Used for "Pair device" and "+ Source".
 - **Fill:** Action Blue with white text, used for confirmation in pairing. **Go:** green with dark text, used for approving a waiting device.
-- **Danger:** a 1px dashed red outline with red text that tints red-wash on hover. It always sits apart from other actions, pushed to the far end of its row or into a separate zone above a seam ("Szene löschen", "Sperren", "Link widerrufen"). A confirmation step appears in a dashed red box, and its final action uses the solid red **Danger fill**.
+- **Danger:** a 1px dashed red outline with red text that tints red-wash on hover. It always sits apart from other actions, pushed to the far end of its row or into a separate zone above a seam ("Delete scene", "Block device", "Revoke link"). A confirmation step appears in a dashed red box, and its final action uses the solid red **Danger fill**.
 - **Icon button:** 28px square, muted, raised on hover. Icons are inline 16px SVG strokes (1.6 stroke width).
 
 ### Take
-The only large filled control. It is 172px wide and at least 56px tall, Action Blue with uppercase "TAKE" and a small "Leerschlag" hint. It exists only in Studio-Modus. It presses down by 1px when active and is disabled while a transition runs.
+The only large filled control. It is 172px wide and at least 56px tall, Action Blue with uppercase "TAKE" and a small "Space" hint. It exists only in Studio Mode. It presses down by 1px when active and is disabled while a transition runs.
 
-### Studio-Modus switch and Übergang
+### Studio Mode switch and Transition
 - **Switch:** 36 × 20px track, Strong Seam when off and Action Blue when on, with a 14px thumb that slides in 150ms. It sits at the top of the control column.
-- **Übergang:** a two-segment control (Schnitt | Blende) with strong-seam dividers. The active segment gets blue-wash, blue text and a 2px blue underline.
-- **Duration stepper:** minus and plus buttons around a violet mono value. The steps are 0.2 / 0.3 / 0.5 / 0.8 / 1 / 1.5 / 2 s (default 0,3 s). It is muted and disabled under Schnitt. There is no T-bar: a Blende always runs to completion, and new switches are ignored while it runs.
+- **Transition:** a two-segment control (Cut | Fade) with strong-seam dividers. The active segment gets blue-wash, blue text and a 2px blue underline.
+- **Duration stepper:** minus and plus buttons around a violet mono value. The steps are 0.2 / 0.3 / 0.5 / 0.8 / 1 / 1.5 / 2 s (default 0.3 s; 0,3 s in the German UI). It is muted and disabled under Cut. There is no T-bar: a fade always runs to completion, and new switches are ignored while it runs.
 
 ### Monitors
 - **Header:** a tally dot with the uppercase label (PREVIEW green, PROGRAM red), the scene name in Title, and muted meta on the right (element count, or "1920 × 1080 · 30 fps" in mono).
@@ -406,24 +406,24 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 ### Docks
 - **Header:** 40px tall on Panel with a seam underline. It holds a drag grip (60% opacity, full on hover), the uppercase Label title, a mono count and right-aligned actions.
 - **Body:** scrolls with scroll-edge fades.
-- **Rows:** rows in Szenen and Quellen are 4px-rounded, transparent at rest and Raised on hover or when current. Scene rows carry a 64px 16:9 thumbnail with a mono keycap number (1–9) and a tally outline (red PGM, green PVW). Station rows are divided by seam hairlines and expand with a 200ms grid-row reveal.
+- **Rows:** rows in Scenes and Sources are 4px-rounded, transparent at rest and Raised on hover or when current. Scene rows carry a 64px 16:9 thumbnail with a mono keycap number (1–9) and a tally outline (red PGM, green PVW). Station rows are divided by seam hairlines and expand with a 200ms grid-row reveal.
 
 ### Lamps, washes and the message strip (outage language)
 - **Lamp:** 7px green when ok, muted when idle, 9px amber with a soft halo while reconnecting, and 11px red with a halo when down. A new outage pulses its lamp once (1.2s) and then holds.
-- **Wash:** the station row, the message entry and the affected element use the state's wash. The element also gets a dashed amber or red outline with a filled label tab ("S1 · Teilen beendet").
+- **Wash:** the station row, the message entry and the affected element use the state's wash. The element also gets a dashed amber or red outline with a filled label tab ("S1 · sharing stopped"; German: "S1 · Teilen beendet").
 - **Message strip:**
-  - Each incident is its own segment, divided by seams: icon, slot code, name, state word in colour, where it is used ("im Program", "in der Preview"), a mono timer and a direct action.
-  - With no incidents, the strip shows "Keine offenen Meldungen" and a log of recent events.
-  - The header summarises station health ("Alle 5 Stationen ok" or "2 Störungen").
-- **Hold frame:** after the configured hold time (3s, 10s or hold), the audience sees the last frame of the lost source heavily blurred and darkened, with "Bild kommt gleich zurück" centred.
-- **Recovered:** a returning station keeps a green-wash entry and a "Gesehen" button until someone confirms it.
+  - Each incident is its own segment, divided by seams: icon, slot code, name, state word in colour, where it is used ("in Program", "in Preview"; German: "im Program", "in der Preview"), a mono timer and a direct action.
+  - With no incidents, the strip shows "No open messages" and a log of recent events (German: "Keine offenen Meldungen", "Letzte Ereignisse").
+  - The header summarises station health ("All 5 stations ok" or "2 incidents"; German: "Alle 5 Stationen ok", "2 Störungen").
+- **Hold frame:** after the configured hold time (3s, 10s or hold), the audience sees the last frame of the lost source heavily blurred and darkened, with "Picture returns shortly" centred (German: "Bild kommt gleich zurück").
+- **Recovered:** a returning station keeps a green-wash entry and a "Seen" button until someone confirms it.
 
 ### Popovers, menus and toast
 - **Popovers:** Raised, strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
-- **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("«Lea präsentiert» ist live") and dock moves, with an optional undo action.
+- **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("‘Lea presents’ is live"; German: "«Lea präsentiert» ist live") and dock moves, with an optional undo action.
 
 ### Header
-50px tall on Panel. On the left are the mark and brand, then the production name in text-2. On the right are LIVE with a red dot and mono runtime, output status to the proxy with a lamp and mono latency, station health, the Docks und Layout and presence icon buttons, and the mono clock.
+50px tall on Panel. On the left are the mark and brand, then the production name in text-2. On the right are LIVE with a red dot and mono runtime, output status to the proxy with a lamp and mono latency, station health, the Docks and layout and presence icon buttons, and the mono clock.
 
 ## Do's and Don'ts
 
@@ -431,8 +431,8 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 - **Do** separate regions with 1px seam hairlines (#262c36) that run to the window edge, and keep content 16px from that edge.
 - **Do** make every region divider a resize handle: blue on hover or focus, double-click or Enter to reset, arrow keys for 16px steps (Shift for 64px).
 - **Do** give each saturated hue exactly one meaning: red Program and down, green Preview and ok, amber reconnecting, blue selection and primary action, violet editable number.
-- **Do** show an outage everywhere at once (header, message strip, monitor element, scene list, source row, station row) with lamps and washes, and keep a recovered station marked until "Gesehen".
-- **Do** keep the control column and the docks fixed when Studio-Modus toggles. Only the Preview monitor appears or disappears.
+- **Do** show an outage everywhere at once (header, message strip, monitor element, scene list, source row, station row) with lamps and washes, and keep a recovered station marked until "Seen".
+- **Do** keep the control column and the docks fixed when Studio Mode toggles. Only the Preview monitor appears or disappears.
 - **Do** put risky actions behind a dashed red outline, away from other actions, with a dashed confirmation box.
 - **Do** set measurements, time codes, slot codes and pairing codes in JetBrains Mono with tabular numerals.
 - **Do** self-host Sofia Sans Semi Condensed and JetBrains Mono in the product build.
@@ -440,7 +440,7 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 
 ### Don't:
 - **Don't** box regions as cards with gaps between them, and don't frame the app with an outer border.
-- **Don't** add a T-bar or any control that can leave a Blende half-finished.
+- **Don't** add a T-bar or any control that can leave a fade half-finished.
 - **Don't** use shadows on regions. Shadows are only for popovers, the toast and the drag ghost.
 - **Don't** use a saturated hue decoratively, including for branding, section accents or illustrations.
 - **Don't** use the uppercase label style as an eyebrow or kicker above a heading.

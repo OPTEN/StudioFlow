@@ -1,12 +1,17 @@
 # StudioFlow – Implementation specification
 
 Binding technical specification for the implementation of the plan
-(`plan/StudioFlow Architekturplan.html`, Entwurf 2) and the Regie prototype (`prototype/regie.html`, `DESIGN.md`).
+(`docs/history/FlowStudio Architekturplan.html`, draft 2, historical and in German) and the Regie (control room)
+prototype (`prototype/regie.html`, `DESIGN.md`).
 Everything here is a decision; if code and this document disagree, fix one of them deliberately.
 
-Language: code, comments and this document are English. **All UI text is German (Switzerland)**: «ss» instead of «ß»,
-guillemets « », decimal comma (0,3 s), 24h clock. Terms from OBS: Szene, Quelle, Element, Preview, Program, Take,
-Studio-Modus, Dock, Übergang, Schnitt, Blende, Tally, Slate, Station.
+Language: code, comments and this document are English. **The UI is English by default, with German (Switzerland) as
+the first translation** (`en` is the source locale, `de-CH` the translation; the locale follows the user setting and
+the browser language by default, see `docs/architecture/i18n-design.md`). German uses Swiss conventions: «ss» instead
+of «ß», guillemets « », decimal comma (0,3 s); the English UI uses “…” and a decimal point (0.3 s). Both use a 24 h
+clock. Terms from OBS: scene, source, item, preview, program, take, Studio Mode, dock, transition, cut, fade, tally,
+slate, station. UI texts quoted in this document are the English UI texts; where the exact wording matters, the German
+text follows in parentheses. All German texts are in `packages/i18n/src/messages/de-CH/`.
 
 ## 1. Scope
 
@@ -16,13 +21,13 @@ Implemented now (plan phases 0–2, everything that is software):
   automated latency measurement, reconnect behaviour, laptop pairing by short URL and check code.
 - Phase 1 (MVP): admin login, productions, pairing (QR, code + approval, invite link), LiveKit tokens, SignalR hubs;
   sender PWA (camera, several screens, tally, auto-reconnect, wake lock, technical check); Regie after the prototype
-  (scenes, layout templates incl. Auto-Grid, free editing with snapping, crop, Studio-Modus with preview and take,
+  (scenes, layout templates incl. Auto grid, free editing with snapping, crop, Studio Mode with preview and take,
   cut and fade, stations with state, freely arrangeable docks); images and videos as sources; output page 16:9 with
   secret link.
 - Phase 2: backup/restore/update scripts, slates and per-item fallbacks, monitoring view (bitrate, packet loss,
-  battery), security review and runbook, Regie-Chat (short messages to devices).
+  battery), security review and runbook, Regie chat (short messages to devices).
 
-Prepared but not built (plan phases 3–4, confirmed as «später»): audio in StudioFlow (contracts and output page are
+Prepared but not built (plan phases 3–4, confirmed as “later”): audio in StudioFlow (contracts and output page are
 audio-ready, no audio track is published), restream/recording (egress), Air mode (renderer + air room), overlays and
 lower thirds, multiview, Stream Deck, multi-tenancy UI (tenantId exists in the data model), auto-director,
 greenscreen. Do not build them.
@@ -75,7 +80,9 @@ Commands: `npm run gen:contracts` (build API → OpenAPI → `packages/scene-mod
 - `getBattery` and `navigator.connection` are missing from TS 6 `lib.dom`; declare them in an ambient `.d.ts` and
   feature-detect.
 - Security: never log secrets (device secrets, output keys, tokens, passwords). Compare secrets in constant time.
-- Every user-visible string is German (CH). IDs, enums and API fields are English.
+- Every user-visible string comes from the message catalogues of `packages/i18n` (English source, German `de-CH`),
+  never from a literal in a component (rules in `docs/i18n.md`). The API sends English texts only; clients localise by
+  `code`. IDs, enums and API fields are English.
 
 ## 4. Domain
 
@@ -89,11 +96,12 @@ Secrets (device secret, output key, invite token, poll token) are 32 random byte
 
 Fields: id, tenantId (`opten`), name (1–80), slug (lowercase `[a-z0-9-]{1,48}`, unique per tenant, derived from the
 name on creation), isActive (exactly one active production per tenant), broadcast (standby | live | ended),
-liveSince, endedAt, programSceneId, previewSceneId, lastTransition, lastSwitchAt, standbySlate («Gleich geht's los»,
-subtitle = production name), endSlate («Danke fürs Zuschauen»), output key (+ createdAt), allowedIps, createdAt.
+liveSince, endedAt, programSceneId, previewSceneId, lastTransition, lastSwitchAt, standbySlate (default “Starting soon”,
+subtitle = production name), endSlate (default “Thanks for watching”), output key (+ createdAt), allowedIps, createdAt.
 
-On first start the API creates the default production «Webinar» (slug `webinar`, active) with three scenes:
-«Begrüssung» (empty, layout free), «Präsentation» (empty), «Pause» (empty) – program = first scene, broadcast standby.
+On first start the API creates the default production “Webinar” (slug `webinar`, active) with three scenes:
+“Welcome” (empty, layout free), “Presentation” (empty), “Break” (empty) – program = first scene, broadcast standby.
+Server-created texts like these are English in every UI language (a documented limitation of issue #6).
 
 Rules:
 - Broadcast: `start` (standby|ended → live, liveSince = now), `end` (live → ended, endedAt = now),
@@ -101,7 +109,7 @@ Rules:
 - Program switch (`program`): scene must exist; if `now < lastSwitchAt + lastTransition.durationMs` (a fade is
   running) → 409 `transition_running`. Switching to the current program is a no-op (200, no event).
 - Take: requires previewSceneId ≠ null and ≠ programSceneId (else 409 `conflict`); swaps program and preview.
-- Preview: any existing scene or null. Studio-Modus itself is a per-browser setting; turning it on in a browser sets
+- Preview: any existing scene or null. Studio Mode itself is a per-browser setting; turning it on in a browser sets
   the preview to the scene after the program if none is set; turning it off clears the preview only if no other Regie
   session is connected (the client decides; the server just stores the value).
 - Transition durations: cut → durationMs 0; fade → one of 200, 300, 500, 800, 1000, 1500, 2000 (default 300).
@@ -113,7 +121,7 @@ Rules:
 As in `SceneContracts.cs`. Validation (server authoritative, client clamps the same way):
 - name 1–80 chars (trimmed); background colour `^#[0-9a-fA-F]{6}$`; background asset must be an image asset.
 - max 32 items; item ids unique; source must exist in the production when added (`AddSceneItem`, `ReplaceItems`
-  and `UpdateItem` may keep a source that was deleted later – it renders as «Quelle fehlt»).
+  and `UpdateItem` may keep a source that was deleted later – it renders as “Source missing”).
 - x ∈ [-3840, 3840], y ∈ [-2160, 2160], w ∈ [16, 3840], h ∈ [16, 2160]; crop sides ∈ [0, 0.45],
   top+bottom < 0.9, left+right < 0.9; radius ∈ [0, 200]; rotation ∈ {0, 90, 180, 270}; border width ∈ [1, 40],
   colour hex; onLost.holdMs null or ∈ [0, 600000]; fallbackSource null or an existing source ≠ the item's source.
@@ -123,15 +131,15 @@ As in `SceneContracts.cs`. Validation (server authoritative, client clamps the s
 - `UpdateSceneItem` replaces the whole item (last writer wins per item). Clients coalesce rapid edits (drag) and send
   sequentially (never more than one request in flight per item; send the newest state when the previous returns).
 
-Layout templates (client-side, `packages/scene-model`): Vollbild, Nebeneinander, Bild-in-Bild,
-Screen + Kamera-Spalte, Eins plus zwei, 2 × 2, 3 × 3, Auto-Grid – slot rectangles exactly as `PRESETS` in the
+Layout templates (client-side, `packages/scene-model`): Full screen, Side by side, Picture in picture,
+Screen + camera column, One plus two, 2 × 2, 3 × 3, Auto grid – slot rectangles exactly as `PRESETS` in the
 prototype. Applying a template orders the visible items by kind (screen, then image/video, then camera), assigns slots
-in order, sets fit contain for a screen in slot 0 (except Nebeneinander and the grids), radius 0 for full-canvas slots
+in order, sets fit contain for a screen in slot 0 (except Side by side and the grids), radius 0 for full-canvas slots
 else 12, and sends `ReplaceSceneItems`. Items beyond the slot count keep their geometry. The item order is the
-z-order (first = back), and slots may overlap (Bild-in-Bild), so applying a template also re-orders the items: the
+z-order (first = back), and slots may overlap (Picture in picture), so applying a template also re-orders the items: the
 placed items first in slot order (slot 0 at the back, later slots in front), then every item without a slot (hidden
 items and items beyond the slot count) in front of them in their previous relative order – nothing that is or later
-becomes visible disappears behind a template slot. Undo restores the previous order. Auto-Grid sets
+becomes visible disappears behind a template slot. Undo restores the previous order. Auto grid sets
 `layoutMode = autoGrid` and keeps the item order (its slots never overlap): the renderer arranges all visible items
 whose source is available (live, or lost but still inside its hold time; media always) with `autoGridSlots(n)`
 (prototype `autoSlots`), in item order; editing an item's geometry in the editor switches the scene back to `free`
@@ -143,12 +151,12 @@ A source is a device slot (`{deviceId}/{slot}`) or an asset (`{assetId}`). Slots
 The slot name is also the LiveKit track name; the device id is the LiveKit identity.
 
 Slot codes: K = camera, S = screen, M = media; the lowest free number per letter in the production at creation time
-(K1, K2 …). Codes never change while the source exists. Labels: phones «{device name}», laptop screens
-«{device name} · Screen {n}», laptop camera «{device name} · Kamera», media = asset name.
+(K1, K2 …). Codes never change while the source exists. Labels: phones “{device name}”, laptop screens
+“{device name} · Screen {n}”, laptop camera “{device name} · Camera”, media = asset name.
 
 Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `screen-1`. A laptop allocates more
 screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`).
-`DELETE /api/device/slots/{slot}` removes the source (the sender's «Entfernen»); a screen share that merely ended
+`DELETE /api/device/slots/{slot}` removes the source (the sender's “Remove”); a screen share that merely ended
 keeps its slot (state ended) so the Regie can ask for a reshare and the picture returns to the same place.
 
 ### 4.5 Source status (server, in memory, see `SourceStatus`)
@@ -166,7 +174,7 @@ Reported slot states (decided 2026-10-22, sender open questions 1 and 2; this ov
   has its own id) starts without slot states and without rtc state; until it reports, only a published track makes a
   slot live. A reconnect of the same session keeps the states until its next report; `ended` and `failed` therefore
   survive a hub disconnect of the same session, but not a reload.
-- `ended` = stopped on purpose (screen: «Teilen beenden» or the browser's stop button; camera: stopped by the user).
+- `ended` = stopped on purpose (screen: “Stop sharing” («Teilen beenden») or the browser's stop button; camera: stopped by the user).
 - `paused` = the operating system suspended the capture and it is expected back (e.g. the phone app went to the
   background). It is not live, never `ended`.
 - `starting` has no rule of its own.
@@ -190,12 +198,14 @@ Media sources are always `ok`.
 
 Incidents: a transition from `ok` to `reconnecting`, `ended` or `lost` opens an incident (replacing any earlier
 incident of the same source). An open `reconnecting` incident that turns `ended` or `lost` keeps its id and start and
-only changes its kind (a paused camera that is then stopped: «K1 verbindet neu», then «K1 Kamera beendet»); the way
-back from `ended`/`lost` to `reconnecting` keeps the kind. Back to `ok` sets `endedAt` («wieder da · war 9 s weg»)
-until someone acknowledges it («Gesehen», `POST …/incidents/{id}/ack`, shared by both Regie sessions). Blocking a
+only changes its kind (a paused camera that is then stopped: “K1 reconnecting”, then “K1 camera stopped”); the way
+back from `ended`/`lost` to `reconnecting` keeps the kind. Back to `ok` sets `endedAt` (“recovered · gone for 9 s”)
+until someone acknowledges it (“Seen”, `POST …/incidents/{id}/ack`, shared by both Regie sessions). Blocking a
 device or removing a source removes its incidents. Each change emits `sourceUpserted` / `incidentUpserted` /
-`incidentRemovedEvent` and a log entry: «K2 verbindet neu» (also a paused camera), «K2 wieder da, war 9 s weg»,
-«S1 Teilen beendet» (screen `ended`), «K1 Kamera beendet» (camera `ended`), «K1 kein Bild» (`failed`).
+`incidentRemovedEvent` and a log entry: “K2 reconnecting” (also a paused camera), “K2 recovered, gone for 9 s”,
+“S1 sharing stopped” (screen `ended`), “K1 camera stopped” (camera `ended`), “K1 no picture” (`failed`). The entry
+carries a stable `code`, its `params` and an English `text`; clients localise by `code` (German: «K2 verbindet neu»,
+«K2 wieder da, war 9 s weg», «S1 Teilen beendet», «K1 Kamera beendet», «K1 kein Bild»).
 A graceful shutdown of the API is no outage: hub connections that end because the host stops
 (`ApplicationStopping`) are not evaluated and nothing is written (no log entry, no incident); after the restart the
 restart watch of section 12 (GAP-08 b) flags a source on air whose device does not return.
@@ -206,7 +216,7 @@ Device: id, productionId, name (1–60), kind, platform (≤ 80), state (active 
 lastSeenAt, secretHash (SHA-256 of the secret), slots. Live data (connection, telemetry, tech check) is in memory.
 
 Authentication: `Authorization: Bearer {deviceId}.{secret}` for REST; `access_token={deviceId}.{secret}` for the
-device hub. Blocked devices get 403 `device_blocked` (the sender stops reconnecting and shows «Gesperrt»).
+device hub. Blocked devices get 403 `device_blocked` (the sender stops reconnecting and shows “Blocked”).
 Blocking also calls LiveKit `RemoveParticipant` and sends the device a final `self` message, then aborts the hub
 connection. Unblocking lets the device reconnect (the sender retries every 15 s while blocked).
 
@@ -214,7 +224,7 @@ Pairing ways (all end with `DeviceCredentialsDto`; the secret is shown once to t
 1. **QR (phones)**: the Regie shows the current phone invite (`GET …/pairing/phone-invite` returns the valid one or
    creates one). URL: `{PublicBaseUrl}/join/i/{token}`. Valid once, 30 minutes. When it is redeemed or renewed, the
    server immediately creates the next phone invite and emits `inviteRemoved` + `inviteUpserted`, so the Regie always
-   shows a fresh code. Redeeming creates a phone device named «Handy {n}» unless a name is given.
+   shows a fresh code. Redeeming creates a phone device named “Phone {n}” unless a name is given.
 2. **Short URL + check code (laptops on site)**: `/join` → name → `POST /api/pairing/requests` → returns requestId,
    pollToken, 4-digit check code (unique among pending requests, shown «47 12»), expires in 10 minutes. The laptop polls
    `GET /api/pairing/requests/{id}` (header `X-Pairing-Token`) every 1.5 s. The Regie sees a knock card and approves or
@@ -232,14 +242,14 @@ Re-recognition: the sender stores the credentials in localStorage; on load it ca
 
 Session replacement: a device has at most one active session. A new hub `Hello` with a different sessionId sends
 `sessionReplaced` to the old connection and aborts it; LiveKit's DUPLICATE_IDENTITY disconnect ends the old media
-session. The old tab shows «In einem anderen Tab geöffnet» with «Hier weitermachen» (which takes over again). No
+session. The old tab shows “Opened in another tab” with “Continue here” (which takes over again). No
 ping-pong: a replaced tab never reconnects by itself.
 
 Tally (server → device `tally`): per slot `program` if a non-hidden item with that source is in the program scene,
 else `preview` if in the preview scene, else `off`; overall = max. Pushed on every change that affects it and on
 Hello. During standby/ended the tally is `off` (nothing is on air).
 
-Commands: reshare (slot), switchCamera, message (1–140 chars; Regie-Chat). Delivered over the device hub; 202 even if
+Commands: reshare (slot), switchCamera, message (1–140 chars; Regie chat). Delivered over the device hub; 202 even if
 the device is offline (dropped then; the Regie shows a toast if the device is offline).
 
 ### 4.7 Assets
@@ -272,8 +282,9 @@ the value changes by > 20 %).
 Table `audit_entries` (id, productionId nullable, at, actor `admin` | `device:{id}` | `system`, action, details jsonb).
 Actions: login.succeeded, login.failed, login.locked, scene.live, broadcast.started, broadcast.ended, device.paired,
 device.blocked, device.unblocked, device.removed, pairing.denied, invite.created, invite.revoked, output.key.regenerated,
-output.access.changed, asset.uploaded, asset.deleted, scene.created, scene.deleted. The API derives the German log
-text (`LogEntryDto`) for the Regie; `RecentLog` in the snapshot holds the latest 20 entries of the production.
+output.access.changed, asset.uploaded, asset.deleted, scene.created, scene.deleted. The API derives the log entry
+(`LogEntryDto`: a stable `code`, its `params` and an English `text` fallback) for the Regie, which renders it in the
+user's language from `code` and `params`; `RecentLog` in the snapshot holds the latest 20 entries of the production.
 
 ## 5. API
 
@@ -297,7 +308,7 @@ Authentication and authorization:
 Validation: built-in .NET 10 minimal API validation where it fits, plus domain validation in Core returning
 `validation_failed` with field errors. A body that cannot be bound (unknown enum text, wrong JSON type, broken JSON)
 is the same 400 `validation_failed` with `errors` naming the camelCase field path (`kind`, `items[0].fit`; `body` for
-the body as a whole) and «Ungültiger Wert.» – never the serializer message (it names .NET types). Input sizes are bounded (JSON body ≤ 256 KB except uploads and the bandwidth
+the body as a whole) and “Invalid value.” – never the serializer message (it names .NET types). Input sizes are bounded (JSON body ≤ 256 KB except uploads and the bandwidth
 test ≤ 4 MB).
 
 Concurrency: one API instance. All mutations of a production run through `ProductionCoordinator`, which serializes
@@ -440,14 +451,15 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
 
 - `contracts.ts` (exists): generated wire types under friendly names, `HUB`, `ERROR_CODES`.
 - `constants.ts`: `CANVAS_WIDTH = 1920`, `CANVAS_HEIGHT = 1080`, `SAFE_MARGIN = 40`, `FADE_DURATIONS_MS`,
-  `DEFAULT_FADE_MS = 300`, `HOLD_OPTIONS` ([{label:'Standbild 3 s, dann abgedunkelt', holdMs:3000},
-  {…10 s…, 10000}, {label:'Standbild halten', holdMs:null}]), limits (`MAX_ITEMS_PER_SCENE = 32`, …), item bounds.
+  `DEFAULT_FADE_MS = 300`, `HOLD_OPTIONS` ([{label:'Freeze frame 3 s, then dimmed', holdMs:3000},
+  {…10 s…, 10000}, {label:'Hold freeze frame', holdMs:null}]; `label` resolves through `@studioflow/i18n`),
+  limits (`MAX_ITEMS_PER_SCENE = 32`, …), item bounds.
 - `source-ref.ts`: `parseSourceRef(ref)` → `{kind:'device', deviceId, slot} | {kind:'asset', assetId} | null`,
   `deviceSourceRef(deviceId, slot)`, `isDeviceSourceRef`, `slotKind(slot)`.
 - `layout-templates.ts`: `LAYOUT_TEMPLATES` (id, name, slots), `autoGridSlots(count)`,
   `applyLayoutTemplate(items, templateId, kindOf: (sourceId) => SourceKind | undefined)` →
   `{ items, layoutMode }`.
-- `geometry.ts`: `clampItem(item)`, `validateItem(item)` → list of German messages, `itemDefaults(source, kind)`,
+- `geometry.ts`: `clampItem(item)`, `validateItem(item)` → list of messages (resolved through `@studioflow/i18n`), `itemDefaults(source, kind)`,
   `rectsIntersect`, `CanvasRect` helpers.
 - `production-state.ts`: immutable `ProductionState` (revision, serverOffsetMs, production, scenes ordered,
   `sourcesById`, devices, assets, pairingRequests, invites, incidents, outputStatus, log, operatorsOnline, telemetry by
@@ -455,12 +467,15 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   `applyEvent(state, event)` → `{ state, result: 'applied' | 'ignored' | 'gap' }`, `applyTelemetry`.
 - `selectors.ts`: `programScene`, `previewScene`, `sceneById`, `sourcesInScene(scene)`,
   `isSourceVisibleIn(scene, sourceId)`, `sceneHealth(scene, sources)` (worst down source like the prototype),
-  `tallyOf(state, sourceId)`, `incidentPlace(state, sourceId)` («im Program» | «in der Preview» | «nicht live»),
+  `tallyOf(state, sourceId)`, `incidentPlace(state, sourceId)` (`'program' | 'preview' | 'off'`, worded “in Program” | “in Preview” | “not live” by
+  `incidentPlaceWord(place)`),
   `stationOrder` (prototype ordering), `isDown(status)`.
-- `format.ts` (de-CH): `formatDuration(ms)` mm:ss, `formatRuntime(ms)` hh:mm:ss, `formatClock(date)`,
-  `formatHm(date)`, `formatSeconds(ms)` («0,3 s»), `formatRate(mbit)` («2,8»), `formatCheckCode('4712')` («47 12»),
-  `statusWord(status, kind)` («verbindet neu», «Teilen beendet» / «Kamera beendet» for a camera, «gesperrt», «verbindet …»,
-  «kein Bild», «nicht verbunden»).
+- `format.ts` (locale-aware through `@studioflow/i18n`): `formatDuration(ms)` mm:ss, `formatRuntime(ms)` hh:mm:ss, `formatClock(date)`,
+  `formatHm(date)`, `formatSeconds(ms)` (“0.3 s”, German “0,3 s”), `formatRate(mbit)` (“2.8”, German “2,8”),
+  `formatCheckCode('4712')` (“47 12”),
+  `statusWord(status, kind)` (“reconnecting”, “sharing stopped” / “camera stopped” for a camera, “blocked”,
+  “connecting…”, “no picture”, “not connected”; German: «verbindet neu», «Teilen beendet» / «Kamera beendet»,
+  «gesperrt», «verbindet …», «kein Bild», «nicht verbunden»).
 
 ### 8.2 `@studioflow/realtime-client`
 
@@ -486,7 +501,7 @@ createSceneRenderer(container: HTMLElement, options: {
   provider: SourceMediaProvider;
   background?: 'black' | 'transparent';          // output ?bg=transparent
   statusOf?: (sourceId: string) => MonitorSourceStatus | undefined;  // monitor alerts (Regie)
-  codeOf?: (sourceId: string) => string | undefined;                 // label «K2 · Standbild 00:12»
+  codeOf?: (sourceId: string) => string | undefined;                 // label “K2 · freeze frame 00:12”
   reducedMotion?: boolean;
 }): SceneRenderer
 
@@ -499,7 +514,7 @@ interface SceneRenderer {
   showSlate(slate: SlateDto | null, assetUrl?: string | null): void;   // standby/end slate above everything (fade 300 ms)
   setPreloadScenes(scenes: readonly SceneDto[]): void;  // output: request LOW quality for their sources
   setSourceStatuses(): void;                   // re-read statusOf for alerts
-  effectiveRects(): ReadonlyMap<string, CanvasRect>;    // per item id, after Auto-Grid (for the edit overlay)
+  effectiveRects(): ReadonlyMap<string, CanvasRect>;    // per item id, after Auto grid (for the edit overlay)
   stats(): { fps: number; items: number; videos: number };
   destroy(): void;
 }
@@ -509,13 +524,13 @@ Rendering rules: one absolutely positioned element per visible item in z-order, 
 for device sources and video assets (loop), `<img>` for images, GPU-friendly transforms only (no canvas copies).
 Fit cover/contain via `object-fit`; crop by an inner wrapper scaled so the cropped part fills the item; radius with
 `overflow:hidden` + `border-radius`; border as inset box-shadow; mirror `scaleX(-1)`; rotation 90/270 swaps the
-inner box. Contain bars use `#0a0d12`. Missing source → dark placeholder `#121821` (monitor shows «Quelle fehlt»).
+inner box. Contain bars use `#0a0d12`. Missing source → dark placeholder `#121821` (monitor shows “Source missing”).
 Hold frame: when a device source is `lost`, the element keeps its last frame; after `onLost.holdMs` it gets the
-held state (blur ≈ 2.5 % of item width, dark overlay rgba(13,17,23,.72), centred «Bild kommt gleich zurück» if the
+held state (blur ≈ 2.5 % of item width, dark overlay rgba(13,17,23,.72), centred “Picture returns shortly” («Bild kommt gleich zurück») if the
 item is ≥ 320 px wide) – or shows `onLost.fallbackSource` instead. `holdMs = null` never escalates. In `monitor`
 mode, a down source additionally gets a dashed outline (amber `#e3b341` reconnecting, red `#f85149` otherwise) and a
 filled label tab like the prototype. Desired sizes: each renderer reports the on-screen pixel size of every device
-source it shows (×devicePixelRatio, rounded to 16 px) via `provider.setDesiredSize`. Auto-Grid as in 4.3.
+source it shows (×devicePixelRatio, rounded to 16 px) via `provider.setDesiredSize`. Auto grid as in 4.3.
 Fades use the Web Animations API on opacity (new scene layer over old), `reducedMotion` turns fades into cuts.
 
 ### 8.4 `@studioflow/media-client` (livekit-client)
@@ -545,48 +560,55 @@ Fades use the Web Animations API on opacity (new scene layer over old), `reduced
 Implements `prototype/regie.html` faithfully with real data. `DESIGN.md` + `.impeccable/design.json` are the design
 system (tokens, typography, components, responsive rules). Routes: `/login`, `/` (Regie), `/monitoring`
 (full-page station metrics: bitrate, fps, resolution, packet loss, RTT, battery, network, tech check; live).
-Header: brand, production name (menu: rename, switch/create production, slates), «Sendung starten/beenden»
-(start/end/reset broadcast, confirmation for «beenden»), LIVE runtime (while live; else «BEREIT» / «BEENDET»),
+Header: brand, production name (menu: rename, switch/create production, slates), “Start broadcast” / “End broadcast”
+(start/end/reset broadcast, confirmation for ending), LIVE runtime (while live; else “READY” / “ENDED”),
 output chip with popover (state, consumers, IPs, format, latency, link copy, IP restriction editor, regenerate key
-with dashed red confirmation), station health chip, Docks und Layout popover, presence, clock, logout.
-Everything in the prototype menu «Prototyp» is replaced by real events (no demo data).
+with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
+language setting, presence, clock, logout.
+Everything in the prototype menu “Prototype” is replaced by real events (no demo data).
 State: one `ProductionStore` service wrapping `ProductionSync` in signals; commands go through `StudioApi` (typed
 HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceSceneItems`. Keyboard as prototype
 (1–9, Space, arrows 1 px / Shift 10 px, Escape). Editing: drag, corner resize (aspect ratio locked, Shift frees),
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
-Studio-Modus and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
-`studioflow.transition`). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
+Studio Mode and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
+`studioflow.transition`; the language setting is `studioflow.locale`, shared with the sender). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
 stacked docks; ≤ 900 px priority stack).
 
 ### 9.2 Sender (`apps/sender`, Angular PWA, base `/join/`)
 
 Routes: `/join/` (resume with stored credentials, else pairing form: name, kind auto-detected – phone if no
-`getDisplayMedia` or mobile UA; switchable), `/join/i/:token` (redeem), `/join/warten` (check code «47 12», waiting),
-`/join/station` (paired). Station UI: big tally border/background (red «LIVE», green «Als Nächstes», none), device
-name + slot codes, connection state («Verbunden», «Verbindet neu …», «Gesperrt», «In einem anderen Tab geöffnet»).
+`getDisplayMedia` or mobile UA; switchable), `/join/i/:token` (redeem), `/join/waiting` (check code “47 12”, waiting),
+`/join/station` (paired). Station UI: big tally border/background (red “LIVE”, green “Up next” («Als Nächstes»), none),
+device
+name + slot codes, connection state (“Connected”, “Reconnecting…”, “Blocked”, “Opened in another tab”; German:
+«Verbunden», «Verbindet neu …», «Gesperrt», «In einem anderen Tab geöffnet»).
 Phone: camera preview, front/back, 720p/1080p, start/stop, dark mode (black screen with a thin tally frame),
 wake lock (re-acquire on visibility), auto-start after reload with the last settings. Laptop: list of screen slots with
-«Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», a large «Erneut teilen» button when a
-share ended or the Regie asks («Die Regie bittet dich, den Bildschirm erneut zu teilen»), optional camera.
+“Share screen”, “+ Add another screen”, “Stop sharing”, “Remove”, a large “Share again” button when a
+share ended or the Regie asks (“The control room asks you to share your screen again”), optional camera. German:
+«Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», «Erneut teilen», «Die Regie bittet dich,
+den Bildschirm erneut zu teilen».
 Messages from the Regie appear as a prominent banner. Technical check runs on first start and on demand; result is
-reported. Reports every 2 s. PWA: manifest (name «StudioFlow Sender», scope/start_url `/join/`, display standalone,
+reported. Reports every 2 s. PWA: manifest (name “StudioFlow Sender”, `lang` `en`, scope/start_url `/join/`, display standalone,
 theme `#0d1117`), Angular service worker for the app shell only (never cache `/api`, `/hubs`, `/rtc`).
 Design: same tokens as the Regie, large touch targets (≥ 44 px), works from 320 px wide, portrait and landscape.
 
 ### 9.3 Output (`apps/output`, Vanilla TS + Vite, base `/o/`)
 
-`/o/{slug}?k=…[&bg=transparent][&debug=1]`. No controls, no text except slates and hold messages. Boot: read slug
+`/o/{slug}?k=…[&bg=transparent][&debug=1][&lang=de-CH]`. No controls, no text except slates and hold messages (English
+by default; `lang` selects `en` or `de-CH`, otherwise the browser language decides; the output ignores the stored
+setting). Boot: read slug
 and key, subscribe via output hub (`ProductionSync`), get a LiveKit token, start `MediaSession` (output role) and
 `LiveKitSourceProvider`, render with `createSceneRenderer(mode 'output')`: standby slate → program scene → end slate;
 program switches play the event's transition; preview scene and all other scenes are preloaded at LOW/HIGH as in 7.
-Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate «Kein Zugang» (no retry loop faster
+Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate “No access” («Kein Zugang») (no retry loop faster
 than 30 s). `debug=1` shows a mono overlay (scene, revision, connection states, per source resolution/fps/bitrate,
 estimated latency). Reports `OutputReport` every 2 s. Bundle target: < 350 KB gzip incl. livekit-client.
 
 ## 10. Infrastructure
 
-Operations (German): `docs/runbook.md`. Every variable is documented in `.env.example`.
+Operations (English): `docs/runbook.md`. Every variable is documented in `.env.example`.
 
 `docker-compose.yml` (project `studioflow`, network `studioflow` with subnet `${STUDIOFLOW_SUBNET:-172.30.0.0/24}`).
 All services: `restart: unless-stopped`, `no-new-privileges`, json-file logs 5 × 10 MB, a healthcheck, `depends_on`
@@ -708,7 +730,7 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 Nothing but Caddy (80/tcp, 443/tcp+udp) and LiveKit media (7881/tcp, 7882/udp) is published.
 
 Scripts (repository root; bash and PowerShell 7.4+ with the same options and behaviour; shared code in
-`infra/scripts/common.sh` and `infra/scripts/StudioFlow.psm1`; messages in German; `--help` / `Get-Help -Full`):
+`infra/scripts/common.sh` and `infra/scripts/StudioFlow.psm1`; messages in English, ASCII only (no i18n layer); `--help` / `Get-Help -Full`):
 
 - `setup.sh` / `setup.ps1`: interactive or `--non-interactive` (`--domain`, `--node-ip` (default: source address of the
   default route, confirmed interactively), `--tls-mode`, `--acme-email`, `--dns-challenge-domain`, `--extra-hosts`,
@@ -767,15 +789,15 @@ The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decision
   an API start, a source that was live within the last 12 h and is used in the program or preview scene and whose
   device does not reconnect within 15 s becomes `reconnecting` with an incident – no outage goes unnoticed, even
   across a restart.
-- GAP-11: the template is named «Screen + Kamera-Spalte» (plan wording, id `col`). The Regie clamps typed values to the
+- GAP-11: the template is named “Screen + camera column” (plan wording «Screen + Kamera-Spalte», id `col`). The Regie clamps typed values to the
   server bounds; dragging keeps the prototype minimum of 96 × 54.
 - GAP-12: detection target 2–5 s as in the plan: server `ClientTimeoutInterval` 5 s, keep-alive 2 s; clients
   `serverTimeoutInMilliseconds` 5000.
-- GAP-15: tests prefer roles, labels and visible German text; `data-testid` attributes may be added where roles are
+- GAP-15: tests prefer roles, labels and visible English text (German text only in the German-locale tests); `data-testid` attributes may be added where roles are
   ambiguous. No global debug objects in production builds except the output page's opt-in `?latency=1` test aid.
 - GAP-25: the backoff sequence is 0, 300, 600, 1200, 2400, 4800, 5000 ms (+ 0–250 ms jitter from the second retry).
 - GAP-08 (camera pause): a slot reported `paused` (the OS suspended the camera) means «not live, expected back» →
-  `reconnecting` if it was live; only a deliberate stop is `ended` («K1 Kamera beendet», «S1 Teilen beendet»). Every
+  `reconnecting` if it was live; only a deliberate stop is `ended` (“K1 camera stopped”, “S1 sharing stopped”). Every
   device report lists every slot; a new Hello session clears the reported slot states (section 4.5).
 - Test hooks (`window.__sfStudio`, `window.__sfSender`) are read-only state views that exist only when the opt-in
   flag `localStorage['studioflow.testHooks'] = '1'` is set (E2E sets it with an init script). The flag is read once
@@ -784,9 +806,9 @@ The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decision
   destroyed; after a sign-out `__sfStudio` reports `revision: null`, `hub: 'idle'`).
   `__sfStudio = { revision: number | null, lastSync: 'delta' | 'snapshot' | null, hub: HubState }`;
   `__sfSender = { slots(): Record<slot, SlotState>, rtc(): RtcState, sessionId: string }`.
-- Log texts of block, unblock and removal name the codes and the device («K1 Handy 1 gesperrt», «S1 S2 Laptop Mia
-  entfernt»; known-bugs BUG-10: intended, more informative for devices with several slots); the Regie toasts name the
-  codes only («K1 gesperrt und getrennt»).
+- Log texts of block, unblock and removal name the codes and the device (“K1 Phone 1 blocked”, “S1 S2 Laptop Mia
+  removed”; known-bugs BUG-10: intended, more informative for devices with several slots); the Regie toasts name the
+  codes only (“K1 blocked and disconnected”).
 - Hub reports are cheap and frequent: the telemetry relayed to the Regie is throttled (section 6), and a report that
   arrives while the database is down still counts as a sign of life of the session (GAP-29), so the database outage does
   not turn into source outages once it is over.
