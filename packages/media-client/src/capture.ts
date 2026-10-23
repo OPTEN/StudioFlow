@@ -1,6 +1,6 @@
 /**
- * Default camera / screen capture of the {@link Publisher}. The explanations of capture failures (codes and German
- * messages) are in `slot-failure.ts`, which does not load livekit-client.
+ * Default camera / screen capture of the {@link Publisher}. The explanations of capture failures (codes and message
+ * keys) are in `slot-failure.ts`, which does not load livekit-client.
  */
 import {
   LocalVideoTrack,

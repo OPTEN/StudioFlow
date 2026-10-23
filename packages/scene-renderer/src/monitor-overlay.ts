@@ -1,13 +1,12 @@
+import { t } from '@studioflow/i18n';
+
 import { createElement, FILL, px, setStyle, setStyles, setText, setVisible } from './dom';
 import type { AlertPresentation } from './monitor-alert';
 import { PALETTE, UI_FONT } from './palette';
 
-/** Monitor text on an item whose source does not exist (any more). */
-const MISSING_MESSAGE = 'Quelle fehlt';
-
 /** What the overlay shows for one item. */
 export interface MonitorOverlayState {
-  /** «Quelle fehlt» in the centre. */
+  /** “Source missing” (`renderer.sourceMissing`) in the centre, for an item whose source does not exist (any more). */
   readonly missing: boolean;
   /** Dashed outline and label tab, or null. */
   readonly alert: AlertPresentation | null;
@@ -18,8 +17,8 @@ export interface MonitorOverlayState {
 }
 
 /**
- * Regie-only decorations of an item: «Quelle fehlt», the dashed alert outline and the filled label tab
- * («K2 · Standbild 00:12»). They keep a fixed size on screen although the stage is scaled: lengths are given in screen
+ * Regie-only decorations of an item: “Source missing”, the dashed alert outline and the filled label tab
+ * (“K2 · Freeze frame 00:12”). They keep a fixed size on screen although the stage is scaled: lengths are given in screen
  * pixels and converted with the current scale on every render (resizes re-render).
  */
 export class MonitorOverlay {
@@ -41,7 +40,6 @@ export class MonitorOverlay {
       'font-family': UI_FONT,
       'font-weight': '600',
     });
-    this.missingEl.textContent = MISSING_MESSAGE;
     this.outlineEl = createElement(doc, 'div', 'sf-r-alert', {
       position: 'absolute',
       'border-style': 'dashed',
@@ -67,6 +65,7 @@ export class MonitorOverlay {
 
     setVisible(this.missingEl, state.missing, 'flex');
     if (state.missing) {
+      setText(this.missingEl, t('renderer.sourceMissing'));
       setStyle(this.missingEl, 'font-size', screen(12.5));
     }
 

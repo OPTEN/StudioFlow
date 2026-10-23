@@ -28,7 +28,7 @@ export class AccessDeniedError extends Error {
   }
 }
 
-/** True for answers that mean «this link does not work» rather than «the server has a problem». */
+/** True for answers that mean “this link does not work” rather than “the server has a problem”. */
 export function isAccessDeniedStatus(status: number): boolean {
   return status === 401 || status === 403 || status === 404;
 }

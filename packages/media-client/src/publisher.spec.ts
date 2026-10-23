@@ -188,11 +188,7 @@ describe('Publisher', () => {
       await publisher.publishCamera('camera', PHONE);
       expect(createCameraTrack).toHaveBeenCalledTimes(1);
       expect(publisher.slotState('camera')).toBe('failed');
-      expect(states.at(-1)).toEqual([
-        'camera',
-        'failed',
-        'Kein Zugriff auf die Kamera. Bitte den Zugriff im Browser erlauben.',
-      ]);
+      expect(states.at(-1)).toEqual(['camera', 'failed', 'media.slot.failure.permission-denied']);
     });
 
     it('retries a busy camera three times with backoff, then fails', async () => {
@@ -210,11 +206,7 @@ describe('Publisher', () => {
       await vi.advanceTimersByTimeAsync(1200);
       await done;
       expect(createCameraTrack).toHaveBeenCalledTimes(4);
-      expect(states.at(-1)).toEqual([
-        'camera',
-        'failed',
-        'Die Kamera ist nicht verfügbar. Wird sie von einer anderen App verwendet?',
-      ]);
+      expect(states.at(-1)).toEqual(['camera', 'failed', 'media.slot.failure.in-use']);
     });
 
     it('recovers when a retry succeeds', async () => {
@@ -253,7 +245,7 @@ describe('Publisher', () => {
       await vi.advanceTimersByTimeAsync(300 + 600 + 1200);
       expect(camera.restartTrack).toHaveBeenCalledTimes(3);
       expect(publisher.slotState('camera')).toBe('failed');
-      expect(states.at(-1)?.[2]).toBe('Die Kamera liefert kein Bild mehr.');
+      expect(states.at(-1)?.[2]).toBe('media.slot.failure.track-lost');
       expect(camera.stop).toHaveBeenCalled();
     });
 
@@ -348,7 +340,7 @@ describe('Publisher', () => {
       await publisher.publishCamera('camera', PHONE);
       cameras[0].restartTrack.mockRejectedValueOnce(domError('OverconstrainedError'));
       await publisher.switchCamera();
-      expect(states.at(-1)).toEqual(['camera', 'live', 'Kamerawechsel fehlgeschlagen.']);
+      expect(states.at(-1)).toEqual(['camera', 'live', 'media.slot.cameraSwitchFailed']);
       await publisher.switchCamera();
       expect(cameras[0].restartTrack).toHaveBeenLastCalledWith(
         expect.objectContaining({ facingMode: 'environment' }),
@@ -465,7 +457,7 @@ describe('Publisher', () => {
       createScreenTrack.mockRejectedValueOnce(domError('NotAllowedError'));
       await publisher.publishScreen('screen-1');
       expect(publisher.slotState('screen-1')).toBe('idle');
-      expect(states.at(-1)).toEqual(['screen-1', 'idle', 'Freigabe abgebrochen']);
+      expect(states.at(-1)).toEqual(['screen-1', 'idle', 'media.slot.failure.cancelled']);
       expect(await publisher.getSlotTelemetry()).toEqual([]);
     });
 
@@ -481,9 +473,9 @@ describe('Publisher', () => {
     });
 
     it.each([
-      ['DeviceUnsupportedError', 'Dieser Browser kann den Bildschirm nicht teilen.'],
-      ['InvalidStateError', 'Bitte die Freigabe direkt per Klick starten.'],
-      ['NotReadableError', 'Der Bildschirm konnte nicht geteilt werden.'],
+      ['DeviceUnsupportedError', 'media.slot.failure.not-supported'],
+      ['InvalidStateError', 'media.slot.failure.needs-gesture'],
+      ['NotReadableError', 'media.slot.failure.unknown'],
     ])('fails with a message on %s', async (name, message) => {
       const { publisher, createScreenTrack, states } = setup();
       createScreenTrack.mockRejectedValueOnce(Object.assign(new Error(name), { name }));
@@ -506,7 +498,7 @@ describe('Publisher', () => {
       await publisher.publishScreen('screen-1');
       screens[0].endFromDevice();
       await flushMicrotasks();
-      expect(states.at(-1)).toEqual(['screen-1', 'ended', 'Freigabe beendet']);
+      expect(states.at(-1)).toEqual(['screen-1', 'ended', 'media.slot.shareEnded']);
       expect(room.localParticipant.unpublishTrack).toHaveBeenCalledWith(screens[0], false);
       expect(screens[0].stop).toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(60_000);
@@ -589,7 +581,7 @@ describe('Publisher', () => {
       await vi.advanceTimersByTimeAsync(300 + 600 + 1200);
       await done;
       expect(room.localParticipant.publishTrack).toHaveBeenCalledTimes(4);
-      expect(states.at(-1)).toEqual(['camera', 'failed', 'Das Bild konnte nicht gesendet werden.']);
+      expect(states.at(-1)).toEqual(['camera', 'failed', 'media.slot.failure.publish-failed']);
     });
 
     it('waits for the next connection when a publish fails because the room went away', async () => {
@@ -749,7 +741,7 @@ describe('Publisher', () => {
       ['SecurityError', 'permission-denied'],
       ['NotFoundError', 'not-found'],
       ['OverconstrainedError', 'not-found'],
-    ] as const)('reports a camera %s as %s next to the German message', async (name, failure) => {
+    ] as const)('reports a camera %s as %s next to its message key', async (name, failure) => {
       const { publisher, createCameraTrack } = setup();
       const seen = failures(publisher);
       createCameraTrack.mockRejectedValue(domError(name));
@@ -778,7 +770,7 @@ describe('Publisher', () => {
       expect(seen.at(-1)).toEqual([
         'camera',
         'failed',
-        'Die Kamera liefert kein Bild mehr.',
+        'media.slot.failure.track-lost',
         'track-lost',
       ]);
     });
@@ -801,13 +793,18 @@ describe('Publisher', () => {
       const seen = failures(publisher);
       createScreenTrack.mockRejectedValueOnce(domError('NotAllowedError'));
       await publisher.publishScreen('screen-1');
-      expect(seen.at(-1)).toEqual(['screen-1', 'idle', 'Freigabe abgebrochen', 'cancelled']);
+      expect(seen.at(-1)).toEqual([
+        'screen-1',
+        'idle',
+        'media.slot.failure.cancelled',
+        'cancelled',
+      ]);
 
       session.connect();
       await publisher.publishScreen('screen-1');
       screens[0].endFromDevice();
       await flushMicrotasks();
-      expect(seen.at(-1)).toEqual(['screen-1', 'ended', 'Freigabe beendet']);
+      expect(seen.at(-1)).toEqual(['screen-1', 'ended', 'media.slot.shareEnded']);
     });
 
     it('drops the failure code once the slot starts again', async () => {

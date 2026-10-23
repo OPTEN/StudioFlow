@@ -1,17 +1,18 @@
 /**
- * Boot configuration of the output page: `/o/{slug}?k={key}[&bg=transparent][&debug=1][&latency=1]` (spec 4.8, 9.3)
- * and the measurement clock `/o/_uhr`.
+ * Boot configuration of the output page: `/o/{slug}?k={key}[&bg=transparent][&debug=1][&latency=1][&lang=de-CH]`
+ * (spec 4.8, 9.3) and the measurement clock `/o/_clock`. `lang` (the language of the page) is read by `main.ts`; the
+ * parser here ignores it.
  *
  * The output key is a secret. It is kept in memory, sent only as `X-Output-Key` / hub `access_token` / asset `?k=`,
- * and never logged. After boot it is removed from the visible address bar (screenshots, screen shares and «copy
- * link» on the proxy machine no longer reveal it) and stored in `sessionStorage` for this tab only, so a reload of
+ * and never logged. After boot it is removed from the visible address bar (screenshots, screen shares and “copy
+ * link” on the proxy machine no longer reveal it) and stored in `sessionStorage` for this tab only, so a reload of
  * the same tab keeps working: sessionStorage is per tab and per origin, not shared with other tabs or windows, and is
  * gone when the tab closes. When the key cannot be stored (storage blocked, e.g. a partitioned third-party iframe with
- * storage disabled), the key stays in the URL, because removing it would make the next reload show «Kein Zugang».
+ * storage disabled), the key stays in the URL, because removing it would make the next reload show “No access”.
  */
 
 /** Path segment of the measurement clock; an underscore can never be part of a slug. */
-export const CLOCK_SEGMENT = '_uhr';
+export const CLOCK_SEGMENT = '_clock';
 
 /** Production slugs: lowercase `[a-z0-9-]{1,48}` (spec 4.2). */
 export const SLUG_PATTERN = /^[a-z0-9-]{1,48}$/;

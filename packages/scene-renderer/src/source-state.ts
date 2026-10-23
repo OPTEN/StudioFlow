@@ -5,7 +5,7 @@ import type { SourceAvailability } from './types';
 
 /**
  * What an item can show right now (pure). A lost device source keeps its last frame while `holding` and switches to
- * the darkened or fallback picture once `held` (plan: «Standbild 3 s, dann abgedunkelt»).
+ * the darkened or fallback picture once `held` (plan: “freeze frame for 3 s, then dimmed”).
  */
 export type SourceState =
   /** Malformed reference, unknown asset or a device source the production does not know. */
@@ -61,7 +61,7 @@ export function sourceState(
     // 'pending' and anything malformed: nothing to show yet.
     return { kind: 'pending' };
   }
-  // A malformed timestamp counts as «lost just now» rather than producing NaN timers.
+  // A malformed timestamp counts as “lost just now” rather than producing NaN timers.
   const since = Number.isFinite(availability.since) ? availability.since : now;
   if (holdMs === null) {
     return { kind: 'holding', since, expiresAt: null };

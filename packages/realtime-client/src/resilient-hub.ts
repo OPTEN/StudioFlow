@@ -136,8 +136,8 @@ export class ResilientHub {
   }
 
   /**
-   * Starts connecting again after `unauthorized` or `stopped` (e.g. after the device was unblocked or «Hier
-   * weitermachen»); acts like {@link start} in `idle` and is a no-op while connecting or connected.
+   * Starts connecting again after `unauthorized` or `stopped` (e.g. after the device was unblocked or “Hier
+   * weitermachen”); acts like {@link start} in `idle` and is a no-op while connecting or connected.
    */
   restart(): void {
     if (

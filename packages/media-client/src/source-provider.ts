@@ -102,7 +102,7 @@ function showStream(video: HTMLVideoElement, stream: MediaStream): void {
 
 /**
  * {@link SourceMediaProvider} backed by a {@link RoomSource} (normally a `MediaSession` with role studio or output).
- * Rebinds automatically whenever the session switches to a new room; the old room's tracks become «lost».
+ * Rebinds automatically whenever the session switches to a new room; the old room's tracks become “lost”.
  */
 export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #role: SubscriberRole;

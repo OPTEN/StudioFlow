@@ -1,6 +1,6 @@
 import type { OutputReport } from '@studioflow/scene-model';
 
-/** Cadence of `OutputReport` over the hub (spec 4.8: «every 2 s»). */
+/** Cadence of `OutputReport` over the hub (spec 4.8: “every 2 s”). */
 export const REPORT_INTERVAL_MS = 2000;
 /** Cadence of the REST fallback while the hub is not connected. */
 export const REST_REPORT_INTERVAL_MS = 10_000;
@@ -20,7 +20,7 @@ export interface StatusReporterOptions {
   /** Builds the current report (latency needs WebRTC stats, hence async). */
   readonly collect: () => Promise<OutputReport>;
   readonly transport: ReportTransport;
-  /** False suspends reporting (while «Kein Zugang» is shown: no requests faster than the 30 s access retry). */
+  /** False suspends reporting (while “No access” is shown: no requests faster than the 30 s access retry). */
   readonly enabled?: () => boolean;
   /** Runs before every report (autoplay check), so the page needs only one housekeeping timer. */
   readonly onTick?: () => void;

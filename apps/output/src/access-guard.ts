@@ -1,8 +1,8 @@
 /**
- * «Kein Zugang» handling (spec 9.3: no retry loop faster than 30 s). Two connections can be refused independently:
+ * “No access” handling (spec 9.3: no retry loop faster than 30 s). Two connections can be refused independently:
  * the output hub (negotiate 401/403: wrong or rotated key, IP not allowed) and the media side (token endpoint
  * 401/403/404, or LiveKit removed the participant after a key rotation). While any side is refused the page shows
- * «Kein Zugang»; every {@link ACCESS_RETRY_MS} the refused sides are tried again, so a corrected IP rule (or a key
+ * “No access”; every {@link ACCESS_RETRY_MS} the refused sides are tried again, so a corrected IP rule (or a key
  * that becomes valid again) recovers by itself without anybody touching the proxy.
  */
 
@@ -17,7 +17,7 @@ export type ScheduleFn = (callback: () => void, delayMs: number) => () => void;
 
 /** Options of {@link AccessGuard}. */
 export interface AccessGuardOptions {
-  /** The first side was refused: show «Kein Zugang». */
+  /** The first side was refused: show “No access”. */
   readonly onDenied: () => void;
   /** The last refused side connected again. */
   readonly onAllowed: () => void;

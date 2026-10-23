@@ -25,10 +25,7 @@ import {
   snapshotChanges,
   deltaChanges,
 } from './testing/fixtures';
-import { resetLocaleForTests } from '@studioflow/i18n';
 
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 // Loaded once up front, so the page's lazy `import()` of them resolves within the fake-timer steps.
 import './debug-overlay';
 import './latency-probe';
@@ -162,7 +159,7 @@ describe('output app: boot', () => {
     const { renderer, app } = await boot();
     expect(renderer.summary()).toEqual([
       'show scn_a',
-      "slate Gleich geht's los",
+      'slate Starting soon',
       'preload scn_b,scn_c',
     ]);
     expect(app.view.rendering).toBe(true);
@@ -242,7 +239,7 @@ describe('output app: state → picture', () => {
     hub.emit(HUB.event, productionChanged(101, { broadcast: 'live' }));
     renderer.reset();
     hub.emit(HUB.event, productionChanged(102, { broadcast: 'ended' }));
-    expect(renderer.summary()).toEqual(['slate Danke fürs Zuschauen']);
+    expect(renderer.summary()).toEqual(['slate Thanks for watching']);
   });
 
   it('keeps the last picture while the hub is down and catches up without transition', async () => {
@@ -277,7 +274,7 @@ describe('output app: short database outage', () => {
       refusals-- > 0
         ? Promise.reject(
             new Error(
-              "An unexpected error occurred invoking 'SubscribeOutput' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+              "An unexpected error occurred invoking 'SubscribeOutput' on the server. HubException: service_unavailable: The database is not reachable right now.",
             ),
           )
         : Promise.resolve(deltaChanges(101, [programSwitched(101, 'scn_c', FADE)]));
@@ -294,12 +291,12 @@ describe('output app: short database outage', () => {
   });
 });
 
-describe('output app: «Kein Zugang»', () => {
-  it('shows «Kein Zugang» on a refused hub and retries at most every 30 s', async () => {
+describe('output app: “No access”', () => {
+  it('shows “No access” on a refused hub and retries at most every 30 s', async () => {
     const { hub, renderer, media } = await boot();
     renderer.reset();
     hub.refuse();
-    expect(renderer.summary()).toEqual(['slate Kein Zugang', 'show null', 'preload ']);
+    expect(renderer.summary()).toEqual(['slate No access', 'show null', 'preload ']);
     expect(media.session.stops).toBe(1);
 
     await flush(ACCESS_RETRY_MS - 1);
@@ -323,13 +320,13 @@ describe('output app: «Kein Zugang»', () => {
     await flush();
     expect(renderer.summary()).toEqual([
       'show scn_a',
-      "slate Gleich geht's los",
+      'slate Starting soon',
       'preload scn_b,scn_c',
     ]);
     expect(media.session.restarts).toBe(1);
   });
 
-  it('shows «Kein Zugang» when the token endpoint refuses the link and retries LiveKit every 30 s', async () => {
+  it('shows “No access” when the token endpoint refuses the link and retries LiveKit every 30 s', async () => {
     const { renderer, media, hub } = await boot();
     renderer.reset();
     media.session.setState('unauthorized');
@@ -341,10 +338,10 @@ describe('output app: «Kein Zugang»', () => {
     expect(hub.restarts).toBe(0);
     media.session.setState('connected');
     await flush();
-    expect(renderer.currentSlate()?.title).toBe("Gleich geht's los");
+    expect(renderer.currentSlate()?.title).toBe('Starting soon');
   });
 
-  it('rejoins after a LiveKit removal without «Kein Zugang», slower when it repeats', async () => {
+  it('rejoins after a LiveKit removal without “No access”, slower when it repeats', async () => {
     const { renderer, media } = await boot();
     renderer.reset();
     media.session.setState('removed');
@@ -361,7 +358,7 @@ describe('output app: «Kein Zugang»', () => {
     expect(renderer.summary()).toEqual([]);
   });
 
-  it('shows «Kein Zugang» when the rejoin after a removal is refused', async () => {
+  it('shows “No access” when the rejoin after a removal is refused', async () => {
     const { renderer, media } = await boot();
     media.session.setState('removed');
     await flush(REMOVAL_RESTART_MS);
@@ -446,11 +443,11 @@ describe('output app: optional parts', () => {
     });
     await flush(1000);
     const text = document.querySelector('.c-debug')?.textContent ?? '';
-    expect(text).toContain('Webinar · Szene «Szene A»');
+    expect(text).toContain('Webinar · Scene “Scene A”');
     expect(text).toContain('Revision 100');
-    expect(text).toContain('Hub verbunden');
-    expect(text).toContain('LiveKit verbunden');
-    expect(text).toContain('K1 Handy Lea · 1280×720 · 30 fps · 1,5 Mbit/s');
+    expect(text).toContain('Hub connected');
+    expect(text).toContain('LiveKit connected');
+    expect(text).toContain('K1 Handy Lea · 1280×720 · 30 fps · 1.5 Mbit/s');
   });
 
   it('shows no overlay without the flag', async () => {
@@ -502,7 +499,7 @@ describe('output app: optional parts', () => {
 });
 
 describe('invalid link page', () => {
-  it('shows «Kein Zugang» without any network access', async () => {
+  it('shows “No access” without any network access', async () => {
     const root = document.createElement('main');
     document.body.append(root);
     let renderer: FakeRenderer | null = null;
@@ -516,7 +513,7 @@ describe('invalid link page', () => {
       },
     );
     await flush(60_000);
-    expect((renderer as FakeRenderer | null)?.summary()).toEqual(['slate Kein Zugang']);
+    expect((renderer as FakeRenderer | null)?.summary()).toEqual(['slate No access']);
     expect(document.documentElement.classList.contains('is-transparent')).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
     stop();
@@ -524,7 +521,7 @@ describe('invalid link page', () => {
     root.remove();
   });
 
-  it('renders «Kein Zugang» with the real renderer', async () => {
+  it('renders “No access” with the real renderer', async () => {
     const root = document.createElement('main');
     document.body.append(root);
     const stop = startInvalidLinkPage(
@@ -535,8 +532,8 @@ describe('invalid link page', () => {
       },
     );
     await flush(400);
-    expect(root.textContent).toContain('Kein Zugang');
-    expect(root.textContent).toContain('Der Output-Link ist ungültig oder abgelaufen.');
+    expect(root.textContent).toContain('No access');
+    expect(root.textContent).toContain('The output link is invalid or has expired.');
     stop();
     root.remove();
   });

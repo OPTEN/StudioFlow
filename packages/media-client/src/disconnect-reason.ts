@@ -9,8 +9,8 @@ export type DisconnectOutcome = 'rejoin' | 'replaced' | 'removed';
 /**
  * Maps a `RoomEvent.Disconnected` reason to the session's reaction.
  *
- * - DUPLICATE_IDENTITY: another tab or device took over the identity → «replaced», never reconnect (no ping-pong).
- * - PARTICIPANT_REMOVED / ROOM_DELETED: the server removed us (blocked device, rotated output key) → «removed».
+ * - DUPLICATE_IDENTITY: another tab or device took over the identity → “replaced”, never reconnect (no ping-pong).
+ * - PARTICIPANT_REMOVED / ROOM_DELETED: the server removed us (blocked device, rotated output key) → “removed”.
  * - Everything else rejoins with a fresh token and a new `Room`: `undefined` (the SDK gave up), JOIN_FAILURE,
  *   STATE_MISMATCH, SIGNAL_CLOSE, CONNECTION_TIMEOUT, MEDIA_FAILURE, SERVER_SHUTDOWN, UNKNOWN_REASON, and
  *   CLIENT_INITIATED – the session detaches before its own `disconnect()`, so a CLIENT_INITIATED it observes comes from

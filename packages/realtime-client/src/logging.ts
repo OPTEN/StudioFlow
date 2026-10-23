@@ -2,7 +2,7 @@ import { LogLevel, type ILogger } from '@microsoft/signalr';
 
 /**
  * Query parameters that carry secrets: SignalR appends the hub token as `access_token` to WebSocket and SSE URLs and
- * logs those URLs (e.g. «WebSocket connected to wss://…?access_token=…»); the output page carries its key as `k`.
+ * logs those URLs (e.g. “WebSocket connected to wss://…?access_token=…”); the output page carries its key as `k`.
  */
 const SECRET_QUERY_PATTERN = /([?&](?:access_token|k)=)[^&#\s'"]*/gi;
 

@@ -12,10 +12,6 @@ import {
   sceneUpserted,
   state,
 } from './testing/fixtures';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 function setup(): { renderer: FakeRenderer; view: ProgramView } {
   const renderer = new FakeRenderer(document.createElement('div'));
@@ -31,9 +27,9 @@ function next(current: ProductionState, event: ProductionEvent): ProductionState
 
 describe('slateFor', () => {
   it('maps the broadcast state to the slate', () => {
-    expect(slateFor(state({}, { broadcast: 'standby' }))?.title).toBe("Gleich geht's los");
+    expect(slateFor(state({}, { broadcast: 'standby' }))?.title).toBe('Starting soon');
     expect(slateFor(state({}, { broadcast: 'live' }))).toBeNull();
-    expect(slateFor(state({}, { broadcast: 'ended' }))?.title).toBe('Danke fürs Zuschauen');
+    expect(slateFor(state({}, { broadcast: 'ended' }))?.title).toBe('Thanks for watching');
   });
 });
 
@@ -65,7 +61,7 @@ describe('ProgramView', () => {
     view.apply(state());
     expect(renderer.summary()).toEqual([
       'show scn_a',
-      "slate Gleich geht's los",
+      'slate Starting soon',
       'preload scn_b,scn_c',
     ]);
     expect(view.rendering).toBe(true);
@@ -94,7 +90,7 @@ describe('ProgramView', () => {
     view.apply(live);
     renderer.reset();
     view.apply(next(live, productionChanged(101, { broadcast: 'ended' })));
-    expect(renderer.summary()).toEqual(['slate Danke fürs Zuschauen']);
+    expect(renderer.summary()).toEqual(['slate Thanks for watching']);
     expect(view.shownSceneId).toBeNull();
   });
 
@@ -173,7 +169,7 @@ describe('ProgramView', () => {
     const slateState = state(
       {},
       {
-        standbySlate: { title: 'Gleich', subtitle: null, backgroundAssetId: IMAGE },
+        standbySlate: { title: 'Soon', subtitle: null, backgroundAssetId: IMAGE },
       },
     );
     view.apply(slateState);
@@ -182,7 +178,7 @@ describe('ProgramView', () => {
     expect(renderer.summary()).toEqual([]);
     known = true;
     view.apply(slateState);
-    expect(renderer.summary()).toEqual(['slate Gleich']);
+    expect(renderer.summary()).toEqual(['slate Soon']);
   });
 
   it('shows an empty stage when the production has no program scene', () => {
@@ -191,13 +187,13 @@ describe('ProgramView', () => {
     expect(renderer.summary()).toEqual(['show null', 'slate null']);
   });
 
-  it('clears the stage behind «Kein Zugang» and keeps the latest state', () => {
+  it('clears the stage behind “No access” and keeps the latest state', () => {
     const { renderer, view } = setup();
     const live = state({}, { broadcast: 'live' });
     view.apply(live);
     renderer.reset();
     view.setDenied(true);
-    expect(renderer.summary()).toEqual(['slate Kein Zugang', 'show null', 'preload ']);
+    expect(renderer.summary()).toEqual(['slate No access', 'show null', 'preload ']);
     expect(renderer.currentSlate()).toEqual(noAccessSlate());
     expect(view.rendering).toBe(false);
     expect(view.shownSceneId).toBeNull();
@@ -213,16 +209,11 @@ describe('ProgramView', () => {
     expect(view.rendering).toBe(true);
   });
 
-  it('hides «Kein Zugang» when access returns before any state', () => {
+  it('hides “No access” when access returns before any state', () => {
     const { renderer, view } = setup();
     view.setDenied(true);
     view.setDenied(false);
-    expect(renderer.summary()).toEqual([
-      'slate Kein Zugang',
-      'show null',
-      'preload ',
-      'slate null',
-    ]);
+    expect(renderer.summary()).toEqual(['slate No access', 'show null', 'preload ', 'slate null']);
     expect(view.rendering).toBe(false);
   });
 

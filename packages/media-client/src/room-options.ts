@@ -1,5 +1,5 @@
 /**
- * `Room` options per client role (spec section 7, «Subscribing» and «Verified livekit-client 2.23.0 behaviour»).
+ * `Room` options per client role (spec section 7, “Subscribing” and “Verified livekit-client 2.23.0 behaviour”).
  */
 import { backoffDelay } from '@studioflow/realtime-client';
 import {

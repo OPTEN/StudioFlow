@@ -50,4 +50,3 @@ export {
   type LiveKitSourceProviderOptions,
   type SourceStats,
 } from './source-provider';
-export { SLOT_MESSAGES } from './slot-failure';

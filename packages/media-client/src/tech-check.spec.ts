@@ -1,3 +1,4 @@
+import { msg } from '@studioflow/i18n';
 import { FakeMediaStreamTrack } from './testing/fake-livekit';
 import {
   TECH_CHECK,
@@ -5,6 +6,7 @@ import {
   measureUpload,
   rateCamera,
   runTechCheck,
+  techProblemText,
   worstLevel,
 } from './tech-check';
 
@@ -47,25 +49,25 @@ describe('rateCamera', () => {
       '720p at 15 fps',
       cameraTrack({ width: 1280, height: 720, frameRate: 15 }),
       'warn',
-      'Kamera: nur 1280 × 720 bei 15 fps.',
+      msg('media.techcheck.camera.lowResFps', { width: 1280, height: 720, fps: 15 }),
     ],
     [
       '360p',
       cameraTrack({ width: 640, height: 360, frameRate: 30 }),
       'warn',
-      'Kamera: nur 640 × 360 bei 30 fps.',
+      msg('media.techcheck.camera.lowResFps', { width: 640, height: 360, fps: 30 }),
     ],
     [
       '240p',
       cameraTrack({ width: 320, height: 240, frameRate: 29.97 }),
       'bad',
-      'Kamera: nur 320 × 240 bei 30 fps.',
+      msg('media.techcheck.camera.lowResFps', { width: 320, height: 240, fps: 30 }),
     ],
     [
       'ended track',
       cameraTrack({ width: 1280, height: 720 }, 'ended'),
       'bad',
-      'Kamera: liefert kein Bild.',
+      msg('media.techcheck.camera.noPicture'),
     ],
     ['no size', cameraTrack({ frameRate: 30 }), 'unknown', null],
     ['zero size', cameraTrack({ width: 0, height: 0 }), 'unknown', null],
@@ -94,8 +96,8 @@ describe('measureNetwork', () => {
   it.each([
     [[10, 20, 30, 40, 1000], 'ok', 30, null],
     [[50, 50, 50, 50, 50], 'ok', 50, null],
-    [[51, 60, 100, 120, 150], 'warn', 100, 'Netzwerk: hohe Latenz (100 ms).'],
-    [[150, 200, 220, 300, 400], 'bad', 220, 'Netzwerk: hohe Latenz (220 ms).'],
+    [[51, 60, 100, 120, 150], 'warn', 100, msg('media.techcheck.network.latency', { rtt: 100 })],
+    [[150, 200, 220, 300, 400], 'bad', 220, msg('media.techcheck.network.latency', { rtt: 220 })],
   ])('rates the median of %j as %s', async (values, level, rtt, problem) => {
     await expect(measureNetwork(pings(...values))).resolves.toEqual({ level, value: rtt, problem });
   });
@@ -121,12 +123,12 @@ describe('measureNetwork', () => {
     ).resolves.toEqual({
       level: 'warn',
       value: 20,
-      problem: 'Netzwerk: 2 von 5 Messungen ohne Antwort.',
+      problem: msg('media.techcheck.network.loss', { lost: 2, total: 5 }),
     });
     await expect(measureNetwork(pings(10, 20, 30, 200, -1))).resolves.toEqual({
       level: 'warn',
       value: 25,
-      problem: 'Netzwerk: 1 von 5 Messungen ohne Antwort.',
+      problem: msg('media.techcheck.network.loss', { lost: 1, total: 5 }),
     });
   });
 
@@ -136,7 +138,7 @@ describe('measureNetwork', () => {
     ).resolves.toEqual({
       level: 'bad',
       value: null,
-      problem: 'Netzwerk: Server nicht zuverlässig erreichbar.',
+      problem: msg('media.techcheck.network.unreachable'),
     });
   });
 
@@ -166,8 +168,8 @@ describe('measureUpload', () => {
   it.each([
     [1000, 'ok', 8000, null],
     [1333, 'ok', 6002, null],
-    [2000, 'warn', 4000, 'Upload: nur 4,0 Mbit/s (empfohlen ab 6 Mbit/s).'],
-    [4000, 'bad', 2000, 'Upload: nur 2,0 Mbit/s (empfohlen ab 6 Mbit/s).'],
+    [2000, 'warn', 4000, msg('media.techcheck.upload.slow', { rate: 4, recommended: 6 })],
+    [4000, 'bad', 2000, msg('media.techcheck.upload.slow', { rate: 2, recommended: 6 })],
   ])('rates 1 MB in %i ms as %s', async (elapsedMs, level, kbps, problem) => {
     const clock = { now: 0 };
     await expect(measureUpload(upload(elapsedMs, clock), () => clock.now)).resolves.toEqual({
@@ -199,14 +201,14 @@ describe('measureUpload', () => {
     await expect(measureUpload(async () => Promise.reject(new Error('413')))).resolves.toEqual({
       level: 'bad',
       value: null,
-      problem: 'Upload: Test fehlgeschlagen.',
+      problem: msg('media.techcheck.upload.failed'),
     });
     const hanging = measureUpload(() => new Promise(() => undefined));
     await vi.advanceTimersByTimeAsync(TECH_CHECK.uploadTimeoutMs);
     await expect(hanging).resolves.toEqual({
       level: 'bad',
       value: null,
-      problem: 'Upload: Zeitüberschreitung (über 15 s).',
+      problem: msg('media.techcheck.upload.timeout', { seconds: 15 }),
     });
   });
 
@@ -248,10 +250,11 @@ describe('runTechCheck', () => {
       rttMs: 12,
       at: '2026-10-22T10:00:00.000Z',
       note: null,
+      problems: [],
     });
   });
 
-  it('rates the worst step and summarizes every problem in German', async () => {
+  it('rates the worst step and summarizes every problem in English', async () => {
     const clock = { now: 0 };
     const result = await runTechCheck({
       getUserMediaTrack: cameraTrack({ width: 640, height: 360, frameRate: 30 }),
@@ -266,8 +269,19 @@ describe('runTechCheck', () => {
       bandwidth: 'warn',
     });
     expect(result.note).toBe(
-      'Kamera: nur 640 × 360 bei 30 fps. Netzwerk: hohe Latenz (200 ms). Upload: nur 4,0 Mbit/s (empfohlen ab 6 Mbit/s).',
+      'Camera: only 640 × 360 at 30 fps. Network: high latency (200 ms). Upload: only 4 Mbit/s (recommended from 6 Mbit/s).',
     );
+    expect(result.problems).toEqual([
+      msg('media.techcheck.camera.lowResFps', { width: 640, height: 360, fps: 30 }),
+      msg('media.techcheck.network.latency', { rtt: 200 }),
+      msg('media.techcheck.upload.slow', { rate: 4, recommended: 6 }),
+    ]);
+  });
+
+  it('shows the decimals of a problem in the format of the reader', () => {
+    const slow = msg('media.techcheck.upload.slow', { rate: 2, recommended: 6 });
+    expect(techProblemText(slow)).toBe('Upload: only 2.0 Mbit/s (recommended from 6 Mbit/s).');
+    expect(techProblemText(slow, 'en')).toBe('Upload: only 2 Mbit/s (recommended from 6 Mbit/s).');
   });
 
   it('ignores an unknown camera on laptops and never rejects', async () => {

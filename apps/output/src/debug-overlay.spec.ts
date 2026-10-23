@@ -4,14 +4,10 @@ import {
   mountDebugOverlay,
   type DebugInfo,
 } from './debug-overlay';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const INFO: DebugInfo = {
   productionName: 'Webinar',
-  sceneName: 'Begrüssung',
+  sceneName: 'Welcome',
   broadcast: 'live',
   revision: 1_761_127_200_000_123,
   hubState: 'connected',
@@ -40,13 +36,13 @@ const INFO: DebugInfo = {
 describe('formatDebugLines', () => {
   it('shows production, scene, revision, connections, latency, fps and per-source stats', () => {
     expect(formatDebugLines(INFO)).toEqual([
-      'Webinar · Szene «Begrüssung»',
-      'Revision 1761127200000123 · Sendung live',
-      'Hub verbunden · Sync aktuell',
-      'LiveKit verbunden',
-      'Latenz ≈ 62 ms · Renderer 60 fps',
-      'K1 Handy Lea · 1920×1080 · 30 fps · 2,8 Mbit/s · Verlust 0,3 % · Puffer 48 ms',
-      'S1 Laptop Tom · Screen 1 · Standbild',
+      'Webinar · Scene “Welcome”',
+      'Revision 1761127200000123 · Broadcast live',
+      'Hub connected · Sync up to date',
+      'LiveKit connected',
+      'Latency ≈ 62 ms · Renderer 60 fps',
+      'K1 Handy Lea · 1920×1080 · 30 fps · 2.8 Mbit/s · Loss 0.3% · Buffer 48 ms',
+      'S1 Laptop Tom · Screen 1 · freeze frame',
     ]);
   });
 
@@ -64,12 +60,12 @@ describe('formatDebugLines', () => {
       sources: [],
     });
     expect(lines).toEqual([
-      'Produktion unbekannt · keine Szene',
-      'Revision – · Sendung –',
-      'Hub verbindet neu · Sync offline, letzter Stand',
-      'LiveKit lädt …',
-      'Latenz ≈ – · Renderer 0 fps',
-      'Keine Kamera- oder Screen-Quelle im Bild',
+      'Unknown production · no scene',
+      'Revision – · Broadcast –',
+      'Hub reconnecting · Sync offline, last state',
+      'LiveKit loading…',
+      'Latency ≈ – · Renderer 0 fps',
+      'No camera or screen source in the picture',
     ]);
   });
 
@@ -78,7 +74,7 @@ describe('formatDebugLines', () => {
       ...INFO,
       sources: [{ code: 'K2', label: null, availability: 'pending', stats: { width: 640 } }],
     }).slice(5);
-    expect(line).toBe('K2 · –×– · – fps · – Mbit/s · Verlust – · Puffer – · kein Bild');
+    expect(line).toBe('K2 · –×– · – fps · – Mbit/s · Loss – · Buffer – · no picture');
   });
 });
 

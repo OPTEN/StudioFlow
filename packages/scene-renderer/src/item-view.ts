@@ -1,7 +1,8 @@
+import { t } from '@studioflow/i18n';
 import { parseSourceRef, slotKind, type SceneItemDto } from '@studioflow/scene-model';
 
 import { SMALL_PICTURE, type DesiredSizeCollector } from './desired-sizes';
-import { createElement, FILL, px, setStyle, setStyles, setVisible } from './dom';
+import { createElement, FILL, px, setStyle, setStyles, setText, setVisible } from './dom';
 import {
   cropBox,
   desiredPixelSize,
@@ -28,9 +29,7 @@ import { isSameSource, type ResolvedSource } from './source-resolver';
 import { isLostState, normalizeHoldMs, sourceState, type SourceState } from './source-state';
 import type { CanvasRect } from './types';
 
-/** Hold message on a darkened picture. */
-const HELD_MESSAGE = 'Bild kommt gleich zurück';
-/** The hold message is only drawn on items at least this wide (canvas pixels). */
+/** The hold message (`renderer.held`) is only drawn on items at least this wide (canvas pixels). */
 const HELD_MESSAGE_MIN_WIDTH = 320;
 /** Longest wait for the first new frame of a returned source before the hold picture is removed anyway. */
 const REVEAL_TIMEOUT_MS = 1500;
@@ -52,9 +51,9 @@ export type MediaFactory = (source: ResolvedSource) => MediaView;
  *       video|img          object-fit, mirror
  *       canvas             hold frame: rolling copy of the live picture, shown while lost
  *   div.sf-r-fallback      fallback source after the hold time
- *   div.sf-r-held          dark scrim + «Bild kommt gleich zurück»
+ *   div.sf-r-held          dark scrim + “Picture returns shortly”
  *   div.sf-r-border        inset box-shadow border
- *   …                      monitor overlay: «Quelle fehlt», alert outline and label ({@link MonitorOverlay})
+ *   …                      monitor overlay: “Source missing”, alert outline and label ({@link MonitorOverlay})
  * ```
  */
 export class ItemView {
@@ -117,7 +116,6 @@ export class ItemView {
       'font-size': '30px',
     });
     this.heldTextEl = createElement(doc, 'span', 'sf-r-held-text');
-    this.heldTextEl.textContent = HELD_MESSAGE;
     this.borderEl = createElement(doc, 'div', 'sf-r-border', {
       ...FILL,
       'border-radius': 'inherit',
@@ -441,6 +439,9 @@ export class ItemView {
     setStyle(this.boxEl, 'filter', darken ? `blur(${px(heldBlurPx(rect.w))})` : '');
     setStyle(this.boxEl, 'opacity', showFallback ? '0' : '');
     setVisible(this.heldEl, darken, 'flex');
+    if (darken) {
+      setText(this.heldTextEl, t('renderer.held'));
+    }
     setVisible(this.heldTextEl, rect.w >= HELD_MESSAGE_MIN_WIDTH, 'inline');
     this.renderFallback(showFallback);
   }

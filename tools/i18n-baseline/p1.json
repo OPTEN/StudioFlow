@@ -1,7 +1,0 @@
-[
-  {
-    "path": "packages/media-client/src/tech-check.ts",
-    "rule": "banned-format",
-    "reason": "P1 converts the tech check notes to media.techcheck.* and the format helpers."
-  }
-]

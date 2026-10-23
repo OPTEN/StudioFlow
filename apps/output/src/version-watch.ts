@@ -60,7 +60,7 @@ export class VersionWatch {
 
   constructor(private readonly options: VersionWatchOptions) {}
 
-  /** A newer build was found and waits for the broadcast to leave «live». */
+  /** A newer build was found and waits for the broadcast to leave “live”. */
   get pending(): string | null {
     return this.#pending;
   }

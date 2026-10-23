@@ -75,7 +75,7 @@ describe('cursor', () => {
   });
 });
 
-describe('measurement clock (/o/_uhr)', () => {
+describe('measurement clock (/o/_clock)', () => {
   it('formats HH:MM:SS.mmm', () => {
     expect(formatClockMs(new Date(2026, 9, 22, 9, 5, 7, 42))).toBe('09:05:07.042');
     expect(formatClockMs(new Date(2026, 9, 22, 23, 59, 59, 999))).toBe('23:59:59.999');
@@ -95,7 +95,7 @@ describe('measurement clock (/o/_uhr)', () => {
     const time = root.querySelector('.c-clock__time');
     expect(time?.textContent).toMatch(/^\d{2}:\d{2}:\d{2}\.\d{3}$/);
     expect(root.querySelector('.c-clock__hint')?.textContent).toBe(clockHint());
-    expect(document.title).toBe('StudioFlow Uhr');
+    expect(document.title).toBe('StudioFlow clock');
     const before = frames.length;
     frames.at(-1)?.(0);
     expect(frames.length).toBe(before + 1);

@@ -23,7 +23,7 @@ export class TimeoutError extends Error {
   override readonly name = 'TimeoutError';
 
   constructor(readonly timeoutMs: number) {
-    super(`Zeitüberschreitung nach ${timeoutMs} ms`);
+    super(`Timed out after ${timeoutMs} ms`);
   }
 }
 

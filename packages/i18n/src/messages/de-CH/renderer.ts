@@ -6,4 +6,5 @@ export const renderer: Translation<typeof en> = {
   'renderer.alertFrozen': 'Standbild {time}',
   'renderer.held': 'Bild kommt gleich zurück',
   'renderer.sourceMissing': 'Quelle fehlt',
+  'renderer.stageLabel': 'Szene',
 };

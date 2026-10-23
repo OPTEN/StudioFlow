@@ -8,10 +8,6 @@ import {
   SCREEN,
   type Mounted,
 } from './testing/fixtures';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('scene renderer: monitor alerts', () => {
   let mounted: Mounted;
@@ -85,33 +81,33 @@ describe('scene renderer: monitor alerts', () => {
     expect(label('itm_k1')?.style.fontSize).toBe('11.5px');
     expect(label('itm_k1')?.style.height).toBe('18px');
     expect(label('itm_k1')?.style.fontWeight).toBe('700');
-    expect(label('itm_k1')?.textContent).toBe('K1 · Standbild 00:00');
+    expect(label('itm_k1')?.textContent).toBe('K1 · Freeze frame 00:00');
 
     await vi.advanceTimersByTimeAsync(12_000);
-    expect(label('itm_k1')?.textContent).toBe('K1 · Standbild 00:12');
+    expect(label('itm_k1')?.textContent).toBe('K1 · Freeze frame 00:12');
   });
 
   it('counts from the status change when the provider has no lost time', async () => {
     mountMonitor();
     await vi.advanceTimersByTimeAsync(5000);
     setStatus(CAMERA_2, 'reconnecting');
-    expect(label('itm_k2')?.textContent).toBe('K2 · Standbild 00:00');
+    expect(label('itm_k2')?.textContent).toBe('K2 · Freeze frame 00:00');
     await vi.advanceTimersByTimeAsync(3000);
-    expect(label('itm_k2')?.textContent).toBe('K2 · Standbild 00:03');
+    expect(label('itm_k2')?.textContent).toBe('K2 · Freeze frame 00:03');
     setStatus(CAMERA_2, 'ended');
     setStatus(CAMERA_2, 'reconnecting');
-    expect(label('itm_k2')?.textContent).toBe('K2 · Standbild 00:00');
+    expect(label('itm_k2')?.textContent).toBe('K2 · Freeze frame 00:00');
   });
 
-  it('draws red outlines with fixed words for ended, lost and blocked (an ended camera is «Kamera beendet»)', () => {
+  it('draws red outlines with fixed words for ended, lost and blocked (an ended camera is “camera stopped”)', () => {
     mountMonitor();
     setStatus(CAMERA, 'ended');
     setStatus(CAMERA_2, 'blocked');
     expect(outline('itm_k1')?.style.borderColor).toBe('#f85149');
-    expect(label('itm_k1')?.textContent).toBe('K1 · Kamera beendet');
-    expect(label('itm_k2')?.textContent).toBe('K2 · gesperrt');
+    expect(label('itm_k1')?.textContent).toBe('K1 · camera stopped');
+    expect(label('itm_k2')?.textContent).toBe('K2 · blocked');
     setStatus(CAMERA_2, 'lost');
-    expect(label('itm_k2')?.textContent).toBe('K2 · kein Bild');
+    expect(label('itm_k2')?.textContent).toBe('K2 · no picture');
     expect(label('itm_k2')?.style.backgroundColor).toBe('#f85149');
   });
 
@@ -120,11 +116,11 @@ describe('scene renderer: monitor alerts', () => {
     setStatus(SCREEN, 'ended');
     setStatus(CAMERA, 'reconnecting');
     // 300 canvas px at scale 1 = 300 screen px: long variant.
-    expect(label('itm_s1')?.textContent).toBe('S1 · Teilen beendet');
+    expect(label('itm_s1')?.textContent).toBe('S1 · sharing stopped');
     // At scale 0.5 the screen item is 150 screen px wide, the cameras 320.
     mounted.setSize(960, 540);
-    expect(label('itm_s1')?.textContent).toBe('S1 · beendet');
-    expect(label('itm_k1')?.textContent).toBe('K1 · Standbild 00:00');
+    expect(label('itm_s1')?.textContent).toBe('S1 · ended');
+    expect(label('itm_k1')?.textContent).toBe('K1 · Freeze frame 00:00');
     mounted.setSize(480, 270);
     expect(label('itm_k1')?.textContent).toBe('K1 · 00:00');
     // Screen-pixel lengths follow the scale (0.25): 11.5 screen px = 46 canvas px.

@@ -1,6 +1,6 @@
 /**
- * Capture and publish settings of the sender (spec section 7, «Publishing» and «Verified livekit-client 2.23.0
- * behaviour»). Pure data, shared by the sender room defaults and the {@link Publisher}.
+ * Capture and publish settings of the sender (spec section 7, “Publishing” and “Verified livekit-client 2.23.0
+ * behaviour”). Pure data, shared by the sender room defaults and the {@link Publisher}.
  */
 import {
   Track,

@@ -27,7 +27,7 @@ export function slateFor(state: ProductionState): SlateDto | null {
 }
 
 /**
- * Scenes whose sources the output keeps subscribed at a small layer (spec 7, plan 2 «Vorladen fürs Umschalten»):
+ * Scenes whose sources the output keeps subscribed at a small layer (spec 7, plan 2 “Preload for switching”):
  * every scene except the program, the preview scene first (Studio-Modus: the next take), then the others in order.
  */
 export function preloadScenesFor(state: ProductionState): SceneDto[] {
@@ -42,7 +42,7 @@ function sameScenes(a: readonly SceneDto[], b: readonly SceneDto[]): boolean {
   return a.length === b.length && a.every((scene, index) => scene === b[index]);
 }
 
-/** Marker for «nothing applied yet / applied state was discarded». */
+/** Marker for “nothing applied yet / applied state was discarded”. */
 const NOTHING = Symbol('nothing');
 
 /**
@@ -53,7 +53,7 @@ const NOTHING = Symbol('nothing');
  * - standby → standby slate, live → no slate, ended → end slate;
  * - every other scene is preloaded, the preview first.
  * While access is denied the stage is cleared (no picture of a production this link may no longer see stays in the
- * DOM) and «Kein Zugang» is shown; the latest state is kept and rendered again when access returns.
+ * DOM) and “No access” is shown; the latest state is kept and rendered again when access returns.
  */
 export class ProgramView {
   #latest: ProductionState | null = null;
@@ -74,7 +74,7 @@ export class ProgramView {
     return this.#rendered && !this.#denied;
   }
 
-  /** True while «Kein Zugang» is shown. */
+  /** True while “No access” is shown. */
   get denied(): boolean {
     return this.#denied;
   }
@@ -103,7 +103,7 @@ export class ProgramView {
     }
   }
 
-  /** Shows the «No access» slate (true) or renders the latest state again (false). */
+  /** Shows the “No access” slate (true) or renders the latest state again (false). */
   setDenied(denied: boolean): void {
     if (denied === this.#denied) {
       return;

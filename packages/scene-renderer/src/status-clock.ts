@@ -1,7 +1,7 @@
 import type { MonitorSourceStatus } from './types';
 
 /**
- * Remembers since when each source has its current monitor status (for the «Standbild 00:12» timer when the provider
+ * Remembers since when each source has its current monitor status (for the “Freeze frame 00:12” timer when the provider
  * has no lost time). Entries of sources that a full render pass did not look at are dropped, so the map only holds
  * what is on stage.
  */

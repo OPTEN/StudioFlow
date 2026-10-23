@@ -6,4 +6,5 @@ export const renderer = {
   'renderer.alertFrozen': 'Freeze frame {time}',
   'renderer.held': 'Picture returns shortly',
   'renderer.sourceMissing': 'Source missing',
+  'renderer.stageLabel': 'Scene',
 } as const satisfies Namespace<'renderer'>;
