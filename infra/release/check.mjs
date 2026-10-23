@@ -4,7 +4,7 @@
 //     the default image tags of docker-compose.release.yml (release-please changes all of them in the release pull
 //     request, docs/releasing.md).
 //  2. docker-compose.release.yml is the twin of docker-compose.yml: the same services with the same settings, except
-//     that the two images we build are pulled instead of built and the netem test service is missing.
+//     that the images we build are pulled instead of built and the netem test service is missing.
 //
 // Plain Node, no dependencies; the compose files are read with `docker compose config`.
 import { execFileSync } from 'node:child_process';
@@ -15,6 +15,13 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const read = (path) => readFileSync(root + path, 'utf8');
 const readJson = (path) => JSON.parse(read(path));
 const problems = [];
+
+// Built from source in docker-compose.yml, pulled in docker-compose.release.yml: service -> published image name.
+const IMAGES = {
+  caddy: 'studioflow-web',
+  api: 'studioflow-api',
+  backup: 'studioflow-backup',
+};
 
 // --- 1. versions ----------------------------------------------------------------------------------------------
 
@@ -40,9 +47,9 @@ composeTags.forEach(
   (tag, index) => (versions[`docker-compose.release.yml (image ${index + 1})`] = tag),
 );
 
-if (composeTags.length !== 2) {
+if (composeTags.length !== Object.keys(IMAGES).length) {
   problems.push(
-    `docker-compose.release.yml must have 2 image lines marked x-release-please-version (api, web), found ${composeTags.length}.`,
+    `docker-compose.release.yml must have ${Object.keys(IMAGES).length} image lines marked x-release-please-version (${Object.values(IMAGES).join(', ')}), found ${composeTags.length}.`,
   );
 }
 for (const [file, version] of Object.entries(versions)) {
@@ -78,8 +85,6 @@ const compose = (file) =>
     ),
   );
 
-// Built from source in docker-compose.yml, pulled in docker-compose.release.yml: service -> published image name.
-const IMAGES = { caddy: 'studioflow-web', api: 'studioflow-api' };
 // Only in docker-compose.yml: a test service without a published image.
 const SOURCE_ONLY = ['netem'];
 

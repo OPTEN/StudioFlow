@@ -2,7 +2,7 @@
 #
 # Runs after the workflow CI succeeded on a push to main, for exactly the commit CI tested:
 #
-#   plan -> images (api, web)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web}:sha-<7 characters>
+#   plan -> images (api, web, backup)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web,backup}:sha-<7 characters>
 #                              with SBOM and provenance attestations, signs them (cosign, keyless)
 #        -> smoke              the E2E smoke set against the pushed sha images (the images that would ship)
 #        -> scan               Trivy: fixable CRITICAL vulnerabilities fail the run
@@ -60,6 +60,7 @@ jobs:
       registry: ${{ steps.plan.outputs.registry }}
       tag: ${{ steps.plan.outputs.tag }}
       build: ${{ steps.plan.outputs.build }}
+      postgres_image: ${{ steps.plan.outputs.postgres_image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -73,6 +74,8 @@ jobs:
             echo "tag=sha-${REVISION:0:7}"
             # The version of the files of this commit plus the commit, as the API reports it: 0.1.0+1a2b3c4.
             echo "build=$(jq -r .version package.json)+${REVISION:0:7}"
+            # The backup image is built on the PostgreSQL image of the stack, so that pg_dump matches the server.
+            echo "postgres_image=$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)"
           } >> "$GITHUB_OUTPUT"
 
   images:
@@ -100,6 +103,13 @@ jobs:
             file: infra/caddy/Dockerfile
             cache: caddy
             build-args: ''
+          # Scheduled backups (profile "backup", runbook section 7) on the PostgreSQL image of the stack.
+          - image: backup
+            description: StudioFlow backup service (scheduled pg_dump and volume copies)
+            context: .
+            file: infra/backup/Dockerfile
+            cache: backup
+            build-args: POSTGRES_IMAGE=${{ needs.plan.outputs.postgres_image }}
     env:
       REPOSITORY: ${{ needs.plan.outputs.registry }}/studioflow-${{ matrix.image }}
       TAG: ${{ needs.plan.outputs.tag }}
@@ -233,7 +243,7 @@ jobs:
       packages: read
     strategy:
       matrix:
-        image: [api, web]
+        image: [api, web, backup]
     steps:
       # .trivyignore (if the repository has one) is read from the checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -278,7 +288,7 @@ jobs:
             echo "::notice::Main has moved on to ${tip:0:7}; :main stays with the run of that commit."
             exit 0
           fi
-          for image in api web; do
+          for image in api web backup; do
             docker buildx imagetools create --tag "$REGISTRY/studioflow-$image:main" "$REGISTRY/studioflow-$image:$TAG"
           done
 
@@ -359,7 +369,7 @@ jobs:
           fi
           echo "Tags: ${tags[*]}"
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
-          for image in api web; do
+          for image in api web backup; do
             source="$REGISTRY/studioflow-$image"
             args=()
             for tag in "${tags[@]}"; do args+=(--tag "$source:$tag"); done
@@ -386,6 +396,7 @@ jobs:
           echo "$images"
           echo "$images" | grep -qx "$REGISTRY/studioflow-api:$VERSION"
           echo "$images" | grep -qx "$REGISTRY/studioflow-web:$VERSION"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-backup:$VERSION"
           bash -n setup.sh && bash -n update.sh && bash -n backup.sh && bash -n restore.sh
       - name: Attach the files to the release
         run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/release/assets/* --clobber --repo "$GITHUB_REPOSITORY"
