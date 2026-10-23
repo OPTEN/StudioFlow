@@ -13,7 +13,7 @@ import { exec, type ExecOptions, type ExecResult } from './shell';
  * test hooks and the repository is not modified.
  */
 
-const SCRIPTS = ['setup.sh', 'backup.sh', 'restore.sh', 'update.sh', 'infra/scripts/common.sh'] as const;
+const SCRIPTS = ['setup.sh', 'backup.sh', 'restore.sh', 'update.sh', 'infra/scripts/common.sh', 'infra/scripts/backup-core.sh'] as const;
 export type OpsScript = 'setup.sh' | 'backup.sh' | 'restore.sh' | 'update.sh';
 
 const fwd = (value: string): string => value.replace(/\\/g, '/');
