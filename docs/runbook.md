@@ -692,7 +692,7 @@ A Git checkout can run the ready-made images as well: put `COMPOSE_FILE=docker-c
 builds from the source as described in sections 5 and 8; `./update.sh --version` then explains that it is for the
 ready-made images.
 
-## 14. Dependency updates (Renovate)
+## 15. Dependency updates (Renovate)
 
 For the maintainers of the repository. [Renovate](https://docs.renovatebot.com) keeps the dependencies up to date: npm,
 NuGet, the Docker images in `docker-compose.yml` and the Dockerfiles, the Caddy DNS modules in `infra/caddy/Dockerfile`,
