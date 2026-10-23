@@ -252,7 +252,7 @@
   color: var(--green);
 }
 
-// State words («verbindet neu», «Teilen beendet», «wieder da»)
+// State words ("reconnecting", "sharing stopped", "back")
 .c-state--warn {
   color: var(--amber);
   font-weight: 700;
@@ -268,7 +268,7 @@
   font-weight: 700;
 }
 
-// Uppercase group label (ÜBERGANG, VORLAGE ANWENDEN, WARTENDE ANFRAGEN)
+// Uppercase group label (TRANSITION, APPLY TEMPLATE, PENDING REQUESTS)
 .c-label {
   @include label-text(11px);
 }
@@ -412,7 +412,7 @@
   gap: 8px;
 }
 
-// Segmented control (Füllen | Ganz zeigen)
+// Segmented control (Fill | Show all)
 .c-seg {
   border: 1px solid var(--seam-strong);
   border-radius: var(--radius-md);
@@ -501,7 +501,7 @@
   }
 }
 
-// Toggle switch (Studio-Modus)
+// Toggle switch (Studio Mode)
 .c-switch {
   align-items: center;
   color: var(--text);

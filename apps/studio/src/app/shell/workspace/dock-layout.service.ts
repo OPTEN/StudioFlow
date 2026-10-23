@@ -1,14 +1,14 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { KeyboardService } from '../../core/ui/keyboard.service';
 import { PreferencesService } from '../../core/ui/preferences.service';
 import { ToastService } from '../../core/ui/toast.service';
 import type { SplitterBehavior } from './splitter.directive';
 import {
   DOCK_IDS,
-  DOCK_TITLES,
+  DOCK_TITLE_KEYS,
   DOCK_ZONES,
   LAYOUT_LIMITS,
-  ZONE_WORDS,
   defaultLayout,
   moveDock,
   stepTarget,
@@ -33,7 +33,7 @@ function clamp(value: number, min: number, max: number): number {
  * weights, zone sizes, the monitor split, hidden docks and the temporary pairing dock. Persisted per browser
  * (`studioflow.layout`, v1); a stored layout with any inconsistency is replaced by the default.
  *
- * Used by the workspace (rendering, drag and drop, splitters), the header («Docks und Layout»), the stations dock
+ * Used by the workspace (rendering, drag and drop, splitters), the header ("Docks and layout"), the stations dock
  * (pairing toggle) and the stage (monitor split: {@link split}, {@link monitorSplitBehavior}).
  */
 @Injectable({ providedIn: 'root' })
@@ -49,7 +49,7 @@ export class DockLayoutService {
 
   /** The current layout. */
   readonly layout = this.layoutSignal.asReadonly();
-  /** The pairing dock is open (it replaces Quellen and Eigenschaften). */
+  /** The pairing dock is open (it replaces Sources and Properties). */
   readonly pairingOpen = this.pairingOpenSignal.asReadonly();
   /** Tab the pairing dock should show (set by {@link openPairing}). */
   readonly pairingTab = this.pairingTabSignal.asReadonly();
@@ -61,7 +61,7 @@ export class DockLayoutService {
           a[zone].length === b[zone].length && a[zone].every((id, index) => id === b[zone][index]),
       ),
   });
-  /** Monitor split in Studio-Modus (share of the Preview, 0.3–0.7). */
+  /** Monitor split in Studio Mode (share of the Preview, 0.3–0.7). */
   readonly split = computed(() => this.layoutSignal().split);
   /** True when at least one side zone shows a dock. */
   readonly hasSideDocks = computed(() => {
@@ -101,7 +101,7 @@ export class DockLayoutService {
     return zoneOf(this.layoutSignal(), id);
   }
 
-  /** Shows or hides a dock («Docks und Layout»); persisted. */
+  /** Shows or hides a dock ("Docks and layout"); persisted. */
   setShown(id: DockId, shown: boolean): void {
     const layout = this.layoutSignal();
     const hidden = shown
@@ -111,8 +111,8 @@ export class DockLayoutService {
   }
 
   /**
-   * Docks a dock in `zone` at `index` (drag and drop, keyboard); persisted. Shows «Stationen ist rechts angedockt»
-   * with «Layout zurücksetzen». Returns false when nothing changed.
+   * Docks a dock in `zone` at `index` (drag and drop, keyboard); persisted. Shows "Stations is docked on the right"
+   * with "Reset layout". Returns false when nothing changed.
    */
   moveDock(id: DockId, zone: DockZone, index: number): boolean {
     const layout = this.layoutSignal();
@@ -121,8 +121,8 @@ export class DockLayoutService {
       return false;
     }
     this.commit(next);
-    this.toasts.show(`${DOCK_TITLES[id]} ist ${ZONE_WORDS[zone]} angedockt`, {
-      label: 'Layout zurücksetzen',
+    this.toasts.show(t(`regie.workspace.docked.${zone}`, { dock: t(DOCK_TITLE_KEYS[id]) }), {
+      label: t('regie.workspace.layout.reset'),
       run: () => this.resetLayout(),
     });
     return true;
@@ -134,10 +134,10 @@ export class DockLayoutService {
     return target ? this.moveDock(id, target.zone, target.index) : false;
   }
 
-  /** Restores the default layout («Layout zurücksetzen»); persisted. */
+  /** Restores the default layout ("Reset layout"); persisted. */
   resetLayout(): void {
     this.commit(defaultLayout());
-    this.toasts.show('Layout zurückgesetzt');
+    this.toasts.show(t('regie.workspace.layout.resetDone'));
   }
 
   /** Sets the weights of two neighbouring docks while a splitter moves (not persisted until {@link save}). */
@@ -205,7 +205,7 @@ export class DockLayoutService {
     this.preferences.writeLayout(this.layoutSignal());
   }
 
-  /** Opens the pairing dock (in place of Quellen and Eigenschaften), optionally on a tab. */
+  /** Opens the pairing dock (in place of Sources and Properties), optionally on a tab. */
   openPairing(tab?: PairingTab): void {
     if (tab) {
       this.pairingTabSignal.set(tab);
@@ -218,7 +218,7 @@ export class DockLayoutService {
     this.pairingOpenSignal.set(false);
   }
 
-  /** Toggles the pairing dock («Gerät koppeln»), opening on the Laptop tab like the prototype. */
+  /** Toggles the pairing dock ("Pair device"), opening on the Laptop tab like the prototype. */
   togglePairing(): void {
     if (this.pairingOpenSignal()) {
       this.closePairing();

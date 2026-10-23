@@ -47,7 +47,7 @@ import { ToastService } from '../core/ui/toast.service';
       height: 26px;
     }
   `,
-  host: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true', lang: 'de-CH' },
+  host: { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ToastHostComponent {

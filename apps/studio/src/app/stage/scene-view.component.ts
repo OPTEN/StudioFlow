@@ -12,6 +12,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import type { CanvasRect, SceneDto, TransitionDto } from '@studioflow/scene-model';
 import {
   createSceneRenderer,
@@ -27,7 +28,7 @@ import { ViewportService } from '../core/ui/viewport.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { PlaceholderMediaProvider } from './placeholder-media-provider';
 
-/** Where a scene view runs: a Regie monitor (alerts, «Quelle fehlt») or a small scene thumbnail. */
+/** Where a scene view runs: a Regie monitor (alerts, "Source missing") or a small scene thumbnail. */
 export type SceneViewMode = 'monitor' | 'thumbnail';
 
 /**
@@ -83,7 +84,7 @@ function sameRects(
 
 /**
  * Angular wrapper around the framework-free scene renderer (`createSceneRenderer`, spec 8.3) for the Regie monitors
- * (mode `monitor`) and the scene thumbnails of the Szenen dock (mode `thumbnail`).
+ * (mode `monitor`) and the scene thumbnails of the Scenes dock (mode `thumbnail`).
  *
  * ```html
  * <sf-scene-view mode="thumbnail" [scene]="scene" [label]="scene.name" />
@@ -118,10 +119,11 @@ function sameRects(
 export class SceneViewComponent {
   /** The scene to show (null: empty stage). */
   readonly scene = input<SceneDto | null>(null);
-  /** `monitor` (alerts, «Quelle fehlt», Auto-Grid rectangles) or `thumbnail`. */
+  /** `monitor` (alerts, "Source missing", Auto-Grid rectangles) or `thumbnail`. */
   readonly mode = input<SceneViewMode>('monitor');
-  /** Accessible name of the picture (`role="img"`), e.g. «Program-Monitor: Pause, entspricht dem Output». */
-  readonly label = input('Szene');
+  /** Accessible name of the picture (`role="img"`), e.g. "Program monitor: Break, matches the output"; "Scene" by default. */
+  readonly label = input<string | null>(null);
+  private readonly ariaLabel = computed(() => this.label() ?? t('regie.stage.view.label'));
   /** Program switch to animate (see {@link SceneTransitionCue}); null for views that always cut. */
   readonly cue = input<SceneTransitionCue | null>(null);
   /** Fires when a cued transition has completed (also for cuts); the Program monitor flashes then. */
@@ -176,7 +178,7 @@ export class SceneViewComponent {
       untracked(() => this.renderer?.setSourceStatuses());
     });
     effect(() => {
-      const label = this.label();
+      const label = this.ariaLabel();
       untracked(() => this.renderer?.element.setAttribute('aria-label', label));
     });
     effect(() => {
@@ -203,7 +205,7 @@ export class SceneViewComponent {
       codeOf: (sourceId) => this.store.codeOf(sourceId),
       assetKindOf: (assetId) => this.assetKind(assetId),
       reducedMotion,
-      label: this.label(),
+      label: this.ariaLabel(),
       onError: (error) => console.warn('[StudioFlow] scene renderer', error),
     });
     // A new renderer starts with the current scene; cues that arrived before it are not replayed.

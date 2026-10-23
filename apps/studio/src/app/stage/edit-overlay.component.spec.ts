@@ -20,14 +20,10 @@ import {
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
 import { EditOverlayComponent } from './edit-overlay.component';
-import { EditorService, LIVE_LOCKED_MESSAGE } from './editor.service';
+import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { SCENE_RENDERER_FACTORY, SceneViewComponent } from './scene-view.component';
 import { FakeRendererFactory, ManualFrames } from './testing/stage-fakes';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 @Component({
   imports: [EditOverlayComponent, SceneViewComponent],
@@ -169,7 +165,7 @@ describe('EditOverlayComponent', () => {
   it('draws a box for every visible element with position, label and alert state', async () => {
     await setup();
     expect(overlay.getAttribute('role')).toBe('group');
-    expect(overlay.getAttribute('aria-label')).toContain('Ziehen zum Verschieben');
+    expect(overlay.getAttribute('aria-label')).toContain('Drag to move');
     const element = box('itm_a1');
     expect(element.style.left).toBe(`${(100 / 1920) * 100}%`);
     expect(element.style.width).toBe(`${(600 / 1920) * 100}%`);
@@ -289,7 +285,7 @@ describe('EditOverlayComponent', () => {
     expect(item()).toMatchObject({ x: 100, y: 100, w: 540, h: 338 });
     expect(item().crop.right).toBeCloseTo(0.1, 6);
     expect(box('itm_a1').querySelector('.c-edit-box__label')?.textContent).toBe(
-      'K1 · 540 × 338 · Zuschnitt R 10 %',
+      'K1 · 540 × 338 · Crop R 10%',
     );
     await answerAll();
   });
@@ -311,7 +307,7 @@ describe('EditOverlayComponent', () => {
 
   it('selects a locked element but never drags it', async () => {
     const scenes = defaultScenes();
-    scenes[0] = sceneFixture('scn_a', 'Begrüssung', 0, [
+    scenes[0] = sceneFixture('scn_a', 'Welcome', 0, [
       itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera', { locked: true }),
     ]);
     await setup({ scenes });
@@ -327,7 +323,9 @@ describe('EditOverlayComponent', () => {
     await setup({ studio: true, preview: 'scn_a' });
     expect(overlay.classList.contains('is-locked')).toBe(true);
     await drag(box('itm_a1'), [100, 100], [50, 50]);
-    expect(toasts.current()?.message).toBe(LIVE_LOCKED_MESSAGE);
+    expect(toasts.current()?.message).toBe(
+      'This scene is live. Switch another scene to Program first.',
+    );
     expect(editor.selectedItemId()).toBeNull();
     expect(item()).toMatchObject({ x: 100, y: 100 });
     expect(harness.http.match(() => true)).toHaveLength(0);
@@ -357,7 +355,7 @@ describe('EditOverlayComponent', () => {
     const scenes = defaultScenes();
     scenes[0] = sceneFixture(
       'scn_a',
-      'Begrüssung',
+      'Welcome',
       0,
       [
         itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera'),

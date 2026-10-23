@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { PairingDockComponent } from '../../docks/pairing/pairing-dock.component';
 import { PropertiesDockComponent } from '../../docks/properties/properties-dock.component';
 import { ScenesDockComponent } from '../../docks/scenes/scenes-dock.component';
 import { SourcesDockComponent } from '../../docks/sources/sources-dock.component';
 import { StationsDockComponent } from '../../docks/stations/stations-dock.component';
 import { ViewportService } from '../../core/ui/viewport.service';
-import { DOCK_REGION_LABELS, DOCK_TITLES, DOCK_ZONES, type DockSlotId } from './dock-layout';
+import { DOCK_REGION_KEYS, DOCK_TITLE_KEYS, DOCK_ZONES, type DockSlotId } from './dock-layout';
 import { DockDragService } from './dock-drag.service';
 import { DockLayoutService } from './dock-layout.service';
 import { DockWorkspace } from './dock-workspace';
@@ -15,7 +16,7 @@ import { SplitterDirective } from './splitter.directive';
  * One dock inside a zone (prototype `section.panel[data-dock]`): the region with its accessible name, its flex weight,
  * the 16 px window gutter at the outer edges, the hairline splitter to the previous dock and the dock component
  * itself. Created once per dock by `WorkspaceComponent` and moved between zones without being destroyed, so dock
- * state survives moves and the pairing dock replacing Quellen and Eigenschaften.
+ * state survives moves and the pairing dock replacing Sources and Properties.
  */
 @Component({
   selector: 'sf-dock-slot',
@@ -80,7 +81,7 @@ export class DockSlotComponent {
   private readonly drag = inject(DockDragService);
   private readonly workspace = inject(DockWorkspace);
 
-  protected readonly label = computed(() => DOCK_REGION_LABELS[this.dockId()]);
+  protected readonly label = computed(() => t(DOCK_REGION_KEYS[this.dockId()]));
   protected readonly weight = computed(() => this.layout.layout().weights[this.dockId()] ?? 1);
   protected readonly edgeLeft = computed(() => this.layout.leftEdgeDocks().includes(this.dockId()));
   protected readonly edgeRight = computed(() =>
@@ -100,7 +101,10 @@ export class DockSlotComponent {
         return {
           across,
           behavior: this.workspace.splitBehavior(previous, id, across),
-          label: `Grösse von ${DOCK_TITLES[previous]} und ${DOCK_TITLES[id]}`,
+          label: t('regie.workspace.splitter.between', {
+            first: t(DOCK_TITLE_KEYS[previous]),
+            second: t(DOCK_TITLE_KEYS[id]),
+          }),
         };
       }
     }

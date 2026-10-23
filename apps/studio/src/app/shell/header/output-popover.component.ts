@@ -16,8 +16,9 @@ import {
   type AbstractControl,
   type ValidationErrors,
 } from '@angular/forms';
+import { t, tm, type Msg } from '@studioflow/i18n';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, type OutputSettingsDto } from '@studioflow/scene-model';
-import { toUserMessage } from '../../core/api/api-error';
+import { toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClipboardService } from '../../core/ui/clipboard.service';
@@ -33,7 +34,7 @@ export const OUTPUT_POPOVER = 'output';
 /** Output frame rate shown in the popover (the output page renders at the display rate, nominally 30 fps). */
 const NOMINAL_FPS = 30;
 
-/** «studioflow.opten.ch/o/webinar?k=••••••»: without scheme and with the key masked. */
+/** "studioflow.opten.ch/o/webinar?k=••••••": without scheme and with the key masked. */
 export function maskOutputUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/([?&]k=)[^&#]*/, '$1••••••');
 }
@@ -45,7 +46,7 @@ function ipValidator(control: AbstractControl<string>): ValidationErrors | null 
 
 /**
  * Output popover (prototype `renderOutPop`, spec 4.8, 9.1): consumer state and addresses, format, latency, the secret
- * link (masked; copy with selection fallback), the IP restriction editor and «Link neu erzeugen» behind a dashed red
+ * link (masked; copy with selection fallback), the IP restriction editor and "Regenerate link" behind a dashed red
  * confirmation. Loads the output settings when it opens.
  */
 @Component({
@@ -64,9 +65,11 @@ export class OutputPopoverComponent {
   private readonly urlElement = viewChild<ElementRef<HTMLElement>>('url');
 
   protected readonly popoverId = OUTPUT_POPOVER;
+  protected readonly t = t;
+  protected readonly tm = tm;
   protected readonly format = `${CANVAS_WIDTH} × ${CANVAS_HEIGHT} · ${NOMINAL_FPS} fps`;
   protected readonly settings = signal<OutputSettingsDto | null>(null);
-  protected readonly loadError = signal<string | null>(null);
+  protected readonly loadError = signal<Msg | null>(null);
   protected readonly revealed = signal(false);
   protected readonly confirming = signal(false);
   protected readonly regenerating = signal(false);
@@ -92,12 +95,11 @@ export class OutputPopoverComponent {
     const status = this.status();
     switch (status?.state) {
       case 'connected':
-        // «Abnehmer» is the same in singular and plural.
-        return `verbunden, ${status.consumers} Abnehmer`;
+        return t('regie.header.output.stateConnected', { count: status.consumers });
       case 'stale':
-        return 'verbunden, kein aktuelles Bild';
+        return t('regie.header.output.stateStale');
       default:
-        return 'nicht verbunden';
+        return t('regie.header.output.stateNone');
     }
   });
   protected readonly stateClass = computed(() => {
@@ -133,7 +135,7 @@ export class OutputPopoverComponent {
     try {
       this.settings.set(await this.api.getOutputSettings(productionId));
     } catch (error) {
-      this.loadError.set(toUserMessage(error));
+      this.loadError.set(toUserMsg(error));
     }
   }
 
@@ -186,8 +188,8 @@ export class OutputPopoverComponent {
       this.draftIps.set(null);
       this.toasts.show(
         allowedIps.length === 0
-          ? 'Zugriff gespeichert: jede Adresse darf den Output öffnen'
-          : 'Zugriff gespeichert',
+          ? t('regie.header.output.accessSavedOpen')
+          : t('regie.header.output.accessSaved'),
       );
     } catch (error) {
       this.toasts.error(error);
@@ -211,7 +213,7 @@ export class OutputPopoverComponent {
       this.settings.set(await this.api.regenerateOutputKey(productionId));
       this.revealed.set(false);
       this.confirming.set(false);
-      this.toasts.show('Neuer Output-Link erzeugt. Der alte ist ungültig.');
+      this.toasts.show(t('regie.header.output.linkNew'));
     } catch (error) {
       this.toasts.error(error);
     } finally {

@@ -13,7 +13,7 @@ export interface StationFocusRequest {
 
 /**
  * Bridge between the places that point at a station (health chip in the header, incident in the message strip) and
- * the Stationen dock, which listens to {@link request} and opens, scrolls and flashes the row. Makes the Stationen
+ * the Stations dock, which listens to {@link request} and opens, scrolls and flashes the row. Makes the Stations
  * dock visible first if it was hidden.
  */
 @Injectable({ providedIn: 'root' })

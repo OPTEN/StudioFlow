@@ -17,12 +17,8 @@ import {
 } from '../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
-import { EditorService, LIVE_LOCKED_MESSAGE, LIVE_UNDO_MESSAGE } from './editor.service';
+import { EditorService } from './editor.service';
 import { SwitcherService } from './switcher.service';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 const SCENE_A = `${BASE}/scenes/scn_a`;
@@ -81,7 +77,9 @@ describe('EditorService', () => {
     expect(editor.editLocked()).toBe(true);
     expect(editor.canEdit()).toBe(false);
     expect(editor.updateItem({ ...itemA(), x: 10 })).toBe(false);
-    expect(toasts.current()?.message).toBe(LIVE_LOCKED_MESSAGE);
+    expect(toasts.current()?.message).toBe(
+      'This scene is live. Switch another scene to Program first.',
+    );
     expect(editor.addSource('dev_bbbbbbbbbbbbbbbb/screen-1')).toBeNull();
     harness.http.expectNone(() => true);
   });
@@ -105,7 +103,7 @@ describe('EditorService', () => {
     await flushMicrotasks();
     expect(editor.saving()).toBe(true);
     // The echo with the acknowledged version replaces the draft.
-    const echoed = sceneFixture('scn_a', 'Begrüssung', 0, [{ ...itemA(), x: 130 }], { version: 3 });
+    const echoed = sceneFixture('scn_a', 'Welcome', 0, [{ ...itemA(), x: 130 }], { version: 3 });
     harness.emitEvent({ type: 'sceneUpserted', scene: echoed });
     await harness.settle();
     expect(editor.saving()).toBe(false);
@@ -127,13 +125,13 @@ describe('EditorService', () => {
     harness.http
       .expectOne(`${SCENE_A}/items/itm_a1`)
       .flush(
-        { code: 'validation_failed', errors: { x: ['X ist zu gross.'] } },
+        { code: 'validation_failed', errors: { x: ['X is too large.'] } },
         { status: 400, statusText: 'Bad' },
       );
     await flushMicrotasks();
     expect(itemA().x).toBe(100);
     // The toast shows the text of the code, never the field message of the server (D7).
-    expect(toasts.current()?.message).toBe('Die Eingabe ist ungültig.');
+    expect(toasts.current()?.message).toBe('The input is not valid.');
     harness.http.expectNone(`${SCENE_A}/items/itm_a1`);
   });
 
@@ -145,7 +143,7 @@ describe('EditorService', () => {
     expect(editor.canUndo()).toBe(true);
     editor.undo();
     expect(itemA().x).toBe(100);
-    expect(toasts.current()?.message).toBe('Rückgängig gemacht');
+    expect(toasts.current()?.message).toBe('Undone');
     const undo = harness.http.expectOne(`${SCENE_A}/items`);
     expect(undo.request.method).toBe('PUT');
     expect(undo.request.body.items[0].x).toBe(100);
@@ -157,7 +155,7 @@ describe('EditorService', () => {
     answer(harness.http.expectOne(`${SCENE_A}/items`), 4);
     await flushMicrotasks();
     editor.redo();
-    expect(toasts.current()?.message).toBe('Nichts zum Wiederholen');
+    expect(toasts.current()?.message).toBe('Nothing to redo');
   });
 
   it('records one undo step per gesture', async () => {
@@ -176,7 +174,7 @@ describe('EditorService', () => {
     answer(harness.http.expectOne(`${SCENE_A}/items`), 4);
     await flushMicrotasks();
     editor.undo();
-    expect(toasts.current()?.message).toBe('Nichts zum Rückgängigmachen');
+    expect(toasts.current()?.message).toBe('Nothing to undo');
   });
 
   it('refuses to undo the live scene in Studio-Modus', async () => {
@@ -199,7 +197,7 @@ describe('EditorService', () => {
     await harness.settle();
     expect(editor.editSceneId()).toBe('scn_b');
     editor.undo('scn_a');
-    expect(toasts.current()?.message).toBe(LIVE_UNDO_MESSAGE);
+    expect(toasts.current()?.message).toBe('This scene is live and stays unchanged');
     harness.http.expectNone(`${SCENE_A}/items`);
   });
 
@@ -216,22 +214,22 @@ describe('EditorService', () => {
       fit: 'contain',
       radius: 12,
     });
-    expect(toasts.current()?.message).toBe('S1 in «Begrüssung» eingefügt');
+    expect(toasts.current()?.message).toBe('S1 added to “Welcome”');
     const request = harness.http.expectOne(`${SCENE_A}/items`);
     expect(request.request.body.items).toHaveLength(2);
     expect(request.request.body.layoutMode).toBeNull();
     answer(request, 2);
   });
 
-  it('removes an item with «Rückgängig» in the toast', async () => {
+  it('removes an item with "Undo" in the toast', async () => {
     await setup();
     editor.select('itm_a1');
     editor.removeItem('itm_a1');
     expect(editor.editScene()?.items).toHaveLength(0);
     expect(editor.selectedItemId()).toBeNull();
     expect(toasts.current()).toMatchObject({
-      message: 'K1 aus «Begrüssung» entfernt',
-      action: { label: 'Rückgängig' },
+      message: 'K1 removed from “Welcome”',
+      action: { label: 'Undo' },
     });
     const request = harness.http.expectOne(`${SCENE_A}/items/itm_a1`);
     expect(request.request.method).toBe('DELETE');
@@ -265,8 +263,8 @@ describe('EditorService', () => {
     await flushMicrotasks();
     editor.applyTemplate('pip');
     expect(toasts.current()).toMatchObject({
-      message: 'Vorlage «Bild-in-Bild» angewendet',
-      action: { label: 'Rückgängig' },
+      message: 'Template “Picture in picture” applied',
+      action: { label: 'Undo' },
     });
     const template = harness.http.expectOne(`${SCENE_B}/items`);
     const [screen, camera] = [...template.request.body.items].sort(
@@ -307,7 +305,7 @@ describe('EditorService', () => {
   it('asks for a source before applying a template to an empty scene', async () => {
     await setup({ studio: true, preview: 'scn_c' });
     expect(editor.applyTemplate('two')).toBe(false);
-    expect(toasts.current()?.message).toBe('Erst eine Quelle hinzufügen');
+    expect(toasts.current()?.message).toBe('Add a source first');
   });
 
   it('switches an Auto-Grid scene to free layout with the effective rectangles', async () => {

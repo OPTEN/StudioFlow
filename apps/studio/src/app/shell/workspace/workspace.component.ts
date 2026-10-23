@@ -17,14 +17,14 @@ import {
   viewChild,
   type ComponentRef,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ViewportService } from '../../core/ui/viewport.service';
 import { StageComponent } from '../../stage/stage.component';
 import {
-  DOCK_TITLES,
+  DOCK_TITLE_KEYS,
   DOCK_ZONES,
   LAYOUT_LIMITS,
-  ZONE_WORDS,
   type DockSlotId,
   type DockZone,
 } from './dock-layout';
@@ -45,12 +45,12 @@ const STAGE_VERTICAL_CHROME_PX = 58;
 
 /**
  * The Regie workspace (prototype `.work`): the stage in the centre, the dock zones left, bottom and right with
- * hairline splitters, drag and drop of docks, the pairing dock in place of Quellen and Eigenschaften, and the
+ * hairline splitters, drag and drop of docks, the pairing dock in place of Sources and Properties, and the
  * responsive stacking (≤ 1180 px two-column grid below the stage, ≤ 900 px one column).
  *
  * Every dock is created once (`DockSlotComponent`) and its view is moved between the zone containers when the layout
  * changes, so no dock loses its state. Without side docks the bottom zone keeps its default height; with side docks
- * it fits the stage to the Studio-Modus monitors (prototype `fitStage`) so no empty band remains.
+ * it fits the stage to the Studio Mode monitors (prototype `fitStage`) so no empty band remains.
  */
 @Component({
   selector: 'sf-workspace',
@@ -89,7 +89,8 @@ export class WorkspaceComponent extends DockWorkspace {
   private readonly fittedBottom = signal<number | null>(null);
 
   protected readonly zones = this.layout.zones;
-  protected readonly titles = DOCK_TITLES;
+  protected readonly titleKeys = DOCK_TITLE_KEYS;
+  protected readonly t = t;
 
   /** Inline height of the bottom zone: stored fraction, fitted px, or the CSS default (`--dock-h`). */
   protected readonly bottomHeight = computed(() => {
@@ -186,12 +187,6 @@ export class WorkspaceComponent extends DockWorkspace {
     };
   }
 
-  /** Label of an empty-zone drop strip («Links andocken»). */
-  protected stripLabel(zone: DockZone): string {
-    const word = ZONE_WORDS[zone];
-    return `${word.charAt(0).toUpperCase()}${word.slice(1)} andocken`;
-  }
-
   private sideSplit(zone: 'left' | 'right'): SplitterBehavior {
     return {
       begin: () => {
@@ -271,7 +266,7 @@ export class WorkspaceComponent extends DockWorkspace {
 
   /**
    * Prototype `fitStage`: with side docks (and no stored bottom height) the stage gets exactly the height of the
-   * Studio-Modus monitors and the remaining space goes to the bottom docks instead of an empty band.
+   * Studio Mode monitors and the remaining space goes to the bottom docks instead of an empty band.
    */
   private fitStage(): void {
     const stage = this.stageRef()?.nativeElement;

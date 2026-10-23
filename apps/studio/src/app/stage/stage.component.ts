@@ -9,6 +9,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import type { SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ViewportService } from '../core/ui/viewport.service';
@@ -32,12 +33,12 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
 }
 
 /**
- * The stage (prototype `.stage-in`, DESIGN.md «Stage»): monitors on the left, the fixed control column on the right.
- * Rendered by the workspace inside `section.c-workspace__stage` («Monitore»).
+ * The stage (prototype `.stage-in`, DESIGN.md "Stage"): monitors on the left, the fixed control column on the right.
+ * Rendered by the workspace inside `section.c-workspace__stage` ("Monitors").
  *
- * - Studio-Modus off: one Program monitor, right-aligned against the control column, with the quiet «Preview aus»
- *   note in the free space; the Program header says «Änderungen gehen sofort live» and carries the edit overlay.
- * - Studio-Modus on: Preview | split | Program. The split is resizable (pointer, arrow keys, double-click/Enter
+ * - Studio Mode off: one Program monitor, right-aligned against the control column, with the quiet "Preview off"
+ *   note in the free space; the Program header says "Changes go live immediately" and carries the edit overlay.
+ * - Studio Mode on: Preview | split | Program. The split is resizable (pointer, arrow keys, double-click/Enter
  *   resets; `DockLayoutService.split`), the Preview carries the overlay, and while preview = program editing is
  *   locked (live note). The control column and the docks never move when the mode toggles.
  * - Both monitors show the scenes with local edit drafts (`EditorService.scenes`); the Program plays the transition of
@@ -45,9 +46,9 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
  * - Sizes: a ResizeObserver measures the stage and writes the monitor widths (`monitor-layout.ts`) as the custom
  *   properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing never runs change detection.
  * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
- * - A press on the stage around the editable screen (monitor headers, the «Preview aus» space, the other monitor,
- *   the free stage) clears the element selection, so Eigenschaften shows the scene again even when an element fills
- *   the whole editable screen («Vollbild»). Controls (control column, splitter) are left alone.
+ * - A press on the stage around the editable screen (monitor headers, the "Preview off" space, the other monitor,
+ *   the free stage) clears the element selection, so Properties shows the scene again even when an element fills
+ *   the whole editable screen ("Full screen"). Controls (control column, splitter) are left alone.
  */
 @Component({
   selector: 'sf-stage',
@@ -58,6 +59,7 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StageComponent {
+  protected readonly t = t;
   protected readonly switcher = inject(SwitcherService);
   protected readonly editor = inject(EditorService);
   protected readonly viewport = inject(ViewportService);
@@ -71,7 +73,7 @@ export class StageComponent {
   protected readonly programScene = computed(() =>
     sceneIn(this.editor.scenes(), this.store.programSceneId()),
   );
-  /** The preview scene with local drafts (Studio-Modus). */
+  /** The preview scene with local drafts (Studio Mode). */
   protected readonly previewScene = computed(() =>
     sceneIn(this.editor.scenes(), this.store.previewSceneId()),
   );
@@ -84,7 +86,7 @@ export class StageComponent {
   });
   /** Quiet text in an empty monitor. */
   protected readonly emptyText = computed(() =>
-    this.store.state() ? 'Keine Szene' : 'Verbindet …',
+    this.store.state() ? t('regie.stage.monitor.noScene') : t('regie.stage.monitor.connecting'),
   );
   /** Splitter between Preview and Program (width of the monitor row minus the split itself). */
   protected readonly splitBehavior = this.layout.monitorSplitBehavior(

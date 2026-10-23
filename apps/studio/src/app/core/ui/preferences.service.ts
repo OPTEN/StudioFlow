@@ -22,7 +22,7 @@ export const BROWSER_STORAGE = new InjectionToken<() => Storage | null>('BROWSER
   factory: () => () => (typeof localStorage === 'undefined' ? null : localStorage),
 });
 
-/** Remembered transition of the control column: the kind and the fade duration (kept while Schnitt is chosen). */
+/** Remembered transition of the control column: the kind and the fade duration (kept while Cut is chosen). */
 export interface TransitionPreference {
   readonly kind: TransitionKind;
   readonly durationMs: FadeDurationMs;
@@ -35,7 +35,7 @@ function isFadeDuration(value: unknown): value is FadeDurationMs {
 }
 
 /**
- * Per-browser preferences in `localStorage` (Studio-Modus, transition, dock layout v1). Never throws: unavailable or
+ * Per-browser preferences in `localStorage` (Studio Mode, transition, dock layout v1). Never throws: unavailable or
  * full storage, private mode and corrupt values fall back to the defaults, and the Regie keeps working without
  * persistence.
  */
@@ -43,17 +43,17 @@ function isFadeDuration(value: unknown): value is FadeDurationMs {
 export class PreferencesService {
   private readonly storage = inject(BROWSER_STORAGE);
 
-  /** Studio-Modus on/off (`studioflow.studio` = '1' | '0'); default off. */
+  /** Studio Mode on/off (`studioflow.studio` = '1' | '0'); default off. */
   readStudioMode(): boolean {
     return this.read(PREFERENCE_KEYS.studioMode) === '1';
   }
 
-  /** Persists the Studio-Modus. */
+  /** Persists the Studio Mode. */
   writeStudioMode(on: boolean): void {
     this.write(PREFERENCE_KEYS.studioMode, on ? '1' : '0');
   }
 
-  /** Transition kind and fade duration (`studioflow.transition`); default Blende 0,3 s. */
+  /** Transition kind and fade duration (`studioflow.transition`); default Fade 0.3 s. */
   readTransition(): TransitionPreference {
     const parsed = this.readJson(PREFERENCE_KEYS.transition);
     if (typeof parsed !== 'object' || parsed === null) {

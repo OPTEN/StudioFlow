@@ -8,10 +8,7 @@ import {
   sortMonitoringRows,
   type MonitoringRow,
 } from './monitoring-rows';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
+import { networkLabel } from '../docks/stations/station-view';
 
 const NOW = Date.parse('2026-10-22T10:00:10.000Z');
 
@@ -41,7 +38,7 @@ function telemetry(kbps: number, overrides: Partial<DeviceTelemetryDto> = {}): D
 
 function rows(): MonitoringRow[] {
   const devices = [
-    deviceFixture('dev_aaaaaaaaaaaaaaaa', 'Bühne', {
+    deviceFixture('dev_aaaaaaaaaaaaaaaa', 'Barn', {
       telemetry: telemetry(2800, { batteryPct: 40 }),
     }),
     deviceFixture('dev_bbbbbbbbbbbbbbbb', 'Adler', { telemetry: telemetry(900) }),
@@ -65,14 +62,14 @@ describe('monitoring rows', () => {
   it('builds one row per station with per-slot values', () => {
     const [first, second, third] = rows();
     expect(first).toMatchObject({
-      name: 'Bühne',
-      stateWord: 'sendet',
+      name: 'Barn',
+      stateWord: 'sending',
       stateTone: 'muted',
       codes: 'K1',
       bitrateKbps: 2800,
       heightValue: 1080,
       batteryPct: 40,
-      network: 'WLAN',
+      network: networkLabel('wifi'),
       stale: false,
     });
     expect(first.slots).toEqual([
@@ -81,16 +78,16 @@ describe('monitoring rows', () => {
         state: 'live',
         resolution: '1920 × 1080',
         fps: '30',
-        bitrate: '2,8',
-        loss: '0,5 %',
+        bitrate: '2.8',
+        loss: '0.5%',
       },
     ]);
     expect(second).toMatchObject({
-      stateWord: 'verbindet neu',
+      stateWord: 'reconnecting',
       stateTone: 'warn',
       lamp: 'is-warn',
     });
-    expect(third).toMatchObject({ stateWord: 'nicht verbunden', bitrateKbps: null, stale: false });
+    expect(third).toMatchObject({ stateWord: 'not connected', bitrateKbps: null, stale: false });
     expect(third.slots[0].bitrate).toBe('–');
   });
 
@@ -105,15 +102,15 @@ describe('monitoring rows', () => {
   it('sorts by any column, unknown values last, and cycles back to the Regie order', () => {
     const list = rows();
     const byRate = sortMonitoringRows(list, { column: 'bitrate', direction: 'asc' });
-    expect(byRate.map((row) => row.name)).toEqual(['Adler', 'Bühne', 'Zelt']);
+    expect(byRate.map((row) => row.name)).toEqual(['Adler', 'Barn', 'Zelt']);
     const byRateDesc = sortMonitoringRows(list, { column: 'bitrate', direction: 'desc' });
-    expect(byRateDesc.map((row) => row.name)).toEqual(['Bühne', 'Adler', 'Zelt']);
+    expect(byRateDesc.map((row) => row.name)).toEqual(['Barn', 'Adler', 'Zelt']);
     const byName = sortMonitoringRows(list, { column: 'station', direction: 'asc' });
-    expect(byName.map((row) => row.name)).toEqual(['Adler', 'Bühne', 'Zelt']);
+    expect(byName.map((row) => row.name)).toEqual(['Adler', 'Barn', 'Zelt']);
     const byState = sortMonitoringRows(list, { column: 'state', direction: 'desc' });
     expect(byState[0].name).toBe('Adler');
     const original = sortMonitoringRows(byName, { column: null, direction: 'asc' });
-    expect(original.map((row) => row.name)).toEqual(['Bühne', 'Adler', 'Zelt']);
+    expect(original.map((row) => row.name)).toEqual(['Barn', 'Adler', 'Zelt']);
 
     let sort = nextSort({ column: null, direction: 'asc' }, 'fps');
     expect(sort).toEqual({ column: 'fps', direction: 'asc' });
@@ -125,8 +122,8 @@ describe('monitoring rows', () => {
 
   it('says how long ago a station was seen', () => {
     expect(seenText(null, NOW)).toBe('–');
-    expect(seenText(NOW - 3000, NOW)).toBe('vor 3 s');
-    expect(seenText(NOW - 5 * 60_000, NOW)).toBe('vor 5 min');
+    expect(seenText(NOW - 3000, NOW)).toBe('3 s ago');
+    expect(seenText(NOW - 5 * 60_000, NOW)).toBe('5 min ago');
     expect(seenText(NOW - 3 * 3600_000, NOW)).toMatch(/^\d\d:\d\d$/);
   });
 });

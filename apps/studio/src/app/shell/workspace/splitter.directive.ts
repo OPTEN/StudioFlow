@@ -24,7 +24,7 @@ export const SPLITTER_STEP_LARGE_PX = 64;
  * listeners outside Angular's template bindings; only the behaviour decides what to update.
  *
  * ```html
- * <div class="c-splitter" [sfSplitter]="behavior" orientation="vertical" aria-label="Grösse von Preview und Program"></div>
+ * <div class="c-splitter" [sfSplitter]="behavior" orientation="vertical" aria-label="Size of Preview and Program"></div>
  * ```
  */
 @Directive({

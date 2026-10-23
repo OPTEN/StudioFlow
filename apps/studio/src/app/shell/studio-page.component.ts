@@ -12,7 +12,7 @@ import { WorkspaceComponent } from './workspace/workspace.component';
  * 1 px hairlines (grid gap on the seam colour). Starts the production store (the media session follows once the store
  * is live) and registers the Regie shortcuts (1–9, Space, Ctrl+Z, Ctrl+Shift+Z/Ctrl+Y, Escape).
  *
- * The host carries `is-studio` while Studio-Modus is on, for styles in child components
+ * The host carries `is-studio` while Studio Mode is on, for styles in child components
  * (`:host-context(.is-studio)`).
  */
 @Component({
@@ -25,7 +25,6 @@ import { WorkspaceComponent } from './workspace/workspace.component';
   `,
   styleUrl: './studio-page.component.scss',
   host: {
-    lang: 'de-CH',
     '[class.is-studio]': 'switcher.studioMode()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,

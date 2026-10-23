@@ -19,10 +19,6 @@ import {
   toCanvasPoint,
   toPercent,
 } from './edit-geometry';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const NO_CROP: CropDto = { top: 0, right: 0, bottom: 0, left: 0 };
 const ITEM: CanvasRect = { x: 400, y: 300, w: 600, h: 338 };
@@ -263,10 +259,10 @@ describe('edit geometry', () => {
     it('labels the selection like the prototype, with the crop when there is one', () => {
       expect(boxLabel('K1', ITEM)).toBe('K1 · 600 × 338');
       expect(boxLabel('K1', { ...ITEM, w: 540.4 }, { ...NO_CROP, right: 0.1 })).toBe(
-        'K1 · 540 × 338 · Zuschnitt R 10 %',
+        'K1 · 540 × 338 · Crop R 10%',
       );
       expect(cropSummary({ top: 0.05, right: 0, bottom: 0.002, left: 0.25 })).toBe(
-        'L 25 % O 5 % U 1 %',
+        'L 25% T 5% B 1%',
       );
       expect(cropSummary(null)).toBe('');
       expect(hasCrop(NO_CROP)).toBe(false);

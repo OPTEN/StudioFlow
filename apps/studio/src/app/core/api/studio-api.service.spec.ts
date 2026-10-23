@@ -129,10 +129,7 @@ describe('StudioApiService', () => {
     const result = api.take('prd_1', { transition: { kind: 'cut', durationMs: 0 } });
     http
       .expectOne('/api/productions/prd_1/take')
-      .flush(
-        { code: 'conflict', detail: 'Keine Preview.' },
-        { status: 409, statusText: 'Conflict' },
-      );
+      .flush({ code: 'conflict', detail: 'No preview.' }, { status: 409, statusText: 'Conflict' });
     const error = await result.catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(409);

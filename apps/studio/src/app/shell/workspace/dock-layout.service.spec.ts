@@ -85,7 +85,7 @@ describe('dock layout model', () => {
     expect(stepTarget(left, 'scenes', 1)).toEqual({ zone: 'bottom', index: 0 });
   });
 
-  it('puts the pairing dock in place of Quellen and Eigenschaften', () => {
+  it('puts the pairing dock in place of Sources and Properties', () => {
     expect(visibleZones(defaultLayout(), true).bottom).toEqual(['scenes', 'pair', 'st']);
     const sides = layoutWith({
       zones: { left: ['insp'], bottom: ['scenes', 'src'], right: ['st'] },
@@ -154,19 +154,19 @@ describe('DockLayoutService', () => {
     expect(layout.leftEdgeDocks()).toEqual(['scenes']);
   });
 
-  it('moves a dock, persists and offers «Layout zurücksetzen»', () => {
+  it('moves a dock, persists and offers "Reset layout"', () => {
     const layout = setup();
     const toasts = TestBed.inject(ToastService);
     expect(layout.moveDock('st', 'right', 0)).toBe(true);
     expect(stored().zones.right).toEqual(['st']);
     expect(toasts.current()).toMatchObject({
-      message: 'Stationen ist rechts angedockt',
-      action: { label: 'Layout zurücksetzen' },
+      message: 'Stations is docked on the right',
+      action: { label: 'Reset layout' },
     });
     toasts.runAction();
     expect(layout.layout()).toEqual(defaultLayout());
     expect(stored()).toEqual(defaultLayout());
-    expect(toasts.current()?.message).toBe('Layout zurückgesetzt');
+    expect(toasts.current()?.message).toBe('Layout reset');
   });
 
   it('moves docks with the grip keys', () => {

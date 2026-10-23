@@ -17,7 +17,7 @@
   font-size: 12.5px;
 }
 
-// Übergang: Schnitt | Blende (the active segment is blue-wash with a blue underline).
+// Transition: Cut | Fade (the active segment is blue-wash with a blue underline).
 .c-transition {
   border: 1px solid var(--seam-strong);
   border-radius: var(--radius-md);
@@ -58,7 +58,7 @@
   }
 }
 
-// Duration stepper: violet mono value, muted under Schnitt.
+// Duration stepper: violet mono value, muted under Cut.
 .c-duration {
   align-items: center;
   border: 1px solid var(--seam);
@@ -105,7 +105,7 @@
   white-space: nowrap;
 }
 
-// TAKE: the only large filled control (Studio-Modus only).
+// TAKE: the only large filled control (Studio Mode only).
 .c-take {
   @include state-transition(background-color);
   background: var(--blue-fill);

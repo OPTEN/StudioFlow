@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   FADE_DURATIONS_MS,
   formatSeconds,
@@ -13,28 +14,29 @@ import { KeyboardService } from '../core/ui/keyboard.service';
 import { PreferencesService } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
 
-/** Toast when a command needs the server but the hub is disconnected. */
-export const OFFLINE_COMMAND_MESSAGE =
-  'Keine Verbindung zum Server. Schalten geht wieder, sobald die Regie verbunden ist.';
+/** Toast when a command needs the server but the hub is disconnected, in the active language. */
+export function offlineCommandMessage(): string {
+  return t('regie.stage.switch.offline');
+}
 
 /** Longest time the fade guard blocks switching (longest fade 2 s plus a margin for clock skew). */
 const MAX_GUARD_MS = 2500;
 
-/** Hint below the control column (prototype `renderMode`). */
-export const SWITCH_HINTS = {
-  studio: 'Klick auf eine Szene lädt sie in die Preview. Take schaltet live.',
-  direct: 'Klick auf eine Szene schaltet sie direkt live.',
-} as const;
+/** Message keys of the hint below the control column (prototype `renderMode`). */
+export const SWITCH_HINT_KEYS = {
+  studio: 'regie.stage.switch.hintStudio',
+  direct: 'regie.stage.switch.hintDirect',
+} as const satisfies Record<'studio' | 'direct', PlainMessageKey>;
 
 /**
- * Switching like OBS (prototype «Übergang, Take und direktes Schalten», spec 4.2): Studio-Modus (per browser), the
- * transition (Schnitt | Blende with duration), choosing scenes, Take, the fade guard and the program flash.
+ * Switching like OBS (prototype "Transition, Take and direct switching", spec 4.2): Studio Mode (per browser), the
+ * transition (Cut | Fade with duration), choosing scenes, Take, the fade guard and the program flash.
  *
- * - Studio-Modus off: {@link chooseScene} switches the program directly. On: it loads the scene into the preview and
+ * - Studio Mode off: {@link chooseScene} switches the program directly. On: it loads the scene into the preview and
  *   {@link take} (Space) puts it on air.
  * - While a fade runs ({@link transitionRunning}, from the production's `lastSwitchAt` + duration in server time) or a
  *   switching request is in flight, new switches are ignored; a 409 `transition_running` is ignored silently.
- * - Every program switch event increments {@link programFlash} (monitor flash) and shows «‹Name› ist live».
+ * - Every program switch event increments {@link programFlash} (monitor flash) and shows "‹Name› is live".
  *
  * Used by the stage (control column, monitors), the scenes dock and the keyboard (keys 1–9, Space; registered by
  * {@link registerShortcuts}, which the Regie page calls).
@@ -60,11 +62,11 @@ export class SwitcherService {
   /** Guards the automatic preview assignment against repeating a failed request. */
   private previewFixKey: string | null = null;
 
-  /** Studio-Modus (persisted per browser as `studioflow.studio`). */
+  /** Studio Mode (persisted per browser as `studioflow.studio`). */
   readonly studioMode = this.studioModeSignal.asReadonly();
-  /** Schnitt or Blende. */
+  /** Cut or Fade. */
   readonly transitionKind = this.transitionKindSignal.asReadonly();
-  /** Fade duration; kept while Schnitt is chosen (persisted as `studioflow.transition`). */
+  /** Fade duration; kept while Cut is chosen (persisted as `studioflow.transition`). */
   readonly fadeDurationMs = this.fadeDurationSignal.asReadonly();
   /** Transition sent with switches: `{ cut, 0 }` or `{ fade, duration }`. */
   readonly transition = computed<TransitionDto>(() =>
@@ -72,7 +74,7 @@ export class SwitcherService {
       ? { kind: 'cut', durationMs: 0 }
       : { kind: 'fade', durationMs: this.fadeDurationSignal() },
   );
-  /** «0,3 s» for the duration stepper. */
+  /** "0.3 s" for the duration stepper. */
   readonly durationLabel = computed(() => formatSeconds(this.fadeDurationSignal()));
   /** The allowed fade durations (0,2 … 2 s). */
   readonly durationSteps = FADE_DURATIONS_MS;
@@ -82,7 +84,7 @@ export class SwitcherService {
   readonly commandInFlight = this.commandInFlightSignal.asReadonly();
   /** Switching is blocked: a fade runs or a request is in flight. */
   readonly busy = computed(() => this.transitionRunningSignal() || this.commandInFlightSignal());
-  /** Take is possible right now (Studio-Modus, a preview different from the program, idle, connected). */
+  /** Take is possible right now (Studio Mode, a preview different from the program, idle, connected). */
   readonly canTake = computed(() => {
     const preview = this.store.previewSceneId();
     return (
@@ -99,7 +101,7 @@ export class SwitcherService {
   readonly programSwitch = this.store.programSwitch;
   /** Hint text of the control column. */
   readonly hint = computed(() =>
-    this.studioModeSignal() ? SWITCH_HINTS.studio : SWITCH_HINTS.direct,
+    t(this.studioModeSignal() ? SWITCH_HINT_KEYS.studio : SWITCH_HINT_KEYS.direct),
   );
 
   constructor() {
@@ -132,7 +134,7 @@ export class SwitcherService {
   }
 
   /**
-   * Turns Studio-Modus on or off (prototype `setStudio`). On: the preview gets the scene after the program when it
+   * Turns Studio Mode on or off (prototype `setStudio`). On: the preview gets the scene after the program when it
    * has none (or shows the program). Off: the preview is cleared unless another operator is online (spec 4.2).
    */
   async setStudioMode(on: boolean): Promise<void> {
@@ -141,9 +143,7 @@ export class SwitcherService {
     }
     this.studioModeSignal.set(on);
     this.preferences.writeStudioMode(on);
-    this.toasts.show(
-      on ? 'Studio-Modus an: Preview und Take' : 'Studio-Modus aus: Szenen schalten direkt live',
-    );
+    this.toasts.show(on ? t('regie.stage.switch.studioOn') : t('regie.stage.switch.studioOff'));
     const productionId = this.store.productionId();
     if (!productionId || !this.store.canCommand()) {
       // The preview is fixed by watchPreviewInStudioMode once the Regie is connected again.
@@ -167,13 +167,13 @@ export class SwitcherService {
     }
   }
 
-  /** Schnitt or Blende (persisted). */
+  /** Cut or Fade (persisted). */
   setTransitionKind(kind: TransitionKind): void {
     this.transitionKindSignal.set(kind);
     this.persistTransition();
   }
 
-  /** True when the duration can move one step in `direction` (false under Schnitt and at the ends). */
+  /** True when the duration can move one step in `direction` (false under Cut and at the ends). */
   canStepDuration(direction: -1 | 1): boolean {
     if (this.transitionKindSignal() === 'cut') {
       return false;
@@ -191,7 +191,7 @@ export class SwitcherService {
   }
 
   /**
-   * A click on a scene or keys 1–9 (prototype `chooseScene`): in Studio-Modus the scene goes into the preview,
+   * A click on a scene or keys 1–9 (prototype `chooseScene`): in Studio Mode the scene goes into the preview,
    * otherwise it goes on air with the current transition. Ignored while switching is {@link busy}.
    */
   async chooseScene(sceneId: string): Promise<void> {
@@ -200,7 +200,7 @@ export class SwitcherService {
     }
     const productionId = this.store.productionId();
     if (!productionId || !this.store.canCommand()) {
-      this.toasts.show(OFFLINE_COMMAND_MESSAGE);
+      this.toasts.show(offlineCommandMessage());
       return;
     }
     if (this.studioModeSignal()) {
@@ -227,7 +227,7 @@ export class SwitcherService {
     }
     const productionId = this.store.productionId();
     if (!productionId || !this.store.canCommand()) {
-      this.toasts.show(OFFLINE_COMMAND_MESSAGE);
+      this.toasts.show(offlineCommandMessage());
       return false;
     }
     const transition = this.transition();
@@ -298,7 +298,7 @@ export class SwitcherService {
     });
   }
 
-  /** Flash and «‹Name› ist live» for every program switch event. */
+  /** Flash and "‹Name› is live" for every program switch event. */
   private watchProgramSwitches(): void {
     effect(() => {
       const notice = this.store.programSwitch();
@@ -309,13 +309,13 @@ export class SwitcherService {
         this.programFlashSignal.update((value) => value + 1);
         const scene = this.store.sceneById(notice.programSceneId);
         if (scene) {
-          this.toasts.show(`«${scene.name}» ist live`);
+          this.toasts.show(t('regie.stage.switch.live', { name: scene.name }));
         }
       });
     });
   }
 
-  /** In Studio-Modus a preview must exist: assign the scene after the program when the server has none. */
+  /** In Studio Mode a preview must exist: assign the scene after the program when the server has none. */
   private watchPreviewInStudioMode(): void {
     effect(() => {
       const needed =

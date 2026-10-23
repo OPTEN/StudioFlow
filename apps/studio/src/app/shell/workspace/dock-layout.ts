@@ -1,5 +1,7 @@
+import type { PlainMessageKey } from '@studioflow/i18n';
+
 /**
- * Pure model of the dock layout (prototype «Layout: Docks verschieben und Grössen ändern»), stored per browser as
+ * Pure model of the dock layout (prototype "Layout: move docks and change sizes"), stored per browser as
  * `studioflow.layout` (version 1). No Angular, no DOM: `DockLayoutService` holds it in a signal.
  */
 
@@ -15,36 +17,29 @@ export const DOCK_IDS: readonly DockId[] = ['scenes', 'src', 'insp', 'st'];
 /** Zones in keyboard order (the grip arrows walk left → bottom → right). */
 export const DOCK_ZONES: readonly DockZone[] = ['left', 'bottom', 'right'];
 
-/** Dock titles (header label, toasts, splitter labels). */
-export const DOCK_TITLES: Readonly<Record<DockSlotId, string>> = {
-  scenes: 'Szenen',
-  src: 'Quellen',
-  insp: 'Eigenschaften',
-  st: 'Stationen',
-  pair: 'Gerät koppeln',
-};
+/** Message keys of the dock titles (header label, toasts, splitter labels); resolve them with `t` when shown. */
+export const DOCK_TITLE_KEYS = {
+  scenes: 'regie.workspace.dock.scenes',
+  src: 'regie.workspace.dock.src',
+  insp: 'regie.workspace.dock.insp',
+  st: 'regie.workspace.dock.st',
+  pair: 'regie.workspace.dock.pair',
+} as const satisfies Record<DockSlotId, PlainMessageKey>;
 
-/** Accessible region names of the docks (prototype `aria-label` of the sections). */
-export const DOCK_REGION_LABELS: Readonly<Record<DockSlotId, string>> = {
-  ...DOCK_TITLES,
-  src: 'Quellen der Szene',
-};
-
-/** «links», «unten», «rechts» for «Stationen ist rechts angedockt». */
-export const ZONE_WORDS: Readonly<Record<DockZone, string>> = {
-  left: 'links',
-  bottom: 'unten',
-  right: 'rechts',
-};
+/** Message keys of the accessible region names of the docks (prototype `aria-label` of the sections). */
+export const DOCK_REGION_KEYS = {
+  ...DOCK_TITLE_KEYS,
+  src: 'regie.workspace.dockRegion.src',
+} as const satisfies Record<DockSlotId, PlainMessageKey>;
 
 /** Layout of the docks, version 1 of the stored format. */
 export interface DockLayout {
   readonly v: 1;
   /** Docks per zone, in order (left/right: top to bottom; bottom: left to right). Every dock exactly once. */
   readonly zones: Readonly<Record<DockZone, readonly DockId[]>>;
-  /** Flex weights per dock (the pairing dock takes the space of Quellen and Eigenschaften). */
+  /** Flex weights per dock (the pairing dock takes the space of Sources and Properties). */
   readonly weights: Readonly<Record<DockSlotId, number>>;
-  /** Hidden docks («Docks und Layout»). */
+  /** Hidden docks ("Docks and layout"). */
   readonly hidden: readonly DockId[];
   /** Height of the bottom zone as a fraction of the centre column, or null for the default height. */
   readonly bottomH: number | null;
@@ -52,7 +47,7 @@ export interface DockLayout {
   readonly leftW: number;
   /** Width of the right zone in px. */
   readonly rightW: number;
-  /** Share of the Preview monitor in Studio-Modus (0.3–0.7). */
+  /** Share of the Preview monitor in Studio Mode (0.3–0.7). */
   readonly split: number;
 }
 
@@ -71,7 +66,7 @@ export const LAYOUT_LIMITS = {
   weightMax: 20,
 } as const;
 
-/** The default layout: Szenen | Quellen | Eigenschaften | Stationen at the bottom. */
+/** The default layout: Scenes | Sources | Properties | Stations at the bottom. */
 export function defaultLayout(): DockLayout {
   return {
     v: 1,
@@ -233,8 +228,8 @@ export function stepTarget(
 }
 
 /**
- * Where the pairing dock appears (prototype `pairSlot`): at the place of the first shown Quellen or Eigenschaften
- * dock; without those next to Stationen, else at the end of the bottom zone.
+ * Where the pairing dock appears (prototype `pairSlot`): at the place of the first shown Sources or Properties
+ * dock; without those next to Stations, else at the end of the bottom zone.
  */
 export function pairSlot(layout: DockLayout): { zone: DockZone; index: number } {
   const shown = (id: DockId): boolean => !layout.hidden.includes(id);
@@ -253,7 +248,7 @@ export function pairSlot(layout: DockLayout): { zone: DockZone; index: number } 
   return { zone: stationsZone, index: list.includes('st') ? list.indexOf('st') : list.length };
 }
 
-/** Docks shown per zone, with the pairing dock in place of Quellen and Eigenschaften while it is open. */
+/** Docks shown per zone, with the pairing dock in place of Sources and Properties while it is open. */
 export function visibleZones(
   layout: DockLayout,
   pairingOpen: boolean,

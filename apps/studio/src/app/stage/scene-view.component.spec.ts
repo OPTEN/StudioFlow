@@ -35,7 +35,7 @@ class HostComponent {
   readonly scene = signal<SceneDto | null>(null);
   readonly cue = signal<SceneTransitionCue | null>(null);
   readonly mode = signal<SceneViewMode>('monitor');
-  readonly label = signal('Program-Monitor: Begrüssung');
+  readonly label = signal('Program monitor: Welcome');
   readonly ended: TransitionDto[] = [];
 }
 
@@ -91,7 +91,7 @@ describe('SceneViewComponent', () => {
     expect(renderer.options.provider).toBe(TestBed.inject(PlaceholderMediaProvider));
     expect(renderer.container.tagName.toLowerCase()).toBe('sf-scene-view');
     expect(renderer.ops()).toEqual(['show:scn_a']);
-    expect(renderer.element.getAttribute('aria-label')).toBe('Program-Monitor: Begrüssung');
+    expect(renderer.element.getAttribute('aria-label')).toBe('Program monitor: Welcome');
     expect(renderer.options.statusOf?.('dev_aaaaaaaaaaaaaaaa/camera')).toBe('ok');
     expect(renderer.options.statusOf?.('dev_zzzzzzzzzzzzzzzz/camera')).toBeUndefined();
     expect(renderer.options.codeOf?.('dev_bbbbbbbbbbbbbbbb/screen-1')).toBe('S1');
@@ -110,10 +110,10 @@ describe('SceneViewComponent', () => {
 
   it('ignores an unchanged scene object', async () => {
     await setup();
-    host.label.set('Preview-Monitor: Begrüssung');
+    host.label.set('Preview monitor: Welcome');
     await render();
     expect(factory.last.ops()).toEqual(['show:scn_a']);
-    expect(factory.last.element.getAttribute('aria-label')).toBe('Preview-Monitor: Begrüssung');
+    expect(factory.last.element.getAttribute('aria-label')).toBe('Preview monitor: Welcome');
   });
 
   it('plays the cued transition on a program switch and reports its end', async () => {

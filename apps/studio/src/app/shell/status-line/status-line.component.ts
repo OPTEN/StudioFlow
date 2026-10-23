@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { t, tm } from '@studioflow/i18n';
 import {
   formatClock,
   formatDuration,
@@ -27,9 +28,9 @@ interface IncidentRow {
   readonly bad: boolean;
   readonly recovered: boolean;
   readonly place: IncidentPlace;
-  /** «war 9 s weg» for recovered incidents. */
+  /** "was gone for 9 s" for recovered incidents. */
   readonly downFor: string;
-  /** «Neu teilen lassen» is offered (ended screen share of a device slot; never for a camera). */
+  /** "Ask to share again" is offered (ended screen share of a device slot; never for a camera). */
   readonly reshare: boolean;
 }
 
@@ -40,24 +41,27 @@ interface ConnectionBanner {
   readonly action: 'media' | null;
 }
 
-/** Number of «Letzte Ereignisse» shown (prototype: 4). */
+/** Number of "Recent events" shown (prototype: 4). */
 const LOG_ENTRIES = 4;
 
 /**
- * The message strip below the header (prototype `.statusline`, DESIGN.md «Message strip»): every incident as its own
+ * The message strip below the header (prototype `.statusline`, DESIGN.md "Message strip"): every incident as its own
  * segment (sorted: open before recovered, red before amber, oldest first) with icon, code, name, state word, where
- * it is on air, a timer and its direct action («Neu teilen lassen», «Gesehen»); without incidents «Keine offenen
- * Meldungen» and the last four log entries. A calm banner segment first reports a lost server or media connection.
+ * it is on air, a timer and its direct action ("Ask to share again", "Seen"); without incidents "No open messages"
+ * and the last four log entries, each in the active language from its code (`logEntryText`, with the English text of
+ * the API as fallback for a code this client does not know). A calm banner segment first reports a lost server or
+ * media connection.
  */
 @Component({
   selector: 'sf-status-line',
   imports: [IconComponent],
   templateUrl: './status-line.component.html',
   styleUrl: './status-line.component.scss',
-  host: { role: 'region', 'aria-label': 'Meldungen' },
+  host: { role: 'region', '[attr.aria-label]': "t('regie.statusline.label')" },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusLineComponent {
+  protected readonly t = t;
   protected readonly placeWord = incidentPlaceWord;
   protected readonly store = inject(ProductionStoreService);
   protected readonly media = inject(StudioMediaService);
@@ -85,12 +89,12 @@ export class StatusLineComponent {
       return {
         incident,
         code: incident.code,
-        name: source?.label ?? 'Quelle fehlt',
+        name: source?.label ?? t('model.scene.sourceMissing'),
         word: incidentWord(incident.kind, source?.kind),
         bad: incident.kind !== 'reconnecting',
         recovered,
         place: this.store.incidentPlace(incident.sourceId),
-        downFor: `war ${seconds} s weg`,
+        downFor: t('regie.statusline.incident.goneFor', { seconds }),
         reshare:
           !recovered &&
           incident.kind === 'ended' &&
@@ -116,35 +120,40 @@ export class StatusLineComponent {
   protected readonly banner = computed<ConnectionBanner | null>(() => {
     const discoveryError = this.store.discoveryError();
     if (discoveryError) {
-      return { tone: 'warn', text: discoveryError, action: null };
+      return { tone: 'warn', text: tm(discoveryError), action: null };
     }
     const status = this.store.status();
     if (status === 'offline') {
       const lastSync = this.store.lastSyncAt();
-      const since = lastSync ? ` Letzter Stand ${formatClock(new Date(lastSync))}.` : '';
       return {
         tone: 'warn',
-        text: `Keine Verbindung zum Server, die Regie verbindet neu …${since}`,
+        text: lastSync
+          ? t('regie.statusline.banner.offlineSince', { time: formatClock(new Date(lastSync)) })
+          : t('regie.statusline.banner.offline'),
         action: null,
       };
     }
     if (status === 'connecting' && !this.store.state()) {
-      return { tone: 'idle', text: 'Verbindet mit dem Server …', action: null };
+      return { tone: 'idle', text: t('regie.statusline.banner.connecting'), action: null };
     }
     if (this.media.unavailable()) {
       return {
         tone: 'bad',
-        text: 'Keine Videoverbindung: die Monitore zeigen kein Bild.',
+        text: t('regie.statusline.banner.mediaUnavailable'),
         action: 'media',
       };
     }
     if (this.media.degraded()) {
-      return { tone: 'warn', text: 'Videoverbindung unterbrochen, verbindet neu …', action: null };
+      return {
+        tone: 'warn',
+        text: t('regie.statusline.banner.mediaDegraded'),
+        action: null,
+      };
     }
     return null;
   });
 
-  /** Running outage timer «mm:ss» (ticks with the shared clock). */
+  /** Running outage timer "mm:ss" (ticks with the shared clock). */
   protected timer(incident: IncidentDto): string {
     return formatDuration(this.store.elapsedSince(incident.startedAt, this.clock.now()));
   }
@@ -153,7 +162,7 @@ export class StatusLineComponent {
     this.stationFocus.showSource(row.incident.sourceId);
   }
 
-  /** «Gesehen» (only offered for recovered incidents; see {@link IncidentAckService}). */
+  /** "Seen" (only offered for recovered incidents; see {@link IncidentAckService}). */
   protected acknowledge(row: IncidentRow): Promise<void> {
     return this.withPending(row.incident.id, (productionId) =>
       this.acks.acknowledge(productionId, [row.incident.id]),
@@ -176,8 +185,8 @@ export class StatusLineComponent {
       const device = this.store.deviceById(deviceId);
       this.toasts.show(
         device?.connection === 'offline'
-          ? `${row.name} ist nicht verbunden. Bitte direkt am Gerät neu teilen.`
-          : `Bitte an ${row.name} geschickt: «Bildschirm erneut teilen»`,
+          ? t('regie.statusline.incident.reshareOffline', { name: row.name })
+          : t('regie.statusline.incident.reshareSent', { name: row.name }),
       );
     });
   }
@@ -191,7 +200,7 @@ export class StatusLineComponent {
       return;
     }
     if (!this.store.canCommand()) {
-      this.toasts.show('Keine Verbindung zum Server. Bitte gleich nochmals versuchen.');
+      this.toasts.show(t('regie.statusline.offline'));
       return;
     }
     this.pending.update((set) => new Set([...set, id]));

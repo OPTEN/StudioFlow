@@ -30,7 +30,7 @@ describe('IncidentAckService', () => {
 
   afterEach(() => harness.http.verify());
 
-  it('offers «Gesehen» only for recovered incidents', () => {
+  it('offers "Seen" only for recovered incidents', () => {
     expect(acks.canAcknowledge('inc_back')).toBe(true);
     expect(acks.canAcknowledge('inc_open')).toBe(false);
     expect(acks.canAcknowledge('inc_unknown')).toBe(false);

@@ -20,7 +20,7 @@ $color-text: #e6edf3 !default;
 $color-text-2: #b4bdc8 !default;
 $color-muted: #8b949e !default;
 
-// Colours: state hues (each has exactly one meaning, see DESIGN.md «The State-Only Colour Rule»)
+// Colours: state hues (each has exactly one meaning, see DESIGN.md "The State-Only Colour Rule")
 $color-blue: #79c0ff !default;
 $color-blue-fill: #1f6feb !default;
 $color-blue-fill-hover: #1a5fd0 !default;
@@ -162,7 +162,7 @@ $layout-splitter-hit: 9px !default;
   --dock-header-h: #{$layout-dock-header-height};
   --control-column: #{$layout-control-column};
   --monitor-split: #{$layout-monitor-split};
-  // Height of the bottom dock zone by default (DESIGN.md «Docks»).
+  // Height of the bottom dock zone by default (DESIGN.md "Docks").
   --dock-h: clamp(240px, 42dvh, 420px);
   // Content gutter left/right: 16 px or the safe-area inset if larger.
   --gl: max(#{$space-gutter}, env(safe-area-inset-left, 0px));

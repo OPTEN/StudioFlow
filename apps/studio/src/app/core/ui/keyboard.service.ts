@@ -1,11 +1,11 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, inject } from '@angular/core';
 
-/** Global shortcuts of the Regie (prototype «Tastatur»). */
+/** Global shortcuts of the Regie (prototype "Keyboard"). */
 export type ShortcutId =
   /** Keys 1–9: the handler receives the 0-based scene index. */
   | 'scene'
-  /** Space (not on a button or link): Take in Studio-Modus. */
+  /** Space (not on a button or link): Take in Studio Mode. */
   | 'take'
   /** Ctrl/Cmd+Z. */
   | 'undo'

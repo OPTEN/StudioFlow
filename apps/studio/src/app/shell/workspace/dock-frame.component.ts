@@ -9,8 +9,9 @@ import {
   input,
   viewChild,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { IconComponent } from '../../core/ui/icon.component';
-import { DOCK_TITLES, type DockId, type DockSlotId } from './dock-layout';
+import { DOCK_TITLE_KEYS, type DockId, type DockSlotId } from './dock-layout';
 import { DockDragService } from './dock-drag.service';
 import { DockLayoutService } from './dock-layout.service';
 
@@ -32,7 +33,7 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
  *
  * ```html
  * <sf-dock-frame dock="st" [count]="stations().length">
- *   <button sfDockActions class="c-btn c-btn--sm c-btn--primary" type="button">…Gerät koppeln</button>
+ *   <button sfDockActions class="c-btn c-btn--sm c-btn--primary" type="button">…Pair device</button>
  *   …body…
  * </sf-dock-frame>
  * ```
@@ -53,7 +54,7 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
         <button
           class="c-dock-frame__grip"
           type="button"
-          [attr.aria-label]="'Dock ' + dockTitle() + ' verschieben, mit Pfeiltasten'"
+          [attr.aria-label]="t('regie.workspace.grip', { title: dockTitle() })"
           (keydown)="onGripKeyDown($event)"
         >
           <svg sfIcon="grip"></svg>
@@ -85,7 +86,7 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
 export class DockFrameComponent {
   /** Which dock this is. */
   readonly dock = input.required<DockSlotId>();
-  /** Header text; defaults to the dock title (Eigenschaften shows «Szene» or «Element»). */
+  /** Header text; defaults to the dock title (Properties shows "Scene" or "Item"). */
   readonly title = input<string | null>(null);
   /** Secondary header text (prototype `.panel-sub`, e.g. the scene name). */
   readonly subtitle = input<string | null>(null);
@@ -102,12 +103,13 @@ export class DockFrameComponent {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly titleElement = viewChild.required<ElementRef<HTMLElement>>('title');
 
-  protected readonly dockTitle = computed(() => DOCK_TITLES[this.dock()]);
+  protected readonly t = t;
+  protected readonly dockTitle = computed(() => t(DOCK_TITLE_KEYS[this.dock()]));
   protected readonly heading = computed(() => this.title() ?? this.dockTitle());
 
   /**
    * Moves the focus to the header title (focusable with `tabindex="-1"`, not in the tab order); used when the dock's
-   * content is replaced under the focus, e.g. Eigenschaften going back from the element to the scene.
+   * content is replaced under the focus, e.g. Properties going back from the element to the scene.
    */
   focusTitle(): void {
     this.titleElement().nativeElement.focus();

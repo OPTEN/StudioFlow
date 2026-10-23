@@ -16,7 +16,7 @@ const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Anchored popovers like the prototype («Popover allgemein»): at most one is open; a click outside, Escape (layer
+ * Anchored popovers like the prototype ("Popovers in general"): at most one is open; a click outside, Escape (layer
  * `popover` of the KeyboardService) or opening another one closes it; Escape returns the focus to the trigger.
  * Popovers are identified by a string id that is unique on the page (e.g. `output`, `layout`, `add-source`).
  */

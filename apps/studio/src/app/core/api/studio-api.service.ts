@@ -172,7 +172,7 @@ export class StudioApiService {
     return this.post<ApiResult<'take'>>(this.production(productionId, '/take'), body);
   }
 
-  /** `POST /api/productions/{id}/incidents/{incidentId}/ack`: «Gesehen». */
+  /** `POST /api/productions/{id}/incidents/{incidentId}/ack`: "Seen". */
   acknowledgeIncident(productionId: string, incidentId: string): Promise<void> {
     return this.post<void>(this.production(productionId, `/incidents/${enc(incidentId)}/ack`));
   }
@@ -324,7 +324,7 @@ export class StudioApiService {
     );
   }
 
-  /** `POST …/pairing/phone-invite/renew`: «Neuen Code erzeugen». */
+  /** `POST …/pairing/phone-invite/renew`: "Create new code". */
   renewPhoneInvite(productionId: string): Promise<ApiResult<'renewPhoneInvite'>> {
     return this.post<ApiResult<'renewPhoneInvite'>>(
       this.production(productionId, '/pairing/phone-invite/renew'),
@@ -342,14 +342,14 @@ export class StudioApiService {
     );
   }
 
-  /** `DELETE …/pairing/invites/{inviteId}`: «Link widerrufen». */
+  /** `DELETE …/pairing/invites/{inviteId}`: "Revoke link". */
   revokeInvite(productionId: string, inviteId: string): Promise<void> {
     return this.call(
       this.http.delete<void>(this.production(productionId, `/pairing/invites/${enc(inviteId)}`)),
     );
   }
 
-  /** `POST …/pairing/requests/{requestId}/approve`: «Zulassen»; 410 when the knock expired. */
+  /** `POST …/pairing/requests/{requestId}/approve`: "Allow"; 410 when the knock expired. */
   approvePairingRequest(
     productionId: string,
     requestId: string,
@@ -359,7 +359,7 @@ export class StudioApiService {
     );
   }
 
-  /** `POST …/pairing/requests/{requestId}/deny`: «Ablehnen». */
+  /** `POST …/pairing/requests/{requestId}/deny`: "Deny". */
   denyPairingRequest(productionId: string, requestId: string): Promise<void> {
     return this.post<void>(
       this.production(productionId, `/pairing/requests/${enc(requestId)}/deny`),

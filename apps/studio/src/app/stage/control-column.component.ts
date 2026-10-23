@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import type { TransitionKind } from '@studioflow/scene-model';
 import { IconComponent } from '../core/ui/icon.component';
 import { SwitcherService } from './switcher.service';
@@ -6,10 +7,10 @@ import { SwitcherService } from './switcher.service';
 let nextSwitchId = 0;
 
 /**
- * The fixed control column right of the monitors (prototype `.ctrl`, DESIGN.md «Take», «Studio-Modus switch and
- * Übergang»): the Studio-Modus switch, Übergang (Schnitt | Blende), the duration stepper (violet mono value, muted
- * and disabled under Schnitt, disabled at the shortest and longest step), TAKE (only in Studio-Modus; disabled while
- * a transition runs, while a switch is in flight, when the preview equals the program or offline; «Leerschlag» hint)
+ * The fixed control column right of the monitors (prototype `.ctrl`, DESIGN.md "Take", "Studio Mode switch and
+ * Transition"): the Studio Mode switch, Transition (Cut | Fade), the duration stepper (violet mono value, muted
+ * and disabled under Cut, disabled at the shortest and longest step), TAKE (only in Studio Mode; disabled while
+ * a transition runs, while a switch is in flight, when the preview equals the program or offline; "Space" hint)
  * and the hint text. Everything is wired to {@link SwitcherService}, which also guards against rapid repeats.
  */
 @Component({
@@ -21,6 +22,7 @@ let nextSwitchId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ControlColumnComponent {
+  protected readonly t = t;
   protected readonly switcher = inject(SwitcherService);
   protected readonly switchId = `sf-studio-switch-${++nextSwitchId}`;
 

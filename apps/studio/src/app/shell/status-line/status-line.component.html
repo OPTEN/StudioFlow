@@ -13,7 +13,9 @@
     ></span>
     <span>{{ banner.text }}</span>
     @if (banner.action === 'media') {
-      <button class="c-btn c-btn--sm" type="button" (click)="media.restart()">Neu verbinden</button>
+      <button class="c-btn c-btn--sm" type="button" (click)="media.restart()">
+        {{ t('regie.statusline.banner.mediaReconnect') }}
+      </button>
     }
   </div>
 }
@@ -24,13 +26,13 @@
       <button
         class="c-status__target"
         type="button"
-        [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
+        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code })"
         (click)="show(row)"
       >
         <svg sfIcon="check"></svg><span class="c-code">{{ row.code }}</span
         >{{ row.name }}
       </button>
-      <strong class="c-state--ok">wieder da</strong>
+      <strong class="c-state--ok">{{ t('regie.statusline.incident.back') }}</strong>
       <span class="c-status__where">{{ row.downFor }}</span>
       <button
         class="c-btn c-btn--sm"
@@ -38,7 +40,7 @@
         [disabled]="pending().has(row.incident.id)"
         (click)="acknowledge(row)"
       >
-        Gesehen
+        {{ t('regie.statusline.incident.seen') }}
       </button>
     </div>
   } @else {
@@ -46,7 +48,7 @@
       <button
         class="c-status__target"
         type="button"
-        [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
+        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code })"
         (click)="show(row)"
       >
         <svg sfIcon="alert"></svg><span class="c-code">{{ row.code }}</span
@@ -64,15 +66,15 @@
           [disabled]="pending().has(row.incident.id)"
           (click)="reshare(row)"
         >
-          <svg sfIcon="send" [size]="13"></svg>Neu teilen lassen
+          <svg sfIcon="send" [size]="13"></svg>{{ t('regie.statusline.incident.reshare') }}
         </button>
       }
     </div>
   }
 } @empty {
-  <span class="c-status__ok"><svg sfIcon="check"></svg>Keine offenen Meldungen</span>
+  <span class="c-status__ok"><svg sfIcon="check"></svg>{{ t('regie.statusline.none') }}</span>
   @if (logEntries().length > 0) {
-    <span class="c-status__label">Letzte Ereignisse</span>
+    <span class="c-status__label">{{ t('regie.statusline.log') }}</span>
     <span class="c-status__log">
       @for (entry of logEntries(); track entry.key) {
         <span class="c-status__entry"

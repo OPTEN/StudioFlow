@@ -92,7 +92,7 @@
 }
 
 // Scroll-edge fades: panel-coloured masks scroll with the content (local), the dark fades stay (scroll), so the
-// fade only shows while there is more to scroll (DESIGN.md «Scroll edge»).
+// fade only shows while there is more to scroll (DESIGN.md "Scroll edge").
 .c-dock-frame__body {
   background:
     linear-gradient(var(--panel), rgba(21, 26, 34, 0)) top / 100% 18px no-repeat local,

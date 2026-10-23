@@ -8,6 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@studioflow/scene-model';
 import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
@@ -66,6 +67,7 @@ export class ProductionMenuComponent {
   private readonly toasts = inject(ToastService);
 
   protected readonly popoverId = PRODUCTION_POPOVER;
+  protected readonly t = t;
   protected readonly mode = signal<MenuMode>('menu');
   protected readonly busy = signal(false);
   protected readonly productions = signal<readonly ProductionSummaryDto[] | null>(null);
@@ -128,7 +130,7 @@ export class ProductionMenuComponent {
     }
     await this.run(async (id) => {
       await this.api.updateProduction(id, { name, standbySlate: null, endSlate: null });
-      this.toasts.show(`Produktion heisst jetzt «${name}»`);
+      this.toasts.show(t('regie.header.production.renamed', { name }));
       this.mode.set('menu');
     });
   }
@@ -152,7 +154,7 @@ export class ProductionMenuComponent {
         standbySlate: slate(value.standbyTitle, value.standbySubtitle, value.standbyBackground),
         endSlate: slate(value.endTitle, value.endSubtitle, value.endBackground),
       });
-      this.toasts.show('Slates gespeichert');
+      this.toasts.show(t('regie.header.production.slatesSaved'));
       this.mode.set('menu');
     });
   }
@@ -167,10 +169,10 @@ export class ProductionMenuComponent {
     await this.run(async () => {
       const created = await this.api.createProduction({ name });
       if (this.live()) {
-        this.toasts.show(`Produktion «${created.name}» erstellt. Wechseln geht nach der Sendung.`);
+        this.toasts.show(t('regie.header.production.createdSwitchLater', { name: created.name }));
       } else {
         await this.store.switchProduction(created.id);
-        this.toasts.show(`Produktion «${created.name}» erstellt und aktiv`);
+        this.toasts.show(t('regie.header.production.created', { name: created.name }));
       }
       this.popovers.close(this.popoverId);
     });
@@ -182,7 +184,7 @@ export class ProductionMenuComponent {
     }
     await this.run(async () => {
       await this.store.switchProduction(production.id);
-      this.toasts.show(`Gewechselt zu «${production.name}»`);
+      this.toasts.show(t('regie.header.production.switched', { name: production.name }));
       this.popovers.close(this.popoverId);
     });
   }
@@ -193,7 +195,9 @@ export class ProductionMenuComponent {
     this.auth
       .logout()
       .catch((error: unknown) =>
-        this.toasts.show(`Abmelden hat nicht geklappt. ${toUserMessage(error)}`),
+        this.toasts.show(
+          t('regie.header.production.signOutFailed', { reason: toUserMessage(error) }),
+        ),
       );
   }
 

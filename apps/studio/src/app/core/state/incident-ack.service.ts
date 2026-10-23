@@ -4,7 +4,7 @@ import { StudioApiService } from '../api/studio-api.service';
 import { ProductionStoreService } from './production-store.service';
 
 /**
- * «Gesehen» (spec 4.5, GAP-08): acknowledges recovered incidents, shared by every Regie session. Only a recovered
+ * "Seen" (spec 4.5, GAP-08): acknowledges recovered incidents, shared by every Regie session. Only a recovered
  * incident (`endedAt` set) can be acknowledged; the server answers an open one with 409 and an unknown or already
  * acknowledged one with 404.
  */

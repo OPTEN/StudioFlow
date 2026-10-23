@@ -1,49 +1,53 @@
 <div
   class="c-pop c-output-pop"
   role="dialog"
-  aria-label="Output"
+  [attr.aria-label]="t('regie.header.output.dialog')"
   [sfPopover]="popoverId"
   [popoverFocus]="false"
 >
-  <div class="c-pop-h">Output an Proxy</div>
+  <div class="c-pop-h">{{ t('regie.header.output.label') }}</div>
   <dl class="c-kv">
-    <dt>Zustand</dt>
+    <dt>{{ t('regie.header.output.stateLabel') }}</dt>
     <dd [class]="stateClass()">{{ stateText() }}</dd>
-    <dt>Abnehmer</dt>
+    <dt>{{ t('regie.header.output.addressesLabel') }}</dt>
     <dd class="u-mono">{{ addresses() }}</dd>
-    <dt>Format</dt>
+    <dt>{{ t('regie.header.output.formatLabel') }}</dt>
     <dd class="u-mono">{{ format }}</dd>
-    <dt>Latenz</dt>
+    <dt>{{ t('regie.header.output.latencyLabel') }}</dt>
     <dd>
       @if (latency(); as latency) {
-        <span class="u-mono">{{ latency }}</span> gemessen
+        <span class="u-mono">{{ latency }}</span> {{ t('regie.header.output.latencyMeasured') }}
       } @else {
-        <span class="c-output-pop__muted">noch nicht gemessen</span>
+        <span class="c-output-pop__muted">{{ t('regie.header.output.latencyNone') }}</span>
       }
     </dd>
   </dl>
 
   @if (loadError(); as error) {
     <div class="c-output-pop__error">
-      <span class="c-field-error">{{ error }}</span>
-      <button class="c-btn c-btn--sm" type="button" (click)="load()">Nochmals</button>
+      <span class="c-field-error">{{ tm(error) }}</span>
+      <button class="c-btn c-btn--sm" type="button" (click)="load()">
+        {{ t('regie.header.output.retry') }}
+      </button>
     </div>
   } @else {
     <div class="c-linkbox">
-      <span class="c-linkbox__text" #url>{{ displayUrl() ?? 'Link wird geladen …' }}</span>
+      <span class="c-linkbox__text" #url>{{
+        displayUrl() ?? t('regie.header.output.linkLoading')
+      }}</span>
       <button class="c-btn c-btn--sm" type="button" [disabled]="!settings()" (click)="copy()">
-        <svg sfIcon="copy" [size]="14"></svg>Kopieren
+        <svg sfIcon="copy" [size]="14"></svg>{{ t('common.copy') }}
       </button>
     </div>
   }
 
   <section class="c-output-pop__section" aria-labelledby="sf-output-access">
-    <div class="c-pop-h" id="sf-output-access">Zugriff</div>
+    <div class="c-pop-h" id="sf-output-access">{{ t('regie.header.output.access') }}</div>
     <p class="c-pop-note">
       @if (ips().length === 0) {
-        Jede Adresse darf den Output öffnen. Für mehr Sicherheit die Adresse des Proxys eintragen.
+        {{ t('regie.header.output.accessNoRestriction') }}
       } @else {
-        Nur diese Adressen dürfen den Output öffnen.
+        {{ t('regie.header.output.accessRestricted') }}
       }
     </p>
     @if (ips().length > 0) {
@@ -54,7 +58,7 @@
             <button
               class="c-ibtn"
               type="button"
-              [attr.aria-label]="ip + ' entfernen'"
+              [attr.aria-label]="t('regie.header.output.removeIp', { ip })"
               (click)="removeIp(ip)"
             >
               <svg sfIcon="close" [size]="14"></svg>
@@ -69,17 +73,17 @@
         type="text"
         autocomplete="off"
         spellcheck="false"
-        placeholder="10.0.0.42 oder 10.0.0.0/24"
-        aria-label="IP-Adresse oder Netz (CIDR)"
+        [placeholder]="t('regie.header.output.ipPlaceholder')"
+        [attr.aria-label]="t('regie.header.output.ipLabel')"
         [class.is-invalid]="ipControl.invalid && ipControl.touched"
         [formControl]="ipControl"
       />
-      <button class="c-btn c-btn--sm" type="submit" [disabled]="!settings()">Hinzufügen</button>
+      <button class="c-btn c-btn--sm" type="submit" [disabled]="!settings()">
+        {{ t('common.add') }}
+      </button>
     </form>
     @if (ipControl.invalid && ipControl.touched) {
-      <p class="c-field-error c-output-pop__note">
-        Bitte eine IP-Adresse wie 10.0.0.42 oder ein Netz wie 10.0.0.0/24 eingeben.
-      </p>
+      <p class="c-field-error c-output-pop__note">{{ t('regie.header.output.ipInvalid') }}</p>
     }
     @if (ipsDirty()) {
       <div class="c-output-pop__row">
@@ -89,7 +93,7 @@
           [disabled]="savingIps()"
           (click)="saveIps()"
         >
-          Speichern
+          {{ t('common.save') }}
         </button>
         <button
           class="c-btn c-btn--sm"
@@ -97,13 +101,13 @@
           [disabled]="savingIps()"
           (click)="discardIps()"
         >
-          Verwerfen
+          {{ t('regie.header.output.discard') }}
         </button>
       </div>
     }
     @if (settings()?.frameAncestors?.length) {
       <p class="c-pop-note">
-        Einbetten erlaubt für
+        {{ t('regie.header.output.embedAllowed') }}
         <span class="u-mono">{{ settings()?.frameAncestors?.join(' ') }}</span>
       </p>
     }
@@ -111,23 +115,23 @@
 
   @if (confirming()) {
     <sf-confirm-box
-      label="Link neu erzeugen"
-      message="Der alte Link hört sofort auf. Der Proxy braucht danach den neuen."
-      confirmLabel="Neu erzeugen"
+      [label]="t('regie.header.output.regenerate')"
+      [message]="t('regie.header.output.regenerateMessage')"
+      [confirmLabel]="t('regie.header.output.regenerateConfirm')"
       [busy]="regenerating()"
       (confirm)="regenerate()"
       (cancel)="confirming.set(false)"
     />
   } @else {
     <div class="c-output-pop__danger">
-      <span class="c-hint">Bei Verdacht auf Weitergabe</span>
+      <span class="c-hint">{{ t('regie.header.output.dangerHint') }}</span>
       <button
         class="c-btn c-btn--sm c-btn--danger"
         type="button"
         [disabled]="!settings()"
         (click)="confirming.set(true)"
       >
-        Link neu erzeugen
+        {{ t('regie.header.output.regenerate') }}
       </button>
     </div>
   }
