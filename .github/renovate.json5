@@ -1,0 +1,248 @@
+// Renovate (https://docs.renovatebot.com/configuration-options/): dependency updates as checked pull requests.
+// Workflow, groups and the owner's one-time setup: docs/runbook.md, section 14.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    ':semanticCommits',
+    ':dependencyDashboard',
+    // Images are pinned by digest (the tag stays readable); the actions are pinned by commit SHA with the release as comment.
+    'docker:pinDigests',
+    'helpers:pinGitHubActionDigests',
+  ],
+  timezone: 'Europe/Zurich',
+  // One batch of pull requests per week. Security fixes ignore the schedule (vulnerabilityAlerts below).
+  schedule: ['before 7am on monday'],
+  labels: ['dependencies'],
+  semanticCommitType: 'chore',
+  semanticCommitScope: 'deps',
+  dependencyDashboardTitle: 'Dependency dashboard',
+  prConcurrentLimit: 8,
+  prHourlyLimit: 4,
+  // A release must be a few days old before it is proposed (a withdrawn or hijacked release is usually caught by then).
+  minimumReleaseAge: '3 days',
+
+  // Security fixes at once: Dependabot alerts of the repository (enable them once, runbook section 14) and OSV.
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ['dependencies', 'security'],
+    schedule: ['at any time'],
+    semanticCommitType: 'fix',
+    minimumReleaseAge: null,
+    automerge: false,
+  },
+  osvVulnerabilityAlerts: true,
+
+  // The npm lock file is refreshed once a month (transitive dependencies), reviewed like any other update.
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ['before 7am on the first day of the month'],
+    automerge: false,
+  },
+
+  // Versions in files that no built-in manager reads.
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'DNS modules of Caddy: --with <go module>@<version> in the xcaddy build (infra/caddy/Dockerfile).',
+      managerFilePatterns: ['/^infra/caddy/Dockerfile$/'],
+      matchStrings: ['--with (?<depName>[^@\\s]+)@(?<currentValue>v[^\\s\\\\]+)'],
+      datasourceTemplate: 'go',
+    },
+    {
+      customType: 'regex',
+      description: 'The PostgreSQL image of docker-compose.yml: a YAML anchor shared by postgres, toolbox and the build of backup.',
+      managerFilePatterns: ['/^docker-compose\\.yml$/'],
+      matchStrings: [
+        'x-postgres-image: &postgres-image (?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?',
+      ],
+      datasourceTemplate: 'docker',
+      versioningTemplate: 'docker',
+      autoReplaceStringTemplate: 'x-postgres-image: &postgres-image {{{depName}}}:{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}}',
+    },
+  ],
+
+  // Later rules win over earlier ones: general rules first, then the groups, then the exceptions.
+  packageRules: [
+    // --- npm dev dependencies: one pull request per week and update type -------------------------------------------
+    {
+      description: 'Minor updates of the npm dev dependencies, together.',
+      matchManagers: ['npm'],
+      matchDepTypes: ['devDependencies'],
+      matchUpdateTypes: ['minor'],
+      groupName: 'dev dependencies (minor)',
+    },
+    {
+      description: 'Patch updates of the npm dev dependencies, together. The only automerge: patch, dev dependency, CI green.',
+      matchManagers: ['npm'],
+      matchDepTypes: ['devDependencies'],
+      matchUpdateTypes: ['patch'],
+      groupName: 'dev dependencies (patch)',
+      automerge: true,
+    },
+    {
+      description: 'Test-only NuGet packages: patch updates, together, with automerge.',
+      matchManagers: ['nuget'],
+      matchPackageNames: [
+        'Microsoft.NET.Test.Sdk',
+        'xunit.*',
+        'coverlet.*',
+        'Testcontainers.*',
+        'Microsoft.AspNetCore.Mvc.Testing',
+      ],
+      matchUpdateTypes: ['patch'],
+      groupName: 'NuGet test packages (patch)',
+      automerge: true,
+    },
+    {
+      description: 'The npm version that package.json pins (packageManager) goes with the dev dependencies.',
+      matchDepTypes: ['packageManager'],
+      groupName: 'dev dependencies (minor)',
+      automerge: false,
+    },
+    {
+      description: 'A new npm major version is decided by hand: it waits for approval on the dashboard.',
+      matchDepTypes: ['packageManager'],
+      matchUpdateTypes: ['major'],
+      dependencyDashboardApproval: true,
+    },
+    {
+      description: 'engines.node is the range that is supported, not a pin: not updated by Renovate.',
+      matchDepTypes: ['engines'],
+      enabled: false,
+    },
+    {
+      description: 'The types follow the Node.js major version that CI and the web build use (see the Node.js rule below).',
+      matchPackageNames: ['@types/node'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+
+    // --- Angular ----------------------------------------------------------------------------------------------------
+    {
+      description: 'Angular packages together. A major version is decided by hand: it waits for approval on the dashboard.',
+      groupName: 'Angular',
+      matchPackageNames: [
+        '@angular/**',
+        '@angular-devkit/**',
+        '@schematics/angular',
+        'ng-packagr',
+        'zone.js',
+      ],
+      automerge: false,
+    },
+    {
+      matchPackageNames: [
+        '@angular/**',
+        '@angular-devkit/**',
+        '@schematics/angular',
+        'ng-packagr',
+        'zone.js',
+      ],
+      matchUpdateTypes: ['major'],
+      dependencyDashboardApproval: true,
+    },
+    {
+      description: 'TypeScript: Angular supports a range of versions, so minor and major versions wait for approval.',
+      matchPackageNames: ['typescript'],
+      matchUpdateTypes: ['minor', 'major'],
+      dependencyDashboardApproval: true,
+    },
+
+    // --- .NET -------------------------------------------------------------------------------------------------------
+    {
+      description: 'The .NET release train together: SDK, runtime images, ASP.NET Core and EF Core packages, dotnet-ef and the SignalR client. SDK and runtime must come from the same release (see apps/api/Dockerfile).',
+      groupName: '.NET and EF Core',
+      matchPackageNames: [
+        'dotnet-sdk',
+        'dotnet-ef',
+        'mcr.microsoft.com/dotnet/**',
+        'Microsoft.AspNetCore.**',
+        'Microsoft.EntityFrameworkCore**',
+        'Microsoft.Extensions.**',
+        'Npgsql.EntityFrameworkCore.PostgreSQL',
+        '@microsoft/signalr',
+      ],
+      automerge: false,
+    },
+    {
+      description: 'A new .NET major version is decided by hand: it waits for approval on the dashboard.',
+      matchPackageNames: [
+        'dotnet-sdk',
+        'dotnet-ef',
+        'mcr.microsoft.com/dotnet/**',
+        'Microsoft.AspNetCore.**',
+        'Microsoft.EntityFrameworkCore**',
+        'Microsoft.Extensions.**',
+        'Npgsql.EntityFrameworkCore.PostgreSQL',
+        '@microsoft/signalr',
+      ],
+      matchUpdateTypes: ['major'],
+      dependencyDashboardApproval: true,
+    },
+
+    // --- LiveKit ----------------------------------------------------------------------------------------------------
+    {
+      description: 'LiveKit server and livekit-client belong together (protocol compatibility; the specs document the behaviour of one pair of versions). Never proposed without approval, never merged without a full E2E run.',
+      groupName: 'LiveKit',
+      matchPackageNames: ['livekit/livekit-server', 'livekit-client'],
+      automerge: false,
+      dependencyDashboardApproval: true,
+      addLabels: ['needs-full-e2e'],
+      prBodyNotes: [
+        'LiveKit server and client move together. Before merging run the workflow "E2E full" on this branch and read the LiveKit notes in docs/runbook.md, section 14.',
+      ],
+    },
+
+    // --- Caddy ------------------------------------------------------------------------------------------------------
+    {
+      description: 'Caddy (builder and runtime image) and its DNS modules together.',
+      groupName: 'Caddy and DNS modules',
+      matchPackageNames: ['caddy', 'github.com/caddy-dns/**'],
+      automerge: false,
+    },
+
+    // --- PostgreSQL -------------------------------------------------------------------------------------------------
+    {
+      description: 'PostgreSQL: minor versions (17.x) are proposed. A new major version needs a dump and restore and is its own project: no pull request.',
+      groupName: 'PostgreSQL',
+      matchPackageNames: ['postgres'],
+      automerge: false,
+    },
+    {
+      matchPackageNames: ['postgres'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+
+    // --- Node.js, Playwright, actions -------------------------------------------------------------------------------
+    {
+      description: 'Node.js: .nvmrc (CI) and the node image of the web build together. The next major version is decided by hand.',
+      groupName: 'Node.js',
+      matchPackageNames: ['node'],
+      automerge: false,
+    },
+    {
+      matchPackageNames: ['node'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    {
+      description: 'Playwright, its browsers and the accessibility checks together.',
+      groupName: 'Playwright',
+      matchPackageNames: [
+        '@playwright/**',
+        'playwright',
+        'playwright-core',
+        '@axe-core/playwright',
+      ],
+      automerge: false,
+    },
+    {
+      description: 'GitHub Actions (pinned by SHA) together; run in CI with write access to the repository, so never merged automatically.',
+      groupName: 'GitHub Actions',
+      matchManagers: ['github-actions'],
+      automerge: false,
+    },
+  ],
+}
