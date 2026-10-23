@@ -1,0 +1,391 @@
+# Images and releases (docs/releasing.md).
+#
+# Runs after the workflow CI succeeded on a push to main, for exactly the commit CI tested:
+#
+#   plan -> images (api, web)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web}:sha-<7 characters>
+#                              with SBOM and provenance attestations, signs them (cosign, keyless)
+#        -> smoke              the E2E smoke set against the pushed sha images (the images that would ship)
+#        -> scan               Trivy: fixable CRITICAL vulnerabilities fail the run
+#        -> main-tag           smoke green: moves the tag :main to the commit (only while it is the tip of main)
+#        -> release-please     smoke green: tags and publishes the release when a release pull request was merged,
+#                              otherwise opens or updates the release pull request
+#        -> release            only for a release commit and only if the scan is green as well: tags the SAME images
+#                              (no rebuild) :X.Y.Z, :X.Y and :latest, then attaches the release files
+#
+# Why workflow_run and not workflow_call: the gate is "CI is green on this commit", which workflow_run states exactly
+# (conclusion == success on a push to main) without touching ci.yml, renaming its required checks or running the tests
+# a second time. The cost is that this file only takes effect on the default branch, and that it must use head_sha
+# instead of GITHUB_SHA (which is the tip of main, not the tested commit).
+#
+# Every step can be repeated: a sha tag is never rebuilt, re-tagging copies the same manifest, uploads use --clobber.
+# After a failure use "Re-run failed jobs" (or "Re-run all jobs": the work already done is skipped).
+# Every action is pinned by commit SHA; the comment names the release.
+
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# One run per commit; runs of different commits do not wait for or cancel each other (a cancelled run of a release
+# commit would leave the release without images).
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+# Every job declares what it needs.
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  REVISION: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  plan:
+    # A pull request from a fork branch that is called main has event pull_request: only real pushes qualify.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      registry: ${{ steps.plan.outputs.registry }}
+      tag: ${{ steps.plan.outputs.tag }}
+      build: ${{ steps.plan.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REVISION }}
+          persist-credentials: false
+      - id: plan
+        run: |
+          {
+            # GHCR wants lower case; the owner of the repository is the owner of the packages.
+            echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+            echo "tag=sha-${REVISION:0:7}"
+            # The version of the files of this commit plus the commit, as the API reports it: 0.1.0+1a2b3c4.
+            echo "build=$(jq -r .version package.json)+${REVISION:0:7}"
+          } >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # push the images
+      id-token: write # keyless signature (GitHub OIDC token for Sigstore)
+    strategy:
+      matrix:
+        include:
+          # The API: ASP.NET Core with its CLI (hash-password, broadcast-status).
+          - image: api
+            description: StudioFlow API (ASP.NET Core)
+            context: apps/api
+            file: apps/api/Dockerfile
+            cache: api
+            build-args: STUDIOFLOW_REVISION=${{ github.event.workflow_run.head_sha }}
+          # Caddy with the DNS modules and the three built frontends (Regie, sender, output).
+          - image: web
+            description: StudioFlow web server (Caddy with the Regie, sender and output frontends)
+            context: .
+            file: infra/caddy/Dockerfile
+            cache: caddy
+            build-args: ''
+    env:
+      REPOSITORY: ${{ needs.plan.outputs.registry }}/studioflow-${{ matrix.image }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REVISION }}
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # A sha tag is immutable: after a re-run the image of this commit is kept, so the digest that was tested,
+      # signed and possibly released never changes.
+      - name: Is this commit built already?
+        id: exists
+        run: |
+          if docker buildx imagetools inspect "$REPOSITORY:$TAG" > /dev/null 2>&1; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+            echo "$REPOSITORY:$TAG exists and is kept."
+          else
+            echo "built=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.exists.outputs.built != 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build and push
+        id: build
+        if: steps.exists.outputs.built != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          # Decision #18: amd64 only. arm64 later: add linux/arm64 here (native runner, or QEMU).
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REPOSITORY }}:${{ env.TAG }}
+          build-args: ${{ matrix.build-args }}
+          labels: |
+            org.opencontainers.image.title=studioflow-${{ matrix.image }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.vendor=OPTEN
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}/blob/${{ env.REVISION }}/docs/runbook.md
+            org.opencontainers.image.revision=${{ env.REVISION }}
+            org.opencontainers.image.version=${{ needs.plan.outputs.build }}
+            org.opencontainers.image.created=${{ github.event.workflow_run.head_commit.timestamp }}
+          # SBOM and provenance are attached to the image index in the registry and survive re-tagging.
+          sbom: true
+          provenance: mode=max
+          # CI writes these caches (same Dockerfiles), so the layers are almost always found; only read here.
+          cache-from: type=gha,scope=${{ matrix.cache }}
+      - if: steps.exists.outputs.built != 'true'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign the image (keyless)
+        if: steps.exists.outputs.built != 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$REPOSITORY@$DIGEST"
+
+  # The E2E smoke set against the images that were just pushed, not against images built in the job: what is tested
+  # here is what a server pulls.
+  smoke:
+    needs: [plan, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    env:
+      E2E_STACK: 1
+      # Use the images tagged below instead of building them.
+      E2E_NO_BUILD: 1
+      REGISTRY: ${{ needs.plan.outputs.registry }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REVISION }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and its system libraries
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install the system libraries of Chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is sf-e2e-1 (as in ci.yml).
+      - name: Pull the images
+        run: |
+          docker pull "$REGISTRY/studioflow-api:$TAG"
+          docker pull "$REGISTRY/studioflow-web:$TAG"
+          docker tag "$REGISTRY/studioflow-api:$TAG" "sf-e2e-${E2E_STACK}-api"
+          docker tag "$REGISTRY/studioflow-web:$TAG" "sf-e2e-${E2E_STACK}-caddy"
+      - name: Start the stack
+        run: tests/e2e/stack.sh up "$E2E_STACK"
+      - name: Run the smoke tests
+        run: E2E_REUSE_STACK=1 tests/e2e/stack.sh test "$E2E_STACK" --project=smoke
+      - name: Upload the Playwright report and the container logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-smoke-output
+          path: tests/e2e/.output
+          include-hidden-files: true
+          retention-days: 14
+
+  # Critical vulnerabilities with a fix block the release (job release), not the :main image.
+  scan:
+    needs: [plan, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      matrix:
+        image: [api, web]
+    steps:
+      # .trivyignore (if the repository has one) is read from the checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REVISION }}
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ needs.plan.outputs.registry }}/studioflow-${{ matrix.image }}:${{ needs.plan.outputs.tag }}
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  # :main is the latest verified build of the main branch. A slower run of an older commit must not move it back.
+  main-tag:
+    needs: [plan, images, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REGISTRY: ${{ needs.plan.outputs.registry }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Tag :main
+        run: |
+          tip="$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)"
+          if [ "$tip" != "$REVISION" ]; then
+            echo "::notice::Main has moved on to ${tip:0:7}; :main stays with the run of that commit."
+            exit 0
+          fi
+          for image in api web; do
+            docker buildx imagetools create --tag "$REGISTRY/studioflow-$image:main" "$REGISTRY/studioflow-$image:$TAG"
+          done
+
+  # Opens or updates the release pull request, or - when its merge commit is the commit of this run - tags the
+  # release and publishes it on GitHub (release notes from the Conventional Commits, CHANGELOG.md).
+  release-please:
+    needs: [images, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # The release pull request and the tag created with the default token start no workflow, so CI would never run on
+      # the release pull request. A token of a fine-grained personal access token or a GitHub App fixes that
+      # (docs/releasing.md, "Set-up by the owner"); without the secret the default token is used.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          target-branch: main
+      # The tag that points at the commit of this run, if any: the release to ship now. Found by tag and not by an
+      # output of the action, so that a re-run of this commit finds the release that was created before.
+      - name: Find the release of this commit
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v" --paginate \
+            --jq ".[] | select(.object.type == \"commit\" and .object.sha == \"${REVISION}\") | .ref | ltrimstr(\"refs/tags/\")" |
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          if [ -n "$tag" ]; then echo "::notice::Release $tag is built from this commit."; fi
+
+  # The release: the images of the commit get the version tags (the same manifests, nothing is rebuilt), then the
+  # files of the release are attached. Only after smoke tests and scan are green.
+  release:
+    needs: [plan, images, smoke, scan, release-please]
+    if: needs.release-please.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # attach the files to the GitHub release
+      packages: write # version tags
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REGISTRY: ${{ needs.plan.outputs.registry }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      RELEASE_TAG: ${{ needs.release-please.outputs.tag }}
+      VERSION: ${{ needs.release-please.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REVISION }}
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Tag the images
+        run: |
+          # :X.Y and :latest only move forward: re-running an older release must not roll them back.
+          versions="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v" --paginate --jq '.[].ref | ltrimstr("refs/tags/v")' |
+            grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+          minor="${VERSION%.*}"
+          tags=("$VERSION")
+          if [ "$(printf '%s\n' "$versions" "$VERSION" | grep -E "^${minor//./\\.}\." | sort -V | tail -n 1)" = "$VERSION" ]; then
+            tags+=("$minor")
+          fi
+          if [ "$(printf '%s\n' "$versions" "$VERSION" | sort -V | tail -n 1)" = "$VERSION" ]; then
+            tags+=(latest)
+          fi
+          echo "Tags: ${tags[*]}"
+          digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+          for image in api web; do
+            source="$REGISTRY/studioflow-$image"
+            args=()
+            for tag in "${tags[@]}"; do args+=(--tag "$source:$tag"); done
+            docker buildx imagetools create "${args[@]}" "$source:$TAG"
+            for tag in "${tags[@]}"; do
+              [ "$(digest "$source:$tag")" = "$(digest "$source:$TAG")" ] || { echo "::error::$source:$tag is not the image of $TAG."; exit 1; }
+            done
+            # Never promote an image that is not signed by this workflow.
+            cosign verify "$source:$VERSION" \
+              --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
+            echo "$source: ${tags[*]} -> $(digest "$source:$VERSION")"
+          done
+      - name: Build the release files
+        run: bash infra/release/build-bundle.sh "$VERSION" "$RUNNER_TEMP/release"
+      # A look into the bundle as an operator gets it: unpack it and let Compose read the file with a throw-away env.
+      - name: Check the bundle
+        run: |
+          tar -xzf "$RUNNER_TEMP/release/assets/studioflow-$VERSION.tar.gz" -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/studioflow-$VERSION"
+          printf '%s\n' STUDIOFLOW_DOMAIN=localhost STUDIOFLOW_NODE_IP=127.0.0.1 STUDIOFLOW_TLS_MODE=internal ADMIN__USERNAME=admin \
+            LIVEKIT_API_KEY=studioflow LIVEKIT_API_SECRET=sk0123456789abcdef0123456789abcdef POSTGRES_PASSWORD=0123456789abcdef > check.env
+          images="$(docker compose --env-file check.env config --images)"
+          echo "$images"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-api:$VERSION"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-web:$VERSION"
+          bash -n setup.sh && bash -n update.sh && bash -n backup.sh && bash -n restore.sh
+      - name: Attach the files to the release
+        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/release/assets/* --clobber --repo "$GITHUB_REPOSITORY"

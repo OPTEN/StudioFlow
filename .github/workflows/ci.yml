@@ -50,6 +50,9 @@ jobs:
         run: npm run check:i18n
       - name: dotnet format
         run: dotnet format apps/api/StudioFlow.slnx --verify-no-changes
+      # One version in every file (release-please keeps them) and docker-compose.release.yml agrees with docker-compose.yml.
+      - name: Release files
+        run: node infra/release/check.mjs
 
   unit-web:
     runs-on: ubuntu-latest
