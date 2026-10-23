@@ -1,5 +1,5 @@
 // Renovate (https://docs.renovatebot.com/configuration-options/): dependency updates as checked pull requests.
-// Workflow, groups and the owner's one-time setup: docs/runbook.md, section 14.
+// Workflow, groups and the owner's one-time setup: docs/runbook.md, section 15.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
@@ -22,7 +22,7 @@
   // A release must be a few days old before it is proposed (a withdrawn or hijacked release is usually caught by then).
   minimumReleaseAge: '3 days',
 
-  // Security fixes at once: Dependabot alerts of the repository (enable them once, runbook section 14) and OSV.
+  // Security fixes at once: Dependabot alerts of the repository (enable them once, runbook section 15) and OSV.
   vulnerabilityAlerts: {
     enabled: true,
     labels: ['dependencies', 'security'],
@@ -190,7 +190,7 @@
       dependencyDashboardApproval: true,
       addLabels: ['needs-full-e2e'],
       prBodyNotes: [
-        'LiveKit server and client move together. Before merging run the workflow "E2E full" on this branch and read the LiveKit notes in docs/runbook.md, section 14.',
+        'LiveKit server and client move together. Before merging run the workflow "E2E full" on this branch and read the LiveKit notes in docs/runbook.md, section 15.',
       ],
     },
 
