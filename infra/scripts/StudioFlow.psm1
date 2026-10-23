@@ -16,7 +16,7 @@ Set-Variable -Name ChecksumsName -Option Constant -Value 'SHA256SUMS'
 Set-Variable -Name BackupInfoName -Option Constant -Value 'backup-info.txt'
 # Verification (restore.ps1 -Verify; same as SF_VERIFY_DB and SF_VERIFY_QUERY in backup-core.sh).
 Set-Variable -Name VerifyDbName -Option Constant -Value 'studioflow_verify'
-Set-Variable -Name VerifyQuery -Option Constant -Value "SELECT count(*) || ' tables, newest migration ' || coalesce((SELECT max(""MigrationId"") FROM ""__EFMigrationsHistory""), 'none') FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' HAVING count(*) > 0"
+Set-Variable -Name VerifyQuery -Option Constant -Value "SELECT count(*) || ' tables, newest migration ' || coalesce((xpath('/row/m/text()', query_to_xml('SELECT max(' || chr(34) || 'MigrationId' || chr(34) || ') AS m FROM ' || chr(34) || '__EFMigrationsHistory' || chr(34), false, true, '')))[1]::text, 'none') FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' HAVING count(*) > 0"
 
 $script:Root = $null
 

@@ -11,11 +11,11 @@ readonly SF_BACKUP_NAME_PATTERN='^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}'
 
 # Verification (restore.sh --verify, backup service): the dump is loaded into this throwaway database of the running
 # PostgreSQL, and the query must then report the tables and the newest EF Core migration (it prints nothing for an
-# empty database).
+# empty database). The query has no double quotes (chr(34) builds the identifiers), so no shell mangles it as an argument.
 # shellcheck disable=SC2034 # used by the sourcing scripts
 readonly SF_VERIFY_DB=studioflow_verify
 # shellcheck disable=SC2034 # used by the sourcing scripts
-readonly SF_VERIFY_QUERY="SELECT count(*) || ' tables, newest migration ' || coalesce((SELECT max(\"MigrationId\") FROM \"__EFMigrationsHistory\"), 'none') FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' HAVING count(*) > 0"
+readonly SF_VERIFY_QUERY="SELECT count(*) || ' tables, newest migration ' || coalesce((xpath('/row/m/text()', query_to_xml('SELECT max(' || chr(34) || 'MigrationId' || chr(34) || ') AS m FROM ' || chr(34) || '__EFMigrationsHistory' || chr(34), false, true, '')))[1]::text, 'none') FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' HAVING count(*) > 0"
 
 # Hex SHA-256 of a file.
 sf_sha256() {
