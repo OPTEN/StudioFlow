@@ -18,6 +18,8 @@
     "moduleResolution": "bundler",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "paths": {
+      "@studioflow/i18n/angular": ["./packages/i18n/src/angular.ts"],
+      "@studioflow/i18n": ["./packages/i18n/src/index.ts"],
       "@studioflow/scene-model": ["./packages/scene-model/src/index.ts"],
       "@studioflow/scene-renderer": ["./packages/scene-renderer/src/index.ts"],
       "@studioflow/media-client": ["./packages/media-client/src/index.ts"],

@@ -8,3 +8,6 @@
 *.mp4 binary
 *.webm binary
 *.y4m binary
+
+# Generated catalogue indexes: parallel features add lines, so a merge keeps both sides; npm run i18n:index regenerates them.
+packages/i18n/src/messages/*/index.ts merge=union

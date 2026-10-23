@@ -115,3 +115,49 @@ decision deliberately: update this file and the code together.
 
 1. The Scenes dock gets the same drag-and-drop list component.
 2. No layer dragging in the monitor.
+
+### #6 pinned details
+
+The details below were fixed for the parallel work on #6 (design: [architecture/i18n-design.md](architecture/i18n-design.md),
+working guide: [i18n.md](i18n.md)). D3 and D5 are the two the owner should confirm.
+
+1. **D1 Locales.** `en` (source) and `de-CH`. A browser tag `en` or `en-*` gives `en`; `de` or `de-*` (DE, AT, LI) gives
+   `de-CH`; anything else gives `en`.
+2. **D2 Setting.** `'auto' | 'en' | 'de-CH'` in `localStorage['studioflow.locale']`, the absent key meaning auto. Regie,
+   `/monitoring` and sender share the key (one origin); a `storage` event switches other open tabs live. The output page
+   ignores storage: `?lang=`, then `navigator.languages`, then `en`.
+3. **D3 Decimal comma.** `Intl.NumberFormat('de-CH')` writes a point ("2.8", "1'234.5"), but the product convention is
+   the comma. So `LOCALES['de-CH'].numberTag` is `de-DE` while `dateTag` stays `de-CH`. No thousands separators anywhere
+   (the old formatting had none). One field changes if the owner prefers CLDR.
+4. **D4 Clock.** Always 24 h (`hourCycle: 'h23'`), also in English (`numberTag 'en'`, `dateTag 'en-GB'`).
+5. **D5 "Control room".** The English UI says "Control room" for the Regie; code, docs and file names keep "Regie" as a
+   proper noun, glossed once as "Regie (control room)". The word is exempt from the German check.
+6. **D6 Quotation marks.** English uses “…” and ’, German « » and ’; both live inside catalogue strings, never in code.
+7. **D7 API texts.** English; clients localise by `code`. The UI never shows the server `detail` or field messages, except as
+   a last resort for an unknown code. `ApiError.detail` stays for diagnostics.
+8. **D8 Server defaults.** English, no contract change: scenes "Welcome", "Presentation", "Break"; slates "Starting soon" and
+   "Thanks for watching"; label suffix "· Camera". A documented limitation; a follow-up can add optional seed texts to
+   `CreateProductionRequest`.
+9. **D9 Scripts.** Ops scripts, `.env.example`, compose messages and CLI output are English and ASCII only (no « », `…` or
+   `–`), because Windows PowerShell 5.1 mangles UTF-8 without BOM. They have no i18n layer.
+10. **D10 URLs.** `/join/warten` becomes `/join/waiting` and `/o/_uhr` becomes `/o/_clock`: a hard switch without redirect, like
+    #3. The PWA manifest gets `lang: "en"` and an English description.
+11. **D11 Catalogues** are eager and single: both locales are bundled in every app. Lazy-loading `de-CH` only if the budgets fail.
+12. **D12 E2E.** Runs in `en-US` plus a small `de-CH` project (`specs/i18n`). E2E text lives in `tests/e2e/support/text.ts` as
+    literal strings and does not import the product catalogue.
+13. **D13 Exempt from the German check:** `.impeccable/**`, `docs/history/**`, generated files, the `de-CH` catalogue and the
+    German test files (`*.de.spec.ts`).
+
+Results of the foundation spikes:
+
+- **Template typing.** `t('key', params)` is type-checked inside templates under `strictTemplates`: an unknown key, a missing
+  parameter, a wrong parameter name and a template-literal key with an impossible member all fail `ng build`. No `| t`
+  pipe fallback was needed.
+- **`satisfies Namespace<'prefix'>`** rejects keys outside the prefix and non-message values at compile time
+  (`packages/i18n/src/types.spec.ts` pins this with `@ts-expect-error`).
+- **Reactivity.** A `computed()` and an OnPush template that call `t()` re-render on a language switch without a reload
+  (`language-select.component.spec.ts`), as does the document title.
+- **Bundles** (production build, raw size, before the work packages add their catalogue files): Regie initial 395 kB
+  (warning budget 900 kB, error 1.5 MB), sender initial 319 kB (warning 800 kB, error 1.5 MB). The output bundle stays
+  free of Angular (`apps/output/vite.config.ts` aliases only the framework-free `@studioflow/i18n`): 122 kB main chunk
+  and 34 kB shared-package chunk.

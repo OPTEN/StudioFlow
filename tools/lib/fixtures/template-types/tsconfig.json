@@ -1,0 +1,5 @@
+{
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": { "types": [], "noEmit": true },
+  "files": ["ok.component.ts", "unknown-key.component.ts", "missing-param.component.ts", "wrong-param.component.ts", "bad-literal.component.ts"]
+}
