@@ -26,6 +26,12 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>When telemetry of this device was last relayed to the Regie (BUG-19 throttle).</summary>
     private DateTimeOffset? telemetrySentAt;
 
+    /// <summary>Camera command held back by the throttle (the newest merged one), null when none waits.</summary>
+    private CameraControlDto? pendingCameraCommand;
+
+    /// <summary>When a camera command was last sent to the device.</summary>
+    private DateTimeOffset? cameraCommandSentAt;
+
     /// <summary>Device id.</summary>
     public string DeviceId { get; } = deviceId;
 
@@ -40,6 +46,9 @@ public sealed class DeviceRuntime(string deviceId)
 
     /// <summary>Last telemetry.</summary>
     public DeviceTelemetryDto? Telemetry { get; private set; }
+
+    /// <summary>Camera section of the latest report of the current session (capabilities and settings), sanitised.</summary>
+    public CameraStateDto? Camera { get; private set; }
 
     /// <summary>Last technical check result.</summary>
     public TechCheckDto? TechCheck { get; private set; }
@@ -71,6 +80,9 @@ public sealed class DeviceRuntime(string deviceId)
     /// <summary>True while a hub session is active.</summary>
     public bool IsConnected => ConnectionId is not null;
 
+    /// <summary>True while a camera command waits for the throttle (see <see cref="OfferCameraCommand"/>).</summary>
+    public bool CameraCommandPending => pendingCameraCommand is not null;
+
     /// <summary>
     /// Makes <paramref name="connectionId"/> the active session (newer Hello wins). A different tab is told that it was
     /// replaced; a reconnect of the same tab just drops the stale connection. A new session (another tab, or the same
@@ -89,6 +101,8 @@ public sealed class DeviceRuntime(string deviceId)
         {
             slotStates.Clear();
             Rtc = null;
+            Camera = null;
+            pendingCameraCommand = null;
         }
 
         // The stale-report clock keeps running across a takeover (GAP-29): a new session that never reports is noticed
@@ -151,6 +165,7 @@ public sealed class DeviceRuntime(string deviceId)
         LastReportAt = null;
         LastSeenAt = now;
         TelemetryPending = false;
+        pendingCameraCommand = null;
         return true;
     }
 
@@ -195,12 +210,37 @@ public sealed class DeviceRuntime(string deviceId)
     }
 
     /// <summary>
+    /// Throttles the camera commands to the device (a dragged slider must not flood a weak Wi-Fi): the command is
+    /// merged into the one still waiting and returned when nothing was sent within <paramref name="interval"/>;
+    /// otherwise it is held back and leaves with <see cref="TakeDueCameraCommand"/> (the newest value of each field
+    /// wins).
+    /// </summary>
+    public CameraControlDto? OfferCameraCommand(CameraControlDto command, DateTimeOffset now, TimeSpan interval)
+    {
+        pendingCameraCommand = pendingCameraCommand is null ? command : CameraControlRules.Merge(pendingCameraCommand, command);
+        return TakeDueCameraCommand(now, interval);
+    }
+
+    /// <summary>The held-back camera command when <paramref name="interval"/> has passed since the last one was sent; null otherwise.</summary>
+    public CameraControlDto? TakeDueCameraCommand(DateTimeOffset now, TimeSpan interval)
+    {
+        if (pendingCameraCommand is not { } command || (cameraCommandSentAt is { } sent && now - sent < interval))
+        {
+            return null;
+        }
+
+        pendingCameraCommand = null;
+        cameraCommandSentAt = now;
+        return command;
+    }
+
+    /// <summary>
     /// Applies a report (GAP-29): only slots the device owns count (at most 10), out-of-range numbers become null. The
     /// report replaces all slot states: a slot missing from it has no state (not live) from now on, so a stale
     /// <c>live</c> can never outlast the capture it described. Returns the telemetry built from it and whether the
-    /// technical check changed.
+    /// technical check or the camera state changed.
     /// </summary>
-    public (DeviceTelemetryDto Telemetry, bool TechCheckChanged) ApplyReport(DeviceReportDto report, IReadOnlyCollection<string> ownSlots, DateTimeOffset now)
+    public (DeviceTelemetryDto Telemetry, bool TechCheckChanged, bool CameraChanged) ApplyReport(DeviceReportDto report, IReadOnlyCollection<string> ownSlots, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(ownSlots);
@@ -224,6 +264,9 @@ public sealed class DeviceRuntime(string deviceId)
             TechCheck = techCheck;
         }
 
+        var camera = CameraControlRules.Sanitize(report.Camera);
+        var cameraChanged = !CameraControlRules.SameState(camera, Camera);
+        Camera = camera;
         LastSeenAt = now;
         LastReportAt = now;
         Telemetry = new DeviceTelemetryDto(
@@ -233,8 +276,9 @@ public sealed class DeviceRuntime(string deviceId)
             report.Charging,
             TextRules.Truncate(report.Network, 32),
             report.RttMs is >= 0 and <= 60_000 ? report.RttMs : null,
-            slots);
-        return (Telemetry, techCheckChanged);
+            slots,
+            camera);
+        return (Telemetry, techCheckChanged, cameraChanged);
     }
 
     /// <summary>

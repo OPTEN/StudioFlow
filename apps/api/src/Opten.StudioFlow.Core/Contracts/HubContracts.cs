@@ -59,7 +59,13 @@ public static class HubMethods
 public sealed record TallyDto(TallyState Overall, IReadOnlyDictionary<string, TallyState> Slots);
 
 /// <summary>Remote command for a device.</summary>
-public sealed record DeviceCommandDto(string Id, DeviceCommandKind Kind, string? Slot, string? Text, DateTimeOffset At);
+/// <param name="Id">Command id.</param>
+/// <param name="Kind">Command kind.</param>
+/// <param name="Slot">Target slot for reshare and camera control.</param>
+/// <param name="Text">Message text.</param>
+/// <param name="At">Time the server created the command.</param>
+/// <param name="Camera">Payload of <see cref="DeviceCommandKind.CameraControl"/>, already clamped to what the device reported.</param>
+public sealed record DeviceCommandDto(string Id, DeviceCommandKind Kind, string? Slot, string? Text, DateTimeOffset At, CameraControlDto? Camera = null);
 
 /// <summary>First message of a device after connecting to the device hub.</summary>
 /// <param name="SessionId">Random id of this browser tab; a newer session replaces an older one.</param>
@@ -78,6 +84,7 @@ public sealed record DeviceSessionDto(DeviceSelfDto Device, TallyDto Tally);
 /// <param name="Network">Network type where available.</param>
 /// <param name="RttMs">Round trip time measured by the sender.</param>
 /// <param name="TechCheck">Result of the last technical check, if any.</param>
+/// <param name="Camera">Capabilities and settings of the phone camera; null without a camera or on a laptop.</param>
 public sealed record DeviceReportDto(
     RtcState Rtc,
     IReadOnlyList<SlotTelemetryDto> Slots,
@@ -85,4 +92,5 @@ public sealed record DeviceReportDto(
     bool? Charging,
     string? Network,
     int? RttMs,
-    TechCheckDto? TechCheck);
+    TechCheckDto? TechCheck,
+    CameraStateDto? Camera = null);

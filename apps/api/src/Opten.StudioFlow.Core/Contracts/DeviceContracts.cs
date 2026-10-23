@@ -35,6 +35,7 @@ public sealed record DeviceDto(
 /// <param name="Network">Network type, e.g. “wifi” or “4g”, where available.</param>
 /// <param name="RttMs">Round trip time to the server.</param>
 /// <param name="Slots">Per slot telemetry.</param>
+/// <param name="Camera">What the phone camera can do and does now; null where it reports nothing.</param>
 public sealed record DeviceTelemetryDto(
     DateTimeOffset At,
     RtcState Rtc,
@@ -42,7 +43,8 @@ public sealed record DeviceTelemetryDto(
     bool? Charging,
     string? Network,
     int? RttMs,
-    IReadOnlyList<SlotTelemetryDto> Slots);
+    IReadOnlyList<SlotTelemetryDto> Slots,
+    CameraStateDto? Camera = null);
 
 /// <summary>Telemetry of one slot (camera or screen) of a device.</summary>
 public sealed record SlotTelemetryDto(
@@ -76,7 +78,8 @@ public sealed record RenameDeviceRequest(string Name);
 /// <param name="Kind">Command kind.</param>
 /// <param name="Slot">Target slot for <see cref="DeviceCommandKind.Reshare"/>.</param>
 /// <param name="Text">Text for <see cref="DeviceCommandKind.Message"/>, 1–140 characters.</param>
-public sealed record DeviceCommandRequest(DeviceCommandKind Kind, string? Slot, string? Text);
+/// <param name="Camera">Payload of <see cref="DeviceCommandKind.CameraControl"/>.</param>
+public sealed record DeviceCommandRequest(DeviceCommandKind Kind, string? Slot, string? Text, CameraControlDto? Camera = null);
 
 /// <summary>What a device learns about itself (sender app).</summary>
 public sealed record DeviceSelfDto(

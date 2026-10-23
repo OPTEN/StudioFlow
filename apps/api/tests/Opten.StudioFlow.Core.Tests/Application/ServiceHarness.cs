@@ -22,7 +22,7 @@ internal sealed class ServiceHarness : IDisposable
         var kicker = new LiveKitKicker(Rooms, NullLogger<LiveKitKicker>.Instance);
         Productions = new ProductionService(Coordinator, Data, Snapshots, new FakeTokens(), Requests, Clock);
         Scenes = new SceneService(Coordinator);
-        DeviceAdmin = new DeviceAdminService(Coordinator, kicker);
+        DeviceAdmin = new DeviceAdminService(Coordinator, kicker, SourceOptions);
         Devices = new DeviceSessionService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, SourceOptions);
         Pairing = new PairingService(Coordinator, Data, Requests, Options, PairingOptions, Clock);
         Outputs = new OutputService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, Options);
