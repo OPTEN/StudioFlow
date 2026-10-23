@@ -1,11 +1,6 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import {
-  PRODUCTION_ID,
-  sceneFixture,
-  snapshotFixture,
-  sourceFixture,
-} from '../../../testing/fixtures';
+import { PRODUCTION_ID, sceneFixture, sourceFixture } from '../../../testing/fixtures';
 import {
   MemoryStorage,
   startStore,
@@ -14,6 +9,7 @@ import {
 } from '../../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
+import { dockSnapshot } from '../testing/dock-fixtures';
 import { ScenesDockComponent } from './scenes-dock.component';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
@@ -24,7 +20,7 @@ describe('ScenesDockComponent', () => {
   let element: HTMLElement;
 
   async function setup(
-    snapshot = snapshotFixture(),
+    snapshot = dockSnapshot(),
     options: { studio?: boolean } = {},
   ): Promise<void> {
     const hub = new FakeStudioHub();
@@ -68,21 +64,21 @@ describe('ScenesDockComponent', () => {
     const [first, second, third] = rows();
     expect(rows()).toHaveLength(3);
     expect(text(first.querySelector('.c-keycap'))).toBe('1');
-    expect(text(first.querySelector('.c-scene__name'))).toBe('Begrüssung');
+    expect(text(first.querySelector('.c-scene__name'))).toBe('Welcome');
     expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
     expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1');
     expect(first.getAttribute('aria-pressed')).toBe('true');
-    expect(first.getAttribute('aria-label')).toBe('Begrüssung, live im Program');
+    expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program');
     expect(first.getAttribute('aria-keyshortcuts')).toBe('1');
     expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 · K1');
     expect(second.getAttribute('aria-pressed')).toBe('false');
-    expect(parts(third.querySelector('.c-scene__meta'))).toBe('leer');
+    expect(parts(third.querySelector('.c-scene__meta'))).toBe('empty');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('3');
   });
 
-  it('shows the worst outage of a scene as «K1 gestört»', async () => {
+  it('shows the worst outage of a scene as "K1 disrupted"', async () => {
     await setup(
-      snapshotFixture({
+      dockSnapshot({
         sources: [
           sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'reconnecting' }),
           sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { status: 'ended' }),
@@ -90,14 +86,14 @@ describe('ScenesDockComponent', () => {
       }),
     );
     const [first, second] = rows();
-    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1 gestört');
+    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1 disrupted');
     expect(first.querySelector('.c-lamp')?.className).toContain('is-warn');
-    expect(first.getAttribute('aria-label')).toBe('Begrüssung, live im Program, K1 gestört');
-    expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 gestört');
+    expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program, K1 disrupted');
+    expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 disrupted');
     expect(second.querySelector('.c-lamp')?.className).toContain('is-bad');
   });
 
-  it('puts a scene live with a click (Studio-Modus off)', async () => {
+  it('puts a scene live with a click (Studio Mode off)', async () => {
     await setup();
     rows()[1].click();
     const request = harness.http.expectOne(`${BASE}/program`);
@@ -105,7 +101,7 @@ describe('ScenesDockComponent', () => {
       sceneId: 'scn_b',
       transition: { kind: 'fade', durationMs: 300 },
     });
-    request.flush(snapshotFixture().production);
+    request.flush(dockSnapshot().production);
     await render();
   });
 
@@ -136,7 +132,7 @@ describe('ScenesDockComponent', () => {
       transition: { kind: 'fade', durationMs: 300 },
       at: new Date().toISOString(),
     });
-    request.flush({ ...snapshotFixture().production, programSceneId: 'scn_b' });
+    request.flush({ ...dockSnapshot().production, programSceneId: 'scn_b' });
     await harness.settle();
     await render();
     // The editor clears the selection whenever the edit scene changes.
@@ -144,9 +140,9 @@ describe('ScenesDockComponent', () => {
     expect(editor.selectedItemId()).toBeNull();
   });
 
-  it('in Studio-Modus a click on the Preview scene clears the selection, without a request', async () => {
+  it('in Studio Mode a click on the Preview scene clears the selection, without a request', async () => {
     await setup(
-      snapshotFixture({ production: { ...snapshotFixture().production, previewSceneId: 'scn_b' } }),
+      dockSnapshot({ production: { ...dockSnapshot().production, previewSceneId: 'scn_b' } }),
       { studio: true },
     );
     const editor = TestBed.inject(EditorService);
@@ -160,29 +156,29 @@ describe('ScenesDockComponent', () => {
 
   it('creates a scene and opens its name; Enter saves the new name', async () => {
     await setup();
-    const add = element.querySelector<HTMLButtonElement>('button[aria-label="Szene hinzufügen"]');
+    const add = element.querySelector<HTMLButtonElement>('button[aria-label="Add scene"]');
     add?.click();
     const create = harness.http.expectOne(`${BASE}/scenes`);
-    const created = sceneFixture('scn_d', 'Neue Szene 4', 3);
+    const created = sceneFixture('scn_d', 'New scene 4', 3);
     harness.emitEvent({ type: 'sceneUpserted', scene: created });
     create.flush(created, { status: 201, statusText: 'Created' });
     await harness.settle();
     await render();
     const input = element.querySelector<HTMLInputElement>('sf-inline-edit input');
-    expect(input?.value).toBe('Neue Szene 4');
-    expect(input?.getAttribute('aria-label')).toBe('Name der Szene');
+    expect(input?.value).toBe('New scene 4');
+    expect(input?.getAttribute('aria-label')).toBe('Scene name');
     expect(document.activeElement).toBe(input);
     if (input) {
-      input.value = 'Abschluss';
+      input.value = 'Closing';
       input.dispatchEvent(new Event('input'));
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     }
     const rename = harness.http.expectOne(`${BASE}/scenes/scn_d`);
-    expect(rename.request.body).toEqual({ name: 'Abschluss', layoutMode: null, background: null });
+    expect(rename.request.body).toEqual({ name: 'Closing', layoutMode: null, background: null });
     await render();
     expect(element.querySelector('sf-inline-edit')).toBeNull();
-    expect(text(rows()[3].querySelector('.c-scene__name'))).toBe('Abschluss');
-    rename.flush({ ...created, name: 'Abschluss' });
+    expect(text(rows()[3].querySelector('.c-scene__name'))).toBe('Closing');
+    rename.flush({ ...created, name: 'Closing' });
     await render();
   });
 
@@ -191,7 +187,7 @@ describe('ScenesDockComponent', () => {
     rows()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
     await render();
     const input = element.querySelector<HTMLInputElement>('sf-inline-edit input');
-    expect(input?.value).toBe('Begrüssung');
+    expect(input?.value).toBe('Welcome');
     input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await render();
     expect(element.querySelector('sf-inline-edit')).toBeNull();
@@ -215,7 +211,7 @@ describe('ScenesDockComponent', () => {
     fixture = TestBed.createComponent(ScenesDockComponent);
     element = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
-    expect(text(element.querySelector('.c-empty'))).toContain('Szenen werden geladen');
+    expect(text(element.querySelector('.c-empty'))).toContain('Loading scenes');
     harness = { http: { verify: () => undefined } } as unknown as StoreHarness;
   });
 });

@@ -21,7 +21,7 @@ interface PercentBlock {
 }
 
 /**
- * A 16:9 well with slot blocks (prototype `.pv` / `presetThumb`): the template previews in «Vorlage anwenden» and the
+ * A 16:9 well with slot blocks (prototype `.pv` / `presetThumb`): the template previews in "Apply template" and the
  * scene thumbnail before pictures are available. Purely decorative (`aria-hidden`); positions are percentages of the
  * 1920 × 1080 canvas.
  */

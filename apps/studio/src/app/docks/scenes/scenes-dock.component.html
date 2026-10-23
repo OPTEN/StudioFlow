@@ -1,20 +1,23 @@
 <sf-dock-frame dock="scenes" [count]="loading() ? null : entries().length">
-  <span sfDockActions class="c-hint c-scenes-dock__keys">Tasten 1–9</span>
+  <span sfDockActions class="c-hint c-scenes-dock__keys">{{
+    t('regie.scenes.dock.keysHint')
+  }}</span>
   <button
     sfDockActions
     class="c-btn c-btn--sm"
     type="button"
-    aria-label="Szene hinzufügen"
+    [attr.aria-label]="t('regie.scenes.dock.addLabel')"
     [title]="createTitle()"
     [disabled]="!commands.canCreate() || commands.blocked('scene:create')"
     (click)="create()"
   >
-    <svg sfIcon="plus" [size]="14"></svg>Szene
+    <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.scenes.dock.add') }}
   </button>
 
   @if (loading()) {
     <div class="c-empty">
-      <strong>Szenen werden geladen …</strong>Die Regie verbindet mit dem Server.
+      <strong>{{ t('regie.scenes.dock.loadingTitle') }}</strong
+      >{{ t('regie.docks.loadingText') }}
     </div>
   } @else {
     <div class="c-scenes-dock__list">
@@ -22,7 +25,8 @@
         <sf-scene-row [scene]="entry.scene" [view]="entry.view" (choose)="choose($event)" />
       } @empty {
         <div class="c-empty">
-          <strong>Noch keine Szenen.</strong>Mit «+ Szene» die erste Szene anlegen.
+          <strong>{{ t('regie.scenes.dock.emptyTitle') }}</strong
+          >{{ t('regie.scenes.dock.emptyText') }}
         </div>
       }
     </div>

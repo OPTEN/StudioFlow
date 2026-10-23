@@ -1,11 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import {
-  PRODUCTION_ID,
-  productionFixture,
-  sceneFixture,
-  snapshotFixture,
-} from '../../../testing/fixtures';
+import { PRODUCTION_ID, productionFixture, sceneFixture } from '../../../testing/fixtures';
 import {
   MemoryStorage,
   startStore,
@@ -14,11 +9,8 @@ import {
 } from '../../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { ToastService } from '../../core/ui/toast.service';
-import { LIVE_SCENE_DELETE_MESSAGE, SceneCommandsService } from './scene-commands.service';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
+import { dockSnapshot } from '../testing/dock-fixtures';
+import { SceneCommandsService } from './scene-commands.service';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -36,7 +28,7 @@ describe('SceneCommandsService', () => {
     TestBed.configureTestingModule({ providers: studioTestProviders(hub, storage) });
     harness = await startStore(
       hub,
-      snapshotFixture({
+      dockSnapshot({
         production: productionFixture({ previewSceneId: options.preview ?? null }),
       }),
     );
@@ -47,50 +39,50 @@ describe('SceneCommandsService', () => {
 
   afterEach(() => harness.http.verify());
 
-  it('creates «Neue Szene N» at the end and opens its name for editing', async () => {
+  it('creates "New scene N" at the end and opens its name for editing', async () => {
     await setup();
     const created = commands.create();
     const request = harness.http.expectOne(`${BASE}/scenes`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ name: 'Neue Szene 4', cloneFromSceneId: null });
+    expect(request.request.body).toEqual({ name: 'New scene 4', cloneFromSceneId: null });
     // A double click while the request runs sends nothing more.
     void commands.create();
     harness.http.expectNone(`${BASE}/scenes`);
-    request.flush(sceneFixture('scn_new', 'Neue Szene 4', 3), {
+    request.flush(sceneFixture('scn_new', 'New scene 4', 3), {
       status: 201,
       statusText: 'Created',
     });
     expect((await created)?.id).toBe('scn_new');
     expect(commands.renamingId()).toBe('scn_new');
-    expect(toasts.current()?.message).toBe('Szene «Neue Szene 4» erstellt');
+    expect(toasts.current()?.message).toBe('Scene “New scene 4” created');
   });
 
-  it('duplicates a scene as «Name (Kopie)» with its content', async () => {
+  it('duplicates a scene as "Name (copy)" with its content', async () => {
     await setup();
     void commands.duplicate('scn_b');
     const request = harness.http.expectOne(`${BASE}/scenes`);
     expect(request.request.body).toEqual({
-      name: 'Präsentation (Kopie)',
+      name: 'Presentation (copy)',
       cloneFromSceneId: 'scn_b',
     });
-    request.flush(sceneFixture('scn_copy', 'Präsentation (Kopie)', 3));
+    request.flush(sceneFixture('scn_copy', 'Presentation (copy)', 3));
     await flushMicrotasks();
   });
 
   it('renames with the trimmed name and rejects empty names locally', async () => {
     await setup();
-    const renamed = commands.rename('scn_a', '  Willkommen  ');
+    const renamed = commands.rename('scn_a', '  Opening  ');
     const request = harness.http.expectOne(`${BASE}/scenes/scn_a`);
     expect(request.request.method).toBe('PATCH');
     expect(request.request.body).toEqual({
-      name: 'Willkommen',
+      name: 'Opening',
       layoutMode: null,
       background: null,
     });
-    request.flush(sceneFixture('scn_a', 'Willkommen', 0));
+    request.flush(sceneFixture('scn_a', 'Opening', 0));
     expect(await renamed).toBe(true);
     expect(await commands.rename('scn_a', '   ')).toBe(false);
-    expect(toasts.current()?.message).toBe('Der Name braucht 1 bis 80 Zeichen.');
+    expect(toasts.current()?.message).toBe('The name needs 1 to 80 characters.');
   });
 
   it('moves a scene with the complete new order', async () => {
@@ -104,14 +96,14 @@ describe('SceneCommandsService', () => {
     expect(commands.reordering()).toBe(true);
     request.flush(null, { status: 204, statusText: 'No Content' });
     expect(await moved).toBe(true);
-    // The store still has the old order (no event yet): «Pause» (scn_c) is last and cannot move down.
+    // The store still has the old order (no event yet): "Break" (scn_c) is last and cannot move down.
     expect(await commands.move('scn_c', 1)).toBe(false);
   });
 
   it('never deletes the live scene', async () => {
     await setup();
     expect(await commands.remove('scn_a')).toBe(false);
-    expect(toasts.current()?.message).toBe(LIVE_SCENE_DELETE_MESSAGE);
+    expect(toasts.current()?.message).toBe('The live scene cannot be deleted.');
     harness.http.expectNone(() => true);
   });
 
@@ -126,7 +118,7 @@ describe('SceneCommandsService', () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null, { status: 204, statusText: 'No Content' });
     expect(await removed).toBe(true);
-    expect(toasts.current()?.message).toBe('Szene «Präsentation» gelöscht');
+    expect(toasts.current()?.message).toBe('Scene “Presentation” deleted');
   });
 
   it('deletes another scene directly and reports server errors', async () => {
@@ -137,7 +129,7 @@ describe('SceneCommandsService', () => {
       .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
     expect(await removed).toBe(false);
     expect(toasts.current()?.message).toBe(
-      'Das gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht.',
+      'That no longer exists. It may have been deleted in the meantime.',
     );
   });
 });

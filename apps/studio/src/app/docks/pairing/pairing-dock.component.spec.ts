@@ -1,10 +1,11 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import type { InviteDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import { PRODUCTION_ID, snapshotFixture } from '../../../testing/fixtures';
+import { PRODUCTION_ID } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
+import { dockSnapshot } from '../testing/dock-fixtures';
 import { expiryText } from './link-tab.component';
 import { PairingDockComponent, tabForKey } from './pairing-dock.component';
 import { latestPhoneInvite } from './phone-tab.component';
@@ -42,10 +43,10 @@ describe('pairing helpers', () => {
 
   it('formats URLs and remaining times', () => {
     expect(displayUrl('https://studioflow.opten.ch/join/')).toBe('studioflow.opten.ch/join');
-    expect(expiryText(28 * 60_000)).toBe('läuft in 28 Minuten ab');
-    expect(expiryText(50_000)).toBe('läuft in 1 Minute ab');
-    expect(expiryText(10_000)).toBe('läuft gleich ab');
-    expect(expiryText(0)).toBe('abgelaufen');
+    expect(expiryText(28 * 60_000)).toBe('expires in 28 minutes');
+    expect(expiryText(50_000)).toBe('expires in 1 minute');
+    expect(expiryText(10_000)).toBe('expires shortly');
+    expect(expiryText(0)).toBe('expired');
   });
 
   it('picks the newest phone invite', () => {
@@ -65,7 +66,7 @@ describe('PairingDockComponent', () => {
   async function setup(): Promise<void> {
     const hub = new FakeStudioHub();
     TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
-    harness = await startStore(hub, snapshotFixture());
+    harness = await startStore(hub, dockSnapshot());
     layout = TestBed.inject(DockLayoutService);
     layout.openPairing('laptop');
     fixture = TestBed.createComponent(PairingDockComponent);
@@ -104,7 +105,7 @@ describe('PairingDockComponent', () => {
 
   it('shows the Laptop tab with the short address and roving tabs', async () => {
     await setup();
-    expect(tabs().map((tab) => text(tab))).toEqual(['Handy', 'Laptop', 'Link']);
+    expect(tabs().map((tab) => text(tab))).toEqual(['Phone', 'Laptop', 'Link']);
     expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toEqual([
       'false',
       'true',
@@ -115,7 +116,7 @@ describe('PairingDockComponent', () => {
       'sf-pair-tab-laptop',
     );
     expect(text(element.querySelector('.c-pair__url'))).toBe('regie.example.ch/join');
-    expect(text(element.querySelector('sf-pairing-requests'))).toContain('Noch keine Anfrage.');
+    expect(text(element.querySelector('sf-pairing-requests'))).toContain('No request yet.');
     tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await render();
     expect(layout.pairingTab()).toBe('link');
@@ -132,18 +133,18 @@ describe('PairingDockComponent', () => {
     await render();
     expect(element.querySelector('sf-qr-code svg path')?.getAttribute('d')).toBeTruthy();
     expect(text(element.querySelector('.c-pair__qr-side .c-hint'))).toMatch(
-      /^Gilt einmal, noch (29:59|30:00) min\.$/,
+      /^Valid once, (29:59|30:00) min left.$/,
     );
     expect(text(element.querySelector('.c-pair__side-title'))).toBe(
-      'Tipps für fest montierte Handys',
+      'Tips for permanently mounted phones',
     );
-    button('Neuen Code erzeugen')?.click();
+    button('Generate new code')?.click();
     harness.http
       .expectOne(`${BASE}/pairing/phone-invite/renew`)
       .flush(invite('inv_bbbbbbbbbbbbbbbb', 'phoneQr'));
     await render();
     expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'Neuer QR-Code, der alte gilt nicht mehr',
+      'New QR code, the old one is no longer valid',
     );
   });
 
@@ -151,7 +152,7 @@ describe('PairingDockComponent', () => {
     await setup();
     tabs()[2].click();
     await render();
-    button('Link erstellen')?.click();
+    button('Create link')?.click();
     const create = harness.http.expectOne(`${BASE}/pairing/invites`);
     expect(create.request.body).toEqual({ kind: 'laptopLink' });
     create.flush(invite('inv_cccccccccccccccc', 'laptopLink'), {
@@ -163,20 +164,20 @@ describe('PairingDockComponent', () => {
       'studioflow.opten.ch/j/inv_cccccccccccccccc',
     );
     expect(text(element.querySelector('sf-link-tab .c-hint'))).toBe(
-      'Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.',
+      'Valid once and expires in 30 minutes. Whoever opens it is paired straight away.',
     );
-    button('Link widerrufen')?.click();
+    button('Revoke link')?.click();
     harness.http
       .expectOne(`${BASE}/pairing/invites/inv_cccccccccccccccc`)
       .flush(null, { status: 204, statusText: 'No Content' });
     await render();
-    expect(button('Link erstellen')).toBeDefined();
-    expect(TestBed.inject(ToastService).current()?.message).toBe('Einladungslink widerrufen');
+    expect(button('Create link')).toBeDefined();
+    expect(TestBed.inject(ToastService).current()?.message).toBe('Invite link revoked');
   });
 
   it('closes with the close button', async () => {
     await setup();
-    element.querySelector<HTMLButtonElement>('[aria-label="Gerät koppeln schliessen"]')?.click();
+    element.querySelector<HTMLButtonElement>('[aria-label="Close pair device"]')?.click();
     expect(layout.pairingOpen()).toBe(false);
   });
 });

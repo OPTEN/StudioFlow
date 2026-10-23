@@ -1,18 +1,16 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { ApiError, type ErrorMessageOverrides } from '../../core/api/api-error';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ToastService } from '../../core/ui/toast.service';
 
-/** Toast when a dock command needs the server but the hub is disconnected. */
-export const OFFLINE_DOCK_MESSAGE = 'Keine Verbindung zum Server. Bitte gleich nochmals versuchen.';
-
 /** Options of {@link DockCommandService.run}. */
 export interface DockCommandOptions {
-  /** Per-call German texts that replace the generic error messages (e.g. `{ asset_in_use: '…' }`). */
+  /** Per-call texts that replace the generic error messages (e.g. `{ asset_in_use: msg('…') }`). */
   readonly errors?: ErrorMessageOverrides;
   /**
    * Handles an error before the toast; return true when it was handled (no toast). Used for inline errors such as
-   * «wird verwendet» next to a media file.
+   * "in use" next to a media file.
    */
   readonly onError?: (error: ApiError) => boolean;
   /** Run even while the hub is offline (pure REST calls that do not depend on the live state, e.g. uploads). */
@@ -26,7 +24,8 @@ export interface DockCommandOptions {
  *   until the request settles, so templates disable the button (`[disabled]="commands.busy('knock:' + id)"`). Keys are
  *   global, so the same knock card in the Stationen dock and in the pairing dock shares one lock.
  * - **Offline:** while the hub is not connected the command is not sent and a calm toast explains why.
- * - **Errors:** every failure becomes a German toast from the `ApiError` (never an unhandled rejection).
+ * - **Errors:** every failure becomes a toast in the active language from the `ApiError` (never an unhandled
+ *   rejection).
  *
  * `run` resolves with the result of the action, or `undefined` when it was skipped or failed; it never rejects.
  */
@@ -65,7 +64,7 @@ export class DockCommandService {
       return undefined;
     }
     if (!options.allowOffline && !this.store.canCommand()) {
-      this.toasts.show(OFFLINE_DOCK_MESSAGE);
+      this.toasts.show(t('regie.docks.offline'));
       return undefined;
     }
     this.pending.update((keys) => new Set([...keys, key]));

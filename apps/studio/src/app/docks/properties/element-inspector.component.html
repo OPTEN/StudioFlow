@@ -1,6 +1,6 @@
 <div class="c-insp">
   <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-pos">Position</span>
+    <span class="c-insp__label" id="sf-insp-pos">{{ t('regie.properties.element.position') }}</span>
     <div class="c-insp__pair" role="group" aria-labelledby="sf-insp-pos">
       <div class="c-num">
         <label class="c-num__label" for="sf-insp-x">X</label>
@@ -40,10 +40,12 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-size">Grösse</span>
+    <span class="c-insp__label" id="sf-insp-size">{{ t('regie.properties.element.size') }}</span>
     <div class="c-insp__pair" role="group" aria-labelledby="sf-insp-size">
       <div class="c-num">
-        <label class="c-num__label" for="sf-insp-w">B</label>
+        <label class="c-num__label" for="sf-insp-w">{{
+          t('regie.properties.element.widthShort')
+        }}</label>
         <input
           class="c-num__input"
           id="sf-insp-w"
@@ -60,7 +62,9 @@
         <span class="c-num__unit">px</span>
       </div>
       <div class="c-num">
-        <label class="c-num__label" for="sf-insp-h">H</label>
+        <label class="c-num__label" for="sf-insp-h">{{
+          t('regie.properties.element.heightShort')
+        }}</label>
         <input
           class="c-num__input"
           id="sf-insp-h"
@@ -80,7 +84,7 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-fit">Einpassen</span>
+    <span class="c-insp__label" id="sf-insp-fit">{{ t('regie.properties.element.fit') }}</span>
     <div class="c-seg" role="group" aria-labelledby="sf-insp-fit">
       <button
         type="button"
@@ -88,7 +92,7 @@
         [disabled]="disabled()"
         (click)="setFit('cover')"
       >
-        Füllen
+        {{ t('regie.properties.element.fitCover') }}
       </button>
       <button
         type="button"
@@ -96,13 +100,13 @@
         [disabled]="disabled()"
         (click)="setFit('contain')"
       >
-        Ganz zeigen
+        {{ t('regie.properties.element.fitContain') }}
       </button>
     </div>
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label">Ecken</span>
+    <span class="c-insp__label">{{ t('regie.properties.element.corners') }}</span>
     <div class="c-insp__pair">
       <div class="c-num">
         <input
@@ -110,7 +114,7 @@
           type="number"
           step="1"
           min="0"
-          aria-label="Eckenradius"
+          [attr.aria-label]="t('regie.properties.element.radiusLabel')"
           [max]="bounds.maxRadius"
           [disabled]="disabled()"
           [sfNumberField]="item().radius"
@@ -126,19 +130,19 @@
           [checked]="item().mirror"
           [disabled]="disabled()"
           (change)="setMirror($event)"
-        />Spiegeln
+        />{{ t('regie.properties.element.mirror') }}
       </label>
     </div>
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-rot">Drehen</span>
+    <span class="c-insp__label" id="sf-insp-rot">{{ t('regie.properties.element.rotate') }}</span>
     <div class="c-seg" role="group" aria-labelledby="sf-insp-rot">
       @for (degrees of rotations; track degrees) {
         <button
           type="button"
           [attr.aria-pressed]="rotation() === degrees"
-          [attr.aria-label]="'Drehen um ' + degrees + ' Grad'"
+          [attr.aria-label]="t('regie.properties.element.rotateBy', { degrees: degrees })"
           [disabled]="disabled()"
           (click)="setRotation(degrees)"
         >
@@ -149,13 +153,13 @@
   </div>
 
   <div class="c-insp__row c-insp__row--top">
-    <span class="c-insp__label" id="sf-insp-crop">Zuschnitt</span>
+    <span class="c-insp__label" id="sf-insp-crop">{{ t('regie.properties.element.crop') }}</span>
     <div class="c-insp__crop" role="group" aria-labelledby="sf-insp-crop">
       <div class="c-insp__pair">
         @for (entry of cropSides; track entry.side) {
           <div class="c-num">
             <label class="c-num__label c-num__label--word" [for]="'sf-insp-crop-' + entry.side">{{
-              entry.label
+              t(entry.labelKey)
             }}</label>
             <input
               class="c-num__input"
@@ -181,13 +185,13 @@
         [disabled]="disabled() || !cropped()"
         (click)="resetCrop()"
       >
-        Zurücksetzen
+        {{ t('common.reset') }}
       </button>
     </div>
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label">Rahmen</span>
+    <span class="c-insp__label">{{ t('regie.properties.element.border') }}</span>
     <div class="c-insp__border">
       <label class="c-check">
         <input
@@ -195,7 +199,7 @@
           [checked]="item().border !== null"
           [disabled]="disabled()"
           (change)="setBorderEnabled($event)"
-        />anzeigen
+        />{{ t('regie.properties.element.borderShow') }}
       </label>
       @if (item().border; as border) {
         <div class="c-num c-insp__border-width">
@@ -204,7 +208,7 @@
             type="number"
             step="1"
             min="1"
-            aria-label="Breite des Rahmens"
+            [attr.aria-label]="t('regie.properties.element.borderWidthLabel')"
             [max]="bounds.maxBorderWidth"
             [disabled]="disabled()"
             [sfNumberField]="border.width"
@@ -217,7 +221,7 @@
         <input
           class="c-insp__color"
           type="color"
-          aria-label="Farbe des Rahmens"
+          [attr.aria-label]="t('regie.properties.element.borderColorLabel')"
           [value]="border.color"
           [disabled]="disabled()"
           (change)="setBorderColor($event)"
@@ -227,7 +231,9 @@
   </div>
 
   <div class="c-insp__row">
-    <label class="c-insp__label" for="sf-insp-hold">Bei Ausfall</label>
+    <label class="c-insp__label" for="sf-insp-hold">{{
+      t('regie.properties.element.onFailure')
+    }}</label>
     <select class="c-select" id="sf-insp-hold" [disabled]="disabled()" (change)="setHold($event)">
       @for (choice of holdChoices(); track choice.value) {
         <option [value]="choice.value" [selected]="choice.value === holdValue()">
@@ -238,23 +244,29 @@
   </div>
 
   <div class="c-insp__row">
-    <label class="c-insp__label" for="sf-insp-fallback">Ersatzquelle</label>
+    <label class="c-insp__label" for="sf-insp-fallback">{{
+      t('regie.properties.element.fallback')
+    }}</label>
     <select
       class="c-select"
       id="sf-insp-fallback"
       [title]="
         item().onLost.holdMs === null
-          ? 'Mit «Standbild halten» bleibt das letzte Bild stehen.'
-          : 'Erscheint nach der Haltezeit statt des Standbilds.'
+          ? t('regie.properties.element.fallbackHintHold')
+          : t('regie.properties.element.fallbackHintTimed')
       "
       [disabled]="disabled() || item().onLost.holdMs === null"
       (change)="setFallback($event)"
     >
-      <option value="" [selected]="item().onLost.fallbackSource === null">Keine</option>
+      <option value="" [selected]="item().onLost.fallbackSource === null">
+        {{ t('regie.properties.element.fallbackNone') }}
+      </option>
       @if (fallbackMissing()) {
-        <option [value]="item().onLost.fallbackSource" selected>Quelle fehlt</option>
+        <option [value]="item().onLost.fallbackSource" selected>
+          {{ t('model.scene.sourceMissing') }}
+        </option>
       }
-      @for (group of fallbackGroups(); track group.label) {
+      @for (group of fallbackGroups(); track group.id) {
         <optgroup [label]="group.label">
           @for (option of group.options; track option.id) {
             <option [value]="option.id" [selected]="option.id === item().onLost.fallbackSource">
@@ -267,7 +279,7 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label">Ebene</span>
+    <span class="c-insp__label">{{ t('regie.properties.element.layer') }}</span>
     <div class="c-insp__buttons">
       <button
         class="c-btn c-btn--sm"
@@ -275,7 +287,7 @@
         [disabled]="disabled() || !canFront()"
         (click)="moveLayer('up')"
       >
-        <svg sfIcon="up" [size]="14"></svg>Nach vorne
+        <svg sfIcon="up" [size]="14"></svg>{{ t('regie.properties.element.layerForward') }}
       </button>
       <button
         class="c-btn c-btn--sm"
@@ -283,25 +295,22 @@
         [disabled]="disabled() || !canBack()"
         (click)="moveLayer('down')"
       >
-        <svg sfIcon="down" [size]="14"></svg>Nach hinten
+        <svg sfIcon="down" [size]="14"></svg>{{ t('regie.properties.element.layerBackward') }}
       </button>
     </div>
   </div>
 
-  <p class="c-hint c-insp__note">
-    Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um 1
-    px. Esc hebt die Auswahl auf.
-  </p>
+  <p class="c-hint c-insp__note">{{ t('regie.properties.element.note') }}</p>
 
   <div class="c-insp__danger">
-    <span class="c-hint">Lässt sich mit Ctrl+Z zurückholen.</span>
+    <span class="c-hint">{{ t('regie.properties.element.removeHint') }}</span>
     <button
       class="c-btn c-btn--danger c-btn--sm"
       type="button"
       [disabled]="disabled()"
       (click)="remove()"
     >
-      Aus Szene entfernen
+      {{ t('regie.properties.element.remove') }}
     </button>
   </div>
 </div>

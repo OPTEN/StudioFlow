@@ -1,6 +1,6 @@
 <div class="c-insp">
   <div class="c-insp__row">
-    <label class="c-insp__label" for="sf-insp-name">Name</label>
+    <label class="c-insp__label" for="sf-insp-name">{{ t('regie.properties.scene.name') }}</label>
     <input
       class="c-input"
       id="sf-insp-name"
@@ -17,9 +17,9 @@
   </div>
 
   <div class="c-insp__sub">
-    Vorlage anwenden
+    {{ t('regie.properties.scene.templates') }}
     @if (autoGrid()) {
-      <span class="c-insp__mode">Auto-Grid aktiv</span>
+      <span class="c-insp__mode">{{ t('regie.properties.scene.autoGridActive') }}</span>
     }
   </div>
   <sf-template-picker
@@ -29,25 +29,29 @@
   />
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="sf-insp-bg">Hintergrund</span>
+    <span class="c-insp__label" id="sf-insp-bg">{{ t('regie.properties.scene.background') }}</span>
     <div class="c-insp__background" role="group" aria-labelledby="sf-insp-bg">
       <input
         class="c-insp__color"
         type="color"
-        aria-label="Hintergrundfarbe"
+        [attr.aria-label]="t('regie.properties.scene.colorLabel')"
         [value]="scene().background.color"
         [disabled]="disabled()"
         (change)="setColor($event)"
       />
       <select
         class="c-select"
-        aria-label="Hintergrundbild"
+        [attr.aria-label]="t('regie.properties.scene.imageLabel')"
         [disabled]="disabled()"
         (change)="setBackgroundImage($event)"
       >
-        <option value="" [selected]="scene().background.assetId === null">Kein Bild</option>
+        <option value="" [selected]="scene().background.assetId === null">
+          {{ t('regie.properties.scene.imageNone') }}
+        </option>
         @if (backgroundMissing()) {
-          <option [value]="scene().background.assetId" selected>Bild fehlt</option>
+          <option [value]="scene().background.assetId" selected>
+            {{ t('regie.properties.scene.imageMissing') }}
+          </option>
         }
         @for (asset of imageAssets(); track asset.id) {
           <option [value]="asset.id" [selected]="asset.id === scene().background.assetId">
@@ -61,10 +65,10 @@
   <div class="c-insp__danger">
     @if (confirming()) {
       <sf-confirm-box
-        label="Szene löschen"
-        confirmLabel="Szene löschen"
+        [label]="t('regie.properties.scene.delete')"
+        [confirmLabel]="t('regie.properties.scene.delete')"
         [flush]="true"
-        [message]="'«' + scene().name + '» wird gelöscht. Das lässt sich nicht rückgängig machen.'"
+        [message]="t('regie.properties.scene.deleteMessage', { name: scene().name })"
         [busy]="deleting()"
         (confirm)="deleteScene()"
         (cancel)="confirming.set(false)"
@@ -77,7 +81,7 @@
         [disabled]="isLiveScene() || disabled()"
         (click)="confirming.set(true)"
       >
-        Szene löschen
+        {{ t('regie.properties.scene.delete') }}
       </button>
     }
   </div>

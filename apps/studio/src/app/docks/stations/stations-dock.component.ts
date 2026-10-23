@@ -13,6 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { getLocale, t } from '@studioflow/i18n';
 import type { DeviceDto, IncidentDto, SourceDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -42,6 +43,7 @@ interface CachedEntry {
   readonly incidents: readonly IncidentDto[];
   readonly studioMode: boolean;
   readonly tallies: string;
+  readonly locale: string;
 }
 
 function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -49,9 +51,9 @@ function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
 }
 
 /**
- * The Stationen dock (prototype «Stationen»): knock cards of waiting laptops (while the pairing dock is closed), then
+ * The Stations dock (prototype "Stations"): knock cards of waiting laptops (while the pairing dock is closed), then
  * every paired device in station order (outages first) with its row and expandable details. The header counts the
- * stations and toggles the pairing dock («Gerät koppeln»). A request from the header or the message strip
+ * stations and toggles the pairing dock ("Pair device"). A request from the header or the message strip
  * (`StationFocusService`) opens the station, scrolls it into view and flashes it; a new outage pulses its lamp once.
  */
 @Component({
@@ -74,6 +76,7 @@ export class StationsDockComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly pairButton = viewChild<ElementRef<HTMLButtonElement>>('pairButton');
 
+  protected readonly t = t;
   protected readonly openId = signal<string | null>(null);
   private readonly flashRequest = signal<{ deviceId: string; seq: number } | null>(null);
   protected readonly pulsing = signal<ReadonlySet<string>>(new Set());
@@ -84,6 +87,8 @@ export class StationsDockComponent {
   protected readonly entries = computed<readonly StationEntry[]>(() => {
     const incidents = this.store.incidents();
     const studioMode = this.switcher.studioMode();
+    // The cached texts belong to one language.
+    const locale = getLocale();
     const devices = this.store.stations();
     const next = devices.map((device) => {
       const sources = this.store.deviceSources(device.id);
@@ -95,6 +100,7 @@ export class StationsDockComponent {
         cached.entry.device === device &&
         cached.incidents === incidents &&
         cached.studioMode === studioMode &&
+        cached.locale === locale &&
         cached.tallies === tallies &&
         sameItems(cached.entry.sources, sources)
       ) {
@@ -110,7 +116,7 @@ export class StationsDockComponent {
           tallyOf: (sourceId) => this.store.tallyOf(sourceId),
         }),
       };
-      this.entryCache.set(device.id, { entry, incidents, studioMode, tallies });
+      this.entryCache.set(device.id, { entry, incidents, studioMode, tallies, locale });
       return entry;
     });
     for (const id of [...this.entryCache.keys()]) {
@@ -203,7 +209,7 @@ export class StationsDockComponent {
     });
   }
 
-  /** Closing the pairing dock puts the focus back on «Gerät koppeln» (prototype `closePair`). */
+  /** Closing the pairing dock puts the focus back on "Pair device" (prototype `closePair`). */
   private returnFocusFromPairing(): void {
     let wasOpen = false;
     effect(() => {

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import {
   ITEM_BOUNDS,
   ROTATIONS,
@@ -31,10 +32,10 @@ type NumberKey = 'x' | 'y' | 'w' | 'h' | 'radius';
 
 /**
  * Element inspector (prototype `renderInspector` with a selection): position, size, fit, corners and mirror,
- * rotation, crop per side in percent, border, behaviour on loss («Bei Ausfall», «Ersatzquelle»), layer order and
- * «Aus Szene entfernen». Every change goes through `EditorService.updateItem`, which clamps to the server bounds,
+ * rotation, crop per side in percent, border, behaviour on loss ("On failure", "Fallback source"), layer order and
+ * "Remove from scene". Every change goes through `EditorService.updateItem`, which clamps to the server bounds,
  * shows it immediately and sends it coalesced. A number field is one undo step from focus to blur (prototype
- * `focusin` → `pushUndo`). Everything is disabled while the scene is live in Studio-Modus or the Regie is offline.
+ * `focusin` → `pushUndo`). Everything is disabled while the scene is live in Studio Mode or the Regie is offline.
  */
 @Component({
   selector: 'sf-element-inspector',
@@ -50,6 +51,7 @@ export class ElementInspectorComponent {
   protected readonly editor = inject(EditorService);
   private readonly store = inject(ProductionStoreService);
 
+  protected readonly t = t;
   protected readonly bounds = ITEM_BOUNDS;
   protected readonly rotations = ROTATIONS;
   protected readonly cropSides = CROP_SIDES;
@@ -63,7 +65,7 @@ export class ElementInspectorComponent {
   protected readonly fallbackGroups = computed(() =>
     fallbackGroups(this.store.sources(), this.item().source),
   );
-  /** A fallback that points to a deleted source is still shown, as «Quelle fehlt». */
+  /** A fallback that points to a deleted source is still shown, as "Source missing". */
   protected readonly fallbackMissing = computed(() => {
     const fallback = this.item().onLost.fallbackSource;
     return fallback !== null && !this.store.sourceById(fallback);

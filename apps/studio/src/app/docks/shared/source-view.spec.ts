@@ -7,10 +7,6 @@ import {
   statusLamp,
   toneClass,
 } from './source-view';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('source view helpers', () => {
   it('maps every status to the prototype lamp', () => {
@@ -36,23 +32,23 @@ describe('source view helpers', () => {
       sourceFixture('dev_aaaaaaaaaaaaaaaa', 'screen-1', 'S1', { status });
     expect(sourceStateView(source('ok'))).toBeNull();
     expect(sourceStateView(source('reconnecting'))).toEqual({
-      word: 'verbindet neu',
+      word: 'reconnecting',
       tone: 'warn',
       timer: true,
     });
     expect(sourceStateView(source('ended'))).toEqual({
-      word: 'Teilen beendet',
+      word: 'sharing stopped',
       tone: 'bad',
       timer: true,
     });
     expect(sourceStateView(source('blocked'))).toEqual({
-      word: 'gesperrt',
+      word: 'blocked',
       tone: 'bad',
       timer: false,
     });
     expect(sourceStateView(source('connecting'))?.tone).toBe('muted');
     const camera = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'ended' });
-    expect(sourceStateView(camera)?.word).toBe('Kamera beendet');
+    expect(sourceStateView(camera)?.word).toBe('camera stopped');
     expect(statusHasTimer('offline')).toBe(false);
     expect(toneClass('warn')).toBe('c-state--warn');
   });

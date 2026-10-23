@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import {
   LIMITS,
   type SceneBackgroundDto,
@@ -12,14 +13,11 @@ import { SwitcherService } from '../../stage/switcher.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { copyName, moveSceneOrder, nextSceneName } from './scene-list';
 
-/** Toast when the live scene should be deleted (prototype hint text). */
-export const LIVE_SCENE_DELETE_MESSAGE = 'Die Live-Szene lässt sich nicht löschen.';
-
 /**
- * The scene commands of the Szenen and Eigenschaften docks (spec 4.2, 4.3): create («+ Szene»), duplicate, rename,
+ * The scene commands of the Scenes and Properties docks (spec 4.2, 4.3): create ("+ Scene"), duplicate, rename,
  * move up/down, change the background or layout mode and delete. Every command goes through
- * {@link DockCommandService} (double-click protection, offline guard, German error toasts); the new state arrives
- * as `sceneUpserted` / `scenesReordered` / `sceneRemoved` events through the store.
+ * {@link DockCommandService} (double-click protection, offline guard, error toasts in the active language); the new
+ * state arrives as `sceneUpserted` / `scenesReordered` / `sceneRemoved` events through the store.
  *
  * {@link renamingId} is the scene whose name is being edited inline in the scene list; creating a scene opens it.
  */
@@ -35,7 +33,7 @@ export class SceneCommandsService {
 
   /** Scene whose name is edited inline in the scene list, or null. */
   readonly renamingId = this.renamingIdSignal.asReadonly();
-  /** «+ Szene» is possible: connected and fewer than 99 scenes. */
+  /** "+ Scene" is possible: connected and fewer than 99 scenes. */
   readonly canCreate = computed(
     () => this.store.canCommand() && this.store.scenes().length < LIMITS.scenesPerProduction,
   );
@@ -49,10 +47,10 @@ export class SceneCommandsService {
     this.renamingIdSignal.set(sceneId);
   }
 
-  /** «+ Szene»: creates «Neue Szene N» at the end and opens its name for editing. */
+  /** "+ Scene": creates "New scene N" at the end and opens its name for editing. */
   async create(): Promise<SceneDto | undefined> {
     if (this.store.scenes().length >= LIMITS.scenesPerProduction) {
-      this.toasts.show(`Eine Produktion hat höchstens ${LIMITS.scenesPerProduction} Szenen.`);
+      this.toasts.show(t('regie.scenes.toast.limit', { max: LIMITS.scenesPerProduction }));
       return undefined;
     }
     const name = nextSceneName(this.store.scenes());
@@ -60,20 +58,20 @@ export class SceneCommandsService {
       this.api.createScene(productionId, { name, cloneFromSceneId: null }),
     );
     if (created) {
-      this.toasts.show(`Szene «${created.name}» erstellt`);
+      this.toasts.show(t('regie.scenes.toast.created', { name: created.name }));
       this.renamingIdSignal.set(created.id);
     }
     return created;
   }
 
-  /** Duplicates a scene with its items, layout mode and background as «Name (Kopie)». */
+  /** Duplicates a scene with its items, layout mode and background as "Name (copy)". */
   async duplicate(sceneId: string): Promise<SceneDto | undefined> {
     const scene = this.store.sceneById(sceneId);
     if (!scene) {
       return undefined;
     }
     if (this.store.scenes().length >= LIMITS.scenesPerProduction) {
-      this.toasts.show(`Eine Produktion hat höchstens ${LIMITS.scenesPerProduction} Szenen.`);
+      this.toasts.show(t('regie.scenes.toast.limit', { max: LIMITS.scenesPerProduction }));
       return undefined;
     }
     const name = copyName(scene.name, this.store.scenes());
@@ -81,7 +79,7 @@ export class SceneCommandsService {
       this.api.createScene(productionId, { name, cloneFromSceneId: sceneId }),
     );
     if (created) {
-      this.toasts.show(`Szene «${created.name}» erstellt`);
+      this.toasts.show(t('regie.scenes.toast.created', { name: created.name }));
     }
     return created;
   }
@@ -90,7 +88,7 @@ export class SceneCommandsService {
   async rename(sceneId: string, name: string): Promise<boolean> {
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > LIMITS.sceneNameLength) {
-      this.toasts.show(`Der Name braucht 1 bis ${LIMITS.sceneNameLength} Zeichen.`);
+      this.toasts.show(t('regie.scenes.toast.nameLength', { max: LIMITS.sceneNameLength }));
       return false;
     }
     const scene = this.store.sceneById(sceneId);
@@ -133,7 +131,7 @@ export class SceneCommandsService {
     return updated !== undefined;
   }
 
-  /** Sets the layout mode of a scene (free or Auto-Grid) without touching the items. */
+  /** Sets the layout mode of a scene (free or auto grid) without touching the items. */
   async setLayoutMode(sceneId: string, layoutMode: SceneLayoutMode): Promise<boolean> {
     const updated = await this.commands.run(`scene:${sceneId}:layout`, (productionId) =>
       this.api.updateScene(productionId, sceneId, { name: null, layoutMode, background: null }),
@@ -142,7 +140,7 @@ export class SceneCommandsService {
   }
 
   /**
-   * Deletes a scene with all its items. The live scene cannot be deleted. In Studio-Modus a deleted preview scene is
+   * Deletes a scene with all its items. The live scene cannot be deleted. In Studio Mode a deleted preview scene is
    * replaced by its neighbour first (prototype), so the preview never jumps elsewhere.
    */
   async remove(sceneId: string): Promise<boolean> {
@@ -151,7 +149,7 @@ export class SceneCommandsService {
       return false;
     }
     if (sceneId === this.store.programSceneId()) {
-      this.toasts.show(LIVE_SCENE_DELETE_MESSAGE);
+      this.toasts.show(t('regie.scenes.toast.liveDelete'));
       return false;
     }
     const done = await this.commands.run(`scene:${sceneId}:delete`, async (productionId) => {
@@ -166,7 +164,7 @@ export class SceneCommandsService {
       if (this.renamingIdSignal() === sceneId) {
         this.renamingIdSignal.set(null);
       }
-      this.toasts.show(`Szene «${scene.name}» gelöscht`);
+      this.toasts.show(t('regie.scenes.toast.deleted', { name: scene.name }));
     }
     return done === true;
   }
@@ -185,7 +183,7 @@ export class SceneCommandsService {
     return this.store.scenes().map((scene) => scene.id);
   }
 
-  /** The new preview when the preview scene is deleted in Studio-Modus (prototype), else null. */
+  /** The new preview when the preview scene is deleted in Studio Mode (prototype), else null. */
   private previewAfterDelete(sceneId: string): string | null {
     if (!this.switcher.studioMode() || this.store.previewSceneId() !== sceneId) {
       return null;

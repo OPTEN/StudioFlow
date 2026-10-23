@@ -11,11 +11,19 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { LIMITS, isDown, type DeviceDto, type SourceDto } from '@studioflow/scene-model';
+import { t } from '@studioflow/i18n';
+import {
+  LIMITS,
+  formatPercent,
+  isDown,
+  type DeviceDto,
+  type SourceDto,
+} from '@studioflow/scene-model';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ElapsedComponent } from '../shared/elapsed.component';
 import { InlineEditComponent } from '../shared/inline-edit.component';
+import { messageParts } from '../shared/message-parts';
 import { toneClass, type StateTone } from '../shared/source-view';
 import { MessageComposerComponent } from './message-composer.component';
 import { StationCommandsService } from './station-commands.service';
@@ -26,11 +34,11 @@ import { stationDetails, techLamps, type StationView } from './station-view';
 type Confirmation = 'block' | 'remove' | null;
 
 /**
- * One station of the Stationen dock (prototype `.st`): the row button (lamp, codes, name, PGM/PVW tag, state line
- * with timer or metrics, small live picture, chevron), the «Gesehen» strip for a recovered station and the details
- * that open with a 200 ms grid-row reveal: device facts, technical check and the actions «Neu teilen lassen»,
- * «Kamera wechseln», «Nachricht senden», «Umbenennen», «Gerät sperren» / «Entsperren» and «Entfernen» (risky actions
- * behind a dashed red confirmation). Closing the details resets confirmations, composer and rename.
+ * One station of the Stations dock (prototype `.st`): the row button (lamp, codes, name, PGM/PVW tag, state line
+ * with timer or metrics, small live picture, chevron), the "Seen" strip for a recovered station and the details
+ * that open with a 200 ms grid-row reveal: device facts, tech check and the actions "Ask to share again",
+ * "Switch camera", "Send message", "Rename", "Block device" / "Unblock" and "Remove" (risky actions behind a
+ * dashed red confirmation). Closing the details resets confirmations, composer and rename.
  */
 @Component({
   selector: 'sf-station-row',
@@ -66,6 +74,7 @@ export class StationRowComponent {
   protected readonly commands = inject(StationCommandsService);
   private readonly station = viewChild.required<ElementRef<HTMLElement>>('station');
 
+  protected readonly t = t;
   protected readonly maxNameLength = LIMITS.deviceNameLength;
   protected readonly confirm = signal<Confirmation>(null);
   protected readonly composing = signal(false);
@@ -80,6 +89,10 @@ export class StationRowComponent {
     stationDetails(this.device(), this.sources(), this.view().status, Date.now()),
   );
   protected readonly tech = computed(() => techLamps(this.device().techCheck));
+  /** "was gone 9 s": the text around the mono seconds of a recovered station. */
+  protected readonly wasGone = computed(() =>
+    messageParts((mark) => t('regie.stations.line.wasGone', { seconds: mark })),
+  );
 
   constructor() {
     effect(() => {
@@ -104,6 +117,10 @@ export class StationRowComponent {
 
   protected toneClass(tone: StateTone): string {
     return toneClass(tone);
+  }
+
+  protected percentText(value: number): string {
+    return formatPercent(value);
   }
 
   /** The command's button is disabled: it runs, or the Regie is offline. */

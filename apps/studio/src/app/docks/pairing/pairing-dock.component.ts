@@ -7,6 +7,7 @@ import {
   effect,
   inject,
 } from '@angular/core';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import { IconComponent } from '../../core/ui/icon.component';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
 import { DockLayoutService, type PairingTab } from '../../shell/workspace/dock-layout.service';
@@ -19,15 +20,15 @@ import { PhoneTabComponent } from './phone-tab.component';
 /** A tab of the pairing dock. */
 interface TabDefinition {
   readonly id: PairingTab;
-  readonly label: string;
+  readonly labelKey: PlainMessageKey;
   readonly icon: 'phone' | 'laptop' | 'link';
 }
 
-/** Tabs in order (prototype: Handy | Laptop | Link). */
+/** Tabs in order (prototype: Phone | Laptop | Link); the label is a message key. */
 export const PAIRING_TABS: readonly TabDefinition[] = [
-  { id: 'phone', label: 'Handy', icon: 'phone' },
-  { id: 'laptop', label: 'Laptop', icon: 'laptop' },
-  { id: 'link', label: 'Link', icon: 'link' },
+  { id: 'phone', labelKey: 'regie.pairing.tab.phone', icon: 'phone' },
+  { id: 'laptop', labelKey: 'regie.pairing.tab.laptop', icon: 'laptop' },
+  { id: 'link', labelKey: 'regie.pairing.tab.link', icon: 'link' },
 ];
 
 /** The tab reached from `current` with an arrow key, Home or End (wrapping), or null for other keys. */
@@ -49,10 +50,10 @@ export function tabForKey(current: PairingTab, key: string): PairingTab | null {
 }
 
 /**
- * The «Gerät koppeln» dock (prototype «Gerät koppeln (angedockt)»): tabs Handy | Laptop | Link with roving tabindex
+ * The "Pair device" dock (prototype "Pair device (docked)"): tabs Phone | Laptop | Link with roving tabindex
  * (arrow keys, Home, End), the tab content on the left and on the right the waiting requests with knock cards
- * (Laptop, Link) or tips (Handy; waiting requests follow below them, so no knock goes unseen). Shown by the
- * workspace in place of Quellen and Eigenschaften while `DockLayoutService.pairingOpen()`; Escape and the close
+ * (Laptop, Link) or tips (Phone; waiting requests follow below them, so no knock goes unseen). Shown by the
+ * workspace in place of Sources and Properties while `DockLayoutService.pairingOpen()`; Escape and the close
  * button close it. Opening it moves the focus to the selected tab.
  */
 @Component({
@@ -76,6 +77,7 @@ export class PairingDockComponent {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
+  protected readonly t = t;
   protected readonly tabs = PAIRING_TABS;
 
   constructor() {

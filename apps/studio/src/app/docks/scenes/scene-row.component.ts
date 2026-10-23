@@ -12,6 +12,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type SceneDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
@@ -31,9 +32,9 @@ const MENU_WIDTH = 200;
 const MENU_HEIGHT = 168;
 
 /**
- * One row of the Szenen dock (prototype `.scene`): a button with the 16:9 thumbnail and keycap, name and meta
- * (PGM/PVW tag, slot codes or «K2 gestört»), `aria-pressed` and the prototype's `aria-label`. Next to it the «…»
- * button opens the scene's actions (Umbenennen, Duplizieren, Nach oben, Nach unten). Keyboard: F2 renames, Alt+↑/↓
+ * One row of the Scenes dock (prototype `.scene`): a button with the 16:9 thumbnail and keycap, name and meta
+ * (PGM/PVW tag, slot codes or "K2 disrupted"), `aria-pressed` and the prototype's `aria-label`. Next to it the "…"
+ * button opens the scene's actions (Rename, Duplicate, Move up, Move down). Keyboard: F2 renames, Alt+↑/↓
  * move the scene. While renaming, the name is an inline field.
  *
  * The menu is positioned `fixed` next to its trigger because the scene list scrolls (an absolute popover would be
@@ -73,6 +74,7 @@ export class SceneRowComponent {
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
 
+  protected readonly t = t;
   protected readonly maxNameLength = LIMITS.sceneNameLength;
   protected readonly menuId = computed(() => `scene-menu:${this.view().id}`);
   protected readonly menuOpen = computed(() => this.popovers.isOpen(this.menuId()));
@@ -100,7 +102,7 @@ export class SceneRowComponent {
     });
   }
 
-  /** Anchors the menu below the «…» button (above it near the bottom edge of the window). */
+  /** Anchors the menu below the "…" button (above it near the bottom edge of the window). */
   protected placeMenu(event: MouseEvent): void {
     const trigger = event.currentTarget as HTMLElement;
     const rect = trigger.getBoundingClientRect();

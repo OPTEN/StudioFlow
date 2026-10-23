@@ -21,7 +21,7 @@ import {
  * name counts as cancel. The parent shows it in place of the name and removes it on `save` or `cancel`.
  *
  * ```html
- * <sf-inline-edit label="Name der Szene" [value]="scene.name" [maxLength]="80"
+ * <sf-inline-edit label="Scene name" [value]="scene.name" [maxLength]="80"
  *   (save)="rename($event)" (cancel)="renaming.set(false)" />
  * ```
  */
@@ -57,7 +57,7 @@ import {
 export class InlineEditComponent implements OnInit {
   /** The current name. */
   readonly value = input.required<string>();
-  /** Accessible name of the field, e.g. «Name der Szene». */
+  /** Accessible name of the field, e.g. "Scene name". */
   readonly label = input.required<string>();
   /** Maximum length after trimming. */
   readonly maxLength = input(80);

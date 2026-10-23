@@ -3,9 +3,9 @@
     sfDockActions
     class="c-ibtn"
     type="button"
-    aria-label="Rückgängig (Ctrl+Z)"
-    title="Rückgängig (Ctrl+Z)"
     aria-keyshortcuts="Control+Z"
+    [attr.aria-label]="t('regie.sources.dock.undo')"
+    [title]="t('regie.sources.dock.undo')"
     [disabled]="!editor.canUndo()"
     (click)="editor.undo()"
   >
@@ -19,7 +19,7 @@
       aria-haspopup="menu"
       [sfPopoverTrigger]="addPopover"
     >
-      <svg sfIcon="plus" [size]="14"></svg>Quelle
+      <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.sources.dock.add') }}
     </button>
     @if (popovers.isOpen(addPopover)) {
       <sf-add-source-popover (upload)="openUpload()" (manage)="openMedia()" />
@@ -39,14 +39,20 @@
   >
     @if (loading()) {
       <div class="c-empty">
-        <strong>Quellen werden geladen …</strong>Die Regie verbindet mit dem Server.
+        <strong>{{ t('regie.sources.dock.loadingTitle') }}</strong
+        >{{ t('regie.docks.loadingText') }}
       </div>
     } @else if (!scene()) {
       <div class="c-empty">
-        <strong>Keine Szene.</strong>Unter Szenen mit «+ Szene» eine Szene anlegen.
+        <strong>{{ t('regie.sources.dock.noSceneTitle') }}</strong
+        >{{ t('regie.sources.dock.noSceneText') }}
       </div>
     } @else {
-      <div class="c-src-dock__list" role="list" aria-label="Elemente der Szene">
+      <div
+        class="c-src-dock__list"
+        role="list"
+        [attr.aria-label]="t('regie.sources.dock.listLabel')"
+      >
         @for (row of rows(); track row.itemId) {
           <div
             class="c-src"
@@ -59,7 +65,11 @@
               class="c-ibtn"
               type="button"
               [attr.aria-pressed]="!row.hidden"
-              [attr.aria-label]="(row.hidden ? 'Einblenden: ' : 'Ausblenden: ') + row.name"
+              [attr.aria-label]="
+                t(row.hidden ? 'regie.sources.row.show' : 'regie.sources.row.hide', {
+                  name: row.name,
+                })
+              "
               (click)="toggleHidden(row, $event)"
             >
               <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
@@ -69,7 +79,7 @@
               type="button"
               [attr.aria-pressed]="row.selected"
               [attr.aria-disabled]="row.hidden ? 'true' : null"
-              [attr.aria-label]="'Auswählen: ' + row.code + ' ' + row.name"
+              [attr.aria-label]="t('regie.sources.row.select', { code: row.code, name: row.name })"
               (click)="select(row, $event)"
             >
               <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
@@ -95,7 +105,11 @@
               class="c-ibtn"
               type="button"
               [attr.aria-pressed]="row.locked"
-              [attr.aria-label]="(row.locked ? 'Entsperren: ' : 'Sperren: ') + row.name"
+              [attr.aria-label]="
+                t(row.locked ? 'regie.sources.row.unlock' : 'regie.sources.row.lock', {
+                  name: row.name,
+                })
+              "
               (click)="toggleLocked(row, $event)"
             >
               <svg [sfIcon]="row.locked ? 'lock' : 'unlock'"></svg>
@@ -103,7 +117,8 @@
           </div>
         } @empty {
           <div class="c-empty">
-            <strong>Diese Szene ist leer.</strong>Füge eine Quelle hinzu oder wende eine Vorlage an.
+            <strong>{{ t('regie.sources.dock.emptyTitle') }}</strong
+            >{{ t('regie.sources.dock.emptyText') }}
           </div>
         }
       </div>
@@ -112,7 +127,7 @@
       }
     }
     @if (dropActive()) {
-      <div class="c-src-dock__drop" aria-hidden="true">Bild oder Video hier ablegen</div>
+      <div class="c-src-dock__drop" aria-hidden="true">{{ t('regie.sources.dock.drop') }}</div>
     }
   </div>
 </sf-dock-frame>

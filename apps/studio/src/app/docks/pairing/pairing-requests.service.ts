@@ -1,4 +1,5 @@
 import { Injectable, computed, inject } from '@angular/core';
+import { msg, t } from '@studioflow/i18n';
 import type { PairingRequestDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -6,14 +7,14 @@ import { ClockService } from '../../core/ui/clock.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
 
-/** Toast when a knock was answered by someone else or expired (410). */
-export const KNOCK_GONE_MESSAGE = 'Diese Anfrage ist abgelaufen oder wurde schon beantwortet.';
+/** Toast when a knock was answered by someone else or expired (410); resolved when the toast is shown. */
+export const KNOCK_GONE_MESSAGE = msg('regie.pairing.toast.gone');
 
 /**
  * The knocks of laptops that opened `/join` (spec 4.6, way 2): the pending requests (expired ones are hidden by the
- * shared clock until the server removes them) and «Zulassen» / «Ablehnen». Both answers of one request share one
+ * shared clock until the server removes them) and "Allow" / "Deny". Both answers of one request share one
  * lock, so a double click or a click on both buttons sends exactly one request. Used by the knock cards in the
- * Stationen dock and in the pairing dock.
+ * Stations dock and in the pairing dock.
  */
 @Injectable({ providedIn: 'root' })
 export class PairingRequestsService {
@@ -40,7 +41,7 @@ export class PairingRequestsService {
     return this.commands.blocked(this.key(requestId));
   }
 
-  /** «Zulassen»: pairs the laptop; resolves true on success. */
+  /** "Allow": pairs the laptop; resolves true on success. */
   async approve(request: PairingRequestDto): Promise<boolean> {
     const device = await this.commands.run(
       this.key(request.id),
@@ -52,12 +53,14 @@ export class PairingRequestsService {
     }
     const code = this.store.deviceSources(device.id)[0]?.code;
     this.toasts.show(
-      code ? `${device.name} ist gekoppelt und kommt als ${code}` : `${device.name} ist gekoppelt`,
+      code
+        ? t('regie.pairing.toast.pairedAs', { name: device.name, code })
+        : t('regie.pairing.toast.paired', { name: device.name }),
     );
     return true;
   }
 
-  /** «Ablehnen»: the laptop shows that it was not admitted; resolves true on success. */
+  /** "Deny": the laptop shows that it was not admitted; resolves true on success. */
   async deny(request: PairingRequestDto): Promise<boolean> {
     const done = await this.commands.run(
       this.key(request.id),
@@ -68,7 +71,7 @@ export class PairingRequestsService {
       { errors: { pairing_expired: KNOCK_GONE_MESSAGE, not_found: KNOCK_GONE_MESSAGE } },
     );
     if (done) {
-      this.toasts.show(`Anfrage von ${request.name} abgelehnt`);
+      this.toasts.show(t('regie.pairing.toast.denied', { name: request.name }));
     }
     return done === true;
   }

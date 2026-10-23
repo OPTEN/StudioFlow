@@ -1,20 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { formatCheckCode, type PairingRequestDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PairingRequestsService } from './pairing-requests.service';
 
 /**
- * Knock card of a waiting laptop (prototype `knockCard`): «Laptop Mia möchte beitreten», the check code «47 12» in
- * large mono, the question and «Zulassen» (go) / «Ablehnen». Both buttons are disabled while an answer is in flight.
+ * Knock card of a waiting laptop (prototype `knockCard`): "Laptop Mia wants to join", the check code "47 12" in
+ * large mono, the question and "Allow" (go) / "Deny". Both buttons are disabled while an answer is in flight.
  */
 @Component({
   selector: 'sf-knock-card',
   imports: [IconComponent],
   template: `
-    <div class="c-knock" role="group" aria-label="Kopplungsanfrage">
-      <span class="c-knock__title">{{ request().name }} möchte beitreten</span>
+    <div class="c-knock" role="group" [attr.aria-label]="t('regie.pairing.knock.label')">
+      <span class="c-knock__title">{{
+        t('regie.pairing.knock.title', { name: request().name })
+      }}</span>
       <span class="c-knock__code" [attr.aria-label]="codeLabel()">{{ code() }}</span>
-      <span class="c-knock__question">Steht derselbe Prüfcode auf dem Laptop? Dann zulassen.</span>
+      <span class="c-knock__question">{{ t('regie.pairing.knock.question') }}</span>
       <div class="c-knock__row">
         <button
           class="c-btn c-btn--go c-btn--sm"
@@ -22,10 +25,10 @@ import { PairingRequestsService } from './pairing-requests.service';
           [disabled]="busy()"
           (click)="approve()"
         >
-          <svg sfIcon="check" [size]="14"></svg>Zulassen
+          <svg sfIcon="check" [size]="14"></svg>{{ t('regie.pairing.knock.allow') }}
         </button>
         <button class="c-btn c-btn--sm" type="button" [disabled]="busy()" (click)="deny()">
-          Ablehnen
+          {{ t('regie.pairing.knock.deny') }}
         </button>
       </div>
     </div>
@@ -79,10 +82,13 @@ export class KnockCardComponent {
 
   private readonly requests = inject(PairingRequestsService);
 
+  protected readonly t = t;
   protected readonly code = computed(() => formatCheckCode(this.request().checkCode));
-  /** «Prüfcode 4 7 1 2», read digit by digit (prototype). */
-  protected readonly codeLabel = computed(
-    () => `Prüfcode ${this.request().checkCode.replace(/\s/g, '').split('').join(' ')}`,
+  /** "Check code 4 7 1 2", read digit by digit (prototype). */
+  protected readonly codeLabel = computed(() =>
+    t('regie.pairing.knock.codeLabel', {
+      digits: this.request().checkCode.replace(/\s/g, '').split('').join(' '),
+    }),
   );
   protected readonly busy = computed(() => this.requests.busy(this.request().id));
 

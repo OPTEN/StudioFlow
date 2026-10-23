@@ -9,6 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { t } from '@studioflow/i18n';
 import { LIMITS, isHexColor, type LayoutTemplateId, type SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
@@ -19,10 +20,10 @@ import { TemplatePickerComponent } from './template-picker.component';
 
 /**
  * Scene inspector (prototype `renderInspector` without a selection): name, background colour and optional image,
- * «Vorlage anwenden» with the eight templates (Auto-Grid pressed while active) and «Szene löschen» in its danger zone
+ * "Apply template" with the eight templates (Auto grid pressed while active) and "Delete scene" in its danger zone
  * behind a dashed red confirmation. The live scene cannot be deleted (prototype hint texts). The name is saved on
  * Enter or when the field loses the focus; Escape restores it. Everything is disabled while the scene is live in
- * Studio-Modus or the Regie is offline.
+ * Studio Mode or the Regie is offline.
  */
 @Component({
   selector: 'sf-scene-inspector',
@@ -40,6 +41,7 @@ export class SceneInspectorComponent {
   private readonly store = inject(ProductionStoreService);
   private readonly switcher = inject(SwitcherService);
 
+  protected readonly t = t;
   protected readonly maxNameLength = LIMITS.sceneNameLength;
   protected readonly nameControl = new FormControl('', {
     nonNullable: true,
@@ -64,11 +66,11 @@ export class SceneInspectorComponent {
   });
   protected readonly deleteHint = computed(() => {
     if (!this.isLiveScene()) {
-      return 'Löschen entfernt die Szene mit allen Elementen.';
+      return t('regie.properties.scene.deleteHint');
     }
     return this.switcher.studioMode()
-      ? 'Die Live-Szene lässt sich nicht löschen.'
-      : 'Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.';
+      ? t('regie.properties.scene.deleteHintLive')
+      : t('regie.properties.scene.deleteHintLiveDirect');
   });
   protected readonly deleting = computed(() =>
     this.commands.busy(`scene:${this.scene().id}:delete`),

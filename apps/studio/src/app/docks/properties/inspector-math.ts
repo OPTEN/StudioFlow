@@ -1,3 +1,4 @@
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   HOLD_OPTIONS,
   ITEM_BOUNDS,
@@ -10,26 +11,27 @@ import {
 } from '@studioflow/scene-model';
 
 /**
- * Pure helpers of the element inspector (prototype «Eigenschaften»): crop in percent, hold-time choices, fallback
+ * Pure helpers of the element inspector (prototype "Properties"): crop in percent, hold-time choices, fallback
  * sources and border defaults. The editor clamps every committed item (`clampItem`), so these helpers only translate
- * between the fields and the item. No Angular, no DOM.
+ * between the fields and the item. No Angular, no DOM. The texts are looked up when a list is built, so build it
+ * inside a `computed` (or a template) to follow a language switch.
  */
 
 /** A crop side. */
 export type CropSide = keyof CropDto;
 
-/** Crop sides in the order of the fields (top, bottom, left, right). */
-export const CROP_SIDES: readonly { readonly side: CropSide; readonly label: string }[] = [
-  { side: 'top', label: 'Oben' },
-  { side: 'bottom', label: 'Unten' },
-  { side: 'left', label: 'Links' },
-  { side: 'right', label: 'Rechts' },
-];
+/** Crop sides in the order of the fields (top, bottom, left, right); the label is a message key. */
+export const CROP_SIDES = [
+  { side: 'top', labelKey: 'regie.properties.crop.top' },
+  { side: 'bottom', labelKey: 'regie.properties.crop.bottom' },
+  { side: 'left', labelKey: 'regie.properties.crop.left' },
+  { side: 'right', labelKey: 'regie.properties.crop.right' },
+] as const satisfies readonly { readonly side: CropSide; readonly labelKey: PlainMessageKey }[];
 
 /** Largest crop per side in percent (server: 0.45). */
 export const MAX_CROP_PERCENT = ITEM_BOUNDS.maxCropPerSide * 100;
 
-/** Border of a newly enabled «Rahmen». */
+/** Border of a newly enabled "Border". */
 export const DEFAULT_BORDER: BorderDto = { width: 4, color: '#ffffff' };
 
 /** A crop fraction (0–0.45) as percent with one decimal: 0.125 → 12.5. */
@@ -49,12 +51,12 @@ export function hasCrop(item: SceneItemDto): boolean {
   return top > 0 || right > 0 || bottom > 0 || left > 0;
 }
 
-/** The item without crop («Zurücksetzen»). */
+/** The item without crop ("Reset"). */
 export function withoutCrop(item: SceneItemDto): SceneItemDto {
   return { ...item, crop: { top: 0, right: 0, bottom: 0, left: 0 } };
 }
 
-/** The item with «Rahmen» switched on (default border) or off. */
+/** The item with "Border" switched on (default border) or off. */
 export function withBorderEnabled(item: SceneItemDto, enabled: boolean): SceneItemDto {
   if (enabled) {
     return item.border ? item : { ...item, border: { ...DEFAULT_BORDER } };
@@ -62,14 +64,14 @@ export function withBorderEnabled(item: SceneItemDto, enabled: boolean): SceneIt
   return item.border ? { ...item, border: null } : item;
 }
 
-/** A choice of «Bei Ausfall». */
+/** A choice of "On failure". */
 export interface HoldChoice {
   /** Value of the `<option>`: the hold time in ms or `hold`. */
   readonly value: string;
   readonly label: string;
 }
 
-/** Option value of a hold time (`hold` for «Standbild halten»). */
+/** Option value of a hold time (`hold` for "Hold freeze frame"). */
 export function holdValue(holdMs: number | null): string {
   return holdMs === null ? 'hold' : String(holdMs);
 }
@@ -84,7 +86,7 @@ export function parseHoldValue(value: string): number | null | undefined {
 }
 
 /**
- * The «Bei Ausfall» options (`HOLD_OPTIONS`), plus the item's current hold time when it is none of them (set through
+ * The "On failure" options (`HOLD_OPTIONS`), plus the item's current hold time when it is none of them (set through
  * the API), so the select never shows a wrong value.
  */
 export function holdChoices(current: number | null): HoldChoice[] {
@@ -95,15 +97,16 @@ export function holdChoices(current: number | null): HoldChoice[] {
   if (!HOLD_OPTIONS.some((option) => option.holdMs === current) && current !== null) {
     choices.unshift({
       value: holdValue(current),
-      label: `Standbild ${formatDecimal(current / 1000, 1)} s, dann abgedunkelt`,
+      label: t('regie.properties.hold.custom', { seconds: formatDecimal(current / 1000, 1) }),
     });
   }
   return choices;
 }
 
-/** A group of the «Ersatzquelle» select. */
+/** A group of the "Fallback source" select. */
 export interface FallbackGroup {
-  readonly label: 'Medien' | 'Kameras' | 'Screens';
+  readonly id: 'media' | 'camera' | 'screen';
+  readonly label: string;
   readonly options: readonly { readonly id: string; readonly label: string }[];
 }
 
@@ -124,17 +127,20 @@ export function fallbackGroups(
   });
   const groups: FallbackGroup[] = [
     {
-      label: 'Medien',
+      id: 'media',
+      label: t('regie.properties.group.media'),
       options: candidates
         .filter((source) => source.kind === 'image' || source.kind === 'video')
         .map(option),
     },
     {
-      label: 'Kameras',
+      id: 'camera',
+      label: t('regie.properties.group.camera'),
       options: candidates.filter((source) => source.kind === 'camera').map(option),
     },
     {
-      label: 'Screens',
+      id: 'screen',
+      label: t('regie.properties.group.screen'),
       options: candidates.filter((source) => source.kind === 'screen').map(option),
     },
   ];

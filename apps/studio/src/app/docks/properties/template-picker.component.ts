@@ -33,8 +33,8 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
 }));
 
 /**
- * «Vorlage anwenden» (prototype `.presets`): the eight layout templates as 16:9 previews in a 4-column grid (2
- * columns at ≤ 900 px). Auto-Grid shows as pressed while the scene uses it. Emits the chosen template; the scene
+ * "Apply template" (prototype `.presets`): the eight layout templates as 16:9 previews in a 4-column grid (2
+ * columns at ≤ 900 px). Auto grid shows as pressed while the scene uses it. Emits the chosen template; the scene
  * inspector applies it through `EditorService.applyTemplate`.
  */
 @Component({
@@ -60,7 +60,7 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TemplatePickerComponent {
-  /** The scene uses Auto-Grid. */
+  /** The scene uses Auto grid. */
   readonly autoGridActive = input(false);
   /** Editing is not possible (live scene, offline). */
   readonly disabled = input(false);
