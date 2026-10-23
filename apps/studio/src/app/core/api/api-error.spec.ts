@@ -170,7 +170,7 @@ describe('toUserMsg', () => {
     const message = toUserMsg(new ApiError({ status: 0, code: 'network' }));
     expect(tm(message)).toBe('No connection to the server. Please try again.');
     resetLocaleForTests('de-CH');
-    expect(tm(message)).toBe('Keine Verbindung zum Server. Bitte nochmals versuchen.');
+    expect(tm(message)).toBe(tFor('de-CH')('errors.code.network'));
   });
 
   it('keeps the table keys in line with the contract', () => {

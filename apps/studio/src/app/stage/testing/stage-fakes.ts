@@ -34,7 +34,7 @@ export class FakeSceneRenderer implements SceneRenderer {
   ) {
     this.element = container.ownerDocument.createElement('div');
     this.element.setAttribute('role', 'img');
-    this.element.setAttribute('aria-label', options.label ?? 'Szene');
+    this.element.setAttribute('aria-label', options.label ?? 'Scene');
     container.append(this.element);
   }
 

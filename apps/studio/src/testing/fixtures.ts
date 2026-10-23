@@ -34,8 +34,8 @@ export function productionFixture(overrides: Partial<ProductionDto> = {}): Produ
     previewSceneId: null,
     lastTransition: { kind: 'cut', durationMs: 0 },
     lastSwitchAt: null,
-    standbySlate: { title: "Gleich geht's los", subtitle: 'Webinar', backgroundAssetId: null },
-    endSlate: { title: 'Danke fürs Zuschauen', subtitle: null, backgroundAssetId: null },
+    standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
+    endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     ...overrides,
   };
 }
@@ -99,7 +99,7 @@ export function sourceFixture(
     id: `${deviceId}/${slot}`,
     code,
     kind,
-    label: `Gerät ${code}`,
+    label: `Device ${code}`,
     deviceId,
     slot,
     assetId: null,
@@ -155,11 +155,11 @@ export function logFixture(text: string, at = '2026-10-22T09:30:00.000Z'): LogEn
   return { at, code: 'sceneLive', params: { scene: text }, text: `Scene “${text}” is live` };
 }
 
-/** Default scenes: Begrüssung (K1), Präsentation (S1 + K1), Pause (empty). */
+/** Default scenes: Welcome (K1), Presentation (S1 + K1), Break (empty). */
 export function defaultScenes(): SceneDto[] {
   return [
-    sceneFixture('scn_a', 'Begrüssung', 0, [itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera')]),
-    sceneFixture('scn_b', 'Präsentation', 1, [
+    sceneFixture('scn_a', 'Welcome', 0, [itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera')]),
+    sceneFixture('scn_b', 'Presentation', 1, [
       itemFixture('itm_b1', 'dev_bbbbbbbbbbbbbbbb/screen-1', {
         x: 40,
         y: 40,
@@ -169,7 +169,7 @@ export function defaultScenes(): SceneDto[] {
       }),
       itemFixture('itm_b2', 'dev_aaaaaaaaaaaaaaaa/camera', { x: 1440, y: 40, w: 440, h: 248 }),
     ]),
-    sceneFixture('scn_c', 'Pause', 2),
+    sceneFixture('scn_c', 'Break', 2),
   ];
 }
 
@@ -181,11 +181,11 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
     production: productionFixture(),
     scenes: defaultScenes(),
     sources: [
-      sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Handy Bühne links' }),
-      sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { label: 'Laptop Lea · Folien' }),
+      sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Phone stage left' }),
+      sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { label: 'Laptop Lea · Slides' }),
     ],
     devices: [
-      deviceFixture('dev_aaaaaaaaaaaaaaaa', 'Handy Bühne links'),
+      deviceFixture('dev_aaaaaaaaaaaaaaaa', 'Phone stage left'),
       deviceFixture('dev_bbbbbbbbbbbbbbbb', 'Laptop Lea', {
         kind: 'laptop',
         platform: 'Windows · Edge',

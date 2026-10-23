@@ -11,20 +11,20 @@
   <div
     class="c-workspace__split c-workspace__split--v"
     orientation="vertical"
-    aria-label="Breite der Docks links"
+    [attr.aria-label]="t('regie.workspace.splitter.left')"
     [sfSplitter]="leftSplit"
     [splitterDisabled]="viewport.stacked()"
   ></div>
 }
 <div class="c-workspace__center" #center>
-  <section class="c-workspace__stage" #stage aria-label="Monitore">
+  <section class="c-workspace__stage" #stage [attr.aria-label]="t('regie.workspace.stage')">
     <sf-stage />
   </section>
   @if (zones().bottom.length > 0) {
     <div
       class="c-workspace__split c-workspace__split--h"
       orientation="horizontal"
-      aria-label="Höhe der Docks unten"
+      [attr.aria-label]="t('regie.workspace.splitter.bottom')"
       [sfSplitter]="bottomSplit"
       [splitterDisabled]="viewport.stacked()"
     ></div>
@@ -43,7 +43,7 @@
   <div
     class="c-workspace__split c-workspace__split--v"
     orientation="vertical"
-    aria-label="Breite der Docks rechts"
+    [attr.aria-label]="t('regie.workspace.splitter.right')"
     [sfSplitter]="rightSplit"
     [splitterDisabled]="viewport.stacked()"
   ></div>
@@ -66,11 +66,11 @@
       [attr.data-strip]="zone"
       [class.is-hot]="drag.hotStrip() === zone"
     >
-      {{ stripLabel(zone) }}
+      {{ t(`regie.workspace.dropStrip.${zone}`) }}
     </div>
   }
   <div class="c-dock-ghost" aria-hidden="true">
-    <svg sfIcon="grip" [size]="14"></svg>{{ titles[dragging.id] }}
+    <svg sfIcon="grip" [size]="14"></svg>{{ t(titleKeys[dragging.id]) }}
   </div>
   <div class="c-drop-line" aria-hidden="true"></div>
 }

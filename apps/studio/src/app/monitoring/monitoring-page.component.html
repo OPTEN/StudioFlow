@@ -1,41 +1,42 @@
 <div class="c-mon">
   <header class="c-mon__top">
     <div class="c-mon__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
-    <h1 class="c-mon__title">Monitoring</h1>
+    <h1 class="c-mon__title">{{ t('regie.monitoring.title') }}</h1>
     <span class="c-mon__prod">{{ store.production()?.name ?? '' }}</span>
     <span class="c-mon__conn" role="status">
       <span class="c-lamp" aria-hidden="true" [class]="connection().lamp"></span
       >{{ connection().text }}
     </span>
     <span class="c-mon__clock u-mono">{{ clockText() }}</span>
-    <a class="c-btn c-btn--sm c-mon__back" routerLink="/">Zurück zur Regie</a>
+    <a class="c-btn c-btn--sm c-mon__back" routerLink="/">{{ t('regie.monitoring.back') }}</a>
   </header>
 
   <main class="c-mon__main">
     <div class="c-mon__bar">
-      <h2 class="c-label">Stationen</h2>
+      <h2 class="c-label">{{ t('regie.monitoring.stations') }}</h2>
       @if (store.state()) {
         <span class="c-mon__summary">{{ summary() }}</span>
       }
-      <span class="c-hint c-mon__note">
-        Werte kommen etwa alle 2 s von den Geräten. Ein Klick auf eine Spalte sortiert.
-      </span>
+      <span class="c-hint c-mon__note">{{ t('regie.monitoring.note') }}</span>
     </div>
 
     @if (!store.state()) {
       <div class="c-empty">
-        <strong>Messwerte werden geladen …</strong>Die Regie verbindet mit dem Server.
+        <strong>{{ t('regie.monitoring.empty.loading') }}</strong
+        >{{ t('regie.monitoring.empty.loadingHint') }}
       </div>
     } @else if (rows().length === 0) {
       <div class="c-empty">
-        <strong>Noch keine Stationen.</strong>In der Regie unter «Gerät koppeln» ein Handy oder
-        einen Laptop verbinden.
+        <strong>{{ t('regie.monitoring.empty.none') }}</strong
+        >{{ t('regie.monitoring.empty.noneHint') }}
       </div>
     } @else {
       <div class="c-mon__scroll">
         <table class="c-mon-table">
           <caption class="u-sr-only">
-            Stationen mit Messwerten, laufend aktualisiert
+            {{
+              t('regie.monitoring.caption')
+            }}
           </caption>
           <thead>
             <tr>
@@ -46,7 +47,7 @@
                   [attr.aria-sort]="ariaSort(column.id)"
                 >
                   <button class="c-mon-table__sort" type="button" (click)="sortBy(column.id)">
-                    {{ column.label }}
+                    {{ column.label ? t(column.label) : column.unit }}
                     @if (ariaSort(column.id); as direction) {
                       <svg
                         class="c-mon-table__dir"
@@ -84,7 +85,7 @@
                       <span class="c-mon-table__sub">{{ slot.state }}</span>
                     </span>
                   } @empty {
-                    <span class="c-mon-table__sub">keine</span>
+                    <span class="c-mon-table__sub">{{ t('regie.monitoring.slot.none') }}</span>
                   }
                 </td>
                 <td class="u-mono">

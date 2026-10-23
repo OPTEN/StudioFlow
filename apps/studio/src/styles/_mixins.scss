@@ -1,7 +1,7 @@
 // Shared mixins of the Regie. Emits no CSS by itself; component stylesheets `@use 'mixins' as *;`.
 //
 // Responsive strategy (documented exception to the OPTEN mobile-first rule): the Regie is designed for 14–16"
-// laptops first (1280 × 720 … 1920 × 1080, DESIGN.md «Responsive»), and the approved prototype describes every
+// laptops first (1280 × 720 … 1920 × 1080, DESIGN.md "Responsive"), and the approved prototype describes every
 // adaptation as a max-width / max-height step down from that desktop layout. The desktop-first mixins below are the
 // single place where those breakpoints live. `respond-to` (min-width, mobile-first) exists for new code that grows
 // from small screens up, e.g. a sender-like page.
@@ -18,7 +18,7 @@ $BREAKPOINTS: (
   wide: 1501px,
 ) !default;
 
-/// Desktop-first breakpoints of DESIGN.md / .impeccable/design.json («breakpoints»).
+/// Desktop-first breakpoints of DESIGN.md / .impeccable/design.json ("breakpoints").
 $DESKTOP_BREAKPOINTS: (
   // Header presence label hides.
   presence-compact: 1500px,
@@ -83,7 +83,7 @@ $DESKTOP_BREAKPOINTS: (
   }
 }
 
-/// Uppercase group label (DESIGN.md «Label»): dock titles, tally names, ÜBERGANG, VORLAGE ANWENDEN.
+/// Uppercase group label (DESIGN.md "Label"): dock titles, tally names, TRANSITION, APPLY TEMPLATE.
 /// @param {Length} $size - 11.5px for dock titles and tally names, 11px for control-group labels
 @mixin label-text($size: 11.5px) {
   color: var(--muted);
@@ -94,7 +94,7 @@ $DESKTOP_BREAKPOINTS: (
   white-space: nowrap;
 }
 
-/// Mono figures (DESIGN.md «The Instrument Mono Rule»).
+/// Mono figures (DESIGN.md "The Instrument Mono Rule").
 @mixin mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

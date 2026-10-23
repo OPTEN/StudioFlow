@@ -1,7 +1,1 @@
-[
-  {
-    "path": "apps/studio/src/app/monitoring/monitoring-rows.ts",
-    "rule": "banned-format",
-    "reason": "P2 replaces the Intl.Collator('de-CH') with compareText."
-  }
-]
+[]

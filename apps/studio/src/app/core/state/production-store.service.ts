@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { msg, t, type Msg } from '@studioflow/i18n';
 import {
   ProductionSync,
   backoffDelay,
@@ -81,12 +82,13 @@ export interface StudioTestHook {
 
 const EMPTY_LIST: readonly never[] = [];
 const EMPTY_MAP: ReadonlyMap<string, never> = new Map<string, never>();
-const NO_HEALTH: HealthSummary = { active: 0, bad: false, text: 'Stationen …' };
 
 /** Wait before asking for the active production again after a failure, at least this long. */
 const MIN_DISCOVERY_RETRY_MS = 1000;
 /** Discovery message when no production is active. */
-const NO_ACTIVE_PRODUCTION = 'Keine aktive Produktion gefunden.';
+const NO_ACTIVE_PRODUCTION = msg('regie.core.store.noActiveProduction');
+/** Discovery message when the server cannot be reached. */
+const SERVER_UNREACHABLE = msg('regie.core.store.serverUnreachable');
 
 function incidentSeverity(incident: IncidentDto): number {
   return incident.kind === 'reconnecting' ? 1 : 2;
@@ -144,7 +146,7 @@ export class ProductionStoreService {
   private readonly stateSignal = signal<ProductionState | null>(null);
   private readonly statusSignal = signal<SyncStatus>('connecting');
   private readonly hubStateSignal = signal<HubState>('idle');
-  private readonly discoveryErrorSignal = signal<string | null>(null);
+  private readonly discoveryErrorSignal = signal<Msg | null>(null);
   private readonly programSwitchSignal = signal<ProgramSwitchNotice | null>(null);
   private readonly lastSyncAtSignal = signal<number | null>(null);
   private readonly lastSyncKindSignal = signal<LastSyncKind>(null);
@@ -157,7 +159,10 @@ export class ProductionStoreService {
   readonly status = this.statusSignal.asReadonly();
   /** State of the hub connection. */
   readonly hubState = this.hubStateSignal.asReadonly();
-  /** German text when the active production cannot be found (e.g. «Keine aktive Produktion»), else null. */
+  /**
+   * Message while the active production cannot be found or the server is unreachable (shown as a banner, so it is a
+   * message that follows a language switch), else null.
+   */
   readonly discoveryError = this.discoveryErrorSignal.asReadonly();
   /** The last program switch that arrived as a live event (null after snapshots). */
   readonly programSwitch = this.programSwitchSignal.asReadonly();
@@ -183,7 +188,7 @@ export class ProductionStoreService {
   readonly scenes = computed<readonly SceneDto[]>(() => this.stateSignal()?.scenes ?? EMPTY_LIST);
   /** Id of the scene on air. */
   readonly programSceneId = computed(() => this.production()?.programSceneId ?? null);
-  /** Id of the preview scene (Studio-Modus), or null. */
+  /** Id of the preview scene (Studio Mode), or null. */
   readonly previewSceneId = computed(() => this.production()?.previewSceneId ?? null);
   /** The scene on air. */
   readonly programScene = computed(() => this.sceneById(this.programSceneId()));
@@ -197,7 +202,7 @@ export class ProductionStoreService {
   readonly devices = computed<ReadonlyMap<string, DeviceDto>>(
     () => this.stateSignal()?.devices ?? EMPTY_MAP,
   );
-  /** Devices in the order of the Stationen dock (prototype `stationOrder`). */
+  /** Devices in the order of the Stations dock (prototype `stationOrder`). */
   readonly stations = computed<readonly DeviceDto[]>(() => {
     const state = this.stateSignal();
     return state ? [...state.devices.values()].sort(stationOrder(state)) : EMPTY_LIST;
@@ -230,16 +235,18 @@ export class ProductionStoreService {
   readonly outputStatus = computed<OutputStatusDto | null>(
     () => this.stateSignal()?.outputStatus ?? null,
   );
-  /** «Letzte Ereignisse», newest first. */
+  /** "Recent events", newest first. */
   readonly log = computed<readonly LogEntryDto[]>(() => this.stateSignal()?.log ?? EMPTY_LIST);
   /** Number of connected Regie sessions (including this one). */
   readonly operatorsOnline = computed(() => this.stateSignal()?.operatorsOnline ?? 0);
-  /** Header chip text and colour («Alle 5 Stationen ok», «2 Störungen»). */
+  /** Header chip text and colour ("All 5 stations ok", "2 incidents"). */
   readonly healthSummary = computed<HealthSummary>(() => {
     const state = this.stateSignal();
-    return state ? healthSummary(state) : NO_HEALTH;
+    return state
+      ? healthSummary(state)
+      : { active: 0, bad: false, text: t('regie.core.store.stationsLoading') };
   });
-  /** Worst outage per scene id (scene list «K2 gestört»); scenes without an outage are missing. */
+  /** Worst outage per scene id (scene list "K2 down"); scenes without an outage are missing. */
   readonly sceneHealthById = computed<ReadonlyMap<string, SceneHealth>>(() => {
     const sources = this.sources();
     const result = new Map<string, SceneHealth>();
@@ -302,7 +309,7 @@ export class ProductionStoreService {
     this.lastSyncKindSignal.set(null);
   }
 
-  /** Forces a full snapshot («Neu laden»). Resolves when it was applied; never rejects. */
+  /** Forces a full snapshot ("Reload"). Resolves when it was applied; never rejects. */
   async resync(): Promise<void> {
     try {
       await this.sync?.resync();
@@ -336,7 +343,7 @@ export class ProductionStoreService {
     return sceneId ? (this.scenes().find((scene) => scene.id === sceneId) ?? null) : null;
   }
 
-  /** Source by reference, or null («Quelle fehlt»). */
+  /** Source by reference, or null ("Source missing"). */
   sourceById(sourceId: string | null | undefined): SourceDto | null {
     return sourceId ? (this.sources().get(sourceId) ?? null) : null;
   }
@@ -356,9 +363,9 @@ export class ProductionStoreService {
     return this.sources().get(sourceId)?.kind;
   }
 
-  /** Display name of a source; «Quelle fehlt» when it was deleted. */
+  /** Display name of a source; "Source missing" when it was deleted. */
   sourceLabel(sourceId: string): string {
-    return this.sources().get(sourceId)?.label ?? 'Quelle fehlt';
+    return this.sources().get(sourceId)?.label ?? t('model.scene.sourceMissing');
   }
 
   /** Slot code of a source (K1, S2, M3), or undefined. */
@@ -452,9 +459,7 @@ export class ProductionStoreService {
         return;
       }
       this.discoveryErrorSignal.set(
-        apiError.status === 404
-          ? NO_ACTIVE_PRODUCTION
-          : 'Der Server ist nicht erreichbar. Die Regie verbindet neu …',
+        apiError.status === 404 ? NO_ACTIVE_PRODUCTION : SERVER_UNREACHABLE,
       );
       this.statusSignal.set('connecting');
       this.discoveryAttempt += 1;

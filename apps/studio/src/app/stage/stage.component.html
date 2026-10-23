@@ -10,14 +10,14 @@
     <div
       class="c-stage__split"
       orientation="vertical"
-      aria-label="Grösse von Preview und Program"
+      [attr.aria-label]="t('regie.stage.split.label')"
       [sfSplitter]="splitBehavior"
       [splitterDisabled]="viewport.stacked()"
     ></div>
   } @else {
     <div class="c-stage__preview-off" aria-hidden="true">
-      <b class="c-stage__preview-off-title">Preview aus</b>
-      <span>Mit Studio-Modus erscheint hier die Preview.</span>
+      <b class="c-stage__preview-off-title">{{ t('regie.stage.previewOff.title') }}</b>
+      <span>{{ t('regie.stage.previewOff.hint') }}</span>
     </div>
   }
   <sf-monitor

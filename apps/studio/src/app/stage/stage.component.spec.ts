@@ -10,14 +10,9 @@ import {
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
-import { LIVE_NOTE } from './monitor.component';
 import { SCENE_RENDERER_FACTORY } from './scene-view.component';
 import { StageComponent } from './stage.component';
 import { FakeRendererFactory, ManualFrames, type FakeSceneRenderer } from './testing/stage-fakes';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('StageComponent', () => {
   let hub: FakeStudioHub;
@@ -78,28 +73,28 @@ describe('StageComponent', () => {
 
   afterEach(() => harness?.http.verify());
 
-  it('without Studio-Modus: one Program monitor with the overlay, «Preview aus» beside it', async () => {
+  it('without Studio Mode: one Program monitor with the overlay, "Preview off" beside it', async () => {
     await setup();
     expect(monitor('preview')).toBeNull();
     const program = monitor('program') as HTMLElement;
     expect(program.getAttribute('role')).toBe('region');
     const labelId = program.getAttribute('aria-labelledby') as string;
     expect(text(element.querySelector(`#${labelId}`))).toBe('Program');
-    expect(text(program.querySelector('.c-monitor__name'))).toBe('Begrüssung');
+    expect(text(program.querySelector('.c-monitor__name'))).toBe('Welcome');
     expect(text(program.querySelector('.c-monitor__live-edit'))).toBe(
-      'Änderungen gehen sofort live',
+      'Changes go live immediately',
     );
     expect(text(program.querySelector('.c-monitor__meta'))).toBe('1920 × 1080 · 30 fps');
     expect(program.querySelector('sf-edit-overlay')).not.toBeNull();
     const off = element.querySelector('.c-stage__preview-off');
     expect(off?.getAttribute('aria-hidden')).toBe('true');
-    expect(text(off?.querySelector('b') ?? null)).toBe('Preview aus');
+    expect(text(off?.querySelector('b') ?? null)).toBe('Preview off');
     expect(text(off?.querySelector('span') ?? null)).toBe(
-      'Mit Studio-Modus erscheint hier die Preview.',
+      'With Studio Mode the Preview appears here.',
     );
     expect(element.querySelector('sf-control-column')).not.toBeNull();
     expect(rendererOf('program').element.getAttribute('aria-label')).toBe(
-      'Program-Monitor: Begrüssung, entspricht dem Output',
+      'Program monitor: Welcome, matches the output',
     );
   });
 
@@ -110,14 +105,14 @@ describe('StageComponent', () => {
     expect(
       preview.compareDocumentPosition(program) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(text(preview.querySelector('.c-monitor__name'))).toBe('Präsentation');
-    expect(text(preview.querySelector('.c-monitor__meta'))).toBe('2 Elemente');
+    expect(text(preview.querySelector('.c-monitor__name'))).toBe('Presentation');
+    expect(text(preview.querySelector('.c-monitor__meta'))).toBe('2 items');
     expect(preview.querySelector('sf-edit-overlay')).not.toBeNull();
     expect(program.querySelector('sf-edit-overlay')).toBeNull();
     expect(program.querySelector('.c-monitor__live-edit')).toBeNull();
     const split = element.querySelector('.c-stage__split') as HTMLElement;
     expect(split.getAttribute('role')).toBe('separator');
-    expect(split.getAttribute('aria-label')).toBe('Grösse von Preview und Program');
+    expect(split.getAttribute('aria-label')).toBe('Size of Preview and Program');
     expect(element.querySelector('.c-stage__preview-off')).toBeNull();
     expect(rendererOf('preview').current?.id).toBe('scn_b');
     expect(rendererOf('program').current?.id).toBe('scn_a');
@@ -126,7 +121,7 @@ describe('StageComponent', () => {
   it('shows the live note while the live scene is in the Preview', async () => {
     await setup({ studio: true, preview: 'scn_a' });
     expect(text(monitor('preview')?.querySelector('.c-monitor__live-note') ?? null)).toBe(
-      LIVE_NOTE,
+      'This scene is live right now. Editing is possible once another scene is on Program.',
     );
     expect(monitor('program')?.querySelector('.c-monitor__live-note')).toBeNull();
     expect(monitor('preview')?.querySelector('sf-edit-overlay')?.classList).toContain('is-locked');
@@ -243,7 +238,7 @@ describe('StageComponent', () => {
       { outlineWidth: '2px', outlineColor: '#f85149' },
     ]);
     expect(text(monitor('program')?.querySelector('.c-monitor__name') ?? null)).toBe(
-      'Präsentation',
+      'Presentation',
     );
   });
 

@@ -5,17 +5,17 @@
     [id]="switchId"
     [checked]="switcher.studioMode()"
     (change)="onStudioModeChange($event)"
-  />Studio-Modus
+  />{{ t('regie.stage.control.studioMode') }}
 </label>
-<span class="c-control-column__label">Übergang</span>
-<div class="c-transition" role="group" aria-label="Art des Übergangs">
+<span class="c-control-column__label">{{ t('regie.stage.control.transition') }}</span>
+<div class="c-transition" role="group" [attr.aria-label]="t('regie.stage.control.transitionKind')">
   <button
     class="c-transition__option"
     type="button"
     [attr.aria-pressed]="switcher.transitionKind() === 'cut'"
     (click)="setKind('cut')"
   >
-    Schnitt
+    {{ t('regie.stage.control.cut') }}
   </button>
   <button
     class="c-transition__option"
@@ -23,19 +23,19 @@
     [attr.aria-pressed]="switcher.transitionKind() === 'fade'"
     (click)="setKind('fade')"
   >
-    Blende
+    {{ t('regie.stage.control.fade') }}
   </button>
 </div>
 <div
   class="c-duration"
   role="group"
-  aria-label="Dauer der Blende"
+  [attr.aria-label]="t('regie.stage.control.fadeDuration')"
   [class.is-off]="switcher.transitionKind() === 'cut'"
 >
   <button
     class="c-duration__btn"
     type="button"
-    aria-label="Blende kürzer"
+    [attr.aria-label]="t('regie.stage.control.fadeShorter')"
     [disabled]="!switcher.canStepDuration(-1)"
     (click)="step(-1)"
   >
@@ -45,7 +45,7 @@
   <button
     class="c-duration__btn"
     type="button"
-    aria-label="Blende länger"
+    [attr.aria-label]="t('regie.stage.control.fadeLonger')"
     [disabled]="!switcher.canStepDuration(1)"
     (click)="step(1)"
   >
@@ -60,7 +60,8 @@
     [disabled]="!switcher.canTake()"
     (click)="take()"
   >
-    Take <small class="c-take__hint">Leerschlag</small>
+    {{ t('regie.stage.control.take') }}
+    <small class="c-take__hint">{{ t('regie.stage.control.space') }}</small>
   </button>
 }
 <span class="c-control-column__hint">{{ switcher.hint() }}</span>

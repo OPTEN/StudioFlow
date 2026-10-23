@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { toUserMessage, type ErrorMessageOverrides } from '../api/api-error';
 
-/** Optional action button of a toast («Rückgängig», «Layout zurücksetzen»). */
+/** Optional action button of a toast ("Undo", "Reset layout"). */
 export interface ToastAction {
   readonly label: string;
   readonly run: () => void;

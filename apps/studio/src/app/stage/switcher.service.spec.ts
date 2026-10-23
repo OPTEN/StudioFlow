@@ -10,11 +10,7 @@ import {
 import { KeyboardService } from '../core/ui/keyboard.service';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
-import { OFFLINE_COMMAND_MESSAGE, SWITCH_HINTS, SwitcherService } from './switcher.service';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
+import { SwitcherService } from './switcher.service';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -50,7 +46,7 @@ describe('SwitcherService', () => {
 
   it('switches the program directly without Studio-Modus, with the transition', async () => {
     await setup();
-    expect(switcher.hint()).toBe(SWITCH_HINTS.direct);
+    expect(switcher.hint()).toBe('Click a scene to switch it live directly.');
     const done = switcher.chooseScene('scn_b');
     const request = harness.http.expectOne(`${BASE}/program`);
     expect(request.request.body).toEqual({
@@ -84,10 +80,10 @@ describe('SwitcherService', () => {
     });
     switcher.setTransitionKind('fade');
     expect(switcher.transition()).toEqual({ kind: 'fade', durationMs: 500 });
-    expect(switcher.durationLabel()).toBe('0,5 s');
+    expect(switcher.durationLabel()).toBe('0.5 s');
   });
 
-  it('steps the fade duration within 0,2 … 2 s', async () => {
+  it('steps the fade duration within 0.2 … 2 s', async () => {
     await setup();
     switcher.stepDuration(-1);
     expect(switcher.fadeDurationMs()).toBe(200);
@@ -101,10 +97,10 @@ describe('SwitcherService', () => {
     expect(switcher.canStepDuration(1)).toBe(false);
   });
 
-  it('turns Studio-Modus on: preview = the scene after the program, toast', async () => {
+  it('turns Studio Mode on: preview = the scene after the program, toast', async () => {
     await setup();
     const done = switcher.setStudioMode(true);
-    expect(toasts.current()?.message).toBe('Studio-Modus an: Preview und Take');
+    expect(toasts.current()?.message).toBe('Studio Mode on: Preview and Take');
     const request = harness.http.expectOne(`${BASE}/preview`);
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual({ sceneId: 'scn_b' });
@@ -112,13 +108,13 @@ describe('SwitcherService', () => {
     await done;
     expect(switcher.studioMode()).toBe(true);
     expect(storage.getItem(PREFERENCE_KEYS.studioMode)).toBe('1');
-    expect(switcher.hint()).toBe(SWITCH_HINTS.studio);
+    expect(switcher.hint()).toBe('Click a scene to load it into Preview. Take switches it live.');
   });
 
-  it('turns Studio-Modus off and clears the preview when nobody else is in the Regie', async () => {
+  it('turns Studio Mode off and clears the preview when nobody else is in the Regie', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     const done = switcher.setStudioMode(false);
-    expect(toasts.current()?.message).toBe('Studio-Modus aus: Szenen schalten direkt live');
+    expect(toasts.current()?.message).toBe('Studio Mode off: scenes switch live directly');
     harness.http.expectOne(`${BASE}/preview`).flush(productionFixture());
     await done;
   });
@@ -172,7 +168,7 @@ describe('SwitcherService', () => {
       .expectOne(`${BASE}/program`)
       .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
     await second;
-    expect(toasts.current()?.message).toContain('gibt es nicht mehr');
+    expect(toasts.current()?.message).toContain('no longer exists');
   });
 
   it('blocks switching while a fade of the last program switch runs', async () => {
@@ -193,7 +189,7 @@ describe('SwitcherService', () => {
     expect(switcher.transitionRunning()).toBe(false);
   });
 
-  it('flashes the program and announces «‹Name› ist live» for every switch event', async () => {
+  it('flashes the program and announces that a scene is live for every switch event', async () => {
     await setup();
     expect(switcher.programFlash()).toBe(0);
     harness.emitEvent({
@@ -206,7 +202,7 @@ describe('SwitcherService', () => {
     });
     await harness.settle();
     expect(switcher.programFlash()).toBe(1);
-    expect(toasts.current()?.message).toBe('«Pause» ist live');
+    expect(toasts.current()?.message).toBe('“Break” is live');
   });
 
   it('refuses commands while offline', async () => {
@@ -215,7 +211,9 @@ describe('SwitcherService', () => {
     await flushMicrotasks();
     await switcher.chooseScene('scn_b');
     harness.http.expectNone(`${BASE}/program`);
-    expect(toasts.current()?.message).toBe(OFFLINE_COMMAND_MESSAGE);
+    expect(toasts.current()?.message).toBe(
+      'No connection to the server. Switching works again as soon as the control room is connected.',
+    );
   });
 
   it('maps keys 1–9 and Space through the keyboard service', async () => {

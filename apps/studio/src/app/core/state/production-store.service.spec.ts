@@ -1,5 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { tm } from '@studioflow/i18n';
 import { HUB } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import {
@@ -19,11 +20,6 @@ import {
   type StudioTestHook,
 } from './production-store.service';
 import { TEST_HOOKS_FLAG } from './test-hooks';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
-
 describe('ProductionStoreService', () => {
   let hub: FakeStudioHub;
 
@@ -39,16 +35,12 @@ describe('ProductionStoreService', () => {
     expect(store.status()).toBe('live');
     expect(store.online()).toBe(true);
     expect(store.canCommand()).toBe(true);
-    expect(store.scenes().map((scene) => scene.name)).toEqual([
-      'Begrüssung',
-      'Präsentation',
-      'Pause',
-    ]);
+    expect(store.scenes().map((scene) => scene.name)).toEqual(['Welcome', 'Presentation', 'Break']);
     expect(store.programScene()?.id).toBe('scn_a');
     expect(store.previewScene()).toBeNull();
-    expect(store.healthSummary().text).toBe('Alle 2 Stationen ok');
-    expect(store.sourceLabel('dev_bbbbbbbbbbbbbbbb/screen-1')).toBe('Laptop Lea · Folien');
-    expect(store.sourceLabel('dev_xxxxxxxxxxxxxxxx/camera')).toBe('Quelle fehlt');
+    expect(store.healthSummary().text).toBe('All 2 stations ok');
+    expect(store.sourceLabel('dev_bbbbbbbbbbbbbbbb/screen-1')).toBe('Laptop Lea · Slides');
+    expect(store.sourceLabel('dev_xxxxxxxxxxxxxxxx/camera')).toBe('Source missing');
     expect(store.tallyOf('dev_aaaaaaaaaaaaaaaa/camera')).toBe('program');
   });
 
@@ -139,7 +131,7 @@ describe('ProductionStoreService', () => {
         ? Promise.resolve(snapshotChanges(other))
         : Promise.reject(
             new Error(
-              "An unexpected error occurred invoking 'Subscribe' on the server. HubException: not_found: Die Produktion gibt es nicht.",
+              "An unexpected error occurred invoking 'Subscribe' on the server. HubException: not_found: The production does not exist.",
             ),
           );
 
@@ -176,7 +168,7 @@ describe('ProductionStoreService', () => {
       .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
     await flushMicrotasks();
 
-    expect(harness.store.discoveryError()).toBe('Keine aktive Produktion gefunden.');
+    expect(tm(harness.store.discoveryError())).toBe('No active production found.');
     harness.store.stop();
   });
 
@@ -189,7 +181,7 @@ describe('ProductionStoreService', () => {
         refusals-- > 0
           ? Promise.reject(
               new Error(
-                "An unexpected error occurred invoking 'Subscribe' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+                "An unexpected error occurred invoking 'Subscribe' on the server. HubException: service_unavailable: The database is not reachable right now.",
               ),
             )
           : Promise.resolve(snapshotChanges(snapshotFixture()));
@@ -264,7 +256,7 @@ describe('ProductionStoreService', () => {
         .expectOne('/api/productions/active')
         .flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
       await vi.advanceTimersByTimeAsync(0);
-      expect(store.discoveryError()).toBe('Keine aktive Produktion gefunden.');
+      expect(tm(store.discoveryError())).toBe('No active production found.');
       await vi.advanceTimersByTimeAsync(1100);
       controller.expectOne('/api/productions/active');
       store.stop();

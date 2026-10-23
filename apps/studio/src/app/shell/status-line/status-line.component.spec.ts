@@ -11,10 +11,6 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { StationFocusService } from '../station-focus.service';
 import { StatusLineComponent } from './status-line.component';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('StatusLineComponent', () => {
   let hub: FakeStudioHub;
@@ -45,24 +41,20 @@ describe('StatusLineComponent', () => {
 
   afterEach(() => harness?.http.verify());
 
-  it('shows «Keine offenen Meldungen» and the last four log entries', async () => {
+  it('shows "No open messages" and the last four log entries', async () => {
     await setup(
       snapshotFixture({
-        recentLog: ['e', 'd', 'c', 'b', 'a'].map((text) => logFixture(`Ereignis ${text}`)),
+        recentLog: ['e', 'd', 'c', 'b', 'a'].map((text) => logFixture(`Event ${text}`)),
       }),
     );
-    expect(element.querySelector('.c-status__ok')?.textContent?.trim()).toBe(
-      'Keine offenen Meldungen',
-    );
-    expect(element.querySelector('.c-status__label')?.textContent?.trim()).toBe(
-      'Letzte Ereignisse',
-    );
+    expect(element.querySelector('.c-status__ok')?.textContent?.trim()).toBe('No open messages');
+    expect(element.querySelector('.c-status__label')?.textContent?.trim()).toBe('Recent events');
     const entries = Array.from(element.querySelectorAll('.c-status__entry')).map((entry) =>
       entry.textContent?.trim(),
     );
     expect(entries).toHaveLength(4);
     // The text comes from the code and its parameters, in the language of the Regie.
-    expect(entries[0]).toContain('Szene «Ereignis e» ist live');
+    expect(entries[0]).toContain('Scene “Event e” is live');
     expect(entries[0]).toMatch(/^\d\d:\d\d/);
   });
 
@@ -72,14 +64,14 @@ describe('StatusLineComponent', () => {
       snapshotFixture({
         sources: [
           sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', {
-            label: 'Handy Bühne links',
+            label: 'Phone stage left',
             status: 'reconnecting',
           }),
           sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', {
-            label: 'Laptop Lea · Folien',
+            label: 'Laptop Lea · Slides',
             status: 'ended',
           }),
-          sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', { label: 'Handy Totale' }),
+          sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', { label: 'Phone wide' }),
         ],
         scenes: defaultScenes(),
         incidents: [
@@ -101,18 +93,18 @@ describe('StatusLineComponent', () => {
     );
     expect(element.querySelector('.c-status__ok')).toBeNull();
     const [first, second, third] = segments();
-    expect(first).toContain('S1Laptop Lea · Folien');
-    expect(first).toContain('Teilen beendet');
-    expect(first).toContain('nicht live');
+    expect(first).toContain('S1Laptop Lea · Slides');
+    expect(first).toContain('sharing stopped');
+    expect(first).toContain('not live');
     expect(first).toMatch(/00:0[34]/);
-    expect(first).toContain('Neu teilen lassen');
-    expect(second).toContain('K1Handy Bühne links');
-    expect(second).toContain('verbindet neu');
-    expect(second).toContain('im Program');
-    expect(second).not.toContain('Neu teilen lassen');
-    expect(third).toContain('wieder da');
-    expect(third).toContain('war 9 s weg');
-    expect(third).toContain('Gesehen');
+    expect(first).toContain('Ask to share again');
+    expect(second).toContain('K1Phone stage left');
+    expect(second).toContain('reconnecting');
+    expect(second).toContain('on Program');
+    expect(second).not.toContain('Ask to share again');
+    expect(third).toContain('back');
+    expect(third).toContain('was gone for 9 s');
+    expect(third).toContain('Seen');
     const classes = Array.from(element.querySelectorAll('.c-status__inc')).map(
       (segment) => segment.className,
     );
@@ -156,7 +148,7 @@ describe('StatusLineComponent', () => {
     await render();
   });
 
-  it('names an ended camera «Kamera beendet» and offers «Neu teilen lassen» only for screens', async () => {
+  it('names an ended camera "camera stopped" and offers "Ask to share again" only for screens', async () => {
     await setup(
       snapshotFixture({
         incidents: [
@@ -166,10 +158,10 @@ describe('StatusLineComponent', () => {
       }),
     );
     const [camera, screen] = segments();
-    expect(camera).toContain('Kamera beendet');
-    expect(camera).not.toContain('Neu teilen lassen');
-    expect(screen).toContain('Teilen beendet');
-    expect(screen).toContain('Neu teilen lassen');
+    expect(camera).toContain('camera stopped');
+    expect(camera).not.toContain('Ask to share again');
+    expect(screen).toContain('sharing stopped');
+    expect(screen).toContain('Ask to share again');
   });
 
   it('points at the station of an incident', async () => {
@@ -192,7 +184,9 @@ describe('StatusLineComponent', () => {
     await render();
     const banner = element.querySelector('.c-status__net');
     expect(banner?.className).toContain('is-warn');
-    expect(banner?.textContent).toContain('Keine Verbindung zum Server, die Regie verbindet neu');
+    expect(banner?.textContent).toContain(
+      'No connection to the server, the control room is reconnecting',
+    );
     hub.connect();
     await render();
     expect(element.querySelector('.c-status__net')).toBeNull();

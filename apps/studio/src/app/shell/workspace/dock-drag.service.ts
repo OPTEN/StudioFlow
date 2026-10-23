@@ -17,7 +17,7 @@ export interface DockDragState {
 const DRAG_THRESHOLD_PX = 5;
 
 /**
- * Drag and drop of docks by their header (prototype «Dock an der Kopfzeile ziehen»): after 5 px the dock fades, a
+ * Drag and drop of docks by their header (prototype "Drag a dock by its header"): after 5 px the dock fades, a
  * ghost follows the pointer, empty zones appear as dashed drop strips and a blue insertion line shows the target
  * between docks. Pointer moves are handled with native document listeners (no change detection per move); the
  * ghost and the line are positioned with direct style writes. Escape (layer `dockDrag`) cancels.

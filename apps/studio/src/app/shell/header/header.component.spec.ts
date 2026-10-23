@@ -12,10 +12,6 @@ import { StationFocusService } from '../station-focus.service';
 import { HeaderComponent } from './header.component';
 import { maskOutputUrl } from './output-popover.component';
 import { isIpOrCidr } from './ip-address';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -49,28 +45,28 @@ describe('HeaderComponent', () => {
       (entry) => entry.textContent?.trim() === label,
     );
     if (!found) {
-      throw new Error(`no button «${label}»`);
+      throw new Error(`no button "${label}"`);
     }
     return found;
   }
 
   afterEach(() => harness?.http.verify());
 
-  it('shows brand, production, quiet BEREIT, output, health, presence and clock', async () => {
+  it('shows brand, production, quiet READY, output, health, presence and clock', async () => {
     await setup();
     expect(text()).toContain('StudioFlow');
     expect(text()).toContain('Webinar');
-    expect(text()).toContain('BEREIT');
-    expect(button('Sendung starten').disabled).toBe(false);
-    expect(text()).toContain('Output an Proxy');
-    expect(text()).toContain('Alle 2 Stationen ok');
-    expect(text()).toContain('1 in der Regie');
+    expect(text()).toContain('READY');
+    expect(button('Start broadcast').disabled).toBe(false);
+    expect(text()).toContain('Output to proxy');
+    expect(text()).toContain('All 2 stations ok');
+    expect(text()).toContain('1 in the control room');
     expect(element.querySelector('.c-header__clock')?.textContent).toMatch(/^\d\d:\d\d:\d\d$/);
   });
 
   it('starts the broadcast', async () => {
     await setup();
-    button('Sendung starten').click();
+    button('Start broadcast').click();
     harness.http
       .expectOne(`${BASE}/broadcast/start`)
       .flush(productionFixture({ broadcast: 'live' }));
@@ -84,9 +80,9 @@ describe('HeaderComponent', () => {
     );
     expect(text()).toContain('LIVE');
     expect(element.querySelector('.c-live__time')?.textContent).toMatch(/^00:42:1[34]$/);
-    button('Sendung beenden').click();
+    button('End broadcast').click();
     await render();
-    expect(text()).toContain('Der Output zeigt danach «Danke fürs Zuschauen».');
+    expect(text()).toContain('The output then shows “Thanks for watching”.');
     harness.http.expectNone(`${BASE}/broadcast/end`);
     const confirm = Array.from(
       element.querySelectorAll<HTMLButtonElement>('.c-btn--danger-fill'),
@@ -98,10 +94,10 @@ describe('HeaderComponent', () => {
     await render();
   });
 
-  it('offers «Zurück auf Bereit» after the end', async () => {
+  it('offers "Back to Ready" after the end', async () => {
     await setup(snapshotFixture({ production: productionFixture({ broadcast: 'ended' }) }));
-    expect(text()).toContain('BEENDET');
-    button('Zurück auf Bereit').click();
+    expect(text()).toContain('ENDED');
+    button('Back to Ready').click();
     harness.http.expectOne(`${BASE}/broadcast/reset`).flush(productionFixture());
     await render();
   });
@@ -121,9 +117,9 @@ describe('HeaderComponent', () => {
         ],
       }),
     );
-    expect(text()).toContain('2 Störungen');
+    expect(text()).toContain('2 incidents');
     expect(element.querySelector('.c-chipbtn .c-lamp.is-bad')).not.toBeNull();
-    button('2 Störungen').click();
+    button('2 incidents').click();
     expect(TestBed.inject(StationFocusService).request()?.deviceId).toBe('dev_bbbbbbbbbbbbbbbb');
   });
 
@@ -144,17 +140,17 @@ describe('HeaderComponent', () => {
     element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
     await render();
     harness.http.expectOne(`${BASE}/output`).flush({
-      url: 'https://studioflow.opten.ch/o/webinar?k=geheim123',
+      url: 'https://studioflow.opten.ch/o/webinar?k=secret123',
       keyCreatedAt: '2026-10-22T08:00:00Z',
       allowedIps: [],
       frameAncestors: ["'self'"],
     });
     await render();
-    expect(text()).toContain('verbunden, 1 Abnehmer');
+    expect(text()).toContain('connected, 1 consumer');
     expect(text()).toContain('10.0.0.42');
     expect(text()).toContain('1920 × 1080 · 30 fps');
     expect(text()).toContain('studioflow.opten.ch/o/webinar?k=••••••');
-    expect(text()).not.toContain('geheim123');
+    expect(text()).not.toContain('secret123');
   });
 
   it('masks output links and validates IP entries', () => {

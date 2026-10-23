@@ -9,6 +9,7 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import {
   isDown,
   rectOf,
@@ -45,14 +46,10 @@ import {
   type ScreenBox,
   type SnapLines,
 } from './edit-geometry';
-import { EditorService, LIVE_LOCKED_MESSAGE, OFFLINE_EDIT_MESSAGE } from './editor.service';
+import { EditorService, liveLockedMessage, offlineEditMessage } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import type { SceneViewComponent } from './scene-view.component';
 import { SwitcherService } from './switcher.service';
-
-/** Accessible name of the overlay (prototype `#ovl`). */
-export const OVERLAY_LABEL =
-  'Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren.';
 
 /** One selection box over a visible element. */
 export interface EditBox {
@@ -60,7 +57,7 @@ export interface EditBox {
   /** Rectangle on the canvas (the renderer's rectangle for Auto-Grid scenes). */
   readonly rect: CanvasRect;
   readonly percent: PercentRect;
-  /** «K1 · 600 × 338» (with crop). */
+  /** "K1 · 600 × 338" (with crop). */
   readonly label: string;
   readonly selected: boolean;
   /** Locked element (not draggable) or the whole scene is locked. */
@@ -140,17 +137,17 @@ function isHandle(value: string | undefined): value is Handle {
 }
 
 /**
- * The edit overlay on the editable monitor (Preview in Studio-Modus, else Program; prototype «Overlay: Elemente
- * bearbeiten», spec 9.1). It edits `EditorService.editScene()`:
+ * The edit overlay on the editable monitor (Preview in Studio Mode, else Program; prototype "Overlay: edit items",
+ * spec 9.1). It edits `EditorService.editScene()`:
  *
  * - Boxes for every visible element (the renderer's rectangles for Auto-Grid scenes), the selected one with a blue
- *   outline, the label tab «K1 · 600 × 338» and four corner handles; down sources get the amber/red dashed outline.
+ *   outline, the label tab "K1 · 600 × 338" and four corner handles; down sources get the amber/red dashed outline.
  * - Click selects (empty area deselects), drag moves with snapping to the canvas edges, the safe margin, the centre and
  *   the other elements' edges and centres (7 screen px, blue guides; Alt disables snapping), a corner resizes keeping
  *   the aspect ratio (Shift frees it, minimum 96 × 54), Alt+drag on a corner or an edge crops (OBS). Arrow keys move
  *   by 1 px (Shift 10 px), one undo step per key-repeat burst. Escape deselects (EditorService).
  * - While dragging: dot raster and the faint safe-area guide. Locked elements are selectable but not draggable; while
- *   the scene is locked (Studio-Modus, preview = program) a press shows the prototype's toast.
+ *   the scene is locked (Studio Mode, preview = program) a press shows the prototype's toast.
  * - Pointer moves are native listeners (no change detection per event), batched to one geometry step per animation
  *   frame; the overlay rectangle is measured once at pointerdown (no layout reads during a drag). Every step goes to
  *   `EditorService.updateItem` inside `beginGesture`/`endGesture`, which coalesces the requests. Pointer capture,
@@ -164,7 +161,7 @@ function isHandle(value: string | undefined): value is Handle {
     class: 'c-edit-overlay',
     role: 'group',
     tabindex: '0',
-    'aria-label': OVERLAY_LABEL,
+    '[attr.aria-label]': "t('regie.stage.overlay.label')",
     '[class.is-locked]': 'editor.editLocked()',
     '[class.is-dragging]': 'dragging()',
     '[class.is-alt]': 'altHeld()',
@@ -179,6 +176,7 @@ export class EditOverlayComponent {
   /** The scene view of the same monitor: Auto-Grid rectangles and the editor's effective-rects source. */
   readonly view = input<SceneViewComponent | null>(null);
 
+  protected readonly t = t;
   protected readonly editor = inject(EditorService);
   private readonly store = inject(ProductionStoreService);
   private readonly switcher = inject(SwitcherService);
@@ -227,7 +225,11 @@ export class EditOverlayComponent {
         id: item.id,
         rect,
         percent: toPercent(rect),
-        label: boxLabel(this.store.codeOf(item.source) ?? 'Quelle fehlt', rect, item.crop),
+        label: boxLabel(
+          this.store.codeOf(item.source) ?? t('model.scene.sourceMissing'),
+          rect,
+          item.crop,
+        ),
         selected,
         locked: locked || item.locked,
         alert: status && isDown(status) ? (status === 'reconnecting' ? 'warn' : 'bad') : null,
@@ -277,7 +279,7 @@ export class EditOverlayComponent {
       return;
     }
     if (this.editor.editLocked()) {
-      this.toasts.show(LIVE_LOCKED_MESSAGE);
+      this.toasts.show(liveLockedMessage());
       return;
     }
     const id = boxElement.dataset['itemId'] ?? '';
@@ -294,7 +296,7 @@ export class EditOverlayComponent {
       return;
     }
     if (!this.store.canCommand()) {
-      this.toasts.show(OFFLINE_EDIT_MESSAGE);
+      this.toasts.show(offlineEditMessage());
       return;
     }
     const handleValue = target?.closest<HTMLElement>('[data-handle]')?.dataset['handle'];

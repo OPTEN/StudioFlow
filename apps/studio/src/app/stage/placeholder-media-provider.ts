@@ -8,7 +8,7 @@ const PENDING: SourceAvailability = { state: 'pending' };
 /**
  * Stand-in source provider while the LiveKit media client is not loaded (yet), failed to load or is unauthorized.
  * Every device source is `pending` (the renderer draws its dark placeholder, monitors still show the scene layout,
- * alerts and «Quelle fehlt»); images and videos load from the API like with the real provider, so media scenes are
+ * alerts and "Source missing"); images and videos load from the API like with the real provider, so media scenes are
  * complete even without LiveKit. `SceneViewComponent` swaps it for `StudioMediaService.provider()` once that exists.
  */
 @Injectable({ providedIn: 'root' })

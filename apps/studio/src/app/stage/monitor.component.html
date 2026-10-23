@@ -2,7 +2,7 @@
   <span class="c-monitor__tally" [id]="labelId"><i aria-hidden="true"></i>{{ title() }}</span>
   <span class="c-monitor__name">{{ scene()?.name }}</span>
   @if (liveEdit()) {
-    <span class="c-monitor__live-edit">Änderungen gehen sofort live</span>
+    <span class="c-monitor__live-edit">{{ t('regie.stage.monitor.liveEdit') }}</span>
   }
   <span class="c-monitor__meta" [class.c-monitor__meta--mono]="kind() === 'program'">{{
     meta()
@@ -24,6 +24,6 @@
     <sf-edit-overlay [view]="view() ?? null" />
   }
   @if (locked()) {
-    <div class="c-monitor__live-note">{{ liveNote }}</div>
+    <div class="c-monitor__live-note">{{ t('regie.stage.monitor.liveNote') }}</div>
   }
 </div>

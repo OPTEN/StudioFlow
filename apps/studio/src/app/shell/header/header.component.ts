@@ -14,9 +14,9 @@ import { ProductionMenuComponent } from './production-menu.component';
 import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
 
 /**
- * The Regie header (prototype `.top`, DESIGN.md «Header»): brand, production menu, broadcast state and control,
- * output chip with its popover, station health chip (jumps to the most severe incident), «Docks und Layout»,
- * presence («2 in der Regie») and the mono clock.
+ * The Regie header (prototype `.top`, DESIGN.md "Header"): brand, production menu, broadcast state and control,
+ * output chip with its popover, station health chip (jumps to the most severe incident), "Docks and layout",
+ * settings, presence ("2 in the control room") and the mono clock.
  */
 @Component({
   selector: 'sf-header',
@@ -45,7 +45,7 @@ export class HeaderComponent {
   protected readonly settingsPopover = SETTINGS_POPOVER;
   protected readonly t = t;
 
-  /** Header clock «HH:MM:SS» (local time). */
+  /** Header clock "HH:MM:SS" (local time). */
   protected readonly clockText = computed(() => formatClock(new Date(this.clock.now())));
 
   /** Lamp of the output chip: green connected, amber stale, muted none. */
@@ -74,10 +74,9 @@ export class HeaderComponent {
   });
 
   protected readonly operators = computed(() => Math.max(1, this.store.operatorsOnline()));
-  protected readonly presenceText = computed(() => {
-    const count = this.operators();
-    return count === 1 ? 'Eine Person in der Regie' : `${count} Personen in der Regie`;
-  });
+  protected readonly presenceText = computed(() =>
+    t('regie.header.presence.long', { count: this.operators() }),
+  );
 
   /** Health chip: open the station of the most severe incident, or confirm that all stations send. */
   protected showHealth(): void {
@@ -87,7 +86,9 @@ export class HeaderComponent {
     }
     if (!incident) {
       this.toasts.show(
-        this.store.devices().size > 0 ? 'Alle Stationen senden' : 'Noch keine Stationen gekoppelt',
+        this.store.devices().size > 0
+          ? t('regie.header.health.allSending')
+          : t('regie.header.health.noStations'),
       );
     }
   }

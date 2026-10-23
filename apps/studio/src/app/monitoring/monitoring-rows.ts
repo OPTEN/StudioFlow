@@ -1,3 +1,4 @@
+import { compareText, lowerCase, t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
   formatHm,
@@ -48,7 +49,7 @@ export interface MonitoringSort {
 /** One slot (camera or screen) of a station. */
 export interface MonitoringSlot {
   readonly code: string;
-  /** «live», «startet», «pausiert», «beendet», «Fehler», or «–» without telemetry. */
+  /** "live", "starting", "paused", "ended", "error", or "–" without telemetry. */
   readonly state: string;
   readonly resolution: string;
   readonly fps: string;
@@ -87,21 +88,21 @@ export interface MonitoringRow {
   readonly stale: boolean;
 }
 
-const SLOT_WORDS: Readonly<Record<SlotState, string>> = {
-  starting: 'startet',
-  live: 'live',
-  paused: 'pausiert',
-  ended: 'beendet',
-  failed: 'Fehler',
-};
+const SLOT_WORD_KEYS = {
+  starting: 'regie.monitoring.slot.starting',
+  live: 'regie.monitoring.slot.live',
+  paused: 'regie.monitoring.slot.paused',
+  ended: 'regie.monitoring.slot.ended',
+  failed: 'regie.monitoring.slot.failed',
+} as const satisfies Record<SlotState, PlainMessageKey>;
 
 const TECH_RANK: Readonly<Record<TechCheckLevel, number>> = { ok: 3, warn: 2, bad: 1, unknown: 0 };
-const TECH_TEXT: Readonly<Record<TechCheckLevel, string>> = {
-  ok: 'ok',
-  warn: 'knapp',
-  bad: 'schlecht',
-  unknown: 'unbekannt',
-};
+const TECH_TEXT_KEYS = {
+  ok: 'regie.monitoring.tech.ok',
+  warn: 'regie.monitoring.tech.warn',
+  bad: 'regie.monitoring.tech.bad',
+  unknown: 'regie.monitoring.tech.unknown',
+} as const satisfies Record<TechCheckLevel, PlainMessageKey>;
 const TECH_LAMP: Readonly<Record<TechCheckLevel, LampTone>> = {
   ok: '',
   warn: 'is-warn',
@@ -150,7 +151,7 @@ export function monitoringRows(
       const slot = slots.find((entry) => entry.slot === source.slot);
       return {
         code: source.code,
-        state: slot ? SLOT_WORDS[slot.state] : MISSING_VALUE,
+        state: slot ? t(SLOT_WORD_KEYS[slot.state]) : MISSING_VALUE,
         resolution:
           slot && finite(slot.width) && finite(slot.height)
             ? `${slot.width} × ${slot.height}`
@@ -174,7 +175,8 @@ export function monitoringRows(
       platform: device.platform,
       order,
       status,
-      stateWord: status === 'ok' ? 'sendet' : statusWord(status, worst?.kind),
+      stateWord:
+        status === 'ok' ? t('regie.monitoring.stateSending') : statusWord(status, worst?.kind),
       // Healthy rows stay calm: the green lamp says enough.
       stateTone: status === 'ok' ? 'muted' : tone,
       lamp: statusLamp(status),
@@ -189,7 +191,7 @@ export function monitoringRows(
       charging: telemetry?.charging === true,
       network: networkLabel(telemetry?.network),
       techLevel: tech,
-      techText: tech ? TECH_TEXT[tech] : 'nicht gelaufen',
+      techText: tech ? t(TECH_TEXT_KEYS[tech]) : t('regie.monitoring.tech.notRun'),
       techLamp: tech ? TECH_LAMP[tech] : 'is-idle',
       seenAt,
       stale,
@@ -201,7 +203,7 @@ export function monitoringRows(
 function sortKey(row: MonitoringRow, column: MonitoringColumn): number | string | null {
   switch (column) {
     case 'station':
-      return row.name.toLocaleLowerCase('de-CH');
+      return lowerCase(row.name);
     case 'state':
       return STATUS_ORDER[row.status];
     case 'codes':
@@ -227,8 +229,6 @@ function sortKey(row: MonitoringRow, column: MonitoringColumn): number | string 
   }
 }
 
-const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
-
 /**
  * Sorts rows by a column. Unknown values always come last (in both directions); ties keep the Regie order. Without a
  * column the Regie order is kept.
@@ -251,7 +251,7 @@ export function sortMonitoringRows(
     const compared =
       typeof keyA === 'number' && typeof keyB === 'number'
         ? keyA - keyB
-        : collator.compare(String(keyA), String(keyB));
+        : compareText(String(keyA), String(keyB), { numeric: true });
     return compared * factor || a.order - b.order;
   });
 }
@@ -266,15 +266,17 @@ export function nextSort(current: MonitoringSort, column: MonitoringColumn): Mon
     : { column: null, direction: 'asc' };
 }
 
-/** «vor 3 s», «vor 5 min», or the local time «10:42» for anything older than an hour; «–» when unknown. */
+/** "3 s ago", "5 min ago", or the local time "10:42" for anything older than an hour; "–" when unknown. */
 export function seenText(seenAt: number | null, serverNowMs: number): string {
   if (seenAt === null) {
     return MISSING_VALUE;
   }
   const seconds = Math.max(0, Math.round((serverNowMs - seenAt) / 1000));
   if (seconds < 60) {
-    return `vor ${seconds} s`;
+    return t('regie.monitoring.seen.seconds', { value: seconds });
   }
   const minutes = Math.round(seconds / 60);
-  return minutes < 60 ? `vor ${minutes} min` : formatHm(new Date(seenAt));
+  return minutes < 60
+    ? t('regie.monitoring.seen.minutes', { value: minutes })
+    : formatHm(new Date(seenAt));
 }

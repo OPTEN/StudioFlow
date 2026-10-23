@@ -13,7 +13,7 @@
         [sfPopoverTrigger]="outputPopover"
       >
         <svg sfIcon="output"></svg>
-        <span class="c-header__out-label">Output an Proxy</span>
+        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
         <span class="u-mono">{{ outputLatency() }}</span>
         <svg sfIcon="chev" [size]="13"></svg>
@@ -33,8 +33,8 @@
         class="c-ibtn"
         type="button"
         aria-haspopup="dialog"
-        aria-label="Docks und Layout"
-        title="Docks und Layout"
+        [attr.aria-label]="t('regie.header.layout.open')"
+        [title]="t('regie.header.layout.open')"
         [sfPopoverTrigger]="layoutPopover"
       >
         <svg sfIcon="layout"></svg>
@@ -62,9 +62,9 @@
 
     <span class="c-header__presence" [title]="presenceText()">
       <svg sfIcon="users"></svg>
-      <span class="c-header__presence-label" aria-hidden="true"
-        >{{ operators() }} in der Regie</span
-      >
+      <span class="c-header__presence-label" aria-hidden="true">{{
+        t('regie.header.presence.short', { count: operators() })
+      }}</span>
       <span class="u-sr-only">{{ presenceText() }}</span>
     </span>
     <span class="c-header__clock u-mono">{{ clockText() }}</span>

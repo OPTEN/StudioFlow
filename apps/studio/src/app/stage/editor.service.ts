@@ -1,4 +1,5 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   LIMITS,
   applyLayoutTemplate,
@@ -18,14 +19,28 @@ import { KeyboardService } from '../core/ui/keyboard.service';
 import { ToastService } from '../core/ui/toast.service';
 import { SwitcherService } from './switcher.service';
 
-/** Toast when an edit targets the live scene in Studio-Modus (prototype). */
-export const LIVE_LOCKED_MESSAGE =
-  'Diese Szene ist live. Erst eine andere Szene ins Program schalten.';
-/** Toast when undo/redo would change the live scene in Studio-Modus (prototype). */
-export const LIVE_UNDO_MESSAGE = 'Diese Szene ist live und bleibt unverändert';
-/** Toast when an edit needs the server but the hub is disconnected. */
-export const OFFLINE_EDIT_MESSAGE =
-  'Keine Verbindung zum Server. Änderungen gehen wieder, sobald die Regie verbunden ist.';
+/** Toast when an edit targets the live scene in Studio Mode (prototype), in the active language. */
+export function liveLockedMessage(): string {
+  return t('regie.stage.editor.liveLocked');
+}
+/**
+ * Transitional export for `docks/sources/add-source-popover`, which still reads the former string constant
+ * (`{{ lockedMessage }}`). It renders as {@link liveLockedMessage}, resolved when it is read, so it follows the
+ * language. Remove it once the docks call {@link liveLockedMessage} themselves.
+ *
+ * @deprecated use {@link liveLockedMessage}
+ */
+export const LIVE_LOCKED_MESSAGE = {
+  toString: liveLockedMessage,
+} as unknown as string;
+/** Toast when undo/redo would change the live scene in Studio Mode (prototype), in the active language. */
+export function liveUndoMessage(): string {
+  return t('regie.stage.editor.liveUnchanged');
+}
+/** Toast when an edit needs the server but the hub is disconnected, in the active language. */
+export function offlineEditMessage(): string {
+  return t('regie.stage.editor.offline');
+}
 
 /** Undo steps kept per scene (spec 9.1). */
 export const UNDO_LIMIT = 60;
@@ -95,10 +110,10 @@ function sameRect(a: SceneItemDto, b: SceneItemDto): boolean {
 }
 
 /**
- * Editing the scene in the editable monitor (prototype «Overlay», «Auswahl», «Eigenschaften», spec 4.3, 9.1).
+ * Editing the scene in the editable monitor (prototype "Overlay", "Selection", "Properties", spec 4.3, 9.1).
  *
- * - {@link editScene}: the preview scene in Studio-Modus, else the program scene, with local drafts applied.
- * - {@link editLocked}: Studio-Modus with preview = program (the live scene cannot be edited then).
+ * - {@link editScene}: the preview scene in Studio Mode, else the program scene, with local drafts applied.
+ * - {@link editLocked}: Studio Mode with preview = program (the live scene cannot be edited then).
  * - Writes are optimistic: the change shows immediately ({@link displayScene}) and is sent sequentially per scene
  *   (at most one request in flight, so never more than one per item); rapid edits of the same item coalesce and the
  *   newest state wins. A draft is dropped when the store reaches the scene version our requests returned, or on an
@@ -133,14 +148,14 @@ export class EditorService {
     this.switcher.studioMode() ? this.store.previewScene() : this.store.programScene(),
   );
 
-  /** The scene being edited, with local drafts: preview in Studio-Modus, else program. Null without scenes. */
+  /** The scene being edited, with local drafts: preview in Studio Mode, else program. Null without scenes. */
   readonly editScene = computed<SceneDto | null>(() => {
     const scene = this.baseEditScene();
     return scene ? this.displayScene(scene) : null;
   });
   /** Id of {@link editScene}. */
   readonly editSceneId = computed(() => this.baseEditScene()?.id ?? null);
-  /** Studio-Modus with preview = program: the live scene stays unchanged (prototype `editLocked`). */
+  /** Studio Mode with preview = program: the live scene stays unchanged (prototype `editLocked`). */
   readonly editLocked = computed(() => {
     const preview = this.store.previewSceneId();
     return (
@@ -310,7 +325,7 @@ export class EditorService {
       return false;
     }
     if (items.length > LIMITS.itemsPerScene) {
-      this.toasts.show(`Eine Szene hat höchstens ${LIMITS.itemsPerScene} Elemente.`);
+      this.toasts.show(t('regie.stage.editor.itemLimit', { count: LIMITS.itemsPerScene }));
       return false;
     }
     this.recordUndo(scene, true);
@@ -329,7 +344,7 @@ export class EditorService {
       return null;
     }
     if (scene.items.length >= LIMITS.itemsPerScene) {
-      this.toasts.show(`Eine Szene hat höchstens ${LIMITS.itemsPerScene} Elemente.`);
+      this.toasts.show(t('regie.stage.editor.itemLimit', { count: LIMITS.itemsPerScene }));
       return null;
     }
     const source = this.store.sourceById(sourceId);
@@ -337,11 +352,16 @@ export class EditorService {
     this.recordUndo(scene, true);
     this.enqueue(scene, { kind: 'replace', items: [...scene.items, item], layoutMode: null });
     this.select(item.id);
-    this.toasts.show(`${source?.code ?? 'Quelle'} in «${scene.name}» eingefügt`);
+    this.toasts.show(
+      t('regie.stage.editor.sourceAdded', {
+        code: source?.code ?? t('regie.stage.editor.sourceFallback'),
+        scene: scene.name,
+      }),
+    );
     return item.id;
   }
 
-  /** Removes an item; the toast offers «Rückgängig». */
+  /** Removes an item; the toast offers "Undo". */
   removeItem(itemId: string): boolean {
     const scene = this.editScene();
     const item = scene?.items.find((entry) => entry.id === itemId);
@@ -353,9 +373,9 @@ export class EditorService {
     if (this.selectedItemIdSignal() === itemId) {
       this.select(null);
     }
-    const code = this.store.codeOf(item.source) ?? 'Element';
-    this.toasts.show(`${code} aus «${scene.name}» entfernt`, {
-      label: 'Rückgängig',
+    const code = this.store.codeOf(item.source) ?? t('regie.stage.editor.itemFallback');
+    this.toasts.show(t('regie.stage.editor.itemRemoved', { code, scene: scene.name }), {
+      label: t('regie.stage.editor.undo'),
       run: () => this.undo(scene.id),
     });
     return true;
@@ -383,7 +403,7 @@ export class EditorService {
       return false;
     }
     if (!this.store.canCommand()) {
-      this.toasts.show(OFFLINE_EDIT_MESSAGE);
+      this.toasts.show(offlineEditMessage());
       return false;
     }
     this.enqueue(scene, { kind: 'item', item: { ...item, locked: !item.locked } });
@@ -411,14 +431,14 @@ export class EditorService {
     return this.replaceItems(items);
   }
 
-  /** Applies a layout template («Vorlage anwenden»); the toast offers «Rückgängig». */
+  /** Applies a layout template ("Apply template"); the toast offers "Undo". */
   applyTemplate(templateId: LayoutTemplateId): boolean {
     const scene = this.editScene();
     if (!scene || !this.guard()) {
       return false;
     }
     if (!scene.items.some((item) => !item.hidden)) {
-      this.toasts.show('Erst eine Quelle hinzufügen');
+      this.toasts.show(t('regie.stage.editor.addSourceFirst'));
       return false;
     }
     const result = applyLayoutTemplate(scene.items, templateId, (sourceId) =>
@@ -426,10 +446,13 @@ export class EditorService {
     );
     this.recordUndo(scene, true);
     this.enqueue(scene, { kind: 'replace', items: result.items, layoutMode: result.layoutMode });
-    this.toasts.show(`Vorlage «${layoutTemplate(templateId).name}» angewendet`, {
-      label: 'Rückgängig',
-      run: () => this.undo(scene.id),
-    });
+    this.toasts.show(
+      t('regie.stage.editor.templateApplied', { name: layoutTemplate(templateId).name }),
+      {
+        label: t('regie.stage.editor.undo'),
+        run: () => this.undo(scene.id),
+      },
+    );
     return true;
   }
 
@@ -439,14 +462,20 @@ export class EditorService {
       this.undoStacks,
       this.redoStacks,
       sceneId,
-      'Nichts zum Rückgängigmachen',
-      'Rückgängig gemacht',
+      'regie.stage.editor.nothingToUndo',
+      'regie.stage.editor.undone',
     );
   }
 
   /** Redoes the last undone change of the edit scene (or of `sceneId`). */
   redo(sceneId?: string): void {
-    this.travel(this.redoStacks, this.undoStacks, sceneId, 'Nichts zum Wiederholen', 'Wiederholt');
+    this.travel(
+      this.redoStacks,
+      this.undoStacks,
+      sceneId,
+      'regie.stage.editor.nothingToRedo',
+      'regie.stage.editor.redone',
+    );
   }
 
   // ---------------------------------------------------------------- Internals
@@ -455,22 +484,22 @@ export class EditorService {
     from: Map<string, SceneSnapshot[]>,
     to: Map<string, SceneSnapshot[]>,
     sceneId: string | undefined,
-    emptyMessage: string,
-    doneMessage: string,
+    emptyMessage: PlainMessageKey,
+    doneMessage: PlainMessageKey,
   ): void {
     const id = sceneId ?? this.editSceneId();
     const base = id ? this.store.sceneById(id) : null;
     const stack = id ? from.get(id) : undefined;
     if (!id || !base || !stack || stack.length === 0) {
-      this.toasts.show(emptyMessage);
+      this.toasts.show(t(emptyMessage));
       return;
     }
     if (this.switcher.studioMode() && id === this.store.programSceneId()) {
-      this.toasts.show(LIVE_UNDO_MESSAGE);
+      this.toasts.show(liveUndoMessage());
       return;
     }
     if (!this.store.canCommand()) {
-      this.toasts.show(OFFLINE_EDIT_MESSAGE);
+      this.toasts.show(offlineEditMessage());
       return;
     }
     const target = stack.pop() as SceneSnapshot;
@@ -482,17 +511,17 @@ export class EditorService {
     if (selected && !target.items.some((item) => item.id === selected)) {
       this.select(null);
     }
-    this.toasts.show(doneMessage);
+    this.toasts.show(t(doneMessage));
   }
 
   /** Checks the edit lock and the connection; shows the reason as a toast. */
   private guard(): boolean {
     if (this.editLocked()) {
-      this.toasts.show(LIVE_LOCKED_MESSAGE);
+      this.toasts.show(liveLockedMessage());
       return false;
     }
     if (!this.store.canCommand()) {
-      this.toasts.show(OFFLINE_EDIT_MESSAGE);
+      this.toasts.show(offlineEditMessage());
       return false;
     }
     return true;

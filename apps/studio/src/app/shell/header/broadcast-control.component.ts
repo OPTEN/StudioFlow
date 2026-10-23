@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import { formatRuntime } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -11,13 +12,13 @@ import {
 } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
 
-/** Id of the «Sendung beenden» confirmation popover. */
+/** Id of the "End broadcast" confirmation popover. */
 export const BROADCAST_END_POPOVER = 'broadcast-end';
 
 /**
- * Broadcast state in the header (spec 4.2, 9.1): «BEREIT» with «Sendung starten»; while live the red LIVE dot with
- * the mono runtime and «Sendung beenden» (confirmation in a dashed red box); after the end «BEENDET» with «Zurück auf
- * Bereit» and «Sendung starten». Buttons are disabled while a request runs or the Regie is offline.
+ * Broadcast state in the header (spec 4.2, 9.1): "READY" with "Start broadcast"; while live the red LIVE dot with
+ * the mono runtime and "End broadcast" (confirmation in a dashed red box); after the end "ENDED" with "Back to
+ * Ready" and "Start broadcast". Buttons are disabled while a request runs or the Regie is offline.
  */
 @Component({
   selector: 'sf-broadcast-control',
@@ -25,8 +26,9 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
   template: `
     @switch (broadcast()) {
       @case ('live') {
-        <span class="c-live" title="Seit Start der Sendung">
-          <span class="c-live__dot" aria-hidden="true"></span><b>LIVE</b>
+        <span class="c-live" [title]="t('regie.header.broadcast.sinceStart')">
+          <span class="c-live__dot" aria-hidden="true"></span
+          ><b>{{ t('regie.header.broadcast.live') }}</b>
           <span class="u-mono c-live__time">{{ runtime() }}</span>
         </span>
         <div class="c-pop-wrap">
@@ -37,18 +39,18 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
             [sfPopoverTrigger]="endPopover"
             [disabled]="busy() || !store.canCommand()"
           >
-            Sendung beenden
+            {{ t('regie.header.broadcast.end') }}
           </button>
           @if (popovers.isOpen(endPopover)) {
             <div
               class="c-pop c-broadcast__pop"
               role="dialog"
-              aria-label="Sendung beenden"
+              [attr.aria-label]="t('regie.header.broadcast.end')"
               [sfPopover]="endPopover"
             >
               <sf-confirm-box
-                label="Sendung beenden"
-                confirmLabel="Sendung beenden"
+                [label]="t('regie.header.broadcast.end')"
+                [confirmLabel]="t('regie.header.broadcast.end')"
                 [message]="endMessage()"
                 [busy]="busy()"
                 (confirm)="end()"
@@ -59,14 +61,16 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
         </div>
       }
       @case ('ended') {
-        <span class="c-live is-quiet" [title]="endedTitle()"><b>BEENDET</b></span>
+        <span class="c-live is-quiet" [title]="endedTitle()"
+          ><b>{{ t('regie.header.broadcast.ended') }}</b></span
+        >
         <button
           class="c-btn c-btn--sm"
           type="button"
           [disabled]="busy() || !store.canCommand()"
           (click)="reset()"
         >
-          Zurück auf Bereit
+          {{ t('regie.header.broadcast.reset') }}
         </button>
         <button
           class="c-btn c-btn--sm c-btn--primary"
@@ -74,12 +78,12 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
           [disabled]="busy() || !store.canCommand()"
           (click)="start()"
         >
-          Sendung starten
+          {{ t('regie.header.broadcast.start') }}
         </button>
       }
       @default {
-        <span class="c-live is-quiet" title="Der Output zeigt die Slate vor der Sendung"
-          ><b>BEREIT</b></span
+        <span class="c-live is-quiet" [title]="t('regie.header.broadcast.readyTitle')"
+          ><b>{{ t('regie.header.broadcast.ready') }}</b></span
         >
         <button
           class="c-btn c-btn--sm c-btn--primary"
@@ -87,7 +91,7 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
           [disabled]="busy() || !store.canCommand() || !store.state()"
           (click)="start()"
         >
-          Sendung starten
+          {{ t('regie.header.broadcast.start') }}
         </button>
       }
     }
@@ -143,42 +147,41 @@ export class BroadcastControlComponent {
   private readonly toasts = inject(ToastService);
   private readonly clock = inject(ClockService);
 
+  protected readonly t = t;
   protected readonly endPopover = BROADCAST_END_POPOVER;
   protected readonly busy = signal(false);
   protected readonly broadcast = this.store.broadcast;
 
-  /** LIVE runtime «hh:mm:ss» since `liveSince` (server time). */
+  /** LIVE runtime "hh:mm:ss" since `liveSince` (server time). */
   protected readonly runtime = computed(() =>
     formatRuntime(this.store.elapsedSince(this.store.production()?.liveSince, this.clock.now())),
   );
   protected readonly endMessage = computed(() => {
     const title = this.store.production()?.endSlate.title;
     return title
-      ? `Die Sendung wird beendet. Der Output zeigt danach «${title}».`
-      : 'Die Sendung wird beendet. Der Output zeigt danach die Schluss-Slate.';
+      ? t('regie.header.broadcast.endConfirm', { title })
+      : t('regie.header.broadcast.endConfirmNoTitle');
   });
   protected readonly endedTitle = computed(() =>
-    this.store.production()?.endedAt
-      ? 'Die Sendung ist beendet; der Output zeigt die Schluss-Slate'
-      : '',
+    this.store.production()?.endedAt ? t('regie.header.broadcast.endedTitle') : '',
   );
 
   protected start(): Promise<void> {
-    return this.run((id) => this.api.startBroadcast(id), 'Die Sendung läuft');
+    return this.run((id) => this.api.startBroadcast(id), 'regie.header.broadcast.startDone');
   }
 
   protected async end(): Promise<void> {
-    await this.run((id) => this.api.endBroadcast(id), 'Sendung beendet');
+    await this.run((id) => this.api.endBroadcast(id), 'regie.header.broadcast.endDone');
     this.popovers.close(this.endPopover);
   }
 
   protected reset(): Promise<void> {
-    return this.run((id) => this.api.resetBroadcast(id), 'Zurück auf Bereit');
+    return this.run((id) => this.api.resetBroadcast(id), 'regie.header.broadcast.reset');
   }
 
   private async run(
     request: (productionId: string) => Promise<unknown>,
-    done: string,
+    done: PlainMessageKey,
   ): Promise<void> {
     const productionId = this.store.productionId();
     if (!productionId || this.busy()) {
@@ -187,7 +190,7 @@ export class BroadcastControlComponent {
     this.busy.set(true);
     try {
       await request(productionId);
-      this.toasts.show(done);
+      this.toasts.show(t(done));
     } catch (error) {
       this.toasts.error(error);
     } finally {

@@ -9,11 +9,7 @@ import {
 } from '../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ControlColumnComponent } from './control-column.component';
-import { SWITCH_HINTS, SwitcherService } from './switcher.service';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
+import { SwitcherService } from './switcher.service';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -61,7 +57,7 @@ describe('ControlColumnComponent', () => {
         entry.getAttribute('aria-label') === label,
     );
     if (!found) {
-      throw new Error(`no button «${label}»`);
+      throw new Error(`no button "${label}"`);
     }
     return found;
   }
@@ -76,19 +72,21 @@ describe('ControlColumnComponent', () => {
 
   afterEach(() => harness?.http.verify());
 
-  it('shows the direct mode: switch off, Blende 0,3 s, no Take, the direct hint', async () => {
+  it('shows the direct mode: switch off, Fade 0.3 s, no Take, the direct hint', async () => {
     await setup();
     expect(studioSwitch().checked).toBe(false);
-    expect(element.querySelector('label.c-switch')?.textContent?.trim()).toBe('Studio-Modus');
-    expect(element.querySelector('[role="group"][aria-label="Art des Übergangs"]')).not.toBeNull();
-    expect(button('Blende').getAttribute('aria-pressed')).toBe('true');
-    expect(button('Schnitt').getAttribute('aria-pressed')).toBe('false');
-    expect(element.querySelector('.c-duration__value')?.textContent).toBe('0,3 s');
+    expect(element.querySelector('label.c-switch')?.textContent?.trim()).toBe('Studio Mode');
+    expect(element.querySelector('[role="group"][aria-label="Transition type"]')).not.toBeNull();
+    expect(button('Fade').getAttribute('aria-pressed')).toBe('true');
+    expect(button('Cut').getAttribute('aria-pressed')).toBe('false');
+    expect(element.querySelector('.c-duration__value')?.textContent).toBe('0.3 s');
     expect(take()).toBeNull();
-    expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(SWITCH_HINTS.direct);
+    expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(
+      'Click a scene to switch it live directly.',
+    );
   });
 
-  it('turns Studio-Modus on: Take with «Leerschlag» appears and the hint changes', async () => {
+  it('turns Studio Mode on: Take with "Space" appears and the hint changes', async () => {
     await setup();
     studioSwitch().click();
     await render();
@@ -96,35 +94,37 @@ describe('ControlColumnComponent', () => {
     harness.http.expectOne(`${BASE}/preview`).flush(productionFixture({ previewSceneId: 'scn_b' }));
     await render();
     expect(switcher.studioMode()).toBe(true);
-    expect(take()?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Take Leerschlag');
+    expect(take()?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Take Space');
     expect(take()?.getAttribute('aria-keyshortcuts')).toBe('Space');
-    expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(SWITCH_HINTS.studio);
+    expect(element.querySelector('.c-control-column__hint')?.textContent).toBe(
+      'Click a scene to load it into Preview. Take switches it live.',
+    );
   });
 
-  it('switches to Schnitt: the duration is muted and both steppers are disabled', async () => {
+  it('switches to Cut: the duration is muted and both steppers are disabled', async () => {
     await setup();
-    button('Schnitt').click();
+    button('Cut').click();
     await render();
-    expect(button('Schnitt').getAttribute('aria-pressed')).toBe('true');
+    expect(button('Cut').getAttribute('aria-pressed')).toBe('true');
     expect(element.querySelector('.c-duration')?.classList.contains('is-off')).toBe(true);
-    expect(button('Blende kürzer').disabled).toBe(true);
-    expect(button('Blende länger').disabled).toBe(true);
+    expect(button('Shorter fade').disabled).toBe(true);
+    expect(button('Longer fade').disabled).toBe(true);
     expect(switcher.transition()).toEqual({ kind: 'cut', durationMs: 0 });
   });
 
   it('steps the fade duration and disables the steppers at the ends', async () => {
     await setup({ transition: JSON.stringify({ kind: 'fade', durationMs: 200 }) });
-    expect(button('Blende kürzer').disabled).toBe(true);
-    button('Blende länger').click();
+    expect(button('Shorter fade').disabled).toBe(true);
+    button('Longer fade').click();
     await render();
-    expect(element.querySelector('.c-duration__value')?.textContent).toBe('0,3 s');
+    expect(element.querySelector('.c-duration__value')?.textContent).toBe('0.3 s');
     for (let step = 0; step < 6; step += 1) {
-      button('Blende länger').click();
+      button('Longer fade').click();
       await render();
     }
     expect(element.querySelector('.c-duration__value')?.textContent).toBe('2 s');
-    expect(button('Blende länger').disabled).toBe(true);
-    expect(button('Blende kürzer').disabled).toBe(false);
+    expect(button('Longer fade').disabled).toBe(true);
+    expect(button('Shorter fade').disabled).toBe(false);
   });
 
   it('takes once and is disabled while the request is in flight (no double take)', async () => {

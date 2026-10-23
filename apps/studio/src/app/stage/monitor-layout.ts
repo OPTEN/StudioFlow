@@ -1,10 +1,10 @@
 /**
- * Sizing of the Preview and Program monitors on the stage (prototype `.mon { --mon-w: … }`, DESIGN.md «Stage»).
+ * Sizing of the Preview and Program monitors on the stage (prototype `.mon { --mon-w: … }`, DESIGN.md "Stage").
  *
  * The stage holds the monitors on the left and the fixed control column (172 px, 20 px gap) on the right. Monitors
  * are always 16:9 and are sized from the stage's width AND height, so they never overflow:
- * - Studio-Modus off: Program = min(width − 192, (height − 56) × 16/9), right-aligned against the control column.
- * - Studio-Modus on: the width minus 212 px (column, gap and the 20 px split) is shared by the split value
+ * - Studio Mode off: Program = min(width − 192, (height − 56) × 16/9), right-aligned against the control column.
+ * - Studio Mode on: the width minus 212 px (column, gap and the 20 px split) is shared by the split value
  *   (Preview share 0.3–0.7); each monitor is additionally limited by the height.
  * - ≤ 1180 px (stacked): the stage grows with its content, so only the width counts.
  * - ≤ 900 px (narrow): monitors take the full width (priority stack).
@@ -27,9 +27,9 @@ export interface MonitorLayoutInput {
   readonly width: number;
   /** Content height of the stage in CSS px (ignored when `heightBound` is false). */
   readonly height: number;
-  /** Studio-Modus: Preview and Program side by side. */
+  /** Studio Mode: Preview and Program side by side. */
   readonly studio: boolean;
-  /** Share of the Preview in Studio-Modus (0.3–0.7). */
+  /** Share of the Preview in Studio Mode (0.3–0.7). */
   readonly split: number;
   /** The stage has a fixed height (false at ≤ 1180 px, where the stage grows with its content). */
   readonly heightBound: boolean;
@@ -37,7 +37,7 @@ export interface MonitorLayoutInput {
   readonly fullWidth: boolean;
 }
 
-/** Monitor widths in CSS px; the preview is 0 without Studio-Modus. */
+/** Monitor widths in CSS px; the preview is 0 without Studio Mode. */
 export interface MonitorWidths {
   readonly preview: number;
   readonly program: number;

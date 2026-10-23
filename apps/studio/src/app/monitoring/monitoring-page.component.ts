@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { t, tm, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
   formatClock,
   formatKbpsAsMbit,
   formatPercent,
-  pluralize,
 } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ClockService } from '../core/ui/clock.service';
@@ -24,25 +24,28 @@ import {
 /** A column of the table. */
 interface ColumnDefinition {
   readonly id: MonitoringColumn;
-  readonly label: string;
+  /** Message key of the heading, or null for a unit that is never translated ({@link ColumnDefinition.unit}). */
+  readonly label: PlainMessageKey | null;
+  /** Heading that is the same in every language (fps, Mbit/s, RTT). */
+  readonly unit?: string;
   /** Right-aligned numbers. */
   readonly numeric: boolean;
 }
 
 /** Columns in display order. */
 export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
-  { id: 'station', label: 'Station', numeric: false },
-  { id: 'state', label: 'Zustand', numeric: false },
-  { id: 'codes', label: 'Quellen', numeric: false },
-  { id: 'resolution', label: 'Auflösung', numeric: false },
-  { id: 'fps', label: 'fps', numeric: true },
-  { id: 'bitrate', label: 'Mbit/s', numeric: true },
-  { id: 'loss', label: 'Verlust', numeric: true },
-  { id: 'rtt', label: 'RTT', numeric: true },
-  { id: 'battery', label: 'Akku', numeric: true },
-  { id: 'network', label: 'Netz', numeric: false },
-  { id: 'tech', label: 'Technik-Check', numeric: false },
-  { id: 'seen', label: 'Zuletzt', numeric: true },
+  { id: 'station', label: 'regie.monitoring.column.station', numeric: false },
+  { id: 'state', label: 'regie.monitoring.column.state', numeric: false },
+  { id: 'codes', label: 'regie.monitoring.column.codes', numeric: false },
+  { id: 'resolution', label: 'regie.monitoring.column.resolution', numeric: false },
+  { id: 'fps', label: null, unit: 'fps', numeric: true },
+  { id: 'bitrate', label: null, unit: 'Mbit/s', numeric: true },
+  { id: 'loss', label: 'regie.monitoring.column.loss', numeric: true },
+  { id: 'rtt', label: null, unit: 'RTT', numeric: true },
+  { id: 'battery', label: 'regie.monitoring.column.battery', numeric: true },
+  { id: 'network', label: 'regie.monitoring.column.network', numeric: false },
+  { id: 'tech', label: 'regie.monitoring.column.tech', numeric: false },
+  { id: 'seen', label: 'regie.monitoring.column.seen', numeric: true },
 ];
 
 /**
@@ -57,10 +60,10 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
   imports: [IconComponent, RouterLink],
   templateUrl: './monitoring-page.component.html',
   styleUrl: './monitoring-page.component.scss',
-  host: { lang: 'de-CH' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MonitoringPageComponent {
+  protected readonly t = t;
   protected readonly store = inject(ProductionStoreService);
   private readonly clock = inject(ClockService);
 
@@ -84,29 +87,33 @@ export class MonitoringPageComponent {
     const sending = rows.filter((row) => row.status === 'ok').length;
     const open = this.store.openIncidents().length;
     return [
-      pluralize(rows.length, 'Station', 'Stationen'),
-      `${sending} ${sending === 1 ? 'sendet' : 'senden'}`,
-      open > 0 ? pluralize(open, 'Störung', 'Störungen') : 'keine Störung',
+      t('regie.monitoring.summary.stations', { count: rows.length }),
+      t('regie.monitoring.summary.sending', { count: sending }),
+      t('regie.monitoring.summary.incidents', { count: open }),
     ].join(' · ');
   });
-  /** Connection state in the header: «Live», «Verbindet …» or «Offline» with the time of the last state. */
+  /** Connection state in the header: "Live", "Connecting…" or "Offline" with the time of the last state. */
   protected readonly connection = computed<{ lamp: LampTone; text: string }>(() => {
     const discovery = this.store.discoveryError();
     if (discovery) {
-      return { lamp: 'is-warn', text: discovery };
+      return { lamp: 'is-warn', text: tm(discovery) };
     }
     switch (this.store.status()) {
       case 'live':
-        return { lamp: '', text: 'Live' };
+        return { lamp: '', text: t('regie.monitoring.connection.live') };
       case 'offline': {
         const last = this.store.lastSyncAt();
         return {
           lamp: 'is-warn',
-          text: last ? `Offline · Stand ${formatClock(new Date(last))}` : 'Offline',
+          text: last
+            ? t('regie.monitoring.connection.offlineSince', {
+                time: formatClock(new Date(last)),
+              })
+            : t('regie.monitoring.connection.offline'),
         };
       }
       default:
-        return { lamp: 'is-idle', text: 'Verbindet …' };
+        return { lamp: 'is-idle', text: t('regie.monitoring.connection.connecting') };
     }
   });
 
@@ -146,7 +153,8 @@ export class MonitoringPageComponent {
     if (row.batteryPct === null) {
       return MISSING_VALUE;
     }
-    return `${formatPercent(row.batteryPct)}${row.charging ? ' · lädt' : ''}`;
+    const percent = formatPercent(row.batteryPct);
+    return row.charging ? t('regie.monitoring.batteryCharging', { percent }) : percent;
   }
 
   protected lowBattery(row: MonitoringRow): boolean {

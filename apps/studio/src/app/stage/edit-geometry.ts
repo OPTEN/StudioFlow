@@ -1,11 +1,12 @@
 /**
- * Pure geometry of the edit overlay (prototype «Overlay: Elemente bearbeiten», spec 9.1): snapping, moving, resizing
+ * Pure geometry of the edit overlay (prototype "Overlay: edit items", spec 9.1): snapping, moving, resizing
  * from a corner (aspect ratio kept unless Shift), cropping from a corner or an edge (Alt, like OBS), keyboard nudges
  * and the label text of the selection box. Everything works in canvas pixels (1920 × 1080); thresholds that are
  * defined in screen pixels are converted with the monitor scale by the caller.
  *
  * No Angular, no DOM: the overlay component feeds pointer deltas in and writes the results to the EditorService.
  */
+import { t } from '@studioflow/i18n';
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -361,7 +362,7 @@ export function hasCrop(crop: CropDto | null | undefined): boolean {
 }
 
 /**
- * Short crop text for the selection label: «L 10 % R 5 %» (links, rechts, oben, unten; whole percent of the picture);
+ * Short crop text for the selection label: "L 10% R 5%" (left, right, top, bottom; whole percent of the picture);
  * empty without crop.
  */
 export function cropSummary(crop: CropDto | null | undefined): string {
@@ -369,10 +370,10 @@ export function cropSummary(crop: CropDto | null | undefined): string {
     return '';
   }
   const sides: readonly [string, number][] = [
-    ['L', crop.left],
-    ['R', crop.right],
-    ['O', crop.top],
-    ['U', crop.bottom],
+    [t('regie.stage.crop.left'), crop.left],
+    [t('regie.stage.crop.right'), crop.right],
+    [t('regie.stage.crop.top'), crop.top],
+    [t('regie.stage.crop.bottom'), crop.bottom],
   ];
   return sides
     .filter(([, value]) => value > 0)
@@ -381,13 +382,13 @@ export function cropSummary(crop: CropDto | null | undefined): string {
 }
 
 /**
- * Text of the selection label (prototype «K1 · 600 × 338»), with the crop when there is one:
- * «K1 · 540 × 338 · Zuschnitt R 10 %».
+ * Text of the selection label (prototype "K1 · 600 × 338"), with the crop when there is one:
+ * "K1 · 540 × 338 · Crop R 10%".
  */
 export function boxLabel(code: string, rect: CanvasRect, crop?: CropDto | null): string {
   const size = `${code} · ${Math.round(rect.w)} × ${Math.round(rect.h)}`;
   const cropped = cropSummary(crop);
-  return cropped ? `${size} · Zuschnitt ${cropped}` : size;
+  return cropped ? `${size} · ${t('regie.stage.crop.summary', { sides: cropped })}` : size;
 }
 
 /** A rectangle as percentages of the canvas (for absolutely positioned overlay boxes). */
