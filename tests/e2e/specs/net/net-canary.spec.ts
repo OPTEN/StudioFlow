@@ -19,10 +19,21 @@ import { makePng, padTo } from '../../support/media-samples';
  */
 
 const CANARY_FILE = path.join(OUTPUT_DIR, 'canary.json');
-const results: Record<string, { ok: boolean; detail: string }> = {};
+const results: Record<string, { ok: boolean; detail: string; skipped?: boolean }> = {};
 
 function record(tool: string, ok: boolean, detail: string): void {
   results[tool] = { ok, detail };
+  writeResults();
+}
+
+/** The machine cannot provide the tool (not a product failure): dependent tests are skipped, see requireTool(). */
+function recordSkipped(tool: string, detail: string): void {
+  results[tool] = { ok: false, detail, skipped: true };
+  test.info().annotations.push({ type: 'skipped-tool', description: `${tool}: ${detail}` });
+  writeResults();
+}
+
+function writeResults(): void {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(CANARY_FILE, JSON.stringify(results, null, 2));
 }
@@ -32,6 +43,30 @@ test.describe.configure({ mode: 'serial' });
 test.afterAll(async () => {
   await restoreNetwork().catch(() => undefined);
 });
+
+/**
+ * netem 200 ms: RTT of the ICE pair >= 0.3 s, back to < 0.05 s after clearing. The CI runners set E2E_NETEM=unavailable
+ * (tests/e2e/load-netem-modules.sh) when the kernel has no sch_netem, ifb or act_mirred: the tool is then skipped.
+ */
+async function checkNetem(viewer: LiveKitPage): Promise<void> {
+  if (process.env['E2E_NETEM'] === 'unavailable') {
+    recordSkipped('netem', 'the kernel of this machine has no sch_netem, ifb or act_mirred (E2E_NETEM=unavailable)');
+    return;
+  }
+  await livekitCtl.netem({ delayMs: 200, jitterMs: 0, lossPct: 0 });
+  const slowRtt = await waitUntil('RTT >= 0.3 s under netem', async () => {
+    const rtt = await viewer.iceRtt();
+    return rtt !== null && rtt >= 0.3 ? rtt : false;
+  }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
+  await livekitCtl.clearNetem();
+  const fastRtt = await waitUntil('RTT < 0.05 s after clear', async () => {
+    const rtt = await viewer.iceRtt();
+    return rtt !== null && rtt < 0.05 ? rtt : false;
+  }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
+  record('netem', slowRtt !== null && fastRtt !== null, `rtt under netem ${slowRtt}, after clear ${fastRtt}`);
+  expect(slowRtt, 'netem 200 ms shaped both directions (RTT >= 0.3 s)').not.toBeNull();
+  expect(fastRtt, 'clearNetem restores the RTT').not.toBeNull();
+}
 
 test.describe('NET canary', () => {
   test('E2E-NET-00 [offline] context.setOffline blocks fetch and WebSocket and restores', t.smoke, async ({ context, page, config, api }) => {
@@ -128,20 +163,7 @@ test.describe('NET canary', () => {
       record('lk.pause', stalled <= 3, `frames during the pause: ${stalled}`);
       expect(stalled, 'inbound frames stall while LiveKit is paused').toBeLessThanOrEqual(3);
 
-      // (4) netem 200 ms: RTT of the ICE pair >= 0.3 s, back to < 0.05 s after clearing
-      await livekitCtl.netem({ delayMs: 200, jitterMs: 0, lossPct: 0 });
-      const slowRtt = await waitUntil('RTT >= 0.3 s under netem', async () => {
-        const rtt = await viewer.iceRtt();
-        return rtt !== null && rtt >= 0.3 ? rtt : false;
-      }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
-      await livekitCtl.clearNetem();
-      const fastRtt = await waitUntil('RTT < 0.05 s after clear', async () => {
-        const rtt = await viewer.iceRtt();
-        return rtt !== null && rtt < 0.05 ? rtt : false;
-      }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
-      record('netem', slowRtt !== null && fastRtt !== null, `rtt under netem ${slowRtt}, after clear ${fastRtt}`);
-      expect(slowRtt, 'netem 200 ms shaped both directions (RTT >= 0.3 s)').not.toBeNull();
-      expect(fastRtt, 'clearNetem restores the RTT').not.toBeNull();
+      await checkNetem(viewer);
 
       // (5) network disconnect/connect: unreachable, then reachable again for signalling and media
       await livekitCtl.disconnect();
@@ -250,8 +272,8 @@ test.describe('NET canary', () => {
   });
 
   test('E2E-NET-00 [summary] every tool is available', t.smoke, async () => {
-    const recorded = JSON.parse(fs.readFileSync(CANARY_FILE, 'utf8')) as Record<string, { ok: boolean; detail: string }>;
-    const failed = Object.entries(recorded).filter(([, value]) => !value.ok);
+    const recorded = JSON.parse(fs.readFileSync(CANARY_FILE, 'utf8')) as typeof results;
+    const failed = Object.entries(recorded).filter(([, value]) => !value.ok && !value.skipped);
     expect(failed.map(([tool, value]) => `${tool}: ${value.detail}`), 'tools that did not work').toEqual([]);
     expect(Object.keys(recorded)).toEqual(expect.arrayContaining(['setOffline', 'net.cut', 'cdpThrottle', 'timecode-decode', 'lk.pause', 'netem', 'lk.disconnect', 'screen-share']));
   });
