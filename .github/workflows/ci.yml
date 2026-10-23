@@ -47,7 +47,7 @@ jobs:
       - name: Prettier
         run: npm run format:check
       - name: dotnet format
-        run: dotnet format apps/api/FlowStudio.slnx --verify-no-changes
+        run: dotnet format apps/api/StudioFlow.slnx --verify-no-changes
 
   unit-web:
     runs-on: ubuntu-latest
@@ -85,7 +85,7 @@ jobs:
             apps/api/**/*.csproj
       # TreatWarningsAsErrors is set in apps/api/Directory.Build.props: a warning fails the build.
       - name: Build
-        run: dotnet build apps/api/FlowStudio.slnx
+        run: dotnet build apps/api/StudioFlow.slnx
       # The integration tests start PostgreSQL with Testcontainers; Docker is available on the runner.
       - name: Tests
         run: npm run test:api -- --no-build
@@ -133,7 +133,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/api
-          tags: flowstudio-api
+          tags: studioflow-api
           outputs: type=docker,dest=${{ runner.temp }}/api.tar
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
@@ -142,7 +142,7 @@ jobs:
         with:
           context: .
           file: infra/caddy/Dockerfile
-          tags: flowstudio-caddy
+          tags: studioflow-caddy
           outputs: type=docker,dest=${{ runner.temp }}/caddy.tar
           cache-from: type=gha,scope=caddy
           cache-to: type=gha,scope=caddy,mode=max
@@ -190,13 +190,13 @@ jobs:
         with:
           name: images
           path: ${{ runner.temp }}/images
-      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is fs-e2e-1.
+      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is sf-e2e-1.
       - name: Load the images
         run: |
           docker load --input "$RUNNER_TEMP/images/api.tar"
           docker load --input "$RUNNER_TEMP/images/caddy.tar"
-          docker tag flowstudio-api "fs-e2e-${E2E_STACK}-api"
-          docker tag flowstudio-caddy "fs-e2e-${E2E_STACK}-caddy"
+          docker tag studioflow-api "sf-e2e-${E2E_STACK}-api"
+          docker tag studioflow-caddy "sf-e2e-${E2E_STACK}-caddy"
       - name: Start the stack
         run: tests/e2e/stack.sh up "$E2E_STACK"
       - name: Run the smoke tests
