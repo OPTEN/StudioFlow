@@ -61,6 +61,24 @@ jobs:
           --project=ipad
           --project=desktop-firefox
           --project=webkit
+      # Image scan (issue 16): operating system packages and libraries of the images that were built for the run, the
+      # backup image and the two third-party images. A report in the job summary; it never fails the run (exit code 0).
+      - name: Install Trivy
+        if: always()
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+      - name: Scan the images with Trivy (report only)
+        if: always()
+        run: |
+          postgres_image="$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)"
+          livekit_image="$(sed -n 's/^ *image: \(livekit\/livekit-server:.*\)$/\1/p' docker-compose.yml)"
+          docker build --file infra/backup/Dockerfile --build-arg "POSTGRES_IMAGE=${postgres_image}" --tag studioflow-backup .
+          for image in "sf-e2e-${E2E_STACK}-api" "sf-e2e-${E2E_STACK}-caddy" studioflow-backup "$postgres_image" "$livekit_image"; do
+            echo "::group::Trivy $image"
+            trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 --format table --output "$RUNNER_TEMP/trivy.txt" "$image" || true
+            cat "$RUNNER_TEMP/trivy.txt"
+            echo "::endgroup::"
+            { echo "### Trivy: $image"; echo '```'; cat "$RUNNER_TEMP/trivy.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          done
       # The harness collects the container logs (docker compose logs) in .output/<project>/logs when the run ends.
       - name: Upload the Playwright report and the container logs
         if: failure()
