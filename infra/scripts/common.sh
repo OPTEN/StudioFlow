@@ -185,10 +185,11 @@ sf_up_and_wait() {
 	fi
 }
 
-# Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes.
-# Prints the container id; the caller removes it with sf_toolbox_stop.
+# Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes. Arguments (for
+# example -v host:container) go to `docker compose run`. Prints the container id; the caller removes it with
+# sf_toolbox_stop.
 sf_toolbox_start() {
-	sf_compose --profile tools run -d --rm --no-deps toolbox 2>/dev/null
+	sf_compose --profile tools run -d --rm --no-deps "$@" toolbox 2>/dev/null
 }
 
 sf_toolbox_stop() {
