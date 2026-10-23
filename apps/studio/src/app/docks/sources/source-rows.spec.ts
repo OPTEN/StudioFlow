@@ -1,3 +1,4 @@
+import { tm } from '@studioflow/i18n';
 import type { SourceDto } from '@studioflow/scene-model';
 import {
   itemFixture,
@@ -12,26 +13,22 @@ import {
   sourceRows,
   usageSentence,
 } from './source-rows';
-import { resetLocaleForTests } from '@studioflow/i18n';
 
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
-
-const K1 = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Handy Bühne links' });
+const K1 = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Phone stage left' });
 const K2 = sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', {
-  label: 'Handy Bühne rechts',
+  label: 'Phone stage right',
   status: 'reconnecting',
   statusSince: '2026-10-22T10:00:00.000Z',
 });
 const K3 = sourceFixture('dev_dddddddddddddddd', 'camera', 'K10', { status: 'blocked' });
 const S1 = sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', {
-  label: 'Laptop Lea · Folien',
+  label: 'Laptop Lea · Slides',
 });
 const M1: SourceDto = {
   id: 'ast_aaaaaaaaaaaaaaaa',
   code: 'M1',
   kind: 'image',
-  label: 'Titelfolie',
+  label: 'Title slide',
   deviceId: null,
   slot: null,
   assetId: 'ast_aaaaaaaaaaaaaaaa',
@@ -64,23 +61,23 @@ describe('source rows', () => {
       lamp: 'is-warn',
       statusSince: '2026-10-22T10:00:00.000Z',
     });
-    expect(middle.state).toEqual({ word: 'verbindet neu', tone: 'warn', timer: true });
+    expect(middle.state).toEqual({ word: 'reconnecting', tone: 'warn', timer: true });
     expect(back).toMatchObject({ code: 'S1', icon: 'screen', lamp: '', selected: false });
   });
 
-  it('shows a deleted source as «Quelle fehlt» with the icon of its reference', () => {
+  it('shows a deleted source as "Source missing" with the icon of its reference', () => {
     const scene = sceneFixture('scn_a', 'A', 0, [
       itemFixture('itm_1', 'dev_zzzzzzzzzzzzzzzz/screen-2'),
     ]);
     const [row] = sourceRows(scene, sources, null);
-    expect(row).toMatchObject({ code: '–', name: 'Quelle fehlt', icon: 'screen', missing: true });
+    expect(row).toMatchObject({ code: '–', name: 'Source missing', icon: 'screen', missing: true });
     expect(kindOfReference('ast_zzzzzzzzzzzzzzzz', null)).toBe('image');
   });
 
   it('offers the sources not in the scene, without blocked ones, grouped and sorted', () => {
     const scene = sceneFixture('scn_a', 'A', 0, [itemFixture('itm_1', K1.id)]);
     const groups = addableSourceGroups(scene, sources);
-    expect(groups.map((group) => group.label)).toEqual(['Kameras', 'Screens', 'Medien']);
+    expect(groups.map((group) => group.label)).toEqual(['Cameras', 'Screens', 'Media']);
     expect(groups[0].sources.map((source) => source.code)).toEqual(['K2']);
     expect(groups[2].sources.map((source) => source.code)).toEqual(['M1']);
     const full = sceneFixture('scn_b', 'B', 1, [
@@ -94,29 +91,31 @@ describe('source rows', () => {
 
   it('finds every use of a medium and turns it into a sentence', () => {
     const scenes = [
-      sceneFixture('scn_a', 'Pause', 0, [itemFixture('itm_1', M1.id)]),
+      sceneFixture('scn_a', 'Break', 0, [itemFixture('itm_1', M1.id)]),
       sceneFixture('scn_b', 'Intro', 1, [], {
         background: { color: '#000000', assetId: M1.id },
       }),
-      sceneFixture('scn_c', 'Gespräch', 2, [
+      sceneFixture('scn_c', 'Talk', 2, [
         itemFixture('itm_2', K1.id, { onLost: { holdMs: 3000, fallbackSource: M1.id } }),
       ]),
     ];
     const production = productionFixture({
-      standbySlate: { title: 'Gleich', subtitle: null, backgroundAssetId: M1.id },
+      standbySlate: { title: 'Soon', subtitle: null, backgroundAssetId: M1.id },
     });
     const usage = assetUsage(M1.id, scenes, production);
-    expect(usage).toEqual([
-      'in «Pause»',
-      'als Hintergrund von «Intro»',
-      'als Ersatzquelle in «Gespräch»',
-      'auf dem Slate vor der Sendung',
+    expect(usage.map(tm)).toEqual([
+      'in “Break”',
+      'as background of “Intro”',
+      'as fallback in “Talk”',
+      'on the slate before the broadcast',
     ]);
-    expect(usageSentence(usage.slice(0, 2))).toBe(
-      'Wird in «Pause» und als Hintergrund von «Intro» verwendet.',
+    expect(usageSentence(usage.slice(0, 1))).toBe('Used in “Break”.');
+    expect(usageSentence(usage.slice(0, 2))).toBe('Used in “Break” and as background of “Intro”.');
+    expect(usageSentence(usage.slice(0, 3))).toBe(
+      'Used in “Break”, as background of “Intro” and as fallback in “Talk”.',
     );
-    expect(usageSentence(usage)).toContain('(und 1 weitere)');
-    expect(usageSentence([])).toBe('Wird noch verwendet.');
+    expect(usageSentence(usage)).toContain('(and 1 more)');
+    expect(usageSentence([])).toBe('Still in use.');
     expect(assetUsage('ast_unused', scenes, production)).toEqual([]);
   });
 });

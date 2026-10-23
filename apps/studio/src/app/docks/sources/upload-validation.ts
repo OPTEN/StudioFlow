@@ -1,6 +1,8 @@
+import { msg, type Msg } from '@studioflow/i18n';
+
 /**
  * Client-side pre-check of media uploads (spec 4.7). The server verifies the real type by magic bytes; this check
- * only rejects obvious mistakes early, with a German message, before a 1 GB request starts.
+ * only rejects obvious mistakes early, with a message in the active language, before a 1 GB request starts.
  */
 
 /** Kind of an uploaded medium. */
@@ -15,9 +17,6 @@ export const UPLOAD_LIMITS = {
 /** `accept` attribute of the file input. */
 export const UPLOAD_ACCEPT =
   'image/png,image/jpeg,image/webp,video/mp4,video/webm,.png,.jpg,.jpeg,.webp,.mp4,.webm';
-
-/** Short description of what may be uploaded (drop zone). */
-export const UPLOAD_HINT = 'PNG, JPEG oder WebP bis 25 MB · MP4 oder WebM bis 1 GB';
 
 const MIME_KINDS: Readonly<Record<string, UploadKind>> = {
   'image/png': 'image',
@@ -43,14 +42,13 @@ export interface UploadCandidate {
   readonly type: string;
 }
 
-/** Result of {@link validateUpload}. */
+/** Result of {@link validateUpload}; the message stays correct when the language changes while it is shown. */
 export type UploadCheck =
-  | { readonly ok: true; readonly kind: UploadKind }
-  | { readonly ok: false; readonly message: string };
+  { readonly ok: true; readonly kind: UploadKind } | { readonly ok: false; readonly message: Msg };
 
 /**
  * Kind of a file by its MIME type, or by its extension when the browser reports no type. Null for every other
- * type (SVG, GIF, …): the MIME type wins over the extension, so «bild.png» with type `image/gif` is rejected.
+ * type (SVG, GIF, …): the MIME type wins over the extension, so "image.png" with type `image/gif` is rejected.
  */
 export function uploadKindOf(file: Pick<UploadCandidate, 'name' | 'type'>): UploadKind | null {
   const type = file.type.trim().toLowerCase();
@@ -66,25 +64,16 @@ export function uploadKindOf(file: Pick<UploadCandidate, 'name' | 'type'>): Uplo
 export function validateUpload(file: UploadCandidate): UploadCheck {
   const kind = uploadKindOf(file);
   if (!kind) {
-    return {
-      ok: false,
-      message: `«${file.name}»: Dieser Dateityp ist nicht erlaubt. Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.`,
-    };
+    return { ok: false, message: msg('regie.media.validation.type', { name: file.name }) };
   }
   if (file.size <= 0) {
-    return { ok: false, message: `«${file.name}» ist leer.` };
+    return { ok: false, message: msg('regie.media.validation.empty', { name: file.name }) };
   }
   if (kind === 'image' && file.size > UPLOAD_LIMITS.imageBytes) {
-    return {
-      ok: false,
-      message: `«${file.name}» ist zu gross. Bilder dürfen höchstens 25 MB gross sein.`,
-    };
+    return { ok: false, message: msg('regie.media.validation.imageTooLarge', { name: file.name }) };
   }
   if (kind === 'video' && file.size > UPLOAD_LIMITS.videoBytes) {
-    return {
-      ok: false,
-      message: `«${file.name}» ist zu gross. Videos dürfen höchstens 1 GB gross sein.`,
-    };
+    return { ok: false, message: msg('regie.media.validation.videoTooLarge', { name: file.name }) };
   }
   return { ok: true, kind };
 }

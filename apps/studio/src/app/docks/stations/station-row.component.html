@@ -45,9 +45,11 @@
             }
           }
           @case ('recovered') {
-            <span class="c-state--ok">wieder da</span>
+            <span class="c-state--ok">{{ t('regie.stations.line.back') }}</span>
+            @let gone = wasGone();
             <span
-              >war <span class="u-mono">{{ line.seconds }}</span> s weg</span
+              >{{ gone.before }}<span class="u-mono">{{ line.seconds }}</span
+              >{{ gone.after }}</span
             >
           }
           @case ('metrics') {
@@ -60,7 +62,9 @@
               >ms</span
             >
             @if (line.lowBattery !== null) {
-              <span class="c-state--warn">Akku {{ line.lowBattery }} %</span>
+              <span class="c-state--warn">{{
+                t('regie.stations.line.battery', { percent: percentText(line.lowBattery) })
+              }}</span>
             }
           }
         }
@@ -73,16 +77,14 @@
   @if (view().recovered.length > 0) {
     <div class="c-st__ack">
       <svg sfIcon="check" [size]="14"></svg>
-      <span class="u-spacer"
-        >Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.</span
-      >
+      <span class="u-spacer">{{ t('regie.stations.ack.text') }}</span>
       <button
         class="c-btn c-btn--sm"
         type="button"
         [disabled]="busy('ack')"
         (click)="acknowledge()"
       >
-        Gesehen
+        {{ t('regie.stations.ack.seen') }}
       </button>
     </div>
   }
@@ -95,7 +97,7 @@
             <dt>{{ entry.label }}</dt>
             <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
           }
-          <dt>Technik</dt>
+          <dt>{{ t('regie.stations.detail.tech') }}</dt>
           <dd class="c-st__tech">
             @if (tech(); as lamps) {
               @for (lamp of lamps; track lamp.label) {
@@ -105,7 +107,7 @@
                 </span>
               }
             } @else {
-              <span class="c-st__muted">noch nicht gelaufen</span>
+              <span class="c-st__muted">{{ t('regie.stations.detail.techNotRun') }}</span>
             }
           </dd>
         </dl>
@@ -121,8 +123,8 @@
               <svg sfIcon="send" [size]="14"></svg
               >{{
                 view().endedScreens.length > 1
-                  ? source.code + ' neu teilen lassen'
-                  : 'Neu teilen lassen'
+                  ? t('regie.stations.action.reshareCode', { code: source.code })
+                  : t('regie.stations.action.reshare')
               }}
             </button>
           }
@@ -133,7 +135,7 @@
               [disabled]="busy('camera')"
               (click)="switchCamera()"
             >
-              Kamera wechseln
+              {{ t('regie.stations.action.switchCamera') }}
             </button>
           }
           @if (!view().blocked) {
@@ -144,7 +146,7 @@
               [disabled]="busy('message')"
               (click)="toggleComposer()"
             >
-              <svg sfIcon="send" [size]="14"></svg>Nachricht senden
+              <svg sfIcon="send" [size]="14"></svg>{{ t('regie.stations.action.message') }}
             </button>
           }
           <button
@@ -153,7 +155,7 @@
             [disabled]="busy('rename')"
             (click)="startRename()"
           >
-            Umbenennen
+            {{ t('common.rename') }}
           </button>
           @if (view().blocked) {
             <button
@@ -162,7 +164,7 @@
               [disabled]="busy('unblock')"
               (click)="unblock()"
             >
-              Entsperren
+              {{ t('regie.stations.action.unblock') }}
             </button>
           }
           <span class="c-st__danger">
@@ -173,7 +175,7 @@
                 [disabled]="busy('remove')"
                 (click)="askConfirm('remove')"
               >
-                Entfernen
+                {{ t('common.remove') }}
               </button>
             }
             @if (!view().blocked) {
@@ -183,7 +185,7 @@
                 [disabled]="busy('block')"
                 (click)="askConfirm('block')"
               >
-                Gerät sperren
+                {{ t('regie.stations.action.block') }}
               </button>
             }
           </span>
@@ -191,13 +193,10 @@
 
         @if (confirm() === 'block') {
           <sf-confirm-box
-            label="Gerät sperren"
-            confirmLabel="Jetzt sperren"
+            [label]="t('regie.stations.action.block')"
+            [confirmLabel]="t('regie.stations.confirm.blockNow')"
             [flush]="true"
-            [message]="
-              label() +
-              ' wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.'
-            "
+            [message]="t('regie.stations.confirm.blockMessage', { label: label() })"
             [busy]="busy('block')"
             (confirm)="block()"
             (cancel)="confirm.set(null)"
@@ -205,14 +204,10 @@
         }
         @if (confirm() === 'remove') {
           <sf-confirm-box
-            label="Gerät entfernen"
-            confirmLabel="Entfernen"
+            [label]="t('regie.stations.confirm.removeLabel')"
+            [confirmLabel]="t('common.remove')"
             [flush]="true"
-            [message]="
-              '«' +
-              view().name +
-              '» wird entfernt. Elemente mit seinen Quellen zeigen danach «Quelle fehlt». Neu koppeln geht jederzeit.'
-            "
+            [message]="t('regie.stations.confirm.removeMessage', { name: view().name })"
             [busy]="busy('remove')"
             (confirm)="remove()"
             (cancel)="confirm.set(null)"
@@ -223,7 +218,7 @@
         }
         @if (renaming()) {
           <sf-inline-edit
-            label="Name der Station"
+            [label]="t('regie.stations.nameLabel')"
             [value]="device().name"
             [maxLength]="maxNameLength"
             (save)="rename($event)"

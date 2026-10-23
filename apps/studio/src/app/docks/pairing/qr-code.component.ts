@@ -37,7 +37,7 @@ export function qrMatrix(value: string, ecc: QrEcc = 'M'): boolean[][] {
 }
 
 /**
- * QR code as inline SVG (spec 3, research «QR code»): `uqr` encodes the URL, the modules become one `<path>`, dark
+ * QR code as inline SVG (spec 3, research "QR code"): `uqr` encodes the URL, the modules become one `<path>`, dark
  * on white with a 4-module quiet zone, never inverted in the dark theme. No `[innerHTML]` (Angular strips SVG).
  * The size comes from CSS (`width` of the host, default 168 px).
  */

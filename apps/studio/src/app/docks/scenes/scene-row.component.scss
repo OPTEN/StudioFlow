@@ -37,7 +37,7 @@
   }
 }
 
-// The current scene: the preview in Studio-Modus, else the program (prototype .is-pvw / :not(.is-studio) .is-pgm).
+// The current scene: the preview in Studio Mode, else the program (prototype .is-pvw / :not(.is-studio) .is-pgm).
 :host(.is-current) .c-scene,
 .c-scene--editing {
   background: var(--raised);

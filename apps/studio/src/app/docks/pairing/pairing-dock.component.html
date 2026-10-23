@@ -3,7 +3,7 @@
     sfDockActions
     class="c-ibtn"
     type="button"
-    aria-label="Gerät koppeln schliessen"
+    [attr.aria-label]="t('regie.pairing.dock.close')"
     (click)="layout.closePairing()"
   >
     <svg sfIcon="close"></svg>
@@ -14,7 +14,7 @@
       <div
         class="c-tabs"
         role="tablist"
-        aria-label="Art des Geräts"
+        [attr.aria-label]="t('regie.pairing.dock.tabs')"
         (keydown)="onTabKeyDown($event)"
       >
         @for (tab of tabs; track tab.id) {
@@ -28,7 +28,7 @@
             [attr.tabindex]="layout.pairingTab() === tab.id ? 0 : -1"
             (click)="select(tab.id)"
           >
-            <svg [sfIcon]="tab.icon"></svg>{{ tab.label }}
+            <svg [sfIcon]="tab.icon"></svg>{{ t(tab.labelKey) }}
           </button>
         }
       </div>
@@ -53,11 +53,8 @@
     </div>
     <div class="c-pair__side">
       @if (layout.pairingTab() === 'phone') {
-        <h3 class="c-pair__side-title">Tipps für fest montierte Handys</h3>
-        <p class="c-pair__side-text">
-          Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm selbst
-          wach und startet nach einem Neuladen mit den letzten Einstellungen.
-        </p>
+        <h3 class="c-pair__side-title">{{ t('regie.pairing.dock.tipsTitle') }}</h3>
+        <p class="c-pair__side-text">{{ t('regie.pairing.dock.tipsText') }}</p>
         @if (requests.pending().length > 0) {
           <sf-pairing-requests />
         }

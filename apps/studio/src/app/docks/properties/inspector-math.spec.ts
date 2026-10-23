@@ -43,7 +43,7 @@ describe('inspector math', () => {
     expect(holdChoices(3000).map((choice) => choice.value)).toEqual(['3000', '10000', 'hold']);
     expect(holdChoices(null)).toHaveLength(3);
     const custom = holdChoices(5000);
-    expect(custom[0]).toEqual({ value: '5000', label: 'Standbild 5 s, dann abgedunkelt' });
+    expect(custom[0]).toEqual({ value: '5000', label: 'Freeze frame 5 s, then dim' });
     expect(holdValue(null)).toBe('hold');
     expect(parseHoldValue('hold')).toBeNull();
     expect(parseHoldValue('10000')).toBe(10000);
@@ -53,12 +53,14 @@ describe('inspector math', () => {
 
   it('lists fallback sources without the own one, media first', () => {
     const own = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1');
-    const other = sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', { label: 'Handy Totale' });
+    const other = sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', {
+      label: 'Phone wide shot',
+    });
     const screen = sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { label: 'Laptop' });
     const media: SourceDto = { ...own, id: 'ast_a', code: 'M1', kind: 'image', label: 'Pause' };
     const sources = new Map([own, other, screen, media].map((source) => [source.id, source]));
     const groups = fallbackGroups(sources, own.id);
-    expect(groups.map((group) => group.label)).toEqual(['Medien', 'Kameras', 'Screens']);
+    expect(groups.map((group) => group.label)).toEqual(['Media', 'Cameras', 'Screens']);
     expect(groups[0].options).toEqual([{ id: 'ast_a', label: 'M1 · Pause' }]);
     expect(groups[1].options.map((option) => option.id)).toEqual([other.id]);
   });

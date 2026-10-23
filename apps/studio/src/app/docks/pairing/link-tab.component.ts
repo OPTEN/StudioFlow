@@ -9,6 +9,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { msg, t } from '@studioflow/i18n';
 import type { InviteDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -19,16 +20,18 @@ import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { displayUrl } from './public-url.service';
 
-/** «läuft in 28 Minuten ab» / «läuft in 1 Minute ab» / «läuft gleich ab» for a remaining time. */
+/** "expires in 28 minutes" / "expires in 1 minute" / "expires shortly" for a remaining time. */
 export function expiryText(remainingMs: number): string {
   const minutes = Math.round(remainingMs / 60_000);
   if (remainingMs <= 0) {
-    return 'abgelaufen';
+    return t('regie.pairing.expiry.expired');
   }
   if (minutes <= 1) {
-    return remainingMs < 30_000 ? 'läuft gleich ab' : 'läuft in 1 Minute ab';
+    return remainingMs < 30_000
+      ? t('regie.pairing.expiry.soon')
+      : t('regie.pairing.expiry.minutes', { count: 1 });
   }
-  return `läuft in ${minutes} Minuten ab`;
+  return t('regie.pairing.expiry.minutes', { count: minutes });
 }
 
 /** An open laptop invite with its texts. */
@@ -39,27 +42,24 @@ interface InviteRow {
 }
 
 /**
- * «Link» tab of the pairing dock (prototype `renderPair` link): «Link erstellen» creates a one-time invite for a
- * laptop (30 minutes), shows it large with «Kopieren», its validity and «Link widerrufen»; below, every open invite
- * of the production with its expiry and «Widerrufen».
+ * "Link" tab of the pairing dock (prototype `renderPair` link): "Create link" creates a one-time invite for a
+ * laptop (30 minutes), shows it large with "Copy", its validity and "Revoke link"; below, every open invite
+ * of the production with its expiry and "Revoke".
  */
 @Component({
   selector: 'sf-link-tab',
   imports: [IconComponent],
   template: `
-    <h3 class="c-pair__title">Einladungslink</h3>
-    <p class="c-pair__text">
-      Für Laptops, die schon vor dem Webinar gekoppelt werden sollen. Den Link per Teams oder Mail
-      schicken.
-    </p>
+    <h3 class="c-pair__title">{{ t('regie.pairing.link.title') }}</h3>
+    <p class="c-pair__text">{{ t('regie.pairing.link.text') }}</p>
     @if (current(); as row) {
       <div class="c-pair__big-url">
         <span class="c-pair__url c-pair__url--wrap" #url>{{ row.url }}</span>
         <button class="c-btn c-btn--sm" type="button" (click)="copy(row.invite)">
-          <svg sfIcon="copy" [size]="14"></svg>Kopieren
+          <svg sfIcon="copy" [size]="14"></svg>{{ t('common.copy') }}
         </button>
       </div>
-      <p class="c-hint">Gilt einmal und {{ row.expiry }}. Wer ihn öffnet, ist direkt gekoppelt.</p>
+      <p class="c-hint">{{ t('regie.pairing.link.validity', { expiry: row.expiry }) }}</p>
       <div class="c-pair__actions">
         <button
           class="c-btn c-btn--sm"
@@ -67,7 +67,7 @@ interface InviteRow {
           [disabled]="commands.blocked('invite:create')"
           (click)="create()"
         >
-          <svg sfIcon="link" [size]="14"></svg>Weiteren Link erstellen
+          <svg sfIcon="link" [size]="14"></svg>{{ t('regie.pairing.link.createAnother') }}
         </button>
         <button
           class="c-btn c-btn--sm c-btn--danger c-pair__danger"
@@ -75,7 +75,7 @@ interface InviteRow {
           [disabled]="commands.blocked('invite:' + row.invite.id)"
           (click)="revoke(row.invite)"
         >
-          Link widerrufen
+          {{ t('regie.pairing.link.revoke') }}
         </button>
       </div>
     } @else {
@@ -86,12 +86,12 @@ interface InviteRow {
           [disabled]="commands.blocked('invite:create')"
           (click)="create()"
         >
-          <svg sfIcon="link" [size]="15"></svg>Link erstellen
+          <svg sfIcon="link" [size]="15"></svg>{{ t('regie.pairing.link.create') }}
         </button>
       </div>
     }
     @if (others().length > 0) {
-      <span class="c-label">Offene Einladungen</span>
+      <span class="c-label">{{ t('regie.pairing.link.open') }}</span>
       <ul class="c-pair__invites">
         @for (row of others(); track row.invite.id) {
           <li class="c-pair__invite">
@@ -100,11 +100,11 @@ interface InviteRow {
             <button
               class="c-btn c-btn--sm c-btn--danger"
               type="button"
-              [attr.aria-label]="'Einladung widerrufen: ' + row.url"
+              [attr.aria-label]="t('regie.pairing.link.revokeInvite', { url: row.url })"
               [disabled]="commands.blocked('invite:' + row.invite.id)"
               (click)="revoke(row.invite)"
             >
-              Widerrufen
+              {{ t('regie.pairing.link.revokeShort') }}
             </button>
           </li>
         }
@@ -115,6 +115,7 @@ interface InviteRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LinkTabComponent {
+  protected readonly t = t;
   protected readonly commands = inject(DockCommandService);
   private readonly api = inject(StudioApiService);
   private readonly store = inject(ProductionStoreService);
@@ -162,7 +163,7 @@ export class LinkTabComponent {
     });
   }
 
-  /** «Link erstellen». */
+  /** "Create link". */
   protected async create(): Promise<void> {
     const invite = await this.commands.run('invite:create', (productionId) =>
       this.api.createInvite(productionId, { kind: 'laptopLink' }),
@@ -170,11 +171,11 @@ export class LinkTabComponent {
     if (invite) {
       this.created.set(invite);
       this.createdId.set(invite.id);
-      this.toasts.show('Einladungslink erstellt');
+      this.toasts.show(t('regie.pairing.link.toastCreated'));
     }
   }
 
-  /** «Link widerrufen»: the link stops working at once. */
+  /** "Revoke link": the link stops working at once. */
   protected async revoke(invite: InviteDto): Promise<void> {
     const done = await this.commands.run(
       `invite:${invite.id}`,
@@ -182,14 +183,14 @@ export class LinkTabComponent {
         await this.api.revokeInvite(productionId, invite.id);
         return true;
       },
-      { errors: { not_found: 'Dieser Link gilt schon nicht mehr.' } },
+      { errors: { not_found: msg('regie.pairing.link.gone') } },
     );
     if (done) {
       if (this.createdId() === invite.id) {
         this.createdId.set(null);
         this.created.set(null);
       }
-      this.toasts.show('Einladungslink widerrufen');
+      this.toasts.show(t('regie.pairing.link.toastRevoked'));
     }
   }
 

@@ -7,7 +7,7 @@
       }
     </span>
     <sf-inline-edit
-      label="Name der Szene"
+      [label]="t('regie.scenes.row.nameLabel')"
       [value]="view().name"
       [maxLength]="maxNameLength"
       (save)="rename($event)"
@@ -46,7 +46,9 @@
             [class.is-warn]="!health.bad"
           ></span>
           <span class="u-mono">{{ health.code }}</span>
-          <span [class.c-state--bad]="health.bad" [class.c-state--warn]="!health.bad">gestört</span>
+          <span [class.c-state--bad]="health.bad" [class.c-state--warn]="!health.bad">{{
+            t('regie.scenes.row.disrupted')
+          }}</span>
         } @else {
           <span class="u-mono">{{ view().codes }}</span>
         }
@@ -57,7 +59,7 @@
     class="c-ibtn c-scene__more"
     type="button"
     aria-haspopup="menu"
-    [attr.aria-label]="'Aktionen für Szene ' + displayName()"
+    [attr.aria-label]="t('regie.scenes.row.menuTriggerLabel', { name: displayName() })"
     [sfPopoverTrigger]="menuId()"
     (click)="placeMenu($event)"
   >
@@ -67,7 +69,7 @@
     <div
       class="c-pop c-scene__menu"
       role="menu"
-      [attr.aria-label]="'Szene ' + displayName()"
+      [attr.aria-label]="t('regie.scenes.row.menuLabel', { name: displayName() })"
       [sfPopover]="menuId()"
       [style.top.px]="menuPosition().top"
       [style.left.px]="menuPosition().left"
@@ -81,7 +83,7 @@
         [disabled]="!commands.online()"
         (click)="startRename()"
       >
-        <svg sfIcon="pencil"></svg>Umbenennen<kbd class="c-scene__shortcut">F2</kbd>
+        <svg sfIcon="pencil"></svg>{{ t('common.rename') }}<kbd class="c-scene__shortcut">F2</kbd>
       </button>
       <button
         class="c-menu-item"
@@ -90,7 +92,7 @@
         [disabled]="!commands.canCreate() || commands.blocked('scene:' + view().id + ':duplicate')"
         (click)="duplicate()"
       >
-        <svg sfIcon="copy"></svg>Duplizieren
+        <svg sfIcon="copy"></svg>{{ t('regie.scenes.row.duplicate') }}
       </button>
       <div class="c-menu-sep" role="separator"></div>
       <button
@@ -101,7 +103,8 @@
         [disabled]="!canMoveUp() || commands.blocked('scene:order')"
         (click)="move(-1)"
       >
-        <svg sfIcon="up"></svg>Nach oben<kbd class="c-scene__shortcut">Alt+↑</kbd>
+        <svg sfIcon="up"></svg>{{ t('regie.scenes.row.moveUp')
+        }}<kbd class="c-scene__shortcut">Alt+↑</kbd>
       </button>
       <button
         class="c-menu-item"
@@ -111,7 +114,8 @@
         [disabled]="!canMoveDown() || commands.blocked('scene:order')"
         (click)="move(1)"
       >
-        <svg sfIcon="down"></svg>Nach unten<kbd class="c-scene__shortcut">Alt+↓</kbd>
+        <svg sfIcon="down"></svg>{{ t('regie.scenes.row.moveDown')
+        }}<kbd class="c-scene__shortcut">Alt+↓</kbd>
       </button>
     </div>
   }

@@ -7,7 +7,7 @@ import {
 import type { IconName } from '../../core/ui/icon.component';
 
 /**
- * Pure view helpers for sources, shared by the Quellen, Eigenschaften and Stationen docks (prototype `lampClass`,
+ * Pure view helpers for sources, shared by the Sources, Properties and Stations docks (prototype `lampClass`,
  * `srcState`, `KIND_ICON`). No Angular, no DOM.
  */
 
@@ -17,9 +17,9 @@ export type LampTone = '' | 'is-idle' | 'is-warn' | 'is-bad';
 /** Colour of a state word: `.c-state--warn|bad|ok` or the muted meta colour. */
 export type StateTone = 'warn' | 'bad' | 'ok' | 'muted';
 
-/** The state line of a source row («verbindet neu 00:08»). */
+/** The state line of a source row ("reconnecting 00:08"). */
 export interface SourceStateView {
-  /** German state word, e.g. «Teilen beendet». */
+  /** State word in the active language, e.g. "sharing stopped". */
   readonly word: string;
   readonly tone: StateTone;
   /** A running outage timer since `statusSince` follows the word. */
@@ -56,7 +56,7 @@ export function statusLamp(status: SourceStatus): LampTone {
   }
 }
 
-/** Lamp of a source row; null for media (no lamp), idle for a deleted source («Quelle fehlt»). */
+/** Lamp of a source row; null for media (no lamp), idle for a deleted source ("Source missing"). */
 export function sourceLamp(source: SourceDto | null | undefined): LampTone | null {
   if (!source) {
     return 'is-idle';

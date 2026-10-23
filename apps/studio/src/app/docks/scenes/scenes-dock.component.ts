@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -16,12 +17,12 @@ interface SceneEntry {
 }
 
 /**
- * The Szenen dock (prototype «Szenenliste»): every scene in list order with thumbnail, keycap 1–9, name and meta
- * (PGM/PVW tags, slot codes or the health lamp «K2 gestört»). A click goes through `SwitcherService.chooseScene`:
- * without Studio-Modus the scene goes live, with it the scene goes into the preview; a click on the scene being edited
- * clears the element selection (Eigenschaften shows the scene). «+ Szene» creates «Neue Szene N»
- * and opens its name; each row has Umbenennen, Duplizieren and Nach oben/unten. Compact one-line rows at heights
- * ≤ 820 px, a horizontal strip at widths ≤ 900 px.
+ * The Scenes dock (prototype "scene list"): every scene in list order with thumbnail, keycap 1–9, name and meta
+ * (PGM/PVW tags, slot codes or the health lamp "K2 disrupted"). A click goes through `SwitcherService.chooseScene`:
+ * without Studio Mode the scene goes live, with it the scene goes into the preview; a click on the scene being edited
+ * clears the element selection (Properties shows the scene). "+ Scene" creates "New scene N" and opens its name; each
+ * row has Rename, Duplicate and Move up/down. Compact one-line rows at heights ≤ 820 px, a horizontal strip at widths
+ * ≤ 900 px.
  */
 @Component({
   selector: 'sf-scenes-dock',
@@ -37,6 +38,7 @@ export class ScenesDockComponent {
   private readonly editor = inject(EditorService);
   private readonly switcher = inject(SwitcherService);
 
+  protected readonly t = t;
   protected readonly maxScenes = LIMITS.scenesPerProduction;
   protected readonly loading = computed(() => this.store.state() === null);
   protected readonly entries = computed<readonly SceneEntry[]>(() => {
@@ -57,12 +59,12 @@ export class ScenesDockComponent {
   });
   protected readonly createTitle = computed(() =>
     this.store.scenes().length >= LIMITS.scenesPerProduction
-      ? `Höchstens ${LIMITS.scenesPerProduction} Szenen`
-      : 'Neue Szene am Ende der Liste',
+      ? t('regie.scenes.dock.addTitleMax', { max: LIMITS.scenesPerProduction })
+      : t('regie.scenes.dock.addTitle'),
   );
 
   /**
-   * A click on a row. On the scene being edited it also clears the element selection, so Eigenschaften shows the
+   * A click on a row. On the scene being edited it also clears the element selection, so Properties shows the
    * scene again; switching works as before (`chooseScene` is a no-op for the current scene, and switching to another
    * scene clears the selection through the editor).
    */

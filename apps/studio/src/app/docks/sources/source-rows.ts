@@ -1,3 +1,4 @@
+import { msg, t, tm, type Msg } from '@studioflow/i18n';
 import {
   compareCodes,
   parseSourceRef,
@@ -18,17 +19,18 @@ import {
 } from '../shared/source-view';
 
 /**
- * Pure helpers of the Quellen dock (prototype «Auswahl und Quellenliste», «Quelle hinzufügen»): row models in reverse
- * z-order, the addable sources grouped by kind, and where a medium is used. No Angular, no DOM.
+ * Pure helpers of the Sources dock (prototype "selection and source list", "add source"): row models in reverse
+ * z-order, the addable sources grouped by kind, and where a medium is used. No Angular, no DOM. The texts are looked
+ * up when a model is built, so build it inside a `computed` (or a template) to follow a language switch.
  */
 
-/** One row of the Quellen dock. */
+/** One row of the Sources dock. */
 export interface SourceRowView {
   readonly itemId: string;
   readonly sourceId: string;
-  /** Slot code, «–» for a deleted source. */
+  /** Slot code, "–" for a deleted source. */
   readonly code: string;
-  /** Source label, «Quelle fehlt» for a deleted source. */
+  /** Source label, "Source missing" for a deleted source. */
   readonly name: string;
   readonly icon: IconName;
   readonly hidden: boolean;
@@ -36,11 +38,11 @@ export interface SourceRowView {
   readonly selected: boolean;
   /** Lamp of a device source; null for media (no lamp). */
   readonly lamp: LampTone | null;
-  /** State line («verbindet neu» + timer), or null while ok. */
+  /** State line ("reconnecting" + timer), or null while ok. */
   readonly state: SourceStateView | null;
   /** Start of the current status (timer base). */
   readonly statusSince: string | null;
-  /** The source no longer exists («Quelle fehlt»). */
+  /** The source no longer exists ("Source missing"). */
   readonly missing: boolean;
 }
 
@@ -68,7 +70,7 @@ export function sourceRows(
       itemId: item.id,
       sourceId: item.source,
       code: source?.code ?? '–',
-      name: source?.label ?? 'Quelle fehlt',
+      name: source?.label ?? t('model.scene.sourceMissing'),
       icon: KIND_ICON[kindOfReference(item.source, source)],
       hidden: item.hidden,
       locked: item.locked,
@@ -81,16 +83,16 @@ export function sourceRows(
   });
 }
 
-/** A group of the «+ Quelle» menu. */
+/** A group of the "+ Source" menu. */
 export interface SourceGroup {
   readonly id: 'camera' | 'screen' | 'media';
-  readonly label: 'Kameras' | 'Screens' | 'Medien';
+  readonly label: string;
   readonly sources: readonly SourceDto[];
 }
 
 /**
  * Sources that can be added to the scene (prototype `renderAddSource`): every source not yet in the scene and not
- * blocked, grouped into Kameras, Screens and Medien, each sorted by slot code. Empty groups are left out.
+ * blocked, grouped into Cameras, Screens and Media, each sorted by slot code. Empty groups are left out.
  */
 export function addableSourceGroups(
   scene: SceneDto,
@@ -101,11 +103,19 @@ export function addableSourceGroups(
     .filter((source) => !used.has(source.id) && source.status !== 'blocked')
     .sort((a, b) => compareCodes(a.code, b.code));
   const groups: SourceGroup[] = [
-    { id: 'camera', label: 'Kameras', sources: free.filter((source) => source.kind === 'camera') },
-    { id: 'screen', label: 'Screens', sources: free.filter((source) => source.kind === 'screen') },
+    {
+      id: 'camera',
+      label: t('regie.sources.group.camera'),
+      sources: free.filter((source) => source.kind === 'camera'),
+    },
+    {
+      id: 'screen',
+      label: t('regie.sources.group.screen'),
+      sources: free.filter((source) => source.kind === 'screen'),
+    },
     {
       id: 'media',
-      label: 'Medien',
+      label: t('regie.sources.group.media'),
       sources: free.filter((source) => source.kind === 'image' || source.kind === 'video'),
     },
   ];
@@ -113,48 +123,54 @@ export function addableSourceGroups(
 }
 
 /**
- * Where a medium is used (spec 4.7: scene items, scene backgrounds, fallbacks, slates), as German phrases such as
- * «in «Pause»», «als Hintergrund von «Intro»», «als Ersatzquelle in «Gespräch»», «auf dem Slate «Bereit»». Empty when
- * the medium can be deleted.
+ * Where a medium is used (spec 4.7: scene items, scene backgrounds, fallbacks, slates), as phrases such as
+ * "in “Break”", "as background of “Intro”", "as fallback in “Talk”", "on the slate before the broadcast". They are
+ * messages, so a list that stays on screen (the media popover) follows a language switch. Empty when the medium can
+ * be deleted.
  */
 export function assetUsage(
   assetId: string,
   scenes: readonly SceneDto[],
   production: ProductionDto | null,
-): string[] {
-  const usage: string[] = [];
+): Msg[] {
+  const usage: Msg[] = [];
   for (const scene of scenes) {
     if (scene.items.some((item) => item.source === assetId)) {
-      usage.push(`in «${scene.name}»`);
+      usage.push(msg('regie.media.usage.inScene', { scene: scene.name }));
     }
     if (scene.background.assetId === assetId) {
-      usage.push(`als Hintergrund von «${scene.name}»`);
+      usage.push(msg('regie.media.usage.asBackground', { scene: scene.name }));
     }
     if (scene.items.some((item) => item.onLost.fallbackSource === assetId)) {
-      usage.push(`als Ersatzquelle in «${scene.name}»`);
+      usage.push(msg('regie.media.usage.asFallback', { scene: scene.name }));
     }
   }
   if (production?.standbySlate.backgroundAssetId === assetId) {
-    usage.push('auf dem Slate vor der Sendung');
+    usage.push(msg('regie.media.usage.onStandbySlate'));
   }
   if (production?.endSlate.backgroundAssetId === assetId) {
-    usage.push('auf dem Slate nach der Sendung');
+    usage.push(msg('regie.media.usage.onEndSlate'));
   }
   return usage;
 }
 
-/** «Wird in «Pause» und als Hintergrund von «Intro» verwendet.» for {@link assetUsage}. */
-export function usageSentence(usage: readonly string[]): string {
+/** "Used in “Break” and as background of “Intro”." for {@link assetUsage}; at most three phrases are listed. */
+export function usageSentence(usage: readonly Msg[]): string {
   if (usage.length === 0) {
-    return 'Wird noch verwendet.';
+    return t('regie.media.usage.stillUsed');
   }
-  const shown = usage.slice(0, 3);
+  const shown = usage.slice(0, 3).map((phrase) => tm(phrase));
   const more = usage.length - shown.length;
   const list =
     shown.length === 1
       ? shown[0]
-      : `${shown.slice(0, -1).join(', ')} und ${shown[shown.length - 1]}`;
-  return `Wird ${list}${more > 0 ? ` (und ${more} weitere)` : ''} verwendet.`;
+      : t('regie.media.usage.listAnd', {
+          head: shown.slice(0, -1).join(', '),
+          last: shown[shown.length - 1],
+        });
+  return more > 0
+    ? t('regie.media.usage.sentenceMore', { list, more })
+    : t('regie.media.usage.sentence', { list });
 }
 
 /** Media sorted by code (M1, M2 …) for the media list. */

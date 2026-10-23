@@ -7,14 +7,16 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { t, tm, type Msg } from '@studioflow/i18n';
 import { formatDuration, type InviteDto } from '@studioflow/scene-model';
-import { toUserMessage } from '../../core/api/api-error';
+import { toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
+import { messageParts } from '../shared/message-parts';
 import { QrCodeComponent } from './qr-code.component';
 
 /** The newest phone invite (QR) of a list, or null. */
@@ -32,8 +34,8 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
 }
 
 /**
- * «Handy» tab of the pairing dock (prototype `renderPair` phone): the QR code of the current phone invite
- * (`GET …/pairing/phone-invite` creates one when missing) with its remaining time, and «Neuen Code erzeugen». The
+ * "Phone" tab of the pairing dock (prototype `renderPair` phone): the QR code of the current phone invite
+ * (`GET …/pairing/phone-invite` creates one when missing) with its remaining time, and "Generate new code". The
  * server replaces a redeemed or renewed invite at once and announces it, so the code shown is always the newest one;
  * an expired code is replaced automatically.
  */
@@ -41,25 +43,27 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
   selector: 'sf-phone-tab',
   imports: [IconComponent, QrCodeComponent],
   template: `
-    <h3 class="c-pair__title">Handy als Kamera</h3>
-    <p class="c-pair__text">
-      Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.
-    </p>
+    <h3 class="c-pair__title">{{ t('regie.pairing.phone.title') }}</h3>
+    <p class="c-pair__text">{{ t('regie.pairing.phone.text') }}</p>
     <div class="c-pair__qr-wrap">
       @if (invite(); as invite) {
-        <sf-qr-code [value]="invite.url" label="QR-Code zum Koppeln eines Handys" />
+        <sf-qr-code [value]="invite.url" [label]="t('regie.pairing.phone.qrLabel')" />
       } @else {
         <div class="c-pair__qr-empty" role="status">
-          {{ error() ?? 'QR-Code wird erzeugt …' }}
+          {{ tm(error()) || t('regie.pairing.phone.generating') }}
         </div>
       }
       <div class="c-pair__qr-side">
         @if (invite()) {
+          @let valid = validParts();
           <span class="c-hint">
-            Gilt einmal, noch <span class="u-mono">{{ remainingText() }}</span> min.
+            {{ valid.before }}<span class="u-mono">{{ remainingText() }}</span
+            >{{ valid.after }}
           </span>
         } @else if (error()) {
-          <button class="c-btn c-btn--sm" type="button" (click)="load()">Nochmals versuchen</button>
+          <button class="c-btn c-btn--sm" type="button" (click)="load()">
+            {{ t('common.retry') }}
+          </button>
         }
         <button
           class="c-btn c-btn--sm"
@@ -67,7 +71,7 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
           [disabled]="commands.blocked('pairing:renew') || loading()"
           (click)="renew()"
         >
-          <svg sfIcon="refresh" [size]="14"></svg>Neuen Code erzeugen
+          <svg sfIcon="refresh" [size]="14"></svg>{{ t('regie.pairing.phone.renew') }}
         </button>
       </div>
     </div>
@@ -76,6 +80,8 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PhoneTabComponent {
+  protected readonly t = t;
+  protected readonly tm = tm;
   protected readonly commands = inject(DockCommandService);
   private readonly api = inject(StudioApiService);
   private readonly store = inject(ProductionStoreService);
@@ -84,7 +90,7 @@ export class PhoneTabComponent {
 
   private readonly fetched = signal<InviteDto | null>(null);
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly error = signal<Msg | null>(null);
   /** Invite whose expiry already triggered a reload (no reload loop). */
   private reloadedFor: string | null = null;
 
@@ -103,6 +109,10 @@ export class PhoneTabComponent {
       : 0;
   });
   protected readonly remainingText = computed(() => formatDuration(this.remainingMs()));
+  /** "Valid once, 29:50 min left.": the text around the mono countdown. */
+  protected readonly validParts = computed(() =>
+    messageParts((mark) => t('regie.pairing.phone.valid', { time: mark })),
+  );
 
   constructor() {
     void this.load();
@@ -131,13 +141,13 @@ export class PhoneTabComponent {
     try {
       this.fetched.set(await this.api.getPhoneInvite(productionId));
     } catch (error) {
-      this.error.set(toUserMessage(error));
+      this.error.set(toUserMsg(error));
     } finally {
       this.loading.set(false);
     }
   }
 
-  /** «Neuen Code erzeugen»: the old code stops working at once. */
+  /** "Generate new code": the old code stops working at once. */
   protected async renew(): Promise<void> {
     const invite = await this.commands.run('pairing:renew', (productionId) =>
       this.api.renewPhoneInvite(productionId),
@@ -145,7 +155,7 @@ export class PhoneTabComponent {
     if (invite) {
       this.fetched.set(invite);
       this.error.set(null);
-      this.toasts.show('Neuer QR-Code, der alte gilt nicht mehr');
+      this.toasts.show(t('regie.pairing.phone.toastRenewed'));
     }
   }
 }

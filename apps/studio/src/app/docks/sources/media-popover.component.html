@@ -1,11 +1,11 @@
 <div
   class="c-pop c-media-pop"
   role="dialog"
-  aria-label="Medien"
+  [attr.aria-label]="t('regie.media.label')"
   [sfPopover]="popoverId"
   [popoverFocus]="!pickOnOpen()"
 >
-  <div class="c-pop-h">Bild oder Video hochladen</div>
+  <div class="c-pop-h">{{ t('regie.media.upload.title') }}</div>
   <label
     class="c-media-pop__drop"
     [class.is-over]="dragOver()"
@@ -23,16 +23,20 @@
       (change)="onFiles($event)"
     />
     <svg sfIcon="upload"></svg>
-    <span>Hierher ziehen oder <span class="c-media-pop__pick">Datei wählen</span></span>
-    <span class="c-hint">{{ hint }}</span>
+    @let prompt = dropPrompt();
+    <span
+      >{{ prompt.before }}<span class="c-media-pop__pick">{{ t('regie.media.upload.pick') }}</span
+      >{{ prompt.after }}</span
+    >
+    <span class="c-hint">{{ t('regie.media.upload.hint') }}</span>
   </label>
 
   @for (message of rejected(); track $index) {
-    <p class="c-field-error c-media-pop__note">{{ message }}</p>
+    <p class="c-field-error c-media-pop__note">{{ tm(message) }}</p>
   }
 
   @if (uploads.uploads().length > 0) {
-    <ul class="c-media-pop__list" aria-label="Uploads">
+    <ul class="c-media-pop__list" [attr.aria-label]="t('regie.media.uploads.label')">
       @for (entry of uploads.uploads(); track entry.id) {
         <li class="c-media-pop__upload">
           <div class="c-media-pop__row">
@@ -41,13 +45,13 @@
             <span class="c-media-pop__meta u-mono">{{ sizeText(entry.size) }}</span>
             @if (entry.state === 'queued' || entry.state === 'uploading') {
               <button class="c-btn c-btn--sm" type="button" (click)="uploads.cancel(entry.id)">
-                Abbrechen
+                {{ t('common.cancel') }}
               </button>
             } @else {
               <button
                 class="c-ibtn"
                 type="button"
-                [attr.aria-label]="'Aus der Liste entfernen: ' + entry.name"
+                [attr.aria-label]="t('regie.media.uploads.dismiss', { name: entry.name })"
                 (click)="uploads.dismiss(entry.id)"
               >
                 <svg sfIcon="close" [size]="14"></svg>
@@ -56,7 +60,7 @@
           </div>
           @switch (entry.state) {
             @case ('queued') {
-              <span class="c-hint">wartet …</span>
+              <span class="c-hint">{{ t('regie.media.uploads.queued') }}</span>
             }
             @case ('uploading') {
               <div class="c-media-pop__progress">
@@ -66,17 +70,19 @@
                   aria-valuemin="0"
                   aria-valuemax="100"
                   [attr.aria-valuenow]="percent(entry)"
-                  [attr.aria-label]="'Hochladen von ' + entry.name"
+                  [attr.aria-label]="t('regie.media.uploads.progress', { name: entry.name })"
                 >
                   <i class="c-media-pop__fill" [style.width.%]="percent(entry)"></i>
                 </div>
-                <span class="u-mono">{{ percent(entry) }} %</span>
+                <span class="u-mono">{{
+                  t('model.format.percent', { value: percent(entry) })
+                }}</span>
               </div>
             }
             @case ('done') {
               @if (entry.asset; as asset) {
                 <div class="c-media-pop__row">
-                  <span class="c-state--ok">hochgeladen</span>
+                  <span class="c-state--ok">{{ t('regie.media.uploads.done') }}</span>
                   <span class="c-code">{{ asset.code }}</span>
                   <span class="u-spacer"></span>
                   @if (canAddToScene(asset)) {
@@ -85,17 +91,18 @@
                       type="button"
                       (click)="addToScene(asset)"
                     >
-                      <svg sfIcon="plus" [size]="14"></svg>Zu «{{ sceneName() }}»
+                      <svg sfIcon="plus" [size]="14"></svg
+                      >{{ t('regie.media.uploads.addToScene', { scene: sceneName() }) }}
                     </button>
                   }
                 </div>
               }
             }
             @case ('failed') {
-              <span class="c-field-error">{{ entry.error }}</span>
+              <span class="c-field-error">{{ tm(entry.error) }}</span>
             }
             @case ('aborted') {
-              <span class="c-hint">abgebrochen</span>
+              <span class="c-hint">{{ t('regie.media.uploads.aborted') }}</span>
             }
           }
         </li>
@@ -103,7 +110,7 @@
     </ul>
   }
 
-  <div class="c-pop-h c-media-pop__head">Medien der Produktion</div>
+  <div class="c-pop-h c-media-pop__head">{{ t('regie.media.library.title') }}</div>
   <div class="c-media-pop__list">
     @for (asset of assets(); track asset.id) {
       <div class="c-media-pop__asset">
@@ -113,7 +120,7 @@
           @if (renamingId() === asset.id) {
             <sf-inline-edit
               class="c-media-pop__edit"
-              label="Name der Datei"
+              [label]="t('regie.media.library.nameLabel')"
               [value]="asset.name"
               [maxLength]="maxNameLength"
               (save)="rename(asset, $event)"
@@ -127,7 +134,7 @@
             <button
               class="c-ibtn"
               type="button"
-              [attr.aria-label]="'Umbenennen: ' + asset.name"
+              [attr.aria-label]="t('regie.media.library.rename', { name: asset.name })"
               [disabled]="commands.blocked('asset:' + asset.id + ':rename')"
               (click)="startRename(asset)"
             >
@@ -136,7 +143,7 @@
             <button
               class="c-ibtn c-media-pop__delete"
               type="button"
-              [attr.aria-label]="'Löschen: ' + asset.name"
+              [attr.aria-label]="t('regie.media.library.delete', { name: asset.name })"
               (click)="askDelete(asset)"
             >
               <svg sfIcon="trash" [size]="14"></svg>
@@ -145,17 +152,16 @@
         </div>
         @if (inUseMessage(asset.id); as message) {
           <p class="c-media-pop__inuse">
-            <strong class="c-state--bad">wird verwendet</strong> {{ message }} Erst dort entfernen.
+            <strong class="c-state--bad">{{ t('regie.media.library.inUse') }}</strong>
+            {{ message }} {{ t('regie.media.library.removeFirst') }}
           </p>
         }
         @if (confirmingId() === asset.id) {
           <sf-confirm-box
-            label="Datei löschen"
-            confirmLabel="Löschen"
+            [label]="t('regie.media.library.deleteLabel')"
+            [confirmLabel]="t('common.delete')"
             [flush]="true"
-            [message]="
-              '«' + asset.name + '» wird gelöscht. Das lässt sich nicht rückgängig machen.'
-            "
+            [message]="t('regie.media.library.deleteMessage', { name: asset.name })"
             [busy]="commands.blocked('asset:' + asset.id + ':delete')"
             (confirm)="remove(asset)"
             (cancel)="confirmingId.set(null)"
@@ -163,7 +169,7 @@
         }
       </div>
     } @empty {
-      <p class="c-pop-note">Noch keine Medien hochgeladen.</p>
+      <p class="c-pop-note">{{ t('regie.media.library.empty') }}</p>
     }
   </div>
 </div>

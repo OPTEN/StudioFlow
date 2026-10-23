@@ -4,7 +4,7 @@ import { ProductionStoreService } from '../../core/state/production-store.servic
 import { ClockService } from '../../core/ui/clock.service';
 
 /**
- * A running «mm:ss» timer since a server timestamp (outage timers in the Quellen and Stationen docks):
+ * A running "mm:ss" timer since a server timestamp (outage timers in the Sources and Stations docks):
  * `<span class="u-mono" [sfElapsed]="source.statusSince"></span>`. Only this tiny view reads the shared clock, so the
  * once-per-second tick re-renders the digits and nothing else. The time base is the server clock
  * (`ProductionStoreService.elapsedSince`).

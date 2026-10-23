@@ -5,7 +5,7 @@ import { Directive, ElementRef, effect, inject, input, output } from '@angular/c
  * Numeric inspector field (prototype `#insp` number inputs): `<input type="number" [sfNumberField]="item.x"
  * (numberChange)="setX($event)" (editStart)="…" (editEnd)="…">`.
  *
- * - Commits on every `input` event with a finite number (empty or partial input such as «-» is ignored).
+ * - Commits on every `input` event with a finite number (empty or partial input such as "-" is ignored).
  * - Shows the model value, but never overwrites the field while it has the focus (prototype
  *   `syncInspectorNumbers`), so typing is not disturbed by clamping or by live updates from a drag on the monitor;
  *   on blur the field shows the (clamped) model value again.

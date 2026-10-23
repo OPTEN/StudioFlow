@@ -1,16 +1,13 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { HUB, type PairingRequestDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import { PRODUCTION_ID, deviceFixture, snapshotFixture } from '../../../testing/fixtures';
+import { PRODUCTION_ID, deviceFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../../shell/station-focus.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
+import { dockSnapshot } from '../testing/dock-fixtures';
 import { StationsDockComponent } from './stations-dock.component';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 const PHONE = 'dev_aaaaaaaaaaaaaaaa';
@@ -37,7 +34,7 @@ describe('StationsDockComponent', () => {
   async function setup(pairingRequests: PairingRequestDto[] = []): Promise<void> {
     hub = new FakeStudioHub();
     TestBed.configureTestingModule({ providers: studioTestProviders(hub) });
-    harness = await startStore(hub, snapshotFixture({ pairingRequests }));
+    harness = await startStore(hub, dockSnapshot({ pairingRequests }));
     fixture = TestBed.createComponent(StationsDockComponent);
     element = fixture.nativeElement as HTMLElement;
     await render();
@@ -97,9 +94,9 @@ describe('StationsDockComponent', () => {
     await render();
     const [first, second] = rows();
     expect(rows()).toHaveLength(2);
-    expect(first.getAttribute('aria-label')).toBe('K1 Handy Bühne links, im Program');
+    expect(first.getAttribute('aria-label')).toBe('K1 Phone stage left, on Program');
     expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
-    expect(text(first.querySelector('.c-st__l2'))).toBe('2,8Mbit/s31msAkku 14 %');
+    expect(text(first.querySelector('.c-st__l2'))).toBe('2.8Mbit/s31msBattery 14%');
     expect(second.getAttribute('aria-label')).toBe('S1 Laptop Lea');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('2');
   });
@@ -112,10 +109,10 @@ describe('StationsDockComponent', () => {
     const row = station(PHONE);
     expect(row.className).toContain('is-open');
     expect(text(row.querySelector('.c-st__kv'))).toContain('iPhone · Safari');
-    button(row, 'Gerät sperren')?.click();
+    button(row, 'Block device')?.click();
     await render();
     expect(text(row.querySelector('.c-confirm span'))).toBe(
-      'K1 wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.',
+      'K1 will be disconnected immediately and cannot connect again until you unblock it.',
     );
     harness.http.expectNone(() => true);
     const confirm = row.querySelector<HTMLButtonElement>('.c-confirm .c-btn--danger-fill');
@@ -125,52 +122,52 @@ describe('StationsDockComponent', () => {
     expect(request.request.method).toBe('POST');
     await render();
     expect(confirm?.disabled).toBe(true);
-    request.flush(deviceFixture(PHONE, 'Handy Bühne links', { state: 'blocked' }));
+    request.flush(deviceFixture(PHONE, 'Phone stage left', { state: 'blocked' }));
     await render();
-    expect(TestBed.inject(ToastService).current()?.message).toBe('K1 gesperrt und getrennt');
+    expect(TestBed.inject(ToastService).current()?.message).toBe('K1 blocked and disconnected');
     expect(row.querySelector('.c-confirm')).toBeNull();
   });
 
-  it('sends a Regie-Chat quick pick to the device', async () => {
+  it('sends a control room chat quick pick to the device', async () => {
     await setup();
     rows()[1].click();
     await render();
     const row = station(LAPTOP);
-    button(row, 'Nachricht senden')?.click();
+    button(row, 'Send message')?.click();
     await render();
     expect(row.querySelector('sf-message-composer')).not.toBeNull();
-    button(row, 'Pause')?.click();
+    button(row, 'Break')?.click();
     const request = harness.http.expectOne(`${BASE}/devices/${LAPTOP}/commands`);
-    expect(request.request.body).toEqual({ kind: 'message', slot: null, text: 'Pause' });
+    expect(request.request.body).toEqual({ kind: 'message', slot: null, text: 'Break' });
     request.flush(
-      { id: 'cmd_1', kind: 'message', slot: null, text: 'Pause', at: '' },
+      { id: 'cmd_1', kind: 'message', slot: null, text: 'Break', at: '' },
       { status: 202, statusText: 'Accepted' },
     );
     await render();
     expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'Nachricht an Laptop Lea geschickt: «Pause»',
+      'Message sent to Laptop Lea: “Break”',
     );
   });
 
   it('shows knock cards and approves a request exactly once', async () => {
     await setup([knock()]);
     const card = element.querySelector('.c-knock') as HTMLElement;
-    expect(text(card.querySelector('.c-knock__title'))).toBe('Laptop Mia möchte beitreten');
+    expect(text(card.querySelector('.c-knock__title'))).toBe('Laptop Mia wants to join');
     expect(text(card.querySelector('.c-knock__code'))).toBe('47 12');
     expect(card.querySelector('.c-knock__code')?.getAttribute('aria-label')).toBe(
-      'Prüfcode 4 7 1 2',
+      'Check code 4 7 1 2',
     );
-    const approve = button(card, 'Zulassen');
+    const approve = button(card, 'Allow');
     approve?.click();
     approve?.click();
-    button(card, 'Ablehnen')?.click();
+    button(card, 'Deny')?.click();
     const request = harness.http.expectOne(`${BASE}/pairing/requests/prq_aaaaaaaaaaaaaaaa/approve`);
     harness.http.expectNone(`${BASE}/pairing/requests/prq_aaaaaaaaaaaaaaaa/deny`);
     await render();
     expect(approve?.disabled).toBe(true);
     request.flush(deviceFixture('dev_cccccccccccccccc', 'Laptop Mia', { kind: 'laptop' }));
     await render();
-    expect(TestBed.inject(ToastService).current()?.message).toBe('Laptop Mia ist gekoppelt');
+    expect(TestBed.inject(ToastService).current()?.message).toBe('Laptop Mia is paired');
   });
 
   it('disables commands that need the server while offline', async () => {
@@ -178,19 +175,19 @@ describe('StationsDockComponent', () => {
     hub.drop();
     await render();
     const card = element.querySelector('.c-knock') as HTMLElement;
-    expect(button(card, 'Zulassen')?.disabled).toBe(true);
-    expect(button(card, 'Ablehnen')?.disabled).toBe(true);
+    expect(button(card, 'Allow')?.disabled).toBe(true);
+    expect(button(card, 'Deny')?.disabled).toBe(true);
     rows()[0].click();
     await render();
-    expect(button(station(PHONE), 'Gerät sperren')?.disabled).toBe(true);
+    expect(button(station(PHONE), 'Block device')?.disabled).toBe(true);
     hub.connect();
     await render();
-    expect(button(card, 'Zulassen')?.disabled).toBe(false);
+    expect(button(card, 'Allow')?.disabled).toBe(false);
   });
 
   it('hides the knock cards while the pairing dock shows them', async () => {
     await setup([knock()]);
-    const toggle = button(element, 'Gerät koppeln');
+    const toggle = button(element, 'Pair device');
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
     toggle?.click();
     await render();

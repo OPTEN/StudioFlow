@@ -25,12 +25,12 @@ describe('QR code', () => {
   it('renders the path dark on white with a 4-module quiet zone', async () => {
     const fixture = TestBed.createComponent(QrCodeComponent);
     fixture.componentRef.setInput('value', 'https://studioflow.opten.ch/join/i/test');
-    fixture.componentRef.setInput('label', 'QR-Code zum Koppeln');
+    fixture.componentRef.setInput('label', 'QR code for pairing');
     await fixture.whenStable();
     const svg = (fixture.nativeElement as HTMLElement).querySelector('svg');
     const size = qrMatrix('https://studioflow.opten.ch/join/i/test').length;
     expect(svg?.getAttribute('role')).toBe('img');
-    expect(svg?.getAttribute('aria-label')).toBe('QR-Code zum Koppeln');
+    expect(svg?.getAttribute('aria-label')).toBe('QR code for pairing');
     expect(svg?.getAttribute('viewBox')).toBe(
       `${-QR_QUIET_ZONE} ${-QR_QUIET_ZONE} ${size + 8} ${size + 8}`,
     );

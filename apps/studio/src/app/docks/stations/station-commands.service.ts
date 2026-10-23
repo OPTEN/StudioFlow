@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type DeviceDto, type IncidentDto, type SourceDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { IncidentAckService } from '../../core/state/incident-ack.service';
@@ -6,14 +7,19 @@ import { ProductionStoreService } from '../../core/state/production-store.servic
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
 
-/** Quick picks of the Regie-Chat. */
-export const QUICK_MESSAGES: readonly string[] = ['In 10 s live', 'Bitte lächeln', 'Pause'];
+/** Quick picks of the control room chat; the text is looked up when it is shown or sent. */
+export const QUICK_MESSAGE_KEYS = [
+  'regie.stations.quick.live',
+  'regie.stations.quick.smile',
+  'regie.stations.quick.break',
+] as const;
 
 /**
- * The station commands of the Stationen dock (spec 4.6): ask for a reshare, switch the camera, send a Regie-Chat
- * message, rename, block / unblock, remove, and acknowledge recovered incidents («Gesehen»). Each command has its own
- * lock per device ({@link busy}), goes through {@link DockCommandService} (offline guard, German error toasts) and
- * confirms with a toast. Commands to a disconnected device are accepted by the server and dropped; the toast says so.
+ * The station commands of the Stations dock (spec 4.6): ask for a reshare, switch the camera, send a control room
+ * chat message, rename, block / unblock, remove, and acknowledge recovered incidents ("Seen"). Each command has its
+ * own lock per device ({@link busy}), goes through {@link DockCommandService} (offline guard, error toasts in the
+ * active language) and confirms with a toast. Commands to a disconnected device are accepted by the server and
+ * dropped; the toast says so.
  */
 @Injectable({ providedIn: 'root' })
 export class StationCommandsService {
@@ -33,7 +39,7 @@ export class StationCommandsService {
     return this.commands.blocked(`device:${deviceId}:${kind}`);
   }
 
-  /** «Neu teilen lassen»: asks the laptop to share the screen of `source` again. */
+  /** "Ask to share again": asks the laptop to share the screen of `source` again. */
   async reshare(device: DeviceDto, source: SourceDto): Promise<boolean> {
     const slot = source.slot;
     if (!slot) {
@@ -45,14 +51,14 @@ export class StationCommandsService {
     if (sent) {
       this.toasts.show(
         this.isOffline(device)
-          ? `${source.label} ist nicht verbunden. Bitte direkt am Gerät neu teilen.`
-          : `Bitte an ${source.label} geschickt: «Bildschirm erneut teilen»`,
+          ? t('regie.stations.toast.reshareOffline', { label: source.label })
+          : t('regie.stations.toast.reshareSent', { label: source.label }),
       );
     }
     return sent;
   }
 
-  /** «Kamera wechseln» (front/back) on a phone. */
+  /** "Switch camera" (front/back) on a phone. */
   async switchCamera(device: DeviceDto): Promise<boolean> {
     const sent = await this.run(device, 'camera', (productionId) =>
       this.api.sendDeviceCommand(productionId, device.id, {
@@ -64,18 +70,18 @@ export class StationCommandsService {
     if (sent) {
       this.toasts.show(
         this.isOffline(device)
-          ? `${device.name} ist nicht verbunden. Die Kamera bleibt, wie sie ist.`
-          : `${this.label(device)}: Kamera wird gewechselt`,
+          ? t('regie.stations.toast.cameraOffline', { name: device.name })
+          : t('regie.stations.toast.cameraSwitching', { label: this.label(device) }),
       );
     }
     return sent;
   }
 
-  /** Regie-Chat: a short message (1–140 characters) that the device shows as a banner. */
+  /** Control room chat: a short message (1–140 characters) that the device shows as a banner. */
   async sendMessage(device: DeviceDto, text: string): Promise<boolean> {
     const message = text.trim();
     if (!message || message.length > LIMITS.messageLength) {
-      this.toasts.show(`Eine Nachricht hat 1 bis ${LIMITS.messageLength} Zeichen.`);
+      this.toasts.show(t('regie.stations.toast.messageLength', { max: LIMITS.messageLength }));
       return false;
     }
     const sent = await this.run(device, 'message', (productionId) =>
@@ -88,8 +94,8 @@ export class StationCommandsService {
     if (sent) {
       this.toasts.show(
         this.isOffline(device)
-          ? `${device.name} ist nicht verbunden. Die Nachricht kommt nicht an.`
-          : `Nachricht an ${device.name} geschickt: «${message}»`,
+          ? t('regie.stations.toast.messageOffline', { name: device.name })
+          : t('regie.stations.toast.messageSent', { name: device.name, message }),
       );
     }
     return sent;
@@ -99,7 +105,7 @@ export class StationCommandsService {
   async rename(device: DeviceDto, name: string): Promise<boolean> {
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > LIMITS.deviceNameLength) {
-      this.toasts.show(`Der Name braucht 1 bis ${LIMITS.deviceNameLength} Zeichen.`);
+      this.toasts.show(t('regie.stations.toast.nameLength', { max: LIMITS.deviceNameLength }));
       return false;
     }
     return this.run(device, 'rename', (productionId) =>
@@ -107,42 +113,42 @@ export class StationCommandsService {
     );
   }
 
-  /** «Gerät sperren»: disconnects the device at once; it cannot reconnect until unblocked. */
+  /** "Block device": disconnects the device at once; it cannot reconnect until unblocked. */
   async block(device: DeviceDto): Promise<boolean> {
     const done = await this.run(device, 'block', (productionId) =>
       this.api.blockDevice(productionId, device.id),
     );
     if (done) {
-      this.toasts.show(`${this.label(device)} gesperrt und getrennt`);
+      this.toasts.show(t('regie.stations.toast.blocked', { label: this.label(device) }));
     }
     return done;
   }
 
-  /** «Entsperren»: the device may connect again. */
+  /** "Unblock": the device may connect again. */
   async unblock(device: DeviceDto): Promise<boolean> {
     const done = await this.run(device, 'unblock', (productionId) =>
       this.api.unblockDevice(productionId, device.id),
     );
     if (done) {
-      this.toasts.show(`${this.label(device)} entsperrt`);
+      this.toasts.show(t('regie.stations.toast.unblocked', { label: this.label(device) }));
     }
     return done;
   }
 
-  /** «Entfernen»: deletes the device and its sources (items show «Quelle fehlt»). */
+  /** "Remove": deletes the device and its sources (items show "Source missing"). */
   async remove(device: DeviceDto): Promise<boolean> {
     const done = await this.run(device, 'remove', async (productionId) => {
       await this.api.deleteDevice(productionId, device.id);
       return true;
     });
     if (done) {
-      this.toasts.show(`«${device.name}» entfernt`);
+      this.toasts.show(t('regie.stations.toast.removed', { name: device.name }));
     }
     return done;
   }
 
   /**
-   * «Gesehen»: acknowledges the recovered incidents of the station (shared by every Regie session). Incidents that are
+   * "Seen": acknowledges the recovered incidents of the station (shared by every Regie session). Incidents that are
    * open again are left alone (see {@link IncidentAckService}).
    */
   async acknowledge(device: DeviceDto, incidents: readonly IncidentDto[]): Promise<boolean> {
@@ -158,7 +164,7 @@ export class StationCommandsService {
     );
   }
 
-  /** «K2» or «S1 S2» for toasts; the name for devices without slots. */
+  /** "K2" or "S1 S2" for toasts; the name for devices without slots. */
   label(device: DeviceDto): string {
     const codes = this.store.deviceSources(device.id).map((source) => source.code);
     return codes.length > 0 ? codes.join(' ') : device.name;

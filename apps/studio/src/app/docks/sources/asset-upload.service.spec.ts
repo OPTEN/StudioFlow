@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { tm } from '@studioflow/i18n';
 import type { AssetDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID } from '../../../testing/fixtures';
@@ -9,10 +10,6 @@ import { StudioApiService, type UploadOptions } from '../../core/api/studio-api.
 import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AssetUploadService } from './asset-upload.service';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 interface PendingUpload {
   readonly file: File;
@@ -68,12 +65,12 @@ describe('AssetUploadService', () => {
 
   it('rejects wrong files before uploading and queues the rest', () => {
     const svg = new File(['<svg/>'], 'logo.svg', { type: 'image/svg+xml' });
-    const result = uploads.add([svg, png('titel.png')]);
+    const result = uploads.add([svg, png('title.png')]);
     expect(result.accepted).toBe(1);
-    expect(result.rejected).toEqual([
-      '«logo.svg»: Dieser Dateityp ist nicht erlaubt. Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.',
+    expect(result.rejected.map(tm)).toEqual([
+      '“logo.svg”: This file type is not allowed. Allowed are PNG, JPEG, WebP, MP4 and WebM.',
     ]);
-    expect(uploads.uploads().map((entry) => entry.name)).toEqual(['titel.png']);
+    expect(uploads.uploads().map((entry) => entry.name)).toEqual(['title.png']);
   });
 
   it('uploads one file after the other with progress and offers to add it to the scene', async () => {
@@ -87,8 +84,8 @@ describe('AssetUploadService', () => {
     pending[0].resolve(asset('ast_aaaaaaaaaaaaaaaa', 'a'));
     await flushMicrotasks();
     expect(uploads.uploads()[0]).toMatchObject({ state: 'done', fraction: 1 });
-    expect(toasts.current()?.message).toBe('«a» ist hochgeladen und steht als M1 bereit');
-    expect(toasts.current()?.action?.label).toBe('Zur Szene hinzufügen');
+    expect(toasts.current()?.message).toBe('“a” is uploaded and available as M1');
+    expect(toasts.current()?.action?.label).toBe('Add to scene');
     expect(pending).toHaveLength(2);
     expect(pending[1].file.name).toBe('b.png');
     toasts.runAction();
@@ -110,27 +107,27 @@ describe('AssetUploadService', () => {
     uploads.cancel(first.id);
     await flushMicrotasks();
     expect(uploads.uploads()[0].state).toBe('aborted');
-    expect(toasts.current()?.message).toBe('Hochladen von «a.png» abgebrochen');
+    expect(toasts.current()?.message).toBe('Upload of “a.png” cancelled');
     expect(pending).toHaveLength(1);
     uploads.dismiss(first.id);
     expect(uploads.uploads().map((entry) => entry.name)).toEqual(['b.png']);
   });
 
-  it('turns 415 and 413 into German messages', async () => {
+  it('turns 415 and 413 into messages', async () => {
     uploads.add([png('a.png'), png('b.png')]);
     await flushMicrotasks();
     pending[0].reject(new ApiError({ status: 415, code: 'unsupported_media' }));
     await flushMicrotasks();
-    expect(uploads.uploads()[0]).toMatchObject({
-      state: 'failed',
-      error: 'Dieser Dateityp ist nicht erlaubt. Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.',
-    });
+    expect(uploads.uploads()[0].state).toBe('failed');
+    expect(tm(uploads.uploads()[0].error)).toBe(
+      'This file type is not allowed. Allowed are PNG, JPEG, WebP, MP4 and WebM.',
+    );
     pending[1].reject(new ApiError({ status: 413 }));
     await flushMicrotasks();
-    expect(uploads.uploads()[1].error).toBe(
-      'Die Datei ist zu gross. Bilder dürfen höchstens 25 MB, Videos höchstens 1 GB gross sein.',
+    expect(tm(uploads.uploads()[1].error)).toBe(
+      'The file is too large. Images may be at most 25 MB, videos at most 1 GB.',
     );
-    expect(toasts.current()?.message).toContain('«b.png» wurde nicht hochgeladen');
+    expect(toasts.current()?.message).toContain('“b.png” was not uploaded');
   });
 
   it('sends the operator to the login page on 401 like every other request and stops the queue', async () => {

@@ -1,17 +1,15 @@
 <div
   class="c-pop c-add-pop"
   role="menu"
-  aria-label="Quelle hinzufügen"
+  [attr.aria-label]="t('regie.sources.add.label')"
   [sfPopover]="popoverId"
   (keydown)="onKeyDown($event)"
 >
-  <div class="c-pop-h">Zu «{{ sceneName() }}» hinzufügen</div>
+  <div class="c-pop-h">{{ t('regie.sources.add.title', { scene: sceneName() }) }}</div>
   @if (locked()) {
-    <p class="c-pop-note">{{ lockedMessage }}</p>
+    <p class="c-pop-note">{{ t('regie.sources.add.liveLocked') }}</p>
   } @else if (offline()) {
-    <p class="c-pop-note">
-      Keine Verbindung zum Server. Hinzufügen geht wieder, sobald die Regie verbunden ist.
-    </p>
+    <p class="c-pop-note">{{ t('regie.sources.add.offline') }}</p>
   }
 
   @for (group of groups(); track group.id) {
@@ -37,20 +35,20 @@
   } @empty {
     <p class="c-pop-note">
       @if (hasSources()) {
-        Alle Quellen sind schon in dieser Szene.
+        {{ t('regie.sources.add.allUsed') }}
       } @else {
-        Noch keine Quellen. Geräte unter Stationen koppeln oder ein Bild oder Video hochladen.
+        {{ t('regie.sources.add.noSources') }}
       }
     </p>
   }
 
   <div class="c-menu-sep" role="separator"></div>
   <button class="c-menu-item" type="button" role="menuitem" (click)="upload.emit()">
-    <svg sfIcon="upload"></svg>Bild oder Video hochladen …
+    <svg sfIcon="upload"></svg>{{ t('regie.sources.add.upload') }}
   </button>
   @if (hasMedia()) {
     <button class="c-menu-item" type="button" role="menuitem" (click)="manage.emit()">
-      <svg sfIcon="image"></svg>Medien verwalten …
+      <svg sfIcon="image"></svg>{{ t('regie.sources.add.manage') }}
     </button>
   }
 </div>

@@ -8,6 +8,7 @@ import {
   inject,
   viewChild,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
@@ -15,19 +16,15 @@ import { EditorService } from '../../stage/editor.service';
 import { ElementInspectorComponent } from './element-inspector.component';
 import { SceneInspectorComponent } from './scene-inspector.component';
 
-/** Accessible name of «Zur Szene» in the element view (contains the visible text, WCAG 2.5.3). */
-export const BACK_TO_SCENE_LABEL = 'Auswahl aufheben, zurück zur Szene';
-/** Tooltip of «Zur Szene». */
-export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
-
 /**
- * The Eigenschaften dock (prototype «Eigenschaften»): the element inspector while an item is selected (header
- * «Element» with «K1 · Handy Bühne links»), otherwise the scene inspector (header «Szene» with the scene name).
+ * The Properties dock (prototype "Properties"): the element inspector while an item is selected (header "Item" with
+ * "K1 · Phone stage left"), otherwise the scene inspector (header "Scene" with the scene name).
  *
- * In the element view the header holds «Zur Szene», which clears the selection and so leads back to the scene
- * settings and templates (also Escape, a second click on the row in Quellen, a click on the current scene in Szenen
- * or on the stage around the monitor). When the element view closes under the focus («Zur Szene», Escape inside the
- * dock), the focus moves to the dock heading «Szene», so keyboard users continue from the top of the scene view.
+ * In the element view the header holds "Back to scene", which clears the selection and so leads back to the scene
+ * settings and templates (also Escape, a second click on the row in Sources, a click on the current scene in Scenes
+ * or on the stage around the monitor). When the element view closes under the focus ("Back to scene", Escape inside
+ * the dock), the focus moves to the dock heading "Scene", so keyboard users continue from the top of the scene view.
+ * The accessible name of the button contains its visible text (WCAG 2.5.3).
  */
 @Component({
   selector: 'sf-properties-dock',
@@ -40,16 +37,17 @@ export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
           class="c-btn c-btn--sm"
           type="button"
           aria-keyshortcuts="Escape"
-          [attr.aria-label]="backLabel"
-          [title]="backTitle"
+          [attr.aria-label]="t('regie.properties.dock.backLabel')"
+          [title]="t('regie.properties.dock.backTitle')"
           (click)="backToScene()"
         >
-          <svg sfIcon="close" [size]="14"></svg>Zur Szene
+          <svg sfIcon="close" [size]="14"></svg>{{ t('regie.properties.dock.back') }}
         </button>
       }
       @if (loading()) {
         <div class="c-empty">
-          <strong>Eigenschaften werden geladen …</strong>Die Regie verbindet mit dem Server.
+          <strong>{{ t('regie.properties.dock.loadingTitle') }}</strong
+          >{{ t('regie.docks.loadingText') }}
         </div>
       } @else if (editor.selectedItem(); as item) {
         <sf-element-inspector [item]="item" />
@@ -57,7 +55,8 @@ export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
         <sf-scene-inspector [scene]="scene" />
       } @else {
         <div class="c-empty">
-          <strong>Keine Szene.</strong>Unter Szenen mit «+ Szene» eine Szene anlegen.
+          <strong>{{ t('regie.properties.dock.noSceneTitle') }}</strong
+          >{{ t('regie.properties.dock.noSceneText') }}
         </div>
       }
     </sf-dock-frame>
@@ -72,24 +71,27 @@ export class PropertiesDockComponent {
   private readonly injector = inject(Injector);
   private readonly frame = viewChild.required(DockFrameComponent);
 
-  protected readonly backLabel = BACK_TO_SCENE_LABEL;
-  protected readonly backTitle = BACK_TO_SCENE_TITLE;
+  protected readonly t = t;
   protected readonly loading = computed(() => this.store.state() === null);
   /** The element inspector is shown. */
   protected readonly showsElement = computed(
     () => !this.loading() && this.editor.selectedItem() !== null,
   );
-  protected readonly title = computed(() => (this.editor.selectedItem() ? 'Element' : 'Szene'));
+  protected readonly title = computed(() =>
+    this.editor.selectedItem()
+      ? t('regie.properties.dock.titleItem')
+      : t('regie.properties.dock.titleScene'),
+  );
   protected readonly subtitle = computed(() => {
     const item = this.editor.selectedItem();
     if (item) {
       const source = this.store.sourceById(item.source);
-      return source ? `${source.code} · ${source.label}` : 'Quelle fehlt';
+      return source ? `${source.code} · ${source.label}` : t('model.scene.sourceMissing');
     }
     return this.editor.editScene()?.name ?? null;
   });
 
-  /** «Zur Szene»: clears the selection; the dock shows the scene again. */
+  /** "Back to scene": clears the selection; the dock shows the scene again. */
   protected backToScene(): void {
     this.editor.select(null);
     this.keepFocusInDock();

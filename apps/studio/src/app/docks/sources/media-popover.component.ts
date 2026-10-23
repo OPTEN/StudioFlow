@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { t, tm, type Msg } from '@studioflow/i18n';
 import { LIMITS, formatBytes, type AssetDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -21,18 +22,19 @@ import { EditorService } from '../../stage/editor.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { InlineEditComponent } from '../shared/inline-edit.component';
 import { keepInViewport } from '../shared/keep-in-viewport';
+import { messageParts } from '../shared/message-parts';
 import { AssetUploadService, type UploadEntry } from './asset-upload.service';
 import { assetUsage, sortedAssets, usageSentence } from './source-rows';
-import { UPLOAD_ACCEPT, UPLOAD_HINT, dragHasFiles } from './upload-validation';
+import { UPLOAD_ACCEPT, dragHasFiles } from './upload-validation';
 
 /** Id of the media popover. */
 export const MEDIA_POPOVER = 'media';
 
 /**
- * The media popover of the Quellen dock: upload images and videos (drag & drop or file dialog, pre-check, progress,
- * cancel, German server errors) and manage the uploaded media (rename, delete behind a dashed red confirmation;
- * a medium that is still used shows «wird verwendet» and where). A finished upload can be added to the edit scene
- * directly.
+ * The media popover of the Sources dock: upload images and videos (drag & drop or file dialog, pre-check, progress,
+ * cancel, server errors in the active language) and manage the uploaded media (rename, delete behind a dashed red
+ * confirmation; a medium that is still used shows "in use" and where). A finished upload can be added to the edit
+ * scene directly.
  */
 @Component({
   selector: 'sf-media-popover',
@@ -42,7 +44,7 @@ export const MEDIA_POPOVER = 'media';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MediaPopoverComponent {
-  /** Open the file dialog right away («Bild oder Video hochladen …»). */
+  /** Open the file dialog right away ("Upload image or video…"). */
   readonly pickOnOpen = input(false);
   /** The file dialog was opened (the dock resets {@link pickOnOpen}). */
   readonly picked = output<void>();
@@ -55,18 +57,25 @@ export class MediaPopoverComponent {
   private readonly toasts = inject(ToastService);
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('file');
 
+  protected readonly t = t;
+  protected readonly tm = tm;
   protected readonly popoverId = MEDIA_POPOVER;
   protected readonly accept = UPLOAD_ACCEPT;
-  protected readonly hint = UPLOAD_HINT;
   protected readonly maxNameLength = LIMITS.assetNameLength;
   protected readonly dragOver = signal(false);
-  protected readonly rejected = signal<readonly string[]>([]);
+  protected readonly rejected = signal<readonly Msg[]>([]);
   protected readonly renamingId = signal<string | null>(null);
   protected readonly confirmingId = signal<string | null>(null);
-  /** Media the server (or the local check) reported as still used, with the explanation. */
-  protected readonly inUse = signal<ReadonlyMap<string, string>>(new Map());
+  /** Media the server (or the local check) reported as still used, with where they are used. */
+  protected readonly inUse = signal<ReadonlyMap<string, readonly Msg[]>>(new Map());
   protected readonly assets = computed(() => sortedAssets(this.store.assets()));
-  protected readonly sceneName = computed(() => this.editor.editScene()?.name ?? 'Szene');
+  protected readonly sceneName = computed(
+    () => this.editor.editScene()?.name ?? t('regie.sources.add.sceneFallback'),
+  );
+  /** "Drag here or choose a file": the text around the link-like part. */
+  protected readonly dropPrompt = computed(() =>
+    messageParts((mark) => t('regie.media.upload.prompt', { pick: mark })),
+  );
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -99,9 +108,9 @@ export class MediaPopoverComponent {
     return formatBytes(bytes);
   }
 
-  /** «Bild · 1920 × 1080 · 1,2 MB» / «Video · 24 MB». */
+  /** "Image · 1920 × 1080 · 1.2 MB" / "Video · 24 MB". */
   protected assetMeta(asset: AssetDto): string {
-    const kind = asset.kind === 'image' ? 'Bild' : 'Video';
+    const kind = t(asset.kind === 'image' ? 'regie.media.kind.image' : 'regie.media.kind.video');
     const size = asset.width && asset.height ? ` · ${asset.width} × ${asset.height}` : '';
     return `${kind}${size} · ${formatBytes(asset.sizeBytes)}`;
   }
@@ -155,7 +164,7 @@ export class MediaPopoverComponent {
       this.api.renameAsset(productionId, asset.id, { name }),
     );
     if (renamed) {
-      this.toasts.show(`Datei heisst jetzt «${renamed.name}»`);
+      this.toasts.show(t('regie.media.toast.renamed', { name: renamed.name }));
     }
   }
 
@@ -164,7 +173,7 @@ export class MediaPopoverComponent {
     this.renamingId.set(null);
     const usage = assetUsage(asset.id, this.store.scenes(), this.store.production());
     if (usage.length > 0) {
-      this.markInUse(asset.id, usageSentence(usage));
+      this.markInUse(asset.id, usage);
       return;
     }
     this.clearInUse(asset.id);
@@ -184,7 +193,7 @@ export class MediaPopoverComponent {
             return false;
           }
           const usage = assetUsage(asset.id, this.store.scenes(), this.store.production());
-          this.markInUse(asset.id, usageSentence(usage));
+          this.markInUse(asset.id, usage);
           this.confirmingId.set(null);
           return true;
         },
@@ -192,12 +201,14 @@ export class MediaPopoverComponent {
     );
     if (deleted) {
       this.confirmingId.set(null);
-      this.toasts.show(`«${asset.name}» gelöscht`);
+      this.toasts.show(t('regie.media.toast.deleted', { name: asset.name }));
     }
   }
 
+  /** The sentence that says where a medium is still used, or null. */
   protected inUseMessage(assetId: string): string | null {
-    return this.inUse().get(assetId) ?? null;
+    const usage = this.inUse().get(assetId);
+    return usage ? usageSentence(usage) : null;
   }
 
   private addFiles(files: FileList | null): void {
@@ -208,9 +219,9 @@ export class MediaPopoverComponent {
     this.rejected.set(result.rejected);
   }
 
-  private markInUse(assetId: string, message: string): void {
+  private markInUse(assetId: string, usage: readonly Msg[]): void {
     const next = new Map(this.inUse());
-    next.set(assetId, message);
+    next.set(assetId, usage);
     this.inUse.set(next);
   }
 

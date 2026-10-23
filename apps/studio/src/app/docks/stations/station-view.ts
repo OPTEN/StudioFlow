@@ -1,3 +1,4 @@
+import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
   formatHm,
@@ -16,16 +17,17 @@ import {
 import { statusLamp, statusTone, type LampTone, type StateTone } from '../shared/source-view';
 
 /**
- * Pure view model of the Stationen dock (prototype «Stationen»: `stationLine`, `renderStations`): one station per
- * paired device, with the worst state of its slots, metrics, tally and the details. No Angular, no DOM.
+ * Pure view model of the Stations dock (prototype "Stations": `stationLine`, `renderStations`): one station per
+ * paired device, with the worst state of its slots, metrics, tally and the details. No Angular, no DOM. The texts are
+ * looked up when a model is built, so build it inside a `computed` (and rebuild it when the language changes).
  */
 
-/** Battery level below which the row warns «Akku 14 %» (prototype: < 20). */
+/** Battery level below which the row warns "Battery 14%" (prototype: < 20). */
 export const LOW_BATTERY_PCT = 20;
 
 /** Line 2 of a station row. */
 export type StationLine =
-  /** A down or not-yet-live state: «verbindet neu 00:08 Standbild», «gesperrt kann sich nicht verbinden». */
+  /** A down or not-yet-live state: "reconnecting 00:08 freeze frame", "blocked cannot connect". */
   | {
       readonly kind: 'state';
       readonly word: string;
@@ -37,9 +39,9 @@ export type StationLine =
       /** Muted text after the word/timer. */
       readonly extra: string | null;
     }
-  /** Back after an outage, until «Gesehen»: «wieder da war 9 s weg». */
+  /** Back after an outage, until "Seen": "back was gone 9 s". */
   | { readonly kind: 'recovered'; readonly seconds: number }
-  /** Healthy: «2,8 Mbit/s 31 ms» and a low battery warning. */
+  /** Healthy: "2.8 Mbit/s 31 ms" and a low battery warning. */
   | {
       readonly kind: 'metrics';
       readonly rate: string;
@@ -58,21 +60,21 @@ export interface StationView {
   readonly lamp: LampTone;
   /** Row wash: amber while reconnecting, red when down. */
   readonly tone: '' | 'is-warn' | 'is-bad';
-  /** PGM/PVW tag (`preview` only in Studio-Modus). */
+  /** PGM/PVW tag (`preview` only in Studio Mode). */
   readonly tally: TallyState;
   readonly line: StationLine;
   /** Source for the small live thumbnail (camera, else the first screen), or null. */
   readonly thumbSourceId: string | null;
-  /** Recovered incidents of the station's sources, waiting for «Gesehen». */
+  /** Recovered incidents of the station's sources, waiting for "Seen". */
   readonly recovered: readonly IncidentDto[];
-  /** Screen slots whose sharing ended («Neu teilen lassen»). */
+  /** Screen slots whose sharing ended ("Ask to share again"). */
   readonly endedScreens: readonly SourceDto[];
-  /** «Kamera wechseln» is offered (phone camera that is live). */
+  /** "Switch camera" is offered (phone camera that is live). */
   readonly canSwitchCamera: boolean;
   readonly blocked: boolean;
   /** Not connected to the server (no control connection). */
   readonly offline: boolean;
-  /** Accessible name of the row (prototype): «K2 Handy Bühne rechts, im Program, verbindet neu». */
+  /** Accessible name of the row (prototype): "K2 Phone stage right, on Program, reconnecting". */
   readonly ariaLabel: string;
 }
 
@@ -98,7 +100,7 @@ const STATUS_RANK: Readonly<Record<SourceStatus, number>> = {
   blocked: 5,
 };
 
-/** Seconds an incident lasted («war 9 s weg»), at least 1. */
+/** Seconds an incident lasted ("was gone 9 s"), at least 1. */
 export function incidentSeconds(incident: IncidentDto): number {
   const started = Date.parse(incident.startedAt);
   const ended = Date.parse(incident.endedAt ?? '');
@@ -141,7 +143,7 @@ function stateLine(
         tone: 'warn',
         code,
         since: worst?.statusSince ?? null,
-        extra: 'Standbild',
+        extra: t('regie.stations.line.freezeFrame'),
       };
     case 'ended':
     case 'lost':
@@ -156,23 +158,33 @@ function stateLine(
     case 'blocked':
       return {
         kind: 'state',
-        word: 'gesperrt',
+        word: statusWord(status),
         tone: 'bad',
         code: null,
         since: null,
-        extra: 'kann sich nicht verbinden',
+        extra: t('regie.stations.line.cannotConnect'),
       };
     case 'connecting':
-      return { kind: 'state', word: 'verbindet …', tone: 'muted', code, since: null, extra: null };
+      return {
+        kind: 'state',
+        word: statusWord(status),
+        tone: 'muted',
+        code,
+        since: null,
+        extra: null,
+      };
     case 'offline': {
       const seen = device.lastSeenAt ? new Date(device.lastSeenAt) : null;
       return {
         kind: 'state',
-        word: 'nicht verbunden',
+        word: statusWord(status),
         tone: 'muted',
         code: null,
         since: null,
-        extra: seen && !Number.isNaN(seen.getTime()) ? `zuletzt ${formatHm(seen)}` : null,
+        extra:
+          seen && !Number.isNaN(seen.getTime())
+            ? t('regie.stations.line.lastSeen', { time: formatHm(seen) })
+            : null,
       };
     }
     case 'ok':
@@ -238,7 +250,11 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     offline: device.connection === 'offline',
     ariaLabel:
       `${codes.join(' ')} ${device.name}`.trim() +
-      (tally === 'program' ? ', im Program' : tally === 'preview' ? ', in der Preview' : '') +
+      (tally === 'program'
+        ? `, ${t('model.status.placeProgram')}`
+        : tally === 'preview'
+          ? `, ${t('model.status.placePreview')}`
+          : '') +
       (status !== 'ok' ? `, ${statusWord(status, worst?.kind)}` : ''),
   };
 }
@@ -258,12 +274,13 @@ export interface TechLamp {
   readonly word: string;
 }
 
-const TECH_WORDS: Readonly<Record<TechCheckLevel, string>> = {
-  ok: 'ok',
-  warn: 'knapp',
-  bad: 'schlecht',
-  unknown: MISSING_VALUE,
-};
+/** The word of a tech check level; "unknown" has no word. */
+const TECH_WORD_KEYS = {
+  ok: 'regie.stations.tech.ok',
+  warn: 'regie.stations.tech.warn',
+  bad: 'regie.stations.tech.bad',
+  unknown: null,
+} as const satisfies Readonly<Record<TechCheckLevel, PlainMessageKey | null>>;
 
 const TECH_LAMPS: Readonly<Record<TechCheckLevel, LampTone>> = {
   ok: '',
@@ -272,25 +289,36 @@ const TECH_LAMPS: Readonly<Record<TechCheckLevel, LampTone>> = {
   unknown: 'is-idle',
 };
 
-/** German name of a network type reported by the browser. */
+function techWord(level: TechCheckLevel): string {
+  const wordKey = TECH_WORD_KEYS[level];
+  return wordKey ? t(wordKey) : MISSING_VALUE;
+}
+
+/** Name of a network type reported by the browser; technical names (Ethernet, 5G) stay as they are. */
 export function networkLabel(network: string | null | undefined): string | null {
   if (!network) {
     return null;
   }
-  const labels: Readonly<Record<string, string>> = {
-    wifi: 'WLAN',
-    ethernet: 'Ethernet',
-    cellular: 'Mobilfunk',
-    '5g': '5G',
-    '4g': '4G',
-    '3g': '3G',
-    '2g': '2G',
-    'slow-2g': '2G',
-  };
-  return labels[network.toLowerCase()] ?? network;
+  switch (network.toLowerCase()) {
+    case 'wifi':
+      return t('regie.stations.network.wifi');
+    case 'cellular':
+      return t('regie.stations.network.cellular');
+    case 'ethernet':
+      return 'Ethernet';
+    case 'slow-2g':
+      return '2G';
+    case '5g':
+    case '4g':
+    case '3g':
+    case '2g':
+      return network.toUpperCase();
+    default:
+      return network;
+  }
 }
 
-/** «heute 10:42», or «21.10. 10:42» for another day (local time). */
+/** "today 10:42", or "21/10 10:42" ("21.10. 10:42" in German) for another day (local time). */
 export function pairedText(iso: string, nowMs: number): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
@@ -302,11 +330,15 @@ export function pairedText(iso: string, nowMs: number): string {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
   return sameDay
-    ? `heute ${formatHm(date)}`
-    : `${date.getDate()}.${date.getMonth() + 1}. ${formatHm(date)}`;
+    ? t('regie.stations.paired.today', { time: formatHm(date) })
+    : t('regie.stations.paired.otherDay', {
+        day: date.getDate(),
+        month: date.getMonth() + 1,
+        time: formatHm(date),
+      });
 }
 
-/** Resolution of the live slots, «1080p» or «S1 1080p · S2 720p» for several slots. */
+/** Resolution of the live slots, "1080p" or "S1 1080p · S2 720p" for several slots. */
 export function resolutionText(
   telemetry: DeviceTelemetryDto | null,
   sources: readonly SourceDto[],
@@ -338,8 +370,8 @@ export function packetLoss(telemetry: DeviceTelemetryDto | null): number | null 
 }
 
 /**
- * The details of an expanded station (prototype `.st-detail` key-value list): Gerät, Auflösung, Gekoppelt, Verlust,
- * then Akku and Netz where the device reports them, and «Zuletzt» for disconnected devices.
+ * The details of an expanded station (prototype `.st-detail` key-value list): Device, Resolution, Paired, Packet loss,
+ * then Battery and Network where the device reports them, and "Last seen" for disconnected devices.
  */
 export function stationDetails(
   device: DeviceDto,
@@ -350,33 +382,50 @@ export function stationDetails(
   const telemetry = device.telemetry;
   const loss = packetLoss(telemetry);
   const entries: DetailEntry[] = [
-    { label: 'Gerät', value: device.platform || MISSING_VALUE, mono: false },
-    { label: 'Auflösung', value: resolutionText(telemetry, sources), mono: true },
-    { label: 'Gekoppelt', value: pairedText(device.pairedAt, nowMs), mono: false },
     {
-      label: 'Verlust',
+      label: t('regie.stations.detail.device'),
+      value: device.platform || MISSING_VALUE,
+      mono: false,
+    },
+    {
+      label: t('regie.stations.detail.resolution'),
+      value: resolutionText(telemetry, sources),
+      mono: true,
+    },
+    {
+      label: t('regie.stations.detail.paired'),
+      value: pairedText(device.pairedAt, nowMs),
+      mono: false,
+    },
+    {
+      label: t('regie.stations.detail.loss'),
       value: status === 'ok' && loss !== null ? formatPercent(loss, 1) : MISSING_VALUE,
       mono: true,
     },
   ];
   if (typeof telemetry?.batteryPct === 'number') {
+    const battery = formatPercent(telemetry.batteryPct);
     entries.push({
-      label: 'Akku',
-      value: `${formatPercent(telemetry.batteryPct)}${telemetry.charging ? ' · lädt' : ''}`,
+      label: t('regie.stations.detail.battery'),
+      value: telemetry.charging ? t('regie.stations.detail.charging', { battery }) : battery,
       mono: true,
     });
   }
   const network = networkLabel(telemetry?.network);
   if (network) {
-    entries.push({ label: 'Netz', value: network, mono: false });
+    entries.push({ label: t('regie.stations.detail.network'), value: network, mono: false });
   }
   if (device.connection === 'offline' && device.lastSeenAt) {
-    entries.push({ label: 'Zuletzt', value: pairedText(device.lastSeenAt, nowMs), mono: false });
+    entries.push({
+      label: t('regie.stations.detail.lastSeen'),
+      value: pairedText(device.lastSeenAt, nowMs),
+      mono: false,
+    });
   }
   return entries;
 }
 
-/** The lamps of the technical check (Kamera, Netz, Upload), or null when it has not run yet. */
+/** The lamps of the tech check (Camera, Network, Upload), or null when it has not run yet. */
 export function techLamps(check: TechCheckDto | null): TechLamp[] | null {
   if (!check) {
     return null;
@@ -384,12 +433,20 @@ export function techLamps(check: TechCheckDto | null): TechLamp[] | null {
   const upload =
     typeof check.uploadKbps === 'number' ? ` ${formatKbpsAsMbit(check.uploadKbps)} Mbit/s` : '';
   return [
-    { label: 'Kamera', lamp: TECH_LAMPS[check.camera], word: TECH_WORDS[check.camera] },
-    { label: 'Netz', lamp: TECH_LAMPS[check.network], word: TECH_WORDS[check.network] },
     {
-      label: 'Upload',
+      label: t('regie.stations.tech.camera'),
+      lamp: TECH_LAMPS[check.camera],
+      word: techWord(check.camera),
+    },
+    {
+      label: t('regie.stations.tech.network'),
+      lamp: TECH_LAMPS[check.network],
+      word: techWord(check.network),
+    },
+    {
+      label: t('regie.stations.tech.upload'),
       lamp: TECH_LAMPS[check.bandwidth],
-      word: `${TECH_WORDS[check.bandwidth]}${upload}`,
+      word: `${techWord(check.bandwidth)}${upload}`,
     },
   ];
 }

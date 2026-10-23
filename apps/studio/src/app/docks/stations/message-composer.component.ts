@@ -10,13 +10,14 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type DeviceDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
-import { QUICK_MESSAGES, StationCommandsService } from './station-commands.service';
+import { QUICK_MESSAGE_KEYS, StationCommandsService } from './station-commands.service';
 
 /**
- * Regie-Chat composer of a station (spec 4.6 «message»): a short text (1–140 characters) with a counter, «Senden»
- * and the quick picks «In 10 s live», «Bitte lächeln», «Pause», which send at once. The device shows the text as a
+ * Control room chat composer of a station (spec 4.6 "message"): a short text (1–140 characters) with a counter, "Send"
+ * and the quick picks "Live in 10 s", "Please smile", "Break", which send at once. The device shows the text as a
  * banner. Escape closes the composer. Sending is locked while a message is in flight.
  */
 @Component({
@@ -29,26 +30,26 @@ import { QUICK_MESSAGES, StationCommandsService } from './station-commands.servi
           class="c-input"
           type="text"
           autocomplete="off"
-          placeholder="Kurze Nachricht an die Station"
+          [attr.placeholder]="t('regie.stations.composer.placeholder')"
           [attr.maxlength]="maxLength"
-          [attr.aria-label]="'Nachricht an ' + device().name"
+          [attr.aria-label]="t('regie.stations.composer.label', { name: device().name })"
           [formControl]="control"
           (keydown.escape)="onEscape($event)"
         />
         <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy() || !canSend()">
-          <svg sfIcon="send" [size]="14"></svg>Senden
+          <svg sfIcon="send" [size]="14"></svg>{{ t('regie.stations.composer.send') }}
         </button>
       </div>
       <div class="c-composer__row">
-        @for (text of quickMessages; track text) {
+        @for (quick of quickMessages; track quick) {
           <button
             class="c-btn c-btn--sm"
             type="button"
             [disabled]="busy()"
-            [attr.aria-label]="'Schnell senden: ' + text"
-            (click)="sendQuick(text)"
+            [attr.aria-label]="t('regie.stations.composer.quick', { text: t(quick) })"
+            (click)="sendQuick(quick)"
           >
-            {{ text }}
+            {{ t(quick) }}
           </button>
         }
         <span class="c-composer__count" aria-live="polite">{{ length() }}/{{ maxLength }}</span>
@@ -90,8 +91,9 @@ export class MessageComposerComponent {
 
   private readonly commands = inject(StationCommandsService);
 
+  protected readonly t = t;
   protected readonly maxLength = LIMITS.messageLength;
-  protected readonly quickMessages = QUICK_MESSAGES;
+  protected readonly quickMessages = QUICK_MESSAGE_KEYS;
   protected readonly control = new FormControl('', {
     nonNullable: true,
     validators: [Validators.maxLength(LIMITS.messageLength), Validators.pattern(/\S/)],
@@ -118,8 +120,8 @@ export class MessageComposerComponent {
     }
   }
 
-  protected sendQuick(text: string): void {
-    void this.commands.sendMessage(this.device(), text);
+  protected sendQuick(quick: (typeof QUICK_MESSAGE_KEYS)[number]): void {
+    void this.commands.sendMessage(this.device(), t(quick));
   }
 
   protected onEscape(event: Event): void {

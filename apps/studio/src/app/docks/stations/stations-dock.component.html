@@ -8,7 +8,7 @@
     [attr.aria-expanded]="layout.pairingOpen()"
     (click)="layout.togglePairing()"
   >
-    <svg sfIcon="plus" [size]="14"></svg>Gerät koppeln
+    <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.stations.dock.pair') }}
   </button>
 
   @for (knock of knocks(); track knock.id) {
@@ -17,7 +17,8 @@
 
   @if (loading()) {
     <div class="c-empty">
-      <strong>Stationen werden geladen …</strong>Die Regie verbindet mit dem Server.
+      <strong>{{ t('regie.stations.dock.loadingTitle') }}</strong
+      >{{ t('regie.docks.loadingText') }}
     </div>
   } @else {
     <div class="c-st-dock__list">
@@ -33,8 +34,8 @@
         />
       } @empty {
         <div class="c-empty">
-          <strong>Noch keine Stationen.</strong>Mit «Gerät koppeln» ein Handy als Kamera oder einen
-          Laptop mit Bildschirm verbinden.
+          <strong>{{ t('regie.stations.dock.emptyTitle') }}</strong
+          >{{ t('regie.stations.dock.emptyText') }}
         </div>
       }
     </div>

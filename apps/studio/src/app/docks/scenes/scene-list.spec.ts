@@ -6,7 +6,7 @@ const S1 = 'dev_bbbbbbbbbbbbbbbb/screen-1';
 const codes: Record<string, string> = { [K1]: 'K1', [S1]: 'S1' };
 
 describe('scene list helpers', () => {
-  const scene = sceneFixture('scn_b', 'Lea präsentiert', 2, [
+  const scene = sceneFixture('scn_b', 'Lea presents', 2, [
     itemFixture('itm_1', S1),
     itemFixture('itm_2', K1),
     itemFixture('itm_3', K1),
@@ -25,10 +25,10 @@ describe('scene list helpers', () => {
     expect(view.isProgram).toBe(true);
     expect(view.pressed).toBe(true);
     expect(view.codes).toBe('S1 · K1');
-    expect(view.ariaLabel).toBe('Lea präsentiert, live im Program');
+    expect(view.ariaLabel).toBe('Lea presents, live on Program');
   });
 
-  it('marks the preview only in Studio-Modus and reports the outage', () => {
+  it('marks the preview only in Studio Mode and reports the outage', () => {
     const context = {
       programSceneId: 'scn_a',
       previewSceneId: 'scn_b',
@@ -38,14 +38,14 @@ describe('scene list helpers', () => {
     const studio = sceneRowView(scene, 0, { ...context, studioMode: true });
     expect(studio.isPreview).toBe(true);
     expect(studio.pressed).toBe(true);
-    expect(studio.ariaLabel).toBe('Lea präsentiert, in der Preview, K2 gestört');
+    expect(studio.ariaLabel).toBe('Lea presents, in Preview, K2 disrupted');
     const direct = sceneRowView(scene, 0, { ...context, studioMode: false });
     expect(direct.isPreview).toBe(false);
     expect(direct.pressed).toBe(false);
   });
 
-  it('has no keycap after the ninth scene and says «leer» without visible items', () => {
-    const empty = sceneFixture('scn_x', 'Pause', 9);
+  it('has no keycap after the ninth scene and says "empty" without visible items', () => {
+    const empty = sceneFixture('scn_x', 'Break', 9);
     const view = sceneRowView(empty, 9, {
       programSceneId: null,
       previewSceneId: null,
@@ -54,27 +54,23 @@ describe('scene list helpers', () => {
       codeOf: () => undefined,
     });
     expect(view.key).toBeNull();
-    expect(view.codes).toBe('leer');
+    expect(view.codes).toBe('empty');
   });
 
   it('names new scenes after their keycap and skips taken names', () => {
-    expect(nextSceneName([])).toBe('Neue Szene 1');
-    expect(nextSceneName([{ name: 'A' }, { name: 'B' }])).toBe('Neue Szene 3');
-    expect(nextSceneName([{ name: 'A' }, { name: 'Neue Szene 2' }])).toBe('Neue Szene 3');
-    expect(nextSceneName([{ name: 'Neue Szene 2' }, { name: 'Neue Szene 3' }])).toBe(
-      'Neue Szene 4',
-    );
+    expect(nextSceneName([])).toBe('New scene 1');
+    expect(nextSceneName([{ name: 'A' }, { name: 'B' }])).toBe('New scene 3');
+    expect(nextSceneName([{ name: 'A' }, { name: 'New scene 2' }])).toBe('New scene 3');
+    expect(nextSceneName([{ name: 'New scene 2' }, { name: 'New scene 3' }])).toBe('New scene 4');
   });
 
-  it('names copies «(Kopie)», «(Kopie 2)» and keeps them within 80 characters', () => {
-    expect(copyName('Intro', [{ name: 'Intro' }])).toBe('Intro (Kopie)');
-    expect(copyName('Intro', [{ name: 'Intro' }, { name: 'Intro (Kopie)' }])).toBe(
-      'Intro (Kopie 2)',
-    );
+  it('names copies "(copy)", "(copy 2)" and keeps them within 80 characters', () => {
+    expect(copyName('Intro', [{ name: 'Intro' }])).toBe('Intro (copy)');
+    expect(copyName('Intro', [{ name: 'Intro' }, { name: 'Intro (copy)' }])).toBe('Intro (copy 2)');
     const long = 'x'.repeat(80);
     const copy = copyName(long, [{ name: long }]);
     expect(copy.length).toBeLessThanOrEqual(80);
-    expect(copy.endsWith(' (Kopie)')).toBe(true);
+    expect(copy.endsWith(' (copy)')).toBe(true);
   });
 
   it('moves a scene one place and refuses at the ends', () => {

@@ -1,7 +1,7 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import type { SceneDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
-import { PRODUCTION_ID, productionFixture, snapshotFixture } from '../../../testing/fixtures';
+import { PRODUCTION_ID, productionFixture } from '../../../testing/fixtures';
 import {
   MemoryStorage,
   startStore,
@@ -10,11 +10,8 @@ import {
 } from '../../../testing/store-harness';
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
+import { dockSnapshot } from '../testing/dock-fixtures';
 import { PropertiesDockComponent } from './properties-dock.component';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -35,7 +32,7 @@ describe('PropertiesDockComponent', () => {
     TestBed.configureTestingModule({ providers: studioTestProviders(hub, storage) });
     harness = await startStore(
       hub,
-      snapshotFixture({
+      dockSnapshot({
         production: productionFixture({
           programSceneId: options.program ?? 'scn_b',
           previewSceneId: options.preview ?? null,
@@ -77,20 +74,20 @@ describe('PropertiesDockComponent', () => {
 
   it('shows the scene inspector with the templates and the live-scene hint', async () => {
     await setup();
-    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Szene');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Präsentation');
-    expect(field('sf-insp-name').value).toBe('Präsentation');
+    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Scene');
+    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Presentation');
+    expect(field('sf-insp-name').value).toBe('Presentation');
     expect(element.querySelectorAll('.c-preset')).toHaveLength(8);
     expect(text(element.querySelector('.c-insp__danger .c-hint'))).toBe(
-      'Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.',
+      'The live scene cannot be deleted. Edit other scenes in Studio Mode.',
     );
-    expect(button('Szene löschen')?.disabled).toBe(true);
+    expect(button('Delete scene')?.disabled).toBe(true);
   });
 
   it('applies a template', async () => {
     await setup();
     const tiles = Array.from(element.querySelectorAll<HTMLButtonElement>('.c-preset'));
-    tiles.find((tile) => text(tile).includes('Nebeneinander'))?.click();
+    tiles.find((tile) => text(tile).includes('Side by side'))?.click();
     const request = harness.http.expectOne(`${BASE}/scenes/scn_b/items`);
     expect(request.request.body.items.map((item: { x: number }) => item.x)).toEqual([40, 980]);
     expect(request.request.body.layoutMode).toBe('free');
@@ -100,14 +97,14 @@ describe('PropertiesDockComponent', () => {
 
   it('deletes another scene only after the dashed confirmation', async () => {
     await setup({ studio: true, preview: 'scn_c', program: 'scn_a' });
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Pause');
+    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Break');
     expect(text(element.querySelector('.c-insp__danger .c-hint'))).toBe(
-      'Löschen entfernt die Szene mit allen Elementen.',
+      'Deleting removes the scene with all its items.',
     );
-    button('Szene löschen')?.click();
+    button('Delete scene')?.click();
     await render();
     expect(text(element.querySelector('.c-confirm span'))).toBe(
-      '«Pause» wird gelöscht. Das lässt sich nicht rückgängig machen.',
+      '“Break” will be deleted. This cannot be undone.',
     );
     harness.http.expectNone(() => true);
     element.querySelector<HTMLButtonElement>('.c-confirm .c-btn--danger-fill')?.click();
@@ -125,8 +122,8 @@ describe('PropertiesDockComponent', () => {
     await setup();
     editor.select('itm_b1');
     await render();
-    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Element');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('S1 · Laptop Lea · Folien');
+    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Item');
+    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('S1 · Laptop Lea · Slides');
     const x = field('sf-insp-x');
     expect(x.value).toBe('40');
     x.focus();
@@ -164,7 +161,7 @@ describe('PropertiesDockComponent', () => {
     expect(crop.request.body.crop.left).toBeCloseTo(0.45);
     crop.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
     await render();
-    button('Zurücksetzen')?.click();
+    button('Reset')?.click();
     const reset = harness.http.expectOne(`${BASE}/scenes/scn_b/items/itm_b1`);
     expect(reset.request.body.crop).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
     reset.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 3 });
@@ -175,7 +172,7 @@ describe('PropertiesDockComponent', () => {
     await setup();
     editor.select('itm_b2');
     await render();
-    button('Ganz zeigen')?.click();
+    button('Show all')?.click();
     const fit = harness.http.expectOne(`${BASE}/scenes/scn_b/items/itm_b2`);
     expect(fit.request.body.fit).toBe('contain');
     fit.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
@@ -187,9 +184,9 @@ describe('PropertiesDockComponent', () => {
     await render();
     const hold = element.querySelector<HTMLSelectElement>('#sf-insp-hold') as HTMLSelectElement;
     expect(Array.from(hold.options).map((option) => option.text.trim())).toEqual([
-      'Standbild 3 s, dann abgedunkelt',
-      'Standbild 10 s, dann abgedunkelt',
-      'Standbild halten',
+      'Freeze frame 3 s, then dim',
+      'Freeze frame 10 s, then dim',
+      'Hold freeze frame',
     ]);
     hold.value = 'hold';
     hold.dispatchEvent(new Event('change'));
@@ -202,7 +199,7 @@ describe('PropertiesDockComponent', () => {
 
   function backButton(): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>(
-      '.c-dock-frame__head button[aria-label="Auswahl aufheben, zurück zur Szene"]',
+      '.c-dock-frame__head button[aria-label="Clear selection, back to scene"]',
     );
   }
 
@@ -210,14 +207,14 @@ describe('PropertiesDockComponent', () => {
     return element.querySelector<HTMLElement>('.c-dock-frame__title') as HTMLElement;
   }
 
-  it('«Zur Szene» goes back from the element to the scene, focuses the heading and the templates work', async () => {
+  it('"Back to scene" goes back from the element to the scene, focuses the heading and the templates work', async () => {
     await setup();
     expect(backButton()).toBeNull();
     editor.select('itm_b1');
     await render();
     const back = backButton() as HTMLButtonElement;
-    expect(text(back)).toBe('Zur Szene');
-    expect(back.title).toBe('Auswahl aufheben (Esc)');
+    expect(text(back)).toBe('Back to scene');
+    expect(back.title).toBe('Clear selection (Esc)');
     expect(back.getAttribute('aria-keyshortcuts')).toBe('Escape');
     expect(back.type).toBe('button');
     expect(back.querySelector('svg.c-icon')?.getAttribute('aria-hidden')).toBe('true');
@@ -226,14 +223,14 @@ describe('PropertiesDockComponent', () => {
     await render();
     expect(editor.selectedItemId()).toBeNull();
     expect(backButton()).toBeNull();
-    expect(text(heading())).toBe('Szene');
-    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Präsentation');
+    expect(text(heading())).toBe('Scene');
+    expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Presentation');
     expect(document.activeElement).toBe(heading());
     expect(heading().tabIndex).toBe(-1);
-    // The scene inspector is back: «Vorlage anwenden» with all eight templates.
+    // The scene inspector is back: "Apply template" with all eight templates.
     const tiles = Array.from(element.querySelectorAll<HTMLButtonElement>('.c-preset'));
     expect(tiles).toHaveLength(8);
-    tiles.find((tile) => text(tile).includes('Vollbild'))?.click();
+    tiles.find((tile) => text(tile).includes('Full screen'))?.click();
     const request = harness.http.expectOne(`${BASE}/scenes/scn_b/items`);
     expect(request.request.body.items[0]).toMatchObject({ x: 0, y: 0, w: 1920, h: 1080 });
     request.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
@@ -245,7 +242,7 @@ describe('PropertiesDockComponent', () => {
     const off = editor.registerShortcuts();
     editor.select('itm_b2');
     await render();
-    const remove = button('Aus Szene entfernen') as HTMLButtonElement;
+    const remove = button('Remove from scene') as HTMLButtonElement;
     remove.focus();
     remove.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await render();
@@ -260,12 +257,12 @@ describe('PropertiesDockComponent', () => {
     editor.select('itm_b1');
     await render();
     expect(text(element.querySelector('.c-insp__note'))).toBe(
-      'Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um ' +
-        '1 px. Esc hebt die Auswahl auf.',
+      'Shift releases the aspect ratio, Alt turns snapping off, arrow keys move by 1 px. ' +
+        'Esc clears the selection.',
     );
   });
 
-  it('offers «Zur Szene» on the live scene in Studio-Modus too (deselecting is no edit)', async () => {
+  it('offers "Back to scene" on the live scene in Studio Mode too (deselecting is no edit)', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     editor.select('itm_b1');
     await render();
@@ -278,12 +275,12 @@ describe('PropertiesDockComponent', () => {
     harness.http.expectNone(() => true);
   });
 
-  it('disables every field while the scene is live in Studio-Modus', async () => {
+  it('disables every field while the scene is live in Studio Mode', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     editor.select('itm_b1');
     await render();
     expect(field('sf-insp-x').disabled).toBe(true);
-    expect(button('Aus Szene entfernen')?.disabled).toBe(true);
+    expect(button('Remove from scene')?.disabled).toBe(true);
     harness.http.expectNone(() => true);
   });
 });

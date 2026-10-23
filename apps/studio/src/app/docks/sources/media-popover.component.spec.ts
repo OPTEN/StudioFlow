@@ -11,10 +11,6 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { ToastService } from '../../core/ui/toast.service';
 import { MediaPopoverComponent } from './media-popover.component';
-import { resetLocaleForTests } from '@studioflow/i18n';
-
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -61,18 +57,18 @@ describe('MediaPopoverComponent', () => {
       hub,
       snapshotFixture({
         assets: [
-          asset('ast_aaaaaaaaaaaaaaaa', 'M1', 'Titelfolie'),
-          asset('ast_bbbbbbbbbbbbbbbb', 'M2', 'Pause-Slate'),
+          asset('ast_aaaaaaaaaaaaaaaa', 'M1', 'Title slide'),
+          asset('ast_bbbbbbbbbbbbbbbb', 'M2', 'Break slate'),
         ],
         sources: [
           ...base.sources,
-          mediaSource('ast_aaaaaaaaaaaaaaaa', 'M1', 'Titelfolie'),
-          mediaSource('ast_bbbbbbbbbbbbbbbb', 'M2', 'Pause-Slate'),
+          mediaSource('ast_aaaaaaaaaaaaaaaa', 'M1', 'Title slide'),
+          mediaSource('ast_bbbbbbbbbbbbbbbb', 'M2', 'Break slate'),
         ],
         scenes: [
           first,
           second,
-          sceneFixture(third.id, third.name, 2, [itemFixture('itm_c1', 'ast_bbbbbbbbbbbbbbbb')]),
+          sceneFixture(third.id, 'Break', 2, [itemFixture('itm_c1', 'ast_bbbbbbbbbbbbbbbb')]),
         ],
       }),
     );
@@ -99,31 +95,31 @@ describe('MediaPopoverComponent', () => {
 
   it('lists the media with code, name and facts', () => {
     expect(assets().map((row) => text(row.querySelector('.c-media-pop__name')))).toEqual([
-      'Titelfolie',
-      'Pause-Slate',
+      'Title slide',
+      'Break slate',
     ]);
     expect(text(assets()[0].querySelector('.c-media-pop__meta'))).toBe(
-      'Bild · 1920 × 1080 · 1,2 MB',
+      'Image · 1920 × 1080 · 1.2 MB',
     );
     expect(text(element.querySelector('.c-hint'))).toBe(
-      'PNG, JPEG oder WebP bis 25 MB · MP4 oder WebM bis 1 GB',
+      'PNG, JPEG or WebP up to 25 MB · MP4 or WebM up to 1 GB',
     );
   });
 
   it('explains where a medium is used instead of deleting it', async () => {
-    assets()[1].querySelector<HTMLButtonElement>('[aria-label="Löschen: Pause-Slate"]')?.click();
+    assets()[1].querySelector<HTMLButtonElement>('[aria-label="Delete: Break slate"]')?.click();
     await render();
     expect(text(assets()[1].querySelector('.c-media-pop__inuse'))).toBe(
-      'wird verwendet Wird in «Pause» verwendet. Erst dort entfernen.',
+      'in use Used in “Break”. Remove it there first.',
     );
     harness.http.expectNone(() => true);
   });
 
-  it('deletes after the confirmation and shows «wird verwendet» on 409', async () => {
-    assets()[0].querySelector<HTMLButtonElement>('[aria-label="Löschen: Titelfolie"]')?.click();
+  it('deletes after the confirmation and shows "in use" on 409', async () => {
+    assets()[0].querySelector<HTMLButtonElement>('[aria-label="Delete: Title slide"]')?.click();
     await render();
     expect(text(assets()[0].querySelector('.c-confirm span'))).toBe(
-      '«Titelfolie» wird gelöscht. Das lässt sich nicht rückgängig machen.',
+      '“Title slide” will be deleted. This cannot be undone.',
     );
     assets()[0].querySelector<HTMLButtonElement>('.c-btn--danger-fill')?.click();
     harness.http
@@ -131,25 +127,25 @@ describe('MediaPopoverComponent', () => {
       .flush({ code: 'asset_in_use' }, { status: 409, statusText: 'Conflict' });
     await render();
     expect(assets()[0].querySelector('.c-confirm')).toBeNull();
-    expect(text(assets()[0].querySelector('.c-media-pop__inuse'))).toContain('wird verwendet');
+    expect(text(assets()[0].querySelector('.c-media-pop__inuse'))).toContain('in use');
     expect(TestBed.inject(ToastService).current()).toBeNull();
   });
 
   it('renames a medium inline', async () => {
-    assets()[0].querySelector<HTMLButtonElement>('[aria-label="Umbenennen: Titelfolie"]')?.click();
+    assets()[0].querySelector<HTMLButtonElement>('[aria-label="Rename: Title slide"]')?.click();
     await render();
     const input = assets()[0].querySelector<HTMLInputElement>(
       'sf-inline-edit input',
     ) as HTMLInputElement;
-    input.value = 'Titel 2026';
+    input.value = 'Title 2026';
     input.dispatchEvent(new Event('input'));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     const request = harness.http.expectOne(`${BASE}/assets/ast_aaaaaaaaaaaaaaaa`);
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toEqual({ name: 'Titel 2026' });
-    request.flush(asset('ast_aaaaaaaaaaaaaaaa', 'M1', 'Titel 2026'));
+    expect(request.request.body).toEqual({ name: 'Title 2026' });
+    request.flush(asset('ast_aaaaaaaaaaaaaaaa', 'M1', 'Title 2026'));
     await render();
-    expect(TestBed.inject(ToastService).current()?.message).toBe('Datei heisst jetzt «Titel 2026»');
+    expect(TestBed.inject(ToastService).current()?.message).toBe('File is now called “Title 2026”');
   });
 
   it('reports rejected files of a drop inline', async () => {
@@ -160,7 +156,7 @@ describe('MediaPopoverComponent', () => {
     zone.dispatchEvent(drop);
     await render();
     expect(text(element.querySelector('.c-field-error'))).toBe(
-      '«logo.svg»: Dieser Dateityp ist nicht erlaubt. Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.',
+      '“logo.svg”: This file type is not allowed. Allowed are PNG, JPEG, WebP, MP4 and WebM.',
     );
   });
 });

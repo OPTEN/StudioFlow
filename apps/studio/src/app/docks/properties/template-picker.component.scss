@@ -37,7 +37,7 @@
     opacity: 0.45;
   }
 
-  // Auto-Grid while the scene uses it: selected underline like a pressed segment.
+  // Auto grid while the scene uses it: selected underline like a pressed segment.
   &.is-active {
     background: var(--raised);
     box-shadow: var(--shadow-selected);

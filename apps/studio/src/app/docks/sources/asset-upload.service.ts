@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { msg, t, type Msg } from '@studioflow/i18n';
 import { formatBytes, type AssetDto } from '@studioflow/scene-model';
-import { ApiError, toUserMessage } from '../../core/api/api-error';
+import { ApiError, toUserMessage, toUserMsg } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -20,8 +21,8 @@ export interface UploadEntry {
   readonly state: UploadState;
   /** 0–1 while uploading; null when the browser does not know the total. */
   readonly fraction: number | null;
-  /** German error text of a failed upload. */
-  readonly error: string | null;
+  /** Why the upload failed; a message, so it stays correct when the language changes while it is listed. */
+  readonly error: Msg | null;
   /** The created asset once done. */
   readonly asset: AssetDto | null;
 }
@@ -30,8 +31,8 @@ export interface UploadEntry {
 export interface AddFilesResult {
   /** Files that passed the pre-check and were queued. */
   readonly accepted: number;
-  /** German messages for files that were rejected before uploading. */
-  readonly rejected: readonly string[];
+  /** Messages for files that were rejected before uploading. */
+  readonly rejected: readonly Msg[];
 }
 
 interface QueuedFile {
@@ -41,10 +42,10 @@ interface QueuedFile {
 }
 
 /**
- * Uploads of images and videos (spec 4.7, prototype «Quelle hinzufügen»): checks type and size before the request
+ * Uploads of images and videos (spec 4.7, prototype "add source"): checks type and size before the request
  * (PNG, JPEG, WebP ≤ 25 MB; MP4, WebM ≤ 1 GB), uploads one file after the other with progress, can cancel, and turns
- * server errors (415 type, 413 size) into German messages. When a file is done, the toast offers to add it to the
- * edit scene («Zur Szene hinzufügen»).
+ * server errors (415 type, 413 size) into messages in the active language. When a file is done, the toast offers to
+ * add it to the edit scene ("Add to scene").
  *
  * Lives at root, so an upload keeps running when the media popover closes or the dock moves. Signing out cancels
  * every upload. The upload bypasses the HTTP interceptors (XMLHttpRequest for the progress), so a 401 is handled here
@@ -85,7 +86,7 @@ export class AssetUploadService {
   /** Checks and queues files; rejected files are reported, not queued. */
   add(files: Iterable<File>): AddFilesResult {
     const productionId = this.store.productionId();
-    const rejected: string[] = [];
+    const rejected: Msg[] = [];
     let accepted = 0;
     for (const file of files) {
       const check = validateUpload(file);
@@ -94,9 +95,7 @@ export class AssetUploadService {
         continue;
       }
       if (!productionId) {
-        rejected.push(
-          `«${file.name}»: Keine Verbindung zum Server. Bitte gleich nochmals versuchen.`,
-        );
+        rejected.push(msg('regie.media.validation.offline', { name: file.name }));
         continue;
       }
       const id = this.nextId++;
@@ -151,7 +150,7 @@ export class AssetUploadService {
     }
   }
 
-  /** Size text of an entry, e.g. «12,4 MB». */
+  /** Size text of an entry, e.g. "12.4 MB". */
   sizeText(entry: Pick<UploadEntry, 'size'>): string {
     return formatBytes(entry.size);
   }
@@ -192,31 +191,35 @@ export class AssetUploadService {
     } catch (error) {
       const apiError = ApiError.from(error);
       if (apiError.status === 401) {
-        this.patch(item.id, { state: 'failed', error: toUserMessage(apiError) });
+        this.patch(item.id, { state: 'failed', error: toUserMsg(apiError) });
         this.auth.handleUnauthorized();
       } else if (apiError.is('aborted')) {
         this.patch(item.id, { state: 'aborted', error: null });
-        this.toasts.show(`Hochladen von «${item.file.name}» abgebrochen`);
+        this.toasts.show(t('regie.media.toast.cancelled', { name: item.file.name }));
       } else {
-        const message = toUserMessage(apiError);
-        this.patch(item.id, { state: 'failed', error: message });
-        this.toasts.show(`«${item.file.name}» wurde nicht hochgeladen: ${message}`);
+        this.patch(item.id, { state: 'failed', error: toUserMsg(apiError) });
+        this.toasts.show(
+          t('regie.media.toast.failed', {
+            name: item.file.name,
+            reason: toUserMessage(apiError),
+          }),
+        );
       }
     } finally {
       this.controllers.delete(item.id);
     }
   }
 
-  /** Toast for a finished upload, with «Zur Szene hinzufügen» when the edit scene can take it. */
+  /** Toast for a finished upload, with "Add to scene" when the edit scene can take it. */
   private announce(asset: AssetDto): void {
     const scene = this.editor.editScene();
-    const message = `«${asset.name}» ist hochgeladen und steht als ${asset.code} bereit`;
+    const message = t('regie.media.toast.uploaded', { name: asset.name, code: asset.code });
     if (!scene || !this.editor.canEdit()) {
       this.toasts.show(message);
       return;
     }
     this.toasts.show(message, {
-      label: 'Zur Szene hinzufügen',
+      label: t('regie.media.toast.addToScene'),
       run: () => {
         if (!this.editor.editScene()?.items.some((item) => item.source === asset.id)) {
           this.editor.addSource(asset.id);
