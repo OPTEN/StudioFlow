@@ -35,7 +35,8 @@ Two ways to operate it:
 ## 2. Prerequisites
 
 - **Server:** Linux with Docker Engine and Compose v2 (`docker compose version`), or Windows/macOS with Docker Desktop.
-  Guide values: 4 CPU cores, 8 GB RAM, 20 GB free (plus space for videos and backups). Git for updates.
+  Guide values: 4 CPU cores, 8 GB RAM, 20 GB free (plus space for videos and backups). Git for updates (not needed
+  when the server runs the ready-made images of a release, section 14).
 - **Windows:** PowerShell 7.4 or newer (`pwsh`) for the `.ps1` scripts; the `.sh` scripts run in Git Bash.
   Docker Desktop only starts after the user has signed in – so after a restart, sign in (or enable "Start Docker
   Desktop when you sign in" and set up automatic sign-in).
@@ -173,6 +174,9 @@ docker compose up -d --build    # first start: builds the images (a few minutes)
 docker compose ps               # all four services "healthy"?
 ```
 
+This is the installation from the source: the images are built on the server. A server normally runs the ready-made
+images of a release instead, without Git and without a build: see section 14.
+
 `setup` asks for: LAN IPv4 (detected automatically, confirm it), TLS mode (+ email and token), domain, additional
 addresses (`internal` only), origins that may embed the output (`STUDIOFLOW_FRAME_ANCESTORS`, for example the domain
 of the proxy), admin user and password (twice, hidden, or leave empty for a generated password that is shown exactly
@@ -241,6 +245,10 @@ Moving to a new server: clone the repo, put the `.env` back from the vault (or r
 ## 8. Update
 
 **Never during a broadcast.** The script checks this itself and aborts as long as a production is live.
+
+This section describes an installation from the source (Git checkout, images built on the server). With the ready-made
+images of a release the same command pulls the new version instead, and `--version` selects it (also to go back):
+section 14.
 
 ```bash
 ./update.sh --backup           # Windows: pwsh ./update.ps1 -Backup
@@ -360,7 +368,8 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 
 ### Simulating network problems on purpose (test, never during a broadcast)
 
-The profile `chaos` delays and drops packets in the LiveKit network (media, signalling and API ↔ LiveKit):
+The profile `chaos` (only in `docker-compose.yml`, not in the release installation of section 14) delays and drops
+packets in the LiveKit network (media, signalling and API ↔ LiveKit):
 
 ```bash
 docker compose --profile chaos run --rm netem apply 100 10 0          # 100 ms delay per direction, 10 ms jitter
@@ -414,3 +423,131 @@ Swiss conventions (ss instead of ß, « » as quotation marks, decimal comma).
 - API error texts, log texts and defaults for new productions (scenes "Welcome", "Presentation", "Break", slates
   "Starting soon" and "Thanks for watching") are English. The Regie translates errors and log entries by code; the
   defaults stay English until you rename them.
+
+## 14. Operating with ready-made images
+
+Every release of StudioFlow comes as ready-made Docker images. A server pulls them: no Git checkout, no Node, .NET or
+Caddy build, no build that can fail on a network problem. This is the recommended way to run a server. How releases
+are made: `docs/releasing.md`.
+
+| Image | Content |
+|---|---|
+| `ghcr.io/opten/studioflow-web` | Caddy (TLS, DNS modules) with the Regie, sender and output frontends |
+| `ghcr.io/opten/studioflow-api` | The API with its commands (`hash-password`, `broadcast-status`) |
+
+Both always have the same version (`0.4.2`): they are built from one commit and must match. `livekit` and `postgres`
+are third-party images with a fixed version in the Compose file.
+
+### 14.1 Install from a release
+
+1. Sign in to the registry, as long as the repository is private (section 14.5): `docker login ghcr.io` with your
+   GitHub user name and a personal access token (classic) with the scope `read:packages`.
+2. Download `studioflow-X.Y.Z.tar.gz` and `SHA256SUMS` from the GitHub release (the release page, or
+   `gh release download vX.Y.Z --repo OPTEN/FlowStudio`), check them and unpack the folder:
+
+   ```bash
+   sha256sum -c SHA256SUMS --ignore-missing     # macOS: shasum -a 256 -c ...
+   tar -xzf studioflow-X.Y.Z.tar.gz && cd studioflow-X.Y.Z    # Windows 10/11: the same command works in a terminal
+   ```
+
+3. `./setup.sh` (Windows: `pwsh ./setup.ps1`) asks the questions of section 5, pulls the API image for the password hash
+   and writes the `.env`. Put it into the password vault.
+4. `docker compose up -d` pulls the images of this release and starts the stack; `docker compose ps` shows four
+   healthy services. First login as in section 5.
+
+The folder holds `docker-compose.yml` (the release file: it names the images instead of building them), `.env.example`,
+the `setup`, `update`, `backup` and `restore` scripts, this runbook (`docs/runbook.md`), `QUICKSTART.md` and `VERSION`.
+Everything else in this runbook (sections 3, 4, 6, 7, 9-13) applies unchanged. Differences: the profile `chaos`
+(`netem`) does not exist, and `docker compose build` has nothing to build.
+
+### 14.2 Which version runs
+
+The version is the variable `STUDIOFLOW_IMAGE_TAG`: in the `.env` if it is set there, otherwise the default in
+`docker-compose.yml`, which is the release the folder came from. `./update.sh --version` writes it to the `.env`.
+Ways to see what runs:
+
+```bash
+docker compose images                       # image names with their tags
+docker compose ps api --format '{{.Image}}'
+```
+
+The API (`GET /api/system/info`, signed in as admin) and the file `backup-info.txt` of every backup report the
+version as `0.4.2+1a2b3c4`: the release and the commit the image was built from.
+
+| `STUDIOFLOW_IMAGE_TAG` | Meaning |
+|---|---|
+| `0.4.2` | A release. Recommended: a server runs a version that was chosen on purpose |
+| `latest` | The newest release at the moment of the pull. `./update.sh` resolves it and writes the number |
+| `main` | The latest build of the main branch that passed all tests. For trying things out, never for a webinar |
+| `sha-1a2b3c4` | The build of one commit |
+
+`STUDIOFLOW_IMAGE_REGISTRY` (default `ghcr.io/opten`) replaces the registry path, for example for a mirror.
+
+### 14.3 Update
+
+**Never during a broadcast.** The script checks this and refuses while a production is live (section 8).
+
+```bash
+./update.sh --backup                 # the newest release; Windows: pwsh ./update.ps1 -Backup
+./update.sh --backup --version 0.4.2 # a specific release; Windows: -Version 0.4.2
+```
+
+Sequence: check the broadcast status → optional backup (`backups/..._pre-update`) → `docker compose pull` → write
+`STUDIOFLOW_IMAGE_TAG` to the `.env` → `docker compose up -d --wait` → status. The pull happens before anything is
+touched: when it fails (network, `denied`), the running stack and the `.env` stay as they were. Volumes are kept.
+
+- The images carry the program; the Compose file and the scripts in the folder belong to the release the folder came
+  from. When the release notes of a newer version say that they changed (a new variable in `.env.example`, a new
+  service), download that release and unpack its `studioflow-X.Y.Z.tar.gz` over the folder (`.env`, `backups/` and
+  `docker-compose.override.yml` are not part of it and stay; local changes to the Compose file belong into the override
+  file), then run `./update.sh` again. The script warns when the folder and the images are from different releases.
+- New variables: `docker compose` names them at the start; compare with `.env.example`.
+- `./update.sh --no-pull` only restarts, for example after a change to the `.env` (it fetches nothing).
+- Cleaning up after updates: `docker image prune` removes the images of earlier versions that no container uses.
+
+### 14.4 Roll back
+
+```bash
+./update.sh --version 0.4.1          # the version that ran before; the script prints it before it restarts
+```
+
+The database is migrated when the API starts, and a migration is not undone by starting an older API. Two cases:
+
+- **The newer version did not change the database schema** (no migration in the release notes): the command above is
+  enough.
+- **It did** (or you are not sure): after going back, restore the backup that was taken before the update. It is the
+  newest `backups/..._pre-update` folder; its `backup-info.txt` shows the `version:` it belongs to, which must be the
+  version you went back to:
+
+  ```bash
+  ./update.sh --version 0.4.1
+  ./restore.sh backups/2026-10-22_1430_pre-update
+  ```
+
+  Everything that was entered after that backup is lost.
+
+That is why every update starts with `--backup`.
+
+### 14.5 Access while the repository is private
+
+As long as the repository is private, the packages are private too. Every server needs a token once:
+
+1. GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic): scope `read:packages`, and the
+   account must be allowed to read the repository.
+2. `docker login ghcr.io -u <github user>`, paste the token. Docker stores it on the server (`~/.docker/config.json`);
+   treat it like a password and keep it in the vault.
+
+When the repository is public (#5) the packages are made public and this step disappears. `pull access denied` or
+`denied` during `setup` or `update` means: not signed in, a token without `read:packages`, or an expired token.
+
+### 14.6 Verify what you got
+
+Every image is signed by the release workflow, carries an SBOM and a provenance attestation, and the version tag has
+the same digest as the commit's `sha-` tag that passed the tests. Commands: `docs/releasing.md`, section 6.
+
+### 14.7 Images with a Git checkout
+
+A Git checkout can run the ready-made images as well: put `COMPOSE_FILE=docker-compose.release.yml` into the `.env`
+(the scripts notice it), or call `docker compose -f docker-compose.release.yml ...`. Without that, `docker-compose.yml`
+builds from the source as described in sections 5 and 8; `./update.sh --version` then explains that it is for the
+ready-made images.

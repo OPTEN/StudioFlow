@@ -646,6 +646,21 @@ fast (`${VAR:?…}`); optional variables have their default in `docker-compose.y
 - `docker-compose.override.example.yml`: local development (API on 127.0.0.1:5298, LiveKit signalling 127.0.0.1:7880,
   PostgreSQL 127.0.0.1:5432, `ASPNETCORE_ENVIRONMENT=Development`) and the certificate mount for TLS mode `custom`.
 
+Images and versions (issue #18, process in `docs/releasing.md`):
+
+- One version for every part (lockstep), kept by release-please in `.release-please-manifest.json`, `package.json`,
+  `apps/api/Directory.Build.props` (`<Version>`) and the default tag in `docker-compose.release.yml`;
+  `infra/release/check.mjs` fails CI when they differ. `GET /api/system/info` returns `version` as `0.4.2+1a2b3c4`
+  (version plus the commit the image was built from; the Docker build argument `STUDIOFLOW_REVISION` becomes the
+  `SourceRevisionId`).
+- Published images (GHCR, `linux/amd64`): `ghcr.io/opten/studioflow-web` (the `caddy` service: Caddy, Caddyfile,
+  frontends) and `ghcr.io/opten/studioflow-api`. Tags `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`,
+  `latest`. OCI labels, SBOM, provenance and a keyless cosign signature on every image.
+- `docker-compose.release.yml` is the twin of `docker-compose.yml` with `image:` instead of `build:` and without `netem`:
+  `${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-{web,api}:${STUDIOFLOW_IMAGE_TAG:-<release>}`. The release
+  bundle ships it as `docker-compose.yml`. `setup`, `update`, `backup` and `restore` detect the mode from the Compose
+  file (no `build:` section = ready-made images); `update --version X` writes `STUDIOFLOW_IMAGE_TAG` to `.env`.
+
 Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS modes in `infra/caddy/tls/`):
 
 - Site `{$STUDIOFLOW_DOMAIN} {$STUDIOFLOW_EXTRA_HOSTS}`, `default_sni {$STUDIOFLOW_DEFAULT_SNI}` (clients without

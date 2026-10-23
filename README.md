@@ -18,6 +18,8 @@ As of 22 October 2026: the plan and the clickable Regie prototype are done. Ther
 | `docs/history/FlowStudio Architekturplan.html` | Architecture and plan, draft 2 (historical, German, unmaintained). Open it in a browser. |
 | `docs/history/regie-*.png` | Images of the Regie in the plan |
 | `docs/history/archiv/` | Earlier version (draft 1 of 21 October 2026) |
+| `docs/runbook.md` | Operations guide, including the installation from the ready-made images of a release |
+| `docs/releasing.md` | Versions, Conventional Commits, Docker images and the release process |
 | `prototype/regie.html` | Clickable Regie prototype with sample data |
 | `prototype/fonts/` | Fonts of the prototype with licence texts (SIL Open Font License) |
 | `PRODUCT.md` | Product context: users, purpose, principles |
@@ -46,6 +48,7 @@ Both pages are private. You can share them with “Share” on the respective pa
 
 - One Docker Compose stack with Caddy, ASP.NET Core API, LiveKit and PostgreSQL. Data lives in volumes, there are no cloud services.
 - It runs locally with Docker or on a VPS in production.
+- Every commit on `main` publishes Docker images; a release (version, tag, GitHub release) comes from a release pull request, and servers pull the images instead of building. Pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`); see `docs/releasing.md`.
 - Login with one admin account from appsettings or `.env`, without SSO.
 - All devices are on site on the same Wi-Fi. HTTPS is used anyway, through a subdomain and DNS challenge.
 
