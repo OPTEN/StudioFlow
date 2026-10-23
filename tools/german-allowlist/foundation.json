@@ -15,11 +15,6 @@
     "reason": "The specs of the i18n package assert both locales."
   },
   {
-    "path": "tools/lib/german.mjs",
-    "rules": "all",
-    "reason": "The German word lists of the check itself."
-  },
-  {
     "path": "tools/lib/*.spec.ts",
     "rules": "all",
     "reason": "The specs of the check use German strings as test data."

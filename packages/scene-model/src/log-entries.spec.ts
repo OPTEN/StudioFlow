@@ -1,4 +1,4 @@
-import { tFor } from '@studioflow/i18n';
+import { resetLocaleForTests, tFor } from '@studioflow/i18n';
 import type { LogCode, LogEntryDto } from './contracts';
 import { formatDowntime } from './format';
 import { LOG_MESSAGE_KEYS, logEntryText } from './log-entries';
@@ -36,8 +36,12 @@ describe('logEntryText', () => {
 
   it('follows the active language', () => {
     const live = entry('sceneLive', { scene: 'Pause' });
-    expect(logEntryText(live)).toBe('Scene “Pause” is live');
-    expect(tFor('de-CH')('regie.log.sceneLive', { scene: 'Pause' })).toContain('«Pause»');
+    const english = tFor('en')('regie.log.sceneLive', { scene: 'Pause' });
+    const german = tFor('de-CH')('regie.log.sceneLive', { scene: 'Pause' });
+    expect(logEntryText(live)).toBe(english);
+    resetLocaleForTests('de-CH');
+    expect(logEntryText(live)).toBe(german);
+    expect(german).not.toBe(english);
   });
 
   it('falls back to the English text for a code this client does not know', () => {
