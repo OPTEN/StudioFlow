@@ -14,6 +14,9 @@ Set-Variable -Name BackupVolumes -Option Constant -Value @('media', 'keys', 'cad
 Set-Variable -Name DbDumpName -Option Constant -Value 'database.dump'
 Set-Variable -Name ChecksumsName -Option Constant -Value 'SHA256SUMS'
 Set-Variable -Name BackupInfoName -Option Constant -Value 'backup-info.txt'
+# Verification (restore.ps1 -Verify; same as SF_VERIFY_DB and SF_VERIFY_QUERY in backup-core.sh).
+Set-Variable -Name VerifyDbName -Option Constant -Value 'studioflow_verify'
+Set-Variable -Name VerifyQuery -Option Constant -Value "SELECT count(*) || ' tables, newest migration ' || coalesce((SELECT max(""MigrationId"") FROM ""__EFMigrationsHistory""), 'none') FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' HAVING count(*) > 0"
 
 $script:Root = $null
 
@@ -247,10 +250,12 @@ function Start-SfStackAndWait
     finally { Pop-Location }
 }
 
-# Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes.
+# Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes. RunArguments (for
+# example -v host:container) go to `docker compose run`.
 function Start-SfToolbox
 {
-    $result = Get-SfComposeOutput -Arguments @('--profile', 'tools', 'run', '-d', '--rm', '--no-deps', 'toolbox')
+    param([string[]] $RunArguments = @())
+    $result = Get-SfComposeOutput -Arguments (@('--profile', 'tools', 'run', '-d', '--rm', '--no-deps') + $RunArguments + @('toolbox'))
     $id = $result.Lines | Where-Object { $_ -match '^[0-9a-f]{12,64}$' } | Select-Object -Last 1
     if ($result.ExitCode -ne 0 -or -not $id) { throw 'The helper container (toolbox) could not be started.' }
     $id
@@ -277,4 +282,4 @@ function Protect-SfPath
     [IO.File]::SetUnixFileMode($Path, $mode)
 }
 
-Export-ModuleMember -Function * -Variable BackupVolumes, DbDumpName, ChecksumsName, BackupInfoName
+Export-ModuleMember -Function * -Variable BackupVolumes, DbDumpName, ChecksumsName, BackupInfoName, VerifyDbName, VerifyQuery

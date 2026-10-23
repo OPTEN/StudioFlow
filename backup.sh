@@ -6,6 +6,8 @@ set -euo pipefail
 SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=infra/scripts/common.sh
 . "$SF_ROOT/infra/scripts/common.sh"
+# shellcheck source=infra/scripts/backup-core.sh
+. "$SF_ROOT/infra/scripts/backup-core.sh"
 
 usage() {
 	cat <<'EOF'
@@ -55,27 +57,12 @@ sf_require_docker
 sf_require_env_file
 sf_service_running postgres || sf_die "PostgreSQL is not running. Start the stack first: docker compose up -d"
 
-sha256_file() {
-	if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | awk '{ print $1 }'
-}
-
-archives() {
-	local volume
-	for volume in $SF_BACKUP_VOLUMES; do printf '%s.tar.gz\n' "$volume"; done
-}
-
 # --- target folder (private: it holds login keys, certificates and the CA key) -----------------------------------
 
 umask 077
 mkdir -p "$base_dir"
 base_dir="$(cd "$base_dir" && pwd)"
-name="$(date '+%Y-%m-%d_%H%M')${label:+_$label}"
-target="$base_dir/$name"
-suffix=2
-while [ -e "$target" ]; do
-	target="$base_dir/$name-$suffix"
-	suffix=$((suffix + 1))
-done
+target="$(sf_backup_unique_dir "$base_dir" "$(date '+%Y-%m-%d_%H%M')${label:+_$label}")"
 mkdir "$target"
 host_target="$(sf_host_path "$target")"
 
@@ -106,6 +93,7 @@ version="$(sf_running_version)"
 
 # --- volumes --------------------------------------------------------------------------------------------------------
 
+# shellcheck disable=SC2119 # sf_toolbox_start takes optional docker compose run arguments; none here
 toolbox="$(sf_toolbox_start)" || sf_die "The helper container (toolbox) could not be started."
 for volume in $SF_BACKUP_VOLUMES; do
 	sf_info "Volume $volume ..."
@@ -117,42 +105,17 @@ done
 
 # --- description and checksums ------------------------------------------------------------------------------------
 
-{
-	echo "StudioFlow backup"
-	echo "created:   $(date '+%Y-%m-%d %H:%M:%S %z')"
-	echo "host:      $(hostname 2>/dev/null || echo unknown)"
-	echo "project:   ${project:-unknown}"
-	echo "version:   ${version:-unknown}"
-	echo "git:       $(sf_git rev-parse --short HEAD 2>/dev/null || echo unknown)"
-	echo "postgres:  ${postgres_version:-unknown}"
-	echo "contents:  $SF_DB_DUMP $(archives | tr '\n' ' ')"
-} >"$target/$SF_BACKUP_INFO"
-
-(
-	cd "$target"
-	for file in "$SF_DB_DUMP" $(archives) "$SF_BACKUP_INFO"; do
-		printf '%s  %s\n' "$(sha256_file "$file")" "$file"
-	done >"$SF_CHECKSUMS"
-)
+archives=()
+for volume in $SF_BACKUP_VOLUMES; do archives+=("$volume.tar.gz"); done
+SF_BACKUP_VERSION="${version:-unknown}" sf_backup_write_info "$target/$SF_BACKUP_INFO" "$project" "$(sf_git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+	"$postgres_version" "$SF_DB_DUMP" "${archives[@]}"
+sf_backup_write_checksums "$target" "$SF_DB_DUMP" "${archives[@]}" "$SF_BACKUP_INFO"
 completed=true
 
 # --- retention ------------------------------------------------------------------------------------------------------
 
-if [ -n "$keep" ]; then
-	# Only folders written by this script (date-named, with a checksum file), newest first by the time the checksum
-	# file was written: names have minute resolution and labels, so they do not sort reliably.
-	backups=()
-	# shellcheck disable=SC2012 # ls -t is the portable way to sort by mtime (GNU and BSD stat differ)
-	while IFS= read -r sums; do
-		dir="$(dirname "$sums")"
-		[[ "$(basename "$dir")" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4} ]] && backups+=("$dir")
-	done < <(ls -1t "$base_dir"/*/"$SF_CHECKSUMS" 2>/dev/null)
-	for ((i = keep; i < ${#backups[@]}; i++)); do
-		[ "${backups[i]}" = "$target" ] && continue
-		rm -rf "${backups[i]}"
-		sf_info "Old backup removed: $(basename "${backups[i]}")"
-	done
-fi
+# Only folders written by this script (date-named, with a checksum file) are counted and removed.
+[ -z "$keep" ] || sf_backup_prune_newest "$base_dir" "$keep" "$target"
 
 sf_step "Backup complete: $target ($(du -sh "$target" | awk '{ print $1 }'))"
 sf_info "Restore with: ./restore.sh \"$target\""
