@@ -6,6 +6,7 @@
 # Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
 # Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
 # with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT).
+# Automatic backups are the profile "backup": COMPOSE_PROFILES=backup and BACKUP_SCHEDULE in .env (runbook section 7).
 # Required variables fail fast (${VAR:?...}); optional ones have their default here and nowhere else.
 
 name: studioflow
@@ -100,10 +101,16 @@ services:
       DATAPROTECTION__KEYSPATH: /data/keys
       # Only Caddy (inside this network) may set X-Forwarded-For / -Proto.
       FORWARDEDHEADERS__KNOWNNETWORKS__0: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
+      # Readiness check of the automatic backups: reads the status file of the backup service (empty schedule = off).
+      BACKUP__STATUSFILE: /data/backup-status/backup-status.json
+      BACKUP__SCHEDULE: ${BACKUP_SCHEDULE:-}
+      BACKUP__WARNAFTERHOURS: ${BACKUP_WARN_AFTER_HOURS:-48}
     volumes:
       - media:/data/media
       # ASP.NET Core Data Protection keys: logins survive restarts and updates.
       - keys:/data/keys
+      # Only the status file of the backup service, never the backups themselves.
+      - backup_status:/data/backup-status:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/live"]
       interval: 10s
@@ -214,6 +221,60 @@ services:
       - caddy_data:/volumes/caddy_data
     restart: "no"
 
+  # Automatic backups (runbook section 7): infra/backup/backup-job.sh on BACKUP_SCHEDULE. Inside the stack, so the same
+  # on Linux and in Docker Desktop. pg_dump connects over the network; the volumes are mounted read-only. The Caddy
+  # volume is readable for its own user only, hence DAC_READ_SEARCH (read access, no write access) instead of more.
+  backup:
+    <<: *service-defaults
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: infra/backup/Dockerfile
+      args:
+        POSTGRES_IMAGE: *postgres-image
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH
+    read_only: true
+    tmpfs:
+      - /tmp
+      # The PostgreSQL image declares a volume here; this one stores no data.
+      - /var/lib/postgresql/data
+    environment:
+      TZ: ${BACKUP_TIMEZONE:-UTC}
+      PGHOST: postgres
+      PGUSER: studioflow
+      PGDATABASE: studioflow
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-}
+      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
+      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
+      BACKUP_LIVE_POLL_SECONDS: ${BACKUP_LIVE_POLL_SECONDS:-300}
+      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
+      BACKUP_RCLONE_CONFIG: ${BACKUP_RCLONE_CONFIG:-}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_OFFSITE_UNENCRYPTED: ${BACKUP_OFFSITE_UNENCRYPTED:-false}
+    volumes:
+      # The dated backups and the incremental copy of the media (/backups/media).
+      - backups:/backups
+      - backup_status:/status
+      - media:/volumes/media:ro
+      - keys:/volumes/keys:ro
+      - caddy_data:/volumes/caddy_data:ro
+    healthcheck:
+      test: ["CMD", "/opt/backup/healthcheck.sh"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
+    # A running backup is cut off after this time; the unfinished folder is removed by the next run.
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 networks:
   studioflow:
     ipam:
@@ -226,3 +287,6 @@ volumes:
   media:
   keys:
   pgdata:
+  # Automatic backups and their status file (profile "backup"); the API mounts only backup_status.
+  backups:
+  backup_status:
