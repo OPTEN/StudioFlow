@@ -239,12 +239,12 @@ export function provideI18n(options?: InitOptions): EnvironmentProviders; // pro
 
 ## 5. API
 
-**Policy.** Every `FlowStudioException` message, `ProblemDetails.title`/`detail`, validation field message, hub error text and server-created default is English. `code` stays the stable machine key.
+**Policy.** Every `StudioFlowException` message, `ProblemDetails.title`/`detail`, validation field message, hub error text and server-created default is English. `code` stays the stable machine key.
 
 **Text changes.**
 - **Titles:** `Problems.TitleFor` is the English set: "Invalid input", "Not signed in", "No access", "Not found", "Request timeout", "Conflict", "No longer valid", "Too large", "Unsupported file type", "Too many attempts", "Temporarily unavailable", "Server error".
-- **Not-found nouns:** `FlowStudioException.NotFound(string what)` takes an English noun ("Production", "Device", "Invite", "Request", "File") and produces "{what} was not found."
-- **Where German strings live:** about 45 string literals across `Domain/*`, `Application/Services/*`, `Application/MutationContextExtensions.cs`, `Application/SnapshotBuilder.cs`, `Infrastructure/Media/FileMediaStore.cs`, `Web/Errors/{Problems,FlowStudioExceptionHandler,JsonBindingErrors,DatabaseOutage}.cs`, `Web/Hosting/FlowStudioHost.cs`, `Web/Security/{RequestSecurity,OutputAuthenticationHandler}.cs`, `Web/Endpoints/DeviceAndMediaEndpoints.cs`, and `Hubs.cs` (the `{code}: {message}` HubException texts).
+- **Not-found nouns:** `StudioFlowException.NotFound(string what)` takes an English noun ("Production", "Device", "Invite", "Request", "File") and produces "{what} was not found."
+- **Where German strings live:** about 45 string literals across `Domain/*`, `Application/Services/*`, `Application/MutationContextExtensions.cs`, `Application/SnapshotBuilder.cs`, `Infrastructure/Media/FileMediaStore.cs`, `Web/Errors/{Problems,StudioFlowExceptionHandler,JsonBindingErrors,DatabaseOutage}.cs`, `Web/Hosting/StudioFlowHost.cs`, `Web/Security/{RequestSecurity,OutputAuthenticationHandler}.cs`, `Web/Endpoints/DeviceAndMediaEndpoints.cs`, and `Hubs.cs` (the `{code}: {message}` HubException texts).
 - **Server defaults (D8):** `Production.DefaultSceneNames` = Welcome/Presentation/Break; `StandbySlate` = "Starting soon"; `EndSlate` = "Thanks for watching"; `Device.LabelOf` → "{Name} · Screen {n}" / "{Name} · Camera".
 - **Left alone:** `Slugs.cs` keeps its ä/ö/ü/ß transliteration table, which is allowlisted. The CLI output (`hash-password`, `broadcast-status`) is already English.
 - XML-doc comments quoting German UI strings are rewritten to English examples (the check's comment tier flags umlauts).
@@ -525,8 +525,8 @@ CI wiring belongs to #15.
 7. **Ordering with #3:** do not start before the rename is merged. A late rename would force every package to redo paths and prefixes.
 
 ### Critical Files for Implementation
-- D:\Dev\FlowStudio\packages\scene-model\src\format.ts
-- D:\Dev\FlowStudio\apps\studio\src\app\core\api\api-error.ts
-- D:\Dev\FlowStudio\apps\api\src\Opten.StudioFlow.Core\Domain\LogTexts.cs
-- D:\Dev\FlowStudio\tsconfig.json
-- D:\Dev\FlowStudio\tests\e2e\support\constants.ts
+- packages/scene-model/src/format.ts
+- apps/studio/src/app/core/api/api-error.ts
+- apps/api/src/Opten.StudioFlow.Core/Domain/LogTexts.cs
+- tsconfig.json
+- tests/e2e/support/constants.ts
