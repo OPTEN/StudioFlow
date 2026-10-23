@@ -23,7 +23,7 @@
 
 @keyframes c-st-flash {
   0% {
-    background: rgba(121, 192, 255, 0.22);
+    background: color-mix(in srgb, var(--blue) 22%, transparent);
   }
 
   100% {

@@ -107,7 +107,7 @@
   white-space: nowrap;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: color-mix(in srgb, var(--text) 6%, transparent);
     text-decoration: underline;
     text-underline-offset: 3px;
   }

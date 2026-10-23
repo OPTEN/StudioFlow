@@ -2,17 +2,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { LanguageSelectComponent } from '../../core/ui/language-select.component';
 import { PopoverDirective } from '../../core/ui/popover.directive';
+import { ThemeSelectComponent } from './theme-select.component';
 
 /** Id of the settings popover. */
 export const SETTINGS_POPOVER = 'settings';
 
 /**
- * The settings of this browser, opened by the gear button of the header. It holds the language; later settings (the
- * colour theme) are added as further rows. Rendered by the header inside its popover wrapper while open.
+ * The settings of this browser, opened by the gear button of the header: the language and the appearance. Rendered by
+ * the header inside its popover wrapper while open.
  */
 @Component({
   selector: 'sf-settings-popover',
-  imports: [LanguageSelectComponent, PopoverDirective],
+  imports: [LanguageSelectComponent, PopoverDirective, ThemeSelectComponent],
   template: `
     <div
       class="c-pop"
@@ -22,6 +23,7 @@ export const SETTINGS_POPOVER = 'settings';
     >
       <div class="c-pop-h">{{ t('regie.settings.title') }}</div>
       <sf-language-select />
+      <sf-theme-select />
     </div>
   `,
   styles: `

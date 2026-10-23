@@ -152,7 +152,7 @@
   z-index: 30;
 
   &.is-hot {
-    background: rgba(121, 192, 255, 0.2);
+    background: color-mix(in srgb, var(--blue) 20%, transparent);
   }
 }
 

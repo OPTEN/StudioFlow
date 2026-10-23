@@ -4,6 +4,19 @@ import { PopoverService } from '../../core/ui/popover.directive';
 import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
 
 describe('SettingsPopoverComponent', () => {
+  it('holds the appearance row below the language', async () => {
+    const fixture = TestBed.createComponent(SettingsPopoverComponent);
+    TestBed.inject(PopoverService).open(SETTINGS_POPOVER);
+    await fixture.whenStable();
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.c-pop > *'),
+    ).map((row) => row.tagName.toLowerCase());
+    expect(rows).toEqual(['div', 'sf-language-select', 'sf-theme-select']);
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('.c-seg button')).toHaveLength(
+      3,
+    );
+  });
+
   it('holds the language row and switches the language', async () => {
     const fixture = TestBed.createComponent(SettingsPopoverComponent);
     TestBed.inject(PopoverService).open(SETTINGS_POPOVER);

@@ -11,7 +11,17 @@ export const PREFERENCE_KEYS = {
   studioMode: 'studioflow.studio',
   transition: 'studioflow.transition',
   layout: 'studioflow.layout',
+  theme: 'studioflow.theme',
 } as const;
+
+/** The appearance of the Regie: its own dark console, the light console, or whatever the system prefers. */
+export type ThemeSetting = 'dark' | 'light' | 'system';
+
+export const THEME_SETTINGS: readonly ThemeSetting[] = ['dark', 'light', 'system'];
+
+function isThemeSetting(value: unknown): value is ThemeSetting {
+  return (THEME_SETTINGS as readonly unknown[]).includes(value);
+}
 
 /**
  * Resolves the browser storage. A function, because merely reading `window.localStorage` throws in some privacy
@@ -35,7 +45,7 @@ function isFadeDuration(value: unknown): value is FadeDurationMs {
 }
 
 /**
- * Per-browser preferences in `localStorage` (Studio Mode, transition, dock layout v1). Never throws: unavailable or
+ * Per-browser preferences in `localStorage` (Studio Mode, transition, dock layout v1, theme). Never throws: unavailable or
  * full storage, private mode and corrupt values fall back to the defaults, and the Regie keeps working without
  * persistence.
  */
@@ -69,6 +79,17 @@ export class PreferencesService {
   /** Persists the transition. */
   writeTransition(transition: TransitionPreference): void {
     this.write(PREFERENCE_KEYS.transition, JSON.stringify(transition));
+  }
+
+  /** The appearance (`studioflow.theme`); an absent or unknown value means the default, dark. */
+  readTheme(): ThemeSetting {
+    const stored = this.read(PREFERENCE_KEYS.theme);
+    return isThemeSetting(stored) ? stored : 'dark';
+  }
+
+  /** Persists the appearance. */
+  writeTheme(theme: ThemeSetting): void {
+    this.write(PREFERENCE_KEYS.theme, theme);
   }
 
   /** The stored dock layout as parsed JSON (unvalidated; `DockLayoutService` validates it), or null. */

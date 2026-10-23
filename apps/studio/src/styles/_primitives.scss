@@ -206,14 +206,14 @@
   &.is-warn {
     background: var(--amber);
     height: 9px;
-    outline: 3px solid rgba(227, 179, 65, 0.22);
+    outline: 3px solid color-mix(in srgb, var(--amber) 22%, transparent);
     width: 9px;
   }
 
   &.is-bad {
     background: var(--red);
     height: 11px;
-    outline: 3px solid rgba(248, 81, 73, 0.25);
+    outline: 3px solid color-mix(in srgb, var(--red) 25%, transparent);
     width: 11px;
   }
 
@@ -224,7 +224,7 @@
 
 @keyframes c-lamp-pulse {
   35% {
-    outline-color: rgba(248, 81, 73, 0.05);
+    outline-color: color-mix(in srgb, var(--red) 5%, transparent);
     outline-width: 9px;
   }
 }
@@ -280,7 +280,7 @@
 }
 
 .c-pop {
-  background: var(--raised);
+  background: var(--float);
   border: 1px solid var(--seam-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
@@ -525,7 +525,7 @@
     width: 36px;
 
     &::after {
-      background: var(--text);
+      background: var(--on-fill);
       border-radius: 50%;
       content: '';
       height: 14px;
@@ -671,10 +671,10 @@
 
 // Keycap number on scene thumbnails
 .c-keycap {
-  background: rgba(13, 17, 23, 0.88);
+  background: var(--pic-scrim);
   border-radius: 2px;
   bottom: 2px;
-  color: var(--text-2);
+  color: var(--pic-text-2);
   font: 600 9.5px / 1 var(--font-mono);
   padding: 2px 3px;
   position: absolute;

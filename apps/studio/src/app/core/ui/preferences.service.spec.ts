@@ -41,6 +41,27 @@ describe('PreferencesService', () => {
     expect(preferences.readLayout()).toBeNull();
   });
 
+  it('stores and reads the theme, which defaults to dark and survives a layout reset', () => {
+    const storage = new MemoryStorage();
+    const preferences = setup(() => storage);
+    expect(preferences.readTheme()).toBe('dark');
+    for (const theme of ['light', 'system', 'dark'] as const) {
+      preferences.writeTheme(theme);
+      expect(storage.getItem(PREFERENCE_KEYS.theme)).toBe(theme);
+      expect(preferences.readTheme()).toBe(theme);
+    }
+    preferences.writeTheme('light');
+    preferences.writeLayout({ v: 1 });
+    preferences.clearLayout();
+    expect(preferences.readTheme()).toBe('light');
+  });
+
+  it('falls back to dark for an unknown theme', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(PREFERENCE_KEYS.theme, 'Light');
+    expect(setup(() => storage).readTheme()).toBe('dark');
+  });
+
   it('falls back to defaults for corrupt values', () => {
     const storage = new MemoryStorage();
     storage.setItem(PREFERENCE_KEYS.transition, '{"kind":"wipe","durationMs":123}');
@@ -56,6 +77,8 @@ describe('PreferencesService', () => {
     expect(() => preferences.writeStudioMode(true)).not.toThrow();
     expect(() => preferences.writeLayout({ v: 1 })).not.toThrow();
     expect(() => preferences.clearLayout()).not.toThrow();
+    expect(preferences.readTheme()).toBe('dark');
+    expect(() => preferences.writeTheme('light')).not.toThrow();
     expect(preferences.readTransition()).toEqual({ kind: 'fade', durationMs: 300 });
   });
 
