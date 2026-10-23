@@ -150,9 +150,9 @@ export function incidentFixture(
   };
 }
 
-/** A log entry. */
+/** A log entry: the scene `name` went live. */
 export function logFixture(text: string, at = '2026-10-22T09:30:00.000Z'): LogEntryDto {
-  return { at, text };
+  return { at, code: 'sceneLive', params: { scene: text }, text: `Scene “${text}” is live` };
 }
 
 /** Default scenes: Begrüssung (K1), Präsentation (S1 + K1), Pause (empty). */

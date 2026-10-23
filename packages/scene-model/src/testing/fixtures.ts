@@ -9,6 +9,7 @@ import type {
   IncidentDto,
   IncidentKind,
   InviteDto,
+  LogEntryDto,
   OutputSnapshot,
   OutputStatusDto,
   PairingRequestDto,
@@ -39,8 +40,8 @@ export function productionFixture(overrides: Partial<ProductionDto> = {}): Produ
     previewSceneId: null,
     lastTransition: { kind: 'cut', durationMs: 0 },
     lastSwitchAt: null,
-    standbySlate: { title: "Gleich geht's los", subtitle: 'Webinar', backgroundAssetId: null },
-    endSlate: { title: 'Danke fürs Zuschauen', subtitle: null, backgroundAssetId: null },
+    standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
+    endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     ...overrides,
   };
 }
@@ -80,7 +81,7 @@ export function sceneFixture(
 ): SceneDto {
   return {
     id,
-    name: `Szene ${id}`,
+    name: `Scene ${id}`,
     sortOrder,
     version: 1,
     layoutMode: 'free',
@@ -272,4 +273,9 @@ export function outputSnapshotFixture(overrides: Partial<OutputSnapshot> = {}): 
     assets: [],
     ...overrides,
   };
+}
+
+/** A log entry of "Recent events" (the code and parameters of a scene going live by default). */
+export function logFixture(text: string, overrides: Partial<LogEntryDto> = {}): LogEntryDto {
+  return { at: FIXTURE_TIME, code: 'sceneLive', params: { scene: text }, text, ...overrides };
 }

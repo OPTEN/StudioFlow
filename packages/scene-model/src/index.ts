@@ -9,3 +9,4 @@ export * from './geometry';
 export * from './production-state';
 export * from './selectors';
 export * from './format';
+export * from './log-entries';

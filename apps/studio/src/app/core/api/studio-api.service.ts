@@ -51,7 +51,7 @@ const enc = encodeURIComponent;
 /**
  * Typed client for every REST operation the Regie uses (spec 5, `ApiSurface.cs`). Pure transport: no state, no
  * business logic, no toasts. Every method returns a promise that rejects with an {@link ApiError}; callers turn
- * it into a German message with `toGermanMessage` (or `ToastService.error`). Production-scoped methods take the
+ * it into a German message with `toUserMessage` (or `ToastService.error`). Production-scoped methods take the
  * production id explicitly (`ProductionStoreService.productionId()`).
  *
  * The CSRF header is added by `csrfInterceptor`; a 401 leads to the login page through `authInterceptor`.

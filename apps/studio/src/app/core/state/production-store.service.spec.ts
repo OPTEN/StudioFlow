@@ -19,6 +19,10 @@ import {
   type StudioTestHook,
 } from './production-store.service';
 import { TEST_HOOKS_FLAG } from './test-hooks';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('ProductionStoreService', () => {
   let hub: FakeStudioHub;
@@ -101,7 +105,7 @@ describe('ProductionStoreService', () => {
     expect(hub.subscribeCalls[1]).toEqual({ productionId: PRODUCTION_ID, since: 100 });
     expect(store.state()?.revision).toBe(102);
     expect(store.sceneById('scn_c')?.name).toBe('Kurze Pause');
-    expect(store.log()[0].text).toBe('später');
+    expect(store.log()[0].params).toEqual({ scene: 'später' });
   });
 
   it('follows the active production on resync', async () => {

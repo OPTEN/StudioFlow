@@ -1,43 +1,49 @@
 <main class="c-login">
-  <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
-    <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
-    <p class="c-login__lead">Regie</p>
+  <div class="c-login__col">
+    <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
+      <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
+      <p class="c-login__lead">{{ t('regie.login.brandLead') }}</p>
 
-    <label class="c-login__field">
-      <span class="c-login__label">Benutzername</span>
-      <input
-        class="c-input"
-        type="text"
-        autocomplete="username"
-        autocapitalize="off"
-        spellcheck="false"
-        formControlName="username"
-        [class.is-invalid]="form.controls.username.invalid && form.controls.username.touched"
-      />
-    </label>
-    <label class="c-login__field">
-      <span class="c-login__label">Passwort</span>
-      <input
-        class="c-input"
-        type="password"
-        autocomplete="current-password"
-        formControlName="password"
-        [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched"
-      />
-    </label>
+      <label class="c-login__field">
+        <span class="c-login__label">{{ t('regie.login.username') }}</span>
+        <input
+          class="c-input"
+          type="text"
+          autocomplete="username"
+          autocapitalize="off"
+          spellcheck="false"
+          formControlName="username"
+          [class.is-invalid]="form.controls.username.invalid && form.controls.username.touched"
+        />
+      </label>
+      <label class="c-login__field">
+        <span class="c-login__label">{{ t('regie.login.password') }}</span>
+        <input
+          class="c-input"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+          [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched"
+        />
+      </label>
 
-    <p class="c-login__error" role="alert" aria-live="assertive">
-      @if (message(); as message) {
-        <svg sfIcon="alert" [size]="14"></svg>{{ message }}
-      }
-    </p>
+      <p class="c-login__error" role="alert" aria-live="assertive">
+        @if (message(); as message) {
+          <svg sfIcon="alert" [size]="14"></svg>{{ message }}
+        }
+      </p>
 
-    <button
-      class="c-btn c-btn--fill c-login__submit"
-      type="submit"
-      [disabled]="submitting() || locked()"
-    >
-      {{ submitting() ? 'Anmelden …' : 'Anmelden' }}
-    </button>
-  </form>
+      <button
+        class="c-btn c-btn--fill c-login__submit"
+        type="submit"
+        [disabled]="submitting() || locked()"
+      >
+        {{ submitting() ? t('regie.login.submitting') : t('regie.login.submit') }}
+      </button>
+    </form>
+
+    <footer class="c-login__footer">
+      <sf-language-select />
+    </footer>
+  </div>
 </main>

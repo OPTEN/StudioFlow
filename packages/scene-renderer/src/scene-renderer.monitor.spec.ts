@@ -8,6 +8,10 @@ import {
   SCREEN,
   type Mounted,
 } from './testing/fixtures';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('scene renderer: monitor alerts', () => {
   let mounted: Mounted;

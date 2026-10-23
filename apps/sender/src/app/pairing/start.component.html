@@ -2,11 +2,10 @@
   <div class="c-pairing__inner">
     <sf-brand-mark class="c-pairing__brand" />
 
-    <h1 class="c-pairing__title" data-route-focus tabindex="-1">Gerät koppeln</h1>
-    <p class="c-pairing__lead">
-      Gib diesem Gerät einen Namen. Die Regie sieht ihn zusammen mit einem Prüfcode und gibt das
-      Gerät frei.
-    </p>
+    <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+      {{ t('sender.pairing.start.title') }}
+    </h1>
+    <p class="c-pairing__lead">{{ t('sender.pairing.start.lead') }}</p>
 
     @if (notice(); as text) {
       <div class="c-notice c-notice--warn" role="status">
@@ -17,7 +16,9 @@
 
     <form class="c-pairing__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="c-field">
-        <label class="c-field__label" for="device-name">Name des Geräts</label>
+        <label class="c-field__label" for="device-name">{{
+          t('sender.pairing.start.nameLabel')
+        }}</label>
         <input
           class="c-field__input"
           id="device-name"
@@ -34,7 +35,7 @@
           "
         />
         <p class="c-field__hint" id="device-name-hint">
-          Zum Beispiel «Laptop Anna» oder «Handy Bühne links».
+          {{ t('sender.pairing.start.nameExample') }}
         </p>
         @if (nameError(); as message) {
           <p class="c-field__error" id="device-name-error">{{ message }}</p>
@@ -42,15 +43,15 @@
       </div>
 
       <fieldset class="c-segmented">
-        <legend class="c-segmented__legend">Was sendet dieses Gerät?</legend>
+        <legend class="c-segmented__legend">{{ t('sender.pairing.start.kindLegend') }}</legend>
         <div class="c-segmented__options">
           <label class="c-segmented__option">
             <input class="c-segmented__input" type="radio" formControlName="kind" value="phone" />
-            <span>Handy (Kamera)</span>
+            <span>{{ t('sender.pairing.start.kindPhone') }}</span>
           </label>
           <label class="c-segmented__option">
             <input class="c-segmented__input" type="radio" formControlName="kind" value="laptop" />
-            <span>Laptop (Bildschirm)</span>
+            <span>{{ t('sender.pairing.start.kindLaptop') }}</span>
           </label>
         </div>
       </fieldset>
@@ -58,10 +59,7 @@
       @if (kind() === 'laptop' && !canShareScreen) {
         <div class="c-notice c-notice--warn" role="status">
           <sf-icon class="c-notice__icon" name="alert" />
-          <p class="c-notice__text">
-            Bildschirm teilen geht nur auf Laptops und Desktop-Browsern. Auf diesem Gerät kannst du
-            die Kamera senden.
-          </p>
+          <p class="c-notice__text">{{ t('sender.pairing.start.noScreenShare') }}</p>
         </div>
       }
 
@@ -77,13 +75,12 @@
         type="submit"
         [disabled]="busy()"
       >
-        {{ busy() ? 'Wird gesendet …' : 'Weiter' }}
+        {{ busy() ? t('sender.pairing.start.submitting') : t('sender.pairing.start.submit') }}
       </button>
     </form>
 
-    <p class="c-pairing__foot">
-      Mit dem QR-Code der Regie geht es noch schneller: einfach mit der Kamera-App des Handys
-      scannen.
-    </p>
+    <p class="c-pairing__foot">{{ t('sender.pairing.start.foot') }}</p>
+
+    <sf-language-select />
   </div>
 </main>

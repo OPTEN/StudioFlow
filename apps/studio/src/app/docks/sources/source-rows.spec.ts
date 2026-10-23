@@ -12,6 +12,10 @@ import {
   sourceRows,
   usageSentence,
 } from './source-rows';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const K1 = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Handy Bühne links' });
 const K2 = sourceFixture('dev_cccccccccccccccc', 'camera', 'K2', {

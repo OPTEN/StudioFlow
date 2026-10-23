@@ -4,6 +4,10 @@ import {
   mountDebugOverlay,
   type DebugInfo,
 } from './debug-overlay';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const INFO: DebugInfo = {
   productionName: 'Webinar',

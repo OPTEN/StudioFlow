@@ -55,7 +55,7 @@
       <strong [class.c-state--bad]="row.bad" [class.c-state--warn]="!row.bad">{{
         row.word
       }}</strong>
-      <span class="c-status__where">{{ row.place }}</span>
+      <span class="c-status__where">{{ placeWord(row.place) }}</span>
       <span class="c-status__time">{{ timer(row.incident) }}</span>
       @if (row.reshare) {
         <button

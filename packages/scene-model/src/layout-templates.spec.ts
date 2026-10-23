@@ -43,14 +43,14 @@ function byId(items: readonly SceneItemDto[], id: string): SceneItemDto {
 describe('LAYOUT_TEMPLATES', () => {
   it('has the eight templates of the plan in order', () => {
     expect(LAYOUT_TEMPLATES.map((template) => template.name)).toEqual([
-      'Vollbild',
-      'Nebeneinander',
-      'Bild-in-Bild',
-      'Screen + Kamera-Spalte',
-      'Eins plus zwei',
+      'Full screen',
+      'Side by side',
+      'Picture in picture',
+      'Screen + camera column',
+      'One plus two',
       '2 × 2',
       '3 × 3',
-      'Auto-Grid',
+      'Auto grid',
     ]);
   });
 

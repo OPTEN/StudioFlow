@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { formatClock } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
@@ -10,6 +11,7 @@ import { BroadcastControlComponent } from './broadcast-control.component';
 import { LAYOUT_POPOVER, LayoutPopoverComponent } from './layout-popover.component';
 import { OUTPUT_POPOVER, OutputPopoverComponent } from './output-popover.component';
 import { ProductionMenuComponent } from './production-menu.component';
+import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
 
 /**
  * The Regie header (prototype `.top`, DESIGN.md «Header»): brand, production menu, broadcast state and control,
@@ -25,6 +27,7 @@ import { ProductionMenuComponent } from './production-menu.component';
     BroadcastControlComponent,
     OutputPopoverComponent,
     LayoutPopoverComponent,
+    SettingsPopoverComponent,
   ],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss',
@@ -39,6 +42,8 @@ export class HeaderComponent {
 
   protected readonly outputPopover = OUTPUT_POPOVER;
   protected readonly layoutPopover = LAYOUT_POPOVER;
+  protected readonly settingsPopover = SETTINGS_POPOVER;
+  protected readonly t = t;
 
   /** Header clock «HH:MM:SS» (local time). */
   protected readonly clockText = computed(() => formatClock(new Date(this.clock.now())));

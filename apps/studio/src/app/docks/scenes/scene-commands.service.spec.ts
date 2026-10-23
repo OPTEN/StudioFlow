@@ -15,6 +15,10 @@ import {
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { LIVE_SCENE_DELETE_MESSAGE, SceneCommandsService } from './scene-commands.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 

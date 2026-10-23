@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@studioflow/scene-model';
-import { toGermanMessage } from '../../core/api/api-error';
+import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -193,7 +193,7 @@ export class ProductionMenuComponent {
     this.auth
       .logout()
       .catch((error: unknown) =>
-        this.toasts.show(`Abmelden hat nicht geklappt. ${toGermanMessage(error)}`),
+        this.toasts.show(`Abmelden hat nicht geklappt. ${toUserMessage(error)}`),
       );
   }
 

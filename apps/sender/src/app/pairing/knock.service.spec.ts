@@ -197,7 +197,7 @@ describe('KnockService', () => {
     await expect(knock.request('Laptop Anna', 'laptop', 'x')).resolves.toBe(false);
 
     expect(knock.phase()).toBe('idle');
-    expect(knock.error()?.message).toContain('Minuten');
+    expect(knock.error()?.userMessage).toContain('2 minutes');
   });
 
   it('cancel withdraws the request with the poll token', async () => {

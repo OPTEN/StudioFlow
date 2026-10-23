@@ -10,6 +10,10 @@ import {
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ControlColumnComponent } from './control-column.component';
 import { SWITCH_HINTS, SwitcherService } from './switcher.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 

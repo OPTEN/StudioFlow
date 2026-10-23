@@ -7,6 +7,7 @@ import {
   deviceTally,
   healthSummary,
   incidentPlace,
+  incidentPlaceWord,
   isDown,
   isSourceVisibleIn,
   previewScene,
@@ -64,8 +65,8 @@ function studioState(
         assetSourceFixture(M1, 'M1'),
       ],
       devices: [
-        deviceFixture('dev_k1aaaa', 'Handy Bühne links'),
-        deviceFixture('dev_k2aaaa', 'Handy Bühne rechts'),
+        deviceFixture('dev_k1aaaa', 'Phone stage left'),
+        deviceFixture('dev_k2aaaa', 'Phone stage right'),
         deviceFixture('dev_laptop', 'Laptop Lea', { kind: 'laptop' }),
       ],
       assets: [assetFixture(M1, 'M1')],
@@ -210,10 +211,18 @@ describe('deviceTally', () => {
 describe('incidentPlace', () => {
   it('names where the source is on air', () => {
     const state = studioState();
-    expect(incidentPlace(state, K1)).toBe('im Program');
-    expect(incidentPlace(state, K2)).toBe('in der Preview');
-    expect(incidentPlace(state, S2)).toBe('nicht live');
-    expect(incidentPlace(state, 'dev_gone/camera')).toBe('nicht live');
+    expect(incidentPlace(state, K1)).toBe('program');
+    expect(incidentPlace(state, K2)).toBe('preview');
+    expect(incidentPlace(state, S2)).toBe('off');
+    expect(incidentPlace(state, 'dev_gone/camera')).toBe('off');
+  });
+});
+
+describe('incidentPlaceWord', () => {
+  it('says where a source is on air in words', () => {
+    expect(incidentPlaceWord('program')).toBe('on Program');
+    expect(incidentPlaceWord('preview')).toBe('in Preview');
+    expect(incidentPlaceWord('off')).toBe('not live');
   });
 });
 
@@ -247,7 +256,7 @@ describe('stationOrder', () => {
 
   it('without incidents: program before preview before the rest', () => {
     const state = studioState();
-    const extra = deviceFixture('dev_idle', 'Ohne Bild');
+    const extra = deviceFixture('dev_idle', 'No picture');
     const sources = new Map(state.sources).set(
       'dev_idle/camera',
       deviceSourceFixture('dev_idle', 'camera', 'K3'),
@@ -317,30 +326,30 @@ describe('assetForSource / sourceLabel', () => {
     expect(assetForSource(state, 'ast_unknown')).toBeNull();
   });
 
-  it('labels deleted sources «Quelle fehlt»', () => {
+  it('labels deleted sources "Source missing"', () => {
     const state = studioState();
     expect(sourceLabel(state, K1)).toBe('dev_k1aaaa · camera');
-    expect(sourceLabel(state, 'dev_gone/camera')).toBe('Quelle fehlt');
+    expect(sourceLabel(state, 'dev_gone/camera')).toBe('Source missing');
   });
 });
 
 describe('healthSummary', () => {
   it('counts the stations that are not blocked when all is well', () => {
     const state = studioState();
-    expect(healthSummary(state)).toEqual({ active: 0, bad: false, text: 'Alle 3 Stationen ok' });
+    expect(healthSummary(state)).toEqual({ active: 0, bad: false, text: 'All 3 stations ok' });
     const blocked = new Map(state.devices).set(
       'dev_k2aaaa',
       deviceFixture('dev_k2aaaa', 'x', { state: 'blocked' }),
     );
-    expect(healthSummary({ ...state, devices: blocked }).text).toBe('Alle 2 Stationen ok');
+    expect(healthSummary({ ...state, devices: blocked }).text).toBe('All 2 stations ok');
   });
 
   it('uses singular and empty wording', () => {
     const state = studioState();
     expect(
       healthSummary({ ...state, devices: new Map([['dev_a', deviceFixture('dev_a', 'A')]]) }).text,
-    ).toBe('1 Station ok');
-    expect(healthSummary({ ...state, devices: new Map() }).text).toBe('Keine Stationen');
+    ).toBe('1 station ok');
+    expect(healthSummary({ ...state, devices: new Map() }).text).toBe('No stations');
   });
 
   it('counts open incidents; recovered ones do not count', () => {
@@ -351,7 +360,7 @@ describe('healthSummary', () => {
         incidentFixture('inc_2', S1, 'S1', 'reconnecting', '2026-10-22T10:00:09Z'),
       ],
     };
-    expect(healthSummary(state)).toEqual({ active: 1, bad: false, text: '1 Störung' });
+    expect(healthSummary(state)).toEqual({ active: 1, bad: false, text: '1 incident' });
   });
 
   it('is bad when an open incident is red', () => {
@@ -362,6 +371,6 @@ describe('healthSummary', () => {
         incidentFixture('inc_2', S1, 'S1', 'ended'),
       ],
     };
-    expect(healthSummary(state)).toEqual({ active: 2, bad: true, text: '2 Störungen' });
+    expect(healthSummary(state)).toEqual({ active: 2, bad: true, text: '2 incidents' });
   });
 });

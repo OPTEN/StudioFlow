@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MemoryStorage } from '../../testing/sender-fakes';
-import { ApiError, formatRetryAfter, parseRetryAfter } from './api-error';
+import { ApiError, parseRetryAfter } from './api-error';
 import { LOCAL_STORAGE, STORAGE_KEYS } from './browser-storage';
 import { DeviceApiService } from './device-api.service';
 import { deviceAuthInterceptor } from './device-auth.interceptor';
@@ -86,14 +86,15 @@ describe('DeviceApiService', () => {
     http
       .expectOne('/api/device/me')
       .flush(
-        { status: 403, code: 'device_blocked', detail: 'Das Gerät ist gesperrt.' },
+        { status: 403, code: 'device_blocked', detail: 'The device is blocked.' },
         { status: 403, statusText: 'Forbidden' },
       );
     const error = (await self.catch((reason: unknown) => reason)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(403);
     expect(error.isBlocked).toBe(true);
-    expect(error.message).toBe('Dieses Gerät ist gesperrt. Die Regie kann es wieder freigeben.');
+    expect(error.message).toBe('This device is blocked. The control room can unblock it.');
+    expect(error.userMessage).toBe('This device is blocked. The control room can unblock it.');
   });
 
   it('maps 410 pairing_expired', async () => {
@@ -109,7 +110,7 @@ describe('DeviceApiService', () => {
     await expect(redeem).rejects.toMatchObject({ status: 410, code: 'pairing_expired' });
   });
 
-  it('maps 429 with Retry-After into a German retry hint', async () => {
+  it('maps 429 with Retry-After into a retry hint', async () => {
     const created = api.createPairingRequest({ name: 'x', kind: 'laptop', platform: 'x' });
     http
       .expectOne('/api/pairing/requests')
@@ -119,7 +120,8 @@ describe('DeviceApiService', () => {
       );
     const error = (await created.catch((reason: unknown) => reason)) as ApiError;
     expect(error.retryAfterSeconds).toBe(120);
-    expect(error.message).toBe('Zu viele Versuche. Bitte in 2 Minuten noch einmal versuchen.');
+    expect(error.message).toBe('Too many attempts. Please try again in 2 minutes.');
+    expect(error.userMessage).toBe('Too many attempts. Please try again in 2 minutes.');
   });
 
   it('maps a network failure to status 0', async () => {
@@ -129,7 +131,8 @@ describe('DeviceApiService', () => {
     expect(error.status).toBe(0);
     expect(error.isNetwork).toBe(true);
     expect(error.isTransient).toBe(true);
-    expect(error.message).toContain('nicht erreichbar');
+    expect(error.message).toContain('not reachable');
+    expect(error.userMessage).toContain('not reachable');
   });
 
   it('maps 503 service_unavailable to a calm, retryable message', async () => {
@@ -137,28 +140,31 @@ describe('DeviceApiService', () => {
     http
       .expectOne('/api/device/me')
       .flush(
-        { code: 'service_unavailable', detail: 'Die Datenbank ist nicht erreichbar.' },
+        { code: 'service_unavailable', detail: 'The database is not reachable.' },
         { status: 503, statusText: 'Service Unavailable' },
       );
     const error = (await self.catch((reason: unknown) => reason)) as ApiError;
     expect(error.isUnavailable).toBe(true);
     expect(error.isTransient).toBe(true);
     expect(error.message).toBe(
-      'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
+      'The server is not reachable right now. Please try again in a moment.',
     );
     expect(new ApiError(502, null, 'x').isUnavailable).toBe(true);
     expect(new ApiError(500, 'internal_error', 'x').isUnavailable).toBe(false);
   });
 
-  it('uses the first field error of a validation problem', async () => {
+  it('keeps the field errors for diagnostics but shows the text of the code (D7)', async () => {
     const created = api.createPairingRequest({ name: '', kind: 'laptop', platform: 'x' });
     http
       .expectOne('/api/pairing/requests')
       .flush(
-        { code: 'validation_failed', errors: { name: ['Der Name darf nicht leer sein.'] } },
+        { code: 'validation_failed', errors: { name: ['The name must not be empty.'] } },
         { status: 400, statusText: 'Bad Request' },
       );
-    await expect(created).rejects.toMatchObject({ message: 'Der Name darf nicht leer sein.' });
+    await expect(created).rejects.toMatchObject({
+      message: 'The input is not valid.',
+      fieldErrors: { name: ['The name must not be empty.'] },
+    });
   });
 });
 
@@ -170,10 +176,12 @@ describe('Retry-After', () => {
     expect(parseRetryAfter('Thu, 22 Oct 2026 12:01:00 GMT', now)).toBe(60);
   });
 
-  it('formats German hints', () => {
-    expect(formatRetryAfter(1)).toBe('in 1 Sekunde');
-    expect(formatRetryAfter(40)).toBe('in 40 Sekunden');
-    expect(formatRetryAfter(61)).toBe('in 2 Minuten');
-    expect(formatRetryAfter(null)).toBe('später');
+  it('words the wait in seconds, minutes or "later"', () => {
+    const wait = (seconds: number | null): string =>
+      new ApiError(429, 'rate_limited', 'x', seconds).userMessage;
+    expect(wait(1)).toBe('Too many attempts. Please try again in 1 second.');
+    expect(wait(40)).toBe('Too many attempts. Please try again in 40 seconds.');
+    expect(wait(61)).toBe('Too many attempts. Please try again in 2 minutes.');
+    expect(wait(null)).toBe('Too many attempts. Please try again later.');
   });
 });

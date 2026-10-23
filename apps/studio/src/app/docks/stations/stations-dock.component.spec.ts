@@ -7,6 +7,10 @@ import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../../shell/station-focus.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
 import { StationsDockComponent } from './stations-dock.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 const PHONE = 'dev_aaaaaaaaaaaaaaaa';

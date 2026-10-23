@@ -19,6 +19,10 @@ import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
 import { EditorService, LIVE_LOCKED_MESSAGE, LIVE_UNDO_MESSAGE } from './editor.service';
 import { SwitcherService } from './switcher.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 const SCENE_A = `${BASE}/scenes/scn_a`;
@@ -128,7 +132,8 @@ describe('EditorService', () => {
       );
     await flushMicrotasks();
     expect(itemA().x).toBe(100);
-    expect(toasts.current()?.message).toBe('X ist zu gross.');
+    // The toast shows the text of the code, never the field message of the server (D7).
+    expect(toasts.current()?.message).toBe('Die Eingabe ist ungültig.');
     harness.http.expectNone(`${SCENE_A}/items/itm_a1`);
   });
 

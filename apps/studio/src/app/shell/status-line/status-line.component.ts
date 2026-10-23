@@ -3,7 +3,9 @@ import {
   formatClock,
   formatDuration,
   formatHm,
+  incidentPlaceWord,
   incidentWord,
+  logEntryText,
   type IncidentDto,
   type IncidentPlace,
 } from '@studioflow/scene-model';
@@ -56,6 +58,7 @@ const LOG_ENTRIES = 4;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusLineComponent {
+  protected readonly placeWord = incidentPlaceWord;
   protected readonly store = inject(ProductionStoreService);
   protected readonly media = inject(StudioMediaService);
   private readonly clock = inject(ClockService);
@@ -105,7 +108,7 @@ export class StatusLineComponent {
       .map((entry, index) => ({
         key: `${entry.at}-${index}`,
         time: formatHm(new Date(entry.at)),
-        text: entry.text,
+        text: logEntryText(entry),
       })),
   );
 

@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import { formatDuration, type InviteDto } from '@studioflow/scene-model';
-import { toGermanMessage } from '../../core/api/api-error';
+import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
@@ -131,7 +131,7 @@ export class PhoneTabComponent {
     try {
       this.fetched.set(await this.api.getPhoneInvite(productionId));
     } catch (error) {
-      this.error.set(toGermanMessage(error));
+      this.error.set(toUserMessage(error));
     } finally {
       this.loading.set(false);
     }

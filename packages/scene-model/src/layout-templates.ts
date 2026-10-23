@@ -1,14 +1,18 @@
+import { t } from '@studioflow/i18n';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, DEFAULT_ITEM_RADIUS } from './constants';
 import type { SceneItemDto, SceneLayoutMode, SourceKind } from './contracts';
 
 /** A slot rectangle in canvas pixels: [x, y, w, h]. */
 export type SlotRect = readonly [x: number, y: number, w: number, h: number];
 
-/** Identifier of a layout template («Vorlage»). */
+/** Identifier of a layout template. */
 export type LayoutTemplateId =
   'full' | 'two' | 'pip' | 'col' | 'onetwo' | 'grid' | 'grid3' | 'auto';
 
-/** A layout template; `slots` is null for Auto-Grid, which depends on the number of available sources. */
+/**
+ * A layout template; `slots` is null for the auto grid, which depends on the number of available sources. `name` and
+ * `description` are looked up when they are read, so they follow the active language.
+ */
 export interface LayoutTemplate {
   readonly id: LayoutTemplateId;
   readonly name: string;
@@ -20,65 +24,48 @@ const GRID3: readonly SlotRect[] = [40, 378, 716].flatMap((y) =>
   [86, 674, 1262].map((x): SlotRect => [x, y, 572, 322]),
 );
 
+function template(id: LayoutTemplateId, slots: readonly SlotRect[] | null): LayoutTemplate {
+  return {
+    id,
+    get name() {
+      return t(`model.scene.templateName.${id}`);
+    },
+    get description() {
+      return t(`model.scene.templateInfo.${id}`);
+    },
+    slots,
+  };
+}
+
 /** The eight templates of the plan; slot rectangles are identical to the prototype. */
 export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [
-  {
-    id: 'full',
-    name: 'Vollbild',
-    description: 'eine Quelle',
-    slots: [[0, 0, CANVAS_WIDTH, CANVAS_HEIGHT]],
-  },
-  {
-    id: 'two',
-    name: 'Nebeneinander',
-    description: 'Interview, Gespräch',
-    slots: [
-      [40, 287, 900, 506],
-      [980, 287, 900, 506],
-    ],
-  },
-  {
-    id: 'pip',
-    name: 'Bild-in-Bild',
-    description: 'Screen gross, Kamera in der Ecke',
-    slots: [
-      [0, 0, CANVAS_WIDTH, CANVAS_HEIGHT],
-      [1400, 772, 480, 270],
-    ],
-  },
-  {
-    id: 'col',
-    name: 'Screen + Kamera-Spalte',
-    description: 'Präsentation mit zwei Personen',
-    slots: [
-      [40, 158, 1360, 765],
-      [1440, 283, 440, 248],
-      [1440, 551, 440, 248],
-    ],
-  },
-  {
-    id: 'onetwo',
-    name: 'Eins plus zwei',
-    description: 'Moderation und zwei Gäste',
-    slots: [
-      [40, 196, 1225, 689],
-      [1285, 196, 595, 335],
-      [1285, 551, 595, 335],
-    ],
-  },
-  {
-    id: 'grid',
-    name: '2 × 2',
-    description: 'Panel oder Q&A',
-    slots: [
-      [79, 40, 871, 490],
-      [970, 40, 871, 490],
-      [79, 550, 871, 490],
-      [970, 550, 871, 490],
-    ],
-  },
-  { id: 'grid3', name: '3 × 3', description: 'Galerie, viele Gäste', slots: GRID3 },
-  { id: 'auto', name: 'Auto-Grid', description: 'ordnet sich nach aktiven Kameras', slots: null },
+  template('full', [[0, 0, CANVAS_WIDTH, CANVAS_HEIGHT]]),
+  template('two', [
+    [40, 287, 900, 506],
+    [980, 287, 900, 506],
+  ]),
+  template('pip', [
+    [0, 0, CANVAS_WIDTH, CANVAS_HEIGHT],
+    [1400, 772, 480, 270],
+  ]),
+  template('col', [
+    [40, 158, 1360, 765],
+    [1440, 283, 440, 248],
+    [1440, 551, 440, 248],
+  ]),
+  template('onetwo', [
+    [40, 196, 1225, 689],
+    [1285, 196, 595, 335],
+    [1285, 551, 595, 335],
+  ]),
+  template('grid', [
+    [79, 40, 871, 490],
+    [970, 40, 871, 490],
+    [79, 550, 871, 490],
+    [970, 550, 871, 490],
+  ]),
+  template('grid3', GRID3),
+  template('auto', null),
 ];
 
 /** Looks up a template by id. */
@@ -90,7 +77,7 @@ export function layoutTemplate(id: LayoutTemplateId): LayoutTemplate {
   return template;
 }
 
-/** Slots of the Auto-Grid for `count` available sources (prototype `autoSlots`). */
+/** Slots of the auto grid for `count` available sources (prototype `autoSlots`). */
 export function autoGridSlots(count: number): readonly SlotRect[] {
   if (count <= 1) {
     return layoutTemplate('full').slots ?? [];
@@ -113,7 +100,7 @@ export function autoGridSlots(count: number): readonly SlotRect[] {
 
 /**
  * Sort rank used when distributing items over slots: screens first, then media, then cameras; items whose source no
- * longer exists («Quelle fehlt») come last so they never take the main slot.
+ * longer exists ("Source missing") come last so they never take the main slot.
  */
 function kindRank(kind: SourceKind | undefined): number {
   switch (kind) {
@@ -133,11 +120,11 @@ function kindRank(kind: SourceKind | undefined): number {
  * Applies a template to the items of a scene (pure).
  *
  * Slots: the visible items are ordered by kind (screen, then image/video, then camera, then missing sources; stable
- * inside a kind) and get the slots in that order. A screen in slot 0 gets fit `contain` (except Nebeneinander and the
+ * inside a kind) and get the slots in that order. A screen in slot 0 gets fit `contain` (except side by side and the
  * grids), everything else `cover`; full-canvas slots get radius 0, the others 12.
  *
  * Z-order: the item order is the layer order (first = back), so the result is re-ordered to match the slots, because
- * slots may overlap (Bild-in-Bild: the small picture lies on top of the full one):
+ * slots may overlap (picture in picture: the small picture lies on top of the full one):
  * 1. the placed items first, in slot order – slot 0 at the back, every later slot in front of the earlier ones;
  * 2. then every item that got no slot – hidden items and visible items beyond the slot count – in front of the
  *    placed ones, in their previous relative order and with their geometry unchanged.
@@ -146,7 +133,7 @@ function kindRank(kind: SourceKind | undefined): number {
  * disappears behind a template slot it does not belong to: a leftover stays visible and clickable in the monitor,
  * and a hidden item shows up where the operator can see it.
  *
- * Auto-Grid only switches the layout mode and keeps the item order; the renderer computes the rectangles from the
+ * Auto grid only switches the layout mode and keeps the item order; the renderer computes the rectangles from the
  * available sources in item order, and its slots never overlap.
  */
 export function applyLayoutTemplate(

@@ -1,6 +1,6 @@
 import { applyEvent, type ProductionEvent, type ProductionState } from '@studioflow/scene-model';
 import { preloadScenesFor, ProgramView, slateFor } from './program-view';
-import { NO_ACCESS_SLATE } from './slates';
+import { noAccessSlate } from './slates';
 import { FakeRenderer } from './testing/fakes';
 import {
   FADE,
@@ -12,6 +12,10 @@ import {
   sceneUpserted,
   state,
 } from './testing/fixtures';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 function setup(): { renderer: FakeRenderer; view: ProgramView } {
   const renderer = new FakeRenderer(document.createElement('div'));
@@ -194,7 +198,7 @@ describe('ProgramView', () => {
     renderer.reset();
     view.setDenied(true);
     expect(renderer.summary()).toEqual(['slate Kein Zugang', 'show null', 'preload ']);
-    expect(renderer.currentSlate()).toBe(NO_ACCESS_SLATE);
+    expect(renderer.currentSlate()).toEqual(noAccessSlate());
     expect(view.rendering).toBe(false);
     expect(view.shownSceneId).toBeNull();
 

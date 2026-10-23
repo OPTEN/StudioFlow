@@ -8,6 +8,10 @@ import {
   sortMonitoringRows,
   type MonitoringRow,
 } from './monitoring-rows';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const NOW = Date.parse('2026-10-22T10:00:10.000Z');
 

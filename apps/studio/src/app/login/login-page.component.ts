@@ -1,24 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ApiError, minutesText, toGermanMessage } from '../core/api/api-error';
+import { msg, t, tm, type Msg } from '@studioflow/i18n';
+import { ApiError, toUserMsg, waitMinutes } from '../core/api/api-error';
 import { AuthService, safeNextPath } from '../core/auth/auth.service';
 import { ClockService } from '../core/ui/clock.service';
 import { IconComponent } from '../core/ui/icon.component';
+import { LanguageSelectComponent } from '../core/ui/language-select.component';
 
 /** Default lockout when the server sends 429 without Retry-After (spec 5: 15 minutes). */
 const DEFAULT_LOCKOUT_SECONDS = 15 * 60;
 
-/** German text for a failed login. */
-export function loginErrorMessage(error: unknown): string {
+/** The message for a failed login; it stays correct when the language changes while it is shown. */
+export function loginErrorMsg(error: unknown): Msg {
   const apiError = ApiError.from(error);
   if (apiError.status === 401) {
-    return 'Benutzername oder Passwort ist falsch.';
+    return msg('regie.login.error.invalid');
   }
   if (apiError.status === 429) {
-    return `Zu viele Fehlversuche. Bitte in ${minutesText(apiError.retryAfterSeconds ?? DEFAULT_LOCKOUT_SECONDS)} erneut versuchen.`;
+    return lockedMsg(apiError.retryAfterSeconds ?? DEFAULT_LOCKOUT_SECONDS);
   }
-  return toGermanMessage(apiError);
+  return toUserMsg(apiError);
+}
+
+function lockedMsg(seconds: number): Msg {
+  return msg('regie.login.error.locked', { count: waitMinutes(seconds) });
 }
 
 /**
@@ -28,7 +34,7 @@ export function loginErrorMessage(error: unknown): string {
  */
 @Component({
   selector: 'sf-login-page',
-  imports: [IconComponent, ReactiveFormsModule],
+  imports: [IconComponent, LanguageSelectComponent, ReactiveFormsModule],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,12 +45,13 @@ export class LoginPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly clock = inject(ClockService);
 
+  protected readonly t = t;
   protected readonly form = new FormGroup({
     username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   protected readonly submitting = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly error = signal<Msg | null>(null);
   private readonly lockedUntil = signal<number | null>(null);
 
   /** True while the lockout of a 429 lasts. */
@@ -52,13 +59,13 @@ export class LoginPageComponent {
     const until = this.lockedUntil();
     return until !== null && this.clock.now() < until;
   });
-  /** The lockout message with the remaining minutes. */
+  /** The lockout message with the remaining minutes, else the last error. */
   protected readonly message = computed(() => {
     const until = this.lockedUntil();
     if (until !== null && this.clock.now() < until) {
-      return `Zu viele Fehlversuche. Bitte in ${minutesText((until - this.clock.now()) / 1000)} erneut versuchen.`;
+      return tm(lockedMsg((until - this.clock.now()) / 1000));
     }
-    return this.error();
+    return tm(this.error()) || null;
   });
 
   constructor() {
@@ -77,7 +84,7 @@ export class LoginPageComponent {
     }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.error.set('Bitte Benutzername und Passwort eingeben.');
+      this.error.set(msg('regie.login.error.required'));
       return;
     }
     const { username, password } = this.form.getRawValue();
@@ -94,7 +101,7 @@ export class LoginPageComponent {
         // Relative to the shared clock, so the countdown starts at exactly the server's minutes.
         this.lockedUntil.set(this.clock.now() + seconds * 1000);
       }
-      this.error.set(loginErrorMessage(apiError));
+      this.error.set(loginErrorMsg(apiError));
       this.form.controls.password.reset('');
     } finally {
       this.submitting.set(false);

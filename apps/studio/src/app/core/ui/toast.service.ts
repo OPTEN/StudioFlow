@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { toGermanMessage, type ErrorMessageOverrides } from '../api/api-error';
+import { toUserMessage, type ErrorMessageOverrides } from '../api/api-error';
 
 /** Optional action button of a toast («Rückgängig», «Layout zurücksetzen»). */
 export interface ToastAction {
@@ -62,9 +62,9 @@ export class ToastService {
     );
   }
 
-  /** Shows the German message of an API (or any) error; see `toGermanMessage`. */
+  /** Shows the message of an API (or any) error in the active language; see `toUserMessage`. */
   error(error: unknown, overrides?: ErrorMessageOverrides): void {
-    this.show(toGermanMessage(error, overrides));
+    this.show(toUserMessage(error, overrides));
   }
 
   /** Runs the action of the current toast and hides it. */

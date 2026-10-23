@@ -1,7 +1,7 @@
 import { keepVideosPlaying, resumeVideos } from './autoplay';
 import { CURSOR_IDLE_CLASS, CURSOR_IDLE_MS, hideIdleCursor } from './cursor';
 import { formatClockMs, startClockPage } from './clock-page';
-import { CLOCK_HINT } from './slates';
+import { clockHint } from './slates';
 import { whenFontsReady } from './fonts';
 
 function pausedVideo(src: string | null): HTMLVideoElement {
@@ -94,7 +94,7 @@ describe('measurement clock (/o/_uhr)', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     const time = root.querySelector('.c-clock__time');
     expect(time?.textContent).toMatch(/^\d{2}:\d{2}:\d{2}\.\d{3}$/);
-    expect(root.querySelector('.c-clock__hint')?.textContent).toBe(CLOCK_HINT);
+    expect(root.querySelector('.c-clock__hint')?.textContent).toBe(clockHint());
     expect(document.title).toBe('StudioFlow Uhr');
     const before = frames.length;
     frames.at(-1)?.(0);

@@ -1277,10 +1277,26 @@ export interface components {
              */
             expiresAt: string;
         };
-        /** @description A human-readable entry for «Letzte Ereignisse» (backed by the audit log). */
+        /**
+         * @description What an entry of "Recent events" reports. Clients show their own text for the code and fill in the params of the
+         *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
+         * @enum {unknown}
+         */
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered";
+        /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Time of the event.
+             */
             at: string;
+            /** @description What happened. Clients show their own text for the code, in the language of the user. */
+            code: components["schemas"]["LogCode"];
+            /** @description Values for the text of the code (scene, device or slot names), keyed in camelCase; the keys per code are listed at the codes. */
+            params: {
+                [key: string]: string;
+            };
+            /** @description English text for clients that do not know the code; the same words as the English client text. */
             text: string;
         };
         /** @description Admin login. */
@@ -1918,7 +1934,7 @@ export interface components {
         };
         /** @description A full-screen slate on the output. */
         SlateDto: {
-            /** @description Main line, e.g. «Gleich geht's los». */
+            /** @description Main line, e.g. "Starting soon". */
             title: string;
             /** @description Optional second line. */
             subtitle: null | string;
@@ -2114,6 +2130,7 @@ export type InviteDto = components['schemas']['InviteDto'];
 export type InviteKind = components['schemas']['InviteKind'];
 export type ItemFit = components['schemas']['ItemFit'];
 export type LiveKitTokenDto = components['schemas']['LiveKitTokenDto'];
+export type LogCode = components['schemas']['LogCode'];
 export type LogEntryDto = components['schemas']['LogEntryDto'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type LostBehaviorDto = components['schemas']['LostBehaviorDto'];
