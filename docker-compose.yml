@@ -3,6 +3,9 @@
 #   ./setup.sh            # or setup.ps1: writes .env with random secrets (never commit it)
 #   docker compose up -d --build
 #
+# Builds the images from the source. Servers normally run the ready-made images of a release instead, from the twin
+# file docker-compose.release.yml (docs/releasing.md): keep the two files in step, infra/release/check.mjs checks it.
+#
 # Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
 # Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
 # with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT).

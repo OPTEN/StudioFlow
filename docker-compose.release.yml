@@ -1,0 +1,225 @@
+# StudioFlow stack from ready-made images: Caddy (TLS, frontends, reverse proxy), API (ASP.NET Core), LiveKit (SFU),
+# PostgreSQL. The release bundle ships this file as docker-compose.yml; nothing is built on the server.
+#
+#   ./setup.sh            # or setup.ps1: writes .env with random secrets (never commit it)
+#   docker compose up -d  # pulls the images of this release (the repository is private: docker login ghcr.io first)
+#
+# This file is the twin of docker-compose.yml, which builds the same two images from the source (development, E2E
+# tests, servers that build themselves). Only the build sections, the netem test service and the image lines differ;
+# infra/release/check.mjs fails CI when the two files drift apart.
+#
+# The images come from GitHub Container Registry (docs/releasing.md): studioflow-web (Caddy and the three frontends)
+# and studioflow-api. STUDIOFLOW_IMAGE_TAG selects the version. The default is the version of this file (kept by
+# release-please); ./update.sh --version writes the tag to .env. Other tags: main (latest build of the main branch),
+# sha-<7 characters> (one commit), latest (newest release). STUDIOFLOW_IMAGE_REGISTRY replaces the registry path,
+# e.g. for a mirror.
+#
+# Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
+# Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
+# with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT).
+# Required variables fail fast (${VAR:?...}); optional ones have their default here and nowhere else.
+
+name: studioflow
+
+x-postgres-image: &postgres-image postgres:17.11-alpine
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+  networks:
+    - studioflow
+
+services:
+  caddy:
+    <<: *service-defaults
+    image: ${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-web:${STUDIOFLOW_IMAGE_TAG:-0.0.0} # x-release-please-version
+    # Runs as an unprivileged user without capabilities; binding 80/443 needs only this (namespaced) sysctl.
+    cap_drop:
+      - ALL
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      STUDIOFLOW_DOMAIN: ${STUDIOFLOW_DOMAIN:?set it in .env - run ./setup.sh (or setup.ps1) first}
+      STUDIOFLOW_EXTRA_HOSTS: ${STUDIOFLOW_EXTRA_HOSTS:-}
+      STUDIOFLOW_DEFAULT_SNI: ${STUDIOFLOW_DEFAULT_SNI:-${STUDIOFLOW_DOMAIN:?set it in .env}}
+      STUDIOFLOW_TLS_MODE: ${STUDIOFLOW_TLS_MODE:?set it in .env (internal, acme, custom or dns-<provider>)}
+      STUDIOFLOW_ACME_EMAIL: ${STUDIOFLOW_ACME_EMAIL:-}
+      STUDIOFLOW_DNS_RESOLVERS: ${STUDIOFLOW_DNS_RESOLVERS:-1.1.1.1 9.9.9.9}
+      STUDIOFLOW_DNS_CHALLENGE_DOMAIN: ${STUDIOFLOW_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${STUDIOFLOW_DOMAIN:?set it in .env}}
+      STUDIOFLOW_FRAME_ANCESTORS: ${STUDIOFLOW_FRAME_ANCESTORS:-}
+      STUDIOFLOW_HSTS_MAX_AGE: ${STUDIOFLOW_HSTS_MAX_AGE:-31536000}
+      STUDIOFLOW_TRUSTED_PROXIES: ${STUDIOFLOW_TRUSTED_PROXIES:-127.0.0.1/32}
+      STUDIOFLOW_MAX_UPLOAD: ${STUDIOFLOW_MAX_UPLOAD:-1100MiB}
+      STUDIOFLOW_MAX_BODY: ${STUDIOFLOW_MAX_BODY:-10MB}
+      # DNS provider credentials; only the ones of the selected dns-* mode are read.
+      CF_API_TOKEN: ${CF_API_TOKEN:-}
+      INFOMANIAK_API_TOKEN: ${INFOMANIAK_API_TOKEN:-}
+      HETZNER_API_TOKEN: ${HETZNER_API_TOKEN:-}
+      DESEC_TOKEN: ${DESEC_TOKEN:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-}
+      GANDI_BEARER_TOKEN: ${GANDI_BEARER_TOKEN:-}
+      OVH_ENDPOINT: ${OVH_ENDPOINT:-}
+      OVH_APPLICATION_KEY: ${OVH_APPLICATION_KEY:-}
+      OVH_APPLICATION_SECRET: ${OVH_APPLICATION_SECRET:-}
+      OVH_CONSUMER_KEY: ${OVH_CONSUMER_KEY:-}
+    volumes:
+      # Certificates, ACME account and (internal mode) the local CA: must survive every restart and update.
+      - caddy_data:/data
+      - caddy_config:/config
+    # healthcheck: from the image (loopback listener 127.0.0.1:2020/healthz, see infra/caddy/Dockerfile)
+    depends_on:
+      api:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+
+  api:
+    <<: *service-defaults
+    image: ${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-api:${STUDIOFLOW_IMAGE_TAG:-0.0.0} # x-release-please-version
+    cap_drop:
+      - ALL
+    environment:
+      STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?set it in .env}}
+      # The effective list Caddy enforces for /o/ (shown read-only in the Regie).
+      STUDIOFLOW__FRAMEANCESTORS: "'self'${STUDIOFLOW_FRAME_ANCESTORS:+ $STUDIOFLOW_FRAME_ANCESTORS}"
+      ADMIN__USERNAME: ${ADMIN__USERNAME:?set it in .env}
+      # One of the two must be set (the API refuses to start otherwise); setup writes the hash.
+      ADMIN__PASSWORDHASH: ${ADMIN__PASSWORDHASH:-}
+      ADMIN__PASSWORD: ${ADMIN__PASSWORD:-}
+      LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?set it in .env}
+      LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?set it in .env}
+      LIVEKIT__INTERNALURL: http://livekit:7880
+      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Password=${POSTGRES_PASSWORD:?set it in .env}
+      MEDIA__PATH: /data/media
+      MEDIA__MAXIMAGEBYTES: ${MEDIA__MAXIMAGEBYTES:-26214400}
+      MEDIA__MAXVIDEOBYTES: ${MEDIA__MAXVIDEOBYTES:-1073741824}
+      DATAPROTECTION__KEYSPATH: /data/keys
+      # Only Caddy (inside this network) may set X-Forwarded-For / -Proto.
+      FORWARDEDHEADERS__KNOWNNETWORKS__0: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
+    volumes:
+      - media:/data/media
+      # ASP.NET Core Data Protection keys: logins survive restarts and updates.
+      - keys:/data/keys
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+      start_interval: 2s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  livekit:
+    <<: *service-defaults
+    image: livekit/livekit-server:v1.13.10
+    cap_drop:
+      - ALL
+    # Media goes directly to the clients, never through Caddy. Signalling (7880) is only reachable via Caddy (/rtc).
+    # Host and container port must be the same number: LiveKit announces the container-side port to the devices.
+    ports:
+      - "${STUDIOFLOW_RTC_TCP_PORT:-7881}:${STUDIOFLOW_RTC_TCP_PORT:-7881}/tcp"
+      - "${STUDIOFLOW_RTC_UDP_PORT:-7882}:${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp"
+    environment:
+      # The address LiveKit announces to the devices: the server's LAN IPv4 (127.0.0.1 only for single-machine tests).
+      NODE_IP: ${STUDIOFLOW_NODE_IP:?set it in .env (LAN IPv4 of the server)}
+      # YAML "key: secret" - the secret starts with a letter (an all-digit value would be parsed as a number).
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set it in .env}: ${LIVEKIT_API_SECRET:?set it in .env}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
+          udp_port: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
+          use_external_ip: false
+        room:
+          auto_create: true
+          empty_timeout: 300
+          departure_timeout: 20
+        logging:
+          level: info
+        webhook:
+          api_key: ${LIVEKIT_API_KEY:?set it in .env}
+          urls:
+            - http://api:8080/api/livekit/webhook
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+
+  postgres:
+    <<: *service-defaults
+    image: *postgres-image
+    # The official entrypoint starts as root, fixes the ownership and mode of the data and socket directories
+    # (CHOWN, FOWNER, DAC_OVERRIDE to enter a 0700 data directory that postgres owns) and drops to the postgres user
+    # (SETUID, SETGID). The server itself runs unprivileged; nothing else is granted.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    environment:
+      POSTGRES_DB: studioflow
+      POSTGRES_USER: studioflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # TCP, not the socket: during the first initialisation the server listens only on the socket.
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "studioflow", "-d", "studioflow"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s
+    # Time for a clean shutdown (otherwise Docker kills it after 10 s and the next start runs crash recovery).
+    stop_grace_period: 30s
+
+  # The netem test service (profile chaos) of docker-compose.yml is not part of a release: it is built from
+  # infra/netem for tests only and has no published image.
+
+  # Helper for backup.sh / restore.sh: archives and restores the volumes (no network, started on demand).
+  toolbox:
+    image: *postgres-image
+    profiles: ["tools"]
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["sleep"]
+    command: ["3600"]
+    volumes:
+      - media:/volumes/media
+      - keys:/volumes/keys
+      - caddy_data:/volumes/caddy_data
+    restart: "no"
+
+networks:
+  studioflow:
+    ipam:
+      config:
+        - subnet: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
+
+volumes:
+  caddy_data:
+  caddy_config:
+  media:
+  keys:
+  pgdata:
