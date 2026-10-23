@@ -19,6 +19,7 @@
     "build:output": "vite build --config apps/output/vite.config.ts",
     "build:web": "npm run build:studio && npm run build:sender && npm run build:output",
     "typecheck": "tsc -p tsconfig.packages.json --noEmit",
+    "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "test:studio": "ng test studio --watch=false",
     "test:sender": "ng test sender --watch=false",
