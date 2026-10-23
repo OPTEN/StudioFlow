@@ -1,98 +1,102 @@
 # StudioFlow
 
-StudioFlow ist eine Web-Regie nach dem Vorbild von OBS, gedacht für Webinare.
+StudioFlow is a web-based Regie (control room) modelled on OBS, made for webinars.
 
-- Handys und Laptops senden Kamera und Bildschirm direkt aus dem Browser.
-- Die Regie stellt daraus Szenen zusammen.
-- Ein 16:9-Output läuft als iframe beim Proxy, der das Bild an rund 30 Personen verteilt.
-- Alles läuft in einem Docker-Compose-Stack auf dem eigenen Server.
+- Phones and laptops send camera and screen directly from the browser.
+- The Regie composes scenes from them.
+- A 16:9 output runs as an iframe at the proxy, which distributes the picture to about 30 people.
+- Everything runs in one Docker Compose stack on your own server.
 
-Stand 22.10.2026: Plan und klickbarer Regie-Prototyp sind fertig. Es gibt noch keinen Produktcode.
+As of 22 October 2026: the plan and the clickable Regie prototype are done. There is no product code yet.
 
-## Was wo liegt
+## What is where
 
-| Pfad | Inhalt |
+| Path | Content |
 |---|---|
-| `docs/history/FlowStudio Architekturplan.html` | Architektur und Plan, Entwurf 2 (historisch, deutsch, nicht gepflegt). Im Browser öffnen. |
-| `docs/history/regie-*.png` | Bilder der Regie im Plan |
-| `docs/history/archiv/` | ältere Fassung (Entwurf 1 vom 21.10.2026) |
-| `prototype/regie.html` | klickbarer Regie-Prototyp mit Beispieldaten |
-| `prototype/fonts/` | Schriften des Prototyps mit Lizenztexten (SIL Open Font License) |
-| `PRODUCT.md` | Produktkontext: Nutzer, Zweck, Grundsätze |
-| `DESIGN.md`, `.impeccable/design.json` | Gestaltungssystem der Regie |
-| `.impeccable/surfaces/prototype-regie-html.md` | Brief und Gestaltungsvertrag der Regie |
-| `.impeccable/review/` | Screenshots aller Ansichten, Grundlage der Reviews |
-| `.impeccable/qualitybar/`, `.impeccable/decision-payload.json` | die gewählte Richtung «Dunkle Konsole» und die Entscheidungsrunde dazu |
-| `tools/` | Skripte für Screenshots und Artifact-Fassungen |
+| `docs/history/FlowStudio Architekturplan.html` | Architecture and plan, draft 2 (historical, German, unmaintained). Open it in a browser. |
+| `docs/history/regie-*.png` | Images of the Regie in the plan |
+| `docs/history/archiv/` | Earlier version (draft 1 of 21 October 2026) |
+| `prototype/regie.html` | Clickable Regie prototype with sample data |
+| `prototype/fonts/` | Fonts of the prototype with licence texts (SIL Open Font License) |
+| `PRODUCT.md` | Product context: users, purpose, principles |
+| `DESIGN.md`, `.impeccable/design.json` | Design system of the Regie |
+| `.impeccable/surfaces/prototype-regie-html.md` | Brief and design contract of the Regie |
+| `.impeccable/review/` | Screenshots of all views, basis of the reviews |
+| `.impeccable/qualitybar/`, `.impeccable/decision-payload.json` | The chosen direction “Dark console” («Dunkle Konsole» in these files) and the decision round for it |
+| `tools/` | Scripts for screenshots and artifact versions |
 
 ## Online
 
-Beide Seiten sind privat. Freigeben kannst du sie über «Teilen» auf der jeweiligen Seite.
+Both pages are private. You can share them with “Share” on the respective page.
 
 - Plan: https://claude.ai/artifact/FKKxDiTsDcu2nfYqfEQRGP
-- Prototyp: https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu
+- Prototype: https://claude.ai/artifact/AAF59C3MX62bjKvW2B4UYu
 
-## Prototyp benutzen
+## Using the prototype
 
-1. `prototype/regie.html` im Browser öffnen. Das geht auch offline, weil die Schriften im Ordner liegen.
-2. Bestimmte Ansichten direkt aufrufen mit diesen Ankern: `#studio`, `#stoerung`, `#koppeln`, `#docks`. Sie lassen sich mit `+` kombinieren, zum Beispiel `regie.html#studio+stoerung`.
-3. Das Menü «Prototyp» spielt Störungen und eine Kopplungsanfrage ab. «Alles zurücksetzen» setzt auch das Layout und den Studio-Modus zurück.
+1. Open `prototype/regie.html` in the browser. This also works offline, because the fonts sit in the folder.
+2. Open specific views directly with these anchors: `#studio`, `#incident`, `#pair`, `#docks`. They can be combined with `+`, for example `regie.html#studio+incident`. The former German names `#stoerung` and `#koppeln` still work.
+3. The “Prototype” menu plays incidents and a pairing request. “Reset everything” also resets the layout and Studio Mode.
 
-## Entscheide in Kürze
+## Decisions in brief
 
-**Betrieb**
+**Operations**
 
-- Ein Docker-Compose-Stack mit Caddy, ASP.NET Core API, LiveKit und PostgreSQL. Daten liegen in Volumes, es gibt keine Cloud-Dienste.
-- Er läuft lokal per Docker oder auf einer VPS im Betrieb.
-- Login mit einem Admin-Konto aus appsettings bzw. `.env`, ohne SSO.
-- Alle Geräte sind vor Ort im selben WLAN. HTTPS gibt es trotzdem, per Subdomain und DNS-Challenge.
+- One Docker Compose stack with Caddy, ASP.NET Core API, LiveKit and PostgreSQL. Data lives in volumes, there are no cloud services.
+- It runs locally with Docker or on a VPS in production.
+- Login with one admin account from appsettings or `.env`, without SSO.
+- All devices are on site on the same Wi-Fi. HTTPS is used anyway, through a subdomain and DNS challenge.
 
-**Output und Ton**
+**Output and audio**
 
-- Der Output geht über einen geheimen, sperrbaren Link an einen Abnehmer, den Proxy.
-- Der Air-Modus bleibt eine Reserve für später.
-- Ton läuft extern über ein Mischpult. Die Architektur bleibt für Ton vorbereitet.
+- The output goes through a secret link that can be revoked, to one consumer, the proxy.
+- Air mode stays a reserve for later.
+- Audio runs externally through a mixing desk. The architecture stays prepared for audio.
 
 **Regie**
 
-- Eine durchgehende dunkle Konsole ohne Kästen und ohne Rahmen.
-- Studio-Modus wie bei OBS, standardmässig aus. Dann geht ein Klick auf eine Szene direkt live.
-- Kein T-Bar: Es gibt Schnitt oder Blende, und eine Blende läuft immer ganz durch.
-- Die Szenen liegen unten neben den Quellen.
-- Alle Docks lassen sich verschieben (unten, links, rechts), in der Grösse ändern und ausblenden. Der Browser merkt sich das Layout.
-- Schriften und Assets kommen aus dem eigenen Build, ohne CDN.
+- One continuous dark console without boxes and without frames.
+- Studio Mode as in OBS, off by default. Then a click on a scene goes live directly.
+- No T-bar: there is Cut or Fade, and a fade always runs to completion.
+- The scenes sit at the bottom next to the sources.
+- All docks can be moved (bottom, left, right), resized and hidden. The browser remembers the layout.
+- Fonts and assets come from the project's own build, without a CDN.
 
-**Geräte koppeln**
+**Pairing devices**
 
-- Handys per QR-Code.
-- Laptops per Kurz-URL `/join` mit Prüfcode und Freigabe in der Regie, oder per einmaligem Einladungslink.
+- Phones by QR code.
+- Laptops by short URL `/join` with a verification code and approval in the Regie, or by one-time invite link.
 
-## Offen
+**Language**
 
-- **Proxy:** Was genau ist der Proxy, zum Beispiel eine Browserquelle? Davon hängt ab, ob der Air-Modus nötig wird.
-- **Zertifikat:** Welche Domain und welcher DNS-Anbieter, zum Beispiel `studioflow.opten.ch`?
-- **Server:** Läuft er auf dem Regie-Laptop oder auf der VPS? Empfehlung: VPS oder ein zweiter Rechner per Kabel.
-- **Leeres Artifact:** Das leere Design-Artifact «StudioFlow Regie» (https://claude.ai/artifact/NkhevB8Mp4ez2SmZoufRkN) wird nicht gebraucht und kann gelöscht werden.
-- **Docks:** Ziehen und Andocken sind von Hand getestet, aber nicht als Screenshot festgehalten.
+- The interface is English by default, with German (Switzerland) as the first translation. It follows the user setting, the browser language by default. Documentation is English.
 
-## Nächster Schritt
+## Open
 
-Phase 0 ist ein technischer Probelauf (Details im Plan, Abschnitt 9):
+- **Proxy:** What exactly is the proxy, for example a browser source? Whether air mode becomes necessary depends on this.
+- **Certificate:** Which domain and which DNS provider, for example `studioflow.opten.ch`?
+- **Server:** Does it run on the Regie laptop or on the VPS? Recommendation: a VPS or a second computer connected by cable.
+- **Empty artifact:** The empty design artifact “StudioFlow Regie” (https://claude.ai/artifact/NkhevB8Mp4ez2SmZoufRkN) is not needed and can be deleted.
+- **Docks:** Dragging and docking have been tested by hand, but not captured as a screenshot.
 
-- Compose-Stack aufsetzen.
-- HTTPS im WLAN einrichten.
-- Handy über die SFU zum Browser schicken und die Latenz Glass-to-Glass messen.
-- Reconnect testen.
+## Next step
 
-## Werkzeuge
+Phase 0 is a technical trial run (details in the plan, section 9):
 
-**Screenshots aller Ansichten** nach `.impeccable/review/`. Braucht Microsoft Edge, für `mobile.png` zusätzlich ffmpeg.
+- Set up the Compose stack.
+- Set up HTTPS on the Wi-Fi.
+- Send a phone through the SFU to the browser and measure the glass-to-glass latency.
+- Test reconnect.
+
+## Tools
+
+**Screenshots of all views** to `.impeccable/review/`. Needs Microsoft Edge, and ffmpeg in addition for `mobile.png`.
 
 ```
 pwsh tools/capture.ps1
 ```
 
-**Artifact-Fassung erzeugen.** Das Skript entfernt doctype, html, head und body. Beim Veröffentlichen die Zusatzdateien mitgeben: `fonts/*` beim Prototyp, `regie-*.png` beim Plan.
+**Create an artifact version.** The script removes doctype, html, head and body. When publishing, include the extra files: `fonts/*` for the prototype, `regie-*.png` for the plan.
 
 ```
 pwsh tools/make-artifact.ps1 -In prototype/regie.html -Out $env:TEMP/regie-artifact.html

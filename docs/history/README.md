@@ -3,8 +3,8 @@
 Planning documents from before the first line of product code. They are kept as a record of how the architecture and
 the Regie (control room) design came about.
 
-**These files are historical, written in German and not maintained.** They were moved here unchanged from `plan/`
-(issue #6). They still use the former product name FlowStudio and describe the state of 21–22 October 2026. For the
+**These files are historical, written in German and not maintained.** They were moved here unchanged from the former
+`plan` folder (issue #6). They still use the former product name FlowStudio and describe the state of 21–22 October 2026. For the
 current design see [`../architecture/implementation-spec.md`](../architecture/implementation-spec.md),
 [`../../PRODUCT.md`](../../PRODUCT.md) and [`../../DESIGN.md`](../../DESIGN.md); where they differ, those documents win.
 

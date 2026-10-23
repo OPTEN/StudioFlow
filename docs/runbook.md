@@ -1,125 +1,132 @@
-# StudioFlow – Betriebshandbuch (Runbook)
+# StudioFlow – Operations guide (runbook)
 
-Für alle, die StudioFlow vor Ort oder auf einer VPS betreiben: einrichten, starten, sichern, aktualisieren und im
-Webinar schnell reagieren. Technische Details stehen in `docs/architecture/implementation-spec.md` (Abschnitt 10),
-alle Variablen in `.env.example`.
+For everyone who runs StudioFlow on site or on a VPS: set it up, start it, back it up, update it and react quickly
+during a webinar. Technical details are in `docs/architecture/implementation-spec.md` (section 10), all variables in
+`.env.example`.
 
-## 1. Überblick
+Interface texts are quoted as they appear in the English interface. The German translation of each text is in
+`packages/i18n/src/messages/de-CH/`; see section 13 for how the language is chosen. The Regie (control room) is the
+operator's screen. The word "Regie" is kept as a proper noun throughout.
 
-Ein Docker-Compose-Stack mit vier Diensten:
+## 1. Overview
 
-| Dienst | Aufgabe | Daten (Volume) |
+One Docker Compose stack with four services:
+
+| Service | Purpose | Data (volume) |
 |---|---|---|
-| `caddy` | HTTPS, Zertifikate, liefert Regie (`/`), Sender (`/join`) und Output (`/o/…`) aus, leitet API und Signalisierung weiter | `caddy_data` (Zertifikate, lokale CA), `caddy_config` |
-| `api` | ASP.NET Core: Login, Szenen, Geräte, Tokens, SignalR | `media` (Bilder, Videos), `keys` (Login-Schlüssel) |
-| `livekit` | SFU: leitet die Videos der Handys und Laptops weiter | – |
-| `postgres` | Datenbank | `pgdata` |
+| `caddy` | HTTPS, certificates, serves the Regie (`/`), sender (`/join`) and output (`/o/…`), forwards the API and signalling | `caddy_data` (certificates, local CA), `caddy_config` |
+| `api` | ASP.NET Core: login, scenes, devices, tokens, SignalR | `media` (images, videos), `keys` (login keys) |
+| `livekit` | SFU: forwards the video of the phones and laptops | – |
+| `postgres` | Database | `pgdata` |
 
-Medien (WebRTC) gehen direkt zwischen Geräten und LiveKit (7881/tcp, 7882/udp), nie über Caddy. Alles andere läuft
-über HTTPS auf 443.
+Media (WebRTC) goes directly between the devices and LiveKit (7881/tcp, 7882/udp), never through Caddy. Everything
+else goes over HTTPS on 443.
 
-Zwei Betriebsarten:
+Two ways to operate it:
 
-- **Vor Ort (empfohlen):** Server (Mini-PC, zweiter Laptop oder der Regie-Rechner) im selben Netz wie Handys und
-  Regie, per Kabel am Router. Eine Subdomain zeigt per A-Record auf die **interne** IP des Servers, das Zertifikat
-  kommt per DNS-Challenge. Kleinste Latenz (Ziel rund 0,15 s), kein Internet für die Medien nötig.
-- **VPS:** derselbe Stack auf einem Linux-Server im Internet. Die Geräte senden dann übers Internet: mehr Latenz und
-  Upload-Bandbreite vor Ort nötig (pro Kamera etwa 2–3 Mbit/s, pro Bildschirm bis 3 Mbit/s – Richtwerte).
+- **On site (recommended):** the server (mini PC, second laptop or the Regie computer) sits on the same network as the
+  phones and the Regie, connected to the router by cable. A subdomain points with an A record to the **internal** IP of
+  the server, and the certificate comes through a DNS challenge. Lowest latency (target about 0.15 s), no internet
+  needed for the media.
+- **VPS:** the same stack on a Linux server on the internet. The devices then send over the internet: more latency
+  and more upload bandwidth needed on site (about 2–3 Mbit/s per camera, up to 3 Mbit/s per screen – rough guide
+  values).
 
-## 2. Voraussetzungen
+## 2. Prerequisites
 
-- **Server:** Linux mit Docker Engine und Compose v2 (`docker compose version`), oder Windows/macOS mit Docker Desktop.
-  Richtwert 4 CPU-Kerne, 8 GB RAM, 20 GB frei (plus Platz für Videos und Sicherungen). Git für Updates.
-- **Windows:** PowerShell 7.4 oder neuer (`pwsh`) für die `.ps1`-Skripte; die `.sh`-Skripte laufen in Git Bash.
-  Docker Desktop startet erst nach der Anmeldung des Benutzers – nach einem Neustart also anmelden (oder
-  «Start Docker Desktop when you sign in» und automatische Anmeldung einrichten).
-- **Docker Desktop (Windows/macOS) sieht keine echten Client-IPs:** Alle Geräte erscheinen mit derselben internen
-  Adresse. Folgen: Die IP-Sperre des Outputs lässt sich nicht nutzen, und die Grenzen pro IP gelten für alle Geräte
-  zusammen (5 Fehlversuche beim Login sperren den Login 15 Minuten für alle; höchstens 10 Kopplungsanfragen per
-  `/join` in 10 Minuten). Für den Betrieb deshalb einen Linux-Server bevorzugen.
-- **Netz vor Ort:** eigenes WLAN (5 GHz) für die Handys, ohne Client-Isolation («AP isolation», Gäste-WLAN), Server
-  und Regie-Laptop per Kabel. Der Server bekommt im Router eine feste IP (DHCP-Reservierung): LiveKit gibt diese IP
-  den Geräten weiter (`STUDIOFLOW_NODE_IP`).
-- **Domain:** eine Subdomain, z. B. `studioflow.opten.ch`, bei einem DNS-Anbieter mit API (siehe Abschnitt 4).
+- **Server:** Linux with Docker Engine and Compose v2 (`docker compose version`), or Windows/macOS with Docker Desktop.
+  Guide values: 4 CPU cores, 8 GB RAM, 20 GB free (plus space for videos and backups). Git for updates.
+- **Windows:** PowerShell 7.4 or newer (`pwsh`) for the `.ps1` scripts; the `.sh` scripts run in Git Bash.
+  Docker Desktop only starts after the user has signed in – so after a restart, sign in (or enable "Start Docker
+  Desktop when you sign in" and set up automatic sign-in).
+- **Docker Desktop (Windows/macOS) does not see real client IPs:** all devices appear with the same internal
+  address. Consequences: the IP restriction of the output cannot be used, and the per-IP limits apply to all devices
+  together (5 failed logins lock the login for 15 minutes for everyone; at most 10 pairing requests through `/join`
+  in 10 minutes). For production use, prefer a Linux server.
+- **Network on site:** a dedicated Wi-Fi (5 GHz) for the phones, without client isolation ("AP isolation", guest
+  Wi-Fi), server and Regie laptop connected by cable. The server gets a fixed IP in the router (DHCP reservation):
+  LiveKit passes this IP on to the devices (`STUDIOFLOW_NODE_IP`).
+- **Domain:** a subdomain, for example `studioflow.opten.ch`, at a DNS provider with an API (see section 4).
 
-Nach dem Klonen auf Linux die Skripte ausführbar machen, falls nötig: `chmod +x *.sh`.
+After cloning on Linux, make the scripts executable if necessary: `chmod +x *.sh`.
 
-## 3. Ports und Firewall
+## 3. Ports and firewall
 
-| Port | Wozu | Von wo erreichbar |
+| Port | Purpose | Reachable from |
 |---|---|---|
-| 443/tcp | HTTPS: Regie, Sender, Output, API, Signalisierung | Geräte im WLAN; Proxy; bei VPS das Internet |
-| 443/udp | HTTP/3 (optional, Browser fallen sonst auf HTTP/2 zurück) | wie 443/tcp |
-| 80/tcp | Umleitung auf HTTPS; im Modus `acme` die Let's-Encrypt-Prüfung | wie 443/tcp |
-| 7881/tcp | LiveKit-Medien über TCP (Ausweichweg, wenn UDP blockiert ist) | alle sendenden und empfangenden Geräte |
-| 7882/udp | LiveKit-Medien über UDP (Hauptweg) | alle sendenden und empfangenden Geräte |
+| 443/tcp | HTTPS: Regie, sender, output, API, signalling | Devices on the Wi-Fi; proxy; on a VPS the internet |
+| 443/udp | HTTP/3 (optional, browsers otherwise fall back to HTTP/2) | same as 443/tcp |
+| 80/tcp | Redirect to HTTPS; in `acme` mode the Let's Encrypt check | same as 443/tcp |
+| 7881/tcp | LiveKit media over TCP (fallback when UDP is blocked) | all sending and receiving devices |
+| 7882/udp | LiveKit media over UDP (main path) | all sending and receiving devices |
 
-Nicht veröffentlicht und nie freigeben: 7880 (LiveKit-Signalisierung, nur über Caddy `/rtc`), 8080 (API),
-5432 (PostgreSQL), 2019/2020 (Caddy intern).
+Not published, and never to be opened: 7880 (LiveKit signalling, only through Caddy `/rtc`), 8080 (API),
+5432 (PostgreSQL), 2019/2020 (Caddy internal).
 
 - **Linux (ufw):** `sudo ufw allow 80,443/tcp && sudo ufw allow 443/udp && sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`.
-  Achtung: Docker umgeht ufw für veröffentlichte Ports (eigene iptables-Kette). Einschränken nur über die Kette
-  `DOCKER-USER` oder die Firewall des VPS-Anbieters.
-- **Windows:** Das WLAN/LAN muss als Netzwerkprofil «Privat» eingestellt sein. Beim ersten Start fragt Windows nach
-  Freigaben für Docker Desktop – zulassen. Falls Geräte nicht verbinden, Regeln anlegen (PowerShell als Administrator):
+  Note: Docker bypasses ufw for published ports (its own iptables chain). Restrict only through the `DOCKER-USER`
+  chain or the firewall of the VPS provider.
+- **Windows:** the Wi-Fi/LAN must be set to the network profile "Private". On first start Windows asks for permissions
+  for Docker Desktop – allow them. If devices cannot connect, create rules (PowerShell as administrator):
 
   ```powershell
   New-NetFirewallRule -DisplayName 'StudioFlow HTTPS' -Direction Inbound -Protocol TCP -LocalPort 80,443 -Profile Private -Action Allow
   New-NetFirewallRule -DisplayName 'StudioFlow HTTP/3' -Direction Inbound -Protocol UDP -LocalPort 443 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'StudioFlow Medien TCP' -Direction Inbound -Protocol TCP -LocalPort 7881 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'StudioFlow Medien UDP' -Direction Inbound -Protocol UDP -LocalPort 7882 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow Media TCP' -Direction Inbound -Protocol TCP -LocalPort 7881 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow Media UDP' -Direction Inbound -Protocol UDP -LocalPort 7882 -Profile Private -Action Allow
   ```
 
-- **VPS:** dieselben Ports in der Firewall des Anbieters öffnen. `STUDIOFLOW_NODE_IP` ist dann die öffentliche IP.
+- **VPS:** open the same ports in the provider's firewall. `STUDIOFLOW_NODE_IP` is then the public IP.
 
-## 4. DNS und Zertifikat
+## 4. DNS and certificate
 
-Browser geben Kamera und Bildschirm nur über HTTPS frei – auch im WLAN. Der TLS-Modus steht in `STUDIOFLOW_TLS_MODE`.
+Browsers only release camera and screen over HTTPS – on the Wi-Fi as well. The TLS mode is set in
+`STUDIOFLOW_TLS_MODE`.
 
-| Modus | Wann | Was nötig ist |
+| Mode | When | What is needed |
 |---|---|---|
-| `dns-<anbieter>` | **Empfohlen vor Ort und auf der VPS.** Echtes Let's-Encrypt-Zertifikat, auch wenn der Server nur intern erreichbar ist | A-Record auf die interne IP, API-Token des DNS-Anbieters |
-| `acme` | VPS, öffentlich erreichbar | A-Record auf die öffentliche IP, 80/tcp und 443/tcp offen |
-| `internal` | Schnelltest ohne Domain (`localhost`, IP, lokaler Name) | Jedes Gerät installiert einmal die Root-CA (`/ca.crt`) |
-| `custom` | Eigenes Zertifikat (z. B. von der IT) | `fullchain.pem` und `privkey.pem` nach `/certs` mounten (siehe `docker-compose.override.example.yml`); Erneuerung von Hand |
+| `dns-<provider>` | **Recommended on site and on a VPS.** A real Let's Encrypt certificate, even if the server is only reachable internally | A record to the internal IP, API token of the DNS provider |
+| `acme` | VPS, publicly reachable | A record to the public IP, 80/tcp and 443/tcp open |
+| `internal` | Quick test without a domain (`localhost`, IP, local name) | Every device installs the root CA (`/ca.crt`) once |
+| `custom` | Your own certificate (for example from IT) | Mount `fullchain.pem` and `privkey.pem` to `/certs` (see `docker-compose.override.example.yml`); renewal by hand |
 
-### 4.1 Subdomain auf die interne IP
+### 4.1 Subdomain pointing to the internal IP
 
-Beim DNS-Anbieter einen A-Record anlegen: `studioflow.opten.ch` → `192.168.1.50` (die LAN-IP des Servers). Das ist
-unbedenklich: die Adresse ist nur im eigenen Netz erreichbar.
+At the DNS provider, create an A record: `studioflow.opten.ch` → `192.168.1.50` (the LAN IP of the server). This is
+safe: the address is only reachable inside your own network.
 
-- Manche Router verwerfen DNS-Antworten mit privaten Adressen («DNS-Rebind-Schutz», z. B. FRITZ!Box, pfSense).
-  Dann für die Domain eine Ausnahme eintragen (FRITZ!Box: Heimnetz › Netzwerk › Netzwerkeinstellungen ›
-  DNS-Rebind-Schutz) oder im Router einen lokalen DNS-Eintrag anlegen.
-- Prüfen von einem Gerät im WLAN: `nslookup studioflow.opten.ch` muss die interne IP liefern.
+- Some routers discard DNS answers with private addresses ("DNS rebind protection", for example FRITZ!Box, pfSense).
+  Then add an exception for the domain (FRITZ!Box: Home Network › Network › Network Settings › DNS rebind
+  protection) or create a local DNS entry in the router. Menu names depend on the language of the device.
+- Check from a device on the Wi-Fi: `nslookup studioflow.opten.ch` must return the internal IP.
 
-### 4.2 DNS-Challenge pro Anbieter
+### 4.2 DNS challenge per provider
 
-`./setup.sh` fragt Modus und Token ab. Die Zugangsdaten landen in der `.env`.
+`./setup.sh` asks for the mode and the token. The credentials end up in the `.env`.
 
-| Anbieter | Modus | Variablen | Rechte des Tokens |
+| Provider | Mode | Variables | Token permissions |
 |---|---|---|---|
-| Cloudflare | `dns-cloudflare` | `CF_API_TOKEN` | Zone › Zone › Read und Zone › DNS › Edit für die Zone |
+| Cloudflare | `dns-cloudflare` | `CF_API_TOKEN` | Zone › Zone › Read and Zone › DNS › Edit for the zone |
 | Infomaniak (CH) | `dns-infomaniak` | `INFOMANIAK_API_TOKEN` | Scopes `domain:read dns:read dns:write` |
-| Hetzner | `dns-hetzner` | `HETZNER_API_TOKEN` | Token des Hetzner-Cloud-Projekts mit der DNS-Zone (die alte DNS-Konsole ist abgeschaltet) |
-| deSEC | `dns-desec` | `DESEC_TOKEN` | Token des Kontos (auch für die Delegation unten) |
+| Hetzner | `dns-hetzner` | `HETZNER_API_TOKEN` | Token of the Hetzner Cloud project that holds the DNS zone (the old DNS console has been shut down) |
+| deSEC | `dns-desec` | `DESEC_TOKEN` | Token of the account (also for the delegation below) |
 | AWS Route 53 | `dns-route53` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | IAM: `route53:ListHostedZones*`, `GetChange`, `ChangeResourceRecordSets` |
-| Gandi | `dns-gandi` | `GANDI_BEARER_TOKEN` | Personal Access Token mit «Domain technical configurations» |
-| OVHcloud | `dns-ovh` | `OVH_ENDPOINT` (z. B. `ovh-eu`), `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | GET/POST/PUT/DELETE auf `/domain/zone/*` |
+| Gandi | `dns-gandi` | `GANDI_BEARER_TOKEN` | Personal access token with "Domain technical configurations" |
+| OVHcloud | `dns-ovh` | `OVH_ENDPOINT` (for example `ovh-eu`), `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | GET/POST/PUT/DELETE on `/domain/zone/*` |
 
-Das Zertifikat holt Caddy beim ersten Start; Erneuerung automatisch. Kontrolle:
+Caddy obtains the certificate on first start; renewal is automatic. Check:
 `docker compose logs caddy | grep -i -E "certificate obtained|error"`.
 
-### 4.3 Hostpoint, cyon und andere ohne Modul: Challenge delegieren
+### 4.3 Hostpoint, cyon and others without a module: delegate the challenge
 
-Für Hostpoint und cyon gibt es kein Caddy-Modul. Die Lösung: nur den Prüfeintrag `_acme-challenge` per CNAME an eine
-Zone bei deSEC (kostenlos) oder Cloudflare delegieren. Der A-Record bleibt beim bisherigen Anbieter.
+There is no Caddy module for Hostpoint and cyon. The solution: delegate only the validation record `_acme-challenge`
+by CNAME to a zone at deSEC (free) or Cloudflare. The A record stays with the current provider.
 
-1. Bei [deSEC](https://desec.io) ein Konto und eine Domain anlegen, z. B. `studioflow-opten.dedyn.io`, und einen
-   Token erstellen.
-2. Beim bisherigen Anbieter (Zone `opten.ch`) einen CNAME anlegen:
+1. At [deSEC](https://desec.io), create an account and a domain, for example `studioflow-opten.dedyn.io`, and create a
+   token.
+2. At the current provider (zone `opten.ch`), create a CNAME:
    `_acme-challenge.studioflow` → `_acme-challenge.studioflow-opten.dedyn.io.`
-3. Setup mit Delegation:
+3. Setup with delegation:
 
    ```bash
    DESEC_TOKEN=… ./setup.sh --domain studioflow.opten.ch --tls-mode dns-desec \
@@ -127,247 +134,283 @@ Zone bei deSEC (kostenlos) oder Cloudflare delegieren. Der A-Record bleibt beim 
    ```
 
    (Windows: `$env:DESEC_TOKEN = '…'; ./setup.ps1 -Domain studioflow.opten.ch -TlsMode dns-desec -DnsChallengeDomain _acme-challenge.studioflow-opten.dedyn.io`)
-4. Prüfen: `nslookup -type=CNAME _acme-challenge.studioflow.opten.ch` zeigt das Ziel bei deSEC.
+4. Check: `nslookup -type=CNAME _acme-challenge.studioflow.opten.ch` shows the target at deSEC.
 
-Mit Cloudflare genauso (`dns-cloudflare`, CNAME-Ziel in einer Zone bei Cloudflare).
+The same works with Cloudflare (`dns-cloudflare`, CNAME target in a zone at Cloudflare).
 
-### 4.4 Interner Modus: Root-Zertifikat auf den Geräten installieren
+### 4.4 Internal mode: install the root certificate on the devices
 
-Im Modus `internal` signiert Caddy selbst. Jedes Gerät muss die Root-CA einmal vertrauen, sonst blockiert der
-Browser Kamera und Bildschirm. Die CA liegt im Volume `caddy_data` (10 Jahre gültig, in jeder Sicherung enthalten).
-Geht das Volume verloren, entsteht eine neue CA und alle Geräte müssen sie neu installieren.
+In `internal` mode Caddy signs the certificates itself. Every device must trust the root CA once, otherwise the
+browser blocks camera and screen. The CA lives in the volume `caddy_data` (valid for 10 years, included in every
+backup). If the volume is lost, a new CA is created and all devices have to install it again.
 
-Download auf dem Gerät: `https://<domain>/ca.crt` (die Zertifikatswarnung beim ersten Aufruf einmal bestätigen).
+Download on the device: `https://<domain>/ca.crt` (confirm the certificate warning once on the first visit).
 
-- **iPhone/iPad:** Link in Safari öffnen › «Zulassen» › Einstellungen › Allgemein › VPN und Geräteverwaltung ›
-  Profil «Caddy Local Authority» › Installieren. Danach **zusätzlich** Einstellungen › Allgemein › Info ›
-  Zertifikatsvertrauenseinstellungen › «Caddy Local Authority» einschalten.
-- **Android:** Datei laden › Einstellungen › Sicherheit › (Weitere Einstellungen) › Verschlüsselung und
-  Anmeldedaten › Zertifikat installieren › **CA-Zertifikat** › Datei wählen. Chrome vertraut ihr danach.
-- **Windows:** Datei doppelklicken › Zertifikat installieren › Lokaler Computer › «Alle Zertifikate in folgendem
-  Speicher speichern» › Vertrauenswürdige Stammzertifizierungsstellen. Oder als Administrator:
+- **iPhone/iPad:** open the link in Safari › "Allow" › Settings › General › VPN & Device Management › profile
+  "Caddy Local Authority" › Install. Then **additionally** Settings › General › About › Certificate Trust Settings ›
+  switch on "Caddy Local Authority".
+- **Android:** download the file › Settings › Security › (More settings) › Encryption & credentials › Install a
+  certificate › **CA certificate** › choose the file. Chrome trusts it afterwards.
+- **Windows:** double-click the file › Install Certificate › Local Machine › "Place all certificates in the following
+  store" › Trusted Root Certification Authorities. Or as administrator:
   `certutil -addstore -f Root studioflow-root-ca.crt`.
-- **macOS:** Datei doppelklicken › Schlüsselbund «System» › Zertifikat öffnen › Vertrauen › «Immer vertrauen».
-- **Firefox** (eigener Zertifikatsspeicher, falls die Warnung bleibt): Einstellungen › Datenschutz & Sicherheit ›
-  Zertifikate anzeigen › Zertifizierungsstellen › Importieren › «Dieser CA vertrauen, um Websites zu identifizieren».
+- **macOS:** double-click the file › keychain "System" › open the certificate › Trust › "Always Trust".
+- **Firefox** (own certificate store, if the warning stays): Settings › Privacy & Security › View Certificates ›
+  Authorities › Import › "Trust this CA to identify websites".
 
-Zugriff per IP statt Name: `--extra-hosts 192.168.1.50` bei `setup` (setzt auch `STUDIOFLOW_DEFAULT_SNI`), dann
-gilt das Zertifikat auch für `https://192.168.1.50`. Oder gleich `--domain 192.168.1.50`.
+Menu names are given for systems set to English and differ on systems set to another language.
 
-## 5. Einrichten
+Access by IP instead of name: `--extra-hosts 192.168.1.50` in `setup` (also sets `STUDIOFLOW_DEFAULT_SNI`), then the
+certificate is also valid for `https://192.168.1.50`. Or use `--domain 192.168.1.50` right away.
+
+## 5. Setup
 
 ```bash
 git clone <repo> studioflow && cd studioflow
-./setup.sh                      # Linux/macOS (Git Bash geht auch)
+./setup.sh                      # Linux/macOS (Git Bash works too)
 pwsh ./setup.ps1                # Windows
-docker compose up -d --build    # erster Start: baut die Images (einige Minuten)
-docker compose ps               # alle vier Dienste «healthy»?
+docker compose up -d --build    # first start: builds the images (a few minutes)
+docker compose ps               # all four services "healthy"?
 ```
 
-`setup` fragt: LAN-IPv4 (automatisch erkannt, bestätigen), TLS-Modus (+ E-Mail und Token), Domain, weitere Adressen
-(nur `internal`), Origins für das Einbetten des Outputs (`STUDIOFLOW_FRAME_ANCESTORS`, z. B. die Domain des Proxys),
-Admin-Benutzer und Passwort (zweimal verdeckt, oder leer lassen für ein erzeugtes Passwort, das genau einmal
-angezeigt wird). Es erzeugt LiveKit-Schlüssel und Datenbank-Passwort, baut das API-Image und speichert nur den
-**Hash** des Passworts. Die `.env` bekommt die Rechte 600.
+`setup` asks for: LAN IPv4 (detected automatically, confirm it), TLS mode (+ email and token), domain, additional
+addresses (`internal` only), origins that may embed the output (`STUDIOFLOW_FRAME_ANCESTORS`, for example the domain
+of the proxy), admin user and password (twice, hidden, or leave empty for a generated password that is shown exactly
+once). It generates the LiveKit keys and the database password, builds the API image and stores only the **hash** of
+the password. The `.env` gets permissions 600.
 
-- Ohne Rückfragen: `./setup.sh --non-interactive --domain … --tls-mode … --generate-password` (alle Optionen:
-  `./setup.sh --help`, `Get-Help ./setup.ps1 -Full`). Token kommen dann aus der Umgebung.
-- Erneut ausführen (andere Domain, neues Passwort): `./setup.sh --force`. Die alte Datei bleibt als
-  `.env.backup-<zeit>`; Datenbank-Passwort und LiveKit-Schlüssel werden übernommen (das Datenbank-Passwort lässt sich
-  nach der ersten Initialisierung nicht über die `.env` ändern). Danach `docker compose up -d`.
-- **Die `.env` sofort in den Passwort-Tresor (Keeper) legen.** Sie ist nicht im Git und nicht in den Sicherungen.
-- Lokale Entwicklung mit `ng serve`: siehe `docker-compose.override.example.yml`.
+- Without prompts: `./setup.sh --non-interactive --domain … --tls-mode … --generate-password` (all options:
+  `./setup.sh --help`, `Get-Help ./setup.ps1 -Full`). Tokens then come from the environment.
+- Run again (different domain, new password): `./setup.sh --force`. The old file stays as `.env.backup-<time>`; the
+  database password and the LiveKit keys are kept (the database password cannot be changed through the `.env` after the
+  first initialisation). Then `docker compose up -d`.
+- **Put the `.env` into the password vault (Keeper) right away.** It is not in Git and not in the backups.
+- Local development with `ng serve`: see `docker-compose.override.example.yml`.
 
-Erster Login: `https://<domain>/` mit dem Admin-Konto. Beim ersten Start legt die API die Datenbank und die
-Produktion «Webinar» an.
+First login: `https://<domain>/` with the admin account. On first start the API creates the database and the
+production "Webinar".
 
-## 6. Starten, stoppen, Logs
+The interface language follows the browser by default and can be changed in the Regie (section 13).
 
-| Was | Befehl |
+## 6. Start, stop, logs
+
+| What | Command |
 |---|---|
-| Starten / nach Änderung an `.env` | `docker compose up -d` |
-| Status und Healthchecks | `docker compose ps` |
-| Logs (live) | `docker compose logs -f --tail 100 api` (oder `caddy`, `livekit`, `postgres`) |
-| Einen Dienst neu starten | `docker compose restart api` |
-| Stoppen (Daten bleiben) | `docker compose stop` bzw. `docker compose down` |
-| Ressourcen | `docker stats`, `docker system df` |
+| Start / after a change to `.env` | `docker compose up -d` |
+| Status and health checks | `docker compose ps` |
+| Logs (live) | `docker compose logs -f --tail 100 api` (or `caddy`, `livekit`, `postgres`) |
+| Restart one service | `docker compose restart api` |
+| Stop (data stays) | `docker compose stop` or `docker compose down` |
+| Resources | `docker stats`, `docker system df` |
 
-- **Nie `docker compose down -v`**: das löscht alle Volumes – Datenbank, Medien, Zertifikate und die lokale CA.
-- Alle Container haben `restart: unless-stopped` und starten nach einem Absturz oder Neustart von selbst.
-- Logs sind pro Container auf 5 × 10 MB begrenzt. Tokens, Output-Schlüssel und Einladungslinks werden in den
-  Caddy-Logs geschwärzt (`REDACTED`).
-- Healthcheck im Detail: `docker inspect --format '{{json .State.Health}}' studioflow-api-1`.
+- **Never `docker compose down -v`**: it deletes all volumes – database, media, certificates and the local CA.
+- All containers have `restart: unless-stopped` and start by themselves after a crash or restart.
+- Logs are limited to 5 × 10 MB per container. Tokens, output keys and invite links are redacted in the Caddy logs
+  (`REDACTED`).
+- Health check in detail: `docker inspect --format '{{json .State.Health}}' studioflow-api-1`.
 
-## 7. Sicherung und Wiederherstellung
+## 7. Backup and restore
 
 ```bash
 ./backup.sh                    # Windows: pwsh ./backup.ps1
-./backup.sh --keep 14          # danach nur die 14 neusten Sicherungen behalten
+./backup.sh --keep 14          # afterwards keep only the 14 newest backups
 ./restore.sh backups/2026-10-22_1430
 ```
 
-Eine Sicherung (`backups/YYYY-MM-DD_HHMM/`) enthält die Datenbank (`database.dump`, pg_dump), die Volumes `media`,
-`keys` und `caddy_data` als `.tar.gz`, `backup-info.txt` und `SHA256SUMS`. Sie läuft im Betrieb und stört keine
-Sendung. Sie enthält private Schlüssel (Login, Zertifikate, CA): Ordner geschützt aufbewahren und regelmässig auf
-ein anderes Gerät kopieren.
+A backup (`backups/YYYY-MM-DD_HHMM/`) contains the database (`database.dump`, pg_dump), the volumes `media`, `keys` and
+`caddy_data` as `.tar.gz`, `backup-info.txt` and `SHA256SUMS`. It runs during operation and does not disturb a
+broadcast. It contains private keys (login, certificates, CA): store the folder protected and copy it to another
+device regularly.
 
-Automatisch jede Nacht (Linux, `crontab -e`):
+Automatically every night (Linux, `crontab -e`):
 
 ```cron
 15 3 * * * cd /opt/studioflow && ./backup.sh --keep 14 >> backups/backup.log 2>&1
 ```
 
-Windows: Aufgabenplanung › Aufgabe erstellen › Aktion `pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`.
+Windows: Task Scheduler › Create Task › action `pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`.
 
-Wiederherstellen (`./restore.sh` / `restore.ps1`): prüft die Prüfsummen, fragt nach (ausser `--yes`), legt zuerst
-eine Sicherung des aktuellen Stands an (`backups/…_vor-restore`), stoppt API und Caddy, spielt die Datenbank in eine
-neue Datenbank ein und tauscht sie erst danach aus (schlägt das Einspielen fehl, bleibt die alte unverändert),
-ersetzt die Volumes und startet alles. Während einer Sendung verweigert es den Start (`--force` übersteuert).
+Restore (`./restore.sh` / `restore.ps1`): verifies the checksums, asks for confirmation (unless `--yes`), first takes a
+backup of the current state (`backups/…_vor-restore`), stops the API and Caddy, restores the database into a new
+database and only then swaps it in (if the restore fails, the old one stays unchanged), replaces the volumes and starts
+everything. During a broadcast it refuses to start (`--force` overrides).
 
-Umzug auf einen neuen Server: Repo klonen, die `.env` aus dem Tresor zurücklegen (oder `setup` neu ausführen),
-`docker compose up -d --build`, dann `./restore.sh <sicherung>`.
+Moving to a new server: clone the repo, put the `.env` back from the vault (or run `setup` again),
+`docker compose up -d --build`, then `./restore.sh <backup>`.
 
 ## 8. Update
 
-**Nie während einer Sendung.** Das Skript prüft das selbst und bricht ab, solange eine Produktion live ist.
+**Never during a broadcast.** The script checks this itself and aborts as long as a production is live.
 
 ```bash
 ./update.sh --backup           # Windows: pwsh ./update.ps1 -Backup
 ```
 
-Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung → `git pull --ff-only` →
-`docker compose up -d --build` → warten, bis alle Dienste gesund sind → Status. Volumes bleiben erhalten.
+Sequence: check the broadcast status (`broadcast-status` of the API) → optional backup → `git pull --ff-only` →
+`docker compose up -d --build` → wait until all services are healthy → status. Volumes are kept.
 
-- Bei lokalen Änderungen oder abweichendem Stand bricht `git pull --ff-only` ab, ohne etwas neu zu starten.
-- Neue Variablen in einer neuen Version: `docker compose` meldet sie beim Start; mit `.env.example` vergleichen.
-- Antwortet die API nicht («Sendestatus unbekannt»), verweigert das Skript ebenfalls; mit `--force` geht es trotzdem
-  (z. B. wenn die API wegen eines Fehlers dauernd neu startet und das Update die Korrektur bringt).
-- Zurück auf eine frühere Version: `git log --oneline`, `git checkout <commit>`, `./update.sh --no-pull`. Hat die
-  neue Version die Datenbank migriert, zusätzlich die Sicherung `…_vor-update` wiederherstellen. Später mit
-  `git checkout main` zurück.
-- Aufräumen nach Updates: `docker image prune` entfernt alte, unbenutzte Build-Images.
+- With local changes or a diverged state, `git pull --ff-only` aborts without restarting anything.
+- New variables in a new version: `docker compose` reports them at start; compare with `.env.example`.
+- If the API does not answer (broadcast status unknown), the script refuses as well; with `--force` it goes ahead
+  anyway (for example when the API restarts all the time because of a bug and the update brings the fix).
+- Back to an earlier version: `git log --oneline`, `git checkout <commit>`, `./update.sh --no-pull`. If the new
+  version migrated the database, also restore the backup `…_vor-update`. Later return with `git checkout main`.
+- Cleaning up after updates: `docker image prune` removes old, unused build images.
 
-## 9. Checkliste vor dem Webinar
+## 9. Checklist before the webinar
 
-**Am Vortag**
+**The day before**
 
-- [ ] `./update.sh --backup` (falls ein Update ansteht) – danach kein Update mehr bis nach der Sendung.
-- [ ] `docker compose ps`: alle Dienste «healthy». Zertifikat gültig (Regie lädt ohne Warnung).
-- [ ] Szenen, Fallbacks pro Element und Slates («Gleich geht's los», «Danke fürs Zuschauen») vorbereitet.
-- [ ] Output-Link beim Proxy getestet: Seite lädt im iframe, Bild läuft, die Domain des Proxys steht in
-      `STUDIOFLOW_FRAME_ANCESTORS`; falls IP-Sperre aktiv: Proxy-IP eingetragen (auf Docker Desktop sieht die API
-      nur die interne Docker-Adresse – die IP-Sperre funktioniert zuverlässig nur auf einem Linux-Server).
+- [ ] `./update.sh --backup` (if an update is pending) – afterwards no more updates until after the broadcast.
+- [ ] `docker compose ps`: all services "healthy". Certificate valid (the Regie loads without a warning).
+- [ ] Scenes, per-item fallbacks and slates (“Starting soon”, “Thanks for watching”) prepared.
+- [ ] Output link tested at the proxy: the page loads in the iframe, the picture runs, the proxy's domain is in
+      `STUDIOFLOW_FRAME_ANCESTORS`; if the IP restriction is active: proxy IP entered (on Docker Desktop the API only
+      sees the internal Docker address – the IP restriction only works reliably on a Linux server).
 
-**Vor Ort, 60 Minuten vorher**
+**On site, 60 minutes before**
 
-- [ ] Server und Regie-Laptop **per Kabel** am Router; Handys im **5-GHz**-WLAN ohne Gäste und ohne
-      Client-Isolation; der Server hat seine feste IP (`STUDIOFLOW_NODE_IP`).
-- [ ] Handys **am Ladekabel**, fest montiert, «Nicht stören» an, Energiesparmodus aus, automatische Sperre aus.
-- [ ] Geräte koppeln (Handys per QR-Code, Laptops per `/join` mit Prüfcode oder Einladungslink).
-- [ ] **Technik-Check** in jedem Sender: Kamera, Netzwerk, Bandbreite (≥ 6 Mbit/s gut, ≥ 3 Mbit/s knapp).
-- [ ] Monitoring-Ansicht: Bitrate, Paketverlust und Akku aller Stationen unauffällig.
-- [ ] Output beim Proxy: Bild aktuell, Latenz im Output-Chip plausibel; Probe-Umschaltung.
+- [ ] Server and Regie laptop **connected by cable** to the router; phones on the **5 GHz** Wi-Fi without guests and
+      without client isolation; the server has its fixed IP (`STUDIOFLOW_NODE_IP`).
+- [ ] Phones **on a charging cable**, mounted firmly, Do Not Disturb on, battery saver off, auto-lock off.
+- [ ] Pair the devices (phones by QR code, laptops through `/join` with a verification code or an invite link).
+- [ ] **Tech check** in every sender: camera, network, bandwidth (≥ 6 Mbit/s good, ≥ 3 Mbit/s tight).
+- [ ] Monitoring view: bitrate, packet loss and battery of all stations unremarkable.
+- [ ] Output at the proxy: picture current, latency in the output chip plausible; test switch.
 - [ ] `./backup.sh`.
 
-**15 Minuten vorher**
+**15 minutes before**
 
-- [ ] Standby-Slate läuft beim Proxy; alle Stationen grün; Sprecherinnen teilen den richtigen Bildschirm.
-- [ ] Zweites Gerät für die Regie bereit (Login getestet) – falls der Regie-Browser abstürzt.
+- [ ] Standby slate runs at the proxy; all stations green; speakers share the right screen.
+- [ ] A second device ready for the Regie (login tested) – in case the Regie browser crashes.
 
-## 10. Was tun, wenn …
+## 10. What to do if …
 
-| Ereignis | StudioFlow reagiert von selbst | Beim Proxy | Was tun |
+| Event | StudioFlow reacts by itself | At the proxy | What to do |
 |---|---|---|---|
-| Ein Handy verliert kurz das WLAN | ICE-Restart, die Session bleibt; die Station blinkt amber «verbindet neu» | kurzes Standbild (≈ 1–3 s) | Nichts. Danach «wieder da · war 9 s weg» mit «Gesehen» bestätigen. Dauert es länger als ≈ 30 s: Handy prüfen (WLAN, Sender-Seite im Vordergrund, Akku); bis dahin eine Szene ohne diese Kamera nehmen – nach der Haltezeit greift der Fallback bzw. das abgedunkelte Standbild. |
-| Anruf oder andere App belegt die Kamera | Sender fordert die Kamera neu an und publiziert neu (3 Versuche) | Standbild, dann wieder live | Anruf beenden/ablehnen, die Sender-Seite wieder in den Vordergrund holen. Zeigt die Station «kein Bild»: Kamera in der Sender-Seite neu starten oder die Seite neu laden. Vorbeugen: «Nicht stören». |
-| Die Sender-Seite wird neu geladen | gleiche Geräte-ID, gleicher Slot, Auto-Start mit den letzten Einstellungen | kurzes Standbild | Nichts – ausser der Browser fragt erneut nach der Kamera-Freigabe (iOS): «Erlauben». |
-| Jemand beendet sein Screen-Sharing | die Regie warnt («S1 Teilen beendet»), der Sender zeigt «Erneut teilen» | Fallback der Kachel | In der Regie «Erneut teilen» anfordern oder die Person bitten, «Erneut teilen» zu klicken und den Bildschirm zu wählen; sonst Szene wechseln. Der Bildschirm kommt an dieselbe Stelle zurück. |
-| Das WLAN ist überlastet | Simulcast senkt die Stufen; die Regie zeigt Paketverlust und Bitrate pro Station | etwas weniger scharf, kein Hänger | Fremde Geräte aus dem WLAN, Handys auf 720p, nicht benötigte Quellen stoppen, Laptops ein Fenster statt den ganzen Bildschirm teilen lassen, WLAN-Kanal wechseln. |
-| Der Regie-Browser stürzt ab | der Output läuft weiter, er hängt nicht am Regie-Browser | nichts | Browser neu öffnen und anmelden (die Anmeldung bleibt 12 h gültig); Layout und Studio-Modus kommen aus dem Browser zurück. Notfalls das zweite Regie-Gerät nehmen. |
-| API-Neustart oder Update | die API trennt beim Herunterfahren alle Hub-Verbindungen sofort (Neustart in wenigen Sekunden, ohne «verbindet neu»); SignalR verbindet neu, der Zustand wird per Version abgeglichen; Medien laufen weiter. Kommt ein Gerät mit einer Quelle im Program oder in der Preview nicht innert 15 s zurück, meldet die Regie es («verbindet neu») | nichts | Nichts. (Updates trotzdem nie während einer Sendung.) |
-| Die Datenbank (PostgreSQL) ist weg | Befehle der Regie scheitern innert weniger Sekunden mit «Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.»; Hubs, Output und Medien laufen weiter; ist die Datenbank zurück, funktioniert alles wieder ohne API-Neustart | nichts | `docker compose ps` / `docker compose logs --tail 200 postgres`; `docker compose start postgres`. Danach den Befehl wiederholen. |
-| Ein Container stürzt ab | Docker startet ihn neu; alle Clients verbinden sich selbst neu | Standbild, einige Sekunden (LiveKit) | `docker compose ps`; startet ein Dienst dauernd neu («Restarting»): `docker compose logs --tail 200 <dienst>` und Abschnitt 11. |
-| Der ganze Server startet neu | alle Container starten automatisch, alle Geräte kommen von selbst zurück | Unterbruch, bis der Server wieder da ist | Windows: anmelden, damit Docker Desktop startet. Warten, bis `docker compose ps` alles «healthy» zeigt. Hat der Server eine neue IP bekommen: `STUDIOFLOW_NODE_IP` in `.env` anpassen, `docker compose up -d`. |
-| Ein Gerät wird in einem zweiten Tab geöffnet | der alte Tab wird getrennt und bleibt aus («In einem anderen Tab geöffnet»), kein Ping-Pong | nichts | Im gewünschten Tab «Hier weitermachen». |
+| A phone briefly loses the Wi-Fi | ICE restart, the session stays; the station flashes amber "reconnecting" | brief freeze frame (≈ 1–3 s) | Nothing. Afterwards confirm the "recovered" message (for example "gone for 9 s") with "Seen". If it lasts longer than ≈ 30 s: check the phone (Wi-Fi, sender page in the foreground, battery); until then take a scene without this camera – after the hold time the fallback or the dimmed freeze frame takes over. |
+| A call or another app takes the camera | The sender requests the camera again and republishes (3 attempts) | freeze frame, then live again | End/decline the call and bring the sender page back to the foreground. If the station shows "no picture": restart the camera in the sender page or reload the page. Prevent it with Do Not Disturb. |
+| The sender page is reloaded | same device ID, same slot, auto start with the last settings | brief freeze frame | Nothing – unless the browser asks for camera permission again (iOS): "Allow". |
+| Someone stops their screen sharing | the Regie warns (“S1 sharing stopped”), the sender shows "Share again" | the tile's fallback | In the Regie, ask for a new share ("Ask to share again") or ask the person to click "Share again" and choose the screen; otherwise change scene. The screen returns to the same place. |
+| The Wi-Fi is overloaded | Simulcast lowers the layers; the Regie shows packet loss and bitrate per station | slightly less sharp, no stutter | Take foreign devices off the Wi-Fi, set phones to 720p, stop sources that are not needed, have laptops share one window instead of the whole screen, change the Wi-Fi channel. |
+| The Regie browser crashes | the output keeps running, it does not depend on the Regie browser | nothing | Reopen the browser and sign in (the login stays valid for 12 h); layout and Studio Mode come back from the browser. If necessary use the second Regie device. |
+| API restart or update | on shutdown the API disconnects all hub connections immediately (restart within a few seconds, without "reconnecting"); SignalR reconnects, the state is reconciled by version; media keeps running. If a device with a source in Program or Preview does not return within 15 s, the Regie reports it ("reconnecting") | nothing | Nothing. (Still never update during a broadcast.) |
+| The database (PostgreSQL) is gone | Regie commands fail within a few seconds with a "database currently unreachable, try again in a moment" message; hubs, output and media keep running; once the database is back everything works again without an API restart | nothing | `docker compose ps` / `docker compose logs --tail 200 postgres`; `docker compose start postgres`. Then repeat the command. |
+| A container crashes | Docker restarts it; all clients reconnect by themselves | freeze frame, a few seconds (LiveKit) | `docker compose ps`; if a service keeps restarting ("Restarting"): `docker compose logs --tail 200 <service>` and section 11. |
+| The whole server restarts | all containers start automatically, all devices come back by themselves | interruption until the server is back | Windows: sign in so that Docker Desktop starts. Wait until `docker compose ps` shows everything "healthy". If the server got a new IP: adjust `STUDIOFLOW_NODE_IP` in `.env`, `docker compose up -d`. |
+| A device is opened in a second tab | the old tab is disconnected and stays off ("Opened in another tab"), no ping-pong | nothing | In the tab you want, click "Continue here". |
 
-## 11. Fehlersuche
+## 11. Troubleshooting
 
-### Handys oder Laptops verbinden nicht
+### Phones or laptops do not connect
 
-**Die Seite lädt nicht oder zeigt eine Zertifikatswarnung**
+**The page does not load or shows a certificate warning**
 
-1. Richtiges WLAN? Kein Gäste-WLAN, keine Client-Isolation. Mobile Daten ausschalten, VPN und
-   iCloud-Privat-Relay testweise aus.
-2. DNS: `nslookup <domain>` auf dem Gerät (oder einem Laptop im selben WLAN) liefert die Server-IP? Sonst Abschnitt
-   4.1 (DNS-Rebind-Schutz).
-3. Firewall: 443/tcp offen (Abschnitt 3)? Test von einem Laptop: `Test-NetConnection <ip> -Port 443` bzw.
+1. Right Wi-Fi? No guest Wi-Fi, no client isolation. Switch off mobile data; test with VPN and iCloud Private Relay
+   off.
+2. DNS: does `nslookup <domain>` on the device (or on a laptop on the same Wi-Fi) return the server IP? If not, see
+   section 4.1 (DNS rebind protection).
+3. Firewall: is 443/tcp open (section 3)? Test from a laptop: `Test-NetConnection <ip> -Port 443` or
    `nc -vz <ip> 443`.
-4. Zertifikat: Modus `internal` → CA installiert und (iOS) in den Zertifikatsvertrauenseinstellungen
-   eingeschaltet? Datum und Uhrzeit des Geräts korrekt? Modus `dns-*` → `docker compose logs caddy` (siehe unten).
+4. Certificate: `internal` mode → CA installed and (iOS) switched on in the certificate trust settings? Date and time
+   of the device correct? `dns-*` mode → `docker compose logs caddy` (see below).
 
-**Die Seite lädt, aber kein Bild («verbindet …»)**
+**The page loads, but no picture ("connecting…")**
 
-1. `STUDIOFLOW_NODE_IP` falsch oder veraltet: `docker compose logs livekit | grep nodeIP` zeigt die angekündigte
-   IP. Sie muss die aktuelle LAN-IP des Servers sein (nicht 127.0.0.1, nicht eine Docker- oder WSL-Adresse).
-   Korrigieren in `.env`, dann `docker compose up -d`.
-2. Medienports: 7882/udp und 7881/tcp freigegeben (Abschnitt 3)? Test: `Test-NetConnection <ip> -Port 7881`.
-3. Client-Isolation im WLAN verhindert Verbindungen zwischen Geräten und Server.
-4. Funktioniert es nur über TCP (7881), läuft es, aber mit mehr Latenz – dann ist UDP 7882 blockiert.
+1. `STUDIOFLOW_NODE_IP` wrong or outdated: `docker compose logs livekit | grep nodeIP` shows the announced IP. It must
+   be the current LAN IP of the server (not 127.0.0.1, not a Docker or WSL address). Correct it in `.env`, then
+   `docker compose up -d`.
+2. Media ports: are 7882/udp and 7881/tcp open (section 3)? Test: `Test-NetConnection <ip> -Port 7881`.
+3. Client isolation on the Wi-Fi prevents connections between devices and the server.
+4. If it only works over TCP (7881), it runs, but with more latency – then UDP 7882 is blocked.
 
-### Schwarzes Bild
+### Black picture
 
-- In der Regie den Status der Quelle ansehen: «Teilen beendet», «kein Bild», «gesperrt», «nicht verbunden»?
-- Handy: Die Sender-Seite muss im Vordergrund bleiben; mit gesperrtem Bildschirm oder in einer anderen App stoppt
-  iOS die Kamera. Den Dunkelmodus der Sender-Seite statt der Bildschirmsperre verwenden.
-- Laptop: Wurde ein minimiertes Fenster geteilt? Fenster wiederherstellen oder den ganzen Bildschirm teilen.
-- Output beim Proxy: `/o/<slug>?k=…&debug=1` zeigt Verbindungsstatus, Auflösung, Bildrate und Bitrate pro Quelle.
-  «Kein Zugang» → Schlüssel wurde neu erzeugt (neuen Link schicken) oder die IP-Sperre passt nicht.
+- In the Regie, look at the state of the source: "sharing stopped", "no picture", "blocked", "not connected"?
+- Phone: the sender page must stay in the foreground; with the screen locked or in another app, iOS stops the camera.
+  Use the sender page's dark mode instead of the screen lock.
+- Laptop: was a minimised window shared? Restore the window or share the whole screen.
+- Output at the proxy: `/o/<slug>?k=…&debug=1` shows connection state, resolution, frame rate and bitrate per source.
+  "No access" → the key was regenerated (send the new link) or the IP restriction does not match.
 
-### Hohe Latenz
+### High latency
 
-- Output mit `?debug=1`: geschätzte Latenz und Jitter-Buffer.
-- Server oder Regie über WLAN statt Kabel? Handys im 2,4-GHz-Band? Überlastetes WLAN (Abschnitt 10)?
-- Medien über TCP statt UDP (7882/udp blockiert): in Chrome `chrome://webrtc-internals` › aktives Candidate-Paar
-  zeigt `udp` oder `tcp`.
-- Was der Proxy an Puffer dazufügt, liegt ausserhalb von StudioFlow.
+- Output with `?debug=1`: estimated latency and jitter buffer.
+- Server or Regie on Wi-Fi instead of cable? Phones on the 2.4 GHz band? Overloaded Wi-Fi (section 10)?
+- Media over TCP instead of UDP (7882/udp blocked): in Chrome `chrome://webrtc-internals` › the active candidate pair
+  shows `udp` or `tcp`.
+- What the proxy adds in buffering is outside StudioFlow.
 
-### Zertifikat wird nicht ausgestellt (dns-*, acme)
+### Certificate is not issued (dns-*, acme)
 
 - `docker compose logs caddy | grep -i -E "acme|challenge|obtain|error"`.
-- Token und Rechte des Anbieters (Abschnitt 4.2); Token in `.env` ohne Leerzeichen am Ende.
-- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` zeigt das Ziel; `STUDIOFLOW_DNS_CHALLENGE_DOMAIN`
-  stimmt genau mit dem Ziel überein.
-- Modus `acme`: 80/tcp und 443/tcp aus dem Internet erreichbar, A-Record auf die öffentliche IP.
-- Nach mehreren Fehlversuchen sperrt Let's Encrypt für eine Stunde; Caddy versucht es selbst weiter (auch bei
-  ZeroSSL). Nach einer Korrektur in `.env`: `docker compose up -d`.
+- Token and permissions at the provider (section 4.2); token in `.env` without a trailing space.
+- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` shows the target; `STUDIOFLOW_DNS_CHALLENGE_DOMAIN`
+  matches the target exactly.
+- `acme` mode: 80/tcp and 443/tcp reachable from the internet, A record to the public IP.
+- After several failed attempts Let's Encrypt blocks for an hour; Caddy keeps trying by itself (also with ZeroSSL).
+  After a correction in `.env`: `docker compose up -d`.
 
-### Login klappt nicht
+### Login does not work
 
-- Nach 5 Fehlversuchen von derselben IP ist der Login 15 Minuten gesperrt (die API antwortet mit 429).
-- Passwort vergessen: `./setup.sh --force`, «Bestehendes Admin-Passwort behalten?» verneinen, neues Passwort setzen,
-  dann `docker compose up -d`.
-- `docker compose logs api` beim Start: fehlt `ADMIN__PASSWORDHASH`/`ADMIN__PASSWORD`, startet die API nicht.
+- After 5 failed attempts from the same IP the login is locked for 15 minutes (the API answers with 429).
+- Forgot the password: `./setup.sh --force`, answer no to the question about keeping the existing admin password, set a
+  new password, then `docker compose up -d`.
+- `docker compose logs api` at start: if `ADMIN__PASSWORDHASH`/`ADMIN__PASSWORD` is missing, the API does not start.
 
-### Netzprobleme gezielt simulieren (Test, nie während einer Sendung)
+### Simulating network problems on purpose (test, never during a broadcast)
 
-Das Profil `chaos` verzögert und verliert Pakete im Netz von LiveKit (Medien, Signalisierung und API ↔ LiveKit):
+The profile `chaos` delays and drops packets in the LiveKit network (media, signalling and API ↔ LiveKit):
 
 ```bash
-docker compose --profile chaos run --rm netem apply 100 10 0          # 100 ms Verzögerung je Richtung, 10 ms Jitter
-docker compose --profile chaos run --rm netem apply 0 0 5             # 5 % Paketverlust
-docker compose --profile chaos run --rm netem apply 0 0 0 2mbit       # Bandbreite 2 Mbit/s
+docker compose --profile chaos run --rm netem apply 100 10 0          # 100 ms delay per direction, 10 ms jitter
+docker compose --profile chaos run --rm netem apply 0 0 5             # 5 % packet loss
+docker compose --profile chaos run --rm netem apply 0 0 0 2mbit       # bandwidth 2 Mbit/s
 docker compose --profile chaos run --rm netem show
-docker compose --profile chaos run --rm netem clear                   # immer wieder aufheben
+docker compose --profile chaos run --rm netem clear                   # always remove it again
 ```
 
-Die Einstellung bleibt bis `clear` oder bis der LiveKit-Container neu erstellt wird.
+The setting stays until `clear` or until the LiveKit container is recreated.
 
-## 12. Sicherheit im Betrieb
+## 12. Security in operation
 
-- `.env`, `backups/` und das Volume `caddy_data` enthalten Secrets und private Schlüssel: nie weitergeben, Backups
-  verschlüsselt oder an einem geschützten Ort aufbewahren.
-- Nur die Ports aus Abschnitt 3 freigeben. API, Datenbank und LiveKit-Signalisierung sind nur über Caddy erreichbar.
-- `STUDIOFLOW_TRUSTED_PROXIES` nie auf das LAN setzen – sonst lässt sich die IP-Sperre des Outputs mit einem
-  gefälschten `X-Forwarded-For` umgehen.
-- Den Output-Link nur dem Proxy geben; bei Verdacht in der Regie den Schlüssel neu erzeugen.
-- Betriebssystem und Docker aktuell halten; StudioFlow-Updates nach Abschnitt 8.
+- `.env`, `backups/` and the volume `caddy_data` contain secrets and private keys: never pass them on, keep backups
+  encrypted or in a protected place.
+- Only open the ports from section 3. The API, the database and the LiveKit signalling are only reachable through
+  Caddy.
+- Never set `STUDIOFLOW_TRUSTED_PROXIES` to the LAN – otherwise the IP restriction of the output can be bypassed with a
+  forged `X-Forwarded-For`.
+- Give the output link only to the proxy; if you suspect it has leaked, regenerate the key in the Regie.
+- Keep the operating system and Docker up to date; apply StudioFlow updates as described in section 8.
+
+## 13. Interface language
+
+The interface is English by default, with German (Switzerland) as the first translation. Spelling in German follows
+Swiss conventions (ss instead of ß, « » as quotation marks, decimal comma).
+
+**Regie, monitoring page and sender**
+
+- The language follows the browser by default. Browser languages `en` and `en-*` give English; `de` and `de-*`
+  (`de-DE`, `de-AT`, `de-LI` and so on) give German (Switzerland); any other language falls back to English.
+- To change it, open the language setting: in the Regie through the gear button in the header (also on the login
+  page), in the sender in the footer of the start page and at the bottom of the tech check. The choices are
+  "Automatic (browser language)", "English" and "Deutsch (Schweiz)".
+- The choice is stored in the browser (`localStorage`, key `studioflow.locale`) and is shared by the Regie, the
+  monitoring page and the sender on the same address. It takes effect immediately in all open tabs, without a reload and
+  also during a broadcast.
+
+**Output page**
+
+- The output page has no setting and ignores the stored choice. It uses `?lang=` first, then the browser language, then
+  English. On an OBS or proxy machine whose browser language does not match, add the flag to the link:
+  `/o/<slug>?k=…&lang=de-CH` (values `en` and `de-CH`).
+- It only affects the texts the page draws itself, such as "No access" or the hold message. Names you typed (scenes,
+  standby and end slates) are shown as entered.
+- All output flags: `bg=transparent` (transparent background), `debug=1` (measuring overlay), `latency=1` (test aid),
+  `lang=` (language).
+
+**Texts from the server**
+
+- API error texts, log texts and defaults for new productions (scenes "Welcome", "Presentation", "Break", slates
+  "Starting soon" and "Thanks for watching") are English. The Regie translates errors and log entries by code; the
+  defaults stay English until you rename them.
