@@ -148,10 +148,14 @@ export function knownBug(id: string, description: string): void {
 /**
  * Dependent tests call this first: when the canary (E2E-NET-00) found a tool unusable, the test fails with a clear
  * message instead of passing vacuously (docs/testing.md 1.6). A missing canary file means the canary did not run yet.
+ * A tool the canary marked as skipped (the machine cannot provide it, e.g. no netem modules in the kernel of a CI
+ * runner) skips the test with that reason.
  */
 export function requireTool(tool: string): void {
   const file = path.join(OUTPUT_DIR, 'canary.json');
   if (!fs.existsSync(file)) throw new Error(`tool ${tool} unavailable: E2E-NET-00 has not run (run the smoke project first)`);
-  const canary = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, { ok: boolean; detail: string }>;
-  if (!canary[tool]?.ok) throw new Error(`tool ${tool} unavailable (E2E-NET-00): ${canary[tool]?.detail ?? 'not exercised'}`);
+  const canary = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, { ok: boolean; detail: string; skipped?: boolean }>;
+  const entry = canary[tool];
+  if (entry?.skipped) test.skip(true, `tool ${tool} skipped (E2E-NET-00): ${entry.detail}`);
+  if (!entry?.ok) throw new Error(`tool ${tool} unavailable (E2E-NET-00): ${entry?.detail ?? 'not exercised'}`);
 }
