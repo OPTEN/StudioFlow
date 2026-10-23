@@ -404,6 +404,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/productions/{productionId}/scenes/{sceneId}/items/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["reorderSceneItems"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/devices/{deviceId}": {
         parameters: {
             query?: never;
@@ -1824,6 +1840,11 @@ export interface components {
         RenameDeviceRequest: {
             name: string;
         };
+        /** @description New z-order of a scene: the ids of all its items, back to front. Only the order changes, never an item. */
+        ReorderSceneItemsRequest: {
+            /** @description Every item id of the scene exactly once; a list that does not match the current items is a 409 `conflict`. */
+            itemIds: string[];
+        };
         /** @description New order of all scenes; must contain every scene id exactly once. */
         ReorderScenesRequest: {
             sceneIds: string[];
@@ -2174,6 +2195,7 @@ export type ProductionSummaryDto = components['schemas']['ProductionSummaryDto']
 export type RedeemInviteRequest = components['schemas']['RedeemInviteRequest'];
 export type RenameAssetRequest = components['schemas']['RenameAssetRequest'];
 export type RenameDeviceRequest = components['schemas']['RenameDeviceRequest'];
+export type ReorderSceneItemsRequest = components['schemas']['ReorderSceneItemsRequest'];
 export type ReorderScenesRequest = components['schemas']['ReorderScenesRequest'];
 export type ReplaceSceneItemsRequest = components['schemas']['ReplaceSceneItemsRequest'];
 export type RtcState = components['schemas']['RtcState'];
@@ -3176,6 +3198,60 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    reorderSceneItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                sceneId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderSceneItemsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

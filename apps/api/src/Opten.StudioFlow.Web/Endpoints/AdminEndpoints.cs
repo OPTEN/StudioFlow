@@ -155,6 +155,9 @@ internal static class SceneEndpoints
     public static async Task<IResult> RemoveItemAsync(string productionId, string sceneId, string itemId, SceneService scenes, CancellationToken cancellationToken) =>
         TypedResults.Ok(await scenes.RemoveItemAsync(productionId, sceneId, itemId, cancellationToken));
 
+    public static async Task<IResult> ReorderItemsAsync(string productionId, string sceneId, [FromBody] ReorderSceneItemsRequest body, SceneService scenes, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await scenes.ReorderItemsAsync(productionId, sceneId, body, cancellationToken));
+
     public static async Task<IResult> ReplaceItemsAsync(string productionId, string sceneId, [FromBody] ReplaceSceneItemsRequest body, SceneService scenes, CancellationToken cancellationToken) =>
         TypedResults.Ok(await scenes.ReplaceItemsAsync(productionId, sceneId, body, cancellationToken));
 }
