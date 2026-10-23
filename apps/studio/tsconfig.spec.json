@@ -3,13 +3,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "types": [
-      "vitest/globals"
-    ]
+    "types": ["vitest/globals"]
   },
-  "include": [
-    "src/**/*.d.ts",
-    "src/**/*.spec.ts",
-    "src/testing/setup-i18n.ts"
-  ]
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/testing/setup-i18n.ts"]
 }
