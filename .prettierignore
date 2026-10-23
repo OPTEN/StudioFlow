@@ -4,9 +4,9 @@
 /apps/api/openapi/
 /packages/scene-model/src/generated/
 
-# Prose and design artefacts: German texts, wide tables, saved prototypes and historical documents.
+# Prose and design artefacts: wide tables, saved prototypes and historical documents.
 *.md
-/plan/
+/docs/history/
 /prototype/
 /.impeccable/
 /tools/
