@@ -13,4 +13,10 @@
     <NoWarn>$(NoWarn);CS1591;CA1515;CA1848;CA1873</NoWarn>
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- The one version of the API (and of every image): release-please sets it in the release pull request, together
+         with package.json and docker-compose.release.yml. The Docker build adds the commit as SourceRevisionId, so the
+         running API reports "0.1.0+1a2b3c4". -->
+    <Version>0.0.0</Version> <!-- x-release-please-version -->
+  </PropertyGroup>
 </Project>

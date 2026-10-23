@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Hosting;
 using Opten.StudioFlow.Web.Tests.Support;
 
 namespace Opten.StudioFlow.Web.Tests;
@@ -249,7 +250,8 @@ public sealed class SecurityTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var anonymous = await app.Anonymous().GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
 
         Assert.Equal((1920, 1080, StudioFlowApp.PublicBaseUrl), (info.CanvasWidth, info.CanvasHeight, info.PublicBaseUrl));
-        Assert.False(string.IsNullOrWhiteSpace(info.Version));
+        Assert.Equal(AppVersion.Current, info.Version);
+        Assert.Matches(@"^\d+\.\d+\.\d+(\+[0-9A-Za-z]{1,7})?$", info.Version);
         Assert.Equal(ErrorCodes.Unauthorized, anonymous);
     }
 

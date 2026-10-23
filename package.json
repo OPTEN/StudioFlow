@@ -1,6 +1,6 @@
 {
   "name": "studioflow",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "description": "StudioFlow: web-based live studio (Regie, sender PWA, output page) for webinars.",
