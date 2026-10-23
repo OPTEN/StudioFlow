@@ -1,0 +1,212 @@
+# Build and tests of every pull request and of main (docs/testing.md, section 6.1).
+#
+# All jobs run in parallel; e2e-smoke starts from the images that build-images built. A red job blocks the merge once
+# branch protection for main requires them (repository setting of the owner: pull request required, all six jobs green).
+# The nightly full run is .github/workflows/e2e-full.yml.
+#
+# Every action is pinned by commit SHA (supply chain); the comment names the release.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  # Pushes to a pull request branch are built by the pull_request event; running push as well would build twice.
+  pull_request:
+
+# A new push to a pull request cancels the run it supersedes; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            apps/api/Directory.Packages.props
+            apps/api/**/*.csproj
+      - run: npm ci
+      - name: Type check (packages, output page, E2E harness)
+        run: npm run typecheck
+      - name: Prettier
+        run: npm run format:check
+      - name: dotnet format
+        run: dotnet format apps/api/FlowStudio.slnx --verify-no-changes
+
+  unit-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Vitest in Node, happy-dom and jsdom: no browser needed.
+      - name: Packages and output page
+        run: npm run test:unit
+      - name: Regie (Angular)
+        run: npm run test:studio
+      - name: Sender (Angular)
+        run: npm run test:sender
+
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            apps/api/Directory.Packages.props
+            apps/api/**/*.csproj
+      # TreatWarningsAsErrors is set in apps/api/Directory.Build.props: a warning fails the build.
+      - name: Build
+        run: dotnet build apps/api/FlowStudio.slnx
+      # The integration tests start PostgreSQL with Testcontainers; Docker is available on the runner.
+      - name: Tests
+        run: npm run test:api -- --no-build
+
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            apps/api/Directory.Packages.props
+            apps/api/**/*.csproj
+      - run: npm ci
+      - name: Generate the OpenAPI document and the TypeScript types
+        run: npm run gen:contracts
+      - name: Committed contract files match the code
+        run: |
+          git diff --exit-code -- apps/api/openapi packages/scene-model/src/generated/api.ts || {
+            echo '::error::The committed contract files differ from the code. Run "npm run gen:contracts" and commit the result.'
+            exit 1
+          }
+
+  # Builds the two images of docker-compose.yml that have a build section. The Caddy build fails on a broken Caddyfile
+  # (it runs `caddy validate` for every TLS mode) and builds the three frontends. Docker layers come from the GitHub
+  # Actions cache; the images go to e2e-smoke as an artifact, so the stack under test is the image that was validated here.
+  build-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the API image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: apps/api
+          tags: flowstudio-api
+          outputs: type=docker,dest=${{ runner.temp }}/api.tar
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: Build the Caddy image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/caddy/Dockerfile
+          tags: flowstudio-caddy
+          outputs: type=docker,dest=${{ runner.temp }}/caddy.tar
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,scope=caddy,mode=max
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: images
+          path: |
+            ${{ runner.temp }}/api.tar
+            ${{ runner.temp }}/caddy.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  # The smoke set (project smoke, docs/testing.md 6.2) against the real stack: Caddy in TLS mode internal (the harness
+  # writes the env file), API, LiveKit and PostgreSQL, started with tests/e2e/stack.sh as numbered stack 1.
+  e2e-smoke:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_STACK: 1
+      # Use the images from build-images instead of building them again.
+      E2E_NO_BUILD: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and its system libraries
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install the system libraries of Chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: images
+          path: ${{ runner.temp }}/images
+      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is fs-e2e-1.
+      - name: Load the images
+        run: |
+          docker load --input "$RUNNER_TEMP/images/api.tar"
+          docker load --input "$RUNNER_TEMP/images/caddy.tar"
+          docker tag flowstudio-api "fs-e2e-${E2E_STACK}-api"
+          docker tag flowstudio-caddy "fs-e2e-${E2E_STACK}-caddy"
+      - name: Start the stack
+        run: tests/e2e/stack.sh up "$E2E_STACK"
+      - name: Run the smoke tests
+        run: E2E_REUSE_STACK=1 tests/e2e/stack.sh test "$E2E_STACK" --project=smoke
+      # The harness collects the container logs (docker compose logs) in .output/<project>/logs when the run ends.
+      - name: Upload the Playwright report and the container logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-smoke-output
+          path: tests/e2e/.output
+          include-hidden-files: true
+          retention-days: 14

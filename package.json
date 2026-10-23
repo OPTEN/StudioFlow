@@ -19,6 +19,7 @@
     "build:output": "vite build --config apps/output/vite.config.ts",
     "build:web": "npm run build:studio && npm run build:sender && npm run build:output",
     "typecheck": "tsc -p tsconfig.packages.json --noEmit",
+    "format:check": "prettier --check .",
     "i18n:index": "node tools/i18n-index.mjs",
     "check:i18n": "node tools/i18n-index.mjs --check && node tools/check-i18n.mjs",
     "check:german": "node tools/check-german.mjs && node tools/check-german.mjs --comments",

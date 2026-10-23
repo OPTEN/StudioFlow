@@ -1,5 +1,7 @@
 # StudioFlow
 
+[![CI](https://github.com/OPTEN/FlowStudio/actions/workflows/ci.yml/badge.svg)](https://github.com/OPTEN/FlowStudio/actions/workflows/ci.yml)
+
 StudioFlow is a web-based Regie (control room) modelled on OBS, made for webinars.
 
 - Phones and laptops send camera and screen directly from the browser.

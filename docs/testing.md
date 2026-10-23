@@ -72,7 +72,7 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 | TypeScript unit (packages, output) | Vitest 5, projects `model` (node) and `dom` (happy-dom) from `vitest.config.ts`, `vi.useFakeTimers()`, fake hub/room classes | `packages/*/src/**/*.spec.ts`, `apps/output/src/**/*.spec.ts` | `npm run test:unit` |
 | Angular unit | `ng test studio --watch=false`, `ng test sender --watch=false` (Vitest builder), `TestBed`, signals | `apps/studio`, `apps/sender` | `npm run test:studio`, `npm run test:sender` |
 | E2E | Playwright `@playwright/test` ^1.64, real stack, Chromium (default), Edge channel, Firefox, WebKit | `tests/e2e` | `npm run test:e2e` |
-| Static | `npm run typecheck`, `dotnet build` with `TreatWarningsAsErrors`, `dotnet format --verify-no-changes`, `npx prettier --check` | repo root | CI stage 0 |
+| Static | `npm run typecheck`, `dotnet build` with `TreatWarningsAsErrors`, `dotnet format --verify-no-changes`, `npx prettier --check` | repo root | CI jobs `lint-typecheck` and `api` (6.1) |
 
 **Harness-only dev dependencies to approve** (root `package.json` is orchestrator-owned): `@axe-core/playwright`, `jsqr`, `pngjs`, `pixelmatch`,
 `ws` (raw WebSocket with custom `Origin`), `jose` (decode/verify LiveKit JWTs). Test-only NuGet: `Microsoft.Extensions.TimeProvider.Testing`.
@@ -2250,15 +2250,31 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 
 ### 6.1 Pipeline
 
-| Stage | Runs | Tests | Budget |
-|---|---|---|---|
-| 0 Static | every push | `npm run typecheck`, `dotnet build` (warnings as errors), format/prettier checks, catalogue check (6.5) | 3 min |
-| 1 Unit | every push | all `UNIT-*` (xunit, vitest, ng) | 6 min |
-| 2 Integration | every PR | all `INT-*` (Testcontainers) | 10 min |
-| 3 E2E smoke | every PR | project `smoke` (6.2) on Chromium + Pixel 7, stack built once | 20 min |
-| 4 Nightly | nightly, 4 shards | `main` (all P0/P1 E2E), `short-ttl`, `disruptive`, Firefox/WebKit/Edge subsets (○), `T-…` recorded | ≤ 150 min per shard |
-| 5 Weekly | weekly | P2, `soak` 60 min, `@netns`, `@linux-netem` full, OPS Windows (`setup.ps1`), a11y sweep | ≤ 4 h |
-| 6 Release | per release | stages 1–5 green + manual MAN-01…MAN-13 checklist signed | — |
+The pipeline runs on GitHub Actions (`.github/workflows/`). `ci.yml` is the safety net of every change; `e2e-full.yml` is the nightly full run. Every job runs commands that also run locally (the npm scripts of the root `package.json`), so a red job is reproduced with the command in the table.
+
+**`ci.yml`** runs on every pull request and every push to `main`, on `ubuntu-latest`. The six jobs run in parallel, except that `e2e-smoke` waits for `build-images`. Target: a clean run in under 15 minutes (anything longer belongs in the nightly run). A new push to a pull request cancels the run it supersedes; runs on `main` always finish. The `push` trigger is limited to `main` because the `pull_request` trigger already builds every push to a pull request branch.
+
+| Job | Runs | Red when |
+|---|---|---|
+| `lint-typecheck` | `npm run typecheck` (packages, output page and the E2E harness), `npm run format:check` (Prettier; `.prettierignore` lists what is not formatted: generated files, prose, prototypes), `dotnet format apps/api/FlowStudio.slnx --verify-no-changes` | a type error, a file that Prettier or `dotnet format` would change |
+| `unit-web` | `npm run test:unit`, `npm run test:studio`, `npm run test:sender` (Vitest in Node, happy-dom and jsdom: no browser is needed) | a red `UNIT-*` test |
+| `api` | `dotnet build apps/api/FlowStudio.slnx` (`TreatWarningsAsErrors` is set in `Directory.Build.props`), `npm run test:api` (the `INT-*` tests start PostgreSQL with Testcontainers; Docker is available on the runner) | a C# warning, a red test |
+| `contracts` | `npm run gen:contracts`, then `git diff --exit-code` on `apps/api/openapi/` and `packages/scene-model/src/generated/api.ts` | the committed OpenAPI document or TypeScript types differ from what the code generates (run `npm run gen:contracts` and commit) |
+| `build-images` | builds the Caddy image (three frontends; `caddy validate` for every TLS mode runs inside the Dockerfile) and the API image with Docker layers from the GitHub Actions cache, and hands both to `e2e-smoke` as an artifact | a broken Caddyfile, frontend or API build |
+| `e2e-smoke` | loads the images, starts the stack as numbered stack 1 (`tests/e2e/stack.sh up 1`; the harness writes the env file with TLS mode `internal` and preflights ports and subnet), runs `tests/e2e/stack.sh test 1 --project=smoke` (6.2) | a red smoke test; a test of an open entry of `known-bugs.json` that passes (set the entry to `fixed`, see `tests/e2e/README.md`) |
+
+Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 days): the HTML report, `junit.xml`, `results.json`, traces, videos and screenshots (`retain-on-failure`), and `logs/<service>.log`, the `docker compose logs` of the four services (the harness writes them at the end of every run, also when the stack did not come up). `retries: 1` applies on CI (6.4).
+
+**`e2e-full.yml`** runs every Playwright project except `soak` (weekly, 60 minutes): `smoke`, `desktop-chromium`, `short-ttl`, `disruptive` (restarts, lockout, network impairment with the netem sidecar, which needs `NET_ADMIN`, granted by the compose file, and the kernel modules `sch_netem`, `ifb` and `act_mirred` on the runner; `E2E-NET-00` reports whether they work), the `pixel-7`, `iphone-15` and `ipad` descriptors, `desktop-firefox` and `webkit`. The harness builds the images with `docker compose`. It runs Monday to Friday at 01:17 UTC while the repository is private (Actions minutes are limited) and on demand (`workflow_dispatch`). A failed run creates an issue labelled `ci-failure` («Nightly E2E run failed») or adds a comment to the one that is still open; the job `report-failure` is the only job with `issues: write`.
+
+**Toolchain and supply chain.**
+- Node comes from `.nvmrc` (22.22.3), the .NET SDK from `global.json` (`10.0.301` with `rollForward: latestFeature`: a local SDK from 10.0.301 up to the newest 10.0 feature band is accepted, and CI installs the newest 10.0 SDK, the band the API Docker image is built with).
+- The default is `permissions: contents: read`. Every action is pinned by its full commit SHA with the release in a comment; to update one, look up the SHA of the new release tag (`gh api repos/<owner>/<action>/git/ref/tags/<tag>`, and dereference annotated tags with `git/tags/<sha>`) instead of using the tag.
+- Caches: npm (`actions/setup-node`), NuGet (`actions/setup-dotnet`, key from `Directory.Packages.props` and the `*.csproj` files), the Playwright browsers (`actions/cache`), Docker layers (`docker/build-push-action` with `type=gha`, one scope per image).
+
+**Branch protection** for `main` is a repository setting of the owner, not part of the repository: require a pull request and the six jobs `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images` and `e2e-smoke` to be green before merging.
+
+**Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on Windows with `setup.ps1`, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices or a dedicated runner (latency, real phones), which stay manual (section 4).
 
 ### 6.2 Smoke set (`@smoke`, P0)
 
@@ -2278,7 +2294,7 @@ Failure artefacts: Playwright trace, video and screenshot (`retain-on-failure`),
 
 ### 6.5 Keeping this plan and the tests in sync
 
-- Every Playwright/xUnit/Vitest/Angular test carries its catalogue ID: Playwright `test('E2E-AUTH-01 login via UI …')`, Vitest/ng `describe('UNIT-SCENE-12 …')`, xUnit `[Trait("Id", "UNIT-AUTH-04")]` on the method or class (method names still follow `MethodName_Condition_ExpectedResult`, spec 3); parametrised cases append a suffix in brackets (`E2E-SCENE-05 [grid3]`). `tests/e2e/tools/check-catalogue.mjs` fails stage 0 when a test ID is missing from this file, a P0/P1 ID has no implementation (after the agreed grace period), an ID is duplicated, or a `[GAP-nn]` reference has no entry in section 7.
+- Every Playwright/xUnit/Vitest/Angular test carries its catalogue ID: Playwright `test('E2E-AUTH-01 login via UI …')`, Vitest/ng `describe('UNIT-SCENE-12 …')`, xUnit `[Trait("Id", "UNIT-AUTH-04")]` on the method or class (method names still follow `MethodName_Condition_ExpectedResult`, spec 3); parametrised cases append a suffix in brackets (`E2E-SCENE-05 [grid3]`). `tests/e2e/tools/check-catalogue.mjs` (planned, not written yet, so not part of CI, see 6.1) is to fail the `lint-typecheck` job when a test ID is missing from this file, a P0/P1 ID has no implementation (after the agreed grace period), an ID is duplicated, or a `[GAP-nn]` reference has no entry in section 7.
 - IDs are never reused; a new regression test gets the next free number of its area and level; priorities may be raised, not silently lowered.
 - Pinned decisions in section 7 are removed (and the affected tests updated) when the spec or the code resolves them.
 
