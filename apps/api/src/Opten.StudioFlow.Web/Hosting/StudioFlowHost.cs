@@ -16,6 +16,7 @@ using Opten.StudioFlow.Core.Application.Runtime;
 using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure;
+using Opten.StudioFlow.Infrastructure.Backup;
 using Opten.StudioFlow.Infrastructure.Persistence;
 using Opten.StudioFlow.Infrastructure.Security;
 using Opten.StudioFlow.Web.Endpoints;
@@ -83,6 +84,7 @@ internal static class StudioFlowHost
         services.AddValidatedOptions<SourceMonitorOptions>(configuration, SourceMonitorOptions.Section);
         services.AddValidatedOptions<OutputMonitorOptions>(configuration, OutputMonitorOptions.Section);
         services.AddValidatedOptions<RealtimeOptions>(configuration, RealtimeOptions.Section);
+        services.AddValidatedOptions<BackupOptions>(configuration, BackupOptions.Section);
         services.AddSingleton(TimeProvider.System);
         services.AddStudioFlowInfrastructure(configuration);
         AddApplication(services);
@@ -99,7 +101,7 @@ internal static class StudioFlowHost
             }
         });
         services.AddExceptionHandler<StudioFlowExceptionHandler>();
-        services.AddHealthChecks().AddDatabaseCheck();
+        services.AddHealthChecks().AddDatabaseCheck().AddBackupCheck();
 
         if (!IsDocumentGeneration)
         {
@@ -134,7 +136,7 @@ internal static class StudioFlowHost
         }
 
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(DatabaseMaintenance.ReadyTag) }).DisableRateLimiting();
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(DatabaseMaintenance.ReadyTag), ResponseWriter = HealthResponse.WriteAsync }).DisableRateLimiting();
         app.MapStudioFlowApi();
 
         // A Regie connection ends with its admin session (GAP-04b).
