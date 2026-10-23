@@ -1,10 +1,10 @@
 import { makePng } from '../../support/media-samples';
 import { expect, test } from '../../support/ui/fixtures';
 import { colorsClose } from '../../support/ui/pixels';
-import { sleep, toneOf } from '../../support/output/analysis';
+import { sleep } from '../../support/output/analysis';
 import { openProbedOutput } from '../../support/output/open';
 import { DecodedFrame, Screencast } from '../../support/output/screencast';
-import { fmt, recordMeasurement, summarize } from '../../support/output/stats';
+import { recordMeasurement } from '../../support/output/stats';
 import { addCamera, goLive, placeItem } from '../../support/output/world';
 import type { ProbeFrame, ProbeItem } from '../../support/output/probe';
 import { t } from '../../support/tags';
@@ -262,9 +262,6 @@ test.describe('OUT hold frame', () => {
         await frame.evaluate((id) => getComputedStyle(document.querySelector(`[data-item-id="${id}"] .fs-r-fallback`)!).display, item.id),
         'the fallback is removed when K1 returns',
       ).toBe('none');
-      void toneOf;
-      void fmt;
-      void summarize;
     },
   );
 });

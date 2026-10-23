@@ -27,7 +27,7 @@ test.describe('OUT media and reports', () => {
       const camera = await addCamera(deps, 'Kamera Eins');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
-      const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, { debug: true }, { viewport: { width: 1280, height: 720 } });
+      const { output } = await openProbedOutput({ browser, onCleanup }, production, { debug: true }, { viewport: { width: 1280, height: 720 } });
       await output.waitForPlayingVideos(1, { minFps: 8, timeout: 45_000 });
       const frame = await output.frame();
       const panel = frame.locator('pre.c-debug');
@@ -95,7 +95,6 @@ test.describe('OUT media and reports', () => {
       await expect.poll(async () => (await plain.probe.snapshot()).layers.length).toBe(1);
       await sleep(1500);
       expect(await (await plain.output.frame()).locator('.c-debug').count(), 'no overlay without debug=1').toBe(0);
-      void probe;
     },
   );
 
@@ -203,11 +202,10 @@ test.describe('OUT media and reports', () => {
       onCleanup(() => studio.stop());
       await studio.open(production.id);
       const frames: { sent: HubMessage[]; received: HubMessage[] } = { sent: [], received: [] };
-      const opened = await openProbedOutput({ browser, onCleanup }, production, {}, {
+      await openProbedOutput({ browser, onCleanup }, production, {}, {
         viewport: { width: 1280, height: 720 },
         onPage: (page) => Object.assign(frames, recordHubFrames(page)),
       });
-      void opened;
       await expect.poll(() => frames.sent.filter((message) => message.target === 'Report').length, { timeout: 30_000, message: 'the first report' }).toBeGreaterThanOrEqual(1);
       const started = Date.now();
       await sleep(12_000);
@@ -335,7 +333,6 @@ test.describe('OUT media and reports', () => {
           return width;
         }, { timeout: 3000, intervals: [100], message: 'K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview' })
         .toBeGreaterThanOrEqual(1280);
-      void reachedAt;
     },
   );
 

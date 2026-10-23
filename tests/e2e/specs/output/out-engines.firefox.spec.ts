@@ -6,9 +6,9 @@ import { expect, test } from '../../support/ui/fixtures';
 import { installUiInit } from '../../support/ui/init';
 import { OutputPage } from '../../support/ui/output';
 import { LaptopSender, PhoneSender } from '../../support/ui/sender';
-import { toneOf, sleep } from '../../support/output/analysis';
+import { toneOf } from '../../support/output/analysis';
 import { installProbe, OutputProbe } from '../../support/output/probe';
-import { FULL, addCamera, addScreens, goLive, placeItem } from '../../support/output/world';
+import { addCamera, addScreens, goLive, placeItem } from '../../support/output/world';
 import { t } from '../../support/tags';
 
 /**
@@ -57,7 +57,20 @@ test.describe('OUT other engines (Firefox)', () => {
       const probe = new OutputProbe(output);
       await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateStandby);
       await goLive(api, production);
-      await output.waitForPlayingVideos(2, { minFps: 5, timeout: 60_000 });
+      // Firefox reports no frames for MediaStream videos (getVideoPlaybackQuality().totalVideoFrames stays 0): the videos are
+      // checked by their size, readiness and a moving clock instead.
+      await expect
+        .poll(
+          async () =>
+            (await output.frame()).evaluate(async () => {
+              const videos = [...document.querySelectorAll('video')] as HTMLVideoElement[];
+              const before = videos.map((video) => video.currentTime);
+              await new Promise((resolve) => setTimeout(resolve, 800));
+              return videos.length === 2 && videos.every((video, index) => video.videoWidth > 0 && video.readyState >= 2 && !video.paused && video.currentTime - before[index]! > 0.5);
+            }),
+          { timeout: 60_000, intervals: [500], message: 'two videos with a picture and a moving clock' },
+        )
+        .toBe(true);
       expect(output.problems.pageErrors, 'no uncaught error in Firefox').toEqual([]);
 
       // The picture is the one of the sources: the screen's red in its item, a moving camera picture.
@@ -97,8 +110,6 @@ test.describe('OUT other engines (Firefox)', () => {
       const scroll = await output.page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, sh: document.documentElement.scrollHeight, ch: document.documentElement.clientHeight }));
       expect(scroll.sw).toBeLessThanOrEqual(scroll.cw);
       expect(scroll.sh).toBeLessThanOrEqual(scroll.ch);
-      void sleep;
-      void FULL;
     },
   );
 });

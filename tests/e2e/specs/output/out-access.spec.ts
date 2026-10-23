@@ -1,6 +1,5 @@
 import { OutputApi } from '../../support/api';
 import { DE } from '../../support/constants';
-import { stackConfig } from '../../support/env';
 import { livekitAdmin } from '../../support/livekit';
 import { cleanupProduction, createProduction } from '../../support/production';
 import { expect, test } from '../../support/ui/fixtures';
@@ -182,7 +181,6 @@ test.describe('OUT access and reload', () => {
       expect(toneOf((await fresh.output.stagePixels()).mean({ x: 600, y: 400, width: 700, height: 300 })), 'the new link shows S1').toBe('red');
       expect((await outputParticipants(production)).length, 'one output of the new key').toBe(1);
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 8000, message: 'the Regie sees the new output (after its first report)' }).toBe('connected');
-      void stackConfig;
     },
   );
 

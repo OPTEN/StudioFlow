@@ -86,7 +86,7 @@ test.describe('OUT transitions', () => {
       const results: Array<{ durationMs: number; measuredMs: number; frames: number; animationMs: number | null }> = [];
       let from = a;
       let to = b;
-      for (const durationMs of [200, 200, 300, 300, 500, 500, 1000, 2000]) {
+      for (const durationMs of [200, 200, 300, 300, 500, 500, 1000, 1000, 2000, 2000]) {
         await probe.takeEvents();
         await probe.startSampler({ animations: true });
         await sleep(150);
@@ -369,14 +369,13 @@ test.describe('OUT transitions', () => {
     t.p1,
     async ({ browser, api, production, onCleanup }) => {
       outBug('OUT-02', 'the standby slate subtitle is a copy of the name taken at creation; renaming the production leaves it unchanged');
-      const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
+      const { probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 15_000 }).toBe(production.name);
       await probe.takeEvents();
       const renamed = `${production.name} neu`;
       expect((await api.updateProduction(production.id, { name: renamed })).status).toBe(200);
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 5000, message: 'subtitle follows the production name' }).toBe(renamed);
       expect((await probe.takeEvents()).filter((event) => event.type === 'slate+'), 'updated in place, no new slate').toEqual([]);
-      void output;
     },
   );
 

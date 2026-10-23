@@ -4,7 +4,7 @@ import { CdpCounters } from '../../support/ui/counters';
 import { sleep } from '../../support/output/analysis';
 import { openProbedOutput } from '../../support/output/open';
 import { inboundVideo, type InboundVideo } from '../../support/output/rtc';
-import { fmt, recordMeasurement, startCpuMonitor, summarize, waitForQuietMachine } from '../../support/output/stats';
+import { recordMeasurement, startCpuMonitor, waitForQuietMachine } from '../../support/output/stats';
 import { FULL, addCamera, addScreens, goLive, placeItem, switchProgram, type Camera } from '../../support/output/world';
 import { t } from '../../support/tags';
 
@@ -41,7 +41,7 @@ interface PhaseResult {
   seconds: number;
   rafFps: number;
   decodeFps: { mean: number; min: number; perSource: number[] };
-  /** Frames per second the fake sources of the senders really produced in the phase (the senders share the machine). */
+  /** Frames per second the camera senders report to have encoded and sent (the senders share the machine with the output). */
   producedFps: { mean: number; min: number };
   droppedFrames: number;
   inboundMbit: number;
@@ -87,8 +87,6 @@ test.describe('OUT many sources', () => {
       const measure = async (name: string, seconds: number): Promise<PhaseResult> => {
         await sleep(8000); // settle: layers, simulcast switches
         const before = await inboundVideo(frame);
-        const drawn = async () => (await Promise.all([...cameras.map((camera) => camera.phone.fakeSources()), laptopA.laptop.fakeSources(), laptopB.laptop.fakeSources()])).map((list) => list.reduce((sum, source) => sum + (source.live ? source.frames : 0), 0));
-        const drawnBefore = await drawn();
         const startSample = await counters.sample({ gc: false });
         const cpu = startCpuMonitor();
         const raf: number[] = [];
@@ -96,8 +94,9 @@ test.describe('OUT many sources', () => {
         while (Date.now() - started < seconds * 1000) raf.push(await rafFps(frame, 3000));
         const wall = (Date.now() - started) / 1000;
         const after = await inboundVideo(frame);
-        const drawnAfter = await drawn();
-        const produced = drawnAfter.map((count, index) => (count - drawnBefore[index]!) / wall).filter((fps) => fps > 3);
+        // What the senders really sent in the phase: their own report of the encoded frame rate (telemetry of the API).
+        const telemetry = (await api.getTelemetry(production.id)).body;
+        const produced = cameras.map((camera) => telemetry.find((message) => message.deviceId === camera.device.id)?.telemetry.slots.find((slot) => slot.slot === 'camera')?.fps ?? 0).filter((fps) => fps > 3);
         const endSample = await counters.sample({ gc: false });
         const settled = await counters.sample({ gc: true });
         const machine = cpu();
@@ -148,13 +147,13 @@ test.describe('OUT many sources', () => {
         test.info(),
         'net-19-many-sources',
         { minutes: MINUTES, phases, idleMachineBeforeMeasuring: idleMachine, openIncidents: incidents.filter((incident) => incident.endedAt === null).length, incidentsTotal: incidents.length, pageErrors: output.problems.pageErrors },
-        phases.map((phase) => `${phase.name}: rAF ${phase.rafFps.toFixed(0)} fps, decode ${phase.decodeFps.mean.toFixed(0)} fps/source (min ${phase.decodeFps.min.toFixed(0)}) of ${phase.producedFps.mean.toFixed(0)} produced, main thread ${(phase.busyShare * 100).toFixed(0)} %, heap ${phase.heapMB.toFixed(0)} MB, ${phase.inboundMbit.toFixed(1)} Mbit/s in, ${phase.droppedFrames} dropped, machine CPU ${phase.machineCpuBusyPct} %`).join(' | '),
+        phases.map((phase) => `${phase.name}: rAF ${phase.rafFps.toFixed(0)} fps, decode ${phase.decodeFps.mean.toFixed(0)} fps/source (min ${phase.decodeFps.min.toFixed(0)}) of ${phase.producedFps.mean.toFixed(0)} sent, main thread ${(phase.busyShare * 100).toFixed(0)} %, heap ${phase.heapMB.toFixed(0)} MB, ${phase.inboundMbit.toFixed(1)} Mbit/s in, ${phase.droppedFrames} dropped, machine CPU ${phase.machineCpuBusyPct} %`).join(' | '),
       );
       const grid3 = phases[0]!;
       expect(grid3.videos, 'nine videos on the stage').toBe(9);
       expect(grid3.rafFps, 'T-FPS: output frame rate in the 3 x 3 scene (hard 24)').toBeGreaterThanOrEqual(24);
-      // The senders share the machine: their fake cameras do not always draw 30 fps. The output must decode what is sent.
-      expect(grid3.decodeFps.mean, `every picture is decoded at the rate it is produced (${grid3.producedFps.mean.toFixed(1)} fps)`).toBeGreaterThanOrEqual(grid3.producedFps.mean * 0.9);
+      // The senders share the machine: their encoders do not always deliver 30 fps. The output must decode what is sent.
+      expect(grid3.decodeFps.mean, `every picture is decoded at the rate the senders report to send (${grid3.producedFps.mean.toFixed(1)} fps)`).toBeGreaterThanOrEqual(grid3.producedFps.mean * 0.9);
       expect(grid3.busyShare, 'T-FPS: output main-thread busy share (hard 60 %)').toBeLessThanOrEqual(0.6);
       expect(grid3.heapMB, 'JS heap below 400 MB').toBeLessThanOrEqual(400);
       expect(grid3.inboundMbit, 'total inbound below 20 Mbit/s (non-program sources at the lowest layer)').toBeLessThanOrEqual(20);
@@ -164,8 +163,6 @@ test.describe('OUT many sources', () => {
       expect(phases[2]!.videos, 'single full screen: one video').toBe(1);
       expect(incidents.filter((incident) => incident.endedAt === null), 'no incident').toEqual([]);
       expect(output.problems.pageErrors, 'no uncaught exception').toEqual([]);
-      void fmt;
-      void summarize;
     },
   );
 });

@@ -81,6 +81,8 @@ test.describe('PAIR phone, QR code', () => {
       knownDevBug('DEV-04', 'the tab row of the pairing dock collapses to 2 px height on the Handy tab and its buttons are covered by the panel');
       expect(regie.page.viewportSize(), 'the smallest Regie size of the plan').toEqual({ width: 1280, height: 720 });
       await regie.pairButton().click();
+      // The dock opens on «Laptop» (the short panel: the tab row is 34 px high); «Handy» is reachable with a real click.
+      await regie.pairingTab('phone').click();
       await expect(regie.pairingQr()).toBeVisible();
       const geometry = await regie.page.evaluate(() => {
         const row = document.querySelector('.c-tabs') as HTMLElement;

@@ -157,6 +157,11 @@ export class OutputProbe {
     );
   }
 
+  /** The frames recorded so far; the sampler keeps running. */
+  async peekSampler(): Promise<ProbeFrame[]> {
+    return (await this.frame()).evaluate(() => (window as unknown as { __outProbe: { frames: ProbeFrame[] | null } }).__outProbe.frames?.slice() ?? []);
+  }
+
   async stopSampler(): Promise<ProbeFrame[]> {
     return (await this.frame()).evaluate(() =>
       (window as unknown as { __outProbe: { stopSampler(): ProbeFrame[] } }).__outProbe.stopSampler(),

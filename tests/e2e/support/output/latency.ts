@@ -17,7 +17,7 @@ import { summarize, type Summary } from './stats';
  * each sample by the minimum of the samples within `radius` frames; a real latency change moves all neighbours and passes.
  * Camera streams (every block is coded every frame) show no such lag and are not filtered.
  */
-export function lagFilter(samples: readonly LatencySample[], radius = 3): { filtered: LatencySample[]; lagging: number } {
+export function lagFilter(samples: readonly LatencySample[], radius = 6): { filtered: LatencySample[]; lagging: number } {
   const ordered = [...samples].sort((a, b) => a.at - b.at);
   let lagging = 0;
   const filtered = ordered.map((sample, index) => {

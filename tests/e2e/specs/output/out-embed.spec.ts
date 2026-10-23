@@ -1,7 +1,7 @@
 import { DE } from '../../support/constants';
 import { stackConfig } from '../../support/env';
 import { expect, test } from '../../support/ui/fixtures';
-import { EMBED_ORIGIN, FOREIGN_ORIGIN, newUiContext, serveFakeOrigin } from '../../support/ui/init';
+import { EMBED_ORIGIN, FOREIGN_ORIGIN, newUiContext } from '../../support/ui/init';
 import { OutputPage, outputPath } from '../../support/ui/output';
 import { colorsClose } from '../../support/ui/pixels';
 import { GROUND, sleep, toneOf } from '../../support/output/analysis';
@@ -50,7 +50,6 @@ test.describe('OUT embedding', () => {
       await output.waitForPlayingVideos(1, { minFps: 8, timeout: 45_000 });
       const frame = await output.frame();
       const refits: Array<{ size: string; frames: number }> = [];
-      let previous = { width: 1280, height: 720 };
 
       for (const size of SIZES) {
         await output.resizeFrame(size);
@@ -124,9 +123,7 @@ test.describe('OUT embedding', () => {
         });
         expect(playing.frames, `${size.name}: the video keeps playing across the resize`).toBeGreaterThan(3);
         expect(Math.abs(playing.aspect - 16 / 9), 'the camera picture is 16:9').toBeLessThan(0.02);
-        previous = size;
       }
-      void previous;
       await recordMeasurement(test.info(), 'out-03-refit', { refits }, refits.map((entry) => `${entry.size}: ${entry.frames}`).join(', '));
       expect(output.problems.cspViolations, 'no frame-ancestors violation for the allowed origin').toEqual([]);
       expect(output.problems.pageErrors).toEqual([]);
@@ -173,7 +170,7 @@ test.describe('OUT embedding', () => {
       const scene = production.sceneIds[0]!;
       // A 16:9 screen in a 600 x 600 item with contain fit (bars above and below), on a scene with a background colour.
       await api.updateScene(production.id, scene, { background: { color: '#102030', assetId: null } });
-      const item = await placeItem(api, production, scene, screens.sources[0]!, { x: 660, y: 240, w: 600, h: 600, fit: 'contain', radius: 0 });
+      await placeItem(api, production, scene, screens.sources[0]!, { x: 660, y: 240, w: 600, h: 600, fit: 'contain', radius: 0 });
 
       // Standby first: the slate is opaque even with bg=transparent (it is not part of the transparent stage).
       const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, { transparent: true }, { embed: { size: { width: 800, height: 600 }, hostBackground: '#ff0000' } });
@@ -211,7 +208,6 @@ test.describe('OUT embedding', () => {
       expect(colorsClose(at(960, 262), '#0a0d12', 8), `contain bar above the picture is opaque, got ${at(960, 262)}`).toBe(true);
       // ... and the picture itself is there.
       expect(toneOf(at(960, 540)), 'the screen picture in the item').toBe('red');
-      void item;
       // Opaque in the DOM, too: transparency is a property of the page, not of the video.
       const withoutParam = await openProbedOutput({ browser, onCleanup }, production, {}, { embed: { size: { width: 800, height: 600 }, hostBackground: '#ff0000' } });
       await withoutParam.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });

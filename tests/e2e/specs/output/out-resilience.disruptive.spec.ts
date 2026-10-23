@@ -12,7 +12,7 @@ import { collectLatencyRun } from '../../support/output/latency';
 import { openProbedOutput, recordHubFrames, type HubMessage, type ProbedOutput } from '../../support/output/open';
 import { type ItemState, type ProbeFrame } from '../../support/output/probe';
 import { inboundOf } from '../../support/output/rtc';
-import { fmt, measureWhenQuiet, recordMeasurement, summarize, waitForQuietMachine } from '../../support/output/stats';
+import { recordMeasurement, startCpuMonitor, summarize, waitForQuietMachine } from '../../support/output/stats';
 import { addCamera, addScreens, goLive, placeItem, switchProgram, type Camera, type WorldDeps } from '../../support/output/world';
 import { t } from '../../support/tags';
 
@@ -346,21 +346,36 @@ test.describe('OUT resilience', () => {
   );
 });
 
-/** What an impairment did to the output: latency, picture and the Regie's view. */
+/** One measuring window of the output (no impairment, or one third of the impairment). */
+interface WindowResult {
+  seconds: number;
+  latency: ReturnType<typeof summarize>;
+  /** Decoded stamped frames per second. */
+  fps: number;
+  widths: number[];
+  /** WebRTC freezes (inbound-rtp freezeCount / totalFreezesDuration) normalised to one minute. */
+  freezesPerMin: number;
+  freezeSecondsPerMin: number;
+  /** Longest time the picture did not change (>= 300 ms), how many such stills, how many of them >= 1 s. */
+  longestStillMs: number;
+  stills: number;
+  stillsOver1s: number;
+  lossPct: number | null;
+  /** CPU use of the whole machine during the window (the other test stacks run at the same time). */
+  machineCpuBusyPct: number;
+}
+
+/** What an impairment did to the output: a baseline window, three impaired windows (medians decide), recovery. */
 interface Impaired {
   profile: NetemProfile;
-  baseline: ReturnType<typeof summarize>;
-  during: ReturnType<typeof summarize>;
-  duringFrames: number;
+  baseline: WindowResult;
+  windows: WindowResult[];
+  /** Median over the windows (the freeze budgets of the plan are per minute and random under random loss). */
+  median: { latencyP50: number; latencyP95: number; fps: number; freezesPerMin: number; freezeSecondsPerMin: number; longestStillMs: number; lossPct: number | null };
+  /** Worst window (the 20 % criterion is about the longest freeze that ever happened). */
+  worst: { longestStillMs: number; freezeSecondsPerMin: number };
   widths: number[];
-  fps: number;
-  /** Longest time the picture did not change (>= 300 ms), how many such stills, how many of them >= 1 s. */
-  longestGapMs: number;
-  gapsOver200: number;
-  gapsOver1000: number;
-  freezeCount: number;
-  freezeSeconds: number;
-  lossPct: number | null;
+  duringFrames: number;
   uplinkLossPct: number | null;
   recoverMs: number | null;
   recoveredWidth: number;
@@ -369,62 +384,95 @@ interface Impaired {
   reloaded: boolean;
 }
 
-/** Runs one netem profile against a live camera: baseline, impairment, clear, recovery. */
+const medianOf = (values: number[]): number => {
+  const sorted = [...values].sort((x, y) => x - y);
+  return sorted.length ? sorted[Math.floor(sorted.length / 2)]! : NaN;
+};
+
+/** Runs one netem profile against a live camera: baseline, settle, three windows, clear, recovery. */
 async function impair(
   world: World,
   fx: { api: WorldDeps['api']; production: WorldDeps['production'] },
   profile: NetemProfile,
-  options: { impairedMs?: number; settleMs?: number } = {},
+  options: { windowMs?: number; windows?: number; settleMs?: number } = {},
 ): Promise<Impaired> {
   const { probe, output } = world.opened;
   const frame = await output.frame();
   const camera = world.cameras[0]!;
+  const itemId = world.itemIds[0]!;
   const timeOrigin = await probe.timeOrigin();
   const incidentsBefore = (await fx.api.getSnapshot(fx.production.id)).body.incidents.length;
-  const baseline = await collectLatencyRun(output, { durationMs: 12_000, warmupMs: 2000, sourceId: camera.source, pollMs: 2000 });
-  const inboundBefore = await inboundOf(frame, fx.production, camera.source);
   await probe.startSampler({ luma: true });
+
+  const measureWindow = async (durationMs: number): Promise<WindowResult> => {
+    const startedAt = Date.now();
+    const cpu = startCpuMonitor();
+    const before = await inboundOf(frame, fx.production, camera.source);
+    const run = await collectLatencyRun(output, { durationMs, warmupMs: 0, sourceId: camera.source, pollMs: 2000 });
+    const after = await inboundOf(frame, fx.production, camera.source);
+    const seconds = (Date.now() - startedAt) / 1000;
+    // The window is part of the running sampler series: read the frames of this window from a snapshot of the series.
+    const frames = (await probe.peekSampler()).filter((sample) => sample.t >= startedAt);
+    const still = freezes(frames, [itemId], startedAt, 300).get(itemId)!;
+    const lost = after && before ? after.packetsLost - before.packetsLost : 0;
+    const received = after && before ? after.packetsReceived - before.packetsReceived : 0;
+    return {
+      seconds,
+      latency: run.stats,
+      fps: run.samples.length / (run.windowMs / 1000),
+      widths: run.widths,
+      freezesPerMin: (((after?.freezeCount ?? 0) - (before?.freezeCount ?? 0)) * 60) / seconds,
+      freezeSecondsPerMin: (((after?.totalFreezesDuration ?? 0) - (before?.totalFreezesDuration ?? 0)) * 60) / seconds,
+      longestStillMs: still.longestMs,
+      stills: still.periods,
+      stillsOver1s: still.over1000,
+      lossPct: after && before ? (lost / Math.max(1, received + lost)) * 100 : null,
+      machineCpuBusyPct: cpu().busyPct,
+    };
+  };
+
+  await sleep(2000);
+  const baseline = await measureWindow(25_000);
   await livekitCtl.netem(profile);
-  const impairedAt = Date.now();
-  const during = await collectLatencyRun(output, { durationMs: options.impairedMs ?? 40_000, warmupMs: options.settleMs ?? 8000, sourceId: camera.source, pollMs: 2000 });
-  const inboundAfter = await inboundOf(frame, fx.production, camera.source);
+  await sleep(options.settleMs ?? 8000);
+  const windows: WindowResult[] = [];
+  for (let index = 0; index < (options.windows ?? 3); index++) windows.push(await measureWindow(options.windowMs ?? 30_000));
   const telemetry = (await fx.api.getTelemetry(fx.production.id)).body;
   const uplink = telemetry.find((message) => message.deviceId === camera.device.id)?.telemetry.slots.find((slot) => slot.slot === 'camera')?.packetLossPct ?? null;
   const frames = await probe.stopSampler();
   await livekitCtl.clearNetem();
   const clearedAt = Date.now();
 
-  // Recovery: the median of the last 30 samples is back within 30 ms of the baseline, and the full layer returns.
+  // Recovery: the median of 30 samples is back within 30 ms of the baseline.
   const after = await collectLatencyRun(output, { durationMs: 20_000, warmupMs: 0, sourceId: camera.source, pollMs: 1000 });
   const origin = await probe.timeOrigin();
   let recoverMs: number | null = null;
-  const ordered = [...after.samples].sort((a, b) => a.at - b.at);
+  const ordered = [...after.samples].sort((x, y) => x.at - y.at);
   for (let index = 29; index < ordered.length; index++) {
-    const window = ordered.slice(index - 29, index + 1).map((sample) => sample.latencyMs).sort((a, b) => a - b);
-    if (window[15]! <= baseline.stats.p50 + 30) {
+    const window = ordered.slice(index - 29, index + 1).map((sample) => sample.latencyMs).sort((x, y) => x - y);
+    if (window[15]! <= baseline.latency.p50 + 30) {
       recoverMs = origin + ordered[index]!.at - clearedAt;
       break;
     }
   }
   const recovered = await inboundOf(frame, fx.production, camera.source);
-  const duringStats = during.stats;
-  const still = freezes(frames, [world.itemIds[0]!], impairedAt + (options.settleMs ?? 8000), 300).get(world.itemIds[0]!)!;
-  // Loss over the impaired window only (the counters are cumulative since the stream started).
-  const lossPct = inboundAfter && inboundBefore ? ((inboundAfter.packetsLost - inboundBefore.packetsLost) / Math.max(1, inboundAfter.packetsReceived - inboundBefore.packetsReceived + inboundAfter.packetsLost - inboundBefore.packetsLost)) * 100 : null;
   const incidentsAfter = (await fx.api.getSnapshot(fx.production.id)).body.incidents.length;
   return {
     profile,
-    baseline: baseline.stats,
-    during: duringStats,
-    duringFrames: during.samples.length,
-    widths: during.widths,
-    fps: during.samples.length / (during.windowMs / 1000),
-    longestGapMs: still.longestMs,
-    gapsOver200: still.periods,
-    gapsOver1000: still.over1000,
-    freezeCount: (inboundAfter?.freezeCount ?? 0) - (inboundBefore?.freezeCount ?? 0),
-    freezeSeconds: (inboundAfter?.totalFreezesDuration ?? 0) - (inboundBefore?.totalFreezesDuration ?? 0),
-    lossPct,
+    baseline,
+    windows,
+    median: {
+      latencyP50: medianOf(windows.map((w) => w.latency.p50)),
+      latencyP95: medianOf(windows.map((w) => w.latency.p95)),
+      fps: medianOf(windows.map((w) => w.fps)),
+      freezesPerMin: medianOf(windows.map((w) => w.freezesPerMin)),
+      freezeSecondsPerMin: medianOf(windows.map((w) => w.freezeSecondsPerMin)),
+      longestStillMs: medianOf(windows.map((w) => w.longestStillMs)),
+      lossPct: windows[0]?.lossPct === null ? null : medianOf(windows.map((w) => w.lossPct ?? NaN)),
+    },
+    worst: { longestStillMs: Math.max(...windows.map((w) => w.longestStillMs)), freezeSecondsPerMin: Math.max(...windows.map((w) => w.freezeSecondsPerMin)) },
+    widths: [...new Set(windows.flatMap((w) => w.widths))].sort((x, y) => x - y),
+    duringFrames: windows.reduce((sum, w) => sum + w.fps * w.seconds, 0),
     uplinkLossPct: uplink,
     recoverMs,
     recoveredWidth: recovered?.frameWidth ?? 0,
@@ -445,7 +493,7 @@ test.describe('OUT netem on LiveKit', () => {
       `${scenario.id} [output, netem ${scenario.name}] the output stays up under impairment of LiveKit: no reload, no slate, latency and frame gaps recorded, recovery after clearing`,
       t.disruptive(scenario.priority),
       async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-        if (scenario.id === 'E2E-NET-05') outBug('OUT-06', 'with 20 % loss on the media path the picture freezes for more than 5 s (T-FREEZE hard limit) and drops to 320 px / 10 fps');
+        if (scenario.id === 'E2E-NET-05') outBug('OUT-06', 'with 20 % loss on the media path the picture freezes for more than 5 s in some windows (T-FREEZE hard limit), is frozen for 14-52 s of every minute and drops to 320 px / 2-15 fps');
         requireTool('netem');
         test.setTimeout(600_000);
         const deps = { api, production, pairContext, openPhone, openLaptop };
@@ -457,13 +505,14 @@ test.describe('OUT netem on LiveKit', () => {
           await sleep(3000);
         }
         await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: 120_000 });
-        const result = await impair(world, { api, production }, scenario.profile, { impairedMs: 40_000, settleMs: 8000 });
-        const delta = result.during.p50 - result.baseline.p50;
+        const result = await impair(world, { api, production }, scenario.profile, { windowMs: 25_000, windows: scenario.id === 'E2E-NET-05' ? 8 : 3, settleMs: 8000 });
+        const delta = result.median.latencyP50 - result.baseline.latency.p50;
+        const m = result.median;
         await recordMeasurement(
           test.info(),
           scenario.id.toLowerCase(),
           { scenario: scenario.name, ...result, p50Delta: delta },
-          `${scenario.name}: latency p50 ${result.baseline.p50.toFixed(0)} -> ${result.during.p50.toFixed(0)} ms (p95 ${result.during.p95.toFixed(0)}, max ${result.during.max.toFixed(0)}), ${result.fps.toFixed(0)} fps, widest picture ${Math.max(...result.widths, 0)} px, longest still picture ${Math.round(result.longestGapMs)} ms, ${result.gapsOver200} stills >= 300 ms (${result.gapsOver1000} >= 1 s), freeze ${result.freezeCount}x/${result.freezeSeconds.toFixed(1)} s, loss ${result.lossPct?.toFixed(1)} % (uplink ${result.uplinkLossPct ?? 'n/a'} %), back to baseline ${result.recoverMs === null ? 'not within 20 s' : `${Math.round(result.recoverMs)} ms`} after clearing, ${result.incidentsOpened} incident(s)`,
+          `${scenario.name}: latency p50 ${result.baseline.latency.p50.toFixed(0)} -> ${m.latencyP50.toFixed(0)} ms (p95 ${m.latencyP95.toFixed(0)}), ${m.fps.toFixed(0)} fps, widest picture ${Math.max(...result.widths, 0)} px, longest still picture ${Math.round(m.longestStillMs)} ms (worst window ${Math.round(result.worst.longestStillMs)} ms), freezes per minute ${m.freezesPerMin.toFixed(1)} / ${m.freezeSecondsPerMin.toFixed(1)} s (baseline ${result.baseline.freezesPerMin.toFixed(1)} / ${result.baseline.freezeSecondsPerMin.toFixed(1)} s; windows ${result.windows.map((w) => w.freezeSecondsPerMin.toFixed(1)).join('/')}), loss ${m.lossPct?.toFixed(1)} % (sender-reported uplink ${result.uplinkLossPct ?? 'n/a'} %), back to baseline ${result.recoverMs === null ? 'not within 20 s' : `${Math.round(result.recoverMs)} ms`} after clearing, ${result.incidentsOpened} incident(s)`,
         );
         // The rule of the product: the output stays up and keeps a picture.
         expect(result.reloaded, 'the page was not reloaded').toBe(false);
@@ -471,71 +520,70 @@ test.describe('OUT netem on LiveKit', () => {
         expect(result.duringFrames, 'frames kept arriving').toBeGreaterThan(50);
 
         if (scenario.id === 'E2E-NET-03') {
-          expect(delta, `a 100 ms delay in both directions adds about 200 ms (baseline ${result.baseline.p50.toFixed(0)}, impaired ${result.during.p50.toFixed(0)})`).toBeGreaterThanOrEqual(100);
+          expect(delta, `a 100 ms delay in both directions adds about 200 ms (baseline ${result.baseline.latency.p50.toFixed(0)}, impaired ${m.latencyP50.toFixed(0)})`).toBeGreaterThanOrEqual(100);
           expect(delta).toBeLessThanOrEqual(300);
-          expect(result.freezeCount, 'freeze count').toBeLessThanOrEqual(1);
-          expect(result.freezeSeconds, 'T-FREEZE: total freeze per minute below 1 s (hard)').toBeLessThanOrEqual(1);
+          expect(m.freezesPerMin, 'freeze count per minute (median of three windows)').toBeLessThanOrEqual(1);
+          expect(m.freezeSecondsPerMin, 'T-FREEZE: total freeze per minute below 1 s (hard, median of three windows)').toBeLessThanOrEqual(1);
           expect(result.incidentsOpened, 'no incident').toBe(0);
           expect(result.recoverMs, 'baseline +-30 ms within 10 s after clearing').not.toBeNull();
           expect(result.recoverMs!).toBeLessThanOrEqual(10_000);
         }
         if (scenario.id === 'E2E-NET-04') {
-          expect(result.fps, 'output fps >= 24').toBeGreaterThanOrEqual(24);
-          expect(result.freezeSeconds, 'T-FREEZE: total freeze below 2 s per minute (hard)').toBeLessThanOrEqual(2);
+          // The freeze budget of the plan (2 s per minute, fps >= 24) is asserted in E2E-NET-04 [freeze budget ...] below (known bug).
+          // What holds whatever the luck of the dice: the picture continues, the loss is the 5 % set, no incident, quick recovery.
+          expect(result.worst.longestStillMs, 'the picture is never still for 15 s or more').toBeLessThan(15_000);
+          expect(m.fps, 'the picture keeps moving (median of the windows)').toBeGreaterThanOrEqual(8);
           expect(result.incidentsOpened, 'no reconnecting incident').toBe(0);
           expect(result.recoverMs, 'quality recovers within 10 s of clearing').not.toBeNull();
           expect(result.recoverMs!).toBeLessThanOrEqual(10_000);
-          expect(result.lossPct, 'downlink loss seen by the output is between 2 and 9 %').not.toBeNull();
-          expect(result.lossPct!).toBeGreaterThanOrEqual(2);
-          expect(result.lossPct!).toBeLessThanOrEqual(9);
+          expect(m.lossPct, 'downlink loss seen by the output is between 2 and 9 %').not.toBeNull();
+          expect(m.lossPct!).toBeGreaterThanOrEqual(2);
+          expect(m.lossPct!).toBeLessThanOrEqual(9);
         }
         if (scenario.id === 'E2E-NET-05') {
-          expect(result.longestGapMs, 'T-FREEZE: the longest freeze stays below 5 s (hard)').toBeLessThanOrEqual(5000);
+          expect(result.worst.longestStillMs, 'T-FREEZE: the longest freeze stays below 5 s (hard)').toBeLessThanOrEqual(5000);
           expect(result.recoverMs, 'full quality within 10 s of clearing').not.toBeNull();
           expect(result.recoverMs!).toBeLessThanOrEqual(10_000);
           expect((await api.getSnapshot(production.id)).body.incidents.filter((incident) => incident.endedAt === null), 'no incident stays open').toEqual([]);
         }
         if (scenario.id === 'E2E-NET-06') {
           expect(Math.max(...result.widths), 'lower simulcast layers are received (the picture is below 1280 px wide)').toBeLessThan(1280);
-          expect(result.longestGapMs, 'no freeze above 1 s').toBeLessThanOrEqual(1000);
+          expect(result.worst.longestStillMs, 'no freeze above 1 s').toBeLessThanOrEqual(1000);
           expect(result.incidentsOpened, 'no incident').toBe(0);
           await expect
             .poll(async () => (await inboundOf(await world.opened.output.frame(), production, world.cameras[0]!.source))?.frameWidth ?? 0, { timeout: 15_000, message: 'the highest layer returns within 15 s of clearing' })
             .toBeGreaterThanOrEqual(1280);
         }
-        void fmt;
-        void measureWhenQuiet;
       },
     );
   }
 });
 
-test.describe('OUT sender loss report', () => {
+test.describe('OUT freeze budget and sender loss report', () => {
   test(
-    'E2E-NET-04 [sender uplink loss] with 5 % loss on the link the sender reports an uplink loss between 2 and 9 % (what the Regie shows as «Verlust»)',
+    'E2E-NET-04 [freeze budget and sender report] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows) and the sender reports an uplink loss between 2 and 9 % (Regie «Verlust»)',
     t.disruptive('@p1'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-05', 'the sender reports the loss net of NACK retransmissions (about 0.3 % with 5 % loss on the link), the plan expects the link loss');
+      outBug('OUT-05', 'the sender reports the loss net of NACK retransmissions (0.1-0.3 % with 5 % loss on the link), the plan expects the link loss');
+      outBug('OUT-06', 'with 5 % loss on the media path the output freezes for 0-52 s per minute (26-52 s on a quiet machine, plan: <= 2 s) at 5-25 fps');
       requireTool('netem');
-      test.setTimeout(300_000);
+      test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1 });
+      const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
       await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: 120_000 });
-      const reported: number[] = [];
-      await livekitCtl.netem({ lossPct: 5 });
-      const until = Date.now() + 40_000;
-      while (Date.now() < until) {
-        await sleep(2000);
-        const loss = (await api.getTelemetry(production.id)).body.find((message) => message.deviceId === world.cameras[0]!.device.id)?.telemetry.slots.find((slot) => slot.slot === 'camera')?.packetLossPct;
-        if (typeof loss === 'number') reported.push(loss);
-      }
-      await livekitCtl.clearNetem();
-      const steady = reported.slice(Math.floor(reported.length / 3));
-      await recordMeasurement(test.info(), 'net-04-uplink-loss', { reported, steady }, `5 % netem: the sender reported ${reported.map((value) => value.toFixed(1)).join('/')} % (mean of the second part ${(steady.reduce((sum, value) => sum + value, 0) / steady.length).toFixed(2)} %)`);
-      const mean = steady.reduce((sum, value) => sum + value, 0) / steady.length;
-      expect(steady.length, 'the sender reported its loss').toBeGreaterThan(5);
-      expect(mean, 'uplink loss reported by the sender (Regie «Verlust») between 2 and 9 %').toBeGreaterThanOrEqual(2);
-      expect(mean).toBeLessThanOrEqual(9);
+      const result = await impair(world, { api, production }, { lossPct: 5 }, { windowMs: 25_000, windows: 6, settleMs: 8000 });
+      const m = result.median;
+      await recordMeasurement(
+        test.info(),
+        'net-04-freeze-budget',
+        { ...result },
+        `5 % loss: freeze seconds per minute per window ${result.windows.map((w) => w.freezeSecondsPerMin.toFixed(1)).join('/')} (median ${m.freezeSecondsPerMin.toFixed(1)}, plan <= 2), fps median ${m.fps.toFixed(1)} (plan >= 24), baseline freezes ${result.baseline.freezeSecondsPerMin.toFixed(1)} s per minute; machine CPU per window ${result.windows.map((w) => w.machineCpuBusyPct).join('/')} %; sender-reported uplink loss ${result.uplinkLossPct} %`,
+      );
+      expect(m.freezeSecondsPerMin, 'T-FREEZE: total freeze below 2 s per minute (hard, median of six windows)').toBeLessThanOrEqual(2);
+      expect(m.fps, 'output fps >= 24 (median of six windows)').toBeGreaterThanOrEqual(24);
+      expect(result.uplinkLossPct, 'the sender reports its uplink loss').not.toBeNull();
+      expect(result.uplinkLossPct!, 'uplink loss reported by the sender (Regie «Verlust») between 2 and 9 %').toBeGreaterThanOrEqual(2);
+      expect(result.uplinkLossPct!).toBeLessThanOrEqual(9);
     },
   );
 });
