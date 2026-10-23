@@ -96,8 +96,100 @@ describe('SceneCommandsService', () => {
     expect(commands.reordering()).toBe(true);
     request.flush(null, { status: 204, statusText: 'No Content' });
     expect(await moved).toBe(true);
-    // The store still has the old order (no event yet): "Break" (scn_c) is last and cannot move down.
-    expect(await commands.move('scn_c', 1)).toBe(false);
+    // The list keeps the order until the store reports it: "Break" (scn_c) is now in the middle.
+    expect(commands.order()).toEqual(['scn_a', 'scn_c', 'scn_b']);
+    expect(commands.canMove('scn_c', 1)).toBe(true);
+  });
+
+  describe('reorder', () => {
+    const ORDER = `${BASE}/scenes/order`;
+    const NO_CONTENT = { status: 204, statusText: 'No Content' };
+
+    it('shows the dropped order at once and drops it when the store reports it', async () => {
+      await setup();
+      const sent = commands.reorder(['scn_c', 'scn_a', 'scn_b']);
+      expect(commands.order()).toEqual(['scn_c', 'scn_a', 'scn_b']);
+      harness.http.expectOne(ORDER).flush(null, NO_CONTENT);
+      expect(await sent).toBe(true);
+      expect(commands.order()).toEqual(['scn_c', 'scn_a', 'scn_b']);
+      harness.emitEvent({ type: 'scenesReordered', sceneIds: ['scn_c', 'scn_a', 'scn_b'] });
+      await harness.settle();
+      expect(commands.order()).toEqual(['scn_c', 'scn_a', 'scn_b']);
+      expect(harness.store.scenes().map((scene) => scene.id)).toEqual(['scn_c', 'scn_a', 'scn_b']);
+    });
+
+    it('returns to the server order and explains when the request fails', async () => {
+      await setup();
+      const sent = commands.reorder(['scn_b', 'scn_a', 'scn_c']);
+      harness.http
+        .expectOne(ORDER)
+        .flush({ code: 'validation_failed' }, { status: 400, statusText: 'Bad Request' });
+      expect(await sent).toBe(false);
+      expect(commands.order()).toEqual(['scn_a', 'scn_b', 'scn_c']);
+      expect(toasts.current()?.message).toBe('The input is not valid.');
+    });
+
+    it('merges moves made while a request is in flight: only the newest order follows', async () => {
+      await setup();
+      void commands.reorder(['scn_b', 'scn_a', 'scn_c']);
+      void commands.reorder(['scn_c', 'scn_b', 'scn_a']);
+      const last = commands.reorder(['scn_a', 'scn_c', 'scn_b']);
+      expect(commands.order()).toEqual(['scn_a', 'scn_c', 'scn_b']);
+      const first = harness.http.expectOne(ORDER);
+      expect(first.request.body.sceneIds).toEqual(['scn_b', 'scn_a', 'scn_c']);
+      first.flush(null, NO_CONTENT);
+      await flushMicrotasks();
+      const second = harness.http.expectOne(ORDER);
+      expect(second.request.body.sceneIds).toEqual(['scn_a', 'scn_c', 'scn_b']);
+      second.flush(null, NO_CONTENT);
+      expect(await last).toBe(true);
+      harness.http.expectNone(ORDER);
+    });
+
+    it('drops the queued order when the request in flight fails', async () => {
+      await setup();
+      const first = commands.reorder(['scn_b', 'scn_a', 'scn_c']);
+      void commands.reorder(['scn_c', 'scn_b', 'scn_a']);
+      harness.http.expectOne(ORDER).flush({}, { status: 500, statusText: 'Server Error' });
+      expect(await first).toBe(false);
+      harness.http.expectNone(ORDER);
+      expect(commands.order()).toEqual(['scn_a', 'scn_b', 'scn_c']);
+    });
+
+    it('sends nothing for the same order or a list that is not the scene list', async () => {
+      await setup();
+      expect(await commands.reorder(['scn_a', 'scn_b', 'scn_c'])).toBe(false);
+      expect(await commands.reorder(['scn_a', 'scn_b'])).toBe(false);
+      expect(await commands.reorder(['scn_a', 'scn_a', 'scn_b'])).toBe(false);
+      expect(await commands.reorder(['scn_a', 'scn_b', 'scn_x'])).toBe(false);
+      harness.http.expectNone(() => true);
+    });
+
+    it('gives up the dropped order after a while when the store never reports it', async () => {
+      vi.useFakeTimers();
+      try {
+        await setup();
+        const sent = commands.reorder(['scn_b', 'scn_a', 'scn_c']);
+        harness.http.expectOne(ORDER).flush(null, NO_CONTENT);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(await sent).toBe(true);
+        expect(commands.order()).toEqual(['scn_b', 'scn_a', 'scn_c']);
+        await vi.advanceTimersByTimeAsync(3100);
+        expect(commands.order()).toEqual(['scn_a', 'scn_b', 'scn_c']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('is not sent while the Regie is offline', async () => {
+      await setup();
+      harness.hub.setState('reconnecting');
+      expect(await commands.reorder(['scn_b', 'scn_a', 'scn_c'])).toBe(false);
+      expect(toasts.current()?.message).toBe(
+        'No connection to the server. Please try again in a moment.',
+      );
+      expect(commands.order()).toEqual(['scn_a', 'scn_b', 'scn_c']);
+    });
   });
 
   it('never deletes the live scene', async () => {

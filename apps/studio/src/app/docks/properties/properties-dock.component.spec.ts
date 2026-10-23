@@ -275,6 +275,29 @@ describe('PropertiesDockComponent', () => {
     harness.http.expectNone(() => true);
   });
 
+  it('moves the layer one step or to the very front or back, sending only the order', async () => {
+    await setup();
+    editor.select('itm_b1');
+    await render();
+    // Back to front: itm_b1, itm_b2. The selected back item can only go forward.
+    expect(button('Send backward')?.disabled).toBe(true);
+    expect(button('Send to back')?.disabled).toBe(true);
+    expect(button('Bring forward')?.disabled).toBe(false);
+    button('Bring to front')?.click();
+    const request = harness.http.expectOne(`${BASE}/scenes/scn_b/items/order`);
+    expect(request.request.body).toEqual({ itemIds: ['itm_b2', 'itm_b1'] });
+    await render();
+    expect(button('Bring to front')?.disabled).toBe(true);
+    expect(button('Send to back')?.disabled).toBe(false);
+    request.flush({ ...harness.store.sceneById('scn_b'), version: 2 });
+    await flushMicrotasks();
+    button('Send to back')?.click();
+    const back = harness.http.expectOne(`${BASE}/scenes/scn_b/items/order`);
+    expect(back.request.body).toEqual({ itemIds: ['itm_b1', 'itm_b2'] });
+    back.flush({ ...harness.store.sceneById('scn_b'), version: 3 });
+    await flushMicrotasks();
+  });
+
   it('disables every field while the scene is live in Studio Mode', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     editor.select('itm_b1');

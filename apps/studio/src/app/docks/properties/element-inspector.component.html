@@ -285,6 +285,14 @@
         class="c-btn c-btn--sm"
         type="button"
         [disabled]="disabled() || !canFront()"
+        (click)="moveLayer('front')"
+      >
+        <svg sfIcon="up" [size]="14"></svg>{{ t('regie.properties.element.layerToFront') }}
+      </button>
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="disabled() || !canFront()"
         (click)="moveLayer('up')"
       >
         <svg sfIcon="up" [size]="14"></svg>{{ t('regie.properties.element.layerForward') }}
@@ -296,6 +304,14 @@
         (click)="moveLayer('down')"
       >
         <svg sfIcon="down" [size]="14"></svg>{{ t('regie.properties.element.layerBackward') }}
+      </button>
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="disabled() || !canBack()"
+        (click)="moveLayer('back')"
+      >
+        <svg sfIcon="down" [size]="14"></svg>{{ t('regie.properties.element.layerToBack') }}
       </button>
     </div>
   </div>

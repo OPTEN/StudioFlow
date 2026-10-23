@@ -34,8 +34,8 @@ const MENU_HEIGHT = 168;
 /**
  * One row of the Scenes dock (prototype `.scene`): a button with the 16:9 thumbnail and keycap, name and meta
  * (PGM/PVW tag, slot codes or "K2 disrupted"), `aria-pressed` and the prototype's `aria-label`. Next to it the "…"
- * button opens the scene's actions (Rename, Duplicate, Move up, Move down). Keyboard: F2 renames, Alt+↑/↓
- * move the scene. While renaming, the name is an inline field.
+ * button opens the scene's actions (Rename, Duplicate, Move up, Move down). Keyboard: F2 renames; Alt+↑/↓ move the
+ * scene (handled by the surrounding sortable list). While renaming, the name is an inline field.
  *
  * The menu is positioned `fixed` next to its trigger because the scene list scrolls (an absolute popover would be
  * clipped); scrolling or resizing closes it.
@@ -119,9 +119,6 @@ export class SceneRowComponent {
     if (event.key === 'F2') {
       event.preventDefault();
       this.startRename();
-    } else if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-      event.preventDefault();
-      void this.move(event.key === 'ArrowUp' ? -1 : 1);
     }
   }
 

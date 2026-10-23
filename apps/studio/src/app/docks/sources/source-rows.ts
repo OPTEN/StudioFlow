@@ -58,13 +58,21 @@ export function kindOfReference(
   return parsed?.kind === 'device' ? (slotKind(parsed.slot) ?? 'camera') : 'image';
 }
 
+/**
+ * Item order back to front (the z-order of a scene, first = back) from the dock's row order front to back, and the
+ * other way round: the list is the reversed order, so position n from the top is item index count − n.
+ */
+export function flipOrder<T>(order: readonly T[]): T[] {
+  return [...order].reverse();
+}
+
 /** Rows of the edit scene, front to back (prototype: reversed item order). */
 export function sourceRows(
   scene: SceneDto,
   sources: ReadonlyMap<string, SourceDto>,
   selectedItemId: string | null,
 ): SourceRowView[] {
-  return [...scene.items].reverse().map((item) => {
+  return flipOrder(scene.items).map((item) => {
     const source = sources.get(item.source) ?? null;
     return {
       itemId: item.id,

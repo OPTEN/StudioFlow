@@ -18,11 +18,12 @@ import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
 import { EditorService } from '../../stage/editor.service';
 import { SwitcherService } from '../../stage/switcher.service';
 import { ElapsedComponent } from '../shared/elapsed.component';
+import { SortableItemDirective, SortableListComponent } from '../shared/sortable-list.component';
 import { toneClass, type StateTone } from '../shared/source-view';
 import { ADD_SOURCE_POPOVER, AddSourcePopoverComponent } from './add-source-popover.component';
 import { AssetUploadService } from './asset-upload.service';
 import { MEDIA_POPOVER, MediaPopoverComponent } from './media-popover.component';
-import { sourceRows, type SourceRowView } from './source-rows';
+import { flipOrder, sourceRows, type SourceRowView } from './source-rows';
 import { dragHasFiles } from './upload-validation';
 
 /**
@@ -30,7 +31,9 @@ import { dragHasFiles } from './upload-validation';
  * eye toggle, kind icon, slot code, name, state with timer, lamp and lock toggle. Selecting a row selects the item
  * for the monitor and Properties (`EditorService.select`); selecting the selected row again clears the selection
  * (toggle, `aria-pressed`). The header holds undo and "+ Source" (add a source, upload, manage media). Files dropped
- * on the dock are uploaded.
+ * on the dock are uploaded. The rows are reordered by drag and drop or from the keyboard
+ * ({@link SortableListComponent}); the top row is the front layer, and `EditorService.reorderItems` sends the new
+ * order.
  */
 @Component({
   selector: 'sf-sources-dock',
@@ -41,6 +44,8 @@ import { dragHasFiles } from './upload-validation';
     IconComponent,
     MediaPopoverComponent,
     PopoverTriggerDirective,
+    SortableItemDirective,
+    SortableListComponent,
   ],
   templateUrl: './sources-dock.component.html',
   styleUrl: './sources-dock.component.scss',
@@ -70,9 +75,24 @@ export class SourcesDockComponent {
     const scene = this.scene();
     return scene ? sourceRows(scene, this.store.sources(), this.editor.selectedItemId()) : [];
   });
-  /** Prototype hint below the rows while nothing is selected. */
+  protected readonly rowIds = computed(() => this.rows().map((row) => row.itemId));
+  protected readonly rowsById = computed(
+    () => new Map(this.rows().map((row) => [row.itemId, row] as const)),
+  );
+  /** Name of a row for the reorder handle and the announcements: "K1 Phone stage left". */
+  protected readonly rowName = (itemId: string): string => {
+    const row = this.rowsById().get(itemId);
+    return row ? `${row.code} ${row.name}` : '';
+  };
+  /** Hint below the rows: in an Auto grid scene what the order means, else (prototype) while nothing is selected. */
   protected readonly hint = computed(() => {
-    if (this.editor.selectedItem() || this.editor.editLocked() || this.rows().length === 0) {
+    if (this.rows().length === 0) {
+      return null;
+    }
+    if (this.scene()?.layoutMode === 'autoGrid') {
+      return t('regie.sources.hint.autoGrid');
+    }
+    if (this.editor.selectedItem() || this.editor.editLocked()) {
       return null;
     }
     return t(
@@ -94,6 +114,11 @@ export class SourcesDockComponent {
 
   protected toneClass(tone: StateTone): string {
     return toneClass(tone);
+  }
+
+  /** A row was dragged or moved: the dock lists front to back, the scene stores back to front. */
+  protected reorder(rowIds: readonly string[]): void {
+    this.editor.reorderItems(flipOrder(rowIds));
   }
 
   /** Selects the row's item; a second click on the selected row clears the selection (back to the scene). */

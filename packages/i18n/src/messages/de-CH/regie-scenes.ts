@@ -9,6 +9,7 @@ export const regieScenes: Translation<typeof en> = {
   'regie.scenes.dock.emptyText': 'Mit «+ Szene» die erste Szene anlegen.',
   'regie.scenes.dock.emptyTitle': 'Noch keine Szenen.',
   'regie.scenes.dock.keysHint': 'Tasten 1–9',
+  'regie.scenes.dock.listLabel': 'Szenen',
   'regie.scenes.dock.loadingTitle': 'Szenen werden geladen …',
 
   'regie.scenes.name.copy': '{name} (Kopie)',

@@ -153,7 +153,7 @@ export class ElementInspectorComponent {
     this.commit({ ...this.item(), onLost: { ...this.item().onLost, fallbackSource } });
   }
 
-  protected moveLayer(direction: 'up' | 'down'): void {
+  protected moveLayer(direction: 'up' | 'down' | 'front' | 'back'): void {
     this.editor.moveLayer(this.item().id, direction);
   }
 

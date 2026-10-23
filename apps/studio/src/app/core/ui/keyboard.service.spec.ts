@@ -128,9 +128,19 @@ describe('KeyboardService', () => {
       }),
     );
     cleanup.push(keyboard.registerEscape('dockDrag', () => (order.push('dockDrag'), false)));
+    cleanup.push(keyboard.registerEscape('listDrag', () => (order.push('listDrag'), false)));
     press('Escape');
     press('Escape');
-    expect(order).toEqual(['dockDrag', 'popover', 'dockDrag', 'popover', 'pairing', 'selection']);
+    expect(order).toEqual([
+      'listDrag',
+      'dockDrag',
+      'popover',
+      'listDrag',
+      'dockDrag',
+      'popover',
+      'pairing',
+      'selection',
+    ]);
   });
 
   it('runs the newest handler first and survives throwing handlers', () => {

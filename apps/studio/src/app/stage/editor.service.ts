@@ -16,6 +16,14 @@ import {
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { KeyboardService } from '../core/ui/keyboard.service';
+import {
+  isPermutation,
+  moveEntry,
+  sameOrder,
+  sortByOrder,
+  stepTarget,
+  type ReorderStep,
+} from '../core/ui/reorder';
 import { ToastService } from '../core/ui/toast.service';
 import { SwitcherService } from './switcher.service';
 
@@ -65,6 +73,7 @@ export interface UpdateItemOptions {
 type WriteOp =
   | { readonly kind: 'item'; readonly item: SceneItemDto }
   | { readonly kind: 'remove'; readonly itemId: string }
+  | { readonly kind: 'order'; readonly itemIds: readonly string[] }
   | {
       readonly kind: 'replace';
       readonly items: readonly SceneItemDto[];
@@ -76,6 +85,8 @@ interface SceneDraft {
   readonly listOverride: SceneSnapshot | null;
   readonly itemOverrides: ReadonlyMap<string, SceneItemDto>;
   readonly removed: ReadonlySet<string>;
+  /** Item ids back to front after a reorder; items it does not list (added by another session) stay in front. */
+  readonly order: readonly string[] | null;
   /** Highest scene version returned by our requests; the draft is dropped once the store reaches it. */
   readonly ackVersion: number;
 }
@@ -98,11 +109,22 @@ const EMPTY_DRAFT: SceneDraft = {
   listOverride: null,
   itemOverrides: new Map(),
   removed: new Set(),
+  order: null,
   ackVersion: 0,
 };
 
 function snapshotOf(scene: SceneDto): SceneSnapshot {
   return { items: scene.items, layoutMode: scene.layoutMode };
+}
+
+/** The queued op `queued` is obsolete once `op` follows it (same item, or both set the whole order). */
+function supersedes(op: WriteOp, queued: WriteOp): boolean {
+  if (op.kind === 'order' || queued.kind === 'order') {
+    return op.kind === queued.kind;
+  }
+  const itemOf = (entry: WriteOp): string | null =>
+    entry.kind === 'item' ? entry.item.id : entry.kind === 'remove' ? entry.itemId : null;
+  return itemOf(op) === itemOf(queued);
 }
 
 function sameRect(a: SceneItemDto, b: SceneItemDto): boolean {
@@ -243,7 +265,10 @@ export class EditorService {
     const draft = this.drafts().get(scene.id);
     if (
       !draft ||
-      (!draft.listOverride && draft.removed.size === 0 && draft.itemOverrides.size === 0)
+      (!draft.listOverride &&
+        !draft.order &&
+        draft.removed.size === 0 &&
+        draft.itemOverrides.size === 0)
     ) {
       return scene;
     }
@@ -253,6 +278,9 @@ export class EditorService {
     }
     if (draft.itemOverrides.size > 0) {
       items = items.map((item) => draft.itemOverrides.get(item.id) ?? item);
+    }
+    if (draft.order) {
+      items = sortByOrder(items, draft.order, (item) => item.id);
     }
     return { ...scene, items, layoutMode: draft.listOverride?.layoutMode ?? scene.layoutMode };
   }
@@ -318,7 +346,7 @@ export class EditorService {
     return true;
   }
 
-  /** Replaces all items of the edit scene (templates, reorder); `layoutMode` unchanged when omitted. */
+  /** Replaces all items of the edit scene (templates); `layoutMode` unchanged when omitted. */
   replaceItems(items: readonly SceneItemDto[], layoutMode?: SceneLayoutMode): boolean {
     const scene = this.editScene();
     if (!scene || !this.guard()) {
@@ -410,25 +438,43 @@ export class EditorService {
     return true;
   }
 
-  /** Moves an item one layer to the front (`up`) or back (`down`). */
-  moveLayer(itemId: string, direction: 'up' | 'down'): boolean {
+  /**
+   * Sets the z-order of the edit scene: the ids of all its items back to front (drag and drop in the Sources dock,
+   * the layer buttons). Only the order is sent, so it cannot overwrite an item another session changed meanwhile.
+   * Hidden and locked items can be reordered too. Returns false when nothing was reordered (a toast says why when
+   * the scene cannot be edited).
+   */
+  reorderItems(itemIds: readonly string[]): boolean {
     const scene = this.editScene();
-    if (!scene) {
+    if (!scene || !this.guard()) {
       return false;
     }
-    const index = scene.items.findIndex((item) => item.id === itemId);
+    const current = scene.items.map((item) => item.id);
+    if (sameOrder(current, itemIds) || !isPermutation(itemIds, current)) {
+      return false;
+    }
+    this.recordUndo(scene, true);
+    this.enqueue(scene, { kind: 'order', itemIds });
+    return true;
+  }
+
+  /** Moves an item one layer to the front (`up`) or back (`down`), or to the very front or back. */
+  moveLayer(itemId: string, direction: 'up' | 'down' | 'front' | 'back'): boolean {
+    const scene = this.editScene();
+    const ids = scene?.items.map((item) => item.id) ?? [];
+    const index = ids.indexOf(itemId);
     if (index < 0) {
       return false;
     }
-    const target =
-      direction === 'up' ? Math.min(scene.items.length - 1, index + 1) : Math.max(0, index - 1);
-    if (target === index) {
-      return false;
-    }
-    const items = [...scene.items];
-    const [moved] = items.splice(index, 1);
-    items.splice(target, 0, moved);
-    return this.replaceItems(items);
+    const steps: Record<typeof direction, ReorderStep> = {
+      up: 'later',
+      down: 'earlier',
+      front: 'last',
+      back: 'first',
+    };
+    return this.reorderItems(
+      moveEntry(ids, itemId, stepTarget(index, ids.length, steps[direction])),
+    );
   }
 
   /** Applies a layout template ("Apply template"); the toast offers "Undo". */
@@ -598,12 +644,15 @@ export class EditorService {
           removed.add(op.itemId);
           return { ...draft, itemOverrides, removed };
         }
+        case 'order':
+          return { ...draft, order: op.itemIds };
         case 'replace':
           return {
             ...draft,
             listOverride: { items: op.items, layoutMode: op.layoutMode ?? scene.layoutMode },
             itemOverrides: new Map(),
             removed: new Set(),
+            order: null,
           };
       }
     });
@@ -616,20 +665,19 @@ export class EditorService {
     this.flush(scene.id);
   }
 
-  /** Latest state wins: a replace supersedes every queued op, an item update replaces a queued one of the item. */
+  /**
+   * Latest state wins: a replace supersedes every queued op, an order supersedes a queued order, an item update
+   * replaces a queued one of the item.
+   */
   private coalesce(queue: SceneQueue, op: WriteOp): void {
     if (op.kind === 'replace') {
       queue.ops.length = 0;
       queue.ops.push(op);
       return;
     }
-    const itemId = op.kind === 'item' ? op.item.id : op.itemId;
     const lastReplace = queue.ops.map((entry) => entry.kind).lastIndexOf('replace');
     for (let index = queue.ops.length - 1; index > lastReplace; index -= 1) {
-      const queued = queue.ops[index];
-      const queuedId =
-        queued.kind === 'item' ? queued.item.id : queued.kind === 'remove' ? queued.itemId : null;
-      if (queuedId === itemId) {
+      if (supersedes(op, queue.ops[index])) {
         queue.ops.splice(index, 1);
       }
     }
@@ -677,6 +725,8 @@ export class EditorService {
         return this.api.updateSceneItem(productionId, sceneId, op.item.id, op.item);
       case 'remove':
         return this.api.removeSceneItem(productionId, sceneId, op.itemId);
+      case 'order':
+        return this.api.reorderSceneItems(productionId, sceneId, { itemIds: [...op.itemIds] });
       case 'replace':
         return this.api.replaceSceneItems(productionId, sceneId, {
           items: [...op.items],
