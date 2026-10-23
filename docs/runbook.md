@@ -22,6 +22,9 @@ One Docker Compose stack with four services:
 Media (WebRTC) goes directly between the devices and LiveKit (7881/tcp, 7882/udp), never through Caddy. Everything
 else goes over HTTPS on 443.
 
+An optional fifth service, `backup` (profile `backup`, data in the volumes `backups` and `backup_status`), takes the
+automatic backups: section 7.2.
+
 Two ways to operate it:
 
 - **On site (recommended):** the server (mini PC, second laptop or the Regie computer) sits on the same network as the
@@ -215,6 +218,12 @@ The interface language follows the browser by default and can be changed in the 
 
 ## 7. Backup and restore
 
+A backup is only worth something if it is taken regularly, kept somewhere else than the server and has been restored at
+least once. This section covers all three: backups by hand (7.1), automatic backups (7.2), the copy to a second place
+(7.3), restoring and the restore drill (7.4).
+
+### 7.1 Backup by hand
+
 ```bash
 ./backup.sh                    # Windows: pwsh ./backup.ps1
 ./backup.sh --keep 14          # afterwards keep only the 14 newest backups
@@ -224,20 +233,149 @@ The interface language follows the browser by default and can be changed in the 
 A backup (`backups/YYYY-MM-DD_HHMM/`) contains the database (`database.dump`, pg_dump), the volumes `media`, `keys` and
 `caddy_data` as `.tar.gz`, `backup-info.txt` and `SHA256SUMS`. It runs during operation and does not disturb a
 broadcast. It contains private keys (login, certificates, CA): store the folder protected and copy it to another
-device regularly.
+device regularly. Take one by hand before an update (`./update.sh --backup` does) and before the webinar (section 9).
 
-Automatically every night (Linux, `crontab -e`):
+### 7.2 Automatic backups
 
-```cron
-15 3 * * * cd /opt/studioflow && ./backup.sh --keep 14 >> backups/backup.log 2>&1
+Off by default. Switch them on with two lines in `.env` (and `BACKUP_TIMEZONE` so that 03:00 means your 03:00), then
+start the service:
+
+```bash
+COMPOSE_PROFILES=backup
+BACKUP_SCHEDULE='0 3 * * *'        # cron expression, here: every day at 03:00
+BACKUP_TIMEZONE=Europe/Zurich      # default UTC
 ```
 
-Windows: Task Scheduler › Create Task › action `pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`.
+```bash
+docker compose up -d --build       # builds the small backup image, restarts the API with the new settings
+docker compose logs backup         # "Automatic backups: '0 3 * * *' ..."
+docker compose exec backup /opt/backup/backup-job.sh    # take one now (same steps as the schedule)
+```
+
+What a run does, in this order:
+
+1. **Waits while a broadcast is live.** The run looks every 5 minutes (`BACKUP_LIVE_POLL_SECONDS`) whether a production is
+   live and starts as soon as the broadcast has ended. A broadcast that is never ended therefore blocks the backups
+   (the warning below appears after 48 hours). If the state cannot be read, the backup runs anyway.
+2. **Database and small volumes:** `pg_dump` over the network, `keys` and `caddy_data` as `.tar.gz`, into
+   `YYYY-MM-DD_HHMM_auto/` with `backup-info.txt` and `SHA256SUMS` (same layout as 7.1, without `media.tar.gz`).
+3. **Checks the new dump:** it is loaded into a throwaway database. A dump that does not load is discarded and counts as
+   a failure, so a broken backup never pushes out a good one.
+4. **Retention:** the newest backup of each of the last `BACKUP_KEEP_DAILY` (7) days and of the last
+   `BACKUP_KEEP_WEEKLY` (4) weeks is kept, the rest is deleted: about one month of history. Days and weeks without a
+   backup are not counted, so a pause does not shorten the history. Only folders ending in `_auto` are touched.
+5. **Media, incrementally:** videos can be large, so they are not archived again every day. Files in `media` never
+   change (the name is the asset id), so only files that are not yet in `media/` next to the dated folders are copied.
+   Nothing is deleted when an asset is removed in the Regie, so the copy grows; remove old files by hand if needed.
+6. **Off-site copy** if a second target is configured (7.3).
+
+**Where the backups are.** In the Docker volume `backups` (`docker volume inspect studioflow_backups`), not in
+`./backups`: a named volume behaves the same on a Linux server and in Docker Desktop on Windows (no file permissions of
+the host, no Windows paths, no virus scanner in between). Fetch a backup to the host with
+`docker compose cp backup:/backups/2026-10-23_0300_auto ./backups/` (and `backup:/backups/media ./backups/` for the media)
+and restore it as in 7.4. The volume is on the same disk as everything else: **it does not protect against a failed
+disk or a stolen server; the off-site copy (7.3) does.**
+
+**Why inside the stack and not cron or the Task Scheduler.** The service runs on every system where the stack runs, with
+the same files and the same behaviour, restarts with Docker (`restart: unless-stopped`) and needs nothing on the host: no
+cron or systemd on Linux, no Task Scheduler, no signed-in user, no `pwsh` or Git Bash on Windows. It knows the
+broadcast state, verifies its own result and reports to the API. A host timer still works if you prefer it
+(`15 3 * * * cd /opt/studioflow && ./backup.sh --keep 14 >> backups/backup.log 2>&1`; Windows: Task Scheduler, action
+`pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`), but it knows nothing about broadcasts, does not verify and
+is not noticed by the readiness check. On Docker Desktop the stack (and so the schedule) only runs while Docker Desktop
+runs; a missed run is simply taken at the next scheduled time.
+
+**How a failure is noticed.**
+
+- The service writes a status file (`backup-status.json` in the volume `backup_status`, which the API mounts read-only) after
+  every step. The readiness check of the API reads it: `docker compose exec api wget -q -O - http://127.0.0.1:8080/health/ready`.
+  It prints `Healthy`, or `Degraded` followed by the reasons, with HTTP status 200: a warning, never an outage.
+- It warns when the last run failed (with the reason), when the last successful backup is older than
+  `BACKUP_WARN_AFTER_HOURS` (default 48), when there is no backup yet after that time, when no off-site copy is
+  configured ("the backups stay on this server"), or when the last off-site copy failed or is too old. A successful run
+  clears the failure.
+- Details: `docker compose logs --tail 100 backup`. The Regie does not show the backup state yet (a UI task); it can read
+  the same status file through the API.
+
+Switch off: remove the two lines, `docker compose up -d --remove-orphans`, and `docker compose --profile backup rm -sf backup`.
+The backups stay in the volume until you remove it (`docker volume rm studioflow_backups`).
+
+`setup.sh --force` writes a new `.env`: copy `COMPOSE_PROFILES` and the `BACKUP_*` lines from `.env.backup-<time>` again.
+
+### 7.3 Second target (off-site copy)
+
+The copy goes to any storage that `rclone` supports: S3-compatible storage (for example from a Swiss provider), SFTP
+(a NAS, another server), WebDAV. Backends that sign in through a browser (Google Drive, Dropbox) are not supported: their
+token would have to be refreshed in a configuration that is read-only here. Everything that leaves the server is
+encrypted with [age](https://age-encryption.org) and a **public** key; the private key is never on the server, so a
+stolen server or a hacked storage account does not reveal the backups.
+
+1. **Make a key pair on your own machine** (install `age`): `age-keygen -o studioflow-backup.key`. It prints the public key
+   (`age1...`). Put the key file into the password vault (Keeper) and delete it from the machine. Without it the off-site
+   copies cannot be read, with it anybody can read them. (Without installing anything:
+   `docker compose --profile backup run --rm --no-deps --entrypoint age-keygen backup` prints a pair once; copy the
+   private part to the vault right away.)
+2. **Define the target** on your own machine with `rclone config` (name it `offsite`; for S3 choose `s3`, provider
+   `Other`, endpoint, region and access key; for a NAS `sftp`). Create the bucket or folder and test it:
+   `rclone lsd offsite:`. Use credentials that may write and read; if they may not delete, the retention at the target
+   only warns (use a lifecycle rule of the storage instead).
+3. **Hand the configuration to the service** as one line of base64 in `.env`. The file must contain only the remote(s) it
+   needs. Linux and macOS: `base64 -w0 ~/.config/rclone/rclone.conf` (macOS: `base64 -i ...`); Windows PowerShell:
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:APPDATA\rclone\rclone.conf"))`.
+
+```bash
+BACKUP_RCLONE_REMOTE=offsite:studioflow-backups     # <remote>:<bucket or folder>
+BACKUP_RCLONE_CONFIG=W29mZnNpdGVdCnR5cGUgPSBzMwo...  # the base64 line (a secret: it holds the access keys)
+BACKUP_AGE_RECIPIENT=age1xxxxxxxx...                 # public key; several keys separated by spaces
+```
+
+4. `docker compose up -d`, then `docker compose exec backup /opt/backup/backup-job.sh` and look at the target. The service
+   refuses to start with a clear message if the remote is not defined, the key is not an age key, or the target has no key
+   at all (`BACKUP_OFFSITE_UNENCRYPTED=true` allows that if the remote encrypts by itself, for example an rclone `crypt`
+   remote).
+
+At the target there is one folder per backup (`2026-10-23_0300_auto/` with `database.dump.age`, `keys.tar.gz.age`,
+`caddy_data.tar.gz.age`, `backup-info.txt.age` and, uploaded last, the plain `SHA256SUMS`) and `media/` with every media
+file as `<production>/<asset>.<ext>.age`. A folder without `SHA256SUMS` is incomplete. Media are uploaded once and
+never again; the dated folders follow the same retention as the local ones. The upload of the first run can take long;
+the next scheduled run waits for it.
+
+### 7.4 Restore and the restore drill
 
 Restore (`./restore.sh` / `restore.ps1`): verifies the checksums, asks for confirmation (unless `--yes`), first takes a
 backup of the current state (`backups/…_pre-restore`), stops the API and Caddy, restores the database into a new
 database and only then swaps it in (if the restore fails, the old one stays unchanged), replaces the volumes and starts
-everything. During a broadcast it refuses to start (`--force` overrides).
+everything. During a broadcast it refuses to start (`--force` overrides). If the schedule of the backup service could fire
+while the restore runs, stop the service first (`docker compose stop backup`); the restore starts it again.
+
+**From an automatic backup.** Fetch the folder and the media copy to the host, then restore the folder. A backup without
+`media.tar.gz` takes the media from the folder `media/` next to it:
+
+```bash
+mkdir -p backups
+docker compose cp backup:/backups/2026-10-23_0300_auto backups/
+docker compose cp backup:/backups/media backups/
+./restore.sh backups/2026-10-23_0300_auto
+```
+
+**From the off-site copy** (server lost): on a machine with `rclone` (same remote definition) and `age`, put the private
+key next to you:
+
+```bash
+rclone copy offsite:studioflow-backups/2026-10-23_0300_auto backups/2026-10-23_0300_auto
+rclone copy offsite:studioflow-backups/media backups/media
+for f in backups/2026-10-23_0300_auto/*.age; do age -d -i studioflow-backup.key -o "${f%.age}" "$f" && rm "$f"; done
+find backups/media -name '*.age' -exec sh -c 'age -d -i studioflow-backup.key -o "${1%.age}" "$1" && rm "$1"' _ {} \;
+./restore.sh --verify backups/2026-10-23_0300_auto     # checks before anything is replaced
+./restore.sh backups/2026-10-23_0300_auto
+```
+
+**Restore drill.** `./restore.sh --verify <folder>` (Windows: `pwsh ./restore.ps1 <folder> -Verify`) verifies the checksums
+and loads the dump into a throwaway database of the running PostgreSQL. It prints the number of tables and the newest
+migration and removes the database again. Nothing is replaced or stopped, so it is safe at any time. The service does
+the same check after every backup; the drill proves the rest: that you can get the files back and decrypt them. Do the
+off-site variant above once a month, with the private key from the vault, and a full restore on a spare machine once a
+year. A backup that was never restored is not a backup.
 
 Moving to a new server: clone the repo, put the `.env` back from the vault (or run `setup` again),
 `docker compose up -d --build`, then `./restore.sh <backup>`.
@@ -286,6 +424,8 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 - [ ] Monitoring view: bitrate, packet loss and battery of all stations unremarkable.
 - [ ] Output at the proxy: picture current, latency in the output chip plausible; test switch.
 - [ ] `./backup.sh`.
+- [ ] With automatic backups: `docker compose exec api wget -q -O - http://127.0.0.1:8080/health/ready` prints `Healthy`
+      (otherwise it lists what is wrong with the backups, section 7.2).
 
 **15 minutes before**
 
@@ -551,3 +691,56 @@ A Git checkout can run the ready-made images as well: put `COMPOSE_FILE=docker-c
 (the scripts notice it), or call `docker compose -f docker-compose.release.yml ...`. Without that, `docker-compose.yml`
 builds from the source as described in sections 5 and 8; `./update.sh --version` then explains that it is for the
 ready-made images.
+
+## 14. Dependency updates (Renovate)
+
+For the maintainers of the repository. [Renovate](https://docs.renovatebot.com) keeps the dependencies up to date: npm,
+NuGet, the Docker images in `docker-compose.yml` and the Dockerfiles, the Caddy DNS modules in `infra/caddy/Dockerfile`,
+the .NET SDK, the Node.js version and the GitHub Actions. Updates arrive as pull requests that the normal CI checks;
+nothing is changed on a running server (apply them with section 8). The rules are in `.github/renovate.json5`.
+
+**One-time setup by the repository owner**
+
+1. Install the [Renovate GitHub app](https://github.com/apps/renovate) for the repository (free). It opens a
+   "Configure Renovate" pull request first; the configuration is already in the repository, merge or close it.
+2. Settings › Code security: enable the **dependency graph** and **Dependabot alerts** (not Dependabot version updates).
+   Renovate reads the alerts and opens security fixes immediately; without them it still checks the OSV database.
+3. Settings › Branches › protection for `main`: require the six CI jobs (`lint-typecheck`, `unit-web`, `api`, `contracts`,
+   `build-images`, `e2e-smoke`) and allow auto-merge (Settings › General). Automerge below only merges when these are green;
+   the job `audit` is a report and not required.
+
+**What arrives, and when**
+
+| What | Pull requests | Merged by |
+|---|---|---|
+| Security fixes | at once, any time, label `security` | a person |
+| Patch updates of npm dev dependencies and of the test packages of NuGet | Monday before 07:00 (Europe/Zurich), one PR each | **Renovate**, when CI is green |
+| Minor updates of npm dev dependencies | Monday, one PR | a person |
+| Angular (with TypeScript-compatible tools), `.NET and EF Core`, `Caddy and DNS modules`, `PostgreSQL` (17.x), `Node.js`, `Playwright`, `GitHub Actions` | Monday, one PR per group | a person |
+| LiveKit (server image and `livekit-client`) | only after approval on the dashboard | a person, after a full E2E run |
+| Major versions of Angular, .NET, npm, TypeScript | only after approval on the dashboard | a person |
+| PostgreSQL 18 and later, the next Node.js and `@types/node` major | never (a project of its own) | - |
+| `package-lock.json` refresh | first Monday of the month | a person |
+
+The **Dependency dashboard** (an issue that Renovate keeps up to date) lists everything that is open, waiting for
+approval or blocked. A release must be 3 days old before it is proposed. Images are pinned by digest next to the tag
+(`postgres:17.11-alpine@sha256:...`) and actions by commit SHA; the first run proposes the pins in one pull request.
+
+**Reviewing a pull request.** CI builds, tests and runs the smoke E2E set. Read the release notes that Renovate links.
+For `.NET and EF Core` check that the SDK image and the runtime image come from the same release (comment in
+`apps/api/Dockerfile`). Merge, then update the server (section 8) when no broadcast is planned.
+
+**LiveKit.** Server and client are a pair: the specs document how version 1.13.10 of the server and 2.23.0 of the client
+behave. Tick the LiveKit group on the dashboard only when both are meant to move. Then run the workflow **E2E full**
+(Actions › E2E full › Run workflow, branch of the pull request) and read the LiveKit and net areas of the result before
+merging. Test with real phones once (`docs/testing.md`, section 4).
+
+**PostgreSQL.** Renovate proposes 17.x. A new major version cannot read the old data directory: it needs a dump and
+restore (section 7) and is its own issue. Take a backup before updating to a new 17.x as usual.
+
+**Reports.** Every pull request run has the job `audit` (`npm audit`, `dotnet list package --vulnerable`; warnings and a
+summary, never a failure). The nightly **E2E full** run scans the images with Trivy and puts the result in its summary.
+
+**Checking the configuration** (needs Node.js): `npx --yes --package renovate -- renovate-config-validator --strict`, and
+what Renovate finds in the repository: `npx --yes renovate --platform=local --dry-run=extract` (with the repository
+configuration passed as `RENOVATE_CONFIG_FILE=.github/renovate.json5` until it is committed).

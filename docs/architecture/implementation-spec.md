@@ -44,6 +44,8 @@ packages/realtime-client/  SignalR wrapper with endless reconnect + revisioned s
 packages/scene-renderer/   framework-free DOM renderer for monitors, thumbnails and output
 packages/media-client/     livekit-client wrapper: sessions with endless reconnect, source provider, publisher, stats
 infra/caddy/         Dockerfile (xcaddy + DNS module + built frontends), Caddyfile, TLS snippets
+infra/backup/        backup service: Dockerfile, entrypoint, backup-job.sh (automatic backups), status file helpers
+infra/scripts/       common.sh, backup-core.sh and StudioFlow.psm1 shared by the ops scripts
 (LiveKit is configured inline in docker-compose.yml via LIVEKIT_CONFIG)
 tests/e2e/           Playwright end-to-end tests against the compose stack
 docs/                architecture, runbook, security review, testing report
@@ -759,12 +761,25 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
   the admin credentials.
 - `backup.sh` / `backup.ps1` (`--dir`, `--keep N`, `--label`): `pg_dump -Fc` via `docker compose exec`, the volumes
   media, keys and caddy_data as `.tar.gz` (via `toolbox`), `backup-info.txt` and `SHA256SUMS` into
-  `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time.
-- `restore.sh` / `restore.ps1` (`<dir>`, `--yes`, `--no-safety-backup`, `--force`): verifies the checksums, asks for
+  `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time. The folder logic (names,
+  `backup-info.txt`, `SHA256SUMS`, checksum check, retention) is `infra/scripts/backup-core.sh`, which the backup
+  service uses as well.
+- `restore.sh` / `restore.ps1` (`<dir>`, `--verify`, `--yes`, `--no-safety-backup`, `--force`): verifies the checksums, asks for
   confirmation, refuses while live, takes a safety backup (`…_pre-restore`), stops api and caddy, restores the dump into
   a new database with `pg_restore --no-owner --no-privileges --exit-on-error` and swaps it in by renaming (the old
   database stays intact if the restore fails, and no objects of a newer schema survive), replaces the volumes, starts
-  the stack and waits until it is healthy.
+  the stack and waits until it is healthy. `--verify` only checks the checksums and loads the dump into the throwaway
+  database `studioflow_verify` of the running PostgreSQL (prints the table count and the newest migration; nothing is
+  replaced). A backup without `media.tar.gz` (from the backup service) takes the media from the folder `media/` next to it.
+- `backup` service (compose profile `backup`, issue 16; image from `infra/backup/Dockerfile`, built from the PostgreSQL
+  image; `supercronic` runs `infra/backup/backup-job.sh` on `BACKUP_SCHEDULE`): waits while a production is live, dumps the
+  database (`pg_dump` over the network), archives `keys` and `caddy_data` read-only from the mounted volumes into
+  `YYYY-MM-DD_HHMM_auto/` in the volume `backups`, loads the dump into a throwaway database, keeps the newest backup of
+  the last `BACKUP_KEEP_DAILY` days and `BACKUP_KEEP_WEEKLY` weeks, copies new media files to `backups/media/`, and, with
+  `BACKUP_RCLONE_REMOTE`, copies everything to the rclone remote encrypted with `age` (`BACKUP_AGE_RECIPIENT`; media
+  per file). It writes `backup-status.json` to the volume `backup_status`; the API mounts that volume read-only and
+  `Backup:StatusFile`, `Backup:Schedule`, `Backup:WarnAfterHours` (`BACKUP__*`) configure the readiness check
+  `backup` of `/health/ready`, which answers Degraded (HTTP 200) with the reasons instead of failing readiness.
 - `update.sh` / `update.ps1` (`--backup`, `--no-pull`, `--force`): refuses while a broadcast is live or its state is
   unknown, `git pull --ff-only`, `docker compose up -d --build --remove-orphans --wait`, prints the status.
 
