@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { stackConfig } from '../../support/env';
 import {
   CdpCounters,
@@ -40,11 +40,11 @@ test.describe('UI fixtures', () => {
       for (const login of ['ui', 'api'] as const) {
         const regie = await openRegie({ login });
         expect(new URL(regie.page.url()).pathname, `${login} login lands on the Regie`).toBe('/');
-        for (const name of DE.defaultScenes)
+        for (const name of TEXT.defaultScenes)
           await expect(regie.scene(name), `scene ${name} (${login} login)`).toBeVisible();
         // The API client of the page object sees the same production as the browser.
         const snapshot = (await regie.requireAdmin().getSnapshot(production.id)).body;
-        expect(snapshot.scenes.map((scene) => scene.name)).toEqual([...DE.defaultScenes]);
+        expect(snapshot.scenes.map((scene) => scene.name)).toEqual([...TEXT.defaultScenes]);
 
         const hooks = await regie.hooks();
         if (hooks) {
@@ -121,7 +121,7 @@ test.describe('UI fixtures', () => {
       await laptop.gotoStart();
       expect(await laptop.defaultKind(), 'kind default of a desktop profile').toBe('laptop');
       const paired = await pairLaptopViaKnock(regie, laptop, 'Laptop Mia');
-      expect(paired.checkCode).toMatch(DE.checkCodeFormat);
+      expect(paired.checkCode).toMatch(TEXT.checkCodeFormat);
 
       await laptop.shareScreen();
       await laptop.waitForSlot('screen-1', 'live');
@@ -180,13 +180,13 @@ test.describe('UI fixtures', () => {
       const direct = await openOutput(production);
       await expect
         .poll(() => direct.slateText(), { message: 'standby slate', timeout: 15_000 })
-        .toContain(DE.slateStandby);
+        .toContain(TEXT.slate.standby);
       expect((await api.startBroadcast(production.id)).status).toBe(200);
 
       await direct.waitForPlayingVideos(1);
       await expect
         .poll(() => direct.slateText(), { message: 'the slate is gone while live' })
-        .not.toContain(DE.slateStandby);
+        .not.toContain(TEXT.slate.standby);
       const stage = await direct.stagePixels();
       // S1 is red; the stamp bar covers the top 13 % of the picture.
       const sample = stage.at(200, 300);

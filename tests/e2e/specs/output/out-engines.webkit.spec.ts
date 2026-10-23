@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { makePng } from '../../support/media-samples';
 import { installInitScript } from '../../support/net';
 import { expect, test } from '../../support/ui/fixtures';
@@ -22,7 +22,7 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
       test.setTimeout(120_000);
       expect(browserName).toBe('webkit');
       const base = config.baseURL.replace('//localhost', '//127.0.0.1');
-      const context = await browser.newContext({ baseURL: base, ignoreHTTPSErrors: true, locale: 'de-CH', timezoneId: 'Europe/Zurich', viewport: { width: 800, height: 600 } });
+      const context = await browser.newContext({ baseURL: base, ignoreHTTPSErrors: true, locale: 'en-US', timezoneId: 'Europe/Zurich', viewport: { width: 800, height: 600 } });
       onCleanup(() => context.close());
       await installInitScript(context);
       await installProbe(context);
@@ -32,7 +32,7 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
 
       const output = await OutputPage.open(context, production, {}, { viewport: { width: 800, height: 600 } });
       testInfo.annotations.push({ type: 'webkit', description: `RTCPeerConnection: ${await output.page.evaluate(() => typeof RTCPeerConnection)}` });
-      await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.standby);
       await goLive(api, production);
       // The image item: loaded with the key, visible, covering the stage.
       await expect
@@ -41,7 +41,7 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
           return Boolean(img && img.naturalWidth > 0 && getComputedStyle(img).visibility === 'visible');
         }), { timeout: 20_000, message: 'the image asset is visible' })
         .toBe(true);
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).not.toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).not.toContain(TEXT.slate.standby);
       const stage = await output.stagePixels();
       const centre = stage.at(960, 540);
       expect(Math.abs(centre[2] - 220) <= 40 && Math.abs(centre[0] - 30) <= 40, `the image shows (blue), got ${centre}`).toBe(true);
@@ -57,12 +57,12 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
 
       // Slates.
       expect((await api.endBroadcast(production.id)).status).toBe(200);
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(DE.slateEnd);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(TEXT.slate.end);
 
       // A wrong key.
       const denied = await context.newPage();
       await denied.goto(`/o/${production.slug}?k=${'A'.repeat(43)}`);
-      await expect.poll(() => denied.evaluate(() => document.body.innerText), { timeout: 15_000 }).toContain(DE.slateDenied);
+      await expect.poll(() => denied.evaluate(() => document.body.innerText), { timeout: 15_000 }).toContain(TEXT.slate.denied);
       expect(output.problems.pageErrors, 'no uncaught error without WebRTC').toEqual([]);
     },
   );

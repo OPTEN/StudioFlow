@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { OUTPUT_DIR } from '../../support/env';
 import { PublicApi } from '../../support/api';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { auditTexts, collectTexts, type Violation } from '../../support/a11y/german';
 import { openBusyRegie } from '../../support/a11y/regie-setup';
 import { uniqueIp } from '../../support/production';
@@ -216,7 +216,7 @@ test.describe('German text audit', () => {
     await loginPage.getByLabel('Benutzername').fill('nobody');
     await loginPage.getByLabel('Passwort').fill('falsches-Passwort-123');
     await loginPage.getByRole('button', { name: 'Anmelden' }).click();
-    await expect(loginPage.getByRole('alert').filter({ hasText: /\S/ })).toContainText(DE.loginFailed.replace(/\.$/, ''));
+    await expect(loginPage.getByRole('alert').filter({ hasText: /\S/ })).toContainText(TEXT.loginFailed.replace(/\.$/, ''));
     await loginAudit.state('login: wrong password');
     await loginAudit.verify('login');
 
@@ -281,18 +281,18 @@ test.describe('German text audit', () => {
   test('E2E-DEV-17 [output] the slates of the output page: standby, end and denied; lang de-CH', tags, async ({ openOutput, api, production }) => {
     test.setTimeout(120_000);
     const output = await openOutput(production);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateStandby);
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.standby);
     expect(await output.page.evaluate(() => document.documentElement.lang), 'lang of the output page').toBe('de-CH');
     const audit = new Audit(output.page);
     await audit.state('output: standby');
     expect((await api.startBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).not.toContain(DE.slateStandby);
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).not.toContain(TEXT.slate.standby);
     await audit.state('output: live');
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateEnd);
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.end);
     await audit.state('output: end');
     const denied = await openOutput({ slug: production.slug, outputKey: 'falscher-schluessel' });
-    await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(DE.slateDenied);
+    await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.denied);
     await audit.state('output: denied', denied.page);
     // the debug overlay is a developer aid (English keys by design): only the numbers are audited
     await audit.verify('output');

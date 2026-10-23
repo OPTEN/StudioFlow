@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { percentile } from '../../support/helpers';
 import { uniqueIp } from '../../support/fixtures';
 import { DeviceHub } from '../../support/hubs';
@@ -741,7 +741,7 @@ test.describe('REGIE broadcast and slates', () => {
       // Before the start: standby slate with the production name as subtitle.
       await expect(state(page)).toHaveText('BEREIT');
       await expect(state(operatorB.page)).toHaveText('BEREIT');
-      await expect.poll(slate, { message: 'standby slate' }).toContain(DE.slateStandby);
+      await expect.poll(slate, { message: 'standby slate' }).toContain(TEXT.slate.standby);
       expect(await slate()).toContain(production.name);
       await expect
         .poll(async () => (await output.sceneIds()).length, {
@@ -774,7 +774,7 @@ test.describe('REGIE broadcast and slates', () => {
       expect(seconds.at(-1)!, 'about 4.4 s after the start').toBeGreaterThanOrEqual(3);
       await expect
         .poll(slate, { message: 'the standby slate fades out', timeout: 5000 })
-        .not.toContain(DE.slateStandby);
+        .not.toContain(TEXT.slate.standby);
       expect((await api.getSnapshot(production.id)).body.production.broadcast).toBe('live');
 
       // End needs a confirmation: «Abbrechen» changes nothing, «Sendung beenden» ends.
@@ -793,7 +793,7 @@ test.describe('REGIE broadcast and slates', () => {
         .click();
       await expect(state(page)).toHaveText('BEENDET');
       await expect(state(operatorB.page)).toHaveText('BEENDET', { timeout: 1000 });
-      await expect.poll(slate, { message: 'end slate' }).toContain(DE.slateEnd);
+      await expect.poll(slate, { message: 'end slate' }).toContain(TEXT.slate.end);
       await expect(page.getByRole('button', { name: 'Zurück auf Bereit' })).toBeVisible();
       await expect(regie.statusLine()).toContainText('Sendung beendet');
 
@@ -801,7 +801,7 @@ test.describe('REGIE broadcast and slates', () => {
       await page.getByRole('button', { name: 'Sendung starten' }).click();
       await expect(state(page)).toHaveText('LIVE');
       await expect(clock).toHaveText(/^00:00:0[0-2]$/);
-      await expect.poll(slate).not.toContain(DE.slateEnd);
+      await expect.poll(slate).not.toContain(TEXT.slate.end);
 
       // Reset (from ended): end again, then «Zurück auf Bereit».
       await page.getByRole('button', { name: 'Sendung beenden' }).click();
@@ -813,7 +813,7 @@ test.describe('REGIE broadcast and slates', () => {
       await page.getByRole('button', { name: 'Zurück auf Bereit' }).click();
       await expect(state(page)).toHaveText('BEREIT');
       await expect(state(operatorB.page)).toHaveText('BEREIT', { timeout: 1000 });
-      await expect.poll(slate, { message: 'standby slate again' }).toContain(DE.slateStandby);
+      await expect.poll(slate, { message: 'standby slate again' }).toContain(TEXT.slate.standby);
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
@@ -827,7 +827,7 @@ test.describe('REGIE broadcast and slates', () => {
       const output = await openOutput(production);
       await output.stage();
       await regie.transitionOption('Schnitt').click();
-      await expect.poll(() => output.slateText()).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText()).toContain(TEXT.slate.standby);
       await regie.clickScene('Szene B');
       await expect.poll(() => programId(api, production)).toBe(b);
       await expect.poll(async () => (await output.sceneIds()).includes(b)).toBe(true);
@@ -843,7 +843,7 @@ test.describe('REGIE broadcast and slates', () => {
         );
         await page.waitForTimeout(150);
       }
-      expect(await output.slateText()).toContain(DE.slateStandby);
+      expect(await output.slateText()).toContain(TEXT.slate.standby);
       await page.getByRole('button', { name: 'Sendung starten' }).click();
       await expect
         .poll(

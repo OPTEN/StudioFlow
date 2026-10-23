@@ -1,5 +1,5 @@
 import { OutputApi } from '../../support/api';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { livekitAdmin } from '../../support/livekit';
 import { cleanupProduction, createProduction } from '../../support/production';
 import { expect, test } from '../../support/ui/fixtures';
@@ -59,7 +59,7 @@ test.describe('OUT access and reload', () => {
       for (const entry of opened) {
         await expect
           .poll(() => entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: `${entry.name}: slate` })
-          .toBe(DE.slateDenied);
+          .toBe(TEXT.slate.denied);
         await sleep(500);
         facts.push(await entry.page.evaluate(() => ({
           text: document.body.innerText.replace(/\s+/g, ' ').trim(),
@@ -73,7 +73,7 @@ test.describe('OUT access and reload', () => {
         })));
       }
       for (const [index, entry] of opened.entries()) {
-        expect(facts[index]!.title, `${entry.name}: title`).toBe(DE.slateDenied);
+        expect(facts[index]!.title, `${entry.name}: title`).toBe(TEXT.slate.denied);
         expect(facts[index]!.subtitle, `${entry.name}: subtitle`).toBe(DENIED_SUBTITLE);
         expect(facts[index]!.layers + facts[index]!.videos + facts[index]!.items, `${entry.name}: no scene content`).toBe(0);
         expect(facts[index], `${entry.name} looks exactly like the first case`).toEqual(facts[0]);
@@ -110,7 +110,7 @@ test.describe('OUT access and reload', () => {
       }
       await recordMeasurement(test.info(), 'out-12-attempts', { attemptsAtSeconds: attempts }, Object.entries(attempts).map(([name, times]) => `${name}: ${times.join('/') || 'none'} s`).join('; '));
       for (const entry of opened) {
-        expect(await entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(DE.slateDenied);
+        expect(await entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(TEXT.slate.denied);
       }
 
       // The corrected link works after a reload.
@@ -118,7 +118,7 @@ test.describe('OUT access and reload', () => {
       await fixed.page.goto(`/o/${production.slug}?k=${production.outputKey}`);
       await expect
         .poll(() => fixed.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: 'the corrected link shows the standby slate' })
-        .toBe(DE.slateStandby);
+        .toBe(TEXT.slate.standby);
     },
   );
 
@@ -143,9 +143,9 @@ test.describe('OUT access and reload', () => {
       expect(rotated.status).toBe(200);
       await expect
         .poll(async () => (await probe.snapshot()).slate?.title, { timeout: 4000, intervals: [50], message: 'the open page shows «Kein Zugang»' })
-        .toBe(DE.slateDenied);
+        .toBe(TEXT.slate.denied);
       const events = await probe.takeEvents();
-      const denied = events.find((event) => event.type === 'slate+' && event.title === DE.slateDenied) ?? { t: Date.now() };
+      const denied = events.find((event) => event.type === 'slate+' && event.title === TEXT.slate.denied) ?? { t: Date.now() };
       const keyMs = denied.t - sentAt;
       await expect.poll(async () => (await outputParticipants(production)).length, { timeout: 4000, intervals: [100], message: 'no output participant of the old key in LiveKit' }).toBe(0);
       const gone = Date.now() - sentAt;
@@ -167,9 +167,9 @@ test.describe('OUT access and reload', () => {
 
       // The old link stays refused (also after a reload), the open page does not come back by itself with the old key.
       const stillDenied = await output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent);
-      expect(stillDenied).toBe(DE.slateDenied);
+      expect(stillDenied).toBe(TEXT.slate.denied);
       await output.page.goto(oldUrl);
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(TEXT.slate.denied);
       await sleep(2000);
       expect((await outputParticipants(production)).length, 'a refused page joins no room').toBe(0);
 
@@ -201,7 +201,7 @@ test.describe('OUT access and reload', () => {
 
       const sentAt = Date.now();
       expect((await api.updateOutputAccess(production.id, { allowedIps: ['203.0.113.9'] })).status).toBe(200);
-      await expect.poll(async () => (await probe.snapshot()).slate?.title, { timeout: 5000, intervals: [50], message: '«Kein Zugang» after the list changed' }).toBe(DE.slateDenied);
+      await expect.poll(async () => (await probe.snapshot()).slate?.title, { timeout: 5000, intervals: [50], message: '«Kein Zugang» after the list changed' }).toBe(TEXT.slate.denied);
       const kickedMs = Date.now() - sentAt;
       expect(kickedMs, 'kicked within 2 s of saving (+ polling)').toBeLessThanOrEqual(2500);
       const snapshot = await probe.snapshot();
@@ -211,14 +211,14 @@ test.describe('OUT access and reload', () => {
 
       // A reload with the foreign list stays refused.
       await output.page.reload();
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(TEXT.slate.denied);
 
       // Allowed again: the page that is still open (after the reload, with the stored key) retries on its own.
       const allowedAt = Date.now();
       expect((await api.updateOutputAccess(production.id, { allowedIps: [address] })).status).toBe(200);
       await expect
         .poll(async () => (await new OutputProbe(output).snapshot()).slate?.title ?? 'none', { timeout: 45_000, intervals: [500], message: 'the page recovers within the 30 s retry' })
-        .not.toBe(DE.slateDenied);
+        .not.toBe(TEXT.slate.denied);
       const recoveredMs = Date.now() - allowedAt;
       await output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
       await recordMeasurement(test.info(), 'out-25-ip', { kickedMs, recoveredMs }, `list changed -> kicked after ${kickedMs} ms; address allowed -> recovered by itself after ${recoveredMs} ms`);

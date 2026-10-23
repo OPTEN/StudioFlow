@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { stackConfig } from '../../support/env';
 import { expect, test } from '../../support/ui/fixtures';
 import { EMBED_ORIGIN, FOREIGN_ORIGIN, newUiContext } from '../../support/ui/init';
@@ -291,7 +291,7 @@ test.describe('OUT embedding', () => {
         if (entry) entry.bytes = event.encodedDataLength;
       });
       await page.goto(outputPath(production));
-      await expect.poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toContain(TEXT.slate.standby);
       await sleep(4000); // livekit-client is loaded after the first frame
       const all = [...requests.values()];
       const counted = all.filter((entry) => ['Document', 'Script', 'Stylesheet'].includes(entry.type));

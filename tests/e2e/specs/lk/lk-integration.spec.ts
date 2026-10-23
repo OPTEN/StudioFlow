@@ -1,6 +1,7 @@
 import { jwtVerify, decodeJwt } from 'jose';
 import { OutputApi } from '../../support/api';
-import { DE, ERROR, LIMITS, THRESHOLD } from '../../support/constants';
+import { ERROR, LIMITS, THRESHOLD } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { expect, expectProblem, test, uniqueIp } from '../../support/fixtures';
 import { openStudio } from '../../support/helpers';
 import { DeviceHub } from '../../support/hubs';
@@ -194,7 +195,7 @@ test.describe('LK grants and publisher', () => {
     inRoom = false;
     await studio.waitForEvent('sourceUpserted', (event) => event.source.id === id && event.source.status === 'reconnecting', { from: leaveFrom, timeoutMs: THRESHOLD.detectCleanHardMs + 2000 });
     const incident = await studio.waitForEvent('incidentUpserted', (event) => event.incident.sourceId === id && event.incident.endedAt === null, { from: leaveFrom });
-    await studio.waitForEvent('logAppended', (event) => event.entry.text === DE.log.reconnecting('K1'), { from: leaveFrom });
+    await studio.waitForEvent('logAppended', (event) => event.entry.text === TEXT.log.reconnecting('K1'), { from: leaveFrom });
     // ...and comes back with a new session.
     const again = await LiveKitPage.open(context, 'sender-2');
     onCleanup(() => again.close());

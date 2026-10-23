@@ -1,5 +1,6 @@
 import { PublicApi, inviteToken } from '../../support/api';
-import { DE, ERROR, LIMITS, THRESHOLD } from '../../support/constants';
+import { ERROR, LIMITS, THRESHOLD } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { expect, expectProblem, knownBug, skipUnsupported, test, uniqueIp } from '../../support/fixtures';
 import { DeviceHub } from '../../support/hubs';
 import { describeEvents, expectConsecutive, openStudio, pollUntil } from '../../support/helpers';
@@ -55,7 +56,7 @@ test.describe('PAIR', () => {
     const next = hub.eventsOfType('inviteUpserted')[0]!.invite;
     expect(next.kind, 'a fresh phone invite replaces the used one').toBe('phoneQr');
     expect(next.id).not.toBe(invite.id);
-    expect(hub.eventsOfType('logAppended')[0]!.entry.text).toBe(DE.log.paired('K1', 'Handy 1'));
+    expect(hub.eventsOfType('logAppended')[0]!.entry.text).toBe(TEXT.log.paired('K1', 'Handy 1'));
 
     // The sender recognises itself (GET /api/device/me) and sees its slot.
     const me = await new (await import('../../support/api')).DeviceApi(stack.anonymousBase, redeemed.body).getDeviceSelf();
@@ -118,7 +119,7 @@ test.describe('PAIR', () => {
       expect(next.body, 'identical credentials on every poll').toEqual(first.body);
     }
     const log = await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('gekoppelt'));
-    expect(log.entry.text).toBe(DE.log.paired('S1', 'Laptop Anna'));
+    expect(log.entry.text).toBe(TEXT.log.paired('S1', 'Laptop Anna'));
   });
 
   test('E2E-PAIR-04 [api] laptop request denied: log entry, no device, poll says denied without credentials', t.p1, async ({ config, api, production, stack, onCleanup }) => {

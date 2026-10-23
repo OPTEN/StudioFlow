@@ -36,7 +36,7 @@ export async function newBrowserContext(
   const context = await browser.newContext({
     baseURL,
     ignoreHTTPSErrors: true,
-    locale: 'de-CH',
+    locale: 'en-US',
     timezoneId: 'Europe/Zurich',
     viewport: options.viewport ?? { width: 1440, height: 900 },
     ...options.extra,

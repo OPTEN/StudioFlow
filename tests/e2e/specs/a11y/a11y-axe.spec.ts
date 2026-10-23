@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { Scanner, scanAxe } from '../../support/a11y/axe';
 import { knownBug } from '../../support/a11y/known-bug';
 import { openBusyRegie } from '../../support/a11y/regie-setup';
@@ -258,18 +258,18 @@ test.describe('axe scans: output', () => {
     test.setTimeout(90_000);
     const output = await openOutput(production);
     const scanner = new Scanner(output.page);
-    await expect.poll(() => output.slateText(), { message: 'standby slate', timeout: 20_000 }).toContain(DE.slateStandby);
+    await expect.poll(() => output.slateText(), { message: 'standby slate', timeout: 20_000 }).toContain(TEXT.slate.standby);
     await slateOpaque(output.page);
     await scanner.scan('output-standby');
     expect((await api.startBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { message: 'the standby slate is gone while live', timeout: 20_000 }).not.toContain(DE.slateStandby);
+    await expect.poll(() => output.slateText(), { message: 'the standby slate is gone while live', timeout: 20_000 }).not.toContain(TEXT.slate.standby);
     await scanner.scan('output-live');
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { message: 'end slate', timeout: 20_000 }).toContain(DE.slateEnd);
+    await expect.poll(() => output.slateText(), { message: 'end slate', timeout: 20_000 }).toContain(TEXT.slate.end);
     await slateOpaque(output.page);
     await scanner.scan('output-end');
     const denied = await openOutput({ slug: production.slug, outputKey: 'falscher-schluessel' });
-    await expect.poll(() => denied.slateText(), { message: 'denied slate', timeout: 20_000 }).toContain(DE.slateDenied);
+    await expect.poll(() => denied.slateText(), { message: 'denied slate', timeout: 20_000 }).toContain(TEXT.slate.denied);
     await slateOpaque(denied.page);
     const deniedScanner = new Scanner(denied.page);
     await deniedScanner.scan('output-denied');

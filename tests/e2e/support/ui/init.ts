@@ -214,7 +214,7 @@ export interface NewUiContextOptions extends UiInitOptions {
 }
 
 /**
- * A fresh browser context for the stack under test: device profile, `de-CH`, Zurich time, the camera and microphone
+ * A fresh browser context for the stack under test: device profile, `en-US`, Zurich time, the camera and microphone
  * permissions of the fake devices, HTTPS errors ignored (Caddy's local CA) and {@link installUiInit}.
  */
 export async function newUiContext(
@@ -226,7 +226,7 @@ export async function newUiContext(
     ...profileOptions(profile),
     baseURL: stackConfig().baseURL,
     ignoreHTTPSErrors: true,
-    locale: 'de-CH',
+    locale: 'en-US',
     timezoneId: 'Europe/Zurich',
     permissions: ['camera', 'microphone', 'clipboard-read', 'clipboard-write'],
     ...extra,

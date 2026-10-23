@@ -3,7 +3,8 @@ import path from 'node:path';
 import type { ProductionEvent } from '../../../../packages/scene-model/src/contracts';
 import { stateFromSnapshot } from '../../../../packages/scene-model/src/production-state';
 import { DeviceApi, OutputApi, PublicApi, inviteToken } from '../../support/api';
-import { DE, ERROR, LIMITS } from '../../support/constants';
+import { ERROR, LIMITS } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { REPO_ROOT } from '../../support/env';
 import { expect, expectProblem, knownBug, test, uniqueIp } from '../../support/fixtures';
 import { describeEvents, expectConsecutive, openStudio, percentile } from '../../support/helpers';
@@ -346,7 +347,7 @@ test.describe('SYNC output hub', () => {
     // Never any private text in anything the output received.
     const wire = JSON.stringify(outEvents);
     const cleaned = JSON.stringify(JSON.parse(wire, (key, value) => (key === 'label' ? undefined : value)));
-    for (const secret of [privateNames[1], privateNames[2], link.url, inviteToken(link.url), 'inc_', 'gekoppelt', 'abgelehnt', 'verbindet neu', 'Handy', DE.log.paired('K1', privateNames[0]!)]) {
+    for (const secret of [privateNames[1], privateNames[2], link.url, inviteToken(link.url), 'inc_', 'gekoppelt', 'abgelehnt', 'verbindet neu', 'Handy', TEXT.log.paired('K1', privateNames[0]!)]) {
       expect(cleaned.toLowerCase(), `no ${secret} in output events`).not.toContain(secret.toLowerCase());
     }
     expect(wire).not.toMatch(/"(deviceSecret|pollToken|checkCode|platform|batteryPct)"/);

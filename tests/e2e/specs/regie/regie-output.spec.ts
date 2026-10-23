@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { uniqueIp } from '../../support/fixtures';
 import { DeviceHub } from '../../support/hubs';
 import { livekitAdmin } from '../../support/livekit';
@@ -181,7 +181,7 @@ test.describe('REGIE output popover', () => {
       await expect(kv(pop, 'Zustand')).toHaveText('verbunden, 1 Abnehmer', { timeout: 12_000 });
       const address = (await kv(pop, 'Abnehmer').innerText()).split(',')[0]!.trim();
       expect(address).toMatch(/^[0-9a-f.:]+$/i);
-      expect(await output.slateText(), 'the output is not denied').not.toContain(DE.slateDenied);
+      expect(await output.slateText(), 'the output is not denied').not.toContain(TEXT.slate.denied);
 
       const save = async (list: string[]) => {
         for (const entry of await pop.locator('.c-output-link__ip .u-mono').allTextContents())
@@ -202,7 +202,7 @@ test.describe('REGIE output popover', () => {
           timeout: 8000,
           intervals: [100],
         })
-        .toContain(DE.slateDenied);
+        .toContain(TEXT.slate.denied);
       const kickedAfter = Date.now() - saved;
       test.info().annotations.push({
         type: 'measurement',
@@ -214,7 +214,7 @@ test.describe('REGIE output popover', () => {
         { timeout: 10_000 },
       );
       await output.page.reload();
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(DE.slateDenied);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(TEXT.slate.denied);
       expect((await api.getOutputSettings(production.id)).body.allowedIps).toEqual(['203.0.113.9']);
 
       // The address the proxy was seen with: the page works again after a reload.
@@ -226,7 +226,7 @@ test.describe('REGIE output popover', () => {
           message: 'the observed address is let in',
           timeout: 15_000,
         })
-        .not.toContain(DE.slateDenied);
+        .not.toContain(TEXT.slate.denied);
       await expect(kv(pop, 'Zustand')).toHaveText('verbunden, 1 Abnehmer', { timeout: 15_000 });
       expect((await api.getOutputSettings(production.id)).body.allowedIps).toEqual([address]);
       expect(regie.problems.pageErrors).toEqual([]);
@@ -264,7 +264,7 @@ test.describe('REGIE output popover', () => {
       await confirm.getByRole('button', { name: 'Abbrechen' }).click();
       await expect(confirm).toBeHidden();
       expect((await api.getOutputSettings(production.id)).body.url).toContain(`k=${oldKey}`);
-      expect(await output.slateText()).not.toContain(DE.slateDenied);
+      expect(await output.slateText()).not.toContain(TEXT.slate.denied);
 
       // Confirm.
       await pop.getByRole('button', { name: 'Link neu erzeugen' }).click();
@@ -282,7 +282,7 @@ test.describe('REGIE output popover', () => {
           timeout: 8000,
           intervals: [100],
         })
-        .toContain(DE.slateDenied);
+        .toContain(TEXT.slate.denied);
       const refusedAfter = Date.now() - clicked;
       test.info().annotations.push({
         type: 'measurement',
@@ -302,7 +302,7 @@ test.describe('REGIE output popover', () => {
 
       // The old link stays dead after a reload; the new one plays (standby slate, connected).
       await output.page.reload();
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(DE.slateDenied);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(TEXT.slate.denied);
       expect(
         (await production.output(oldKey).getOutputSnapshot()).status,
         'REST with the old key',
@@ -317,7 +317,7 @@ test.describe('REGIE output popover', () => {
           message: 'the new link shows the standby slate',
           timeout: 15_000,
         })
-        .toContain(DE.slateStandby);
+        .toContain(TEXT.slate.standby);
       await expect(kv(pop, 'Zustand')).toHaveText('verbunden, 1 Abnehmer', { timeout: 15_000 });
       // «Kopieren» now copies the new link.
       await pop.getByRole('button', { name: 'Kopieren' }).click();

@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { expect, test } from '../../support/ui/fixtures';
 import { openProbedOutput, waitForReportedPicture } from '../../support/output/open';
 import { recordMeasurement, summarize, fmt } from '../../support/output/stats';
@@ -27,7 +27,7 @@ test.describe('OUT basics', () => {
         const page = opened.output.page;
         await expect
           .poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 })
-          .toContain(DE.slateStandby);
+          .toContain(TEXT.slate.standby);
         const timing = await page.evaluate(() => {
           const probe = (window as unknown as { __outProbe?: { events: Array<{ t: number; type: string }> } }).__outProbe;
           const slate = probe?.events.find((event) => event.type === 'slate+');
@@ -63,9 +63,9 @@ test.describe('OUT basics', () => {
         videos: document.querySelectorAll('video').length,
       }));
       expect(facts.lang).toBe('de-CH');
-      expect(facts.title).toBe(DE.slateStandby);
+      expect(facts.title).toBe(TEXT.slate.standby);
       expect(facts.subtitle, 'the subtitle is the production name').toBe(production.name);
-      expect(facts.text, 'no other text than the slate').toBe(`${DE.slateStandby} ${production.name}`);
+      expect(facts.text, 'no other text than the slate').toBe(`${TEXT.slate.standby} ${production.name}`);
       expect(facts.interactive, 'no controls, links or inputs').toBe(0);
       expect(facts.videos).toBe(0);
       expect(await probe.standbySeen()).toBe(true);
