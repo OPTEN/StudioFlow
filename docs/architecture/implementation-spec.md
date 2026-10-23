@@ -746,7 +746,7 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
   media, keys and caddy_data as `.tar.gz` (via `toolbox`), `backup-info.txt` and `SHA256SUMS` into
   `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time.
 - `restore.sh` / `restore.ps1` (`<dir>`, `--yes`, `--no-safety-backup`, `--force`): verifies the checksums, asks for
-  confirmation, refuses while live, takes a safety backup (`…_vor-restore`), stops api and caddy, restores the dump into
+  confirmation, refuses while live, takes a safety backup (`…_pre-restore`), stops api and caddy, restores the dump into
   a new database with `pg_restore --no-owner --no-privileges --exit-on-error` and swaps it in by renaming (the old
   database stays intact if the restore fails, and no objects of a newer schema survive), replaces the volumes, starts
   the stack and waits until it is healthy.

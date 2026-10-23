@@ -231,7 +231,7 @@ Automatically every night (Linux, `crontab -e`):
 Windows: Task Scheduler › Create Task › action `pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`.
 
 Restore (`./restore.sh` / `restore.ps1`): verifies the checksums, asks for confirmation (unless `--yes`), first takes a
-backup of the current state (`backups/…_vor-restore`), stops the API and Caddy, restores the database into a new
+backup of the current state (`backups/…_pre-restore`), stops the API and Caddy, restores the database into a new
 database and only then swaps it in (if the restore fails, the old one stays unchanged), replaces the volumes and starts
 everything. During a broadcast it refuses to start (`--force` overrides).
 
@@ -254,7 +254,7 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 - If the API does not answer (broadcast status unknown), the script refuses as well; with `--force` it goes ahead
   anyway (for example when the API restarts all the time because of a bug and the update brings the fix).
 - Back to an earlier version: `git log --oneline`, `git checkout <commit>`, `./update.sh --no-pull`. If the new
-  version migrated the database, also restore the backup `…_vor-update`. Later return with `git checkout main`.
+  version migrated the database, also restore the backup `…_pre-update`. Later return with `git checkout main`.
 - Cleaning up after updates: `docker image prune` removes old, unused build images.
 
 ## 9. Checklist before the webinar
