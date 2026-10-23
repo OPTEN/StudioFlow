@@ -97,7 +97,7 @@ public sealed record IncidentRemovedEvent(long Revision, string IncidentId) : Pr
 /// <summary>The output consumer state changed.</summary>
 public sealed record OutputStatusChangedEvent(long Revision, OutputStatusDto Status) : ProductionEvent(Revision);
 
-/// <summary>A new entry for «Letzte Ereignisse».</summary>
+/// <summary>A new entry for “Recent events”.</summary>
 public sealed record LogAppendedEvent(long Revision, LogEntryDto Entry) : ProductionEvent(Revision);
 
 /// <summary>Placeholder that only advances the revision; sent to clients that must not see the actual change (output page).</summary>

@@ -92,7 +92,7 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
                 var production = await context.ProductionAsync(cancellationToken);
                 if (production.UsesAsset(asset.Id))
                 {
-                    throw StudioFlowException.Conflict(ErrorCodes.AssetInUse, "Das Medium wird noch verwendet.");
+                    throw StudioFlowException.Conflict(ErrorCodes.AssetInUse, "The media item is still in use.");
                 }
 
                 context.Data.Assets.Remove(asset);
@@ -113,20 +113,20 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
     {
         if (!isAdmin && string.IsNullOrEmpty(outputKey))
         {
-            throw new StudioFlowException(ErrorKind.Unauthorized, ErrorCodes.Unauthorized, "Anmeldung oder Output-Schlüssel erforderlich.");
+            throw new StudioFlowException(ErrorKind.Unauthorized, ErrorCodes.Unauthorized, "Sign-in or an output key is required.");
         }
 
         await using var unit = data.Create();
         var access = await unit.Productions.GetOutputKeyAsync(productionId, cancellationToken)
-            ?? throw (isAdmin ? StudioFlowException.NotFound("Die Produktion") : OutputService.NoAccess());
+            ?? throw (isAdmin ? StudioFlowException.NotFound("Production") : OutputService.NoAccess());
 
         if (!isAdmin && !(Secrets.FixedTimeEquals(outputKey, access.OutputKey) && IpRule.IsAllowed(access.AllowedIps, client)))
         {
             throw OutputService.NoAccess();
         }
 
-        var asset = await unit.Assets.GetAsync(productionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Das Medium");
-        var path = media.GetPath(productionId, asset.FileName) ?? throw StudioFlowException.NotFound("Die Datei");
+        var asset = await unit.Assets.GetAsync(productionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Media item");
+        var path = media.GetPath(productionId, asset.FileName) ?? throw StudioFlowException.NotFound("File");
         return new AssetContent(path, asset.ContentType, asset.CreatedAt, asset.Name + Path.GetExtension(asset.FileName), $"\"{asset.Id}\"");
     }
 
@@ -134,7 +134,7 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
     {
         if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
         {
-            throw StudioFlowException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Production");
         }
     }
 

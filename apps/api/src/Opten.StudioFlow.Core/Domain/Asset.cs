@@ -66,7 +66,7 @@ public sealed class Asset
         };
 
     /// <summary>Name of an upload whose file name leaves nothing usable (GAP-13).</summary>
-    public const string FallbackName = "Medium";
+    public const string FallbackName = "Media";
 
     /// <summary>
     /// Display name for an uploaded file (GAP-13): the last path segment without its extension (informational only; the
@@ -100,6 +100,6 @@ public sealed class Asset
         return separator < 0 ? text : text[(separator + 1)..];
     }
 
-    /// <summary>Null for names made of dots and spaces only («...»).</summary>
+    /// <summary>Null for names made of dots and spaces only (“...”).</summary>
     private static string? Usable(string? name) => name is null || name.All(c => c is '.' || char.IsWhiteSpace(c)) ? null : name;
 }

@@ -16,7 +16,7 @@ public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<Studio
         var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
 
         Assert.Equal(("Webinar", "webinar", true, "opten"), (snapshot.Production.Name, snapshot.Production.Slug, snapshot.Production.IsActive, snapshot.Production.TenantId));
-        Assert.Equal(["Begrüssung", "Präsentation", "Pause"], snapshot.Scenes.Select(s => s.Name));
+        Assert.Equal(["Welcome", "Presentation", "Break"], snapshot.Scenes.Select(s => s.Name));
         Assert.Equal(snapshot.Scenes[0].Id, snapshot.Production.ProgramSceneId);
         Assert.Equal(BroadcastState.Standby, snapshot.Production.Broadcast);
         Assert.Equal(OutputState.None, snapshot.OutputStatus.State);
@@ -168,13 +168,13 @@ public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<Studio
         var production = await CreateAsync(admin);
         var url = $"/api/productions/{production.Id}";
 
-        var updated = await admin.Client.PatchJsonAsync(url, new UpdateProductionRequest("Neuer Name", new SlateDto("Gleich", "Untertitel", null), null)).ExpectAsync<ProductionDto>();
+        var updated = await admin.Client.PatchJsonAsync(url, new UpdateProductionRequest("New name", new SlateDto("Soon", "Subtitle", null), null)).ExpectAsync<ProductionDto>();
         await admin.Client.PatchJsonAsync(url, new UpdateProductionRequest(null, new SlateDto("", null, null), null)).ExpectProblemAsync(HttpStatusCode.BadRequest);
-        await admin.Client.PatchJsonAsync(url, new UpdateProductionRequest(null, null, new SlateDto("Ende", null, "ast_missing00"))).ExpectProblemAsync(HttpStatusCode.BadRequest);
+        await admin.Client.PatchJsonAsync(url, new UpdateProductionRequest(null, null, new SlateDto("End", null, "ast_missing00"))).ExpectProblemAsync(HttpStatusCode.BadRequest);
         var snapshot = await admin.Client.GetAsync($"{url}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
 
-        Assert.Equal("Neuer Name", updated.Name);
-        Assert.Equal(new SlateDto("Gleich", "Untertitel", null), snapshot.Production.StandbySlate);
+        Assert.Equal("New name", updated.Name);
+        Assert.Equal(new SlateDto("Soon", "Subtitle", null), snapshot.Production.StandbySlate);
         Assert.Equal(production.Slug, snapshot.Production.Slug);
     }
 

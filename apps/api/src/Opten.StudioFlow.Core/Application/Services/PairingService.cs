@@ -42,7 +42,7 @@ public sealed class PairingService(
         ArgumentNullException.ThrowIfNull(request);
         if (!Enum.IsDefined(request.Kind))
         {
-            throw StudioFlowException.Invalid("kind", "Unbekannte Einladungsart.");
+            throw StudioFlowException.Invalid("kind", "Unknown invite type.");
         }
 
         return coordinator.ExecuteAsync(
@@ -59,7 +59,7 @@ public sealed class PairingService(
             productionId,
             async context =>
             {
-                var invite = await context.Data.Invites.GetAsync(productionId, inviteId, cancellationToken) ?? throw StudioFlowException.NotFound("Die Einladung");
+                var invite = await context.Data.Invites.GetAsync(productionId, inviteId, cancellationToken) ?? throw StudioFlowException.NotFound("Invite");
                 if (!invite.Revoke(context.Now))
                 {
                     return;
@@ -86,7 +86,7 @@ public sealed class PairingService(
                 var request = FindRequest(productionId, requestId);
                 if (request.IsDecided)
                 {
-                    throw StudioFlowException.NotFound("Die Anfrage");
+                    throw StudioFlowException.NotFound("Request");
                 }
 
                 if (!request.IsPending(context.Now))
@@ -132,7 +132,7 @@ public sealed class PairingService(
         string productionId;
         await using (var unit = data.Create())
         {
-            productionId = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id ?? throw StudioFlowException.NotFound("Eine aktive Produktion");
+            productionId = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id ?? throw StudioFlowException.NotFound("Active production");
         }
 
         return await coordinator.ExecuteAsync(
@@ -276,15 +276,15 @@ public sealed class PairingService(
         var clientId = request.ClientId;
         if (string.IsNullOrEmpty(clientId) || clientId.Length > ClientIdMax || clientId.Any(c => c is <= ' ' or > '~'))
         {
-            errors.Add("clientId", "Ungültige Client-ID.");
+            errors.Add("clientId", "Invalid client ID.");
         }
 
         if (!Enum.IsDefined(request.Kind))
         {
-            errors.Add("kind", "Unbekannte Geräteart.");
+            errors.Add("kind", "Unknown device type.");
         }
 
-        // A name that is empty after cleaning falls back to the default name («Handy n», UNIT-PAIR-06).
+        // A name that is empty after cleaning falls back to the default name (“Phone n”, UNIT-PAIR-06).
         if (TextRules.Truncate(request.Name, int.MaxValue) is not null)
         {
             TextRules.RequiredName(request.Name, TextRules.DeviceNameMax, "name", errors);
@@ -316,7 +316,7 @@ public sealed class PairingService(
         var request = requests.Find(requestId);
         return request is not null && string.Equals(request.ProductionId, productionId, StringComparison.Ordinal)
             ? request
-            : throw StudioFlowException.NotFound("Die Anfrage");
+            : throw StudioFlowException.NotFound("Request");
     }
 
     private InviteDto CreateInvite(MutationContext context, InviteKind kind, string actor)

@@ -4,7 +4,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="Id">Device id, e.g. <c>dev_…</c>; equals the LiveKit participant identity.</param>
 /// <param name="Name">Display name, editable in the Regie.</param>
 /// <param name="Kind">Phone or laptop.</param>
-/// <param name="Platform">Short platform text reported by the sender, e.g. «iPhone · Safari».</param>
+/// <param name="Platform">Short platform text reported by the sender, e.g. “iPhone · Safari”.</param>
 /// <param name="State">Active or blocked.</param>
 /// <param name="PairedAt">Pairing time.</param>
 /// <param name="LastSeenAt">Last control connection or report.</param>
@@ -32,7 +32,7 @@ public sealed record DeviceDto(
 /// <param name="Rtc">Media connection state.</param>
 /// <param name="BatteryPct">Battery level 0–100 where the browser exposes it.</param>
 /// <param name="Charging">Charging state where available.</param>
-/// <param name="Network">Network type, e.g. «wifi» or «4g», where available.</param>
+/// <param name="Network">Network type, e.g. “wifi” or “4g”, where available.</param>
 /// <param name="RttMs">Round trip time to the server.</param>
 /// <param name="Slots">Per slot telemetry.</param>
 public sealed record DeviceTelemetryDto(

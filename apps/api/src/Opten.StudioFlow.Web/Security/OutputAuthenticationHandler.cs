@@ -42,7 +42,7 @@ internal sealed class OutputAuthenticationHandler(
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        // No difference between «no key», «wrong key» and «unknown slug» (spec 4.8).
+        // No difference between “no key”, “wrong key” and “unknown slug” (spec 4.8).
         Response.StatusCode = StatusCodes.Status403Forbidden;
         return Task.CompletedTask;
     }

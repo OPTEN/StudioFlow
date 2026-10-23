@@ -93,22 +93,22 @@ public static partial class SceneItemRules
         ArgumentNullException.ThrowIfNull(isFallbackAllowed);
         if (item is null)
         {
-            errors.Add(path, "Element fehlt.");
+            errors.Add(path, "The item is missing.");
             return;
         }
 
         if (!EntityIds.IsValid(item.Id, EntityIds.Item))
         {
-            errors.Add($"{path}.id", "Ungültige Element-ID.");
+            errors.Add($"{path}.id", "Invalid item ID.");
         }
 
         if (!SourceRef.TryParse(item.Source, out _))
         {
-            errors.Add($"{path}.source", "Ungültige Quelle.");
+            errors.Add($"{path}.source", "Invalid source.");
         }
         else if (!isSourceAllowed(item.Source))
         {
-            errors.Add($"{path}.source", "Diese Quelle gibt es nicht.");
+            errors.Add($"{path}.source", "This source does not exist.");
         }
 
         CheckRange(item.X, MinX, MaxX, $"{path}.x", errors);
@@ -118,12 +118,12 @@ public static partial class SceneItemRules
         CheckRange(item.Radius, 0, MaxRadius, $"{path}.radius", errors);
         if (!Enum.IsDefined(item.Fit))
         {
-            errors.Add($"{path}.fit", "Unbekannte Einpassung.");
+            errors.Add($"{path}.fit", "Unknown fit.");
         }
 
         if (!Rotations.Contains(item.Rotation))
         {
-            errors.Add($"{path}.rotation", "Erlaubt sind 0, 90, 180 oder 270 Grad.");
+            errors.Add($"{path}.rotation", "Allowed values are 0, 90, 180 and 270 degrees.");
         }
 
         ValidateCrop(item.Crop, $"{path}.crop", errors);
@@ -143,7 +143,7 @@ public static partial class SceneItemRules
         CheckOptionalRange(request.Radius, 0, MaxRadius, "radius", errors);
         if (request.Fit is { } fit && !Enum.IsDefined(fit))
         {
-            errors.Add("fit", "Unbekannte Einpassung.");
+            errors.Add("fit", "Unknown fit.");
         }
     }
 
@@ -154,18 +154,18 @@ public static partial class SceneItemRules
         ArgumentNullException.ThrowIfNull(isImageAsset);
         if (background is null)
         {
-            errors.Add(path, "Hintergrund fehlt.");
+            errors.Add(path, "The background is missing.");
             return;
         }
 
         if (!IsHexColor(background.Color))
         {
-            errors.Add($"{path}.color", "Farbe im Format #rrggbb angeben.");
+            errors.Add($"{path}.color", "Enter a colour in the format #rrggbb.");
         }
 
         if (background.AssetId is not null && !isImageAsset(background.AssetId))
         {
-            errors.Add($"{path}.assetId", "Als Hintergrund ist nur ein Bild möglich.");
+            errors.Add($"{path}.assetId", "Only an image can be used as a background.");
         }
     }
 
@@ -176,7 +176,7 @@ public static partial class SceneItemRules
     {
         if (crop is null)
         {
-            errors.Add(path, "Zuschnitt fehlt.");
+            errors.Add(path, "The crop is missing.");
             return;
         }
 
@@ -186,12 +186,12 @@ public static partial class SceneItemRules
         CheckCropSide(crop.Left, $"{path}.left", errors);
         if (crop.Top + crop.Bottom >= MaxCropPerAxis)
         {
-            errors.Add($"{path}.bottom", "Oben und unten zusammen müssen unter 90 % bleiben.");
+            errors.Add($"{path}.bottom", "Top and bottom together must stay below 90%.");
         }
 
         if (crop.Left + crop.Right >= MaxCropPerAxis)
         {
-            errors.Add($"{path}.right", "Links und rechts zusammen müssen unter 90 % bleiben.");
+            errors.Add($"{path}.right", "Left and right together must stay below 90%.");
         }
     }
 
@@ -205,7 +205,7 @@ public static partial class SceneItemRules
         CheckRange(border.Width, 1, MaxBorderWidth, $"{path}.width", errors);
         if (!IsHexColor(border.Color))
         {
-            errors.Add($"{path}.color", "Farbe im Format #rrggbb angeben.");
+            errors.Add($"{path}.color", "Enter a colour in the format #rrggbb.");
         }
     }
 
@@ -213,13 +213,13 @@ public static partial class SceneItemRules
     {
         if (item.OnLost is null)
         {
-            errors.Add(path, "Verhalten bei Ausfall fehlt.");
+            errors.Add(path, "The behaviour on failure is missing.");
             return;
         }
 
         if (item.OnLost.HoldMs is { } hold && (hold < 0 || hold > MaxHoldMs))
         {
-            errors.Add($"{path}.holdMs", $"Muss zwischen 0 und {MaxHoldMs} ms liegen.");
+            errors.Add($"{path}.holdMs", $"Must be between 0 and {MaxHoldMs} ms.");
         }
 
         var fallback = item.OnLost.FallbackSource;
@@ -230,15 +230,15 @@ public static partial class SceneItemRules
 
         if (!SourceRef.TryParse(fallback, out _))
         {
-            errors.Add($"{path}.fallbackSource", "Ungültige Ersatzquelle.");
+            errors.Add($"{path}.fallbackSource", "Invalid fallback source.");
         }
         else if (string.Equals(fallback, item.Source, StringComparison.Ordinal))
         {
-            errors.Add($"{path}.fallbackSource", "Die Ersatzquelle muss eine andere Quelle sein.");
+            errors.Add($"{path}.fallbackSource", "The fallback source must be a different source.");
         }
         else if (!isFallbackAllowed(fallback))
         {
-            errors.Add($"{path}.fallbackSource", "Diese Quelle gibt es nicht.");
+            errors.Add($"{path}.fallbackSource", "This source does not exist.");
         }
     }
 
@@ -246,7 +246,7 @@ public static partial class SceneItemRules
     {
         if (double.IsNaN(value) || value < 0 || value > MaxCropPerSide)
         {
-            errors.Add(field, "Muss zwischen 0 und 0,45 liegen.");
+            errors.Add(field, "Must be between 0 and 0.45.");
         }
     }
 
@@ -254,7 +254,7 @@ public static partial class SceneItemRules
     {
         if (value < min || value > max)
         {
-            errors.Add(field, $"Muss zwischen {min} und {max} liegen.");
+            errors.Add(field, $"Must be between {min} and {max}.");
         }
     }
 

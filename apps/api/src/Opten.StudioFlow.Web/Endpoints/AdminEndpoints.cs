@@ -27,10 +27,17 @@ internal static class AuthEndpoints
             case LoginOutcome.Locked:
                 var seconds = Math.Max(1, (int)Math.Ceiling(result.RetryAfter!.Value.TotalSeconds));
                 context.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
-                return Problems.Result(StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, $"Zu viele Fehlversuche. Bitte in {Math.Ceiling(seconds / 60d).ToString(CultureInfo.InvariantCulture)} Minuten erneut versuchen.");
+                return Problems.Result(StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, LockoutDetail(seconds));
             default:
-                return Problems.Result(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Benutzername oder Passwort ist falsch.");
+                return Problems.Result(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Username or password is incorrect.");
         }
+    }
+
+    /// <summary>Detail of the answer to a locked login: the wait rounded up to whole minutes.</summary>
+    internal static string LockoutDetail(int seconds)
+    {
+        var minutes = (int)Math.Ceiling(seconds / 60d);
+        return $"Too many failed attempts. Please try again in {minutes.ToString(CultureInfo.InvariantCulture)} {(minutes == 1 ? "minute" : "minutes")}.";
     }
 
     // Ends the session on the server too (GAP-04): the cookie is refused from now on and the Regie hub connections of

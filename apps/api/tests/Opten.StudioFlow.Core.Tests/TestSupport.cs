@@ -25,7 +25,7 @@ internal static class Build
 
     public static Production Production(string name = "Webinar") => Core.Domain.Production.Create(name, Slugs.FromName(name), isActive: true, T0);
 
-    public static Device Phone(Production production, string name = "Handy 1", IEnumerable<string>? codes = null) =>
+    public static Device Phone(Production production, string name = "Phone 1", IEnumerable<string>? codes = null) =>
         Device.Pair(production.Id, name, DeviceKind.Phone, "iPhone · Safari", PairingMethod.Qr, T0, codes ?? []).Device;
 
     public static Device Laptop(Production production, string name = "Laptop Lea", IEnumerable<string>? codes = null) =>

@@ -10,8 +10,8 @@ namespace Opten.StudioFlow.Web.Errors;
 /// </summary>
 internal static class DatabaseOutage
 {
-    /// <summary>German message for the Regie.</summary>
-    public const string Message = "Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.";
+    /// <summary>Message for the Regie.</summary>
+    public const string Message = "The database is currently not reachable. Please try again in a moment.";
 
     /// <summary>Retry hint of a 503.</summary>
     public static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(5);

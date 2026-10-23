@@ -129,7 +129,7 @@ internal sealed class HubErrorFilter(ILogger<HubErrorFilter> logger) : IHubFilte
         catch (Exception exception) when (exception is not HubException and not OperationCanceledException)
         {
             logger.LogError(exception, "Hub method {Method} failed", invocationContext.HubMethodName);
-            throw new HubException($"{ErrorCodes.InternalError}: Ein unerwarteter Fehler ist aufgetreten.");
+            throw new HubException($"{ErrorCodes.InternalError}: An unexpected error occurred.");
         }
     }
 }

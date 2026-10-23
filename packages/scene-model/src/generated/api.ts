@@ -1071,7 +1071,7 @@ export interface components {
             name: string;
             /** @description Phone or laptop. */
             kind: components["schemas"]["DeviceKind"];
-            /** @description Short platform text reported by the sender, e.g. «iPhone · Safari». */
+            /** @description Short platform text reported by the sender, e.g. “iPhone · Safari”. */
             platform: string;
             /** @description Active or blocked. */
             state: components["schemas"]["DeviceState"];
@@ -1178,7 +1178,7 @@ export interface components {
             batteryPct: null | number;
             /** @description Charging state where available. */
             charging: null | boolean;
-            /** @description Network type, e.g. «wifi» or «4g», where available. */
+            /** @description Network type, e.g. “wifi” or “4g”, where available. */
             network: null | string;
             /**
              * Format: int32
@@ -1206,7 +1206,7 @@ export interface components {
         };
         /** Format: binary */
         IFormFile: string;
-        /** @description An incident in the message strip. Recovered incidents stay until someone acknowledges them («Gesehen»). */
+        /** @description An incident in the message strip. Recovered incidents stay until someone acknowledges them (“Seen”). */
         IncidentDto: {
             /** @description Incident id. */
             id: string;
@@ -1308,7 +1308,7 @@ export interface components {
         LostBehaviorDto: {
             /**
              * Format: int32
-             * @description How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with «Bild kommt gleich zurück», or the fallback source is shown.
+             * @description How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with “Picture returns shortly”, or the fallback source is shown.
              */
             holdMs: null | number;
             /** @description Optional replacement source reference (e.g. a pause slate image). */
@@ -1386,7 +1386,7 @@ export interface components {
          * @enum {unknown}
          */
         OutputState: "none" | "connected" | "stale";
-        /** @description Live state of the output consumer (chip «Output an Proxy» in the header). */
+        /** @description Live state of the output consumer (chip “Output to proxy” in the header). */
         OutputStatusDto: {
             /** @description None, connected or stale. */
             state: components["schemas"]["OutputState"];
@@ -1436,7 +1436,7 @@ export interface components {
             kind: components["schemas"]["DeviceKind"];
             /** @description Platform text of the requester. */
             platform: string;
-            /** @description Four digit check code, shown as «47 12» on both screens. */
+            /** @description Four digit check code, shown as “47 12” on both screens. */
             checkCode: string;
             /**
              * Format: date-time
@@ -1614,7 +1614,7 @@ export interface components {
              */
             revision: number;
         };
-        /** @description A new entry for «Letzte Ereignisse». */
+        /** @description A new entry for “Recent events”. */
         ProductionEventLogAppendedEvent: {
             /** @enum {string} */
             type: "logAppended";
@@ -1970,7 +1970,7 @@ export interface components {
             code: string;
             /** @description Camera, screen, image or video. */
             kind: components["schemas"]["SourceKind"];
-            /** @description Display name, e.g. «Laptop Lea · Screen 1». */
+            /** @description Display name, e.g. “Laptop Lea · Screen 1”. */
             label: string;
             /** @description Device for device slots. */
             deviceId: null | string;

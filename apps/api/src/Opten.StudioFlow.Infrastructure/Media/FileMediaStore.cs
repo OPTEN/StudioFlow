@@ -45,7 +45,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
         var header = new byte[MediaInspector.HeaderLength];
         var headerLength = await content.ReadAtLeastAsync(header, header.Length, throwOnEndOfStream: false, cancellationToken);
         var type = MediaInspector.Detect(header.AsSpan(0, headerLength))
-            ?? throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, "Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.");
+            ?? throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, "Allowed types are PNG, JPEG, WebP, MP4 and WebM.");
         var limit = type.Kind == AssetKind.Image ? options.Value.MaxImageBytes : options.Value.MaxVideoBytes;
         if (declaredLength > limit)
         {
@@ -76,7 +76,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
                 // An image without a readable size, with a zero side or larger than 16384 px is not accepted (GAP-13).
                 if (!MediaInspector.IsAcceptedSize(size))
                 {
-                    throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, $"Bilder brauchen eine lesbare Grösse von 1 bis {MediaInspector.MaxDimension} Pixeln pro Seite.");
+                    throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, $"Images need a readable size of 1 to {MediaInspector.MaxDimension} pixels per side.");
                 }
             }
 
@@ -106,7 +106,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
     private static StudioFlowException TooLarge(MediaType type) => new(
         ErrorKind.PayloadTooLarge,
         ErrorCodes.UnsupportedMedia,
-        type.Kind == AssetKind.Image ? "Das Bild ist zu gross." : "Das Video ist zu gross.");
+        type.Kind == AssetKind.Image ? "The image is too large." : "The video is too large.");
 
     private static async Task<long> CopyLimitedAsync(Stream source, Stream target, long remaining, MediaType type, CancellationToken cancellationToken)
     {

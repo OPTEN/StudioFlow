@@ -32,7 +32,7 @@ public sealed class ProductionService(
     public async Task<ProductionSummaryDto> GetActiveAsync(CancellationToken cancellationToken)
     {
         await using var unit = data.Create();
-        var active = await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken) ?? throw StudioFlowException.NotFound("Eine aktive Produktion");
+        var active = await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken) ?? throw StudioFlowException.NotFound("Active production");
         return Dtos.Summary(active);
     }
 
@@ -59,7 +59,7 @@ public sealed class ProductionService(
         }
     }
 
-    /// <summary>Creates the default production «Webinar» (slug <c>webinar</c>, active) when there is none (spec 4.2).</summary>
+    /// <summary>Creates the default production “Webinar” (slug <c>webinar</c>, active) when there is none (spec 4.2).</summary>
     public async Task EnsureDefaultProductionAsync(CancellationToken cancellationToken)
     {
         await tenantGate.WaitAsync(cancellationToken);
@@ -122,7 +122,7 @@ public sealed class ProductionService(
             {
                 if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
                 {
-                    throw StudioFlowException.NotFound("Die Produktion");
+                    throw StudioFlowException.NotFound("Production");
                 }
 
                 previous = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id;
@@ -183,7 +183,7 @@ public sealed class ProductionService(
     }
 
     /// <summary>
-    /// Acknowledges a recovered incident («Gesehen»); shared by every Regie session. An open incident is
+    /// Acknowledges a recovered incident (“Seen”); shared by every Regie session. An open incident is
     /// <c>conflict</c>, an unknown or already acknowledged one <c>not_found</c> (UNIT-SRC-02).
     /// </summary>
     public Task AcknowledgeIncidentAsync(string productionId, string incidentId, CancellationToken cancellationToken) =>
@@ -192,7 +192,7 @@ public sealed class ProductionService(
             context =>
             {
                 var health = context.Runtime.Sources.Values.FirstOrDefault(h => string.Equals(h.Incident?.Id, incidentId, StringComparison.Ordinal))
-                    ?? throw StudioFlowException.NotFound("Die Meldung");
+                    ?? throw StudioFlowException.NotFound("Message");
                 health.Acknowledge(incidentId);
                 context.Emit(revision => new IncidentRemovedEvent(revision, incidentId));
                 return Task.CompletedTask;
@@ -205,7 +205,7 @@ public sealed class ProductionService(
         await using var unit = data.Create();
         if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
         {
-            throw StudioFlowException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Production");
         }
 
         return tokens.IssueViewerToken(productionId, StudioIdentityPrefix + EntityIds.RandomBase32(EntityIds.RandomLength), "Regie");

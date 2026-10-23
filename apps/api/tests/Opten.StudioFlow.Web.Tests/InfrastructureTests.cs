@@ -183,14 +183,14 @@ public sealed class LiveKitTokenIssuerTests
     [Fact]
     public void IssueSenderToken_Claims_MatchTheSenderGrant()
     {
-        var dto = Issuer().IssueSenderToken("prd_x", "dev_a", "Handy 1");
+        var dto = Issuer().IssueSenderToken("prd_x", "dev_a", "Phone 1");
         var token = new JsonWebToken(dto.Token);
         using var video = JsonDocument.Parse(token.GetPayloadValue<JsonElement>("video").GetRawText());
 
         Assert.Equal("wss://studioflow.opten.ch", dto.Url);
         Assert.Equal("key", token.Issuer);
         Assert.Equal("dev_a", token.Subject);
-        Assert.Equal("Handy 1", token.GetPayloadValue<string>("name"));
+        Assert.Equal("Phone 1", token.GetPayloadValue<string>("name"));
         Assert.Equal("""{"role":"sender"}""", token.GetPayloadValue<string>("metadata"));
         Assert.Equal("HS256", token.Alg);
         Assert.InRange((token.ValidTo - token.ValidFrom).TotalMinutes, 9.99, 10.01);
@@ -371,12 +371,12 @@ public sealed class AdminCredentialsTests
     [Fact]
     public void Verify_Hash_AcceptsOnlyTheRightPair()
     {
-        var credentials = new AdminCredentials(Options.Create(new AdminOptions { Username = "regie", PasswordHash = AdminCredentials.HashPassword("geheim") }));
+        var credentials = new AdminCredentials(Options.Create(new AdminOptions { Username = "regie", PasswordHash = AdminCredentials.HashPassword("secret") }));
 
-        Assert.True(credentials.Verify("regie", "geheim"));
-        Assert.True(credentials.Verify(" regie ", "geheim"));
-        Assert.False(credentials.Verify("regie", "Geheim"));
-        Assert.False(credentials.Verify("Regie", "geheim"));
+        Assert.True(credentials.Verify("regie", "secret"));
+        Assert.True(credentials.Verify(" regie ", "secret"));
+        Assert.False(credentials.Verify("regie", "Secret"));
+        Assert.False(credentials.Verify("Regie", "secret"));
         Assert.False(credentials.Verify(null, null));
     }
 

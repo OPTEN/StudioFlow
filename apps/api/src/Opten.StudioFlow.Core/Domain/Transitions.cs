@@ -16,15 +16,15 @@ public static class Transitions
     {
         if (transition is null)
         {
-            throw StudioFlowException.Invalid(field, "Übergang fehlt.");
+            throw StudioFlowException.Invalid(field, "The transition is missing.");
         }
 
         return transition.Kind switch
         {
             TransitionKind.Cut => Cut,
             TransitionKind.Fade when FadeDurationsMs.Contains(transition.DurationMs) => new TransitionDto(TransitionKind.Fade, transition.DurationMs),
-            TransitionKind.Fade => throw StudioFlowException.Invalid($"{field}.durationMs", "Erlaubt sind 200, 300, 500, 800, 1000, 1500 oder 2000 ms."),
-            _ => throw StudioFlowException.Invalid($"{field}.kind", "Unbekannter Übergang."),
+            TransitionKind.Fade => throw StudioFlowException.Invalid($"{field}.durationMs", "Allowed values are 200, 300, 500, 800, 1000, 1500 and 2000 ms."),
+            _ => throw StudioFlowException.Invalid($"{field}.kind", "Unknown transition."),
         };
     }
 }

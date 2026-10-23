@@ -64,7 +64,7 @@ public sealed record CropDto(double Top, double Right, double Bottom, double Lef
 public sealed record BorderDto(int Width, string Color);
 
 /// <summary>Fallback when the source of an item fails.</summary>
-/// <param name="HoldMs">How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with «Bild kommt gleich zurück», or the fallback source is shown.</param>
+/// <param name="HoldMs">How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with “Picture returns shortly”, or the fallback source is shown.</param>
 /// <param name="FallbackSource">Optional replacement source reference (e.g. a pause slate image).</param>
 public sealed record LostBehaviorDto(int? HoldMs, string? FallbackSource);
 

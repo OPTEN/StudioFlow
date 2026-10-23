@@ -5,7 +5,7 @@ using Opten.StudioFlow.Core.Contracts;
 namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
-/// RFC 7807 problem details with the extension <c>code</c> (spec 5). Titles are German because the Regie may show them.
+/// RFC 7807 problem details with the extension <c>code</c> (spec 5). Titles are English; clients localise by <c>code</c>.
 /// </summary>
 internal static class Problems
 {
@@ -28,21 +28,21 @@ internal static class Problems
         _ => ErrorCodes.InternalError,
     };
 
-    /// <summary>German title of a status.</summary>
+    /// <summary>English title of a status.</summary>
     public static string TitleFor(int status) => status switch
     {
-        StatusCodes.Status400BadRequest => "Ungültige Eingabe",
-        StatusCodes.Status401Unauthorized => "Nicht angemeldet",
-        StatusCodes.Status403Forbidden => "Kein Zugriff",
-        StatusCodes.Status404NotFound or StatusCodes.Status405MethodNotAllowed => "Nicht gefunden",
-        StatusCodes.Status408RequestTimeout => "Zeitüberschreitung",
-        StatusCodes.Status409Conflict => "Konflikt",
-        StatusCodes.Status410Gone => "Nicht mehr gültig",
-        StatusCodes.Status413PayloadTooLarge => "Zu gross",
-        StatusCodes.Status415UnsupportedMediaType => "Dateityp nicht erlaubt",
-        StatusCodes.Status429TooManyRequests => "Zu viele Versuche",
-        StatusCodes.Status503ServiceUnavailable => "Vorübergehend nicht verfügbar",
-        _ => "Serverfehler",
+        StatusCodes.Status400BadRequest => "Invalid input",
+        StatusCodes.Status401Unauthorized => "Not signed in",
+        StatusCodes.Status403Forbidden => "No access",
+        StatusCodes.Status404NotFound or StatusCodes.Status405MethodNotAllowed => "Not found",
+        StatusCodes.Status408RequestTimeout => "Request timeout",
+        StatusCodes.Status409Conflict => "Conflict",
+        StatusCodes.Status410Gone => "No longer valid",
+        StatusCodes.Status413PayloadTooLarge => "Too large",
+        StatusCodes.Status415UnsupportedMediaType => "Unsupported file type",
+        StatusCodes.Status429TooManyRequests => "Too many attempts",
+        StatusCodes.Status503ServiceUnavailable => "Temporarily unavailable",
+        _ => "Server error",
     };
 
     /// <summary>A problem result for an endpoint or filter.</summary>

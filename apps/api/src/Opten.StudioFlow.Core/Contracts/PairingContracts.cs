@@ -5,7 +5,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="Name">Device name typed on the laptop.</param>
 /// <param name="Kind">Device kind the requester declared.</param>
 /// <param name="Platform">Platform text of the requester.</param>
-/// <param name="CheckCode">Four digit check code, shown as «47 12» on both screens.</param>
+/// <param name="CheckCode">Four digit check code, shown as “47 12” on both screens.</param>
 /// <param name="CreatedAt">Creation time.</param>
 /// <param name="ExpiresAt">Expiry (10 minutes).</param>
 public sealed record PairingRequestDto(

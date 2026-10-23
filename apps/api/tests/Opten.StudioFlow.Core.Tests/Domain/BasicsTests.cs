@@ -156,7 +156,7 @@ public sealed class SlugsTests
     [InlineData("Webinar", "webinar")]
     [InlineData("Grüezi Zürich 2026", "grueezi-zuerich-2026")]
     [InlineData("  Café   Crème!! ", "cafe-creme")]
-    [InlineData("###", "produktion")]
+    [InlineData("###", "production")]
     [InlineData("Straße", "strasse")]
     [InlineData("Ä-Ö-Ü", "ae-oe-ue")]
     public void FromName_Name_IsLowercaseAscii(string name, string expected) => Assert.Equal(expected, Slugs.FromName(name));
@@ -177,7 +177,7 @@ public sealed class SlugsTests
         var taken = new HashSet<string>(StringComparer.Ordinal) { "webinar", "webinar-2" };
 
         Assert.Equal("webinar-3", Slugs.MakeUnique("webinar", taken.Contains));
-        Assert.Equal("anderes", Slugs.MakeUnique("anderes", taken.Contains));
+        Assert.Equal("another", Slugs.MakeUnique("another", taken.Contains));
     }
 
     [Fact]
@@ -195,9 +195,9 @@ public sealed class SlugsTests
 public sealed class TextRulesTests
 {
     [Theory]
-    [InlineData("  Szene 1  ", "Szene 1")]
+    [InlineData("  Scene 1  ", "Scene 1")]
     [InlineData("A", "A")]
-    [InlineData("Zeile\u0007mit\u0000Steuerzeichen", "ZeilemitSteuerzeichen")]
+    [InlineData("Line\u0007with\u0000control", "Linewithcontrol")]
     public void RequiredName_Valid_IsTrimmedAndCleaned(string input, string expected) => Assert.Equal(expected, TextRules.RequireName(input, 80, "name"));
 
     [Theory]

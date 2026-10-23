@@ -1,0 +1,7 @@
+[
+  {
+    "path": "docs/i18n-e2e-notes/p4.md",
+    "rules": "all",
+    "reason": "Lists the old German API texts next to the new English ones so the E2E conversion can find them."
+  }
+]

@@ -77,7 +77,7 @@ internal sealed class ServiceHarness : IDisposable
 
     public IReadOnlyList<ProductionEvent> Events => [.. Publisher.StudioEvents];
 
-    public async Task<(Device Device, DeviceIdentity Identity)> PairPhoneAsync(string name = "Handy 1")
+    public async Task<(Device Device, DeviceIdentity Identity)> PairPhoneAsync(string name = "Phone 1")
     {
         var invite = await Pairing.GetPhoneInviteAsync(Production.Id, CancellationToken.None);
         var token = invite.Url[(invite.Url.LastIndexOf('/') + 1)..];

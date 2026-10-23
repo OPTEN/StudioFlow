@@ -22,11 +22,11 @@ public sealed class AssetApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     {
         var admin = await app.AdminAsync();
 
-        var asset = await UploadAsync(admin, Sample(sample), "Pausen-Bild.final.png", "application/octet-stream").ExpectAsync<AssetDto>(HttpStatusCode.Created);
+        var asset = await UploadAsync(admin, Sample(sample), "Break-picture.final.png", "application/octet-stream").ExpectAsync<AssetDto>(HttpStatusCode.Created);
 
         Assert.Equal(contentType, asset.ContentType);
         Assert.Equal(width, asset.Width);
-        Assert.Equal("Pausen-Bild.final", asset.Name);
+        Assert.Equal("Break-picture.final", asset.Name);
         Assert.Matches("^M[0-9]+$", asset.Code);
         Assert.Equal($"/api/productions/{admin.ProductionId}/assets/{asset.Id}/content", asset.ContentUrl);
         Assert.Contains(await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/assets", TestContext.Current.CancellationToken).ExpectAsync<List<AssetDto>>(), a => a.Id == asset.Id);
@@ -41,7 +41,7 @@ public sealed class AssetApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     {
         var admin = await app.AdminAsync();
 
-        Assert.Equal(ErrorCodes.UnsupportedMedia, await UploadAsync(admin, Sample(sample), "harmlos.png", "image/png").ExpectProblemAsync(HttpStatusCode.UnsupportedMediaType));
+        Assert.Equal(ErrorCodes.UnsupportedMedia, await UploadAsync(admin, Sample(sample), "harmless.png", "image/png").ExpectProblemAsync(HttpStatusCode.UnsupportedMediaType));
         Assert.Empty(Directory.Exists(Path.Combine(app.MediaPath, admin.ProductionId)) ? Directory.GetFiles(Path.Combine(app.MediaPath, admin.ProductionId), "*.part") : []);
     }
 
@@ -113,9 +113,9 @@ public sealed class AssetApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var sceneId = (await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>()).Scenes[2].Id;
         var deleteUrl = $"/api/productions/{admin.ProductionId}/assets/{image.Id}";
 
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest(null, null, new SlateDto("Ende", null, image.Id))).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest(null, null, new SlateDto("End", null, image.Id))).ExpectAsync(HttpStatusCode.OK);
         Assert.Equal(ErrorCodes.AssetInUse, await admin.Client.DeleteAsync(deleteUrl, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Conflict));
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest(null, null, new SlateDto("Ende", null, null))).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest(null, null, new SlateDto("End", null, null))).ExpectAsync(HttpStatusCode.OK);
 
         await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}/scenes/{sceneId}", new UpdateSceneRequest(null, null, new SceneBackgroundDto("#000000", image.Id))).ExpectAsync(HttpStatusCode.OK);
         await admin.Client.DeleteAsync(deleteUrl, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Conflict);
@@ -235,7 +235,7 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         var output = OutputClient(key);
         var start = await output.GetAsync($"/api/output/{slug}/changes?since=0", TestContext.Current.CancellationToken).ExpectAsync<OutputChangesDto>();
         await app.PairPhoneAsync(admin);
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Umbenannt", null, null)).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Renamed", null, null)).ExpectAsync(HttpStatusCode.OK);
 
         var delta = await output.GetAsync($"/api/output/{slug}/changes?since={start.Revision}", TestContext.Current.CancellationToken).ExpectAsync<OutputChangesDto>();
         await output.GetAsync($"/api/output/{slug}/changes?since=-1", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.BadRequest);
@@ -244,7 +244,7 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         Assert.NotNull(start.Snapshot);
         Assert.Null(start.Events);
         Assert.Null(delta.Snapshot);
-        Assert.Contains(delta.Events!, e => e is ProductionChangedEvent { Production.Name: "Umbenannt" });
+        Assert.Contains(delta.Events!, e => e is ProductionChangedEvent { Production.Name: "Renamed" });
         Assert.Contains(delta.Events!, e => e is SourceUpsertedEvent { Source.Status: SourceStatus.Ok, Source.StatusSince: null });
         Assert.DoesNotContain(delta.Events!, e => e is DeviceUpsertedEvent or InviteUpsertedEvent or InviteRemovedEvent or LogAppendedEvent);
         Assert.Contains(delta.Events!, e => e is RevisionOnlyEvent);

@@ -29,7 +29,7 @@ public static class TextRules
         var length = trimmed is null ? 0 : new StringInfo(trimmed).LengthInTextElements;
         if (length < 1 || length > maxLength)
         {
-            errors.Add(field, $"Muss 1–{maxLength} Zeichen lang sein.");
+            errors.Add(field, $"Must be 1–{maxLength} characters long.");
             return null;
         }
 
@@ -60,7 +60,7 @@ public static class TextRules
 
     /// <summary>
     /// True for the invisible bidirectional formatting characters (embeddings, overrides, isolates, marks). They can make
-    /// a name look different from what it is («‮gnp.exe» shows as «exe.png»), so names never keep them.
+    /// a name look different from what it is (“‮gnp.exe” shows as “exe.png”), so names never keep them.
     /// </summary>
     public static bool IsBidiControl(char c) => c is (>= '‪' and <= '‮') or (>= '⁦' and <= '⁩') or '‎' or '‏' or '؜';
 

@@ -14,7 +14,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var original = await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest("Original", null)).ExpectAsync<SceneDto>(HttpStatusCode.Created);
         await admin.Client.PostJsonAsync($"{Scenes(production)}/{original.Id}/items", new AddSceneItemRequest(camera, null, null, null, null, null, null)).ExpectAsync<SceneDto>();
 
-        var clone = await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest("Kopie", original.Id)).ExpectAsync<SceneDto>(HttpStatusCode.Created);
+        var clone = await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest("Copy", original.Id)).ExpectAsync<SceneDto>(HttpStatusCode.Created);
 
         Assert.Equal(4, clone.SortOrder);
         Assert.Equal(camera, Assert.Single(clone.Items).Source);
@@ -30,7 +30,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
             await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest($"S{i}", null)).ExpectAsync(HttpStatusCode.Created);
         }
 
-        Assert.Equal(ErrorCodes.LimitReached, await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest("Zu viel", null)).ExpectProblemAsync(HttpStatusCode.Conflict));
+        Assert.Equal(ErrorCodes.LimitReached, await admin.Client.PostJsonAsync(Scenes(production), new CreateSceneRequest("Too many", null)).ExpectProblemAsync(HttpStatusCode.Conflict));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
 
         Assert.Null(snapshot.Production.PreviewSceneId);
         Assert.Equal([0, 1], snapshot.Scenes.Select(s => s.SortOrder));
-        Assert.Contains(snapshot.RecentLog, l => l is { Code: LogCode.SceneDeleted } && l.Params["scene"] == "Präsentation");
+        Assert.Contains(snapshot.RecentLog, l => l is { Code: LogCode.SceneDeleted } && l.Params["scene"] == "Presentation");
     }
 
     [Fact]
@@ -161,12 +161,12 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var sceneId = await FirstSceneAsync(admin, production);
         var url = $"{Scenes(production)}/{sceneId}";
 
-        var updated = await admin.Client.PatchJsonAsync(url, new UpdateSceneRequest("Neu", SceneLayoutMode.AutoGrid, new SceneBackgroundDto("#101010", null))).ExpectAsync<SceneDto>();
+        var updated = await admin.Client.PatchJsonAsync(url, new UpdateSceneRequest("New", SceneLayoutMode.AutoGrid, new SceneBackgroundDto("#101010", null))).ExpectAsync<SceneDto>();
         await admin.Client.PatchJsonAsync(url, new UpdateSceneRequest(new string('x', 81), null, null)).ExpectProblemAsync(HttpStatusCode.BadRequest);
         await admin.Client.PatchJsonAsync(url, new UpdateSceneRequest(null, null, new SceneBackgroundDto("blue", null))).ExpectProblemAsync(HttpStatusCode.BadRequest);
         await admin.Client.PatchJsonAsync($"{Scenes(production)}/scn_unknown", new UpdateSceneRequest("X", null, null)).ExpectProblemAsync(HttpStatusCode.NotFound);
 
-        Assert.Equal(("Neu", SceneLayoutMode.AutoGrid, "#101010"), (updated.Name, updated.LayoutMode, updated.Background.Color));
+        Assert.Equal(("New", SceneLayoutMode.AutoGrid, "#101010"), (updated.Name, updated.LayoutMode, updated.Background.Color));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     private async Task<(AdminSession Admin, string ProductionId, string Camera)> SetupAsync()
     {
         var admin = await app.AdminAsync();
-        var production = await admin.Client.PostJsonAsync("/api/productions", new CreateProductionRequest("Szenen " + Guid.NewGuid().ToString("N")[..6])).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
+        var production = await admin.Client.PostJsonAsync("/api/productions", new CreateProductionRequest("Scenes " + Guid.NewGuid().ToString("N")[..6])).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
         var invite = await admin.Client.GetAsync($"/api/productions/{production.Id}/pairing/phone-invite").ExpectAsync<InviteDto>();
         var credentials = await app.Anonymous().PostJsonAsync($"/api/pairing/invites/{Pairing.TokenOf(invite)}/redeem", new RedeemInviteRequest("client-" + Guid.NewGuid(), null, DeviceKind.Phone, "Test")).ExpectAsync<DeviceCredentialsDto>();
         return (admin, production.Id, $"{credentials.DeviceId}/camera");

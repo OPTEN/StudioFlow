@@ -298,7 +298,7 @@ public sealed class LimitTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
     {
         var admin = await app.AdminAsync();
         var asset = await UploadAsync(admin);
-        var scene = await admin.Client.PostJsonAsync($"/api/productions/{admin.ProductionId}/scenes", new CreateSceneRequest("Voll", null)).ExpectAsync<SceneDto>(HttpStatusCode.Created);
+        var scene = await admin.Client.PostJsonAsync($"/api/productions/{admin.ProductionId}/scenes", new CreateSceneRequest("Full", null)).ExpectAsync<SceneDto>(HttpStatusCode.Created);
         var items = Enumerable.Range(0, 32).Select(i => new SceneItemDto($"itm_full{i:D4}", asset.Id, 0, 0, 100, 100, ItemFit.Cover, new CropDto(0, 0, 0, 0), 0, false, 0, false, false, null, new LostBehaviorDto(3000, null))).ToList();
         await admin.Client.PutJsonAsync($"/api/productions/{admin.ProductionId}/scenes/{scene.Id}/items", new ReplaceSceneItemsRequest(items, null)).ExpectAsync(HttpStatusCode.OK);
 
@@ -324,7 +324,7 @@ public sealed class LimitTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
         using var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(MediaSamples.Png(4, 4));
         file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-        form.Add(file, "file", "bild.png");
+        form.Add(file, "file", "picture.png");
         return await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/assets", form, TestContext.Current.CancellationToken).ExpectAsync<AssetDto>(HttpStatusCode.Created);
     }
 }

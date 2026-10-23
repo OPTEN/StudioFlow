@@ -81,7 +81,7 @@ public sealed class PairingRequest
         var name = TextRules.RequiredName(input.Name, TextRules.DeviceNameMax, "name", errors);
         if (!Enum.IsDefined(input.Kind))
         {
-            errors.Add("kind", "Unbekannte Geräteart.");
+            errors.Add("kind", "Unknown device type.");
         }
 
         errors.ThrowIfAny();

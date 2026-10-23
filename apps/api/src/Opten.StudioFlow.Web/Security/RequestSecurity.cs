@@ -7,7 +7,7 @@ namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>
 /// Writes <c>device_blocked</c> problem details when a blocked device is refused (the sender stops reconnecting and
-/// shows «Gesperrt»); every other result goes to the default handler (empty 401/403, turned into problem details by
+/// shows “Blocked”); every other result goes to the default handler (empty 401/403, turned into problem details by
 /// the status code pages).
 /// </summary>
 internal sealed class ProblemAuthorizationResultHandler : IAuthorizationMiddlewareResultHandler
@@ -18,7 +18,7 @@ internal sealed class ProblemAuthorizationResultHandler : IAuthorizationMiddlewa
     {
         if (authorizeResult.Forbidden && authorizeResult.AuthorizationFailure?.FailureReasons.Any(r => r.Handler is DeviceNotBlockedRequirement) == true)
         {
-            await Problems.WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
+            await Problems.WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.DeviceBlocked, "The device is blocked.");
             return;
         }
 
@@ -40,7 +40,7 @@ internal sealed class CsrfHeaderFilter : IEndpointFilter
             && request.Cookies.ContainsKey(SecurityNames.SessionCookie)
             && !string.Equals(request.Headers[SecurityNames.CsrfHeader].ToString(), "1", StringComparison.Ordinal))
         {
-            return Problems.Result(StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Der Header X-StudioFlow fehlt.");
+            return Problems.Result(StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "The X-StudioFlow header is missing.");
         }
 
         return await next(context);
@@ -56,7 +56,7 @@ internal sealed class HubOriginMiddleware(RequestDelegate next)
             && context.Request.Headers.Origin.ToString() is { Length: > 0 } origin
             && !IsSameHost(origin, context.Request.Host))
         {
-            await Problems.WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Fremder Ursprung.");
+            await Problems.WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Foreign origin.");
             return;
         }
 

@@ -275,8 +275,8 @@ public sealed class SceneTests
 
         Assert.Throws<StudioFlowException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#12345", null)), withVideo));
         Assert.Throws<StudioFlowException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#123456", video.Id)), withVideo));
-        Assert.True(Scene.Update(new UpdateSceneRequest("Neu", null, new SceneBackgroundDto("#123456", image.Id)), withVideo));
-        Assert.Equal("Neu", Scene.Name);
+        Assert.True(Scene.Update(new UpdateSceneRequest("New", null, new SceneBackgroundDto("#123456", image.Id)), withVideo));
+        Assert.Equal("New", Scene.Name);
     }
 
     [Fact]

@@ -90,10 +90,10 @@ public sealed class AssetNameTests
     [InlineData(".hidden.png", ".hidden")]
     [InlineData("CON.png", "CON")]
     [InlineData("Logo 🎉.webp", "Logo 🎉")]
-    [InlineData("...", "Medium")]
-    [InlineData("   ", "Medium")]
-    [InlineData("", "Medium")]
-    [InlineData(null, "Medium")]
+    [InlineData("...", "Media")]
+    [InlineData("   ", "Media")]
+    [InlineData("", "Media")]
+    [InlineData(null, "Media")]
     public void NameFromFileName_AnyInput_IsSinglePathFreeSegment(string? fileName, string expected) =>
         Assert.Equal(expected, Asset.NameFromFileName(fileName));
 

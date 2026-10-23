@@ -3292,7 +3292,7 @@
           },
           "platform": {
             "type": "string",
-            "description": "Short platform text reported by the sender, e.g. «iPhone · Safari»."
+            "description": "Short platform text reported by the sender, e.g. “iPhone · Safari”."
           },
           "state": {
             "description": "Active or blocked.",
@@ -3575,7 +3575,7 @@
               "null",
               "string"
             ],
-            "description": "Network type, e.g. «wifi» or «4g», where available."
+            "description": "Network type, e.g. “wifi” or “4g”, where available."
           },
           "rttMs": {
             "type": [
@@ -3701,7 +3701,7 @@
             "format": "date-time"
           }
         },
-        "description": "An incident in the message strip. Recovered incidents stay until someone acknowledges them («Gesehen»)."
+        "description": "An incident in the message strip. Recovered incidents stay until someone acknowledges them (“Seen”)."
       },
       "IncidentKind": {
         "enum": [
@@ -3880,7 +3880,7 @@
               "null",
               "integer"
             ],
-            "description": "How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with «Bild kommt gleich zurück», or the fallback source is shown.",
+            "description": "How long the last frame stays sharp (0…600000 ms); null keeps it forever. Afterwards the frame is blurred and darkened with “Picture returns shortly”, or the fallback source is shown.",
             "format": "int32"
           },
           "fallbackSource": {
@@ -4113,7 +4113,7 @@
             "format": "date-time"
           }
         },
-        "description": "Live state of the output consumer (chip «Output an Proxy» in the header)."
+        "description": "Live state of the output consumer (chip “Output to proxy” in the header)."
       },
       "PairingMethod": {
         "enum": [
@@ -4178,7 +4178,7 @@
           },
           "checkCode": {
             "type": "string",
-            "description": "Four digit check code, shown as «47 12» on both screens."
+            "description": "Four digit check code, shown as “47 12” on both screens."
           },
           "createdAt": {
             "type": "string",
@@ -4709,7 +4709,7 @@
             "format": "int64"
           }
         },
-        "description": "A new entry for «Letzte Ereignisse»."
+        "description": "A new entry for “Recent events”."
       },
       "ProductionEventOutputStatusChangedEvent": {
         "required": [
@@ -5573,7 +5573,7 @@
           },
           "label": {
             "type": "string",
-            "description": "Display name, e.g. «Laptop Lea · Screen 1»."
+            "description": "Display name, e.g. “Laptop Lea · Screen 1”."
           },
           "deviceId": {
             "type": [

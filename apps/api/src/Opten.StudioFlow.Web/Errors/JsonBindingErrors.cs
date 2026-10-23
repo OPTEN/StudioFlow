@@ -13,8 +13,8 @@ internal static class JsonBindingErrors
     /// <summary>Field name of an error that belongs to the body as a whole (broken JSON, wrong top-level type).</summary>
     public const string BodyField = "body";
 
-    /// <summary>German message of a value that cannot be read.</summary>
-    public const string InvalidValue = "Ungültiger Wert.";
+    /// <summary>Message of a value that cannot be read.</summary>
+    public const string InvalidValue = "Invalid value.";
 
     /// <summary>The validation errors of a binding failure, or null when <paramref name="exception"/> is none.</summary>
     public static IReadOnlyDictionary<string, string[]>? From(BadHttpRequestException exception)

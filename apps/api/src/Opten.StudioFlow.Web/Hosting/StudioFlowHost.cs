@@ -91,7 +91,7 @@ internal static class StudioFlowHost
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {
-            // Problems created by the framework (status code pages, authentication) get the code and a German title.
+            // Problems created by the framework (status code pages, authentication) get the code and an English title.
             var status = context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode;
             if (context.ProblemDetails.Extensions.TryAdd(Problems.CodeExtension, Problems.CodeFor(status)))
             {
@@ -259,7 +259,7 @@ internal static class StudioFlowHost
             {
                 var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var wait) ? wait : TimeSpan.FromMinutes(1);
                 context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
-                await Problems.WriteAsync(context.HttpContext, StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, "Zu viele Versuche. Bitte später erneut versuchen.");
+                await Problems.WriteAsync(context.HttpContext, StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, "Too many attempts. Please try again later.");
             };
             options.AddPolicy(ApiSurface.PairingRequestsLimit, context => PerClient(context, Limits(context).RequestsPerIpPer10Min));
             options.AddPolicy(ApiSurface.RedeemLimit, context => PerClient(context, Limits(context).RedeemPerIpPer10Min));

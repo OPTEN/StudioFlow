@@ -7,7 +7,7 @@ namespace Opten.StudioFlow.Core.Domain;
 /// <param name="Connected">The device hub connection is up (the fast signal; LiveKit only notices after ~21 s).</param>
 /// <param name="Published">LiveKit reports a published track with the slot name for the device identity.</param>
 /// <param name="Reported">
-/// Slot state in the latest report of the device's current session; null («no state») when the slot was missing from
+/// Slot state in the latest report of the device's current session; null (“no state”) when the slot was missing from
 /// that report or the session has not reported yet – a new session starts without states, so nothing a previous page
 /// or tab reported can make the slot look live.
 /// </param>
@@ -31,8 +31,8 @@ public static class SourceStatusRules
     /// <summary>
     /// Evaluates the status. <paramref name="wasLive"/> is true when the slot was <c>ok</c> before and has not been
     /// blocked or removed since; it distinguishes an outage (<c>reconnecting</c>, no escalation) from a slot that never
-    /// went live (<c>connecting</c> / <c>offline</c>). A slot reported <c>ended</c> (stopped on purpose: «Teilen
-    /// beenden», camera stopped) is <c>ended</c> and <c>failed</c> is <c>lost</c>, whatever the connection; a slot
+    /// went live (<c>connecting</c> / <c>offline</c>). A slot reported <c>ended</c> (stopped on purpose: “Stop
+    /// sharing”, camera stopped) is <c>ended</c> and <c>failed</c> is <c>lost</c>, whatever the connection; a slot
     /// reported <c>paused</c> (the operating system suspended the camera, e.g. the phone app went to the background) is
     /// not live but expected back, so it is <c>reconnecting</c> when it was live. <c>ok</c> needs a connected device
     /// hub and a live slot (<see cref="SlotSignals.IsLive"/>).
@@ -84,7 +84,7 @@ public static class SourceStatusRules
 /// <param name="StatusChanged">The status (and its timestamp) changed: emit <c>sourceUpserted</c>.</param>
 /// <param name="RemovedIncident">Incident that was replaced or cleared: emit <c>incidentRemoved</c>.</param>
 /// <param name="UpsertedIncident">Incident that was opened, escalated or recovered: emit <c>incidentUpserted</c>.</param>
-/// <param name="LogAction">Audit action for «Letzte Ereignisse», if any.</param>
+/// <param name="LogAction">Audit action for “Recent events”, if any.</param>
 public sealed record SourceHealthChange(bool StatusChanged, IncidentDto? RemovedIncident, IncidentDto? UpsertedIncident, string? LogAction)
 {
     /// <summary>Nothing changed.</summary>
@@ -95,7 +95,7 @@ public sealed record SourceHealthChange(bool StatusChanged, IncidentDto? Removed
 /// The status and incident state machine of one source (spec 4.5). Only a transition from <c>ok</c> to an outage opens
 /// an incident (replacing an earlier one of the same source); an escalation of an open incident from
 /// <c>reconnecting</c> to <c>ended</c> or <c>lost</c> updates its kind (a paused camera that is then stopped on purpose:
-/// «K1 verbindet neu», then «K1 Kamera beendet»); the way back from <c>ended</c> or <c>lost</c> to <c>reconnecting</c>
+/// “K1 reconnecting”, then “K1 camera stopped”); the way back from <c>ended</c> or <c>lost</c> to <c>reconnecting</c>
 /// keeps the kind; returning to <c>ok</c> sets <c>endedAt</c> until someone acknowledges it; blocking removes it.
 /// </summary>
 public sealed class SourceHealth(string sourceId, string code, SourceStatus initial, DateTimeOffset? since = null)
@@ -185,7 +185,7 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
     }
 
     /// <summary>
-    /// Removes the incident when its id matches and the source recovered («Gesehen», UNIT-SRC-02). An open incident
+    /// Removes the incident when its id matches and the source recovered (“Seen”, UNIT-SRC-02). An open incident
     /// cannot be acknowledged (<c>conflict</c>); another id is not this source's incident.
     /// </summary>
     public bool Acknowledge(string incidentId)
@@ -197,7 +197,7 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
 
         if (Incident.EndedAt is null)
         {
-            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Störung dauert noch an; bestätigen geht erst, wenn die Quelle wieder da ist.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The incident is still ongoing; it can only be acknowledged once the source is back.");
         }
 
         Incident = null;

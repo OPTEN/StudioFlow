@@ -283,8 +283,8 @@ public sealed class PairingApiTests(StudioFlowApp app) : IClassFixture<StudioFlo
     {
         var admin = await app.AdminAsync();
         var anonymous = app.Anonymous();
-        var denied = await anonymous.PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("Eins", DeviceKind.Laptop, "x")).ExpectAsync<PairingRequestCreatedDto>(HttpStatusCode.Created);
-        var cancelled = await anonymous.PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("Zwei", DeviceKind.Phone, "x")).ExpectAsync<PairingRequestCreatedDto>(HttpStatusCode.Created);
+        var denied = await anonymous.PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("One", DeviceKind.Laptop, "x")).ExpectAsync<PairingRequestCreatedDto>(HttpStatusCode.Created);
+        var cancelled = await anonymous.PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("Two", DeviceKind.Phone, "x")).ExpectAsync<PairingRequestCreatedDto>(HttpStatusCode.Created);
 
         await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/{denied.RequestId}/deny", null, TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
         await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/pairing/requests/prq_unknown/deny", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound);
@@ -320,7 +320,7 @@ public sealed class PairingApiTests(StudioFlowApp app) : IClassFixture<StudioFlo
 
         await limited.ExpectAsync(HttpStatusCode.TooManyRequests);
         Assert.True(limited.Headers.Contains("Retry-After"));
-        await app.Anonymous().PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("Andere Adresse", DeviceKind.Laptop, "x")).ExpectAsync(HttpStatusCode.Created);
+        await app.Anonymous().PostJsonAsync("/api/pairing/requests", new CreatePairingRequest("Another address", DeviceKind.Laptop, "x")).ExpectAsync(HttpStatusCode.Created);
         foreach (var request in app.Service<Core.Application.Runtime.PairingRequestStore>().Pending(await ActiveAsync(), DateTimeOffset.UtcNow))
         {
             app.Service<Core.Application.Runtime.PairingRequestStore>().Remove(request.Id);

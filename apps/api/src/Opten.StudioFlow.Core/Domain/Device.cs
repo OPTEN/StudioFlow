@@ -79,11 +79,11 @@ public sealed class Device
         return (device, secret);
     }
 
-    /// <summary>Default name for a device paired without a name: «Handy n» / «Laptop n» with the lowest free n.</summary>
+    /// <summary>Default name for a device paired without a name: “Phone n” / “Laptop n” with the lowest free n.</summary>
     public static string DefaultName(DeviceKind kind, IEnumerable<string> existingNames)
     {
         ArgumentNullException.ThrowIfNull(existingNames);
-        var stem = kind == DeviceKind.Phone ? "Handy " : "Laptop ";
+        var stem = kind == DeviceKind.Phone ? "Phone " : "Laptop ";
         var used = new HashSet<int>();
         foreach (var existing in existingNames)
         {
@@ -112,14 +112,14 @@ public sealed class Device
         string slot;
         if (kind == SourceKind.Screen && Kind == DeviceKind.Phone)
         {
-            throw StudioFlowException.Invalid("kind", "Ein Handy kann keinen Bildschirm teilen.");
+            throw StudioFlowException.Invalid("kind", "A phone cannot share a screen.");
         }
 
         if (kind == SourceKind.Camera)
         {
             if (FindSlot(DeviceSlots.Camera) is not null)
             {
-                throw StudioFlowException.LimitReached("Dieses Gerät hat bereits eine Kamera.");
+                throw StudioFlowException.LimitReached("This device already has a camera.");
             }
 
             slot = DeviceSlots.Camera;
@@ -127,12 +127,12 @@ public sealed class Device
         else if (kind == SourceKind.Screen)
         {
             var free = Enumerable.Range(1, DeviceSlots.MaxScreens).Select(DeviceSlots.Screen).FirstOrDefault(s => FindSlot(s) is null)
-                ?? throw StudioFlowException.LimitReached("Pro Gerät sind höchstens 9 Bildschirme möglich.");
+                ?? throw StudioFlowException.LimitReached("A device can have at most 9 screens.");
             slot = free;
         }
         else
         {
-            throw StudioFlowException.Invalid("kind", "Ein Gerät kann nur Kamera- oder Bildschirm-Slots haben.");
+            throw StudioFlowException.Invalid("kind", "A device can only have camera or screen slots.");
         }
 
         var allocated = new DeviceSlot(slot, SlotCodes.Allocate(kind, codesInUse), kind);
@@ -154,7 +154,7 @@ public sealed class Device
 
         if (Kind == DeviceKind.Phone && existing.Kind == SourceKind.Camera)
         {
-            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Kamera eines Handys kann nicht entfernt werden.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The camera of a phone cannot be removed.");
         }
 
         Slots = [.. Slots.Where(s => s != existing)];
@@ -216,7 +216,7 @@ public sealed class Device
     }
 
     /// <summary>
-    /// Label of a slot: phones «{name}», laptop screens «{name} · Screen {n}», a laptop camera «{name} · Kamera».
+    /// Label of a slot: phones “{name}”, laptop screens “{name} · Screen {n}”, a laptop camera “{name} · Camera”.
     /// </summary>
     public string LabelOf(DeviceSlot slot)
     {
@@ -226,9 +226,9 @@ public sealed class Device
             return $"{Name} · Screen {screen.ToString(CultureInfo.InvariantCulture)}";
         }
 
-        return Kind == DeviceKind.Phone ? Name : $"{Name} · Kamera";
+        return Kind == DeviceKind.Phone ? Name : $"{Name} · Camera";
     }
 
-    /// <summary>Slot codes joined for log texts, e.g. «S1, S2».</summary>
+    /// <summary>Slot codes joined for log texts, e.g. “S1, S2”.</summary>
     public string CodesText() => string.Join(", ", Slots.Select(s => s.Code));
 }
