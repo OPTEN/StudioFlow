@@ -10,7 +10,7 @@
     @if (notice(); as text) {
       <div class="c-notice c-notice--warn" role="status">
         <sf-icon class="c-notice__icon" name="alert" />
-        <p class="c-notice__text">{{ text }}</p>
+        <p class="c-notice__text">{{ t(text) }}</p>
       </div>
     }
 

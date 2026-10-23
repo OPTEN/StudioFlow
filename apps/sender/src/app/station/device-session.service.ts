@@ -6,7 +6,10 @@ import {
   type LocalSlotState,
   type MediaSessionState,
   type SlotFailure,
+  type SlotMessageKey,
+  type TechCheckResult,
 } from '@studioflow/media-client';
+import { msg } from '@studioflow/i18n';
 import { backoffDelay, type HubState } from '@studioflow/realtime-client';
 import {
   HUB,
@@ -20,7 +23,6 @@ import {
   type DeviceSlotDto,
   type TallyDto,
   type TallyState,
-  type TechCheckDto,
 } from '@studioflow/scene-model';
 import { toApiError, type ApiError } from '../core/api-error';
 import { APP_VERSION } from '../core/app-version';
@@ -46,7 +48,7 @@ import {
   parseTally,
   slotNumber,
 } from './device-messages';
-import { allocateSlotErrorMessage, releaseSlotErrorMessage } from './slot-errors';
+import { SLOT_ERRORS, allocateSlotError, releaseSlotError, type ActionError } from './slot-errors';
 import {
   DEVICE_HUB_FACTORY,
   SENDER_MEDIA_FACTORY,
@@ -65,7 +67,7 @@ export const REPORT_INTERVAL_MS = 2000;
  */
 export const REPORT_STALE_MS = 10_000;
 /**
- * While the hub is not connected: `GET /api/device/me` at this pace, to tell «server not reachable» apart and to notice
+ * While the hub is not connected: `GET /api/device/me` at this pace, to tell “server not reachable” apart and to notice
  * a removed or blocked device. Never while connected: then the RTT comes from the `Report` round trip and the server
  * pushes `self` on changes.
  */
@@ -82,8 +84,8 @@ export const TECH_CHECK_CAMERA_WAIT_MS = 8000;
 /**
  * Lifecycle of the station:
  * `idle` not started · `connecting` hub/media connecting, no Hello answer yet · `online` Hello answered ·
- * `blocked` the Regie blocked the device («Dieses Gerät ist gesperrt», retried every 15 s) · `replaced` another tab
- * took over («In einem anderen Tab geöffnet») · `removed` credentials invalid (back to pairing) · `stopped` left.
+ * `blocked` the Regie blocked the device (“This device is blocked”, retried every 15 s) · `replaced` another tab
+ * took over (“Opened in another tab”) · `removed` credentials invalid (back to pairing) · `stopped` left.
  */
 export type StationPhase =
   'idle' | 'connecting' | 'online' | 'blocked' | 'replaced' | 'removed' | 'stopped';
@@ -95,8 +97,8 @@ export type ConnectionView =
 /** State of one slot as shown on the station. */
 export interface SlotView {
   readonly state: LocalSlotState;
-  /** German explanation (failure, cancelled or ended share). */
-  readonly message: string | null;
+  /** Key of the explanation (failure, cancelled or ended share), shown in the language of the reader. */
+  readonly messageKey: SlotMessageKey | null;
   /** Cause of a `failed` slot or a cancelled share (codes of `@studioflow/media-client`), else null. */
   readonly failure: SlotFailure | null;
 }
@@ -126,7 +128,7 @@ const TERMINAL_PHASES: ReadonlySet<StationPhase> = new Set([
   'stopped',
 ]);
 const SENDING: ReadonlySet<LocalSlotState> = new Set(['starting', 'live', 'paused']);
-const IDLE_VIEW: SlotView = { state: 'idle', message: null, failure: null };
+const IDLE_VIEW: SlotView = { state: 'idle', messageKey: null, failure: null };
 
 /** Monotonic milliseconds for the report round trip. */
 function monotonicNow(): number {
@@ -135,14 +137,18 @@ function monotonicNow(): number {
 
 /**
  * View of a slot: the publisher's state, else the one of a slot stopped on purpose or lost by a reload (reported
- * `ended`). A stopped camera is simply off; an ended screen share offers «Erneut teilen».
+ * `ended`). A stopped camera is simply off; an ended screen share offers “Share again”.
  */
 function viewOf(slot: string, live: SlotView | undefined, ended: boolean): SlotView {
   if (live !== undefined && live.state !== 'idle') {
     return live;
   }
   if (ended && slotKind(slot) === 'screen') {
-    return { state: 'ended', message: live?.message ?? 'Freigabe beendet', failure: null };
+    return {
+      state: 'ended',
+      messageKey: live?.messageKey ?? 'media.slot.shareEnded',
+      failure: null,
+    };
   }
   return ended ? IDLE_VIEW : (live ?? IDLE_VIEW);
 }
@@ -177,7 +183,7 @@ export class DeviceSessionService {
   readonly hubState = signal<HubState>('idle');
   readonly mediaState = signal<MediaSessionState>('idle');
   readonly connection = signal<ConnectionView>('connecting');
-  /** Start of the current outage (for «Verbindet neu … 00:12»), null while connected. */
+  /** Start of the current outage (for “Verbindet neu … 00:12”), null while connected. */
   readonly degradedSince = signal<number | null>(null);
   /** Ticks every second (timers in the UI). */
   readonly now = signal(Date.now());
@@ -187,12 +193,13 @@ export class DeviceSessionService {
   readonly tally = signal<TallyDto>(OFF_TALLY);
   readonly message = signal<RegieMessage | null>(null);
   readonly reshareRequests = signal<ReadonlySet<string>>(new Set());
-  readonly techCheck = signal<TechCheckDto | null>(null);
+  /** The last technical check, with its problems as messages (the report to the Regie leaves them out). */
+  readonly techCheck = signal<TechCheckResult | null>(null);
   readonly techCheckRunning = signal(false);
   /** Round trip of the last `Report` invocation (before the first one: of the first `GET /api/device/me`). */
   readonly rttMs = signal<number | null>(null);
-  /** German error of the last user action (allocating a screen, removing a slot …). */
-  readonly actionError = signal<string | null>(null);
+  /** Error of the last user action (allocating a screen, removing a slot …). */
+  readonly actionError = signal<ActionError | null>(null);
   /** Bumped whenever a local preview stream may have changed. */
   readonly previewRevision = signal(0);
 
@@ -276,7 +283,7 @@ export class DeviceSessionService {
   }
 
   /**
-   * Id of this tab's session for `Hello`. A reload starts a new one, and so does «Hier weitermachen»: the server
+   * Id of this tab's session for `Hello`. A reload starts a new one, and so does “Continue here”: the server
    * refuses a `Hello` from a session that another tab replaced (GAP-21), so taking over needs a fresh id.
    */
   get sessionId(): string {
@@ -313,8 +320,8 @@ export class DeviceSessionService {
       hub.on(HUB.self, (self: unknown) => this.onSelf(self)),
       hub.on(HUB.sessionReplaced, () => this.enterReplaced()),
       media.session.onStateChange((state) => this.onMediaState(state)),
-      media.publisher.onSlotState((slot, state, message, failure) =>
-        this.onSlotState(slot, state, message, failure),
+      media.publisher.onSlotState((slot, state, messageKey, failure) =>
+        this.onSlotState(slot, state, messageKey, failure),
       ),
       this.network.onWake(() => this.onWake()),
       this.network.onOnlineChange(() => this.refreshConnection()),
@@ -333,7 +340,7 @@ export class DeviceSessionService {
     this.installTestHook();
   }
 
-  /** «Hier weitermachen»: takes the session back from the other tab, with a new session id (GAP-21). */
+  /** “Continue here”: takes the session back from the other tab, with a new session id (GAP-21). */
   takeOver(): void {
     if (this.phase() !== 'replaced') {
       return;
@@ -363,8 +370,8 @@ export class DeviceSessionService {
   }
 
   /**
-   * Stops the camera on purpose: reported as `ended` («Kamera beendet» in the Regie). `paused` is left to the
-   * publisher for a camera the OS or browser suspended, which the Regie shows as «verbindet neu».
+   * Stops the camera on purpose: reported as `ended` (“Kamera beendet” in the Regie). `paused` is left to the
+   * publisher for a camera the OS or browser suspended, which the Regie shows as “verbindet neu”.
    */
   stopCamera(): void {
     const media = this.media;
@@ -403,7 +410,7 @@ export class DeviceSessionService {
     }
   }
 
-  /** «Dunkel» on or off. */
+  /** “Dark” on or off. */
   setDark(dark: boolean): void {
     this.settingsService.update({ dark });
   }
@@ -420,7 +427,7 @@ export class DeviceSessionService {
       this.addSlotToSelf(slot);
       this.startCamera();
     } catch (error) {
-      this.actionError.set(allocateSlotErrorMessage(error, 'camera'));
+      this.actionError.set(allocateSlotError(error, 'camera'));
     }
   }
 
@@ -441,7 +448,7 @@ export class DeviceSessionService {
   }
 
   /**
-   * «+ weiteren Bildschirm»: opens the browser's share dialog at once (user gesture) for the next free screen slot
+   * “+ weiteren Bildschirm”: opens the browser's share dialog at once (user gesture) for the next free screen slot
    * and allocates that slot on the server meanwhile (`POST /api/device/slots`, the server takes the lowest free one).
    */
   addScreen(): void {
@@ -458,7 +465,7 @@ export class DeviceSessionService {
       }
     }
     if (slot === null) {
-      this.actionError.set('Pro Gerät sind höchstens 9 Bildschirme möglich.');
+      this.actionError.set(SLOT_ERRORS.screenLimit);
       return;
     }
     this.actionError.set(null);
@@ -468,13 +475,13 @@ export class DeviceSessionService {
     void this.allocateScreen(slot);
   }
 
-  /** «Teilen beenden»: stops the share; the slot stays (the Regie sees «Teilen beendet» and can ask again). */
+  /** “Stop sharing”: stops the share; the slot stays (the Regie sees “sharing stopped” and can ask again). */
   endShare(slot: string): void {
     this.setEnded(slot, true);
     void this.media?.publisher.unpublish(slot);
   }
 
-  /** «Entfernen»: stops the slot and removes the source in the Regie (`DELETE /api/device/slots/{slot}`). */
+  /** “Remove”: stops the slot and removes the source in the Regie (`DELETE /api/device/slots/{slot}`). */
   async removeSlot(slot: string): Promise<void> {
     void this.media?.publisher.unpublish(slot);
     this.setEnded(slot, false);
@@ -488,19 +495,19 @@ export class DeviceSessionService {
       await this.api.releaseSlot(slot);
       this.removeSlotFromSelf(slot);
     } catch (error) {
-      const message = releaseSlotErrorMessage(error, slot);
-      if (message === null) {
+      const failure = releaseSlotError(error, slot);
+      if (failure === null) {
         // Already gone on the server (removed in another tab): the goal is reached.
         this.removeSlotFromSelf(slot);
         return;
       }
-      this.actionError.set(message);
+      this.actionError.set(failure);
     }
   }
 
   // ---- Messages and technical check ---------------------------------------------------------------------------
 
-  /** «OK» on the Regie message banner. */
+  /** “OK” on the Regie message banner. */
   dismissMessage(): void {
     this.clearTimer('messageTimer');
     this.message.set(null);
@@ -603,7 +610,7 @@ export class DeviceSessionService {
         this.enterBlocked();
         return;
       }
-      // Anything else (e.g. «service_unavailable» during a short database outage) is retried calmly below.
+      // Anything else (e.g. “service_unavailable” during a short database outage) is retried calmly below.
       if (hub.state !== 'connected') {
         return;
       }
@@ -718,7 +725,7 @@ export class DeviceSessionService {
     }
     this.refreshConnection();
     if (rtcChanged) {
-      // The server marks live slots «verbindet neu» as soon as rtc leaves `connected` (GAP-08): report it now.
+      // The server marks live slots “verbindet neu” as soon as rtc leaves `connected` (GAP-08): report it now.
       void this.sendReport();
     }
   }
@@ -726,12 +733,12 @@ export class DeviceSessionService {
   private onSlotState(
     slot: string,
     state: LocalSlotState,
-    message?: string,
+    messageKey?: SlotMessageKey,
     failure?: SlotFailure,
   ): void {
     this.slotStates.update((states) => ({
       ...states,
-      [slot]: { state, message: message ?? null, failure: failure ?? null },
+      [slot]: { state, messageKey: messageKey ?? null, failure: failure ?? null },
     }));
     this.previewRevision.update((revision) => revision + 1);
     if (state === 'starting' || state === 'live') {
@@ -764,7 +771,7 @@ export class DeviceSessionService {
         this.freshScreens.delete(predicted);
         void this.media?.publisher.unpublish(predicted);
         this.actionError.set(
-          `Bitte bei «Bildschirm ${slotNumber(allocated.slot)}» noch einmal auf «Bildschirm teilen» klicken.`,
+          msg('sender.station.error.screenMoved', { number: slotNumber(allocated.slot) }),
         );
         return;
       }
@@ -778,7 +785,7 @@ export class DeviceSessionService {
       this.freshScreens.delete(predicted);
       this.cancelledScreens.delete(predicted);
       void this.media?.publisher.unpublish(predicted);
-      this.actionError.set(allocateSlotErrorMessage(error, 'screen'));
+      this.actionError.set(allocateSlotError(error, 'screen'));
     }
   }
 
@@ -797,7 +804,7 @@ export class DeviceSessionService {
       await this.api.releaseSlot(slot);
       this.removeSlotFromSelf(slot);
     } catch {
-      // The slot stays; the user can remove it with «Entfernen».
+      // The slot stays; the user can remove it with “Remove”.
     }
   }
 
@@ -926,9 +933,7 @@ export class DeviceSessionService {
     void this.media?.publisher.stopAll();
     this.credentials.clear();
     this.settingsService.update({ sharedScreens: [], techCheck: null });
-    this.notices.pairingNotice.set(
-      'Die Regie hat dieses Gerät entfernt. Du kannst es hier neu koppeln.',
-    );
+    this.notices.pairingNotice.set('sender.notices.deviceRemoved');
     this.refreshConnection();
     this.updateDerived();
   }
@@ -979,7 +984,7 @@ export class DeviceSessionService {
         this.rttMs.set(Math.max(0, Math.round(monotonicNow() - sentAt)));
       }
     } catch {
-      // Connection lost or «service_unavailable»: the next report follows in 2 s.
+      // Connection lost or “service_unavailable”: the next report follows in 2 s.
     } finally {
       if (seq === this.reportSeq) {
         this.reportStartedAt = null;
@@ -1000,7 +1005,7 @@ export class DeviceSessionService {
 
   /**
    * `GET /api/device/me`: on start, after a hub reconnect and while the hub is down (see {@link OUTAGE_PROBE_MS}).
-   * Refreshes self and tells «server not reachable» apart; notices a removed or blocked device while the hub is down.
+   * Refreshes self and tells “server not reachable” apart; notices a removed or blocked device while the hub is down.
    */
   private async probeSelf(): Promise<void> {
     if (this.probing || this.isTerminal() || this.phase() === 'idle') {

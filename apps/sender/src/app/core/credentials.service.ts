@@ -51,8 +51,8 @@ function parseRecord(value: unknown): StoredRecord {
 }
 
 /**
- * Device credentials in `localStorage` (spec 4.6 «Re-recognition»). Reading never throws: corrupt data counts as
- * «not paired». The secret never leaves this service except as the bearer value.
+ * Device credentials in `localStorage` (spec 4.6 “Re-recognition”). Reading never throws: corrupt data counts as
+ * “not paired”. The secret never leaves this service except as the bearer value.
  */
 @Injectable({ providedIn: 'root' })
 export class CredentialsService {

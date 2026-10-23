@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { LIMITS } from '@studioflow/scene-model';
 import { DEVICE_ENVIRONMENT } from '../core/device-environment';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
@@ -8,32 +9,35 @@ import { describeCameraProblem, type CameraProblem } from './camera-problem';
 import { ConnectionStatusComponent } from './connection-status.component';
 import { DeviceSessionService, type StationSlot } from './device-session.service';
 import { slotNumber } from './device-messages';
+import { actionErrorText } from './slot-errors';
 
 const BUSY = new Set(['starting', 'live', 'paused']);
 
-/** German state line of a slot. */
+/** State line of a slot, in the active language. */
 export function slotStateText(slot: StationSlot): string {
   const screen = slot.kind === 'screen';
   switch (slot.state) {
     case 'starting':
-      return screen ? 'Freigabe startet …' : 'Kamera startet …';
+      return t(
+        screen ? 'sender.station.slot.startingScreen' : 'sender.station.slot.startingCamera',
+      );
     case 'live':
-      return screen ? 'Wird geteilt' : 'Kamera sendet';
+      return t(screen ? 'sender.station.slot.liveScreen' : 'sender.station.slot.liveCamera');
     case 'paused':
-      return 'Pausiert, das Bild kommt gleich zurück';
+      return t('sender.station.slot.paused');
     case 'ended':
-      return 'Teilen beendet';
+      return t('sender.station.slot.ended');
     case 'failed':
-      return screen ? 'Teilen fehlgeschlagen' : 'Kamera ausgefallen';
+      return t(screen ? 'sender.station.slot.failedScreen' : 'sender.station.slot.failedCamera');
     default:
-      return screen ? 'Bereit zum Teilen' : 'Kamera ist aus';
+      return t(screen ? 'sender.station.slot.idleScreen' : 'sender.station.slot.idleCamera');
   }
 }
 
 /**
- * Laptop with screens (plan «Laptop mit Screens»): one row per screen slot with code, state, local preview,
- * «Teilen beenden» and «Entfernen»; «Bildschirm teilen», «+ weiteren Bildschirm», a large «Erneut teilen» after an
- * ended share or a reshare request, and the optional camera.
+ * Laptop with screens (plan “Laptop with screens”): one row per screen slot with code, state, local preview,
+ * “Stop sharing” and “Remove”; “Share screen”, “+ Another screen”, a large “Share again” after an ended share or a
+ * reshare request, and the optional camera.
  */
 @Component({
   selector: 'sf-laptop-station',
@@ -46,11 +50,12 @@ export class LaptopStationComponent {
   protected readonly session = inject(DeviceSessionService);
   private readonly environment = inject(DEVICE_ENVIRONMENT);
 
-  /** Greet with «Gekoppelt» right after pairing. */
+  /** Greet with “Paired” right after pairing. */
   readonly justPaired = input(false);
-  /** «Technik-Check» was pressed. */
+  /** “Technik-Check” was pressed. */
   readonly openTechCheck = output<void>();
 
+  protected readonly t = t;
   protected readonly canShareScreen = this.environment.canShareScreen();
   protected readonly self = this.session.self;
   protected readonly screens = this.session.screens;
@@ -60,7 +65,7 @@ export class LaptopStationComponent {
     this.screens().filter((slot) => slot.reshareRequested),
   );
 
-  /** «+ weiteren Bildschirm» only once every existing screen is in use. */
+  /** “+ weiteren Bildschirm” only once every existing screen is in use. */
   protected readonly canAddScreen = computed(() => {
     const screens = this.screens();
     return (
@@ -71,11 +76,18 @@ export class LaptopStationComponent {
     );
   });
   protected readonly techLevel = computed(() => this.session.techCheck()?.overall ?? 'unknown');
+  /** Error of the last action in the active language. */
+  protected readonly actionError = computed(() => {
+    const error = this.session.actionError();
+    return error === null ? null : actionErrorText(error);
+  });
 
   protected readonly stateText = slotStateText;
 
   protected label(slot: StationSlot): string {
-    return slot.kind === 'camera' ? 'Kamera' : `Bildschirm ${slotNumber(slot.slot)}`;
+    return slot.kind === 'camera'
+      ? t('sender.station.slot.camera')
+      : t('sender.station.slot.screen', { number: slotNumber(slot.slot) });
   }
 
   protected busy(slot: StationSlot): boolean {
@@ -88,7 +100,7 @@ export class LaptopStationComponent {
 
   protected cameraProblem(slot: StationSlot): CameraProblem | null {
     return slot.kind === 'camera' && slot.state === 'failed'
-      ? describeCameraProblem(slot.failure, slot.message, this.environment.userAgent())
+      ? describeCameraProblem(slot.failure, slot.messageKey, this.environment.userAgent())
       : null;
   }
 

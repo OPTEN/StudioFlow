@@ -50,16 +50,16 @@ describe('WaitingComponent', () => {
     vi.useRealTimers();
   });
 
-  it('shows the check code «47 12» with its caption and the name', async () => {
+  it('shows the check code “47 12” with its caption and the name', async () => {
     const { element } = await render();
 
     expect(element.querySelector('[data-testid=check-code]')?.textContent?.trim()).toBe('47 12');
-    expect(element.textContent).toContain('Prüfcode für die Regie');
-    expect(element.textContent).toContain('«Laptop Anna»');
-    expect(element.querySelector('h1')?.textContent).toContain('Wartet auf Freigabe');
+    expect(element.textContent).toContain('Check code for the control room');
+    expect(element.textContent).toContain('“Laptop Anna”');
+    expect(element.querySelector('h1')?.textContent).toContain('Waiting for approval');
   });
 
-  it('shows the denial with «Neue Anfrage»', async () => {
+  it('shows the denial with “New request”', async () => {
     getPairingRequestStatus.mockResolvedValue({ status: 'denied', credentials: null });
     const { element, detect } = await render();
 
@@ -67,7 +67,7 @@ describe('WaitingComponent', () => {
     detect();
 
     expect(element.querySelector('[data-testid=pairing-denied]')).not.toBeNull();
-    expect(element.textContent).toContain('Neue Anfrage');
+    expect(element.textContent).toContain('New request');
   });
 
   it('shows the expiry', async () => {

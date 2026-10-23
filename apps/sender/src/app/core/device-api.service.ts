@@ -31,8 +31,8 @@ function nowMs(): number {
 
 /**
  * Typed REST client of the sender: the public pairing routes and the device routes (`ApiSurface.cs`, groups
- * «Pairing (public)» and «Device (sender)»). Device routes get the bearer from {@link deviceAuthInterceptor}. Every
- * method rejects with an {@link ApiError} carrying a German message.
+ * “Pairing (public)” and “Device (sender)”). Device routes get the bearer from {@link deviceAuthInterceptor}. Every
+ * method rejects with an {@link ApiError} carrying a message in the active language (`userMessage`).
  */
 @Injectable({ providedIn: 'root' })
 export class DeviceApiService {
@@ -102,7 +102,7 @@ export class DeviceApiService {
     return this.call(this.http.post<DeviceSlotDto>('/api/device/slots', { kind }));
   }
 
-  /** `DELETE /api/device/slots/{slot}`: removes the source («Entfernen»). */
+  /** `DELETE /api/device/slots/{slot}`: removes the source (“Remove”). */
   async releaseSlot(slot: string): Promise<void> {
     await this.call(this.http.delete(`/api/device/slots/${encodeURIComponent(slot)}`));
   }

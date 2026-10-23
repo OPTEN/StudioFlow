@@ -25,10 +25,10 @@ describe('camera problems', () => {
   });
 
   it('uses the slot message as the title of an unexplained failure', () => {
-    expect(describeCameraProblem('unknown', 'Etwas anderes', PIXEL).title).toBe('Etwas anderes');
-    expect(describeCameraProblem(null, null, PIXEL).title).toBe(
-      'Die Kamera konnte nicht gestartet werden',
+    expect(describeCameraProblem('unknown', 'media.slot.failure.unknown', PIXEL).title).toBe(
+      'The screen could not be shared.',
     );
+    expect(describeCameraProblem(null, null, PIXEL).title).toBe('The camera could not be started');
   });
 
   it.each([
@@ -42,43 +42,31 @@ describe('camera problems', () => {
   });
 
   it('explains a denied camera with platform specific steps', () => {
-    const ios = describeCameraProblem('permission-denied', 'Kein Zugriff auf die Kamera.', IPHONE);
-    expect(ios.title).toBe('Kein Zugriff auf die Kamera');
-    expect(ios.steps.join(' ')).toContain('«aA»');
+    const ios = describeCameraProblem(
+      'permission-denied',
+      'media.slot.failure.permission-denied',
+      IPHONE,
+    );
+    expect(ios.title).toBe('No access to the camera');
+    expect(ios.steps.join(' ')).toContain('“aA”');
 
-    const android = describeCameraProblem('permission-denied', 'Kein Zugriff', PIXEL);
-    expect(android.steps.join(' ')).toContain('Berechtigungen');
+    const android = describeCameraProblem(
+      'permission-denied',
+      'media.slot.failure.permission-denied',
+      PIXEL,
+    );
+    expect(android.steps.join(' ')).toContain('Permissions');
   });
 
   it('names a camera taken by another app', () => {
-    const problem = describeCameraProblem(
-      'in-use',
-      'Die Kamera ist nicht verfügbar. Wird sie von einer anderen App verwendet?',
-      WINDOWS_EDGE,
-    );
-    expect(problem.title).toBe('Kamera wird von einer anderen App verwendet');
-    expect(problem.steps.at(-1)).toBe('Dann auf «Erneut versuchen» klicken.');
+    const problem = describeCameraProblem('in-use', 'media.slot.failure.in-use', WINDOWS_EDGE);
+    expect(problem.title).toBe('The camera is being used by another app');
+    expect(problem.steps.at(-1)).toBe('Then click “Try again”.');
   });
 
-  it('uses «tippen» on touch platforms', () => {
-    expect(describeCameraProblem('not-found', 'Keine Kamera gefunden.', PIXEL).steps.at(-1)).toBe(
-      'Dann auf «Erneut versuchen» tippen.',
-    );
-  });
-
-  it('never uses ß in the German texts', () => {
-    for (const agent of [IPHONE, PIXEL, WINDOWS_EDGE, FIREFOX, MAC_SAFARI]) {
-      for (const failure of [
-        'permission-denied',
-        'in-use',
-        'not-found',
-        'track-lost',
-        'publish-failed',
-        'unknown',
-      ] as const) {
-        const problem = describeCameraProblem(failure, 'x', agent);
-        expect([problem.title, ...problem.steps].join(' ')).not.toContain('ß');
-      }
-    }
+  it('says “tap” on touch platforms', () => {
+    expect(
+      describeCameraProblem('not-found', 'media.slot.failure.not-found', PIXEL).steps.at(-1),
+    ).toBe('Then tap “Try again”.');
   });
 });

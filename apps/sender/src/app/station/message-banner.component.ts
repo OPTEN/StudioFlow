@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { formatHm } from '@studioflow/scene-model';
 import { IconComponent } from '../shared/icon.component';
 import type { RegieMessage } from './device-session.service';
 
-/** A message from the Regie (Regie-Chat), prominent, with time and «OK». */
+/** A message from the Regie (Regie-Chat), prominent, with time and “OK”. */
 @Component({
   selector: 'sf-message-banner',
   imports: [IconComponent],
@@ -17,12 +18,13 @@ import type { RegieMessage } from './device-session.service';
       <sf-icon class="c-message__icon" name="message" />
       <div class="c-message__body">
         <h2 class="c-message__title" id="regie-message-title">
-          Nachricht der Regie <span class="c-message__time u-mono">{{ time() }}</span>
+          {{ t('sender.station.message.title') }}
+          <span class="c-message__time u-mono">{{ time() }}</span>
         </h2>
         <p class="c-message__text">{{ message().text }}</p>
       </div>
       <button class="c-button c-button--fill c-message__ok" type="button" (click)="dismiss.emit()">
-        OK
+        {{ t('common.ok') }}
       </button>
     </section>
   `,
@@ -84,6 +86,8 @@ import type { RegieMessage } from './device-session.service';
 export class MessageBannerComponent {
   readonly message = input.required<RegieMessage>();
   readonly dismiss = output<void>();
+
+  protected readonly t = t;
 
   protected readonly time = computed(() => formatHm(this.message().at));
 }

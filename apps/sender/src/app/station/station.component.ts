@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { t } from '@studioflow/i18n';
 import { AppUpdateService } from '../core/app-update.service';
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
@@ -20,9 +21,9 @@ import { PhoneStationComponent } from './phone-station.component';
 import { TallyFrameComponent } from './tally-frame.component';
 import { TechCheckPanelComponent } from './tech-check-panel.component';
 
-/** The «Gekoppelt» greeting of a phone disappears after this time. */
+/** The “Paired” greeting of a phone disappears after this time. */
 const GREETING_MS = 8000;
-/** «Server nicht erreichbar» only after the connection has been down this long. */
+/** “Server not reachable” only after the connection has been down this long. */
 const UNREACHABLE_AFTER_MS = 5000;
 
 /**
@@ -46,6 +47,7 @@ const UNREACHABLE_AFTER_MS = 5000;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StationComponent {
+  protected readonly t = t;
   protected readonly session = inject(DeviceSessionService);
   protected readonly updates = inject(AppUpdateService);
   private readonly liveState = inject(LiveStateService);

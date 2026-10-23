@@ -2,14 +2,15 @@
  * Test doubles for the sender's unit tests (happy-dom has no WebRTC and no SignalR server). They implement the narrow
  * port types of `station-ports.ts` and are injected through the DI tokens there – never used by the app itself.
  */
-import type { LocalSlotState, MediaSessionState, SlotFailure } from '@studioflow/media-client';
-import type { HubHandler, HubState } from '@studioflow/realtime-client';
 import type {
-  DeviceSelfDto,
-  LiveKitTokenDto,
-  SlotTelemetryDto,
-  TechCheckDto,
-} from '@studioflow/scene-model';
+  LocalSlotState,
+  MediaSessionState,
+  SlotFailure,
+  SlotMessageKey,
+  TechCheckResult,
+} from '@studioflow/media-client';
+import type { HubHandler, HubState } from '@studioflow/realtime-client';
+import type { DeviceSelfDto, LiveKitTokenDto, SlotTelemetryDto } from '@studioflow/scene-model';
 import type { SafeStorage } from '../app/core/browser-storage';
 import type { DeviceEnvironment } from '../app/core/device-environment';
 import type {
@@ -203,7 +204,12 @@ export class FakePublisher implements SenderPublisher {
   telemetry: SlotTelemetryDto[] = [];
   disposed = false;
   private readonly listeners = new Set<
-    (slot: string, state: LocalSlotState, message?: string, failure?: SlotFailure) => void
+    (
+      slot: string,
+      state: LocalSlotState,
+      messageKey?: SlotMessageKey,
+      failure?: SlotFailure,
+    ) => void
   >();
 
   publishCamera(slot: string, settings: { facingMode: string; resolution: number }): Promise<void> {
@@ -244,7 +250,7 @@ export class FakePublisher implements SenderPublisher {
     listener: (
       slot: string,
       state: LocalSlotState,
-      message?: string,
+      messageKey?: SlotMessageKey,
       failure?: SlotFailure,
     ) => void,
   ): () => void {
@@ -269,10 +275,15 @@ export class FakePublisher implements SenderPublisher {
   }
 
   /** Drives a slot state as the real publisher would. */
-  emitSlot(slot: string, state: LocalSlotState, message?: string, failure?: SlotFailure): void {
+  emitSlot(
+    slot: string,
+    state: LocalSlotState,
+    messageKey?: SlotMessageKey,
+    failure?: SlotFailure,
+  ): void {
     this.states.set(slot, state);
     for (const listener of [...this.listeners]) {
-      listener(slot, state, message, failure);
+      listener(slot, state, messageKey, failure);
     }
   }
 }
@@ -322,7 +333,7 @@ export function fakeEnvironment(overrides: Partial<DeviceEnvironment> = {}): Dev
 export function phoneSelf(overrides: Partial<DeviceSelfDto> = {}): DeviceSelfDto {
   return {
     id: 'dev_phone0001',
-    name: 'Handy Bühne',
+    name: 'Phone stage left',
     kind: 'phone',
     state: 'active',
     productionId: 'prd_webinar01',
@@ -356,7 +367,7 @@ export const LIVEKIT_TOKEN: LiveKitTokenDto = {
 };
 
 /** A tech check result. */
-export const TECH_CHECK_OK: TechCheckDto = {
+export const TECH_CHECK_OK: TechCheckResult = {
   overall: 'ok',
   camera: 'ok',
   network: 'ok',
@@ -365,6 +376,7 @@ export const TECH_CHECK_OK: TechCheckDto = {
   rttMs: 12,
   at: '2026-10-22T11:00:00Z',
   note: null,
+  problems: [],
 };
 
 /** Settles pending promise chains (with fake timers: also runs due timers of 0 ms). */

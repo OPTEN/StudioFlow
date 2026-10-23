@@ -1,7 +1,7 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
-// Buttons: quiet outlines on the surface, fills only for the action that matters (DESIGN.md «Buttons»).
+// Buttons: quiet outlines on the surface, fills only for the action that matters (DESIGN.md “Buttons”).
 .c-button {
   @include touch-target;
   align-items: center;
@@ -107,7 +107,7 @@
   }
 }
 
-// The one large action of a screen («Erneut teilen», «Weiter»).
+// The one large action of a screen (“Share again”, “Continue”).
 .c-button--large {
   font-size: 17px;
   min-height: 56px;

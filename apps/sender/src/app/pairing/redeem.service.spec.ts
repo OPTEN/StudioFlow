@@ -39,7 +39,7 @@ describe('RedeemService', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('redeems without a name (the server picks «Handy n») and stores the credentials', async () => {
+  it('redeems without a name (the server picks “Phone n”) and stores the credentials', async () => {
     const outcome = await create().redeem('tok123', 'phone', 'Android · Chrome', noDelay);
 
     expect(outcome).toEqual({ kind: 'paired' });
@@ -89,7 +89,7 @@ describe('RedeemService', () => {
   });
 
   it('gives up after a few attempts and reports the error', async () => {
-    redeemInvite.mockRejectedValue(new ApiError(0, null, 'Der Server ist nicht erreichbar.'));
+    redeemInvite.mockRejectedValue(new ApiError(0, null, 'The server is not reachable.'));
 
     const outcome = await create().redeem('tok123', 'phone', 'x', noDelay);
 
@@ -99,7 +99,7 @@ describe('RedeemService', () => {
 
   it('keeps retrying calmly for about a minute while the server is briefly unavailable (503)', async () => {
     redeemInvite.mockRejectedValue(
-      new ApiError(503, 'service_unavailable', 'Der Server ist gerade nicht erreichbar.'),
+      new ApiError(503, 'service_unavailable', 'The server is not reachable right now.'),
     );
     const delays: number[] = [];
 

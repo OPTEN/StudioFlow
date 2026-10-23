@@ -66,4 +66,23 @@ describe('SenderSettingsService', () => {
     expect(service.techCheckFor('dev_one00001')).toEqual(TECH_CHECK_OK);
     expect(service.techCheckFor('dev_two00002')).toBeNull();
   });
+
+  it('keeps the problems of a stored tech check and drops what is not a tech check message', () => {
+    const problem = { key: 'media.techcheck.upload.slow', params: { rate: 2.8, recommended: 6 } };
+    const stored = (problems: unknown): unknown => ({
+      techCheck: { deviceId: 'dev_one00001', result: { ...TECH_CHECK_OK, problems } },
+    });
+
+    expect(parseSettings(stored([problem])).techCheck?.result.problems).toEqual([problem]);
+    expect(
+      parseSettings(stored([{ key: 'sender.station.starting' }])).techCheck?.result.problems,
+    ).toEqual([]);
+    expect(parseSettings(stored('x')).techCheck?.result.problems).toEqual([]);
+  });
+
+  it('reads a tech check stored by an older version without problems', () => {
+    const { problems: _problems, ...old } = TECH_CHECK_OK;
+    const settings = parseSettings({ techCheck: { deviceId: 'dev_one00001', result: old } });
+    expect(settings.techCheck?.result).toEqual({ ...old, problems: [] });
+  });
 });

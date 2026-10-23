@@ -15,21 +15,20 @@
         [class.c-lamp--bad]="techLevel() === 'bad'"
         aria-hidden="true"
       ></span>
-      Technik-Check
+      {{ t('sender.techcheck.open') }}
     </button>
   </header>
 
   <main class="c-laptop__main">
     <div class="c-laptop__intro">
       <h1 class="c-laptop__title" data-route-focus tabindex="-1">
-        {{ justPaired() ? 'Gekoppelt' : self()?.name }}
+        {{ justPaired() ? t('sender.station.laptop.paired') : self()?.name }}
       </h1>
       <p class="c-laptop__lead">
         @if (justPaired()) {
-          «{{ self()?.name }}» ist mit der Regie verbunden. Beim nächsten Mal erkennt StudioFlow
-          diesen Laptop wieder.
+          {{ t('sender.station.laptop.pairedLead', { name: self()?.name ?? '' }) }}
         } @else {
-          Gekoppelt mit «{{ self()?.productionName }}».
+          {{ t('sender.station.laptop.pairedWith', { production: self()?.productionName ?? '' }) }}
         }
       </p>
     </div>
@@ -37,10 +36,7 @@
     @if (!canShareScreen) {
       <div class="c-notice c-notice--warn" role="status">
         <sf-icon class="c-notice__icon" name="alert" />
-        <p class="c-notice__text">
-          Bildschirm teilen geht nur auf Laptops und Desktop-Browsern. Auf diesem Gerät kannst du
-          die Kamera senden.
-        </p>
+        <p class="c-notice__text">{{ t('sender.station.laptop.noScreenShare') }}</p>
       </div>
     }
 
@@ -51,7 +47,7 @@
         [attr.aria-labelledby]="'reshare-' + slot.slot"
       >
         <p class="c-laptop__reshare-text" [id]="'reshare-' + slot.slot">
-          Die Regie bittet dich, den Bildschirm erneut zu teilen
+          {{ t('sender.station.laptop.reshare') }}
           <span class="c-code">{{ slot.code }}</span>
         </p>
         <div class="c-laptop__reshare-actions">
@@ -61,16 +57,16 @@
             (click)="share(slot)"
           >
             <sf-icon name="screen" />
-            Erneut teilen
+            {{ t('sender.station.laptop.shareAgain') }}
           </button>
           <button class="c-button" type="button" (click)="session.dismissReshare(slot.slot)">
-            Später
+            {{ t('sender.station.laptop.later') }}
           </button>
         </div>
       </section>
     }
 
-    <h2 class="c-laptop__section">Quellen dieses Laptops</h2>
+    <h2 class="c-laptop__section">{{ t('sender.station.laptop.sources') }}</h2>
     <ul class="c-laptop__slots">
       @for (slot of screens(); track slot.slot) {
         <li
@@ -94,7 +90,7 @@
               @if (slot.tally === 'program') {
                 <span class="c-tag c-tag--program">LIVE</span>
               } @else if (slot.tally === 'preview') {
-                <span class="c-tag c-tag--preview">Als Nächstes</span>
+                <span class="c-tag c-tag--preview">{{ t('sender.station.slot.tagNext') }}</span>
               }
             </p>
             <p
@@ -103,25 +99,25 @@
             >
               {{ stateText(slot) }}
             </p>
-            @if (slot.message && slot.state !== 'live' && slot.state !== 'ended') {
-              <p class="c-slot__message">{{ slot.message }}</p>
+            @if (slot.messageKey && slot.state !== 'live' && slot.state !== 'ended') {
+              <p class="c-slot__message">{{ t(slot.messageKey) }}</p>
             }
           </div>
           <div class="c-slot__actions">
             @switch (slot.state) {
               @case ('starting') {
                 <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  Teilen beenden
+                  {{ t('sender.station.laptop.stopSharing') }}
                 </button>
               }
               @case ('live') {
                 <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  Teilen beenden
+                  {{ t('sender.station.laptop.stopSharing') }}
                 </button>
               }
               @case ('paused') {
                 <button class="c-button" type="button" (click)="session.endShare(slot.slot)">
-                  Teilen beenden
+                  {{ t('sender.station.laptop.stopSharing') }}
                 </button>
               }
               @case ('ended') {
@@ -130,7 +126,7 @@
                   type="button"
                   (click)="share(slot)"
                 >
-                  Erneut teilen
+                  {{ t('sender.station.laptop.shareAgain') }}
                 </button>
               }
               @case ('failed') {
@@ -139,7 +135,7 @@
                   type="button"
                   (click)="share(slot)"
                 >
-                  Erneut teilen
+                  {{ t('sender.station.laptop.shareAgain') }}
                 </button>
               }
               @default {
@@ -149,7 +145,7 @@
                   [disabled]="!canShareScreen"
                   (click)="share(slot)"
                 >
-                  Bildschirm teilen
+                  {{ t('sender.station.laptop.shareScreen') }}
                 </button>
               }
             }
@@ -159,7 +155,7 @@
                 type="button"
                 (click)="session.removeSlot(slot.slot)"
               >
-                Entfernen
+                {{ t('common.remove') }}
               </button>
             }
           </div>
@@ -189,11 +185,11 @@
           <div class="c-slot__info">
             <p class="c-slot__head">
               <span class="c-code">{{ slot.code }}</span>
-              <span class="c-slot__name">Kamera</span>
+              <span class="c-slot__name">{{ t('sender.station.slot.camera') }}</span>
               @if (slot.tally === 'program') {
                 <span class="c-tag c-tag--program">LIVE</span>
               } @else if (slot.tally === 'preview') {
-                <span class="c-tag c-tag--preview">Als Nächstes</span>
+                <span class="c-tag c-tag--preview">{{ t('sender.station.slot.tagNext') }}</span>
               }
             </p>
             <p class="c-slot__state" [class.is-bad]="slot.state === 'failed'">
@@ -213,7 +209,7 @@
           <div class="c-slot__actions">
             @if (busy(slot)) {
               <button class="c-button" type="button" (click)="session.stopCamera()">
-                Kamera beenden
+                {{ t('sender.station.laptop.stopCamera') }}
               </button>
             } @else {
               <button
@@ -221,7 +217,11 @@
                 type="button"
                 (click)="session.startCamera()"
               >
-                {{ slot.state === 'failed' ? 'Erneut versuchen' : 'Kamera starten' }}
+                {{
+                  slot.state === 'failed'
+                    ? t('sender.station.laptop.tryAgain')
+                    : t('sender.station.laptop.startCamera')
+                }}
               </button>
             }
             <button
@@ -229,7 +229,7 @@
               type="button"
               (click)="session.removeSlot(slot.slot)"
             >
-              Entfernen
+              {{ t('common.remove') }}
             </button>
           </div>
         </li>
@@ -240,23 +240,23 @@
       @if (screens().length === 0 && canShareScreen) {
         <button class="c-button c-button--fill c-button--large" type="button" (click)="addScreen()">
           <sf-icon name="screen" />
-          Bildschirm teilen
+          {{ t('sender.station.laptop.shareScreen') }}
         </button>
       }
       @if (canAddScreen()) {
         <button class="c-button c-button--primary" type="button" (click)="addScreen()">
-          + weiteren Bildschirm
+          {{ t('sender.station.laptop.addScreen') }}
         </button>
       }
       @if (camera() === null) {
         <button class="c-button" type="button" (click)="session.addCamera()">
           <sf-icon name="camera" />
-          Kamera hinzufügen
+          {{ t('sender.station.laptop.addCamera') }}
         </button>
       }
     </div>
 
-    @if (session.actionError(); as error) {
+    @if (actionError(); as error) {
       <div class="c-notice c-notice--bad" role="alert">
         <sf-icon class="c-notice__icon" name="alert" />
         <p class="c-notice__text">{{ error }}</p>

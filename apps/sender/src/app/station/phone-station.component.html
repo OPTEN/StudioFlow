@@ -12,12 +12,18 @@
         class="c-phone__video"
         [class.is-mirrored]="facing() === 'user'"
         [sfMediaPreview]="stream"
-        aria-label="Vorschau der Kamera"
+        [attr.aria-label]="t('sender.station.phone.previewLabel')"
       ></video>
     } @else if (!problem()) {
       <div class="c-phone__placeholder">
         <sf-icon class="c-phone__placeholder-icon" name="camera" />
-        <p>{{ cameraState() === 'starting' ? 'Kamera startet …' : 'Die Kamera ist aus.' }}</p>
+        <p>
+          {{
+            cameraState() === 'starting'
+              ? t('sender.station.phone.starting')
+              : t('sender.station.phone.off')
+          }}
+        </p>
       </div>
     }
   </div>
@@ -25,7 +31,7 @@
   @if (dark() && !awake()) {
     <div class="c-phone__dark" aria-hidden="true">
       <span class="c-phone__dark-code u-mono">{{ camera()?.code ?? '' }}</span>
-      <span class="c-phone__dark-hint">Tippen zum Bedienen</span>
+      <span class="c-phone__dark-hint">{{ t('sender.station.phone.tapHint') }}</span>
     </div>
   }
 
@@ -63,7 +69,7 @@
         type="button"
         (click)="session.startCamera()"
       >
-        Erneut versuchen
+        {{ t('sender.station.phone.tryAgain') }}
       </button>
     </div>
   }
@@ -71,7 +77,7 @@
   <div
     class="c-phone__controls"
     role="group"
-    aria-label="Kamera steuern"
+    [attr.aria-label]="t('sender.station.phone.controls')"
     [class.is-hidden]="!controlsVisible()"
   >
     <button
@@ -82,11 +88,11 @@
       (click)="toggleCamera()"
     >
       <sf-icon [name]="running() ? 'close' : 'camera'" />
-      {{ running() ? 'Kamera stoppen' : 'Kamera starten' }}
+      {{ running() ? t('sender.station.phone.stop') : t('sender.station.phone.start') }}
     </button>
 
     <fieldset class="c-segmented c-segmented--overlay c-phone__facing">
-      <legend class="u-sr-only">Kamera</legend>
+      <legend class="u-sr-only">{{ t('sender.station.phone.cameraLegend') }}</legend>
       <div class="c-segmented__options">
         <label class="c-segmented__option">
           <input
@@ -97,7 +103,7 @@
             [checked]="facing() === 'user'"
             (change)="setFacing('user')"
           />
-          <span>Front</span>
+          <span>{{ t('sender.station.phone.front') }}</span>
         </label>
         <label class="c-segmented__option">
           <input
@@ -108,13 +114,13 @@
             [checked]="facing() === 'environment'"
             (change)="setFacing('environment')"
           />
-          <span>Rück</span>
+          <span>{{ t('sender.station.phone.back') }}</span>
         </label>
       </div>
     </fieldset>
 
     <fieldset class="c-segmented c-segmented--overlay c-phone__resolution">
-      <legend class="u-sr-only">Auflösung</legend>
+      <legend class="u-sr-only">{{ t('sender.station.phone.resolutionLegend') }}</legend>
       <div class="c-segmented__options">
         <label class="c-segmented__option">
           <input
@@ -148,7 +154,7 @@
       (click)="toggleDark(); $event.stopPropagation()"
     >
       <sf-icon name="moon" />
-      Dunkel
+      {{ t('sender.station.phone.dark') }}
     </button>
 
     <button
@@ -157,7 +163,7 @@
       (click)="openTechCheck.emit()"
     >
       <sf-icon name="gauge" />
-      Technik-Check
+      {{ t('sender.techcheck.open') }}
     </button>
   </div>
 </main>

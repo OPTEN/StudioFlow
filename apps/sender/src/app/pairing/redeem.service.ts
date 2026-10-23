@@ -5,10 +5,10 @@ import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';
 import { NoticeService } from '../core/notice.service';
 
-/** Attempts of one redeem before the page offers «Erneut versuchen». */
+/** Attempts of one redeem before the page offers “Try again”. */
 export const REDEEM_ATTEMPTS = 5;
 /**
- * Attempts while the server answers «gerade nicht erreichbar» (503, e.g. a short database outage, or a gateway error
+ * Attempts while the server answers “not reachable right now” (503, e.g. a short database outage, or a gateway error
  * while the API restarts): about a minute of calm retrying instead of an error screen.
  */
 export const REDEEM_OUTAGE_ATTEMPTS = 12;
@@ -36,7 +36,7 @@ function attemptLimit(lastError: ApiError | null): number {
 /**
  * Redeems a QR code or invite link (spec 4.6, ways 1 and 3). The client id is stored before the first request, so a
  * lost response (network failure, reload) is retried with the same id and the server answers with the same device
- * instead of burning the invite. QR invites get an automatic name («Handy n»); the Regie can rename it later.
+ * instead of burning the invite. QR invites get an automatic name (“Phone n”); the Regie can rename it later.
  */
 @Injectable({ providedIn: 'root' })
 export class RedeemService {

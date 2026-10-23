@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { formatDuration } from '@studioflow/scene-model';
 import type { ConnectionView } from './device-session.service';
 
-/** Lamp class per connection view (amber = reconnecting, red = down, DESIGN «Lamps»). */
+/** Lamp class per connection view (amber = reconnecting, red = down, DESIGN “Lamps”). */
 const LAMPS: Readonly<Record<ConnectionView, string>> = {
   connected: '',
   connecting: 'c-lamp--idle',
@@ -13,17 +14,7 @@ const LAMPS: Readonly<Record<ConnectionView, string>> = {
   removed: 'c-lamp--bad',
 };
 
-const LABELS: Readonly<Record<ConnectionView, string>> = {
-  connected: 'Verbunden',
-  connecting: 'Verbindet …',
-  reconnecting: 'Verbindet neu …',
-  offline: 'Offline',
-  blocked: 'Gesperrt',
-  replaced: 'In einem anderen Tab geöffnet',
-  removed: 'Nicht mehr gekoppelt',
-};
-
-/** The connection line: lamp, state word and the outage timer («Verbindet neu … 00:12»). */
+/** The connection line: lamp, state word and the outage timer (“Reconnecting… 00:12”). */
 @Component({
   selector: 'sf-connection-status',
   template: `
@@ -69,7 +60,7 @@ export class ConnectionStatusComponent {
   readonly since = input<number | null>(null);
   readonly now = input<number>(Date.now());
 
-  protected readonly label = computed(() => LABELS[this.view()]);
+  protected readonly label = computed(() => t(`sender.station.connection.${this.view()}`));
   protected readonly lampClass = computed(() => `c-lamp ${LAMPS[this.view()]}`.trim());
   protected readonly timer = computed(() => {
     const since = this.since();

@@ -81,7 +81,7 @@ describe('DeviceApiService', () => {
     await expect(result).resolves.toEqual({ bytes: 16, serverMs: 1 });
   });
 
-  it('maps 403 device_blocked to a German message', async () => {
+  it('maps 403 device_blocked to a message', async () => {
     const self = api.getSelf();
     http
       .expectOne('/api/device/me')

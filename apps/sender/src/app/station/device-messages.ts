@@ -86,7 +86,7 @@ export function isDeviceSelf(value: unknown): value is DeviceSelfDto {
   );
 }
 
-/** True for a hub error that says the device is blocked (`HubException` text «device_blocked: …»). */
+/** True for a hub error that says the device is blocked (`HubException` text “device_blocked: …”). */
 export function isBlockedHubError(error: unknown): boolean {
   return hubErrorCode(error) === ERROR_CODES.deviceBlocked;
 }

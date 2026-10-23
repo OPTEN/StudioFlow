@@ -1,4 +1,4 @@
-import { toRtcState, type MediaSessionState } from '@studioflow/media-client';
+import { toRtcState, type MediaSessionState, type TechCheckResult } from '@studioflow/media-client';
 import type {
   DeviceReportDto,
   SlotState,
@@ -15,14 +15,14 @@ export interface DeviceReportInput {
   readonly deviceSlots: readonly string[] | null;
   /**
    * Slots without telemetry that are reported `ended`: a camera stopped on purpose, a screen share ended with
-   * «Teilen beenden» or lost by a reload. (`paused` comes only from the publisher: the OS or browser suspended the
+   * “Stop sharing” or lost by a reload. (`paused` comes only from the publisher: the OS or browser suspended the
    * camera, e.g. the phone app went to the background.)
    */
   readonly endedSlots: ReadonlySet<string>;
   readonly battery: { readonly pct: number; readonly charging: boolean } | null;
   readonly network: string | null;
   readonly rttMs: number | null;
-  readonly techCheck: TechCheckDto | null;
+  readonly techCheck: TechCheckResult | null;
 }
 
 function emptyTelemetry(slot: string, state: SlotState): SlotTelemetryDto {
@@ -42,14 +42,23 @@ function slotOrder(slot: string): number {
   return slot === 'camera' ? 0 : Number(slot.slice('screen-'.length)) || 99;
 }
 
+/** The check as the API knows it: the problems stay on the device (the English `note` summarizes them). */
+function wireTechCheck(check: TechCheckResult | null): TechCheckDto | null {
+  if (check === null) {
+    return null;
+  }
+  const { problems: _problems, ...wire } = check;
+  return wire;
+}
+
 function finiteOrNull(value: number | null): number | null {
   return value === null || !Number.isFinite(value) ? null : value;
 }
 
 /**
  * Builds the `Report` payload sent every 2 s over the device hub (spec 6): media state, one entry per slot of the
- * device (telemetry from the publisher, or `ended` for slots stopped on purpose, so the Regie sees «Kamera beendet» /
- * «Teilen beendet» instead of an endless «verbindet neu»), battery, network type, RTT and the last tech check.
+ * device (telemetry from the publisher, or `ended` for slots stopped on purpose, so the Regie sees “camera stopped” /
+ * “sharing stopped” instead of an endless “reconnecting”), battery, network type, RTT and the last tech check.
  */
 export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
   const allowed = input.deviceSlots === null ? null : new Set(input.deviceSlots);
@@ -73,6 +82,6 @@ export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
     charging: battery === null ? null : battery.charging,
     network: input.network,
     rttMs: rtt === null ? null : Math.max(0, Math.round(rtt)),
-    techCheck: input.techCheck,
+    techCheck: wireTechCheck(input.techCheck),
   };
 }

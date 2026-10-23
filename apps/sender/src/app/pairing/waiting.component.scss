@@ -13,7 +13,7 @@
   padding: $SPACE_XL 0;
 }
 
-// Check code «47 12»: mono 24 px at least, letter spacing 0,14 em, always on one line (DESIGN «Mono pairing code»).
+// Check code “47 12”: mono 24 px at least, letter spacing 0,14 em, always on one line (DESIGN “Mono pairing code”).
 .c-waiting__code {
   @include mono;
   font-size: clamp(36px, 14vw, 56px);
