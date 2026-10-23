@@ -35,6 +35,8 @@ export const regieProperties = {
   'regie.properties.element.layer': 'Layer',
   'regie.properties.element.layerBackward': 'Send backward',
   'regie.properties.element.layerForward': 'Bring forward',
+  'regie.properties.element.layerToBack': 'Send to back',
+  'regie.properties.element.layerToFront': 'Bring to front',
   'regie.properties.element.mirror': 'Mirror',
   'regie.properties.element.note':
     'Shift releases the aspect ratio, Alt turns snapping off, arrow keys move by 1 px. Esc clears the selection.',

@@ -1,0 +1,86 @@
+// Reorderable list (Sources and Scenes docks): grip handle, the row that is held, the rows that make room, the
+// insertion line. The host is styled by the dock that uses it (grid, or flex for the horizontal scene strip).
+@use 'mixins' as *;
+
+:host {
+  position: relative;
+}
+
+:host(.is-sorting) {
+  cursor: grabbing;
+}
+
+.c-sortable__row {
+  align-items: center;
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 16px minmax(0, 1fr);
+  min-width: 0;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+
+  // The rows that make room follow with the state transition; the held row follows the pointer directly.
+  &.is-making-room,
+  &.is-snapping {
+    @include state-transition(transform);
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // The held row floats above the list (DESIGN.md: a shadow only for what floats, like the dock-drag ghost).
+  &.is-lifted {
+    background: var(--raised-2);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    z-index: 3;
+  }
+}
+
+.c-sortable__content {
+  min-width: 0;
+}
+
+// The grip: shown on hover, on focus and while held; touch screens have no hover, so it stays visible there.
+.c-sortable__handle {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  cursor: grab;
+  display: grid;
+  height: 28px;
+  opacity: 0;
+  padding: 0;
+  place-items: center;
+  touch-action: none;
+  width: 16px;
+
+  &:focus-visible {
+    color: var(--text-2);
+    opacity: 1;
+  }
+}
+
+.c-sortable__row:hover .c-sortable__handle,
+.c-sortable__row.is-lifted .c-sortable__handle {
+  color: var(--text-2);
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .c-sortable__handle {
+    opacity: 0.7;
+  }
+}
+
+// Insertion line (Signal Blue, like the dock insertion line); fixed because the list may scroll.
+.c-sortable__line {
+  background: var(--blue);
+  border-radius: 2px;
+  pointer-events: none;
+  position: fixed;
+  z-index: 79;
+}

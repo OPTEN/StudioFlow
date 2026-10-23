@@ -5,6 +5,7 @@ import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import {
   PRODUCTION_ID,
   defaultScenes,
+  itemFixture,
   productionFixture,
   sceneFixture,
   snapshotFixture,
@@ -258,7 +259,8 @@ describe('EditorService', () => {
     expect(editor.moveLayer('itm_b1', 'up')).toBe(true);
     expect(editor.editScene()?.items.map((item) => item.id)).toEqual(['itm_b2', 'itm_b1']);
     expect(editor.moveLayer('itm_b1', 'up')).toBe(false);
-    const reorder = harness.http.expectOne(`${SCENE_B}/items`);
+    const reorder = harness.http.expectOne(`${SCENE_B}/items/order`);
+    expect(reorder.request.body).toEqual({ itemIds: ['itm_b2', 'itm_b1'] });
     reorder.flush({ ...harness.store.sceneById('scn_b'), version: 2 });
     await flushMicrotasks();
     editor.applyTemplate('pip');
@@ -356,6 +358,197 @@ describe('EditorService', () => {
     });
     await harness.settle();
     expect(editor.selectedItemId()).toBeNull();
+  });
+
+  describe('reordering the items', () => {
+    const ORDER = `${SCENE_A}/items/order`;
+    const ids = (): string[] => (editor.editScene()?.items ?? []).map((item) => item.id);
+
+    /** The program scene "Welcome" with three items, back to front: itm_a1, itm_a2, itm_a3. */
+    async function setupThree(options: { studio?: boolean; preview?: string | null } = {}) {
+      const scenes = defaultScenes();
+      scenes[0] = {
+        ...scenes[0],
+        items: [
+          itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera'),
+          itemFixture('itm_a2', 'dev_bbbbbbbbbbbbbbbb/screen-1', { hidden: true }),
+          itemFixture('itm_a3', 'dev_aaaaaaaaaaaaaaaa/camera', { locked: true }),
+        ],
+      };
+      await setup({ ...options, scenes });
+    }
+
+    it('shows the new order at once and sends only the order', async () => {
+      await setupThree();
+      expect(editor.reorderItems(['itm_a3', 'itm_a1', 'itm_a2'])).toBe(true);
+      expect(ids()).toEqual(['itm_a3', 'itm_a1', 'itm_a2']);
+      expect(editor.saving()).toBe(true);
+      const request = harness.http.expectOne(ORDER);
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual({ itemIds: ['itm_a3', 'itm_a1', 'itm_a2'] });
+      const items = ['itm_a3', 'itm_a1', 'itm_a2'].map((id) => editor.itemById(id) as SceneItemDto);
+      answer(request, 2);
+      await flushMicrotasks();
+      harness.emitEvent({
+        type: 'sceneUpserted',
+        scene: sceneFixture('scn_a', 'Welcome', 0, items, { version: 2 }),
+      });
+      await harness.settle();
+      expect(editor.saving()).toBe(false);
+      expect(ids()).toEqual(['itm_a3', 'itm_a1', 'itm_a2']);
+    });
+
+    it('reorders hidden and locked items too', async () => {
+      await setupThree();
+      expect(editor.reorderItems(['itm_a2', 'itm_a3', 'itm_a1'])).toBe(true);
+      expect(editor.itemById('itm_a2')).toMatchObject({ hidden: true });
+      expect(editor.itemById('itm_a3')).toMatchObject({ locked: true });
+      answer(harness.http.expectOne(ORDER), 2);
+    });
+
+    it('sends nothing for an unchanged order or a list that is not the scene’s items', async () => {
+      await setupThree();
+      expect(editor.reorderItems(['itm_a1', 'itm_a2', 'itm_a3'])).toBe(false);
+      expect(editor.reorderItems(['itm_a1', 'itm_a2'])).toBe(false);
+      expect(editor.reorderItems(['itm_a1', 'itm_a1', 'itm_a2'])).toBe(false);
+      expect(editor.reorderItems(['itm_a1', 'itm_a2', 'itm_a9'])).toBe(false);
+      harness.http.expectNone(() => true);
+      expect(editor.canUndo()).toBe(false);
+    });
+
+    it('moves a layer one step or to the very front or back', async () => {
+      await setupThree();
+      const moves: [string, 'up' | 'down' | 'front' | 'back', boolean, string[]][] = [
+        ['itm_a1', 'front', true, ['itm_a2', 'itm_a3', 'itm_a1']],
+        ['itm_a1', 'front', false, ['itm_a2', 'itm_a3', 'itm_a1']],
+        ['itm_a3', 'back', true, ['itm_a3', 'itm_a2', 'itm_a1']],
+        ['itm_a2', 'down', true, ['itm_a2', 'itm_a3', 'itm_a1']],
+        ['itm_a2', 'down', false, ['itm_a2', 'itm_a3', 'itm_a1']],
+        ['itm_unknown', 'up', false, ['itm_a2', 'itm_a3', 'itm_a1']],
+      ];
+      let version = 1;
+      for (const [itemId, direction, moved, expected] of moves) {
+        expect(editor.moveLayer(itemId, direction)).toBe(moved);
+        expect(ids()).toEqual(expected);
+        if (moved) {
+          const request = harness.http.expectOne(ORDER);
+          expect(request.request.body).toEqual({ itemIds: expected });
+          answer(request, (version += 1));
+          await flushMicrotasks();
+        }
+      }
+    });
+
+    it('merges rapid reorders: one request in flight, then only the newest order', async () => {
+      await setupThree();
+      editor.reorderItems(['itm_a2', 'itm_a1', 'itm_a3']);
+      editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1']);
+      editor.reorderItems(['itm_a1', 'itm_a3', 'itm_a2']);
+      expect(ids()).toEqual(['itm_a1', 'itm_a3', 'itm_a2']);
+      const first = harness.http.expectOne(ORDER);
+      expect(first.request.body.itemIds).toEqual(['itm_a2', 'itm_a1', 'itm_a3']);
+      answer(first, 2);
+      await flushMicrotasks();
+      const second = harness.http.expectOne(ORDER);
+      expect(second.request.body.itemIds).toEqual(['itm_a1', 'itm_a3', 'itm_a2']);
+      answer(second, 3);
+      await flushMicrotasks();
+      harness.http.expectNone(ORDER);
+    });
+
+    it('does not lose a geometry edit made while the order is on its way', async () => {
+      await setupThree();
+      editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1']);
+      editor.updateItem({ ...(editor.itemById('itm_a1') as SceneItemDto), x: 321 });
+      expect(ids()).toEqual(['itm_a3', 'itm_a2', 'itm_a1']);
+      expect(editor.itemById('itm_a1')?.x).toBe(321);
+      const order = harness.http.expectOne(ORDER);
+      answer(order, 2);
+      await flushMicrotasks();
+      const edit = harness.http.expectOne(`${SCENE_A}/items/itm_a1`);
+      expect(edit.request.body.x).toBe(321);
+      answer(edit, 3);
+    });
+
+    it('rolls back and explains when the server rejects the order', async () => {
+      await setupThree();
+      editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1']);
+      expect(ids()).toEqual(['itm_a3', 'itm_a2', 'itm_a1']);
+      harness.http
+        .expectOne(ORDER)
+        .flush({ code: 'conflict' }, { status: 409, statusText: 'Conflict' });
+      await flushMicrotasks();
+      expect(ids()).toEqual(['itm_a1', 'itm_a2', 'itm_a3']);
+      expect(editor.saving()).toBe(false);
+      expect(toasts.current()?.message).toBe(
+        'That is not possible right now because the state has changed.',
+      );
+    });
+
+    it('keeps an item another session added in front of the optimistic order', async () => {
+      await setupThree();
+      editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1']);
+      const added = itemFixture('itm_a4', 'dev_aaaaaaaaaaaaaaaa/camera');
+      harness.emitEvent({
+        type: 'sceneUpserted',
+        scene: sceneFixture(
+          'scn_a',
+          'Welcome',
+          0,
+          [...(harness.store.sceneById('scn_a')?.items ?? []), added],
+          { version: 2 },
+        ),
+      });
+      await harness.settle();
+      expect(ids()).toEqual(['itm_a3', 'itm_a2', 'itm_a1', 'itm_a4']);
+      harness.http.expectOne(ORDER).flush({}, { status: 409, statusText: 'Conflict' });
+    });
+
+    it('is refused on the live scene in Studio Mode, with the reason', async () => {
+      await setupThree({ studio: true, preview: 'scn_a' });
+      expect(editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1'])).toBe(false);
+      expect(toasts.current()?.message).toBe(
+        'This scene is live. Switch another scene to Program first.',
+      );
+      harness.http.expectNone(() => true);
+    });
+
+    it('takes effect on the program scene at once without Studio Mode', async () => {
+      await setupThree();
+      expect(editor.editLocked()).toBe(false);
+      expect(editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1'])).toBe(true);
+      expect(harness.store.programScene()?.id).toBe('scn_a');
+      expect(ids()).toEqual(['itm_a3', 'itm_a2', 'itm_a1']);
+      harness.http.expectOne(ORDER).flush({}, { status: 409, statusText: 'Conflict' });
+    });
+
+    it('records one undo step that restores the previous order', async () => {
+      await setupThree();
+      editor.reorderItems(['itm_a3', 'itm_a2', 'itm_a1']);
+      answer(harness.http.expectOne(ORDER), 2);
+      await flushMicrotasks();
+      expect(editor.canUndo()).toBe(true);
+      editor.undo();
+      expect(ids()).toEqual(['itm_a1', 'itm_a2', 'itm_a3']);
+      const undo = harness.http.expectOne(`${SCENE_A}/items`);
+      expect(undo.request.body.items.map((item: SceneItemDto) => item.id)).toEqual([
+        'itm_a1',
+        'itm_a2',
+        'itm_a3',
+      ]);
+      answer(undo, 3);
+    });
+
+    it('keeps the layout mode of an Auto-Grid scene: the order is the position in the grid', async () => {
+      const scenes = defaultScenes();
+      scenes[1] = { ...scenes[1], layoutMode: 'autoGrid' };
+      await setup({ studio: true, preview: 'scn_b', scenes });
+      expect(editor.reorderItems(['itm_b2', 'itm_b1'])).toBe(true);
+      expect(editor.editScene()?.layoutMode).toBe('autoGrid');
+      const request = harness.http.expectOne(`${SCENE_B}/items/order`);
+      expect(request.request.body).toEqual({ itemIds: ['itm_b2', 'itm_b1'] });
+      request.flush({}, { status: 409, statusText: 'Conflict' });
+    });
   });
 
   it('answers Escape only while something is selected', async () => {

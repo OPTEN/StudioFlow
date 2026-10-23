@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import {
   LIMITS,
@@ -8,14 +8,20 @@ import {
 } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { isPermutation, sameOrder } from '../../core/ui/reorder';
 import { ToastService } from '../../core/ui/toast.service';
 import { SwitcherService } from '../../stage/switcher.service';
 import { DockCommandService } from '../shared/dock-command.service';
 import { copyName, moveSceneOrder, nextSceneName } from './scene-list';
 
+/** {@link DockCommandService} key of the reorder request. */
+const ORDER_KEY = 'scene:order';
+/** How long a dropped order stays on screen when the store does not report it (a lost event). */
+const PENDING_ORDER_MS = 3000;
+
 /**
  * The scene commands of the Scenes and Properties docks (spec 4.2, 4.3): create ("+ Scene"), duplicate, rename,
- * move up/down, change the background or layout mode and delete. Every command goes through
+ * reorder (drag and drop, move up/down), change the background or layout mode and delete. Every command goes through
  * {@link DockCommandService} (double-click protection, offline guard, error toasts in the active language); the new
  * state arrives as `sceneUpserted` / `scenesReordered` / `sceneRemoved` events through the store.
  *
@@ -30,9 +36,16 @@ export class SceneCommandsService {
   private readonly commands = inject(DockCommandService);
 
   private readonly renamingIdSignal = signal<string | null>(null);
+  /** The order just dropped while its request runs and until the store reports it, or null. */
+  private readonly pendingOrder = signal<readonly string[] | null>(null);
+  private queuedOrder: readonly string[] | null = null;
+  private pendingTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Scene whose name is edited inline in the scene list, or null. */
   readonly renamingId = this.renamingIdSignal.asReadonly();
+  private readonly storeOrder = computed(() => this.store.scenes().map((scene) => scene.id));
+  /** Scene ids in list order: the order just dropped while it is being saved, else the store's. */
+  readonly order = computed(() => this.pendingOrder() ?? this.storeOrder());
   /** "+ Scene" is possible: connected and fewer than 99 scenes. */
   readonly canCreate = computed(
     () => this.store.canCommand() && this.store.scenes().length < LIMITS.scenesPerProduction,
@@ -40,7 +53,18 @@ export class SceneCommandsService {
   /** Scene commands can reach the server. */
   readonly online = computed(() => this.store.canCommand());
   /** A reorder request is in flight. */
-  readonly reordering = computed(() => this.commands.busy('scene:order'));
+  readonly reordering = computed(() => this.commands.busy(ORDER_KEY));
+
+  constructor() {
+    // The dropped order has done its job once the store reports it and no request is left.
+    effect(() => {
+      const pending = this.pendingOrder();
+      if (pending && !this.reordering() && sameOrder(pending, this.storeOrder())) {
+        untracked(() => this.pendingOrder.set(null));
+      }
+    });
+    inject(DestroyRef).onDestroy(() => this.clearPendingTimer());
+  }
 
   /** Opens (scene id) or closes (null) the inline rename field. */
   setRenaming(sceneId: string | null): void {
@@ -107,20 +131,67 @@ export class SceneCommandsService {
 
   /** True when the scene can move one place in `direction`. */
   canMove(sceneId: string, direction: -1 | 1): boolean {
-    return moveSceneOrder(this.sceneIds(), sceneId, direction) !== null;
+    return moveSceneOrder(this.order(), sceneId, direction) !== null;
   }
 
   /** Moves a scene one place up (−1) or down (+1) in the list (keys 1–9 follow the order). */
   async move(sceneId: string, direction: -1 | 1): Promise<boolean> {
-    const order = moveSceneOrder(this.sceneIds(), sceneId, direction);
-    if (!order) {
+    const order = moveSceneOrder(this.order(), sceneId, direction);
+    return order !== null && (await this.reorder(order));
+  }
+
+  /**
+   * Applies a new scene order (drag and drop, Alt+↑/↓, Move up/down). The list shows it at once ({@link order}) and
+   * the request follows; moves made while it is in flight are merged, so only the newest order is sent next. If a
+   * request fails the list returns to the server's order and a toast says why. Resolves true when the order was
+   * sent.
+   */
+  async reorder(sceneIds: readonly string[]): Promise<boolean> {
+    if (sameOrder(sceneIds, this.order()) || !isPermutation(sceneIds, this.order())) {
       return false;
     }
-    const done = await this.commands.run('scene:order', async (productionId) => {
-      await this.api.reorderScenes(productionId, { sceneIds: order });
+    this.pendingOrder.set(sceneIds);
+    this.queuedOrder = sceneIds;
+    if (this.commands.busy(ORDER_KEY)) {
       return true;
-    });
-    return done === true;
+    }
+    return this.sendQueuedOrders();
+  }
+
+  private async sendQueuedOrders(): Promise<boolean> {
+    while (this.queuedOrder) {
+      const sceneIds = this.queuedOrder;
+      this.queuedOrder = null;
+      const sent = await this.commands.run(ORDER_KEY, async (productionId) => {
+        await this.api.reorderScenes(productionId, { sceneIds: [...sceneIds] });
+        return true;
+      });
+      if (!sent) {
+        this.queuedOrder = null;
+        this.pendingOrder.set(null);
+        return false;
+      }
+    }
+    this.dropPendingOrderLater();
+    return true;
+  }
+
+  /** The order the store reports can lag behind the response: keep the dropped order until it arrives. */
+  private dropPendingOrderLater(): void {
+    const dropped = this.pendingOrder();
+    this.clearPendingTimer();
+    this.pendingTimer = setTimeout(() => {
+      if (this.pendingOrder() === dropped) {
+        this.pendingOrder.set(null);
+      }
+    }, PENDING_ORDER_MS);
+  }
+
+  private clearPendingTimer(): void {
+    if (this.pendingTimer !== null) {
+      clearTimeout(this.pendingTimer);
+      this.pendingTimer = null;
+    }
   }
 
   /** Sets the background colour and image of a scene. */
@@ -177,10 +248,6 @@ export class SceneCommandsService {
   /** True when the command's button is disabled: it runs, or the Regie is offline. */
   blocked(key: string): boolean {
     return this.commands.blocked(key);
-  }
-
-  private sceneIds(): string[] {
-    return this.store.scenes().map((scene) => scene.id);
   }
 
   /** The new preview when the preview scene is deleted in Studio Mode (prototype), else null. */

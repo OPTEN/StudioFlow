@@ -35,6 +35,8 @@ export const regieProperties: Translation<typeof en> = {
   'regie.properties.element.layer': 'Ebene',
   'regie.properties.element.layerBackward': 'Nach hinten',
   'regie.properties.element.layerForward': 'Nach vorne',
+  'regie.properties.element.layerToBack': 'Ganz nach hinten',
+  'regie.properties.element.layerToFront': 'Ganz nach vorne',
   'regie.properties.element.mirror': 'Spiegeln',
   'regie.properties.element.note':
     'Shift löst das Seitenverhältnis, Alt schaltet das Einrasten aus, Pfeiltasten verschieben um 1 px. Esc hebt die Auswahl auf.',

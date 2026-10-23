@@ -9,6 +9,7 @@ export const regieScenes = {
   'regie.scenes.dock.emptyText': 'Create the first scene with “+ Scene”.',
   'regie.scenes.dock.emptyTitle': 'No scenes yet.',
   'regie.scenes.dock.keysHint': 'Keys 1–9',
+  'regie.scenes.dock.listLabel': 'Scenes',
   'regie.scenes.dock.loadingTitle': 'Loading scenes…',
 
   'regie.scenes.name.copy': '{name} (copy)',

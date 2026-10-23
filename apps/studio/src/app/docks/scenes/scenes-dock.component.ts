@@ -3,9 +3,11 @@ import { t } from '@studioflow/i18n';
 import { LIMITS, type SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
+import { sortByOrder } from '../../core/ui/reorder';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
 import { EditorService } from '../../stage/editor.service';
 import { SwitcherService } from '../../stage/switcher.service';
+import { SortableItemDirective, SortableListComponent } from '../shared/sortable-list.component';
 import { SceneCommandsService } from './scene-commands.service';
 import { sceneRowView, type SceneRowView } from './scene-list';
 import { SceneRowComponent } from './scene-row.component';
@@ -21,12 +23,18 @@ interface SceneEntry {
  * (PGM/PVW tags, slot codes or the health lamp "K2 disrupted"). A click goes through `SwitcherService.chooseScene`:
  * without Studio Mode the scene goes live, with it the scene goes into the preview; a click on the scene being edited
  * clears the element selection (Properties shows the scene). "+ Scene" creates "New scene N" and opens its name; each
- * row has Rename, Duplicate and Move up/down. Compact one-line rows at heights ≤ 820 px, a horizontal strip at widths
- * ≤ 900 px.
+ * row has Rename, Duplicate and Move up/down. The rows are reordered by drag and drop or from the keyboard
+ * ({@link SortableListComponent}). Compact one-line rows at heights ≤ 820 px, a horizontal strip at widths ≤ 900 px.
  */
 @Component({
   selector: 'sf-scenes-dock',
-  imports: [DockFrameComponent, IconComponent, SceneRowComponent],
+  imports: [
+    DockFrameComponent,
+    IconComponent,
+    SceneRowComponent,
+    SortableItemDirective,
+    SortableListComponent,
+  ],
   templateUrl: './scenes-dock.component.html',
   styleUrl: './scenes-dock.component.scss',
   host: { style: 'display: contents' },
@@ -46,7 +54,8 @@ export class ScenesDockComponent {
     const previewSceneId = this.store.previewSceneId();
     const studioMode = this.switcher.studioMode();
     const health = this.store.sceneHealthById();
-    return this.editor.scenes().map((scene, index) => ({
+    const scenes = sortByOrder(this.editor.scenes(), this.commands.order(), (scene) => scene.id);
+    return scenes.map((scene, index) => ({
       scene,
       view: sceneRowView(scene, index, {
         programSceneId,
@@ -57,6 +66,13 @@ export class ScenesDockComponent {
       }),
     }));
   });
+  protected readonly sceneIds = computed(() => this.entries().map((entry) => entry.view.id));
+  protected readonly entryById = computed(
+    () => new Map(this.entries().map((entry) => [entry.view.id, entry] as const)),
+  );
+  /** Name of a scene for the reorder handle and the announcements. */
+  protected readonly sceneName = (sceneId: string): string =>
+    this.entryById().get(sceneId)?.view.name ?? '';
   protected readonly createTitle = computed(() =>
     this.store.scenes().length >= LIMITS.scenesPerProduction
       ? t('regie.scenes.dock.addTitleMax', { max: LIMITS.scenesPerProduction })
@@ -73,6 +89,11 @@ export class ScenesDockComponent {
       this.editor.select(null);
     }
     void this.switcher.chooseScene(sceneId);
+  }
+
+  /** A scene was dragged or moved with the keyboard. */
+  protected reorder(sceneIds: readonly string[]): void {
+    void this.commands.reorder(sceneIds);
   }
 
   protected create(): void {

@@ -28,6 +28,8 @@ export const regieSources = {
   'regie.sources.group.media': 'Media',
   'regie.sources.group.screen': 'Screens',
 
+  'regie.sources.hint.autoGrid':
+    'Auto grid: the order of the items is their position in the grid. Drag a row to move an item to another cell.',
   'regie.sources.hint.preview':
     'Click an item in the Preview monitor, then drag it or scale it at the corners.',
   'regie.sources.hint.program':

@@ -1,0 +1,40 @@
+@for (id of ids(); track id; let index = $index) {
+  <div
+    class="c-sortable__row"
+    role="listitem"
+    [attr.data-sortable-id]="id"
+    [class.is-lifted]="lifted(id)"
+    [class.is-making-room]="held() !== null && !lifted(id)"
+    [class.is-snapping]="lifted(id) && held()?.mode === 'keyboard'"
+    [style.transform]="transforms().get(id) ?? null"
+  >
+    <button
+      class="c-sortable__handle"
+      type="button"
+      [attr.aria-label]="t('regie.docks.sortable.handle', { name: nameOf()(id) })"
+      [attr.aria-pressed]="lifted(id)"
+      [title]="t('regie.docks.sortable.handleTitle')"
+      (keydown)="onHandleKeyDown($event, id)"
+      (blur)="onHandleBlur(id)"
+    >
+      <svg sfIcon="grip" [size]="14"></svg>
+    </button>
+    <div class="c-sortable__content">
+      <ng-container
+        [ngTemplateOutlet]="itemTemplate()"
+        [ngTemplateOutletContext]="{ $implicit: id, index }"
+      />
+    </div>
+  </div>
+}
+@if (held()?.line; as line) {
+  <span
+    class="c-sortable__line"
+    role="presentation"
+    aria-hidden="true"
+    [style.left.px]="line.left"
+    [style.top.px]="line.top"
+    [style.width.px]="line.width"
+    [style.height.px]="line.height"
+  ></span>
+}

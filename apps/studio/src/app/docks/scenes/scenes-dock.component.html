@@ -20,15 +20,27 @@
       >{{ t('regie.docks.loadingText') }}
     </div>
   } @else {
-    <div class="c-scenes-dock__list">
-      @for (entry of entries(); track entry.view.id) {
-        <sf-scene-row [scene]="entry.scene" [view]="entry.view" (choose)="choose($event)" />
-      } @empty {
+    @if (entries().length === 0) {
+      <div class="c-scenes-dock__list">
         <div class="c-empty">
           <strong>{{ t('regie.scenes.dock.emptyTitle') }}</strong
           >{{ t('regie.scenes.dock.emptyText') }}
         </div>
-      }
-    </div>
+      </div>
+    } @else {
+      <sf-sortable-list
+        class="c-scenes-dock__list"
+        [ids]="sceneIds()"
+        [label]="t('regie.scenes.dock.listLabel')"
+        [nameOf]="sceneName"
+        (reorder)="reorder($event)"
+      >
+        <ng-template sfSortableItem let-id>
+          @if (entryById().get(id); as entry) {
+            <sf-scene-row [scene]="entry.scene" [view]="entry.view" (choose)="choose($event)" />
+          }
+        </ng-template>
+      </sf-sortable-list>
+    }
   }
 </sf-dock-frame>

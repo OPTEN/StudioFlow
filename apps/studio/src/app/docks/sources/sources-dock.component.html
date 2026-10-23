@@ -48,80 +48,90 @@
         >{{ t('regie.sources.dock.noSceneText') }}
       </div>
     } @else {
-      <div
-        class="c-src-dock__list"
-        role="list"
-        [attr.aria-label]="t('regie.sources.dock.listLabel')"
-      >
-        @for (row of rows(); track row.itemId) {
-          <div
-            class="c-src"
-            role="listitem"
-            [class.is-sel]="row.selected"
-            [class.is-hidden]="row.hidden"
-            (click)="select(row)"
-          >
-            <button
-              class="c-ibtn"
-              type="button"
-              [attr.aria-pressed]="!row.hidden"
-              [attr.aria-label]="
-                t(row.hidden ? 'regie.sources.row.show' : 'regie.sources.row.hide', {
-                  name: row.name,
-                })
-              "
-              (click)="toggleHidden(row, $event)"
-            >
-              <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
-            </button>
-            <button
-              class="c-src__select"
-              type="button"
-              [attr.aria-pressed]="row.selected"
-              [attr.aria-disabled]="row.hidden ? 'true' : null"
-              [attr.aria-label]="t('regie.sources.row.select', { code: row.code, name: row.name })"
-              (click)="select(row, $event)"
-            >
-              <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
-              <span class="c-code">{{ row.code }}</span>
-              <span class="c-src__main">
-                <span class="c-src__name">{{ row.name }}</span>
-                @if (row.state; as state) {
-                  <span class="c-src__state">
-                    <span [class]="toneClass(state.tone)">{{ state.word }}</span>
-                    @if (state.timer) {
-                      <span class="u-mono" [sfElapsed]="row.statusSince"></span>
-                    }
-                  </span>
-                }
-              </span>
-            </button>
-            @if (row.lamp !== null) {
-              <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
-            } @else {
-              <span aria-hidden="true"></span>
-            }
-            <button
-              class="c-ibtn"
-              type="button"
-              [attr.aria-pressed]="row.locked"
-              [attr.aria-label]="
-                t(row.locked ? 'regie.sources.row.unlock' : 'regie.sources.row.lock', {
-                  name: row.name,
-                })
-              "
-              (click)="toggleLocked(row, $event)"
-            >
-              <svg [sfIcon]="row.locked ? 'lock' : 'unlock'"></svg>
-            </button>
-          </div>
-        } @empty {
+      @if (rows().length === 0) {
+        <div class="c-src-dock__list">
           <div class="c-empty">
             <strong>{{ t('regie.sources.dock.emptyTitle') }}</strong
             >{{ t('regie.sources.dock.emptyText') }}
           </div>
-        }
-      </div>
+        </div>
+      } @else {
+        <sf-sortable-list
+          class="c-src-dock__list"
+          [ids]="rowIds()"
+          [label]="t('regie.sources.dock.listLabel')"
+          [nameOf]="rowName"
+          (reorder)="reorder($event)"
+        >
+          <ng-template sfSortableItem let-id>
+            @if (rowsById().get(id); as row) {
+              <div
+                class="c-src"
+                [class.is-sel]="row.selected"
+                [class.is-hidden]="row.hidden"
+                (click)="select(row)"
+              >
+                <button
+                  class="c-ibtn"
+                  type="button"
+                  [attr.aria-pressed]="!row.hidden"
+                  [attr.aria-label]="
+                    t(row.hidden ? 'regie.sources.row.show' : 'regie.sources.row.hide', {
+                      name: row.name,
+                    })
+                  "
+                  (click)="toggleHidden(row, $event)"
+                >
+                  <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
+                </button>
+                <button
+                  class="c-src__select"
+                  type="button"
+                  data-sortable-grab
+                  [attr.aria-pressed]="row.selected"
+                  [attr.aria-disabled]="row.hidden ? 'true' : null"
+                  [attr.aria-label]="
+                    t('regie.sources.row.select', { code: row.code, name: row.name })
+                  "
+                  (click)="select(row, $event)"
+                >
+                  <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
+                  <span class="c-code">{{ row.code }}</span>
+                  <span class="c-src__main">
+                    <span class="c-src__name">{{ row.name }}</span>
+                    @if (row.state; as state) {
+                      <span class="c-src__state">
+                        <span [class]="toneClass(state.tone)">{{ state.word }}</span>
+                        @if (state.timer) {
+                          <span class="u-mono" [sfElapsed]="row.statusSince"></span>
+                        }
+                      </span>
+                    }
+                  </span>
+                </button>
+                @if (row.lamp !== null) {
+                  <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+                } @else {
+                  <span aria-hidden="true"></span>
+                }
+                <button
+                  class="c-ibtn"
+                  type="button"
+                  [attr.aria-pressed]="row.locked"
+                  [attr.aria-label]="
+                    t(row.locked ? 'regie.sources.row.unlock' : 'regie.sources.row.lock', {
+                      name: row.name,
+                    })
+                  "
+                  (click)="toggleLocked(row, $event)"
+                >
+                  <svg [sfIcon]="row.locked ? 'lock' : 'unlock'"></svg>
+                </button>
+              </div>
+            }
+          </ng-template>
+        </sf-sortable-list>
+      }
       @if (hint(); as hint) {
         <p class="c-hint c-src-dock__hint">{{ hint }}</p>
       }

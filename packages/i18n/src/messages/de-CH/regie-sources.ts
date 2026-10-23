@@ -29,6 +29,8 @@ export const regieSources: Translation<typeof en> = {
   'regie.sources.group.media': 'Medien',
   'regie.sources.group.screen': 'Screens',
 
+  'regie.sources.hint.autoGrid':
+    'Auto-Grid: Die Reihenfolge der Elemente ist ihre Position im Raster. Eine Zeile ziehen, um ein Element in eine andere Zelle zu verschieben.',
   'regie.sources.hint.preview':
     'Ein Element im Preview-Monitor anklicken, dann ziehen oder an den Ecken skalieren.',
   'regie.sources.hint.program':

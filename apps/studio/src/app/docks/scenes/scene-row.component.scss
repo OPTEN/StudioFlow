@@ -6,8 +6,9 @@
   min-width: 0;
   position: relative;
 
+  // In the horizontal strip every row is a 200 px card (the sortable row around it sizes to it).
   @include narrow {
-    flex: 0 0 200px;
+    width: 200px;
   }
 }
 

@@ -259,7 +259,21 @@ export class StudioApiService {
     );
   }
 
-  /** `PUT …/scenes/{sceneId}/items`: replaces all items (templates, undo/redo, reordering, adding). */
+  /** `PUT …/scenes/{sceneId}/items/order`: the complete z-order (item ids back to front); changes no item. */
+  reorderSceneItems(
+    productionId: string,
+    sceneId: string,
+    body: ApiBody<'reorderSceneItems'>,
+  ): Promise<ApiResult<'reorderSceneItems'>> {
+    return this.call(
+      this.http.put<ApiResult<'reorderSceneItems'>>(
+        this.scene(productionId, sceneId, '/items/order'),
+        body,
+      ),
+    );
+  }
+
+  /** `PUT …/scenes/{sceneId}/items`: replaces all items (templates, undo/redo, adding). */
   replaceSceneItems(
     productionId: string,
     sceneId: string,

@@ -19,15 +19,21 @@ export type ShortcutId =
 export type ShortcutHandler = (index: number) => boolean;
 
 /**
- * Escape is handled by the first layer that is open, in this order (prototype): a running dock drag, open
- * popovers, the pairing dock, the element selection.
+ * Escape is handled by the first layer that is open, in this order (prototype): a running list drag (reordering
+ * rows), a running dock drag, open popovers, the pairing dock, the element selection.
  */
-export type EscapeLayer = 'dockDrag' | 'popover' | 'pairing' | 'selection';
+export type EscapeLayer = 'listDrag' | 'dockDrag' | 'popover' | 'pairing' | 'selection';
 
 /** Returns true when the layer consumed Escape. */
 export type EscapeHandler = () => boolean;
 
-const ESCAPE_ORDER: readonly EscapeLayer[] = ['dockDrag', 'popover', 'pairing', 'selection'];
+const ESCAPE_ORDER: readonly EscapeLayer[] = [
+  'listDrag',
+  'dockDrag',
+  'popover',
+  'pairing',
+  'selection',
+];
 const TYPING_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 const CONTROL_TAGS: ReadonlySet<string> = new Set(['BUTTON', 'A']);
 
