@@ -1,12 +1,19 @@
 /**
- * Output page entry point (spec 9.3): `/o/{slug}?k=…[&bg=transparent][&debug=1][&latency=1]` renders the program of
- * one production as a 1920 × 1080 stage; `/o/_uhr` is the measurement clock. Kept small: the composition lives in
- * output-app.ts, livekit-client and the optional overlays are loaded lazily after the first frame.
+ * Output page entry point (spec 9.3): `/o/{slug}?k=…[&bg=transparent][&debug=1][&latency=1][&lang=de-CH]` renders the
+ * program of one production as a 1920 × 1080 stage; `/o/_uhr` is the measurement clock. Kept small: the composition
+ * lives in output-app.ts, livekit-client and the optional overlays are loaded lazily after the first frame.
  */
 import './styles.css';
+import { initLocale, parseLocaleTag } from '@studioflow/i18n';
 import { startClockPage } from './clock-page';
 import { resolveRoute } from './config';
 import { startInvalidLinkPage, startOutputApp } from './output-app';
+
+// The page has no language setting and ignores the one of the Regie: `?lang=` wins, then the browser language.
+initLocale({
+  setting: parseLocaleTag(new URLSearchParams(window.location.search).get('lang')) ?? 'auto',
+  storage: null,
+});
 
 const root = document.getElementById('output');
 if (root) {

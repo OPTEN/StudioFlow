@@ -1,3 +1,5 @@
+import { t } from '@studioflow/i18n';
+
 /** Width of the fixed canvas of every scene and of the output (always 16:9). */
 export const CANVAS_WIDTH = 1920;
 /** Height of the fixed canvas of every scene and of the output (always 16:9). */
@@ -14,11 +16,29 @@ export type FadeDurationMs = (typeof FADE_DURATIONS_MS)[number];
 /** Default fade duration. */
 export const DEFAULT_FADE_MS: FadeDurationMs = 300;
 
-/** Options of «Bei Ausfall» in the element inspector. `holdMs: null` keeps the last frame forever. */
+/**
+ * Options of "On failure" in the item inspector. `holdMs: null` keeps the last frame forever. The label is a getter, so
+ * it is looked up when it is read and follows the active language.
+ */
 export const HOLD_OPTIONS: readonly { readonly label: string; readonly holdMs: number | null }[] = [
-  { label: 'Standbild 3 s, dann abgedunkelt', holdMs: 3000 },
-  { label: 'Standbild 10 s, dann abgedunkelt', holdMs: 10000 },
-  { label: 'Standbild halten', holdMs: null },
+  {
+    get label() {
+      return t('model.scene.holdThenDim3');
+    },
+    holdMs: 3000,
+  },
+  {
+    get label() {
+      return t('model.scene.holdThenDim10');
+    },
+    holdMs: 10000,
+  },
+  {
+    get label() {
+      return t('model.scene.holdForever');
+    },
+    holdMs: null,
+  },
 ];
 
 /** Default hold time for new items. */
@@ -37,7 +57,7 @@ export const LIMITS = {
   assetNameLength: 80,
   messageLength: 140,
   screensPerDevice: 9,
-  /** Entries of «Letzte Ereignisse» the snapshot carries and the client keeps. */
+  /** Entries of "Recent events" the snapshot carries and the client keeps. */
   recentLogEntries: 20,
 } as const;
 

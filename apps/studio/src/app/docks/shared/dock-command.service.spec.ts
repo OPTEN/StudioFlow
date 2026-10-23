@@ -5,6 +5,10 @@ import { startStore, studioTestProviders, type StoreHarness } from '../../../tes
 import { ApiError } from '../../core/api/api-error';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService, OFFLINE_DOCK_MESSAGE } from './dock-command.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('DockCommandService', () => {
   let hub: FakeStudioHub;

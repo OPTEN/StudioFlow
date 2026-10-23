@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { msg, tm, type MessageKey, type Msg, type PlainMessageKey } from '@studioflow/i18n';
 import { ERROR_CODES, type ErrorCode } from '@studioflow/scene-model';
 
 /**
@@ -29,31 +30,30 @@ export interface ProblemBody {
   readonly errors?: Readonly<Record<string, readonly string[]>> | null;
 }
 
-/** German texts per error code (Swiss spelling). Used by {@link toGermanMessage}. */
-export const ERROR_CODE_MESSAGES: Readonly<Record<ApiErrorCode | ClientErrorCode, string>> = {
-  validation_failed: 'Die Eingabe ist ungültig.',
-  not_found: 'Das gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht.',
-  transition_running: 'Eine Blende läuft noch. Bitte kurz warten.',
-  scene_is_live: 'Die Live-Szene lässt sich nicht löschen.',
-  asset_in_use: 'Die Datei wird noch verwendet und lässt sich nicht löschen.',
-  unsupported_media:
-    'Dieser Dateityp ist nicht erlaubt. Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.',
-  pairing_expired: 'Die Anfrage ist abgelaufen oder wurde schon beantwortet.',
-  rate_limited: 'Zu viele Versuche. Bitte später erneut versuchen.',
-  device_blocked: 'Das Gerät ist gesperrt.',
-  conflict: 'Das geht gerade nicht, weil sich der Zustand geändert hat.',
-  limit_reached: 'Die Obergrenze ist erreicht.',
-  unauthorized: 'Die Anmeldung ist abgelaufen. Bitte neu anmelden.',
-  forbidden: 'Dafür fehlt die Berechtigung.',
-  request_timeout: 'Der Server hat nicht rechtzeitig geantwortet. Bitte nochmals versuchen.',
-  internal_error: 'Auf dem Server ist ein Fehler aufgetreten. Bitte nochmals versuchen.',
-  service_unavailable: 'Der Server ist gerade nicht erreichbar. Bitte gleich nochmals versuchen.',
-  network: 'Keine Verbindung zum Server. Bitte nochmals versuchen.',
-  aborted: 'Abgebrochen.',
-};
+/** Message key per error code (`errors.code.*`); the user never reads the server's own texts. */
+export const ERROR_CODE_MESSAGES = {
+  validation_failed: 'errors.code.validation_failed',
+  not_found: 'errors.code.not_found',
+  transition_running: 'errors.code.transition_running',
+  scene_is_live: 'errors.code.scene_is_live',
+  asset_in_use: 'errors.code.asset_in_use',
+  unsupported_media: 'errors.code.unsupported_media',
+  pairing_expired: 'errors.code.pairing_expired',
+  rate_limited: 'errors.code.rate_limited',
+  device_blocked: 'errors.code.device_blocked',
+  conflict: 'errors.code.conflict',
+  limit_reached: 'errors.code.limit_reached',
+  unauthorized: 'errors.code.unauthorized',
+  forbidden: 'errors.code.forbidden',
+  request_timeout: 'errors.code.request_timeout',
+  internal_error: 'errors.code.internal_error',
+  service_unavailable: 'errors.code.service_unavailable',
+  network: 'errors.code.network',
+  aborted: 'errors.code.aborted',
+} as const satisfies Readonly<Record<ApiErrorCode | ClientErrorCode, MessageKey>>;
 
-/** German texts per HTTP status, used when the body carries no known code. */
-export const HTTP_STATUS_MESSAGES: Readonly<Record<number, string>> = {
+/** Message key per HTTP status, used when the body carries no known code. */
+export const HTTP_STATUS_MESSAGES: Readonly<Record<number, PlainMessageKey>> = {
   0: ERROR_CODE_MESSAGES.network,
   400: ERROR_CODE_MESSAGES.validation_failed,
   401: ERROR_CODE_MESSAGES.unauthorized,
@@ -62,23 +62,16 @@ export const HTTP_STATUS_MESSAGES: Readonly<Record<number, string>> = {
   408: ERROR_CODE_MESSAGES.request_timeout,
   409: ERROR_CODE_MESSAGES.conflict,
   410: ERROR_CODE_MESSAGES.pairing_expired,
-  413: 'Die Datei ist zu gross. Bilder dürfen höchstens 25 MB, Videos höchstens 1 GB gross sein.',
+  413: 'errors.status.413',
   415: ERROR_CODE_MESSAGES.unsupported_media,
   429: ERROR_CODE_MESSAGES.rate_limited,
   500: ERROR_CODE_MESSAGES.internal_error,
-  502: 'Der Server ist gerade nicht erreichbar. Bitte gleich nochmals versuchen.',
-  503: 'Der Server ist gerade nicht erreichbar. Bitte gleich nochmals versuchen.',
-  504: 'Der Server hat nicht rechtzeitig geantwortet. Bitte nochmals versuchen.',
+  502: ERROR_CODE_MESSAGES.service_unavailable,
+  503: ERROR_CODE_MESSAGES.service_unavailable,
+  504: ERROR_CODE_MESSAGES.request_timeout,
 };
 
 const KNOWN_CODES: ReadonlySet<string> = new Set(Object.keys(ERROR_CODE_MESSAGES));
-
-/** Codes whose server `detail` is more specific than the generic text (e.g. which limit was reached). */
-const DETAIL_PREFERRED: ReadonlySet<string> = new Set([
-  'validation_failed',
-  'limit_reached',
-  'conflict',
-]);
 
 function isProblemBody(value: unknown): value is ProblemBody {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -134,6 +127,7 @@ function normalizeFieldErrors(
  * Error of a REST call: HTTP status (0 = no answer), the StudioFlow `code`, title/detail of the problem body, field
  * errors of a validation problem and `Retry-After`. Every `StudioApiService` method rejects with an `ApiError`.
  * The numeric `status` also lets `MediaSession` recognise 401/403 from the token provider.
+ * Title, detail and field errors are English diagnostics: the UI shows {@link toUserMessage} instead.
  */
 export class ApiError extends Error {
   override readonly name = 'ApiError';
@@ -141,9 +135,9 @@ export class ApiError extends Error {
   readonly status: number;
   /** Problem code (`ERROR_CODES` and `unauthorized`/`forbidden`/`internal_error`), `network`, `aborted` or null. */
   readonly code: ApiErrorCode | ClientErrorCode | null;
-  /** Problem title as sent by the server (German), or null. */
+  /** Problem title as sent by the server (English, for diagnostics), or null. */
   readonly title: string | null;
-  /** Problem detail as sent by the server (German), or null. */
+  /** Problem detail as sent by the server (English, for diagnostics), or null. */
   readonly detail: string | null;
   /** Validation messages per field (camelCase field names as sent by the server). */
   readonly fieldErrors: Readonly<Record<string, readonly string[]>>;
@@ -226,46 +220,53 @@ export class ApiError extends Error {
   }
 }
 
-/** Optional per-call texts that replace the generic ones, e.g. `{ conflict: '…' }` for a specific dialog. */
+/**
+ * Optional per-call texts that replace the generic ones, e.g. `{ conflict: msg('regie.scenes.error.conflict') }`
+ * for a specific dialog. A plain string is shown as it is (it cannot follow a language switch).
+ */
 export type ErrorMessageOverrides = Partial<
-  Record<ApiErrorCode | ClientErrorCode | `${number}`, string>
+  Record<ApiErrorCode | ClientErrorCode | `${number}`, string | Msg>
 >;
 
 /**
- * German, user-facing message for any error (toasts, inline errors). Order: caller overrides (by code, then by
- * status) → server detail for codes where it is more specific (validation, limits, conflicts) → the text of the code
- * → the text of the HTTP status → a generic text with the status number.
+ * The message for any error as a {@link Msg}, which stays correct when the language changes while it is shown
+ * (inline errors). Order: a rate limit with a known wait → the text of the code → the text of the HTTP status → a
+ * generic text with the status number. The server's own texts are never used (D7).
  */
-export function toGermanMessage(error: unknown, overrides: ErrorMessageOverrides = {}): string {
+export function toUserMsg(error: unknown): Msg {
   const apiError = ApiError.from(error);
   const { code, status } = apiError;
-  if (code && overrides[code]) {
-    return overrides[code];
-  }
-  const byStatus = overrides[`${status}`];
-  if (byStatus) {
-    return byStatus;
-  }
-  if (code === 'validation_failed' && apiError.firstFieldError) {
-    return apiError.firstFieldError;
-  }
-  if (code && DETAIL_PREFERRED.has(code) && apiError.detail) {
-    return apiError.detail;
-  }
   if (status === 413) {
-    return HTTP_STATUS_MESSAGES[413];
+    return msg('errors.status.413');
   }
   if (code === 'rate_limited' && apiError.retryAfterSeconds !== null) {
-    return `Zu viele Versuche. Bitte in ${minutesText(apiError.retryAfterSeconds)} erneut versuchen.`;
+    return msg('errors.rateLimited.wait', { count: waitMinutes(apiError.retryAfterSeconds) });
   }
   if (code) {
-    return ERROR_CODE_MESSAGES[code];
+    return msg(ERROR_CODE_MESSAGES[code]);
   }
-  return HTTP_STATUS_MESSAGES[status] ?? `Das hat nicht geklappt (Fehler ${status}).`;
+  const byStatus = HTTP_STATUS_MESSAGES[status];
+  return byStatus ? msg(byStatus) : msg('errors.status.unknown', { status });
 }
 
-/** «1 Minute», «15 Minuten» for a wait in seconds (rounded up to whole minutes, at least one). */
-export function minutesText(seconds: number): string {
-  const minutes = Math.max(1, Math.ceil(seconds / 60));
-  return minutes === 1 ? '1 Minute' : `${minutes} Minuten`;
+/**
+ * User-facing text for any error (toasts, one-shot messages). Order: caller overrides (by code, then by status) → the
+ * server `detail` as a last resort for an unknown code without any text of its own → {@link toUserMsg}.
+ */
+export function toUserMessage(error: unknown, overrides: ErrorMessageOverrides = {}): string {
+  const apiError = ApiError.from(error);
+  const { code, status } = apiError;
+  const override = (code ? overrides[code] : undefined) ?? overrides[`${status}`];
+  if (override !== undefined) {
+    return typeof override === 'string' ? override : tm(override);
+  }
+  if (code === null && apiError.detail !== null && HTTP_STATUS_MESSAGES[status] === undefined) {
+    return apiError.detail;
+  }
+  return tm(toUserMsg(apiError));
+}
+
+/** Whole minutes to wait for a lockout of `seconds`, rounded up and at least one: 30 → 1, 61 → 2, 900 → 15. */
+export function waitMinutes(seconds: number): number {
+  return Math.max(1, Math.ceil(seconds / 60));
 }

@@ -19,12 +19,12 @@ import {
 
 describe('formatDecimal', () => {
   it.each([
-    [0.45, 2, '0,45'],
-    [0.9, 2, '0,9'],
+    [0.45, 2, '0.45'],
+    [0.9, 2, '0.9'],
     [2, 2, '2'],
     [10, 2, '10'],
     [100, 1, '100'],
-    [1.25, 1, '1,3'],
+    [1.25, 1, '1.3'],
     [-3840, 2, '-3840'],
     [-0.0001, 2, '0'],
   ])('%s with %s digits → %s', (value, digits, expected) => {
@@ -77,18 +77,18 @@ describe('formatClock / formatHm', () => {
 
   it('shows placeholders for invalid dates', () => {
     expect(formatClock(new Date(Number.NaN))).toBe('--:--:--');
-    expect(formatHm(new Date('kaputt'))).toBe('--:--');
+    expect(formatHm(new Date('broken'))).toBe('--:--');
   });
 });
 
 describe('formatSeconds', () => {
   it.each([
-    [300, '0,3 s'],
-    [200, '0,2 s'],
-    [1500, '1,5 s'],
+    [300, '0.3 s'],
+    [200, '0.2 s'],
+    [1500, '1.5 s'],
     [2000, '2 s'],
     [0, '0 s'],
-    [1234, '1,234 s'],
+    [1234, '1.234 s'],
   ])('%s ms → %s', (ms, expected) => {
     expect(formatSeconds(ms)).toBe(expected);
   });
@@ -99,12 +99,13 @@ describe('formatSeconds', () => {
 });
 
 describe('formatRate / formatKbpsAsMbit', () => {
-  it('uses one decimal with a comma', () => {
-    expect(formatRate(2.8)).toBe('2,8');
-    expect(formatRate(3)).toBe('3,0');
-    expect(formatRate(2.85)).toMatch(/^2,(8|9)$/);
-    expect(formatKbpsAsMbit(2800)).toBe('2,8');
-    expect(formatKbpsAsMbit(0)).toBe('0,0');
+  it('uses one decimal', () => {
+    expect(formatRate(2.8)).toBe('2.8');
+    expect(formatRate(3)).toBe('3.0');
+    expect(formatRate(2.85)).toMatch(/^2.(8|9)$/);
+    expect(formatKbpsAsMbit(2800)).toBe('2.8');
+    expect(formatKbpsAsMbit(0)).toBe('0.0');
+    expect(formatRate(-0.04)).toBe('0.0');
   });
 
   it('renders unknown values as a dash', () => {
@@ -128,9 +129,9 @@ describe('formatCheckCode', () => {
 
 describe('formatPercent', () => {
   it('formats a percentage', () => {
-    expect(formatPercent(78)).toBe('78 %');
-    expect(formatPercent(0.4, 1)).toBe('0,4 %');
-    expect(formatPercent(0, 1)).toBe('0,0 %');
+    expect(formatPercent(78)).toBe('78%');
+    expect(formatPercent(0.4, 1)).toBe('0.4%');
+    expect(formatPercent(0, 1)).toBe('0.0%');
     expect(formatPercent(null)).toBe(MISSING_VALUE);
   });
 });
@@ -141,8 +142,8 @@ describe('formatBytes', () => {
     [512, '512 B'],
     [1023, '1023 B'],
     [1024, '1 KB'],
-    [1536, '1,5 KB'],
-    [1_258_291, '1,2 MB'],
+    [1536, '1.5 KB'],
+    [1_258_291, '1.2 MB'],
     [25 * 1024 * 1024, '25 MB'],
     [1024 * 1024 * 1024, '1 GB'],
     [1024 * 1024 - 1, '1 MB'],
@@ -158,40 +159,40 @@ describe('formatBytes', () => {
 
 describe('statusWord / incidentWord', () => {
   it.each([
-    ['reconnecting', 'verbindet neu'],
-    ['ended', 'Teilen beendet'],
-    ['blocked', 'gesperrt'],
-    ['connecting', 'verbindet …'],
-    ['lost', 'kein Bild'],
-    ['offline', 'nicht verbunden'],
+    ['reconnecting', 'reconnecting'],
+    ['ended', 'sharing stopped'],
+    ['blocked', 'blocked'],
+    ['connecting', 'connecting…'],
+    ['lost', 'no picture'],
+    ['offline', 'not connected'],
     ['ok', ''],
   ] as const)('%s → %j', (status, word) => {
     expect(statusWord(status)).toBe(word);
   });
 
   it('uses the status word for incidents', () => {
-    expect(incidentWord('reconnecting')).toBe('verbindet neu');
-    expect(incidentWord('ended')).toBe('Teilen beendet');
-    expect(incidentWord('lost')).toBe('kein Bild');
+    expect(incidentWord('reconnecting')).toBe('reconnecting');
+    expect(incidentWord('ended')).toBe('sharing stopped');
+    expect(incidentWord('lost')).toBe('no picture');
   });
 
-  it('names an ended camera «Kamera beendet» and an ended screen «Teilen beendet»', () => {
-    expect(statusWord('ended', 'camera')).toBe('Kamera beendet');
-    expect(statusWord('ended', 'screen')).toBe('Teilen beendet');
-    expect(statusWord('ended', null)).toBe('Teilen beendet');
-    expect(incidentWord('ended', 'camera')).toBe('Kamera beendet');
-    expect(incidentWord('ended', 'screen')).toBe('Teilen beendet');
-    expect(statusWord('reconnecting', 'camera')).toBe('verbindet neu');
-    expect(incidentWord('lost', 'camera')).toBe('kein Bild');
+  it('names an ended camera "camera stopped" and an ended screen "sharing stopped"', () => {
+    expect(statusWord('ended', 'camera')).toBe('camera stopped');
+    expect(statusWord('ended', 'screen')).toBe('sharing stopped');
+    expect(statusWord('ended', null)).toBe('sharing stopped');
+    expect(incidentWord('ended', 'camera')).toBe('camera stopped');
+    expect(incidentWord('ended', 'screen')).toBe('sharing stopped');
+    expect(statusWord('reconnecting', 'camera')).toBe('reconnecting');
+    expect(incidentWord('lost', 'camera')).toBe('no picture');
   });
 });
 
 describe('pluralize / formatItemCount', () => {
   it('picks singular only for exactly one', () => {
-    expect(formatItemCount(1)).toBe('1 Element');
-    expect(formatItemCount(3)).toBe('3 Elemente');
-    expect(formatItemCount(0)).toBe('0 Elemente');
-    expect(pluralize(1, 'Störung', 'Störungen')).toBe('1 Störung');
-    expect(pluralize(2, 'Störung', 'Störungen')).toBe('2 Störungen');
+    expect(formatItemCount(1)).toBe('1 item');
+    expect(formatItemCount(3)).toBe('3 items');
+    expect(formatItemCount(0)).toBe('0 items');
+    expect(pluralize(1, 'incident', 'incidents')).toBe('1 incident');
+    expect(pluralize(2, 'incident', 'incidents')).toBe('2 incidents');
   });
 });

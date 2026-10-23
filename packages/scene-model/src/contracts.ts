@@ -44,6 +44,7 @@ export type {
   InviteKind,
   ItemFit,
   LiveKitTokenDto,
+  LogCode,
   LogEntryDto,
   LoginRequest,
   LostBehaviorDto,

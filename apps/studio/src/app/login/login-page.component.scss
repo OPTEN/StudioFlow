@@ -15,10 +15,15 @@
   place-items: center;
 }
 
+.c-login__col {
+  display: grid;
+  gap: 18px;
+  width: min(320px, 100%);
+}
+
 .c-login__form {
   display: grid;
   gap: 14px;
-  width: min(320px, 100%);
 }
 
 .c-login__brand {
@@ -59,4 +64,9 @@
 .c-login__submit {
   height: 34px;
   width: 100%;
+}
+
+.c-login__footer {
+  border-top: 1px solid var(--seam);
+  padding-top: 14px;
 }

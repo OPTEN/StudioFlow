@@ -114,7 +114,7 @@ describe('StartComponent (pairing form)', () => {
     TestBed.tick();
 
     expect(createPairingRequest).not.toHaveBeenCalled();
-    expect(element.textContent).toContain('Bitte einen Namen eingeben.');
+    expect(element.textContent).toContain('Please enter a name.');
     expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 

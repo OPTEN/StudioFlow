@@ -3,7 +3,7 @@ import type { ResilientHubOptions } from '@studioflow/realtime-client';
 import type { SceneRendererOptions } from '@studioflow/scene-renderer';
 import { ACCESS_RETRY_MS } from './access-guard';
 import type { OutputConfig, OutputFlags } from './config';
-import { NO_ACCESS_SLATE } from './slates';
+import { noAccessSlate } from './slates';
 import {
   REMOVAL_RESTART_MS,
   startInvalidLinkPage,
@@ -25,6 +25,10 @@ import {
   snapshotChanges,
   deltaChanges,
 } from './testing/fixtures';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 // Loaded once up front, so the page's lazy `import()` of them resolves within the fake-timer steps.
 import './debug-overlay';
 import './latency-probe';
@@ -283,7 +287,7 @@ describe('output app: short database outage', () => {
     await flush(10_000);
 
     expect(ctx.hub.invoked.filter((call) => call.method === HUB.subscribeOutput)).toHaveLength(5);
-    expect(ctx.renderer.currentSlate()).not.toBe(NO_ACCESS_SLATE);
+    expect(ctx.renderer.currentSlate()).not.toEqual(noAccessSlate());
     expect(ctx.renderer.summary()).not.toContain('show null');
     expect(ctx.renderer.summary()).toContain('show scn_c');
     expect(ctx.media.session.stops).toBe(0);
@@ -307,7 +311,7 @@ describe('output app: «Kein Zugang»', () => {
     expect(hub.restarts).toBe(1);
     await flush(1);
     expect(hub.restarts).toBe(2);
-    expect(renderer.currentSlate()).toBe(NO_ACCESS_SLATE);
+    expect(renderer.currentSlate()).toEqual(noAccessSlate());
   });
 
   it('recovers by itself when the link works again (IP rule fixed)', async () => {
@@ -329,7 +333,7 @@ describe('output app: «Kein Zugang»', () => {
     const { renderer, media, hub } = await boot();
     renderer.reset();
     media.session.setState('unauthorized');
-    expect(renderer.currentSlate()).toBe(NO_ACCESS_SLATE);
+    expect(renderer.currentSlate()).toEqual(noAccessSlate());
     await flush(ACCESS_RETRY_MS - 1);
     expect(media.session.restarts).toBe(0);
     await flush(1);
@@ -362,7 +366,7 @@ describe('output app: «Kein Zugang»', () => {
     media.session.setState('removed');
     await flush(REMOVAL_RESTART_MS);
     media.session.setState('unauthorized');
-    expect(renderer.currentSlate()).toBe(NO_ACCESS_SLATE);
+    expect(renderer.currentSlate()).toEqual(noAccessSlate());
   });
 
   it('suspends status reports while access is refused', async () => {
@@ -378,7 +382,7 @@ describe('output app: «Kein Zugang»', () => {
     ctx.hub.refuse();
     await flush(5000);
     expect(ctx.loadMedia).not.toHaveBeenCalled();
-    expect(ctx.renderer.currentSlate()).toBe(NO_ACCESS_SLATE);
+    expect(ctx.renderer.currentSlate()).toEqual(noAccessSlate());
     await flush(ACCESS_RETRY_MS);
     ctx.hub.connect();
     await flush(300);

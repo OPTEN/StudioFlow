@@ -43,7 +43,7 @@ import {
   type OutputMedia,
 } from './media';
 import { ProgramView } from './program-view';
-import { NO_ACCESS_SLATE } from './slates';
+import { noAccessSlate } from './slates';
 import { StatusReporter } from './status-reporter';
 import { VersionWatch, type MarkerStorage } from './version-watch';
 
@@ -575,7 +575,7 @@ export function startInvalidLinkPage(
   let disposed = false;
   void (deps.waitForFonts ?? (() => whenFontsReady(doc, [UI_FONT_PROBE])))().then(() => {
     if (!disposed) {
-      renderer.showSlate(NO_ACCESS_SLATE, null);
+      renderer.showSlate(noAccessSlate(), null);
     }
   });
   const stopCursor = hideIdleCursor(doc);

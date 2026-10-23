@@ -42,7 +42,7 @@ export interface ProductionState {
   readonly incidents: readonly IncidentDto[];
   /** Null for the output page, which does not see the output status. */
   readonly outputStatus: OutputStatusDto | null;
-  /** «Letzte Ereignisse», newest first, at most {@link LIMITS.recentLogEntries}. */
+  /** "Recent events", newest first, at most {@link LIMITS.recentLogEntries}. */
   readonly log: readonly LogEntryDto[];
   /** Connected Regie sessions. */
   readonly operatorsOnline: number;

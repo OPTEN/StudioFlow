@@ -1,5 +1,5 @@
 import { MONO_FONT_PROBE, UI_FONT_PROBE, whenFontsReady } from './fonts';
-import { CLOCK_HINT } from './slates';
+import { clockHint } from './slates';
 
 /**
  * `/o/_uhr`: running clock for glass-to-glass measurements (plan phase 0: «Glass-to-Glass messen, indem wir eine
@@ -36,7 +36,7 @@ export function startClockPage(doc: Document, root: HTMLElement): () => void {
   time.textContent = formatClockMs(new Date());
   const hint = doc.createElement('p');
   hint.className = 'c-clock__hint';
-  hint.textContent = CLOCK_HINT;
+  hint.textContent = clockHint();
   clock.append(time, hint);
   clock.style.visibility = 'hidden';
   root.replaceChildren(clock);

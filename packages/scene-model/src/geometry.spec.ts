@@ -102,7 +102,7 @@ describe('clampItem', () => {
     expect(clampItem(itemFixture('i', 's', { border: null })).border).toBeNull();
   });
 
-  it('clamps the hold time and keeps «hold forever»', () => {
+  it('clamps the hold time and keeps "hold forever"', () => {
     const hold = (holdMs: number | null): number | null =>
       clampItem(itemFixture('i', 's', { onLost: { holdMs, fallbackSource: null } })).onLost.holdMs;
     expect(hold(-1)).toBe(0);
@@ -162,16 +162,16 @@ describe('validateItem', () => {
     expect(validateItem(itemFixture('itm_1', 'dev_k1aaaa/camera'))).toEqual([]);
   });
 
-  it('reports every geometry violation in German', () => {
+  it('reports every geometry violation', () => {
     const messages = validateItem(
       itemFixture('itm_1', 's', { x: 4000, y: -3000, w: 10, h: 2200, radius: 201 }),
     );
     expect(messages).toEqual([
-      'X-Position muss eine ganze Zahl zwischen -3840 und 3840 sein.',
-      'Y-Position muss eine ganze Zahl zwischen -2160 und 2160 sein.',
-      'Breite muss eine ganze Zahl zwischen 16 und 3840 sein.',
-      'Höhe muss eine ganze Zahl zwischen 16 und 2160 sein.',
-      'Eckenradius muss eine ganze Zahl zwischen 0 und 200 sein.',
+      'X position must be a whole number between -3840 and 3840.',
+      'Y position must be a whole number between -2160 and 2160.',
+      'Width must be a whole number between 16 and 3840.',
+      'Height must be a whole number between 16 and 2160.',
+      'Corner radius must be a whole number between 0 and 200.',
     ]);
   });
 
@@ -189,17 +189,14 @@ describe('validateItem', () => {
   it('reports crop sides and axes', () => {
     expect(
       validateItem(itemFixture('i', 's', { crop: { top: 0.5, right: 0, bottom: 0, left: -0.1 } })),
-    ).toEqual([
-      'Zuschnitt oben muss zwischen 0 und 0,45 liegen.',
-      'Zuschnitt links muss zwischen 0 und 0,45 liegen.',
-    ]);
+    ).toEqual(['Crop top must be between 0 and 0.45.', 'Crop left must be between 0 and 0.45.']);
     expect(
       validateItem(
         itemFixture('i', 's', { crop: { top: 0.45, right: 0.45, bottom: 0.45, left: 0.45 } }),
       ),
     ).toEqual([
-      'Zuschnitt oben und unten zusammen muss kleiner als 0,9 sein.',
-      'Zuschnitt links und rechts zusammen muss kleiner als 0,9 sein.',
+      'Crop top and bottom together must be less than 0.9.',
+      'Crop left and right together must be less than 0.9.',
     ]);
   });
 
@@ -211,15 +208,15 @@ describe('validateItem', () => {
       onLost: { holdMs: 600_001, fallbackSource: null },
     });
     expect(validateItem(item)).toEqual([
-      'Einpassen muss «Füllen» oder «Ganz zeigen» sein.',
-      'Die Drehung muss 0, 90, 180 oder 270 Grad sein.',
-      'Rahmenbreite muss eine ganze Zahl zwischen 1 und 40 sein.',
-      'Die Rahmenfarbe muss eine Hex-Farbe wie #e3b341 sein.',
-      'Standbild-Dauer muss zwischen 0 und 600 s liegen (ganze Millisekunden).',
+      'Fit must be “Fill” or “Show all”.',
+      'Rotation must be 0, 90, 180 or 270 degrees.',
+      'Border width must be a whole number between 1 and 40.',
+      'The border colour must be a hex colour like #e3b341.',
+      'The freeze frame duration must be between 0 and 600 s (whole milliseconds).',
     ]);
   });
 
-  it('accepts «hold forever» and the hold time bounds', () => {
+  it('accepts "hold forever" and the hold time bounds', () => {
     expect(
       validateItem(itemFixture('i', 's', { onLost: { holdMs: null, fallbackSource: null } })),
     ).toEqual([]);
@@ -235,19 +232,19 @@ describe('validateItem', () => {
     const own = itemFixture('i', 'dev_a/camera', {
       onLost: { holdMs: 3000, fallbackSource: 'dev_a/camera' },
     });
-    expect(validateItem(own)).toEqual(['Die Ersatzquelle darf nicht die eigene Quelle sein.']);
+    expect(validateItem(own)).toEqual(['The fallback source cannot be the item’s own source.']);
     const other = itemFixture('i', 'dev_a/camera', {
       onLost: { holdMs: 3000, fallbackSource: 'ast_pause' },
     });
     expect(validateItem(other)).toEqual([]);
     expect(validateItem(other, (id) => id === 'ast_pause')).toEqual([]);
-    expect(validateItem(other, () => false)).toEqual(['Die Ersatzquelle gibt es nicht.']);
+    expect(validateItem(other, () => false)).toEqual(['The fallback source does not exist.']);
   });
 
   it('reports a missing id and source', () => {
     expect(validateItem(itemFixture('', ''))).toEqual([
-      'Die Element-ID fehlt.',
-      'Das Element hat keine Quelle.',
+      'The item ID is missing.',
+      'The item has no source.',
     ]);
   });
 });

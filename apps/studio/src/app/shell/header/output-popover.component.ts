@@ -17,7 +17,7 @@ import {
   type ValidationErrors,
 } from '@angular/forms';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, type OutputSettingsDto } from '@studioflow/scene-model';
-import { toGermanMessage } from '../../core/api/api-error';
+import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClipboardService } from '../../core/ui/clipboard.service';
@@ -133,7 +133,7 @@ export class OutputPopoverComponent {
     try {
       this.settings.set(await this.api.getOutputSettings(productionId));
     } catch (error) {
-      this.loadError.set(toGermanMessage(error));
+      this.loadError.set(toUserMessage(error));
     }
   }
 

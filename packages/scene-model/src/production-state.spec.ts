@@ -18,6 +18,7 @@ import {
   incidentFixture,
   inviteFixture,
   itemFixture,
+  logFixture,
   outputSnapshotFixture,
   outputStatusFixture,
   pairingRequestFixture,
@@ -34,7 +35,7 @@ function baseState(): ProductionState {
     snapshotFixture({
       scenes: [sceneFixture('scn_b', 1), sceneFixture('scn_a', 0), sceneFixture('scn_c', 2)],
       sources: [deviceSourceFixture('dev_k1aaaa', 'camera', 'K1')],
-      devices: [deviceFixture('dev_k1aaaa', 'Handy Bühne links')],
+      devices: [deviceFixture('dev_k1aaaa', 'Phone stage left')],
       assets: [assetFixture('ast_m1aaaa', 'M1')],
       pairingRequests: [
         pairingRequestFixture('prq_b', '2026-10-22T10:05:00Z'),
@@ -42,7 +43,7 @@ function baseState(): ProductionState {
       ],
       invites: [inviteFixture('inv_a')],
       incidents: [incidentFixture('inc_a', 'dev_k1aaaa/camera', 'K1', 'reconnecting')],
-      recentLog: [{ at: FIXTURE_TIME, text: 'Szene «A» ist live' }],
+      recentLog: [logFixture('A', { text: 'Scene “A” is live' })],
     }),
     RECEIVED_AT,
   );
@@ -55,7 +56,7 @@ describe('stateFromSnapshot', () => {
     expect(state.serverOffsetMs).toBe(1500);
     expect(state.scenes.map((scene) => scene.id)).toEqual(['scn_a', 'scn_b', 'scn_c']);
     expect(state.sources.get('dev_k1aaaa/camera')?.code).toBe('K1');
-    expect(state.devices.get('dev_k1aaaa')?.name).toBe('Handy Bühne links');
+    expect(state.devices.get('dev_k1aaaa')?.name).toBe('Phone stage left');
     expect(state.assets.get('ast_m1aaaa')?.code).toBe('M1');
     expect(state.pairingRequests.map((request) => request.id)).toEqual(['prq_a', 'prq_b']);
     expect(state.invites).toHaveLength(1);
@@ -66,10 +67,7 @@ describe('stateFromSnapshot', () => {
   });
 
   it('breaks sortOrder ties by id and caps the log at 20 entries', () => {
-    const log = Array.from({ length: 25 }, (_, index) => ({
-      at: FIXTURE_TIME,
-      text: `Eintrag ${index}`,
-    }));
+    const log = Array.from({ length: 25 }, (_, index) => logFixture(`Entry ${index}`));
     const state = stateFromSnapshot(
       snapshotFixture({
         scenes: [sceneFixture('scn_z', 0), sceneFixture('scn_m', 0)],
@@ -78,7 +76,7 @@ describe('stateFromSnapshot', () => {
     );
     expect(state.scenes.map((scene) => scene.id)).toEqual(['scn_m', 'scn_z']);
     expect(state.log).toHaveLength(20);
-    expect(state.log[0].text).toBe('Eintrag 0');
+    expect(state.log[0].text).toBe('Entry 0');
   });
 
   it('uses offset 0 for an unparsable server time', () => {
@@ -339,12 +337,12 @@ describe('applyEvent per event type', () => {
     for (let index = 0; index < 25; index += 1) {
       state = apply(state, {
         type: 'logAppended',
-        entry: { at: FIXTURE_TIME, text: `Eintrag ${index}` },
+        entry: logFixture(`Entry ${index}`),
       });
     }
     expect(state.log).toHaveLength(20);
-    expect(state.log[0].text).toBe('Eintrag 24');
-    expect(state.log[19].text).toBe('Eintrag 5');
+    expect(state.log[0].text).toBe('Entry 24');
+    expect(state.log[19].text).toBe('Entry 5');
   });
 
   it('revisionOnly only advances the revision', () => {
@@ -373,7 +371,7 @@ describe('applyEvent per event type', () => {
     });
     apply(state, { type: 'sceneRemoved', sceneId: 'scn_a' });
     apply(state, { type: 'sourceRemoved', sourceId: 'dev_k1aaaa/camera' });
-    apply(state, { type: 'logAppended', entry: { at: FIXTURE_TIME, text: 'x' } });
+    apply(state, { type: 'logAppended', entry: logFixture('x') });
     expect(
       JSON.stringify({
         ...state,

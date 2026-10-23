@@ -37,6 +37,7 @@ export type IconName =
   | 'pencil'
   | 'trash'
   | 'upload'
+  | 'gear'
   // The StudioFlow brand mark (22 × 18)
   | 'mark';
 
@@ -163,6 +164,13 @@ export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | '
           d="M9.5 3.5h5M10.5 3.5v6L5 19a1.5 1.5 0 0 0 1.3 2.2h11.4A1.5 1.5 0 0 0 19 19l-5.5-9.5v-6"
         />
         <svg:path d="M7.5 15h9" />
+      }
+      @case ('gear') {
+        <svg:circle cx="12" cy="12" r="3.2" />
+        <svg:circle cx="12" cy="12" r="6.6" />
+        <svg:path
+          d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"
+        />
       }
       @case ('layout') {
         <svg:rect x="3" y="4" width="18" height="16" rx="1.5" />

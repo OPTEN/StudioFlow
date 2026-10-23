@@ -44,6 +44,22 @@
       }
     </div>
 
+    <div class="c-pop-wrap">
+      <button
+        class="c-ibtn"
+        type="button"
+        aria-haspopup="dialog"
+        [attr.aria-label]="t('regie.settings.open')"
+        [title]="t('regie.settings.open')"
+        [sfPopoverTrigger]="settingsPopover"
+      >
+        <svg sfIcon="gear"></svg>
+      </button>
+      @if (popovers.isOpen(settingsPopover)) {
+        <sf-settings-popover />
+      }
+    </div>
+
     <span class="c-header__presence" [title]="presenceText()">
       <svg sfIcon="users"></svg>
       <span class="c-header__presence-label" aria-hidden="true"

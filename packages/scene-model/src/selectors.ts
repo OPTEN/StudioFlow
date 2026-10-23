@@ -8,17 +8,17 @@ import type {
   TallyDto,
   TallyState,
 } from './contracts';
-import { pluralize } from './format';
+import { compareText, t } from '@studioflow/i18n';
 import type { ProductionState } from './production-state';
 
-/** Worst outage among the visible items of a scene (scene list lamp, «K2 gestört»). `bad` is false for amber. */
+/** Worst outage among the visible items of a scene (scene list lamp, "K2 incident"). `bad` is false for amber. */
 export interface SceneHealth {
   readonly code: string;
   readonly bad: boolean;
 }
 
 /** Where an incident's source is on air, as shown in the message strip. */
-export type IncidentPlace = 'im Program' | 'in der Preview' | 'nicht live';
+export type IncidentPlace = 'program' | 'preview' | 'off';
 
 /** Station health in the header chip. */
 export interface HealthSummary {
@@ -26,17 +26,15 @@ export interface HealthSummary {
   readonly active: number;
   /** True when at least one open incident is red (ended or lost), false when all are amber or none is open. */
   readonly bad: boolean;
-  /** «Alle 5 Stationen ok», «1 Störung», «2 Störungen». */
+  /** "All 5 stations ok", "1 incident", "2 incidents". */
   readonly text: string;
 }
 
 const TALLY_RANK: Readonly<Record<TallyState, number>> = { off: 0, preview: 1, program: 2 };
 
-const codeCollator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' });
-
 /** Natural order of slot codes: K1 < K2 < K10 < M1 < S1. */
 export function compareCodes(a: string, b: string): number {
-  return codeCollator.compare(a, b);
+  return compareText(a, b, { numeric: true });
 }
 
 /** Scene with the id, or null for null, undefined and unknown ids. */
@@ -135,11 +133,23 @@ export function deviceTally(state: ProductionState, deviceId: string): TallyDto 
 export function incidentPlace(state: ProductionState, sourceId: string): IncidentPlace {
   switch (tallyOf(state, sourceId)) {
     case 'program':
-      return 'im Program';
+      return 'program';
     case 'preview':
-      return 'in der Preview';
+      return 'preview';
     case 'off':
-      return 'nicht live';
+      return 'off';
+  }
+}
+
+/** The words for an {@link IncidentPlace}: "on Program", "in Preview", "not live". */
+export function incidentPlaceWord(place: IncidentPlace): string {
+  switch (place) {
+    case 'program':
+      return t('model.status.placeProgram');
+    case 'preview':
+      return t('model.status.placePreview');
+    case 'off':
+      return t('model.status.placeOff');
   }
 }
 
@@ -220,7 +230,9 @@ export function stationOrder(state: ProductionState): (a: DeviceDto, b: DeviceDt
         return byCode;
       }
     }
-    return codeCollator.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    return (
+      compareText(a.name, b.name, { numeric: true }) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    );
   };
 }
 
@@ -230,30 +242,23 @@ export function assetForSource(state: ProductionState, sourceId: string): AssetD
   return state.assets.get(assetId) ?? null;
 }
 
-/** Display name of a source; «Quelle fehlt» when the source was deleted. */
+/** Display name of a source; "Source missing" when the source was deleted. */
 export function sourceLabel(state: ProductionState, sourceId: string): string {
-  return state.sources.get(sourceId)?.label ?? 'Quelle fehlt';
+  return state.sources.get(sourceId)?.label ?? t('model.scene.sourceMissing');
 }
 
-function stationsOkText(count: number): string {
-  if (count === 0) {
-    return 'Keine Stationen';
-  }
-  return count === 1 ? '1 Station ok' : `Alle ${count} Stationen ok`;
-}
-
-/** Header chip: «2 Störungen» while incidents are open, else «Alle 5 Stationen ok» (blocked devices not counted). */
+/** Header chip: "2 incidents" while incidents are open, else "All 5 stations ok" (blocked devices not counted). */
 export function healthSummary(state: ProductionState): HealthSummary {
   const open = state.incidents.filter((incident) => incident.endedAt === null);
   if (open.length > 0) {
     return {
       active: open.length,
       bad: open.some((incident) => isBadIncident(incident.kind)),
-      text: pluralize(open.length, 'Störung', 'Störungen'),
+      text: t('model.status.incidents', { count: open.length }),
     };
   }
   const stations = [...state.devices.values()].filter(
     (device) => device.state !== 'blocked',
   ).length;
-  return { active: 0, bad: false, text: stationsOkText(stations) };
+  return { active: 0, bad: false, text: t('model.status.stationsOk', { count: stations }) };
 }

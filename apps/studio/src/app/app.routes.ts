@@ -1,4 +1,5 @@
 import type { Routes } from '@angular/router';
+import type { PlainMessageKey } from '@studioflow/i18n';
 import { authGuard } from './core/auth/auth.guard';
 import { LoginPageComponent } from './login/login-page.component';
 
@@ -7,7 +8,11 @@ import { LoginPageComponent } from './login/login-page.component';
  * livekit-client is loaded even later, by `StudioMediaService`.
  */
 export const routes: Routes = [
-  { path: 'login', component: LoginPageComponent, title: 'Anmelden' },
+  {
+    path: 'login',
+    component: LoginPageComponent,
+    data: { titleKey: 'regie.login.title' satisfies PlainMessageKey },
+  },
   {
     path: '',
     pathMatch: 'full',
@@ -17,7 +22,7 @@ export const routes: Routes = [
   {
     path: 'monitoring',
     canActivate: [authGuard],
-    title: 'Monitoring',
+    data: { titleKey: 'regie.monitoring.title' satisfies PlainMessageKey },
     loadComponent: () =>
       import('./monitoring/monitoring-page.component').then((m) => m.MonitoringPageComponent),
   },

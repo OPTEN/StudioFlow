@@ -389,10 +389,10 @@ export class ProductionStoreService {
     return state ? tallyOf(state, sourceId) : 'off';
   }
 
-  /** «im Program» | «in der Preview» | «nicht live». */
+  /** Where the source is on air: `program`, `preview` or `off` (words: `incidentPlaceWord`). */
   incidentPlace(sourceId: string): IncidentPlace {
     const state = this.stateSignal();
-    return state ? incidentPlace(state, sourceId) : 'nicht live';
+    return state ? incidentPlace(state, sourceId) : 'off';
   }
 
   /** Current server time in ms (corrected by the offset of the last snapshot). Not reactive by itself. */

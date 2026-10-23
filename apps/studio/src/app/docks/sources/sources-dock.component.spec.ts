@@ -9,6 +9,10 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { EditorService } from '../../stage/editor.service';
 import { SourcesDockComponent } from './sources-dock.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const SCENE_B = `/api/productions/${PRODUCTION_ID}/scenes/scn_b`;
 

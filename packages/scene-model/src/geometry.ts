@@ -1,3 +1,4 @@
+import { t, type MessageKey } from '@studioflow/i18n';
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -118,32 +119,38 @@ function isIntegerIn(value: number, min: number, max: number): boolean {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
-function integerRangeMessage(label: string, min: number, max: number): string {
-  return `${label} muss eine ganze Zahl zwischen ${min} und ${max} sein.`;
+/** Keys of the field names used in validation messages. */
+type FieldKey = Extract<MessageKey, `model.scene.field.${string}`>;
+
+function integerRangeMessage(label: FieldKey, min: number, max: number): string {
+  return t('model.scene.validation.integerRange', { label: t(label), min, max });
 }
 
 function cropMessages(crop: CropDto): string[] {
   const messages: string[] = [];
-  const sides: readonly [keyof CropDto, string][] = [
-    ['top', 'Zuschnitt oben'],
-    ['right', 'Zuschnitt rechts'],
-    ['bottom', 'Zuschnitt unten'],
-    ['left', 'Zuschnitt links'],
+  const sides: readonly [keyof CropDto, FieldKey][] = [
+    ['top', 'model.scene.field.cropTop'],
+    ['right', 'model.scene.field.cropRight'],
+    ['bottom', 'model.scene.field.cropBottom'],
+    ['left', 'model.scene.field.cropLeft'],
   ];
   for (const [side, label] of sides) {
     const value = crop[side];
     if (!(Number.isFinite(value) && value >= 0 && value <= ITEM_BOUNDS.maxCropPerSide)) {
       messages.push(
-        `${label} muss zwischen 0 und ${formatDecimal(ITEM_BOUNDS.maxCropPerSide)} liegen.`,
+        t('model.scene.validation.cropSide', {
+          label: t(label),
+          max: formatDecimal(ITEM_BOUNDS.maxCropPerSide),
+        }),
       );
     }
   }
   const axisLimit = formatDecimal(ITEM_BOUNDS.maxCropPerAxis);
   if (!(crop.top + crop.bottom < ITEM_BOUNDS.maxCropPerAxis)) {
-    messages.push(`Zuschnitt oben und unten zusammen muss kleiner als ${axisLimit} sein.`);
+    messages.push(t('model.scene.validation.cropAxisVertical', { max: axisLimit }));
   }
   if (!(crop.left + crop.right < ITEM_BOUNDS.maxCropPerAxis)) {
-    messages.push(`Zuschnitt links und rechts zusammen muss kleiner als ${axisLimit} sein.`);
+    messages.push(t('model.scene.validation.cropAxisHorizontal', { max: axisLimit }));
   }
   return messages;
 }
@@ -155,22 +162,20 @@ function onLostMessages(
   const messages: string[] = [];
   const { holdMs, fallbackSource } = item.onLost;
   if (holdMs !== null && !isIntegerIn(holdMs, 0, ITEM_BOUNDS.maxHoldMs)) {
-    messages.push(
-      `Standbild-Dauer muss zwischen 0 und ${ITEM_BOUNDS.maxHoldMs / 1000} s liegen (ganze Millisekunden).`,
-    );
+    messages.push(t('model.scene.validation.holdDuration', { max: ITEM_BOUNDS.maxHoldMs / 1000 }));
   }
   if (fallbackSource !== null) {
     if (fallbackSource === item.source) {
-      messages.push('Die Ersatzquelle darf nicht die eigene Quelle sein.');
+      messages.push(t('model.scene.validation.fallbackSelf'));
     } else if (sourceExists && !sourceExists(fallbackSource)) {
-      messages.push('Die Ersatzquelle gibt es nicht.');
+      messages.push(t('model.scene.validation.fallbackMissing'));
     }
   }
   return messages;
 }
 
 /**
- * Checks one item against the server rules of spec 4.3 and returns German messages for the inspector (empty = valid).
+ * Checks one item against the server rules of spec 4.3 and returns messages in the active language for the inspector (empty = valid).
  * Scene-level rules (at most 32 items, unique ids) and the existence of the item's own source are checked by the API;
  * pass `sourceExists` to also verify the fallback source.
  */
@@ -180,17 +185,17 @@ export function validateItem(
 ): string[] {
   const messages: string[] = [];
   if (!item.id) {
-    messages.push('Die Element-ID fehlt.');
+    messages.push(t('model.scene.validation.idMissing'));
   }
   if (!item.source) {
-    messages.push('Das Element hat keine Quelle.');
+    messages.push(t('model.scene.validation.sourceMissing'));
   }
-  const integers: readonly [number, string, number, number][] = [
-    [item.x, 'X-Position', ITEM_BOUNDS.minX, ITEM_BOUNDS.maxX],
-    [item.y, 'Y-Position', ITEM_BOUNDS.minY, ITEM_BOUNDS.maxY],
-    [item.w, 'Breite', ITEM_BOUNDS.minW, ITEM_BOUNDS.maxW],
-    [item.h, 'Höhe', ITEM_BOUNDS.minH, ITEM_BOUNDS.maxH],
-    [item.radius, 'Eckenradius', 0, ITEM_BOUNDS.maxRadius],
+  const integers: readonly [number, FieldKey, number, number][] = [
+    [item.x, 'model.scene.field.x', ITEM_BOUNDS.minX, ITEM_BOUNDS.maxX],
+    [item.y, 'model.scene.field.y', ITEM_BOUNDS.minY, ITEM_BOUNDS.maxY],
+    [item.w, 'model.scene.field.width', ITEM_BOUNDS.minW, ITEM_BOUNDS.maxW],
+    [item.h, 'model.scene.field.height', ITEM_BOUNDS.minH, ITEM_BOUNDS.maxH],
+    [item.radius, 'model.scene.field.cornerRadius', 0, ITEM_BOUNDS.maxRadius],
   ];
   for (const [value, label, min, max] of integers) {
     if (!isIntegerIn(value, min, max)) {
@@ -198,18 +203,20 @@ export function validateItem(
     }
   }
   if (item.fit !== 'cover' && item.fit !== 'contain') {
-    messages.push('Einpassen muss «Füllen» oder «Ganz zeigen» sein.');
+    messages.push(t('model.scene.validation.fit'));
   }
   messages.push(...cropMessages(item.crop));
   if (!(ROTATIONS as readonly number[]).includes(item.rotation)) {
-    messages.push('Die Drehung muss 0, 90, 180 oder 270 Grad sein.');
+    messages.push(t('model.scene.validation.rotation'));
   }
   if (item.border) {
     if (!isIntegerIn(item.border.width, 1, ITEM_BOUNDS.maxBorderWidth)) {
-      messages.push(integerRangeMessage('Rahmenbreite', 1, ITEM_BOUNDS.maxBorderWidth));
+      messages.push(
+        integerRangeMessage('model.scene.field.borderWidth', 1, ITEM_BOUNDS.maxBorderWidth),
+      );
     }
     if (!isHexColor(item.border.color)) {
-      messages.push('Die Rahmenfarbe muss eine Hex-Farbe wie #e3b341 sein.');
+      messages.push(t('model.scene.validation.borderColor'));
     }
   }
   messages.push(...onLostMessages(item, sourceExists));

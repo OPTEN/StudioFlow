@@ -11,6 +11,10 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { ToastService } from '../../core/ui/toast.service';
 import { MediaPopoverComponent } from './media-popover.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 

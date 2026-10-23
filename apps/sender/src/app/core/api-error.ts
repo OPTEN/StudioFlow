@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { t, tFor } from '@studioflow/i18n';
 import { ERROR_CODES } from '@studioflow/scene-model';
 
 /** Error codes the API may add beyond `ERROR_CODES` (spec 5, `ErrorCodes.cs`). */
@@ -9,8 +10,11 @@ export const EXTRA_ERROR_CODES = {
 } as const;
 
 /**
- * Failure of an API call with a German message for the UI. `status` is the HTTP status, 0 when the server was not
- * reachable (network error, timeout). Carries a numeric `status`, so `MediaSession` recognises 401/403 token refusals.
+ * Failure of an API call. `status` is the HTTP status, 0 when the server was not reachable (network error, timeout).
+ * Carries a numeric `status`, so `MediaSession` recognises 401/403 token refusals.
+ *
+ * `message` is an English snapshot for logs and diagnostics. The text for the person using the device is
+ * {@link userMessage}: it is built from the fields when it is read, so it follows the active language.
  */
 export class ApiError extends Error {
   override readonly name = 'ApiError';
@@ -21,8 +25,15 @@ export class ApiError extends Error {
     message: string,
     readonly retryAfterSeconds: number | null = null,
     readonly fieldErrors: Readonly<Record<string, readonly string[]>> = {},
+    /** The request timed out (status 0 as well); only changes the wording of {@link userMessage}. */
+    readonly timedOut = false,
   ) {
     super(message);
+  }
+
+  /** The text for the person using the device, in the active language. Read it when showing it. */
+  get userMessage(): string {
+    return describeFailure(t, this);
   }
 
   /** The server was not reachable (no HTTP answer). */
@@ -59,34 +70,69 @@ export class ApiError extends Error {
   }
 }
 
-/** German default messages. */
-export const API_MESSAGES = {
-  network: 'Der Server ist nicht erreichbar. Bitte WLAN prüfen.',
-  timeout: 'Der Server antwortet nicht. Bitte WLAN prüfen.',
-  unauthorized: 'Dieses Gerät ist nicht mehr gekoppelt.',
-  blocked: 'Dieses Gerät ist gesperrt. Die Regie kann es wieder freigeben.',
-  forbidden: 'Kein Zugriff.',
-  notFound: 'Nicht gefunden.',
-  expired: 'Diese Einladung ist abgelaufen oder wurde schon verwendet.',
-  conflict: 'Das geht gerade nicht.',
-  limit: 'Die Grenze ist erreicht.',
-  invalid: 'Die Eingabe ist ungültig.',
-  tooLarge: 'Die Daten sind zu gross.',
-  server: 'Der Server hat einen Fehler gemeldet. Bitte gleich noch einmal versuchen.',
-  unavailable: 'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
-} as const;
-
-/** «in 40 Sekunden» / «in 3 Minuten» for a Retry-After value. */
-export function formatRetryAfter(seconds: number | null): string {
+/** "Please try again in 40 seconds / 3 minutes", or "later" when the wait is unknown. */
+function rateLimitedMessage(translate: typeof t, seconds: number | null): string {
   if (seconds === null || !Number.isFinite(seconds) || seconds <= 0) {
-    return 'später';
+    return translate('errors.device.rateLimitedLater');
   }
   if (seconds < 60) {
-    const rounded = Math.max(1, Math.round(seconds));
-    return `in ${rounded} ${rounded === 1 ? 'Sekunde' : 'Sekunden'}`;
+    return translate('errors.device.rateLimitedSeconds', {
+      count: Math.max(1, Math.round(seconds)),
+    });
   }
-  const minutes = Math.ceil(seconds / 60);
-  return `in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`;
+  return translate('errors.device.rateLimitedMinutes', { count: Math.ceil(seconds / 60) });
+}
+
+/** The message for a failure, by code first, then by HTTP status. The server's own texts are never used (D7). */
+function describeFailure(
+  translate: typeof t,
+  failure: Pick<ApiError, 'status' | 'code' | 'retryAfterSeconds' | 'timedOut'>,
+): string {
+  const { status, code, retryAfterSeconds } = failure;
+  switch (code) {
+    case ERROR_CODES.deviceBlocked:
+      return translate('errors.device.blocked');
+    case ERROR_CODES.pairingExpired:
+      return translate('errors.device.expired');
+    case ERROR_CODES.rateLimited:
+      return rateLimitedMessage(translate, retryAfterSeconds);
+    case ERROR_CODES.limitReached:
+      return translate('errors.device.limit');
+    case ERROR_CODES.validationFailed:
+      return translate('errors.device.invalid');
+    case ERROR_CODES.serviceUnavailable:
+      return translate('errors.device.unavailable');
+    default:
+      break;
+  }
+  switch (status) {
+    case 0:
+      return translate(failure.timedOut ? 'errors.device.timeout' : 'errors.device.network');
+    case 401:
+      return translate('errors.device.unauthorized');
+    case 403:
+      return translate('errors.device.forbidden');
+    case 404:
+      return translate('errors.device.notFound');
+    case 409:
+      return translate('errors.device.conflict');
+    case 410:
+      return translate('errors.device.expired');
+    case 413:
+    case 415:
+      return translate('errors.device.tooLarge');
+    case 429:
+      return rateLimitedMessage(translate, retryAfterSeconds);
+    case 400:
+    case 422:
+      return translate('errors.device.invalid');
+    case 502:
+    case 503:
+    case 504:
+      return translate('errors.device.unavailable');
+    default:
+      return translate('errors.device.server');
+  }
 }
 
 /** Parses `Retry-After` (seconds or HTTP date) into seconds. */
@@ -133,84 +179,31 @@ function fieldErrorsOf(errors: unknown): Record<string, readonly string[]> {
   return result;
 }
 
-function messageFor(
-  status: number,
-  code: string | null,
-  detail: string | null,
-  retryAfter: number | null,
-  fieldErrors: Record<string, readonly string[]>,
-): string {
-  switch (code) {
-    case ERROR_CODES.deviceBlocked:
-      return API_MESSAGES.blocked;
-    case ERROR_CODES.pairingExpired:
-      return API_MESSAGES.expired;
-    case ERROR_CODES.rateLimited:
-      return `Zu viele Versuche. Bitte ${formatRetryAfter(retryAfter)} noch einmal versuchen.`;
-    case ERROR_CODES.limitReached:
-      return detail ?? API_MESSAGES.limit;
-    case ERROR_CODES.validationFailed:
-      return Object.values(fieldErrors).flat()[0] ?? detail ?? API_MESSAGES.invalid;
-    case ERROR_CODES.serviceUnavailable:
-      return API_MESSAGES.unavailable;
-    default:
-      break;
-  }
-  if (status === 401) {
-    return API_MESSAGES.unauthorized;
-  }
-  if (status === 403) {
-    return API_MESSAGES.forbidden;
-  }
-  if (status === 404) {
-    return detail ?? API_MESSAGES.notFound;
-  }
-  if (status === 409) {
-    return detail ?? API_MESSAGES.conflict;
-  }
-  if (status === 410) {
-    return API_MESSAGES.expired;
-  }
-  if (status === 413 || status === 415) {
-    return API_MESSAGES.tooLarge;
-  }
-  if (status === 429) {
-    return `Zu viele Versuche. Bitte ${formatRetryAfter(retryAfter)} noch einmal versuchen.`;
-  }
-  if (status === 400 || status === 422) {
-    return Object.values(fieldErrors).flat()[0] ?? detail ?? API_MESSAGES.invalid;
-  }
-  if (status === 502 || status === 503 || status === 504) {
-    return API_MESSAGES.unavailable;
-  }
-  return API_MESSAGES.server;
-}
-
 /** Converts anything thrown by HttpClient (or a timeout) into an {@link ApiError}. */
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error;
   }
+  const english = tFor('en');
   if (error instanceof HttpErrorResponse) {
-    if (error.status === 0) {
-      return new ApiError(0, null, API_MESSAGES.network);
-    }
     const problem = problemOf(error.error);
     const code = typeof problem.code === 'string' ? problem.code : null;
-    const detail =
-      typeof problem.detail === 'string' && problem.detail !== '' ? problem.detail : null;
-    const retryAfter = parseRetryAfter(error.headers?.get('Retry-After') ?? null);
-    const fieldErrors = fieldErrorsOf(problem.errors);
-    return new ApiError(
-      error.status,
+    const retryAfter =
+      error.status === 0 ? null : parseRetryAfter(error.headers?.get('Retry-After') ?? null);
+    const message = describeFailure(english, {
+      status: error.status,
       code,
-      messageFor(error.status, code, detail, retryAfter, fieldErrors),
-      retryAfter,
-      fieldErrors,
-    );
+      retryAfterSeconds: retryAfter,
+      timedOut: false,
+    });
+    return new ApiError(error.status, code, message, retryAfter, fieldErrorsOf(problem.errors));
   }
-  if (error instanceof Error && error.name === 'TimeoutError') {
-    return new ApiError(0, null, API_MESSAGES.timeout);
-  }
-  return new ApiError(0, null, API_MESSAGES.network);
+  const timedOut = error instanceof Error && error.name === 'TimeoutError';
+  const message = describeFailure(english, {
+    status: 0,
+    code: null,
+    retryAfterSeconds: null,
+    timedOut,
+  });
+  return new ApiError(0, null, message, null, {}, timedOut);
 }

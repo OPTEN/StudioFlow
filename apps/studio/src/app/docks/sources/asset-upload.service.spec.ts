@@ -9,6 +9,10 @@ import { StudioApiService, type UploadOptions } from '../../core/api/studio-api.
 import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AssetUploadService } from './asset-upload.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 interface PendingUpload {
   readonly file: File;

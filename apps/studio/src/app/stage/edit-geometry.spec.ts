@@ -19,6 +19,10 @@ import {
   toCanvasPoint,
   toPercent,
 } from './edit-geometry';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const NO_CROP: CropDto = { top: 0, right: 0, bottom: 0, left: 0 };
 const ITEM: CanvasRect = { x: 400, y: 300, w: 600, h: 338 };

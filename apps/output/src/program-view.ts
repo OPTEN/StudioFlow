@@ -6,7 +6,7 @@ import {
   type TransitionDto,
 } from '@studioflow/scene-model';
 import type { SceneRenderer } from '@studioflow/scene-renderer';
-import { NO_ACCESS_SLATE } from './slates';
+import { noAccessSlate } from './slates';
 
 /** The renderer calls the view makes. */
 export type ProgramRenderer = Pick<
@@ -103,14 +103,14 @@ export class ProgramView {
     }
   }
 
-  /** Shows «Kein Zugang» (true) or renders the latest state again (false). */
+  /** Shows the «No access» slate (true) or renders the latest state again (false). */
   setDenied(denied: boolean): void {
     if (denied === this.#denied) {
       return;
     }
     this.#denied = denied;
     if (denied) {
-      this.renderer.showSlate(NO_ACCESS_SLATE, null);
+      this.renderer.showSlate(noAccessSlate(), null);
       this.renderer.show(null);
       this.renderer.setPreloadScenes([]);
       this.#scene = NOTHING;

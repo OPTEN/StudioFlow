@@ -4,6 +4,10 @@ import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import { snapshotFixture } from '../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../testing/store-harness';
 import { MonitoringPageComponent } from './monitoring-page.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('MonitoringPageComponent', () => {
   let hub: FakeStudioHub;

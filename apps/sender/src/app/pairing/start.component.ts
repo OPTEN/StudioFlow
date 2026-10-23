@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { t } from '@studioflow/i18n';
 import { LIMITS, type DeviceKind } from '@studioflow/scene-model';
 import {
   DEVICE_ENVIRONMENT,
@@ -11,16 +12,17 @@ import {
 import { NoticeService } from '../core/notice.service';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
 import { IconComponent } from '../shared/icon.component';
+import { LanguageSelectComponent } from '../shared/language-select.component';
 import { KnockService } from './knock.service';
 
 /**
  * `/join/`: the pairing form (spec 4.6, way 2). Name (1–60 characters, prefilled from the platform) and kind
- * (detected, switchable); «Weiter» knocks and opens the waiting screen with the check code. Paired browsers and tabs
+ * (detected, switchable); “Continue” knocks and opens the waiting screen with the check code. Paired browsers and tabs
  * with a pending knock never get here (see `startGuard`).
  */
 @Component({
   selector: 'sf-start',
-  imports: [ReactiveFormsModule, BrandMarkComponent, IconComponent],
+  imports: [ReactiveFormsModule, BrandMarkComponent, IconComponent, LanguageSelectComponent],
   templateUrl: './start.component.html',
   styleUrl: './start.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,12 +32,13 @@ export class StartComponent {
   private readonly knock = inject(KnockService);
   private readonly environment = inject(DEVICE_ENVIRONMENT);
 
+  protected readonly t = t;
   protected readonly nameMax = LIMITS.deviceNameLength;
   protected readonly canShareScreen = this.environment.canShareScreen();
   protected readonly notice = signal(inject(NoticeService).takePairingNotice());
   protected readonly submitted = signal(false);
   protected readonly busy = computed(() => this.knock.phase() === 'requesting');
-  protected readonly error = computed(() => this.knock.error()?.message ?? null);
+  protected readonly error = computed(() => this.knock.error()?.userMessage ?? null);
 
   private readonly platform = this.environment.platform();
   private readonly previous = this.knock.lastRequest();
@@ -60,17 +63,17 @@ export class StartComponent {
     initialValue: this.form.controls.name.value,
   });
 
-  /** German validation message of the name, shown after a submit attempt. */
+  /** Validation message of the name, shown after a submit attempt. */
   protected readonly nameError = computed(() => {
     if (!this.submitted()) {
       return null;
     }
     const name = this.nameValue().trim();
     if (name === '') {
-      return 'Bitte einen Namen eingeben.';
+      return t('sender.pairing.start.nameRequired');
     }
     return name.length > LIMITS.deviceNameLength
-      ? `Höchstens ${LIMITS.deviceNameLength} Zeichen.`
+      ? t('sender.pairing.start.nameTooLong', { max: LIMITS.deviceNameLength })
       : null;
   });
 

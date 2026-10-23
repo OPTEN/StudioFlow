@@ -11,6 +11,10 @@ import {
 import { PREFERENCE_KEYS } from '../../core/ui/preferences.service';
 import { EditorService } from '../../stage/editor.service';
 import { PropertiesDockComponent } from './properties-dock.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 

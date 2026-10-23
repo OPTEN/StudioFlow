@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { formatBytes, type AssetDto } from '@studioflow/scene-model';
-import { ApiError, toGermanMessage } from '../../core/api/api-error';
+import { ApiError, toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -192,13 +192,13 @@ export class AssetUploadService {
     } catch (error) {
       const apiError = ApiError.from(error);
       if (apiError.status === 401) {
-        this.patch(item.id, { state: 'failed', error: toGermanMessage(apiError) });
+        this.patch(item.id, { state: 'failed', error: toUserMessage(apiError) });
         this.auth.handleUnauthorized();
       } else if (apiError.is('aborted')) {
         this.patch(item.id, { state: 'aborted', error: null });
         this.toasts.show(`Hochladen von «${item.file.name}» abgebrochen`);
       } else {
-        const message = toGermanMessage(apiError);
+        const message = toUserMessage(apiError);
         this.patch(item.id, { state: 'failed', error: message });
         this.toasts.show(`«${item.file.name}» wurde nicht hochgeladen: ${message}`);
       }

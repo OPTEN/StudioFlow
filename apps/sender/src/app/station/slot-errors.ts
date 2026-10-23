@@ -22,7 +22,7 @@ export function allocateSlotErrorMessage(error: unknown, kind: 'camera' | 'scree
   if (apiError.status === 409 && apiError.code === ERROR_CODES.limitReached) {
     return kind === 'screen' ? SLOT_ERROR_MESSAGES.screenLimit : SLOT_ERROR_MESSAGES.cameraLimit;
   }
-  return apiError.message;
+  return apiError.userMessage;
 }
 
 /**
@@ -37,5 +37,5 @@ export function releaseSlotErrorMessage(error: unknown, slot: string): string | 
   if (apiError.status === 409 && slot === 'camera') {
     return SLOT_ERROR_MESSAGES.phoneCamera;
   }
-  return apiError.message;
+  return apiError.userMessage;
 }

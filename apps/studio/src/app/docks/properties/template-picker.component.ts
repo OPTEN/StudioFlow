@@ -1,22 +1,28 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { LAYOUT_TEMPLATES, autoGridSlots, type LayoutTemplateId } from '@studioflow/scene-model';
+import {
+  LAYOUT_TEMPLATES,
+  autoGridSlots,
+  type LayoutTemplate,
+  type LayoutTemplateId,
+} from '@studioflow/scene-model';
 import { LayoutPreviewComponent, type PreviewBlock } from '../shared/layout-preview.component';
 
 /** Templates whose first slot is the main picture (prototype `presetThumb`: `full`, `pip`, `col`, `onetwo`). */
 const STRONG_FIRST: ReadonlySet<LayoutTemplateId> = new Set(['full', 'pip', 'col', 'onetwo']);
 
-/** A template tile. */
+/**
+ * A template tile. It keeps the template itself: `name` and `description` are looked up when they are read, so a tile
+ * follows the language (a copy made at import time would not).
+ */
 interface TemplateTile {
   readonly id: LayoutTemplateId;
-  readonly name: string;
-  readonly description: string;
+  readonly template: LayoutTemplate;
   readonly blocks: readonly PreviewBlock[];
 }
 
 const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
   id: template.id,
-  name: template.name,
-  description: template.description,
+  template,
   blocks: (template.slots ?? autoGridSlots(3)).map(([x, y, w, h], index) => ({
     x,
     y,
@@ -39,14 +45,14 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
       <button
         class="c-preset"
         type="button"
-        [title]="tile.description"
+        [title]="tile.template.description"
         [attr.aria-pressed]="tile.id === 'auto' ? autoGridActive() : null"
         [class.is-active]="tile.id === 'auto' && autoGridActive()"
         [disabled]="disabled()"
         (click)="pick.emit(tile.id)"
       >
         <sf-layout-preview [blocks]="tile.blocks" />
-        <span class="c-preset__name">{{ tile.name }}</span>
+        <span class="c-preset__name">{{ tile.template.name }}</span>
       </button>
     }
   `,

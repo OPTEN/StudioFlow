@@ -14,6 +14,10 @@ import { LIVE_NOTE } from './monitor.component';
 import { SCENE_RENDERER_FACTORY } from './scene-view.component';
 import { StageComponent } from './stage.component';
 import { FakeRendererFactory, ManualFrames, type FakeSceneRenderer } from './testing/stage-fakes';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('StageComponent', () => {
   let hub: FakeStudioHub;

@@ -21,7 +21,7 @@ describe('constants', () => {
     expect(FADE_DURATIONS_MS).toContain(DEFAULT_FADE_MS);
   });
 
-  it('offers the three «Bei Ausfall» options, the default first', () => {
+  it('offers the three "On failure" options, the default first', () => {
     expect(HOLD_OPTIONS.map((option) => option.holdMs)).toEqual([3000, 10000, null]);
     expect(HOLD_OPTIONS[0].holdMs).toBe(DEFAULT_HOLD_MS);
     for (const option of HOLD_OPTIONS) {

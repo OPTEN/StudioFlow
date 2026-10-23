@@ -74,7 +74,7 @@ export class RedeemComponent implements OnInit {
         this.state.set('expired');
         return;
       default:
-        this.errorMessage.set(outcome.error.message);
+        this.errorMessage.set(outcome.error.userMessage);
         this.state.set('failed');
     }
   }

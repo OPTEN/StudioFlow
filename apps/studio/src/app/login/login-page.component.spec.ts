@@ -2,9 +2,10 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { resetLocaleForTests, tFor, tm } from '@studioflow/i18n';
 import { flushMicrotasks } from '../../testing/fake-studio-hub';
 import { csrfInterceptor } from '../core/api/csrf.interceptor';
-import { LoginPageComponent, loginErrorMessage } from './login-page.component';
+import { LoginPageComponent, loginErrorMsg } from './login-page.component';
 import { ApiError } from '../core/api/api-error';
 
 describe('LoginPageComponent', () => {
@@ -56,30 +57,30 @@ describe('LoginPageComponent', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the console look with the brand and «Anmelden»', async () => {
+  it('shows the console look with the brand and the “Sign in” button', async () => {
     await setup();
     expect(element.querySelector('h1')?.textContent).toContain('StudioFlow');
-    expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe('Anmelden');
+    expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe('Sign in');
   });
 
   it('asks for both fields before sending anything', async () => {
     await setup();
     await submit();
     await render();
-    expect(errorText()).toBe('Bitte Benutzername und Passwort eingeben.');
+    expect(errorText()).toBe('Please enter your username and password.');
     http.expectNone('/api/auth/login');
   });
 
   it('reports wrong credentials', async () => {
     await setup();
-    fill('admin', 'falsch');
+    fill('admin', 'wrong');
     await submit();
     const request = http.expectOne('/api/auth/login');
-    expect(request.request.body).toEqual({ username: 'admin', password: 'falsch' });
+    expect(request.request.body).toEqual({ username: 'admin', password: 'wrong' });
     expect(request.request.headers.get('X-StudioFlow')).toBe('1');
     request.flush({ code: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
     await render();
-    expect(errorText()).toBe('Benutzername oder Passwort ist falsch.');
+    expect(errorText()).toBe('Wrong username or password.');
     expect((element.querySelectorAll('input')[1] as HTMLInputElement).value).toBe('');
   });
 
@@ -94,7 +95,7 @@ describe('LoginPageComponent', () => {
         { status: 429, statusText: 'Too Many', headers: { 'Retry-After': '840' } },
       );
     await render();
-    expect(errorText()).toBe('Zu viele Fehlversuche. Bitte in 14 Minuten erneut versuchen.');
+    expect(errorText()).toBe('Too many failed attempts. Please try again in 14 minutes.');
     expect((element.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -106,13 +107,13 @@ describe('LoginPageComponent', () => {
     await submit();
     http.expectOne('/api/auth/login').error(new ProgressEvent('error'), { status: 0 });
     await render();
-    expect(errorText()).toBe('Keine Verbindung zum Server. Bitte nochmals versuchen.');
+    expect(errorText()).toBe('No connection to the server. Please try again.');
   });
 
   it('continues to the Regie after a successful login', async () => {
     await setup();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
-    fill('admin', 'richtig');
+    fill('admin', 'right');
     await submit();
     http.expectOne('/api/auth/login').flush({ username: 'admin' });
     await render();
@@ -120,11 +121,44 @@ describe('LoginPageComponent', () => {
   });
 
   it('formats login errors', () => {
-    expect(loginErrorMessage(new ApiError({ status: 429, code: 'rate_limited' }))).toBe(
-      'Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.',
+    expect(tm(loginErrorMsg(new ApiError({ status: 429, code: 'rate_limited' })))).toBe(
+      'Too many failed attempts. Please try again in 15 minutes.',
     );
     expect(
-      loginErrorMessage(new ApiError({ status: 429, code: 'rate_limited', retryAfterSeconds: 30 })),
-    ).toBe('Zu viele Fehlversuche. Bitte in 1 Minute erneut versuchen.');
+      tm(loginErrorMsg(new ApiError({ status: 429, code: 'rate_limited', retryAfterSeconds: 30 }))),
+    ).toBe('Too many failed attempts. Please try again in 1 minute.');
+  });
+
+  it('offers the language select below the form', async () => {
+    await setup();
+    expect(element.querySelector('footer sf-language-select select')).not.toBeNull();
+  });
+
+  it('switches the whole page to German without a reload', async () => {
+    await setup();
+    const select = element.querySelector('select') as HTMLSelectElement;
+    select.value = 'de-CH';
+    select.dispatchEvent(new Event('change'));
+    await render();
+    expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe(
+      tFor('de-CH')('regie.login.submit'),
+    );
+    expect(element.querySelector('.c-login__lead')?.textContent).toBe(
+      tFor('de-CH')('regie.login.brandLead'),
+    );
+    resetLocaleForTests('en');
+  });
+
+  it('keeps an error on screen in step with the language', async () => {
+    await setup();
+    await submit();
+    await render();
+    expect(errorText()).toBe('Please enter your username and password.');
+    const select = element.querySelector('select') as HTMLSelectElement;
+    select.value = 'de-CH';
+    select.dispatchEvent(new Event('change'));
+    await render();
+    expect(errorText()).toBe(tFor('de-CH')('regie.login.error.required'));
+    resetLocaleForTests('en');
   });
 });

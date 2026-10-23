@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { ApiError } from '../api/api-error';
 import { TOAST_MS, TOAST_WITH_ACTION_MS, ToastService } from './toast.service';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('ToastService', () => {
   let toasts: ToastService;

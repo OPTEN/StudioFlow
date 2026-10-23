@@ -24,6 +24,10 @@ import { EditorService, LIVE_LOCKED_MESSAGE } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { SCENE_RENDERER_FACTORY, SceneViewComponent } from './scene-view.component';
 import { FakeRendererFactory, ManualFrames } from './testing/stage-fakes';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 @Component({
   imports: [EditOverlayComponent, SceneViewComponent],

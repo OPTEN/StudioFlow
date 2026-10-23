@@ -11,6 +11,10 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { StationFocusService } from '../station-focus.service';
 import { StatusLineComponent } from './status-line.component';
+import { resetLocaleForTests } from '@studioflow/i18n';
+
+// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
+beforeEach(() => resetLocaleForTests('de-CH'));
 
 describe('StatusLineComponent', () => {
   let hub: FakeStudioHub;
@@ -57,7 +61,8 @@ describe('StatusLineComponent', () => {
       entry.textContent?.trim(),
     );
     expect(entries).toHaveLength(4);
-    expect(entries[0]).toContain('Ereignis e');
+    // The text comes from the code and its parameters, in the language of the Regie.
+    expect(entries[0]).toContain('Szene «Ereignis e» ist live');
     expect(entries[0]).toMatch(/^\d\d:\d\d/);
   });
 
