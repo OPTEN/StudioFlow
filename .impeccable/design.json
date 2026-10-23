@@ -458,7 +458,7 @@
     "shadows": [
       {
         "name": "pop",
-        "value": "0 4px 10px rgba(1, 4, 9, .5)",
+        "value": "0 4px 10px rgba(1, 4, 9, .5); light theme: 0 4px 12px rgba(31, 41, 55, .2)",
         "purpose": "Popovers, toast and dock-drag ghost only."
       },
       {
@@ -568,6 +568,51 @@
       "splitterHitArea": "9px",
       "splitterKeys": "Arrow keys 16px, Shift 64px; Enter or double-click resets",
       "persistence": "Layout and Studio-Modus stored per browser (localStorage keys studioflow.layout, studioflow.studio)"
+    },
+    "themes": {
+      "default": "dark",
+      "choice": "Dark | Light | System, stored per browser in localStorage[\"studioflow.theme\"]; absent means dark.",
+      "mechanism": ":root carries the dark values, :root[data-theme=\"light\"] overrides every themed token. data-theme is the resolved theme, set before first paint by theme-init.js and kept by ThemeService. Components use tokens only.",
+      "light": {
+        "ground": "#ffffff",
+        "panel": "#f3f5f8",
+        "raised": "#e9edf2",
+        "raised-2": "#dfe4eb",
+        "float": "#ffffff",
+        "seam": "#d8dde4",
+        "seam-strong": "#818b99",
+        "text": "#17202b",
+        "text-2": "#3a4552",
+        "muted": "#566170",
+        "blue": "#0a5cc7",
+        "blue-fill": "#1f6feb",
+        "blue-fill-hover": "#1a5fd0",
+        "green": "#16722e",
+        "red": "#c4202b",
+        "amber": "#8a5800",
+        "violet": "#7a3fd0",
+        "on-fill": "#ffffff",
+        "on-state": "#ffffff",
+        "red-wash": "rgba(196, 32, 43, .09)",
+        "amber-wash": "rgba(190, 120, 0, .13)",
+        "green-wash": "rgba(22, 114, 46, .08)",
+        "blue-wash": "rgba(10, 92, 199, .07)"
+      },
+      "picture": {
+        "note": "Picture areas stay dark in both themes. Everything drawn on a picture uses these tokens.",
+        "well": "#05070a",
+        "slot": "#3a4352",
+        "slot-strong": "#5a6578",
+        "pic-ink": "#0d1117",
+        "pic-text": "#e6edf3",
+        "pic-text-2": "#b4bdc8",
+        "pic-muted": "#8b949e",
+        "pic-blue": "#79c0ff",
+        "pic-red": "#f85149",
+        "pic-amber": "#e3b341",
+        "pic-scrim": "rgba(13, 17, 23, .9)"
+      },
+      "contrast": "Text and state text 4.5:1 on every surface and on their own wash; lamps, tally outlines, focus rings and control borders 3:1. Checked in both themes by tools/lib/studio-theme-contrast.spec.ts."
     }
   },
   "components": [
@@ -675,6 +720,16 @@
         "section": "colors"
       },
       {
+        "name": "The Picture-Stays-Dark Rule",
+        "body": "Monitors, thumbnails, previews and the well stay near black in the light theme. Everything drawn on a picture uses the --pic-* tokens, never the themed ones. A video picture on a white background looks flat and too dark.",
+        "section": "colors"
+      },
+      {
+        "name": "The One-Appearance Rule",
+        "body": "A new colour is a token in both theme maps, or a picture token. Components never contain a literal colour and never branch on the theme.",
+        "section": "colors"
+      },
+      {
         "name": "The Instrument Mono Rule",
         "body": "JetBrains Mono is reserved for measurements, time codes, slot codes, URLs and pairing codes. Words in sentences, names and buttons are always set in Sofia Sans Semi Condensed.",
         "section": "typography"
@@ -699,7 +754,9 @@
       "**Do** put risky actions behind a dashed red outline, away from other actions, with a dashed confirmation box.",
       "**Do** set measurements, time codes, slot codes and pairing codes in JetBrains Mono with tabular numerals.",
       "**Do** self-host Sofia Sans Semi Condensed and JetBrains Mono in the product build.",
-      "**Do** label sample imagery and names as synthetic wherever placeholder content appears."
+      "**Do** label sample imagery and names as synthetic wherever placeholder content appears.",
+      "**Do** keep picture areas dark in the light theme and draw everything on a picture with the `--pic-*` tokens.",
+      "**Do** add every new colour as a token in both theme maps (or as a picture token), and check it with the contrast test."
     ],
     "donts": [
       "**Don't** box regions as cards with gaps between them, and don't frame the app with an outer border.",
@@ -707,7 +764,9 @@
       "**Don't** use shadows on regions. Shadows are only for popovers, the toast and the drag ghost.",
       "**Don't** use a saturated hue decoratively, including for branding, section accents or illustrations.",
       "**Don't** use the uppercase label style as an eyebrow or kicker above a heading.",
-      "**Don't** load fonts or assets from an external CDN in the product."
+      "**Don't** load fonts or assets from an external CDN in the product.",
+      "**Don't** write a literal colour value in a component stylesheet or branch on the theme in a component.",
+      "**Don't** invert or lighten a picture area, or the QR code, to match the light theme."
     ]
   }
 }

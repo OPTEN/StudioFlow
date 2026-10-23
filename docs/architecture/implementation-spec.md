@@ -566,7 +566,7 @@ Header: brand, production name (menu: rename, switch/create production, slates),
 (start/end/reset broadcast, confirmation for ending), LIVE runtime (while live; else “READY” / “ENDED”),
 output chip with popover (state, consumers, IPs, format, latency, link copy, IP restriction editor, regenerate key
 with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
-language setting, presence, clock, logout.
+language and appearance (Dark | Light | System) settings, presence, clock, logout.
 Everything in the prototype menu “Prototype” is replaced by real events (no demo data).
 State: one `ProductionStore` service wrapping `ProductionSync` in signals; commands go through `StudioApi` (typed
 HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceSceneItems`. Keyboard as prototype
@@ -574,7 +574,10 @@ HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceS
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
 Studio Mode and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
-`studioflow.transition`; the language setting is `studioflow.locale`, shared with the sender). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
+`studioflow.transition`; the language setting is `studioflow.locale`, shared with the sender; the appearance is
+`studioflow.theme` = `dark` | `light` | `system`, absent means dark, and applies to the Regie, `/monitoring` and the login
+page: the tokens are CSS custom properties switched by `<html data-theme>`, which `theme-init.js` sets before the first
+paint and `ThemeService` keeps, picture areas stay dark, see DESIGN.md “Themes”). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
 stacked docks; ≤ 900 px priority stack).
 
 ### 9.2 Sender (`apps/sender`, Angular PWA, base `/join/`)
