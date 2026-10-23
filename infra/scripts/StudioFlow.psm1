@@ -164,6 +164,72 @@ function Assert-SfBroadcastIdle
     }
 }
 
+# --- ready-made images (docker-compose.release.yml, docs/releasing.md) ---------------------------------------------
+
+# $true when the Compose file pulls ready-made images (an installation from a release), $false when it builds the
+# images from the source (a Git checkout with docker-compose.yml) or cannot be read.
+function Test-SfUsesImages
+{
+    $result = Get-SfComposeOutput -Arguments @('config', '--no-interpolate')
+    $result.ExitCode -eq 0 -and -not ($result.Lines | Where-Object { $_ -match '^    build:' })
+}
+
+# Image reference of the API for the given tag (default: the tag that is configured), e.g. ghcr.io/opten/studioflow-api:0.4.2.
+function Get-SfApiImage
+{
+    param([string] $Tag = '')
+    $saved = $env:STUDIOFLOW_IMAGE_TAG
+    try
+    {
+        if ($Tag) { $env:STUDIOFLOW_IMAGE_TAG = $Tag }
+        $result = Get-SfComposeOutput -Arguments @('config', '--images')
+    }
+    finally { $env:STUDIOFLOW_IMAGE_TAG = $saved }
+    $image = @($result.Lines | Where-Object { $_ -match 'studioflow-api' }) | Select-Object -First 1
+    if ($image) { $image } else { '' }
+}
+
+# Value of a label of a local image or container; empty if there is none.
+function Get-SfLabel
+{
+    param([string] $Reference = '', [Parameter(Mandatory)][string] $Name)
+    if (-not $Reference) { return '' }
+    # All labels as JSON: a template with a quoted label name loses its quotes in some PowerShell versions.
+    $json = & docker inspect -f '{{json .Config.Labels}}' $Reference 2> $null
+    if ($LASTEXITCODE -ne 0 -or -not $json) { return '' }
+    $labels = "$json" | ConvertFrom-Json
+    $label = if ($labels) { $labels.PSObject.Properties[$Name] } else { $null }
+    if ($label) { "$($label.Value)".Trim() } else { '' }
+}
+
+# Version of the API that runs now, as it reports itself (0.4.2+1a2b3c4); empty if the API container does not exist
+# or comes from a build without a version label.
+function Get-SfRunningVersion
+{
+    $id = (Get-SfComposeOutput -Arguments @('ps', '-q', 'api')).Lines | Select-Object -First 1
+    if ($id) { Get-SfLabel -Reference $id -Name 'org.opencontainers.image.version' } else { '' }
+}
+
+# Sets KEY=VALUE in .env: replaces the line or appends it. The file stays private (mode 600 on Linux and macOS).
+function Set-SfEnvValue
+{
+    param([Parameter(Mandatory)][string] $Key, [Parameter(Mandatory)][string] $Value)
+    $path = Join-Path $script:Root '.env'
+    $lines = [Collections.Generic.List[string]]::new()
+    $found = $false
+    foreach ($line in [IO.File]::ReadAllLines($path))
+    {
+        if (($line -replace '=.*$', '').Trim() -eq $Key)
+        {
+            if (-not $found) { $lines.Add("$Key=$Value") }
+            $found = $true
+        }
+        else { $lines.Add($line) }
+    }
+    if (-not $found) { $lines.Add("$Key=$Value") }
+    [IO.File]::WriteAllText($path, ($lines -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+}
+
 # Starts the stack (or the given services) and waits until every healthcheck passes.
 function Start-SfStackAndWait
 {

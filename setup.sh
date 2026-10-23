@@ -49,6 +49,7 @@ Examples:
       --tls-mode internal --admin-password-stdin
 
 Then: docker compose up -d --build   (details: docs/runbook.md)
+      docker compose up -d           (installation from a release with ready-made images, docs/runbook.md section 14)
 EOF
 }
 
@@ -420,6 +421,11 @@ livekit_key="$(env_value LIVEKIT_API_KEY)"
 livekit_secret="$(env_value LIVEKIT_API_SECRET)"
 is_livekit_secret "$livekit_secret" || livekit_secret="sk$(random_hex 20)"
 
+# Ready-made images: keep the version and the registry the stack runs with (./update.sh --version wrote them), so that
+# running setup again does not switch the stack back to the version of the release files.
+image_tag="$(env_value STUDIOFLOW_IMAGE_TAG)"
+image_registry="$(env_value STUDIOFLOW_IMAGE_REGISTRY)"
+
 hsts_line=""
 [ "$tls_mode" = internal ] && hsts_line="$(env_line STUDIOFLOW_HSTS_MAX_AGE "$INTERNAL_HSTS_MAX_AGE")"$'\n'
 
@@ -450,18 +456,27 @@ write_env() {
 		env_line LIVEKIT_API_KEY "$livekit_key"
 		env_line LIVEKIT_API_SECRET "$livekit_secret"
 		env_line POSTGRES_PASSWORD "$postgres_password"
+		if [ -n "$image_tag$image_registry" ]; then printf '\n# Ready-made images (docs/runbook.md, section 14)\n'; fi
+		if [ -n "$image_tag" ]; then env_line STUDIOFLOW_IMAGE_TAG "$image_tag"; fi
+		if [ -n "$image_registry" ]; then env_line STUDIOFLOW_IMAGE_REGISTRY "$image_registry"; fi
 	} >"$tmp_env"
 }
 
 # Hashes the password with the API image: `hash-password` reads it from stdin (sent without a newline) and prints
 # the ASP.NET Identity v3 hash. Prints the hash, or returns 1 and shows the end of the error output.
 hash_password() {
-	local env_arg out err hash="" rc=0
+	local env_arg out err hash="" rc=0 fetch=build
 	env_arg="$(sf_host_path "$tmp_env")"
 	out="$(mktemp)"
 	err="$(mktemp)"
-	sf_info "Building the API image (for the password hash) ..." >&2
-	if ! sf_compose --env-file "$env_arg" build api >"$err" 2>&1; then
+	# A release installation (ready-made images) pulls the API image, a source checkout builds it.
+	if sf_uses_images; then
+		fetch=pull
+		sf_info "Pulling the API image (for the password hash) ..." >&2
+	else
+		sf_info "Building the API image (for the password hash) ..." >&2
+	fi
+	if ! sf_compose --env-file "$env_arg" "$fetch" api >"$err" 2>&1; then
 		rc=1
 	elif ! printf '%s' "$password" | sf_compose --env-file "$env_arg" run --rm --no-deps -T --entrypoint dotnet api "$SF_API_DLL" hash-password >"$out" 2>"$err"; then
 		rc=1
@@ -470,6 +485,7 @@ hash_password() {
 		is_password_hash "$hash" || { echo "hash-password did not return an Identity v3 hash." >"$err"; rc=1; }
 	fi
 	[ "$rc" -eq 0 ] || grep -v -e '^[[:space:]]*$' -e 'View build details' "$err" | tail -n 5 >&2 || true
+	[ "$rc" -eq 0 ] || [ "$fetch" != pull ] || sf_warn "While the repository is private, sign in to the registry first: docker login ghcr.io (user name and a token with read:packages)."
 	rm -f "$out" "$err"
 	[ "$rc" -eq 0 ] && printf '%s' "$hash"
 	return "$rc"
@@ -490,7 +506,7 @@ else
 		sf_info "Admin password stored as a hash."
 	else
 		docker_available || sf_warn "Docker is not available; the password hash needs the API image."
-		sf_warn "The password hash could not be generated with the API image (build failed or 'hash-password' is missing)."
+		sf_warn "The password hash could not be generated with the API image (it could not be built or pulled, or 'hash-password' is missing)."
 		sf_warn "The password is stored in plain text (ADMIN__PASSWORD) for now. Later run ./setup.sh --force and set a new password."
 		write_env "$(env_line ADMIN__PASSWORD "$password")"$'\n'
 	fi
@@ -523,4 +539,8 @@ if [ "$password_generated" = true ]; then
 	sf_info "The password is shown only now. Store it in the password vault."
 fi
 sf_info ""
-sf_info "Next step: docker compose up -d --build"
+if sf_uses_images; then
+	sf_info "Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)"
+else
+	sf_info "Next step: docker compose up -d --build"
+fi

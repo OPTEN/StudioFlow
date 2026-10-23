@@ -13,7 +13,8 @@
     AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_REGION, OVH_ENDPOINT + OVH_APPLICATION_KEY +
     OVH_APPLICATION_SECRET + OVH_CONSUMER_KEY.
 
-    Then: docker compose up -d --build (details: docs/runbook.md).
+    Then: docker compose up -d --build (details: docs/runbook.md); installation from a release with ready-made images:
+    docker compose up -d (docs/runbook.md, section 14).
 
 .PARAMETER Domain
     Host name of the Regie, e.g. studioflow.opten.ch (test: localhost).
@@ -189,12 +190,26 @@ function Get-PasswordHash
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password')]
     param([string] $EnvPath, [string] $Password)
 
-    Write-SfInfo 'Building the API image (for the password hash) ...'
-    $build = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
-    if ($build.ExitCode -ne 0)
+    # A release installation (ready-made images) pulls the API image, a source checkout builds it.
+    if (Test-SfUsesImages)
     {
-        Write-SfWarn 'The API image could not be built.'
-        return $null
+        Write-SfInfo 'Pulling the API image (for the password hash) ...'
+        $fetch = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'pull', '--quiet', 'api')
+        if ($fetch.ExitCode -ne 0)
+        {
+            Write-SfWarn 'The API image could not be pulled. While the repository is private, sign in to the registry first: docker login ghcr.io (user name and a token with read:packages).'
+            return $null
+        }
+    }
+    else
+    {
+        Write-SfInfo 'Building the API image (for the password hash) ...'
+        $fetch = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
+        if ($fetch.ExitCode -ne 0)
+        {
+            Write-SfWarn 'The API image could not be built.'
+            return $null
+        }
     }
 
     $startInfo = [Diagnostics.ProcessStartInfo]::new('docker')
@@ -441,6 +456,11 @@ try
     $liveKitSecret = Get-Existing 'LIVEKIT_API_SECRET'
     if (-not (Test-LiveKitSecret $liveKitSecret)) { $liveKitSecret = 'sk' + (New-RandomHex 20) }
 
+    # Ready-made images: keep the version and the registry the stack runs with (./update.ps1 -Version wrote them), so
+    # that running setup again does not switch the stack back to the version of the release files.
+    $imageTag = Get-Existing 'STUDIOFLOW_IMAGE_TAG'
+    $imageRegistry = Get-Existing 'STUDIOFLOW_IMAGE_REGISTRY'
+
     # --- write .env -----------------------------------------------------------------------------------------------
 
     function New-EnvContent([string[]] $AdminLines)
@@ -466,6 +486,9 @@ try
         $lines.Add((Format-EnvLine 'LIVEKIT_API_KEY' $liveKitKey))
         $lines.Add((Format-EnvLine 'LIVEKIT_API_SECRET' $liveKitSecret))
         $lines.Add((Format-EnvLine 'POSTGRES_PASSWORD' $postgresPassword))
+        if ($imageTag -or $imageRegistry) { $lines.Add(''); $lines.Add('# Ready-made images (docs/runbook.md, section 14)') }
+        if ($imageTag) { $lines.Add((Format-EnvLine 'STUDIOFLOW_IMAGE_TAG' $imageTag)) }
+        if ($imageRegistry) { $lines.Add((Format-EnvLine 'STUDIOFLOW_IMAGE_REGISTRY' $imageRegistry)) }
         ($lines -join "`n") + "`n"
     }
 
@@ -504,7 +527,7 @@ try
             else
             {
                 if (-not $dockerAvailable) { Write-SfWarn 'Docker is not available; the password hash needs the API image.' }
-                Write-SfWarn "The password hash could not be generated with the API image (build failed or 'hash-password' is missing)."
+                Write-SfWarn "The password hash could not be generated with the API image (it could not be built or pulled, or 'hash-password' is missing)."
                 Write-SfWarn 'The password is stored in plain text (ADMIN__PASSWORD) for now. Later run ./setup.ps1 -Force and set a new password.'
                 Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
             }
@@ -545,7 +568,8 @@ try
         Write-SfInfo 'The password is shown only now. Store it in the password vault.'
     }
     Write-SfInfo ''
-    Write-SfInfo 'Next step: docker compose up -d --build'
+    if (Test-SfUsesImages) { Write-SfInfo 'Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)' }
+    else { Write-SfInfo 'Next step: docker compose up -d --build' }
 }
 catch
 {
