@@ -1039,6 +1039,128 @@ export interface components {
          * @enum {unknown}
          */
         BroadcastState: "standby" | "live" | "ended";
+        /**
+         * @description What the camera in use can do (from `MediaStreamTrack.getCapabilities()`). A control the camera does not
+         *     support is missing here and the Regie does not show it.
+         */
+        CameraCapabilitiesDto: {
+            /** @description The device's cameras; empty when the browser lists none. */
+            lenses: components["schemas"]["CameraLensDto"][];
+            zoom: null | components["schemas"]["CameraRangeDto"];
+            /** @description Supported focus modes; empty without focus control. */
+            focusModes: components["schemas"]["CameraFocusMode"][];
+            focusDistance: null | components["schemas"]["CameraRangeDto"];
+            exposureCompensation: null | components["schemas"]["CameraRangeDto"];
+            /** @description The camera has a light. */
+            torch: boolean;
+        };
+        /**
+         * @description Remote camera control (partial update, command kind DeviceCommandKind.CameraControl). The device
+         *     resets first when Reset is set, then applies every other field that is set.
+         */
+        CameraControlDto: {
+            /**
+             * Format: int32
+             * @description Protocol version, currently 1.
+             */
+            v: number;
+            /** @description Switch to this lens (an id from the reported lenses); the picture freezes briefly. */
+            lensId: null | string;
+            /**
+             * Format: double
+             * @description Zoom factor.
+             */
+            zoom: null | number;
+            focusMode: null | components["schemas"]["CameraFocusMode"];
+            /**
+             * Format: double
+             * @description Focus distance in metres (manual focus).
+             */
+            focusDistance: null | number;
+            /**
+             * Format: double
+             * @description Brightness in EV.
+             */
+            exposureCompensation: null | number;
+            /** @description Light on or off. */
+            torch: null | boolean;
+            /** @description Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays. */
+            reset: null | boolean;
+        };
+        /**
+         * @description Focus behaviour of a camera.
+         * @enum {unknown}
+         */
+        CameraFocusMode: "auto" | "manual";
+        /** @description One camera (lens) of the device. */
+        CameraLensDto: {
+            /** @description Browser device id; stable while the browser is. */
+            id: string;
+            /** @description Name from the browser, if it gives one. */
+            label: null | string;
+            /** @description What the lens is. */
+            kind: components["schemas"]["CameraLensKind"];
+        };
+        /**
+         * @description What a lens is, derived by the sender from the name the browser gives the camera.
+         * @enum {unknown}
+         */
+        CameraLensKind: "front" | "ultraWide" | "standard" | "tele" | "other";
+        /** @description Range of a numeric camera setting. */
+        CameraRangeDto: {
+            /**
+             * Format: double
+             * @description Smallest value.
+             */
+            min: number;
+            /**
+             * Format: double
+             * @description Largest value.
+             */
+            max: number;
+            /**
+             * Format: double
+             * @description Smallest change the camera applies.
+             */
+            step: number;
+        };
+        /** @description The settings the camera really has right now (from `getSettings()`); null where the camera reports none. */
+        CameraSettingsDto: {
+            /** @description Device id of the lens in use. */
+            lensId: null | string;
+            /**
+             * Format: double
+             * @description Zoom factor.
+             */
+            zoom: null | number;
+            focusMode: null | components["schemas"]["CameraFocusMode"];
+            /**
+             * Format: double
+             * @description Focus distance in metres.
+             */
+            focusDistance: null | number;
+            /**
+             * Format: double
+             * @description Brightness in EV.
+             */
+            exposureCompensation: null | number;
+            /** @description The light is on. */
+            torch: null | boolean;
+        };
+        /** @description Camera section of a device report (and of the telemetry the Regie gets). */
+        CameraStateDto: {
+            /**
+             * Format: int32
+             * @description Protocol version, currently 1.
+             */
+            v: number;
+            /** @description What the camera can do. */
+            capabilities: components["schemas"]["CameraCapabilitiesDto"];
+            /** @description What the camera does now. */
+            settings: components["schemas"]["CameraSettingsDto"];
+            /** @description The last command the camera refused (`overconstrained`, `failed`); null once a command works again. */
+            problem: null | string;
+        };
         /** @description Changes the password of the signed-in admin; every other session ends. */
         ChangePasswordRequest: {
             /** @description The password in use now. */
@@ -1083,18 +1205,26 @@ export interface components {
         };
         /** @description Remote command for a device. */
         DeviceCommandDto: {
+            /** @description Command id. */
             id: string;
+            /** @description Command kind. */
             kind: components["schemas"]["DeviceCommandKind"];
+            /** @description Target slot for reshare and camera control. */
             slot: null | string;
+            /** @description Message text. */
             text: null | string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description Time the server created the command.
+             */
             at: string;
+            camera?: null | components["schemas"]["CameraControlDto"];
         };
         /**
          * @description Remote command the Regie sends to a device.
          * @enum {unknown}
          */
-        DeviceCommandKind: "reshare" | "switchCamera" | "message";
+        DeviceCommandKind: "reshare" | "switchCamera" | "message" | "cameraControl";
         /** @description Sends a remote command to a device. */
         DeviceCommandRequest: {
             /** @description Command kind. */
@@ -1103,6 +1233,7 @@ export interface components {
             slot: null | string;
             /** @description Text for DeviceCommandKind.Message, 1–140 characters. */
             text: null | string;
+            camera?: null | components["schemas"]["CameraControlDto"];
         };
         /**
          * @description Live connection state of a device as seen by the server.
@@ -1187,6 +1318,7 @@ export interface components {
              */
             rttMs: null | number;
             techCheck: null | components["schemas"]["TechCheckDto"];
+            camera?: null | components["schemas"]["CameraStateDto"];
         };
         /** @description What a device learns about itself (sender app). */
         DeviceSelfDto: {
@@ -1242,6 +1374,7 @@ export interface components {
             rttMs: null | number;
             /** @description Per slot telemetry. */
             slots: components["schemas"]["SlotTelemetryDto"][];
+            camera?: null | components["schemas"]["CameraStateDto"];
         };
         /** @description Telemetry push to the Regie; not revisioned. */
         DeviceTelemetryMessage: {
@@ -2176,6 +2309,14 @@ export type AssetKind = components['schemas']['AssetKind'];
 export type BandwidthTestResultDto = components['schemas']['BandwidthTestResultDto'];
 export type BorderDto = components['schemas']['BorderDto'];
 export type BroadcastState = components['schemas']['BroadcastState'];
+export type CameraCapabilitiesDto = components['schemas']['CameraCapabilitiesDto'];
+export type CameraControlDto = components['schemas']['CameraControlDto'];
+export type CameraFocusMode = components['schemas']['CameraFocusMode'];
+export type CameraLensDto = components['schemas']['CameraLensDto'];
+export type CameraLensKind = components['schemas']['CameraLensKind'];
+export type CameraRangeDto = components['schemas']['CameraRangeDto'];
+export type CameraSettingsDto = components['schemas']['CameraSettingsDto'];
+export type CameraStateDto = components['schemas']['CameraStateDto'];
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
 export type CreatePairingRequest = components['schemas']['CreatePairingRequest'];

@@ -3291,6 +3291,312 @@
         ],
         "description": "Broadcast state of a production. Standby and Ended show a slate on the output."
       },
+      "CameraCapabilitiesDto": {
+        "required": [
+          "lenses",
+          "zoom",
+          "focusModes",
+          "focusDistance",
+          "exposureCompensation",
+          "torch"
+        ],
+        "type": "object",
+        "properties": {
+          "lenses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CameraLensDto"
+            },
+            "description": "The device's cameras; empty when the browser lists none."
+          },
+          "zoom": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Zoom factor range.",
+                "$ref": "#/components/schemas/CameraRangeDto"
+              }
+            ]
+          },
+          "focusModes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CameraFocusMode"
+            },
+            "description": "Supported focus modes; empty without focus control."
+          },
+          "focusDistance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Manual focus distance range (metres).",
+                "$ref": "#/components/schemas/CameraRangeDto"
+              }
+            ]
+          },
+          "exposureCompensation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Brightness range in EV.",
+                "$ref": "#/components/schemas/CameraRangeDto"
+              }
+            ]
+          },
+          "torch": {
+            "type": "boolean",
+            "description": "The camera has a light."
+          }
+        },
+        "description": "What the camera in use can do (from `MediaStreamTrack.getCapabilities()`). A control the camera does not\nsupport is missing here and the Regie does not show it."
+      },
+      "CameraControlDto": {
+        "required": [
+          "v",
+          "lensId",
+          "zoom",
+          "focusMode",
+          "focusDistance",
+          "exposureCompensation",
+          "torch",
+          "reset"
+        ],
+        "type": "object",
+        "properties": {
+          "v": {
+            "type": "integer",
+            "description": "Protocol version, currently 1.",
+            "format": "int32"
+          },
+          "lensId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Switch to this lens (an id from the reported lenses); the picture freezes briefly."
+          },
+          "zoom": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Zoom factor.",
+            "format": "double"
+          },
+          "focusMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Focus mode.",
+                "$ref": "#/components/schemas/CameraFocusMode"
+              }
+            ]
+          },
+          "focusDistance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Focus distance in metres (manual focus).",
+            "format": "double"
+          },
+          "exposureCompensation": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Brightness in EV.",
+            "format": "double"
+          },
+          "torch": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Light on or off."
+          },
+          "reset": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Back to automatic: zoom out, automatic focus, no brightness shift, light off. The lens stays."
+          }
+        },
+        "description": "Remote camera control (partial update, command kind DeviceCommandKind.CameraControl). The device\nresets first when Reset is set, then applies every other field that is set."
+      },
+      "CameraFocusMode": {
+        "enum": [
+          "auto",
+          "manual"
+        ],
+        "description": "Focus behaviour of a camera."
+      },
+      "CameraLensDto": {
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Browser device id; stable while the browser is."
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Name from the browser, if it gives one."
+          },
+          "kind": {
+            "description": "What the lens is.",
+            "$ref": "#/components/schemas/CameraLensKind"
+          }
+        },
+        "description": "One camera (lens) of the device."
+      },
+      "CameraLensKind": {
+        "enum": [
+          "front",
+          "ultraWide",
+          "standard",
+          "tele",
+          "other"
+        ],
+        "description": "What a lens is, derived by the sender from the name the browser gives the camera."
+      },
+      "CameraRangeDto": {
+        "required": [
+          "min",
+          "max",
+          "step"
+        ],
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number",
+            "description": "Smallest value.",
+            "format": "double"
+          },
+          "max": {
+            "type": "number",
+            "description": "Largest value.",
+            "format": "double"
+          },
+          "step": {
+            "type": "number",
+            "description": "Smallest change the camera applies.",
+            "format": "double"
+          }
+        },
+        "description": "Range of a numeric camera setting."
+      },
+      "CameraSettingsDto": {
+        "required": [
+          "lensId",
+          "zoom",
+          "focusMode",
+          "focusDistance",
+          "exposureCompensation",
+          "torch"
+        ],
+        "type": "object",
+        "properties": {
+          "lensId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Device id of the lens in use."
+          },
+          "zoom": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Zoom factor.",
+            "format": "double"
+          },
+          "focusMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Focus mode.",
+                "$ref": "#/components/schemas/CameraFocusMode"
+              }
+            ]
+          },
+          "focusDistance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Focus distance in metres.",
+            "format": "double"
+          },
+          "exposureCompensation": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Brightness in EV.",
+            "format": "double"
+          },
+          "torch": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "The light is on."
+          }
+        },
+        "description": "The settings the camera really has right now (from `getSettings()`); null where the camera reports none."
+      },
+      "CameraStateDto": {
+        "required": [
+          "v",
+          "capabilities",
+          "settings",
+          "problem"
+        ],
+        "type": "object",
+        "properties": {
+          "v": {
+            "type": "integer",
+            "description": "Protocol version, currently 1.",
+            "format": "int32"
+          },
+          "capabilities": {
+            "description": "What the camera can do.",
+            "$ref": "#/components/schemas/CameraCapabilitiesDto"
+          },
+          "settings": {
+            "description": "What the camera does now.",
+            "$ref": "#/components/schemas/CameraSettingsDto"
+          },
+          "problem": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last command the camera refused (`overconstrained`, `failed`); null once a command works again."
+          }
+        },
+        "description": "Camera section of a device report (and of the telemetry the Regie gets)."
+      },
       "ChangePasswordRequest": {
         "required": [
           "currentPassword",
@@ -3416,26 +3722,42 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Command id."
           },
           "kind": {
+            "description": "Command kind.",
             "$ref": "#/components/schemas/DeviceCommandKind"
           },
           "slot": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Target slot for reshare and camera control."
           },
           "text": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Message text."
           },
           "at": {
             "type": "string",
+            "description": "Time the server created the command.",
             "format": "date-time"
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Payload of DeviceCommandKind.CameraControl, already clamped to what the device reported.",
+                "$ref": "#/components/schemas/CameraControlDto"
+              }
+            ]
           }
         },
         "description": "Remote command for a device."
@@ -3444,7 +3766,8 @@
         "enum": [
           "reshare",
           "switchCamera",
-          "message"
+          "message",
+          "cameraControl"
         ],
         "description": "Remote command the Regie sends to a device."
       },
@@ -3473,6 +3796,17 @@
               "string"
             ],
             "description": "Text for DeviceCommandKind.Message, 1–140 characters."
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Payload of DeviceCommandKind.CameraControl.",
+                "$ref": "#/components/schemas/CameraControlDto"
+              }
+            ]
           }
         },
         "description": "Sends a remote command to a device."
@@ -3692,6 +4026,17 @@
                 "$ref": "#/components/schemas/TechCheckDto"
               }
             ]
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Capabilities and settings of the phone camera; null without a camera or on a laptop.",
+                "$ref": "#/components/schemas/CameraStateDto"
+              }
+            ]
           }
         },
         "description": "Periodic report of a device (about every two seconds)."
@@ -3838,6 +4183,17 @@
               "$ref": "#/components/schemas/SlotTelemetryDto"
             },
             "description": "Per slot telemetry."
+          },
+          "camera": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "What the phone camera can do and does now; null where it reports nothing.",
+                "$ref": "#/components/schemas/CameraStateDto"
+              }
+            ]
           }
         },
         "description": "Telemetry of a device, reported about every two seconds."

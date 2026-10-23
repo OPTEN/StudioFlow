@@ -32,6 +32,13 @@ public sealed class SourceMonitorOptions : IValidatedOptions
     /// </summary>
     public TimeSpan TelemetryInterval { get; set; } = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// <c>Sources:CameraCommandInterval</c>: at most one camera command per device and this interval goes to the phone
+    /// (default 100 ms, issue #11); commands in between merge and the newest value of each setting is sent when the
+    /// interval has passed, so a dragged slider does not flood a weak Wi-Fi.
+    /// </summary>
+    public TimeSpan CameraCommandInterval { get; set; } = TimeSpan.FromMilliseconds(100);
+
     /// <inheritdoc />
     public IEnumerable<string> Validate() =>
     [
@@ -40,6 +47,7 @@ public sealed class SourceMonitorOptions : IValidatedOptions
         .. OptionRules.Duration("Sources:RestartLiveWindow", RestartLiveWindow, TimeSpan.FromMinutes(1), TimeSpan.FromDays(7)),
         .. OptionRules.Duration("Sources:LiveMarkInterval", LiveMarkInterval, TimeSpan.FromSeconds(5), TimeSpan.FromHours(1)),
         .. OptionRules.Duration("Sources:TelemetryInterval", TelemetryInterval, TimeSpan.Zero, TimeSpan.FromMinutes(1)),
+        .. OptionRules.Duration("Sources:CameraCommandInterval", CameraCommandInterval, TimeSpan.Zero, TimeSpan.FromSeconds(10)),
     ];
 }
 

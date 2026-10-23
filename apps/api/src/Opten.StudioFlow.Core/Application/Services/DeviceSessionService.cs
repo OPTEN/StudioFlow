@@ -223,14 +223,15 @@ public sealed class DeviceSessionService(
                 }
 
                 var live = context.Runtime.Device(device.Id);
-                var (_, techCheckChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
+                var (_, techCheckChanged, cameraChanged) = live.ApplyReport(report, [.. device.Slots.Select(s => s.Slot)], context.Now);
                 SourceMonitor.Reevaluate(context, device);
                 if (techCheckChanged)
                 {
                     DeviceEvents.EmitDevice(context, device);
                 }
 
-                if (live.OfferTelemetry(context.Now, options.TelemetryInterval) is { } due)
+                // A camera change is what the Regie waits for after a command (it shows the actual value): not throttled.
+                if (live.OfferTelemetry(context.Now, cameraChanged ? TimeSpan.Zero : options.TelemetryInterval) is { } due)
                 {
                     SendTelemetry(context, device.Id, due);
                 }
@@ -241,7 +242,7 @@ public sealed class DeviceSessionService(
     /// <summary>
     /// The 1 s maintenance tick of the devices: marks connected devices that stopped reporting as
     /// <c>rtc: disconnected</c> (GAP-29; their live sources then turn <c>reconnecting</c> like after a reported media
-    /// loss) and relays held-back telemetry whose interval has passed (BUG-19).
+    /// loss), relays held-back telemetry whose interval has passed (BUG-19) and sends held-back camera commands (issue #11).
     /// </summary>
     public async Task TickAsync(CancellationToken cancellationToken)
     {
@@ -269,6 +270,17 @@ public sealed class DeviceSessionService(
                         if (live.TakeDueTelemetry(context.Now, options.TelemetryInterval) is { } due)
                         {
                             SendTelemetry(context, live.DeviceId, due);
+                        }
+                    }
+
+                    foreach (var live in context.Runtime.Devices.Where(d => d.IsConnected && d.CameraCommandPending))
+                    {
+                        if (live.ConnectionId is { } connectionId && live.TakeDueCameraCommand(context.Now, options.CameraCommandInterval) is { } camera)
+                        {
+                            DeviceEvents.SendCameraCommand(
+                                context,
+                                connectionId,
+                                new DeviceCommandDto(EntityIds.New(EntityIds.Command), DeviceCommandKind.CameraControl, DeviceSlots.Camera, null, context.Now, camera));
                         }
                     }
                 },

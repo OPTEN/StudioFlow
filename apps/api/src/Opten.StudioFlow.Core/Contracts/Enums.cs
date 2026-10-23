@@ -230,6 +230,9 @@ public enum DeviceCommandKind
 
     /// <summary>Show a short text message on the device (“Live in 10 s”).</summary>
     Message,
+
+    /// <summary>Change zoom, lens, focus, brightness or light of the camera (<see cref="CameraControlDto"/>).</summary>
+    CameraControl,
 }
 
 /// <summary>Connection state of the output consumer (proxy).</summary>

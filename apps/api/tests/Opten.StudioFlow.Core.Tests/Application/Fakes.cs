@@ -180,6 +180,8 @@ internal sealed class RecordingPublisher : IRealtimePublisher
 
     public ConcurrentQueue<(string ConnectionId, DeviceSelfDto Self)> Selves { get; } = new();
 
+    public ConcurrentQueue<(string ConnectionId, DeviceCommandDto Command)> Commands { get; } = new();
+
     public ConcurrentQueue<string> Replaced { get; } = new();
 
     public ConcurrentQueue<string> Aborted { get; } = new();
@@ -245,7 +247,11 @@ internal sealed class RecordingPublisher : IRealtimePublisher
         return Task.CompletedTask;
     }
 
-    public Task SendCommandAsync(string connectionId, DeviceCommandDto command) => Task.CompletedTask;
+    public Task SendCommandAsync(string connectionId, DeviceCommandDto command)
+    {
+        Commands.Enqueue((connectionId, command));
+        return Task.CompletedTask;
+    }
 
     public Task SendSessionReplacedAsync(string connectionId)
     {

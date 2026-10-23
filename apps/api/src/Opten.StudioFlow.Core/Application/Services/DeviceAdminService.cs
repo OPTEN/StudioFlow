@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Core.Domain;
 
 namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>Regie actions on devices: rename, block, unblock, delete, remote commands (spec 4.6).</summary>
-public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKitKicker kicker)
+public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKitKicker kicker, SourceMonitorOptions options)
 {
     /// <summary>Renames a device; the labels of its sources follow and the device learns its new name.</summary>
     public Task<DeviceDto> RenameAsync(string productionId, string deviceId, RenameDeviceRequest request, CancellationToken cancellationToken)
@@ -101,8 +102,14 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
             async context =>
             {
                 var device = await context.DeviceAsync(deviceId, cancellationToken);
+                var live = context.Runtime.FindDevice(device.Id);
+                if (request.Kind == DeviceCommandKind.CameraControl)
+                {
+                    return SendCameraControl(context, device, live, request);
+                }
+
                 var command = CreateCommand(device, request, context.Now);
-                if (context.Runtime.FindDevice(device.Id)?.ConnectionId is { } connectionId)
+                if (live?.ConnectionId is { } connectionId)
                 {
                     context.Send(p => p.SendCommandAsync(connectionId, command));
                 }
@@ -110,6 +117,28 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
                 return command;
             },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Camera control of a phone (issue #11): validated and clamped to the capabilities the phone reported, then sent
+    /// through the throttle (<c>Sources:CameraCommandInterval</c>): commands in quick succession merge and the newest
+    /// value of each setting reaches the phone. A command to a disconnected phone is dropped, like the others.
+    /// </summary>
+    private DeviceCommandDto SendCameraControl(MutationContext context, Device device, DeviceRuntime? live, DeviceCommandRequest request)
+    {
+        if (device.Kind != DeviceKind.Phone || device.FindSlot(DeviceSlots.Camera) is null)
+        {
+            throw StudioFlowException.Invalid("kind", "Only the camera of a phone can be controlled.");
+        }
+
+        var camera = CameraControlRules.Prepare(request.Camera, live?.Camera?.Capabilities);
+        var accepted = new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, DeviceSlots.Camera, null, context.Now, camera);
+        if (live?.ConnectionId is { } connectionId && live.OfferCameraCommand(camera, context.Now, options.CameraCommandInterval) is { } due)
+        {
+            DeviceEvents.SendCameraCommand(context, connectionId, accepted with { Camera = due });
+        }
+
+        return accepted;
     }
 
     private static DeviceCommandDto CreateCommand(Device device, DeviceCommandRequest request, DateTimeOffset now)
@@ -148,6 +177,10 @@ internal static class DeviceEvents
         var dto = Dtos.Device(device, context.Runtime.FindDevice(device.Id));
         context.Emit(revision => new DeviceUpsertedEvent(revision, dto));
     }
+
+    /// <summary>Sends a camera control command to the connected phone.</summary>
+    public static void SendCameraCommand(MutationContext context, string connectionId, DeviceCommandDto command) =>
+        context.Send(p => p.SendCommandAsync(connectionId, command));
 
     /// <summary>Sends the device its own data when it is connected.</summary>
     public static async Task SendSelfAsync(MutationContext context, Device device, CancellationToken cancellationToken)

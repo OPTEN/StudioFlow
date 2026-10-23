@@ -284,7 +284,7 @@ public sealed class DeviceRuntimeTests
             -10,
             null);
 
-        var (telemetry, techCheckChanged) = device.ApplyReport(report, OwnSlots, Build.T0);
+        var (telemetry, techCheckChanged, _) = device.ApplyReport(report, OwnSlots, Build.T0);
 
         Assert.False(techCheckChanged);
         Assert.Equal(2, telemetry.Slots.Count);
