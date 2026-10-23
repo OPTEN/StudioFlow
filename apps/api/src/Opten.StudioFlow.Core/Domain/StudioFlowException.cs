@@ -35,7 +35,7 @@ public enum ErrorKind
 
 /// <summary>
 /// An expected error of a use case. Thrown inside a mutation it also discards every event the mutation staged, so a
-/// failed request never publishes a partial change. Messages are German because they reach the user.
+/// failed request never publishes a partial change. Messages are English; clients localise by <c>code</c>.
 /// </summary>
 public sealed class StudioFlowException : Exception
 {
@@ -63,22 +63,22 @@ public sealed class StudioFlowException : Exception
 
     /// <summary>Entity not found.</summary>
     public static StudioFlowException NotFound(string what) =>
-        new(ErrorKind.NotFound, ErrorCodes.NotFound, $"{what} wurde nicht gefunden.");
+        new(ErrorKind.NotFound, ErrorCodes.NotFound, $"{what} was not found.");
 
     /// <summary>State conflict with a specific code.</summary>
     public static StudioFlowException Conflict(string code, string message) => new(ErrorKind.Conflict, code, message);
 
     /// <summary>Validation failure of a single field.</summary>
     public static StudioFlowException Invalid(string field, string message) =>
-        new(ErrorKind.Validation, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [message] });
+        new(ErrorKind.Validation, ErrorCodes.ValidationFailed, "The input is invalid.", new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [message] });
 
     /// <summary>Invite or pairing request is no longer usable.</summary>
     public static StudioFlowException PairingExpired() =>
-        new(ErrorKind.Gone, ErrorCodes.PairingExpired, "Die Einladung ist abgelaufen oder wurde bereits verwendet.");
+        new(ErrorKind.Gone, ErrorCodes.PairingExpired, "The invite has expired or has already been used.");
 
     /// <summary>Too many attempts.</summary>
     public static StudioFlowException RateLimited(TimeSpan retryAfter) =>
-        new(ErrorKind.RateLimited, ErrorCodes.RateLimited, "Zu viele Versuche. Bitte später erneut versuchen.", retryAfter: retryAfter);
+        new(ErrorKind.RateLimited, ErrorCodes.RateLimited, "Too many attempts. Please try again later.", retryAfter: retryAfter);
 
     /// <summary>A size limit (scenes per production, items per scene, slots per device) was reached (409, GAP-05).</summary>
     public static StudioFlowException LimitReached(string message) => Conflict(ErrorCodes.LimitReached, message);

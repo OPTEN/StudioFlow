@@ -77,7 +77,7 @@ public sealed class ConcurrencyTests(StudioFlowApp app) : IClassFixture<StudioFl
     public async Task ManyScenesCreatedInParallel_GetDistinctSortOrders()
     {
         var admin = await app.AdminAsync();
-        var production = await admin.Client.PostJsonAsync("/api/productions", new CreateProductionRequest("Parallel Szenen")).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
+        var production = await admin.Client.PostJsonAsync("/api/productions", new CreateProductionRequest("Parallel scenes")).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
 
         var created = await Task.WhenAll(Enumerable.Range(0, 20).Select(i =>
             admin.Client.PostJsonAsync($"/api/productions/{production.Id}/scenes", new CreateSceneRequest($"P{i}", null)).ExpectAsync<SceneDto>(HttpStatusCode.Created)));

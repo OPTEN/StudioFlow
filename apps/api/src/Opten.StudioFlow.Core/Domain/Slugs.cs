@@ -8,7 +8,7 @@ public static class Slugs
     /// <summary>Maximum slug length.</summary>
     public const int MaxLength = 48;
 
-    private const string Fallback = "produktion";
+    private const string Fallback = "production";
 
     private static readonly Dictionary<char, string> Transliterations = new()
     {

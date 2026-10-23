@@ -6,10 +6,10 @@ namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// No outage goes unnoticed across an API restart (spec 12, GAP-08): the last-live time of every device source is
-/// persisted (on each change of «live», and every <c>Sources:LiveMarkInterval</c> while it stays live). Once
+/// persisted (on each change of “live”, and every <c>Sources:LiveMarkInterval</c> while it stays live). Once
 /// <c>Sources:RestartGrace</c> (15 s) after the start has passed, every source that was live within
 /// <c>Sources:RestartLiveWindow</c> (12 h), is used in the program or preview scene and whose device has not come back
-/// becomes <c>reconnecting</c> with an incident («K1 verbindet neu»). Devices that return in time show no incident.
+/// becomes <c>reconnecting</c> with an incident (“K1 reconnecting”). Devices that return in time show no incident.
 /// </summary>
 public sealed class SourceRestartWatch(
     ProductionCoordinator coordinator,

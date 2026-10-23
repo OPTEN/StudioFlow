@@ -87,13 +87,13 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
     {
         if (sinceRevision < 0)
         {
-            throw StudioFlowException.Invalid("since", "Die Revision muss 0 oder grösser sein.");
+            throw StudioFlowException.Invalid("since", "The revision must be 0 or greater.");
         }
     }
 
     private static async Task<(Production Production, IReadOnlyList<Device> Devices, IReadOnlyList<Asset> Assets)> LoadAsync(MutationContext context, CancellationToken cancellationToken)
     {
-        var production = await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw StudioFlowException.NotFound("Die Produktion");
+        var production = await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw StudioFlowException.NotFound("Production");
         context.Runtime.OnAir ??= OnAirState.From(production);
         var devices = await context.Data.Devices.ListAsync(production.Id, cancellationToken);
         var assets = await context.Data.Assets.ListAsync(production.Id, cancellationToken);

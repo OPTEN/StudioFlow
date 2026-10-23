@@ -90,7 +90,7 @@ public sealed class OutputService(
     }
 
     /// <summary>The one answer for every refused output request.</summary>
-    public static StudioFlowException NoAccess() => new(ErrorKind.Forbidden, ErrorCodes.Forbidden, "Kein Zugang.");
+    public static StudioFlowException NoAccess() => new(ErrorKind.Forbidden, ErrorCodes.Forbidden, "No access.");
 
     /// <summary>Finds the production of a key for the output hub (the hub URL carries no slug).</summary>
     public async Task<OutputKeyInfo?> FindByKeyAsync(string? key, IPAddress? client, CancellationToken cancellationToken)
@@ -143,7 +143,7 @@ public sealed class OutputService(
     {
         if (report is null)
         {
-            throw StudioFlowException.Invalid("report", "Bericht fehlt.");
+            throw StudioFlowException.Invalid("report", "The report is missing.");
         }
 
         return Track(productionId, (tracker, now) => tracker.Report(report, now), cancellationToken);

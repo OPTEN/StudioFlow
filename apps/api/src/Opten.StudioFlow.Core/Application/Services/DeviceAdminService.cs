@@ -33,7 +33,7 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
     }
 
     /// <summary>
-    /// Blocks a device: its sources turn red («gesperrt»), incidents disappear, the device gets a final <c>self</c>,
+    /// Blocks a device: its sources turn red (“blocked”), incidents disappear, the device gets a final <c>self</c>,
     /// its hub connection is aborted and LiveKit removes it. The token endpoint refuses it from now on.
     /// </summary>
     public async Task<DeviceDto> BlockAsync(string productionId, string deviceId, CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
             },
             cancellationToken);
 
-    /// <summary>Deletes a device and its sources; scene items keep the references («Quelle fehlt»).</summary>
+    /// <summary>Deletes a device and its sources; scene items keep the references (“Source missing”).</summary>
     public async Task DeleteAsync(string productionId, string deviceId, CancellationToken cancellationToken)
     {
         await coordinator.ExecuteAsync(
@@ -122,19 +122,19 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
             case DeviceCommandKind.Reshare:
                 if (request.Slot is null || device.FindSlot(request.Slot) is not { Kind: SourceKind.Screen })
                 {
-                    throw StudioFlowException.Invalid("slot", "Das Gerät hat keinen solchen Bildschirm.");
+                    throw StudioFlowException.Invalid("slot", "The device has no such screen.");
                 }
 
                 return new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, request.Slot, null, now);
             case DeviceCommandKind.SwitchCamera:
                 if (device.FindSlot(DeviceSlots.Camera) is null)
                 {
-                    throw StudioFlowException.Invalid("kind", "Das Gerät hat keine Kamera.");
+                    throw StudioFlowException.Invalid("kind", "The device has no camera.");
                 }
 
                 return new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, DeviceSlots.Camera, null, now);
             default:
-                throw StudioFlowException.Invalid("kind", "Unbekannter Befehl.");
+                throw StudioFlowException.Invalid("kind", "Unknown command.");
         }
     }
 }

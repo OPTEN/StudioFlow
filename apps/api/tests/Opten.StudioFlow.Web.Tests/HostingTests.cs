@@ -16,11 +16,11 @@ public sealed class HostingTests(StudioFlowApp app) : IClassFixture<StudioFlowAp
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = await CliCommands.HashPasswordAsync(new StringReader("geheim\r\n"), output, error);
+        var exitCode = await CliCommands.HashPasswordAsync(new StringReader("secret\r\n"), output, error);
 
         Assert.Equal(0, exitCode);
         var hash = output.ToString().Trim();
-        Assert.True(new AdminCredentials(Microsoft.Extensions.Options.Options.Create(new AdminOptions { Username = "a", PasswordHash = hash })).Verify("a", "geheim"));
+        Assert.True(new AdminCredentials(Microsoft.Extensions.Options.Options.Create(new AdminOptions { Username = "a", PasswordHash = hash })).Verify("a", "secret"));
     }
 
     [Fact]

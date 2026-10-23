@@ -22,7 +22,7 @@ public sealed class Production
     public const int MaxScenes = 99;
 
     /// <summary>Names of the scenes every new production starts with.</summary>
-    public static IReadOnlyList<string> DefaultSceneNames { get; } = ["Begrüssung", "Präsentation", "Pause"];
+    public static IReadOnlyList<string> DefaultSceneNames { get; } = ["Welcome", "Presentation", "Break"];
 
     private const int SlateTextMax = 120;
 
@@ -69,10 +69,10 @@ public sealed class Production
     public DateTimeOffset? LastSwitchAt { get; private set; }
 
     /// <summary>Slate before the start.</summary>
-    public SlateDto StandbySlate { get; private set; } = new("Gleich geht's los", null, null);
+    public SlateDto StandbySlate { get; private set; } = new("Starting soon", null, null);
 
     /// <summary>Slate after the end.</summary>
-    public SlateDto EndSlate { get; private set; } = new("Danke fürs Zuschauen", null, null);
+    public SlateDto EndSlate { get; private set; } = new("Thanks for watching", null, null);
 
     /// <summary>Secret key of the output link (shown to the Regie, therefore not hashed).</summary>
     public string OutputKey { get; private set; } = string.Empty;
@@ -108,7 +108,7 @@ public sealed class Production
             Slug = slug,
             IsActive = isActive,
             Broadcast = BroadcastState.Standby,
-            StandbySlate = new SlateDto("Gleich geht's los", validName, null),
+            StandbySlate = new SlateDto("Starting soon", validName, null),
             OutputKey = Secrets.New(),
             OutputKeyCreatedAt = now,
             CreatedAt = now,
@@ -123,7 +123,7 @@ public sealed class Production
     }
 
     /// <summary>The scene with the given id, or a <c>not_found</c> error.</summary>
-    public Scene GetScene(string sceneId) => FindScene(sceneId) ?? throw StudioFlowException.NotFound("Die Szene");
+    public Scene GetScene(string sceneId) => FindScene(sceneId) ?? throw StudioFlowException.NotFound("Scene");
 
     /// <summary>The scene with the given id, if any.</summary>
     public Scene? FindScene(string? sceneId) => sceneId is null ? null : scenes.FirstOrDefault(s => string.Equals(s.Id, sceneId, StringComparison.Ordinal));
@@ -194,7 +194,7 @@ public sealed class Production
             case BroadcastState.Ended:
                 return false;
             case BroadcastState.Standby:
-                throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Sendung läuft nicht.");
+                throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The broadcast is not running.");
             default:
                 Broadcast = BroadcastState.Ended;
                 EndedAt = now;
@@ -267,7 +267,7 @@ public sealed class Production
         var preview = FindScene(PreviewSceneId);
         if (preview is null || string.Equals(preview.Id, ProgramSceneId, StringComparison.Ordinal))
         {
-            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Für einen Take muss eine andere Szene in der Preview sein.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "A Take needs a different scene in Preview.");
         }
 
         EnsureNoRunningTransition(now);
@@ -284,13 +284,13 @@ public sealed class Production
         var template = cloneFromSceneId is null ? null : FindScene(cloneFromSceneId);
         if (cloneFromSceneId is not null && template is null)
         {
-            errors.Add("cloneFromSceneId", "Diese Szene gibt es nicht.");
+            errors.Add("cloneFromSceneId", "This scene does not exist.");
         }
 
         errors.ThrowIfAny();
         if (scenes.Count >= MaxScenes)
         {
-            throw StudioFlowException.LimitReached("Eine Produktion kann höchstens 99 Szenen haben.");
+            throw StudioFlowException.LimitReached("A production can have at most 99 scenes.");
         }
 
         var sortOrder = scenes.Count == 0 ? 0 : scenes.Max(s => s.SortOrder) + 1;
@@ -315,7 +315,7 @@ public sealed class Production
         var scene = GetScene(sceneId);
         if (string.Equals(scene.Id, ProgramSceneId, StringComparison.Ordinal))
         {
-            throw StudioFlowException.Conflict(ErrorCodes.SceneIsLive, "Die Szene ist live und kann nicht gelöscht werden.");
+            throw StudioFlowException.Conflict(ErrorCodes.SceneIsLive, "The scene is live and cannot be deleted.");
         }
 
         ProgramChange? previewChange = null;
@@ -335,7 +335,7 @@ public sealed class Production
         var current = OrderedScenes;
         if (sceneIds is null || sceneIds.Count != current.Count || sceneIds.Distinct(StringComparer.Ordinal).Count() != current.Count || sceneIds.Any(id => FindScene(id) is null))
         {
-            throw StudioFlowException.Invalid("sceneIds", "Die Reihenfolge muss jede Szene genau einmal enthalten.");
+            throw StudioFlowException.Invalid("sceneIds", "The order must contain every scene exactly once.");
         }
 
         if (current.Select(s => s.Id).SequenceEqual(sceneIds, StringComparer.Ordinal))
@@ -363,12 +363,12 @@ public sealed class Production
     {
         if (rules is null)
         {
-            throw StudioFlowException.Invalid("allowedIps", "Liste fehlt.");
+            throw StudioFlowException.Invalid("allowedIps", "The list is missing.");
         }
 
         if (rules.Count > IpRule.MaxRules)
         {
-            throw StudioFlowException.Invalid("allowedIps", $"Höchstens {IpRule.MaxRules} Einträge.");
+            throw StudioFlowException.Invalid("allowedIps", $"At most {IpRule.MaxRules} entries.");
         }
 
         var errors = new ValidationErrors();
@@ -381,7 +381,7 @@ public sealed class Production
             }
             else
             {
-                errors.Add($"allowedIps[{i}]", "IP-Adresse oder Bereich (CIDR) angeben, z. B. 192.168.1.0/24.");
+                errors.Add($"allowedIps[{i}]", "Enter an IP address or range (CIDR), e.g. 192.168.1.0/24.");
             }
         }
 
@@ -401,7 +401,7 @@ public sealed class Production
         var subtitle = TextRules.Truncate(slate.Subtitle, SlateTextMax);
         if (slate.BackgroundAssetId is not null && !catalog.IsImageAsset(slate.BackgroundAssetId))
         {
-            errors.Add($"{path}.backgroundAssetId", "Als Hintergrund ist nur ein Bild möglich.");
+            errors.Add($"{path}.backgroundAssetId", "Only an image can be used as a background.");
         }
 
         return title is null ? null : new SlateDto(title, subtitle, slate.BackgroundAssetId);
@@ -411,7 +411,7 @@ public sealed class Production
     {
         if (IsTransitionRunning(now))
         {
-            throw StudioFlowException.Conflict(ErrorCodes.TransitionRunning, "Der Übergang läuft noch.");
+            throw StudioFlowException.Conflict(ErrorCodes.TransitionRunning, "The transition is still running.");
         }
     }
 

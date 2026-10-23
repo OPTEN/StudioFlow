@@ -57,7 +57,7 @@ public sealed class PostgresFixture : IAsyncLifetime
 public class StudioFlowApp(PostgresFixture postgres) : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminUser = "admin";
-    public const string AdminPassword = "Test-Passwort-1!";
+    public const string AdminPassword = "Test-Password-1!";
     public const string LiveKitKey = "testkey";
     public const string LiveKitSecret = "sk-test-secret-with-more-than-32-characters";
     public const long MaxImageBytes = 200_000;

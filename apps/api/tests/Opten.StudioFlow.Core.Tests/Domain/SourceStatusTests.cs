@@ -336,8 +336,8 @@ public sealed class LogTextsTests
         Assert.Equal("Broadcast ended", Text(AuditActions.BroadcastEnded));
         Assert.Equal("S3 Laptop Mia paired", Text(AuditActions.DevicePaired, (AuditDetails.Codes, "S3"), (AuditDetails.Device, "Laptop Mia")));
         Assert.Equal("Laptop Mia removed", Text(AuditActions.DeviceRemoved, (AuditDetails.Codes, ""), (AuditDetails.Device, "Laptop Mia")));
-        Assert.Equal("K2 Handy 2 blocked", Text(AuditActions.DeviceBlocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Handy 2")));
-        Assert.Equal("K2 Handy 2 unblocked", Text(AuditActions.DeviceUnblocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Handy 2")));
+        Assert.Equal("K2 Phone 2 blocked", Text(AuditActions.DeviceBlocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Phone 2")));
+        Assert.Equal("K2 Phone 2 unblocked", Text(AuditActions.DeviceUnblocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Phone 2")));
         Assert.Equal("Request from Lea denied", Text(AuditActions.PairingDenied, (AuditDetails.Name, "Lea")));
         Assert.Equal("Invite link created", Text(AuditActions.InviteCreated, (AuditDetails.Kind, "LaptopLink")));
         Assert.Equal("Invite link revoked", Text(AuditActions.InviteRevoked, (AuditDetails.Kind, "LaptopLink")));
@@ -380,6 +380,52 @@ public sealed class LogTextsTests
         Assert.Equal(new Dictionary<string, string> { ["code"] = "K2", ["downSeconds"] = "170" }, recovered.Params);
         Assert.Equal("1", Describe(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "0")).Params["downSeconds"]);
         Assert.Equal("1", Describe(AuditActions.SourceRecovered, (AuditDetails.Code, "K2")).Params["downSeconds"]);
+    }
+
+    [Fact]
+    public void Describe_EveryActionOfActions_HasACodeAnEnglishTextAndItsParameters()
+    {
+        // One row per entry the Regie shows. A new action in LogTexts.Actions fails the last assertion until it is listed.
+        var scene = (AuditDetails.Scene, "Break");
+        var device = new[] { (AuditDetails.Codes, "S1, S2"), (AuditDetails.Device, "Laptop Mia") };
+        var asset = new[] { (AuditDetails.Code, "M1"), (AuditDetails.Name, "Intro") };
+        var linkInvite = (AuditDetails.Kind, "LaptopLink");
+        var subject = new Dictionary<string, string> { ["subject"] = "S1, S2 Laptop Mia" };
+        var rows = new (string Action, (string Key, string Value)[] Details, LogCode Code, string Text, Dictionary<string, string> Params)[]
+        {
+            (AuditActions.SceneLive, [scene], LogCode.SceneLive, "Scene “Break” is live", new() { ["scene"] = "Break" }),
+            (AuditActions.SceneCreated, [scene], LogCode.SceneCreated, "Scene “Break” created", new() { ["scene"] = "Break" }),
+            (AuditActions.SceneDeleted, [scene], LogCode.SceneDeleted, "Scene “Break” deleted", new() { ["scene"] = "Break" }),
+            (AuditActions.BroadcastStarted, [], LogCode.BroadcastStarted, "Broadcast started", new()),
+            (AuditActions.BroadcastEnded, [], LogCode.BroadcastEnded, "Broadcast ended", new()),
+            (AuditActions.DevicePaired, device, LogCode.DevicePaired, "S1, S2 Laptop Mia paired", subject),
+            (AuditActions.DeviceBlocked, device, LogCode.DeviceBlocked, "S1, S2 Laptop Mia blocked", subject),
+            (AuditActions.DeviceUnblocked, device, LogCode.DeviceUnblocked, "S1, S2 Laptop Mia unblocked", subject),
+            (AuditActions.DeviceRemoved, device, LogCode.DeviceRemoved, "S1, S2 Laptop Mia removed", subject),
+            (AuditActions.PairingDenied, [(AuditDetails.Name, "Lea")], LogCode.PairingDenied, "Request from Lea denied", new() { ["name"] = "Lea" }),
+            (AuditActions.InviteCreated, [linkInvite], LogCode.InviteLinkCreated, "Invite link created", new()),
+            (AuditActions.InviteRevoked, [linkInvite], LogCode.InviteLinkRevoked, "Invite link revoked", new()),
+            (AuditActions.OutputKeyRegenerated, [], LogCode.OutputLinkRegenerated, "Output link regenerated", new()),
+            (AuditActions.OutputAccessChanged, [], LogCode.OutputAccessChanged, "Output access changed", new()),
+            (AuditActions.AssetUploaded, asset, LogCode.AssetUploaded, "M1 “Intro” uploaded", new() { ["code"] = "M1", ["name"] = "Intro" }),
+            (AuditActions.AssetDeleted, asset, LogCode.AssetDeleted, "M1 “Intro” deleted", new() { ["code"] = "M1", ["name"] = "Intro" }),
+            (AuditActions.SourceReconnecting, [(AuditDetails.Code, "K2")], LogCode.SourceReconnecting, "K2 reconnecting", new() { ["code"] = "K2" }),
+            (AuditActions.SourceEnded, [(AuditDetails.Code, "K1"), (AuditDetails.Kind, "Camera")], LogCode.CameraEnded, "K1 camera stopped", new() { ["code"] = "K1" }),
+            (AuditActions.SourceEnded, [(AuditDetails.Code, "S1"), (AuditDetails.Kind, "Screen")], LogCode.ScreenEnded, "S1 sharing stopped", new() { ["code"] = "S1" }),
+            (AuditActions.SourceLost, [(AuditDetails.Code, "K1")], LogCode.SourceLost, "K1 no picture", new() { ["code"] = "K1" }),
+            (AuditActions.SourceRecovered, [(AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "9")], LogCode.SourceRecovered, "K2 is back, was gone for 9 s", new() { ["code"] = "K2", ["downSeconds"] = "9" }),
+        };
+
+        foreach (var (action, details, code, text, parameters) in rows)
+        {
+            var described = Describe(action, details);
+            Assert.Equal(code, described.Code);
+            Assert.Equal(text, described.Text);
+            Assert.Equal(parameters, described.Params);
+            Assert.Equal(text, Text(action, details));
+        }
+
+        Assert.Equal(LogTexts.Actions.Order(StringComparer.Ordinal), rows.Select(r => r.Action).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
     }
 
     [Fact]

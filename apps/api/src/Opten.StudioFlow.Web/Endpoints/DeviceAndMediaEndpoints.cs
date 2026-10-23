@@ -55,7 +55,7 @@ internal static class DeviceEndpoints
                 total += read;
                 if (total > BandwidthTestMaxBytes)
                 {
-                    return Problems.Result(StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "Höchstens 4 MB.");
+                    return Problems.Result(StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "At most 4 MB.");
                 }
             }
 
@@ -125,17 +125,17 @@ internal static class LiveKitEndpoints
         var body = await ReadBodyAsync(request, LiveKitWebhookReceiver.MaxBodyBytes, cancellationToken);
         if (body is null)
         {
-            return Problems.Result(StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "Der Webhook ist zu gross.");
+            return Problems.Result(StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "The webhook is too large.");
         }
 
         if (!await receiver.VerifyAsync(request.Headers.Authorization.ToString(), body))
         {
-            return Problems.Result(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Ungültige Webhook-Signatur.");
+            return Problems.Result(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Invalid webhook signature.");
         }
 
         if (LiveKitWebhookReceiver.Parse(body) is not { } webhook)
         {
-            return Problems.Result(StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "Unbekanntes Webhook-Format.");
+            return Problems.Result(StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "Unknown webhook format.");
         }
 
         await sync.HandleAsync(webhook, cancellationToken);

@@ -127,7 +127,7 @@ public sealed class PinnedBehaviourTests : IDisposable
     [Fact]
     public async Task OutputChanges_CurrentOrBufferedOrUnknownRevision_AreEmptyDeltaOrSnapshot()
     {
-        await harness.Productions.UpdateAsync(harness.Production.Id, new UpdateProductionRequest("Neu", null, null), CancellationToken.None);
+        await harness.Productions.UpdateAsync(harness.Production.Id, new UpdateProductionRequest("New", null, null), CancellationToken.None);
         var access = new OutputKeyInfo(harness.Production.Id, harness.Production.Slug, harness.Production.OutputKey, []);
         var current = harness.Runtime.Revision;
 
@@ -159,10 +159,10 @@ public sealed class PinnedBehaviourTests : IDisposable
     [Fact]
     public async Task RestartWatch_LiveSourceOnAirWhoseDeviceDoesNotReturn_GetsReconnectingIncident()
     {
-        var (gone, _) = await harness.PairPhoneAsync("Handy 1");
-        var (back, backIdentity) = await harness.PairPhoneAsync("Handy 2");
-        var (idle, _) = await harness.PairPhoneAsync("Handy 3");
-        var (old, _) = await harness.PairPhoneAsync("Handy 4");
+        var (gone, _) = await harness.PairPhoneAsync("Phone 1");
+        var (back, backIdentity) = await harness.PairPhoneAsync("Phone 2");
+        var (idle, _) = await harness.PairPhoneAsync("Phone 3");
+        var (old, _) = await harness.PairPhoneAsync("Phone 4");
         var program = harness.Production.OrderedScenes[0].Id;
         var preview = harness.Production.OrderedScenes[1].Id;
         await harness.Scenes.AddItemAsync(harness.Production.Id, program, Build.Add(Camera(gone)), CancellationToken.None);

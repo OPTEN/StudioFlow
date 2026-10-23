@@ -79,10 +79,10 @@ public sealed class DeviceSessionService(
     {
         ArgumentNullException.ThrowIfNull(identity);
         await using var unit = data.Create();
-        var device = await unit.Devices.GetAsync(identity.DeviceId, cancellationToken) ?? throw StudioFlowException.NotFound("Das Gerät");
+        var device = await unit.Devices.GetAsync(identity.DeviceId, cancellationToken) ?? throw StudioFlowException.NotFound("Device");
         if (device.IsBlocked)
         {
-            throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
+            throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "The device is blocked.");
         }
 
         return tokens.IssueSenderToken(device.ProductionId, device.Id, device.Name);
@@ -100,7 +100,7 @@ public sealed class DeviceSessionService(
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(hello);
-        var sessionId = TextRules.Truncate(hello.SessionId, SessionIdMax) ?? throw StudioFlowException.Invalid("sessionId", "Sitzungs-ID fehlt.");
+        var sessionId = TextRules.Truncate(hello.SessionId, SessionIdMax) ?? throw StudioFlowException.Invalid("sessionId", "The session ID is missing.");
         var session = await coordinator.ExecuteAsync(
             identity.ProductionId,
             async context =>
@@ -108,7 +108,7 @@ public sealed class DeviceSessionService(
                 var device = await context.DeviceAsync(identity.DeviceId, cancellationToken);
                 if (device.IsBlocked)
                 {
-                    throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
+                    throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "The device is blocked.");
                 }
 
                 var live = context.Runtime.Device(device.Id);
@@ -149,13 +149,13 @@ public sealed class DeviceSessionService(
                 return new DeviceSessionDto(Dtos.Self(device, await context.ProductionNameAsync(cancellationToken)), tally);
             },
             cancellationToken);
-        return session ?? throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Diese Sitzung wurde in einem anderen Tab übernommen.");
+        return session ?? throw StudioFlowException.Conflict(ErrorCodes.Conflict, "This session was taken over in another tab.");
     }
 
     /// <summary>
     /// Ends a hub session when the connection was the active one. Not while the host shuts down (BUG-20): the
     /// connection ends because the API stops, which is no outage of the sources of the device, so nothing is evaluated
-    /// or written (no «verbindet neu», no incident); the restart watch (spec 12) handles a device that does not return.
+    /// or written (no “reconnecting”, no incident); the restart watch (spec 12) handles a device that does not return.
     /// </summary>
     public Task DisconnectedAsync(DeviceIdentity identity, string connectionId, CancellationToken cancellationToken)
     {
@@ -201,7 +201,7 @@ public sealed class DeviceSessionService(
         ArgumentNullException.ThrowIfNull(identity);
         if (report is null)
         {
-            throw StudioFlowException.Invalid("report", "Bericht fehlt.");
+            throw StudioFlowException.Invalid("report", "The report is missing.");
         }
 
         return coordinator.ExecuteAsync(
@@ -296,7 +296,7 @@ public sealed class DeviceSessionService(
     }
 
     /// <summary>
-    /// Removes a slot and its source («Entfernen»). An unknown slot is <c>not_found</c>; the camera of a phone cannot be
+    /// Removes a slot and its source (“Remove”). An unknown slot is <c>not_found</c>; the camera of a phone cannot be
     /// removed (<c>conflict</c>, GAP-19).
     /// </summary>
     public Task ReleaseSlotAsync(DeviceIdentity identity, string slot, CancellationToken cancellationToken)
@@ -307,7 +307,7 @@ public sealed class DeviceSessionService(
             async context =>
             {
                 var device = await context.DeviceAsync(identity.DeviceId, cancellationToken);
-                var released = device.ReleaseSlot(slot) ?? throw StudioFlowException.NotFound("Der Slot");
+                var released = device.ReleaseSlot(slot) ?? throw StudioFlowException.NotFound("Slot");
                 var sourceId = device.SourceIdOf(released);
                 SourceMonitor.Forget(context, sourceId);
                 context.Emit(revision => new SourceRemovedEvent(revision, sourceId));

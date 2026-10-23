@@ -9,7 +9,7 @@ public static class MutationContextExtensions
     public static async Task<Production> ProductionAsync(this MutationContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw StudioFlowException.NotFound("Die Produktion");
+        return await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw StudioFlowException.NotFound("Production");
     }
 
     /// <summary>A device of the production (tracked); other productions' devices are not found.</summary>
@@ -19,14 +19,14 @@ public static class MutationContextExtensions
         var device = await context.Data.Devices.GetAsync(deviceId, cancellationToken);
         return device is not null && string.Equals(device.ProductionId, context.ProductionId, StringComparison.Ordinal)
             ? device
-            : throw StudioFlowException.NotFound("Das Gerät");
+            : throw StudioFlowException.NotFound("Device");
     }
 
     /// <summary>An asset of the production (tracked).</summary>
     public static async Task<Asset> AssetAsync(this MutationContext context, string assetId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return await context.Data.Assets.GetAsync(context.ProductionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Das Medium");
+        return await context.Data.Assets.GetAsync(context.ProductionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Media item");
     }
 
     /// <summary>All sources of the production.</summary>

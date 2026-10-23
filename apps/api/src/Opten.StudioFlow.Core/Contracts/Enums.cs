@@ -5,7 +5,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <summary>Broadcast state of a production. Standby and Ended show a slate on the output.</summary>
 public enum BroadcastState
 {
-    /// <summary>Before the start: the output shows the standby slate («Gleich geht's los»).</summary>
+    /// <summary>Before the start: the output shows the standby slate (“Starting soon”).</summary>
     Standby,
 
     /// <summary>On air: the output shows the program scene.</summary>
@@ -38,10 +38,10 @@ public enum SceneLayoutMode
 /// <summary>How a source is fitted into its item rectangle.</summary>
 public enum ItemFit
 {
-    /// <summary>Fill the rectangle and crop the overflow («Füllen»).</summary>
+    /// <summary>Fill the rectangle and crop the overflow (“Fill”).</summary>
     Cover,
 
-    /// <summary>Show the whole picture with bars («Ganz zeigen»).</summary>
+    /// <summary>Show the whole picture with bars (“Show all”).</summary>
     Contain,
 }
 
@@ -76,13 +76,13 @@ public enum SourceStatus
     /// <summary>Picture was live and is gone; the device reconnects (amber).</summary>
     Reconnecting,
 
-    /// <summary>The sender ended the screen share (red, «Teilen beendet»).</summary>
+    /// <summary>The sender ended the screen share (red, “Sharing stopped”).</summary>
     Ended,
 
-    /// <summary>The camera failed on the device (red, «kein Bild»).</summary>
+    /// <summary>The camera failed on the device (red, “no picture”).</summary>
     Lost,
 
-    /// <summary>The device is blocked by the Regie (red, «gesperrt»).</summary>
+    /// <summary>The device is blocked by the Regie (red, “blocked”).</summary>
     Blocked,
 }
 
@@ -157,7 +157,7 @@ public enum SlotState
     /// </summary>
     Paused,
 
-    /// <summary>The user stopped the capture on purpose («Teilen beenden», browser stop button, camera stopped).</summary>
+    /// <summary>The user stopped the capture on purpose (“Stop sharing”, browser stop button, camera stopped).</summary>
     Ended,
 
     /// <summary>Capture failed (camera taken by another app, permission revoked).</summary>
@@ -228,7 +228,7 @@ public enum DeviceCommandKind
     /// <summary>Switch between front and back camera.</summary>
     SwitchCamera,
 
-    /// <summary>Show a short text message on the device («In 10 s live»).</summary>
+    /// <summary>Show a short text message on the device (“Live in 10 s”).</summary>
     Message,
 }
 

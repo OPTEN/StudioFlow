@@ -356,12 +356,12 @@ public sealed class OutputHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
 
         var invite = await admin.Client.PostJsonAsync($"/api/productions/{admin.ProductionId}/pairing/invites", new CreateInviteRequest(InviteKind.LaptopLink)).ExpectAsync<InviteDto>(HttpStatusCode.Created);
         var hidden = await events.NextAsync();
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Sichtbar", null, null)).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Visible", null, null)).ExpectAsync(HttpStatusCode.OK);
         var visible = await events.NextAsync(e => e is not RevisionOnlyEvent);
 
         Assert.NotNull(changes.Snapshot);
         Assert.IsType<RevisionOnlyEvent>(hidden);
-        Assert.Equal("Sichtbar", Assert.IsType<ProductionChangedEvent>(visible).Production.Name);
+        Assert.Equal("Visible", Assert.IsType<ProductionChangedEvent>(visible).Production.Name);
         Assert.True(visible.Revision > hidden.Revision);
         Assert.NotNull(invite);
     }

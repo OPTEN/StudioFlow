@@ -12,13 +12,13 @@ public sealed class ProductionTests
     [Fact]
     public void Create_Defaults_MatchTheSpecification()
     {
-        Assert.Equal(["Begrüssung", "Präsentation", "Pause"], Scenes.Select(s => s.Name));
+        Assert.Equal(["Welcome", "Presentation", "Break"], Scenes.Select(s => s.Name));
         Assert.Equal([0, 1, 2], Scenes.Select(s => s.SortOrder));
         Assert.Equal(Scenes[0].Id, production.ProgramSceneId);
         Assert.Null(production.PreviewSceneId);
         Assert.Equal(BroadcastState.Standby, production.Broadcast);
-        Assert.Equal(new SlateDto("Gleich geht's los", "Webinar", null), production.StandbySlate);
-        Assert.Equal("Danke fürs Zuschauen", production.EndSlate.Title);
+        Assert.Equal(new SlateDto("Starting soon", "Webinar", null), production.StandbySlate);
+        Assert.Equal("Thanks for watching", production.EndSlate.Title);
         Assert.Equal("opten", production.TenantId);
         Assert.Equal(43, production.OutputKey.Length);
         Assert.Empty(production.AllowedIps);
@@ -201,7 +201,7 @@ public sealed class ProductionTests
         var item = original.AddItem(Build.Add(phone.SourceIdOf(phone.Slots[0])), catalog);
         original.Update(new UpdateSceneRequest(null, SceneLayoutMode.AutoGrid, new SceneBackgroundDto("#ffffff", null)), catalog);
 
-        var (clone, programChange) = production.AddScene("Kopie", original.Id, Build.T0);
+        var (clone, programChange) = production.AddScene("Copy", original.Id, Build.T0);
 
         Assert.Null(programChange);
         Assert.Equal(3, clone.SortOrder);
@@ -254,7 +254,7 @@ public sealed class ProductionTests
         var video = Build.Video(production);
         var catalog = new SourceCatalog([], [video]);
 
-        var error = Assert.Throws<StudioFlowException>(() => production.Update(new UpdateProductionRequest(null, new SlateDto("Gleich", null, video.Id), null), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => production.Update(new UpdateProductionRequest(null, new SlateDto("Soon", null, video.Id), null), catalog));
 
         Assert.True(error.Errors!.ContainsKey("standbySlate.backgroundAssetId"));
     }
@@ -265,11 +265,11 @@ public sealed class ProductionTests
         var image = Build.Image(production);
         var catalog = new SourceCatalog([], [image]);
 
-        Assert.True(production.Update(new UpdateProductionRequest("Neu", null, new SlateDto("Ende", "Bis bald", image.Id)), catalog));
+        Assert.True(production.Update(new UpdateProductionRequest("New", null, new SlateDto("End", "See you soon", image.Id)), catalog));
 
-        Assert.Equal("Neu", production.Name);
+        Assert.Equal("New", production.Name);
         Assert.Equal("webinar", production.Slug);
-        Assert.Equal("Gleich geht's los", production.StandbySlate.Title);
+        Assert.Equal("Starting soon", production.StandbySlate.Title);
         Assert.Equal(image.Id, production.EndSlate.BackgroundAssetId);
         Assert.True(production.UsesAsset(image.Id));
         Assert.False(production.Update(new UpdateProductionRequest(null, null, null), catalog));

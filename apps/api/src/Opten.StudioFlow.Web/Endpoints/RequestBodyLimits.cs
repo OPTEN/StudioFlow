@@ -42,7 +42,7 @@ internal sealed class RequestBodyLimitMiddleware(RequestDelegate next, IOptions<
         };
         if (context.Request.ContentLength > limit)
         {
-            await Problems.WriteAsync(context, StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "Die Anfrage ist zu gross.");
+            await Problems.WriteAsync(context, StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "The request is too large.");
             return;
         }
 

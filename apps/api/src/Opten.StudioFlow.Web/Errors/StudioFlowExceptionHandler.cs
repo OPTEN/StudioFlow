@@ -7,7 +7,7 @@ using Opten.StudioFlow.Core.Domain;
 namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
-/// Turns exceptions into problem details with a <c>code</c>: expected use case errors keep their status and German
+/// Turns exceptions into problem details with a <c>code</c>: expected use case errors keep their status and English
 /// message, malformed requests become 400 (a body that cannot be bound names the field in <c>errors</c>, BUG-08), an
 /// unreachable database 503 <c>service_unavailable</c> with
 /// <c>Retry-After</c> (GAP-32), everything else 500 without internals (the message only in Development).
@@ -72,10 +72,10 @@ internal sealed class StudioFlowExceptionHandler(IProblemDetailsService problems
     {
         StudioFlowException e => (StatusOf(e.Kind), e.Code, e.Message, e.Errors, e.RetryAfter),
         _ when DatabaseOutage.IsOutage(exception) => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.ServiceUnavailable, DatabaseOutage.Message, null, DatabaseOutage.RetryAfter),
-        BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } => (StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "Die Anfrage ist zu gross.", null, null),
-        BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest } e when JsonBindingErrors.From(e) is { } fields => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", fields, null),
-        BadHttpRequestException e => (e.StatusCode, Problems.CodeFor(e.StatusCode), "Die Anfrage ist ungültig.", null, null),
-        JsonException or InvalidDataException or NotSupportedException { Source: "System.Text.Json" } => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "Die Anfrage ist ungültig.", null, null),
-        _ => (StatusCodes.Status500InternalServerError, ErrorCodes.InternalError, environment.IsDevelopment() ? exception.Message : "Ein unerwarteter Fehler ist aufgetreten.", null, null),
+        BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } => (StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "The request is too large.", null, null),
+        BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest } e when JsonBindingErrors.From(e) is { } fields => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "The input is invalid.", fields, null),
+        BadHttpRequestException e => (e.StatusCode, Problems.CodeFor(e.StatusCode), "The request is invalid.", null, null),
+        JsonException or InvalidDataException or NotSupportedException { Source: "System.Text.Json" } => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "The request is invalid.", null, null),
+        _ => (StatusCodes.Status500InternalServerError, ErrorCodes.InternalError, environment.IsDevelopment() ? exception.Message : "An unexpected error occurred.", null, null),
     };
 }

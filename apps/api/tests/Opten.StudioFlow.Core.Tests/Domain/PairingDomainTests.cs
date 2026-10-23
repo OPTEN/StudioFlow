@@ -11,13 +11,13 @@ public sealed class DeviceTests
     [Fact]
     public void Pair_Phone_GetsCameraSlotAndSecret()
     {
-        var (device, secret) = Device.Pair(production.Id, "Handy 1", DeviceKind.Phone, "iPhone", PairingMethod.Qr, Build.T0, ["K1"]);
+        var (device, secret) = Device.Pair(production.Id, "Phone 1", DeviceKind.Phone, "iPhone", PairingMethod.Qr, Build.T0, ["K1"]);
 
         Assert.Equal(new DeviceSlot("camera", "K2", SourceKind.Camera), Assert.Single(device.Slots));
         Assert.True(device.HasSecret(secret));
         Assert.False(device.HasSecret(secret[..^1]));
         Assert.Equal(DeviceState.Active, device.State);
-        Assert.Equal("Handy 1", device.LabelOf(device.Slots[0]));
+        Assert.Equal("Phone 1", device.LabelOf(device.Slots[0]));
     }
 
     [Fact]
@@ -47,14 +47,14 @@ public sealed class DeviceTests
     }
 
     [Fact]
-    public void AllocateSlot_Camera_OnlyOnceWithKameraLabel()
+    public void AllocateSlot_Camera_OnlyOnceWithCameraLabel()
     {
         var laptop = Build.Laptop(production);
 
         var camera = laptop.AllocateSlot(SourceKind.Camera, ["K1"]);
 
         Assert.Equal("K2", camera.Code);
-        Assert.Equal("Laptop Lea · Kamera", laptop.LabelOf(camera));
+        Assert.Equal("Laptop Lea · Camera", laptop.LabelOf(camera));
         Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<StudioFlowException>(() => laptop.AllocateSlot(SourceKind.Camera, [])).Code);
     }
 
@@ -97,8 +97,8 @@ public sealed class DeviceTests
     [Fact]
     public void DefaultName_ExistingNames_PicksLowestFreeNumber()
     {
-        Assert.Equal("Handy 2", Device.DefaultName(DeviceKind.Phone, ["Handy 1", "Handy 3", "Laptop 2"]));
-        Assert.Equal("Laptop 1", Device.DefaultName(DeviceKind.Laptop, ["Handy 1"]));
+        Assert.Equal("Phone 2", Device.DefaultName(DeviceKind.Phone, ["Phone 1", "Phone 3", "Laptop 2"]));
+        Assert.Equal("Laptop 1", Device.DefaultName(DeviceKind.Laptop, ["Phone 1"]));
     }
 
     [Fact]
@@ -130,8 +130,8 @@ public sealed class DeviceTests
         var device = Build.Phone(production);
 
         Assert.Throws<StudioFlowException>(() => device.Rename(new string('x', 61)));
-        device.Rename("Kamera Bühne");
-        Assert.Equal("Kamera Bühne", device.LabelOf(device.Slots[0]));
+        device.Rename("Camera Bühne");
+        Assert.Equal("Camera Bühne", device.LabelOf(device.Slots[0]));
         Assert.Equal("K1", device.CodesText());
     }
 }

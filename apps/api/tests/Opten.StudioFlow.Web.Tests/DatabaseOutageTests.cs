@@ -51,9 +51,9 @@ public sealed class DatabaseOutageTests(OutageApp app) : IClassFixture<OutageApp
         }
 
         await WaitUntilReadyAsync(client);
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Danach", null, null)).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}", new UpdateProductionRequest("Afterwards", null, null)).ExpectAsync(HttpStatusCode.OK);
         var changes = await hub.InvokeAsync<ProductionChangesDto>(HubMethods.Subscribe, admin.ProductionId, null, TestContext.Current.CancellationToken);
-        Assert.Equal("Danach", changes.Snapshot!.Production.Name);
+        Assert.Equal("Afterwards", changes.Snapshot!.Production.Name);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed class DatabaseOutageTests(OutageApp app) : IClassFixture<OutageApp
         var back = Stopwatch.StartNew();
         await WaitUntilReadyAsync(client);
         Assert.True(back.Elapsed < TimeSpan.FromSeconds(10), $"ready again after {back.Elapsed.TotalMilliseconds:F0} ms");
-        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}/scenes/{snapshot.Scenes[0].Id}", new UpdateSceneRequest("Danach", null, null)).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}/scenes/{snapshot.Scenes[0].Id}", new UpdateSceneRequest("Afterwards", null, null)).ExpectAsync(HttpStatusCode.OK);
         await Task.Delay(TimeSpan.FromSeconds(1.5), cancellation);
         await reports.CancelAsync();
         await reporter;

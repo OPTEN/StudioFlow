@@ -27,7 +27,7 @@ public sealed class ValidationErrors
     {
         if (HasErrors)
         {
-            throw new StudioFlowException(ErrorKind.Validation, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", ToDictionary());
+            throw new StudioFlowException(ErrorKind.Validation, ErrorCodes.ValidationFailed, "The input is invalid.", ToDictionary());
         }
     }
 

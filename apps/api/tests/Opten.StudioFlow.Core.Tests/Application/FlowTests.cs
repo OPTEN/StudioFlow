@@ -108,7 +108,7 @@ public sealed class SwitchingFlowTests : IDisposable
         var switched = Assert.Single(harness.Events.OfType<ProgramSwitchedEvent>());
         Assert.Equal(Scenes[2].Id, switched.ProgramSceneId);
         Assert.Equal(Scenes[0].Id, switched.PreviousProgramSceneId);
-        Assert.Equal("Scene “Pause” is live", Assert.Single(harness.Events.OfType<LogAppendedEvent>()).Entry.Text);
+        Assert.Equal("Scene “Break” is live", Assert.Single(harness.Events.OfType<LogAppendedEvent>()).Entry.Text);
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(SourceStatus.Offline, harness.Source($"{device.Id}/camera").Status);
         Assert.Equal(2, harness.Events.OfType<InviteUpsertedEvent>().Count());
         Assert.Single(harness.Events.OfType<InviteRemovedEvent>());
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 Handy 1 paired");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 Phone 1 paired");
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class DeviceFlowTests : IDisposable
     }
 
     [Fact]
-    public async Task Report_CameraPausedByTheSystem_IsReconnectingAndAStopIsKameraBeendet()
+    public async Task Report_CameraPausedByTheSystem_IsReconnectingAndAStopIsCameraStopped()
     {
         var (device, identity) = await LiveDeviceAsync("c1");
         var camera = $"{device.Id}/camera";
@@ -311,7 +311,7 @@ public sealed class DeviceFlowTests : IDisposable
     }
 
     [Fact]
-    public async Task Report_StoppedOnPurpose_LogsTeilenBeendetForScreensAndKameraBeendetForCameras()
+    public async Task Report_StoppedOnPurpose_LogsSharingStoppedForScreensAndCameraStoppedForCameras()
     {
         var (device, identity) = await harness.PairLaptopAsync();
         await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "Windows", "1.0"), CancellationToken.None);
@@ -355,7 +355,7 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Contains(device.Id, harness.Rooms.Removed);
         Assert.Equal(SourceStatus.Blocked, harness.Source($"{device.Id}/camera").Status);
         Assert.Single(harness.Events.OfType<IncidentRemovedEvent>());
-        Assert.Contains("K1 Handy 1 blocked", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+        Assert.Contains("K1 Phone 1 blocked", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.IssueTokenAsync(identity, CancellationToken.None));
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None));
     }
@@ -382,7 +382,7 @@ public sealed class DeviceFlowTests : IDisposable
         await harness.Productions.TakeAsync(harness.Production.Id, new TakeRequest(Transitions.Cut), CancellationToken.None);
         Assert.Equal(TallyState.Program, harness.Publisher.Tallies.Last().Tally.Overall);
         var pushed = harness.Publisher.Tallies.Count;
-        await harness.Productions.UpdateAsync(harness.Production.Id, new UpdateProductionRequest("Anders", null, null), CancellationToken.None);
+        await harness.Productions.UpdateAsync(harness.Production.Id, new UpdateProductionRequest("Different", null, null), CancellationToken.None);
         await harness.Productions.EndBroadcastAsync(harness.Production.Id, CancellationToken.None);
 
         Assert.Equal(pushed + 1, harness.Publisher.Tallies.Count);
@@ -489,9 +489,9 @@ public sealed class DeviceFlowTests : IDisposable
 
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Reshare, "camera", null), CancellationToken.None));
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, new string('x', 141)), CancellationToken.None));
-        var command = await harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, " In 10 s live "), CancellationToken.None);
+        var command = await harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, " Live in 10 s "), CancellationToken.None);
 
-        Assert.Equal("In 10 s live", command.Text);
+        Assert.Equal("Live in 10 s", command.Text);
         Assert.True(EntityIds.IsValid(command.Id, EntityIds.Command));
     }
 
@@ -609,7 +609,7 @@ public sealed class PairingFlowTests : IDisposable
 
         var phoneDevice = harness.Data.Devices.Single(d => d.Id == phone.DeviceId);
         var laptopDevice = harness.Data.Devices.Single(d => d.Id == laptop.DeviceId);
-        Assert.Equal((DeviceKind.Phone, "camera", "Handy 1"), (phoneDevice.Kind, phoneDevice.Slots[0].Slot, phoneDevice.Name));
+        Assert.Equal((DeviceKind.Phone, "camera", "Phone 1"), (phoneDevice.Kind, phoneDevice.Slots[0].Slot, phoneDevice.Name));
         Assert.Equal((DeviceKind.Laptop, "screen-1", "Laptop 1"), (laptopDevice.Kind, laptopDevice.Slots[0].Slot, laptopDevice.Name));
     }
 
@@ -617,7 +617,7 @@ public sealed class PairingFlowTests : IDisposable
     public async Task Activate_OtherProductionWithPendingKnock_DropsItAsExpired()
     {
         var knock = await harness.Pairing.CreateRequestAsync(new CreatePairingRequest("Laptop Lea", DeviceKind.Laptop, "Windows"), CancellationToken.None);
-        var other = await harness.Productions.CreateAsync(new CreateProductionRequest("Zweite"), CancellationToken.None);
+        var other = await harness.Productions.CreateAsync(new CreateProductionRequest("Second"), CancellationToken.None);
 
         await harness.Productions.ActivateAsync(other.Id, CancellationToken.None);
 
@@ -643,7 +643,7 @@ public sealed class PairingFlowTests : IDisposable
     public async Task Knock_ApproveInOtherProduction_IsNotFound()
     {
         var knock = await harness.Pairing.CreateRequestAsync(new CreatePairingRequest("Mia", DeviceKind.Laptop, "Windows"), CancellationToken.None);
-        var other = Production.Create("Andere", "andere", isActive: false, Build.T0);
+        var other = Production.Create("Another", "another", isActive: false, Build.T0);
         harness.Data.Productions.Add(other);
 
         Assert.Equal(ErrorKind.NotFound, (await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.ApproveAsync(other.Id, knock.RequestId, CancellationToken.None))).Kind);
@@ -806,7 +806,7 @@ public sealed class StudioSessionTests : IDisposable
     {
         var first = await harness.Studio.SubscribeAsync("s1", harness.Production.Id, null, CancellationToken.None);
         var second = await harness.Studio.SubscribeAsync("s2", harness.Production.Id, null, CancellationToken.None);
-        var other = Production.Create("Andere", "andere", isActive: false, Build.T0);
+        var other = Production.Create("Another", "another", isActive: false, Build.T0);
         harness.Data.Productions.Add(other);
 
         await harness.Studio.SubscribeAsync("s2", other.Id, null, CancellationToken.None);

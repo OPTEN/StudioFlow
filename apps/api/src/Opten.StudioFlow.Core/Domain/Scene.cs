@@ -75,7 +75,7 @@ public sealed class Scene
         var name = request.Name is null ? null : TextRules.RequiredName(request.Name, TextRules.NameMax, "name", errors);
         if (request.LayoutMode is { } mode && !Enum.IsDefined(mode))
         {
-            errors.Add("layoutMode", "Unbekannter Layout-Modus.");
+            errors.Add("layoutMode", "Unknown layout mode.");
         }
 
         if (request.Background is not null)
@@ -121,13 +121,13 @@ public sealed class Scene
         var source = request.Source is null ? null : catalog.Find(request.Source);
         if (source is null)
         {
-            errors.Add("source", "Diese Quelle gibt es nicht.");
+            errors.Add("source", "This source does not exist.");
         }
 
         errors.ThrowIfAny();
         if (Items.Count >= SceneItemRules.MaxItems)
         {
-            throw StudioFlowException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
+            throw StudioFlowException.LimitReached("A scene can have at most 32 items.");
         }
 
         var item = SceneItemRules.CreateItem(request, source!.Kind);
@@ -143,7 +143,7 @@ public sealed class Scene
         var index = IndexOf(itemId);
         if (index < 0)
         {
-            throw StudioFlowException.NotFound("Das Element");
+            throw StudioFlowException.NotFound("Item");
         }
 
         var existing = Items[index];
@@ -162,7 +162,7 @@ public sealed class Scene
     {
         if (IndexOf(itemId) < 0)
         {
-            throw StudioFlowException.NotFound("Das Element");
+            throw StudioFlowException.NotFound("Item");
         }
 
         Items = [.. Items.Where(i => !string.Equals(i.Id, itemId, StringComparison.Ordinal))];
@@ -179,19 +179,19 @@ public sealed class Scene
         var errors = new ValidationErrors();
         if (items is null)
         {
-            errors.Add("items", "Elemente fehlen.");
+            errors.Add("items", "The items are missing.");
             errors.ThrowIfAny();
             return;
         }
 
         if (items.Count > SceneItemRules.MaxItems)
         {
-            throw StudioFlowException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
+            throw StudioFlowException.LimitReached("A scene can have at most 32 items.");
         }
 
         if (layoutMode is { } mode && !Enum.IsDefined(mode))
         {
-            errors.Add("layoutMode", "Unbekannter Layout-Modus.");
+            errors.Add("layoutMode", "Unknown layout mode.");
         }
 
         var current = Items.ToDictionary(i => i.Id, StringComparer.Ordinal);
@@ -203,7 +203,7 @@ public sealed class Scene
             SceneItemRules.Validate(item, $"items[{i}]", errors, s => IsKept(s, existing, catalog), f => IsKeptFallback(f, existing, catalog));
             if (item?.Id is { } itemId && !seen.Add(itemId))
             {
-                errors.Add($"items[{i}].id", "Element-IDs müssen eindeutig sein.");
+                errors.Add($"items[{i}].id", "Item IDs must be unique.");
             }
         }
 
