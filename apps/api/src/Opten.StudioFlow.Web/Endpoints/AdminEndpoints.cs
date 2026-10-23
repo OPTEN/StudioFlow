@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +8,7 @@ using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure.Security;
 using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Hosting;
 using Opten.StudioFlow.Web.Security;
 
 namespace Opten.StudioFlow.Web.Endpoints;
@@ -53,10 +53,8 @@ internal static class AuthEndpoints
 /// <summary>Static installation data.</summary>
 internal static class SystemEndpoints
 {
-    private static readonly string Version = typeof(SystemEndpoints).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
-
     public static IResult GetInfo(StudioFlowOptions options) =>
-        TypedResults.Ok(new SystemInfoDto(Version, options.BaseUrl, 1920, 1080));
+        TypedResults.Ok(new SystemInfoDto(AppVersion.Current, options.BaseUrl, 1920, 1080));
 }
 
 /// <summary>Productions, broadcast, switching, incidents.</summary>

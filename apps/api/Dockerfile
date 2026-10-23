@@ -14,9 +14,13 @@ COPY src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj src/Opten.StudioFlow.W
 RUN dotnet restore src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj
 
 COPY src/ src/
+# The release workflow passes the commit; the API then reports its version as 0.1.0+1a2b3c4 (GET /api/system/info).
+# The version itself is the Version property in Directory.Build.props. Declared this late so that it does not
+# invalidate the restore layer.
+ARG STUDIOFLOW_REVISION=
 # The OpenAPI document is generated at development time (npm run gen:contracts), not in the image.
 RUN dotnet publish src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj -c Release -o /app --no-restore \
-    -p:UseAppHost=false -p:OpenApiGenerateDocuments=false
+    -p:UseAppHost=false -p:OpenApiGenerateDocuments=false -p:SourceRevisionId="$STUDIOFLOW_REVISION"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-alpine3.24 AS runtime
 
