@@ -176,7 +176,7 @@ test.describe('OPS backup', () => {
       expect(entries.stdout, `${archive}.tar.gz holds no .env`).not.toMatch(/(^|\/)\.env/m);
     }
     const info = fs.readFileSync(path.join(folder, 'backup-info.txt'), 'utf8');
-    expect(info).toMatch(new RegExp(`projekt:\\s+${PROJECT}\\s*$`, 'm'));
+    expect(info).toMatch(new RegExp(`project:\\s+${PROJECT}\\s*$`, 'm'));
     expect(info).toMatch(/postgres:\s+17\./);
     expect(fs.readFileSync(path.join(folder, 'SHA256SUMS'), 'utf8'), 'the .env is not part of the backup').not.toContain('.env');
     if (process.platform !== 'win32') expect(fs.statSync(folder).mode & 0o777, 'mode 700').toBe(0o700);
@@ -207,7 +207,7 @@ test.describe('OPS backup', () => {
     for (const bad of ['mit leerzeichen', 'a/b', 'x'.repeat(41)]) {
       const refused = await runBackup(['--label', bad]);
       expect(refused.code, `label «${bad}»`).toBe(1);
-      expect(refused.stderr).toMatch(/Fehler: --label/);
+      expect(refused.stderr).toMatch(/Error: --label/);
     }
     expect((await runBackup(['--keep', '0'])).code, '--keep needs a number from 1').toBe(1);
   });
@@ -235,7 +235,7 @@ test.describe('OPS backup', () => {
     try {
       const result = await runBackup();
       expect(result.code, result.output).toBe(1);
-      expect(result.stderr).toMatch(/Fehler: PostgreSQL läuft nicht/);
+      expect(result.stderr).toMatch(/Error: PostgreSQL is not running/);
     } finally {
       await dockerCtl.start('postgres');
     }
@@ -249,8 +249,8 @@ test.describe('OPS backup', () => {
     const result = await runBackup();
     box.clearFault();
     expect(result.code, result.output).toBe(1);
-    expect(result.stderr).toMatch(/Fehler: Das Archiv für keys konnte nicht erstellt werden/);
-    expect(result.stderr).toMatch(/Die unvollständige Sicherung wurde entfernt/);
+    expect(result.stderr).toMatch(/Error: The archive for keys could not be created/);
+    expect(result.stderr).toMatch(/The incomplete backup was removed/);
     const after = fs.existsSync(box.path('backups')) ? fs.readdirSync(box.path('backups')).sort() : [];
     expect(after, 'no partial folder').toEqual(before);
     const helpers = await docker(['ps', '-a', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--filter', 'label=com.docker.compose.service=toolbox', '-q']);
@@ -281,12 +281,12 @@ test.describe('OPS restore', () => {
     const restore = await box.run('restore.sh', [folder, '--yes']);
     expect(restore.code, restore.output.slice(-2500)).toBe(0);
     test.info().annotations.push({ type: 'measurement', description: `restore.sh took ${restore.durationMs} ms` });
-    expect(restore.stdout).toMatch(/Prüfsummen in Ordnung/);
-    expect(restore.stdout).toMatch(/Wiederherstellung abgeschlossen/);
+    expect(restore.stdout).toMatch(/Checksums OK/);
+    expect(restore.stdout).toMatch(/Restore complete/);
     await ensureHealthy();
 
     const safety = backupFolders().filter((name) => !foldersBefore.includes(name));
-    expect(safety.some((name) => name.includes('_vor-restore')), `a «vor-restore» safety backup of the current state exists (new folders: ${safety.join(', ')})`).toBe(true);
+    expect(safety.some((name) => name.includes('_pre-restore')), `a «pre-restore» safety backup of the current state exists (new folders: ${safety.join(', ')})`).toBe(true);
     await expectRestored(seed, api);
     // The mutated state is gone: the device and the asset are back, the old key is valid again, the rotated one is not.
     const snapshot = (await api.getSnapshot(production.id)).body;
@@ -328,7 +328,7 @@ test.describe('OPS restore', () => {
     const apiBefore = await inspectService('api');
     const result = await box.run('restore.sh', [copy, '--yes']);
     expect(result.code, result.output).toBe(1);
-    expect(result.stderr).toMatch(/Fehler: Prüfsumme stimmt nicht: database\.dump/);
+    expect(result.stderr).toMatch(/Error: Checksum mismatch: database\.dump/);
     const apiAfter = await inspectService('api');
     expect(apiAfter?.startedAt, 'the API was not touched').toBe(apiBefore?.startedAt);
     expect(stable((await api.getSnapshot(production.id)).body), 'the state is unchanged').toEqual(seed.snapshot);
@@ -348,8 +348,8 @@ test.describe('OPS restore', () => {
 
     const result = await box.run('restore.sh', [copy, '--yes', '--no-safety-backup']);
     expect(result.code, result.output.slice(-1500)).toBe(1);
-    expect(result.stderr).toMatch(/Fehler: pg_restore ist fehlgeschlagen/);
-    expect(result.stderr).toMatch(/bisherige Datenbank ist unverändert/);
+    expect(result.stderr).toMatch(/Error: pg_restore failed/);
+    expect(result.stderr).toMatch(/previous database is unchanged/);
     await ensureHealthy();
     expect(stable((await api.getSnapshot(production.id)).body), 'the existing database is intact').toEqual(seed.snapshot);
     const databases = await psql("select string_agg(datname, ',' order by datname) from pg_database where datname like 'studioflow%'");
@@ -363,7 +363,7 @@ test.describe('OPS restore', () => {
     const apiBefore = await inspectService('api');
     const result = await box.run('restore.sh', [newest()], { timeoutMs: 120_000 });
     expect(result.code, result.output).toBe(1);
-    expect(result.stderr).toMatch(/Abgebrochen, nichts geändert/);
+    expect(result.stderr).toMatch(/Aborted, nothing changed/);
     expect((await inspectService('api'))?.startedAt).toBe(apiBefore?.startedAt);
     expect(stable((await api.getSnapshot(production.id)).body)).toEqual(seed.snapshot);
   });
@@ -379,13 +379,13 @@ test.describe('OPS restore', () => {
 
     const blocked = await box.run('restore.sh', [folder, '--yes', '--no-safety-backup']);
     expect(blocked.code, blocked.output).toBe(1);
-    expect(blocked.stderr).toMatch(/Fehler: Eine Sendung ist LIVE/);
+    expect(blocked.stderr).toMatch(/Error: A broadcast is LIVE/);
     expect((await inspectService('api'))?.startedAt, 'nothing was stopped').toBe(apiBefore?.startedAt);
     expect((await new AdminApi(config.baseURL, api.cookie).getSnapshot(production.id)).body.production.broadcast).toBe('live');
 
     const forced = await box.run('restore.sh', [folder, '--yes', '--no-safety-backup', '--force']);
     expect(forced.code, forced.output.slice(-1500)).toBe(0);
-    expect(forced.stderr).toMatch(/Eine Sendung ist LIVE\. Die Wiederherstellung wird wegen --force trotzdem ausgeführt/);
+    expect(forced.stderr).toMatch(/A broadcast is LIVE\. The restore will run anyway because of --force/);
     await ensureHealthy();
     await expectRestored(seed, api);
   });
@@ -393,16 +393,16 @@ test.describe('OPS restore', () => {
   test('E2E-OPS-08 [restore.sh] invalid calls: no folder, a missing folder, a folder without checksums', t.disruptive('@p2'), async () => {
     const none = await box.run('restore.sh', ['--yes']);
     expect(none.code).toBe(1);
-    expect(none.stderr).toMatch(/Fehler: Sicherungsordner fehlt/);
+    expect(none.stderr).toMatch(/Error: Backup folder missing/);
     const missing = await box.run('restore.sh', [box.path('gibt-es-nicht'), '--yes']);
     expect(missing.code).toBe(1);
-    expect(missing.stderr).toMatch(/Fehler: Ordner nicht gefunden/);
+    expect(missing.stderr).toMatch(/Error: Folder not found/);
     fs.mkdirSync(box.path('leer'));
     const empty = await box.run('restore.sh', [box.path('leer'), '--yes']);
     expect(empty.code).toBe(1);
-    expect(empty.stderr).toMatch(/Fehler: SHA256SUMS fehlt/);
+    expect(empty.stderr).toMatch(/Error: SHA256SUMS is missing/);
     const unknown = await box.run('restore.sh', ['--bogus']);
     expect(unknown.code).toBe(1);
-    expect(unknown.stderr).toMatch(/Fehler: Unbekannte Option/);
+    expect(unknown.stderr).toMatch(/Error: Unknown option/);
   });
 });

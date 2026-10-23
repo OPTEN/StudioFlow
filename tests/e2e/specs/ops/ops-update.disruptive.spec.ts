@@ -55,15 +55,15 @@ test.describe('OPS update', () => {
     const before = await fingerprint();
     const result = await box.run('update.sh');
     expect(result.code, result.output).toBe(1);
-    expect(result.stderr).toMatch(/Fehler: Eine Sendung ist LIVE/);
-    expect(result.output, 'no git pull was attempted').not.toMatch(/git pull|Aktualisiert:|Bereits aktuell/);
+    expect(result.stderr).toMatch(/Error: A broadcast is LIVE/);
+    expect(result.output, 'no git pull was attempted').not.toMatch(/git pull|Updated:|Already up to date/);
     expect(await head(), 'HEAD unchanged').toBe(headBefore);
     expect(await fingerprint(), 'container ids and start times unchanged').toEqual(before);
     expect((await new AdminApi(config.baseURL, api.cookie).getSnapshot(production.id)).body.production.broadcast, 'the broadcast is still live').toBe('live');
     await api.resetBroadcast(production.id);
   });
 
-  test('E2E-OPS-09 [update.sh] standby: pulls fast-forward, rebuilds, waits until healthy, keeps the data; --backup writes a «vor-update» backup first', t.disruptive('@p0'), async ({ config, api, production }) => {
+  test('E2E-OPS-09 [update.sh] standby: pulls fast-forward, rebuilds, waits until healthy, keeps the data; --backup writes a «pre-update» backup first', t.disruptive('@p0'), async ({ config, api, production }) => {
     test.setTimeout(1_200_000);
     await api.resetBroadcast(production.id);
     await pushExtraCommit('Neue Aenderung');
@@ -72,12 +72,12 @@ test.describe('OPS update', () => {
     const result = await box.run('update.sh', ['--backup']);
     expect(result.code, result.output.slice(-3000)).toBe(0);
     test.info().annotations.push({ type: 'measurement', description: `update.sh --backup took ${result.durationMs} ms` });
-    expect(result.stdout).toMatch(/Sendestatus: keine Sendung live/);
-    expect(result.stdout).toMatch(/Aktualisiert: [0-9a-f]+ → [0-9a-f]+/);
-    expect(result.stdout).toContain('Update abgeschlossen.');
+    expect(result.stdout).toMatch(/Broadcast status: no broadcast is live/);
+    expect(result.stdout).toMatch(/Updated: [0-9a-f]+ -> [0-9a-f]+/);
+    expect(result.stdout).toContain('Update complete.');
     expect(await head(), 'HEAD moved to the remote commit').not.toBe(headBefore);
-    const backups = fs.readdirSync(box.path('backups')).filter((name) => name.endsWith('_vor-update') || /_vor-update-\d+$/.test(name));
-    expect(backups, 'a «vor-update» backup was written before the update').toHaveLength(1);
+    const backups = fs.readdirSync(box.path('backups')).filter((name) => name.endsWith('_pre-update') || /_pre-update-\d+$/.test(name));
+    expect(backups, 'a «pre-update» backup was written before the update').toHaveLength(1);
     await ensureHealthy();
     const after = (await new AdminApi(config.baseURL, api.cookie).getSnapshot(production.id)).body;
     expect(after.scenes.map((scene) => scene.id), 'data retained').toEqual(snapshot.scenes.map((scene) => scene.id));
@@ -93,9 +93,9 @@ test.describe('OPS update', () => {
     const headBefore = await head();
     const result = await box.run('update.sh', ['--no-pull']);
     expect(result.code, result.output.slice(-3000)).toBe(0);
-    expect(result.output, '--no-pull does not touch git').not.toMatch(/git pull|Aktualisiert:|Bereits aktuell/);
+    expect(result.output, '--no-pull does not touch git').not.toMatch(/git pull|Updated:|Already up to date/);
     expect(await head()).toBe(headBefore);
-    expect(result.stdout).toContain('Update abgeschlossen.');
+    expect(result.stdout).toContain('Update complete.');
     await ensureHealthy();
   });
 
@@ -105,11 +105,11 @@ test.describe('OPS update', () => {
     const before = await fingerprint();
     const refused = await box.run('update.sh', ['--no-pull']);
     expect(refused.code, refused.output).toBe(1);
-    expect(refused.stderr).toMatch(/Fehler: Sendestatus unbekannt/);
+    expect(refused.stderr).toMatch(/Error: Broadcast status unknown/);
     expect(await fingerprint(), 'nothing was restarted').toEqual(before);
     const forced = await box.run('update.sh', ['--no-pull', '--force']);
     expect(forced.code, forced.output.slice(-3000)).toBe(0);
-    expect(forced.stderr).toMatch(/Sendestatus unbekannt \(API antwortet nicht\)\. Das Update wird wegen --force trotzdem ausgeführt/);
+    expect(forced.stderr).toMatch(/Broadcast status unknown \(the API does not answer\)\. The update will run anyway because of --force/);
     await ensureHealthy();
   });
 
@@ -118,8 +118,8 @@ test.describe('OPS update', () => {
     await compose(['stop'], { check: true, timeoutMs: 240_000 });
     const result = await box.run('update.sh', ['--no-pull']);
     expect(result.code, result.output.slice(-3000)).toBe(0);
-    expect(result.stdout).toMatch(/Sendestatus: Stack läuft nicht, keine Sendung live/);
-    expect(result.stdout).toContain('Update abgeschlossen.');
+    expect(result.stdout).toMatch(/Broadcast status: the stack is not running, no broadcast is live/);
+    expect(result.stdout).toContain('Update complete.');
     await ensureHealthy();
   });
 
@@ -133,8 +133,8 @@ test.describe('OPS update', () => {
     const before = await fingerprint();
     const result = await box.run('update.sh');
     expect(result.code, result.output).toBe(1);
-    expect(result.stderr).toMatch(/Fehler: git pull --ff-only ist fehlgeschlagen/);
-    expect(result.stderr).toMatch(/Nichts neu gestartet/);
+    expect(result.stderr).toMatch(/Error: git pull --ff-only failed/);
+    expect(result.stderr).toMatch(/Nothing was restarted/);
     expect(await head(), 'the local history is untouched').toBe(headBefore);
     expect(await fingerprint(), 'nothing was restarted').toEqual(before);
     // Bring the work tree back to the remote state for the following tests.
@@ -144,15 +144,15 @@ test.describe('OPS update', () => {
   test('E2E-OPS-09 [update.sh] invalid options and a missing .env are refused', t.disruptive('@p2'), async () => {
     const unknown = await box.run('update.sh', ['--bogus']);
     expect(unknown.code).toBe(1);
-    expect(unknown.stderr).toMatch(/Fehler: Unbekannte Option/);
+    expect(unknown.stderr).toMatch(/Error: Unknown option/);
     const help = await box.run('update.sh', ['--help']);
     expect(help.code).toBe(0);
-    expect(help.stdout).toMatch(/Nie während einer Sendung/);
+    expect(help.stdout).toMatch(/Never during a broadcast/);
     const lonely = OpsSandbox.create('noenv', { mode: 'none' });
     try {
       const result = await lonely.run('update.sh', ['--no-pull']);
       expect(result.code).toBe(1);
-      expect(result.stderr).toMatch(/Fehler: \.env fehlt/);
+      expect(result.stderr).toMatch(/Error: \.env is missing/);
     } finally {
       await lonely.cleanup();
     }

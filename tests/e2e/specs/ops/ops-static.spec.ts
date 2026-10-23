@@ -104,7 +104,7 @@ test.describe('OPS compose file', () => {
         fs.writeFileSync(file, Object.entries(env).map(([key, value]) => `${key}='${value}'`).join('\n') + '\n');
         const result = await exec('docker', ['compose', '-p', `${PROJECT}-cfg`, '-f', COMPOSE_FILES.base, '--env-file', file, 'config', '--quiet'], { cwd: REPO_ROOT, env: cleanComposeEnv([name]) });
         expect(result.code, `${name} removed`).not.toBe(0);
-        expect(result.output, `message for ${name}`).toContain('fehlt in .env');
+        expect(result.output, `message for ${name}`).toContain('set it in .env');
         expect(result.output).not.toContain(env['POSTGRES_PASSWORD'] ?? '(none)');
         void message;
       } finally {
@@ -137,7 +137,7 @@ test.describe('OPS setup.sh', () => {
     const env = parseEnvFile(file);
     return { livekit: env['LIVEKIT_API_SECRET']!, postgres: env['POSTGRES_PASSWORD']!, hash: env['ADMIN__PASSWORDHASH'] ?? '' };
   };
-  const generated = (output: string) => /Passwort:\s+(\S+)/.exec(output)?.[1];
+  const generated = (output: string) => /Password:\s+(\S+)/.exec(output)?.[1];
 
   test('E2E-OPS-02 [setup.sh] --generate-password writes a valid .env twice with different secrets; the password is shown once and stored as a hash', t.p0, async () => {
     test.setTimeout(900_000);
@@ -193,7 +193,7 @@ test.describe('OPS setup.sh', () => {
     expect(env['ADMIN__PASSWORD'], '--plain-password stores the plain value').toBe(password);
     expect(env['ADMIN__PASSWORDHASH'] ?? '').toBe('');
     expect(result.output, 'the password is never printed').not.toContain(password);
-    expect(result.stderr, 'the plain storage is flagged as local-only').toMatch(/Klartext/);
+    expect(result.stderr, 'the plain storage is flagged as local-only').toMatch(/plain text/);
   });
 
   test('E2E-OPS-02 [setup.sh] without --node-ip the LAN IPv4 of the default route is detected', t.p1, async () => {
@@ -208,12 +208,12 @@ test.describe('OPS setup.sh', () => {
   });
 
   const invalid: Array<{ name: string; args: string[]; input?: string; message: RegExp }> = [
-    { name: 'an empty domain for a certificate authority mode', args: ['--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Fehler: Ungültige oder fehlende Domain/ },
-    { name: 'an invalid IP', args: ['--domain', 'localhost', '--node-ip', '300.1.1.1', '--tls-mode', 'internal'], input: 'Passwort-2026-lang-genug\n', message: /Fehler: Ungültige oder fehlende LAN-IPv4/ },
-    { name: 'an unknown TLS mode', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'foo'], input: 'Passwort-2026-lang-genug\n', message: /Fehler: Unbekannter TLS-Modus/ },
-    { name: 'a password shorter than 12 characters', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--plain-password'], input: 'kurz\n', message: /Fehler: Das Admin-Passwort braucht mindestens 12 Zeichen/ },
-    { name: 'an unknown option', args: ['--domain', 'localhost', '--bogus'], message: /Fehler: Unbekannte Option/ },
-    { name: 'an IP address as domain with a public CA mode', args: ['--domain', '192.0.2.10', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Fehler: Für eine IP-Adresse gibt es kein Zertifikat/ },
+    { name: 'an empty domain for a certificate authority mode', args: ['--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Error: Invalid or missing domain/ },
+    { name: 'an invalid IP', args: ['--domain', 'localhost', '--node-ip', '300.1.1.1', '--tls-mode', 'internal'], input: 'Passwort-2026-lang-genug\n', message: /Error: Invalid or missing LAN IPv4/ },
+    { name: 'an unknown TLS mode', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'foo'], input: 'Passwort-2026-lang-genug\n', message: /Error: Unknown TLS mode/ },
+    { name: 'a password shorter than 12 characters', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--plain-password'], input: 'kurz\n', message: /Error: The admin password needs at least 12 characters/ },
+    { name: 'an unknown option', args: ['--domain', 'localhost', '--bogus'], message: /Error: Unknown option/ },
+    { name: 'an IP address as domain with a public CA mode', args: ['--domain', '192.0.2.10', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Error: No certificate can be issued for an IP address/ },
   ];
   for (const entry of invalid) {
     test(`E2E-OPS-02 [setup.sh] ${entry.name}: exit 1 with a German «Fehler:» and no file`, t.p1, async () => {
@@ -252,7 +252,7 @@ test.describe('OPS setup.sh', () => {
     const original = fs.readFileSync(file, 'utf8');
     const refused = await box.run('setup.sh', common, { input: 'Zweites-Passwort-2026\n' });
     expect(refused.code, 'second run without --force').toBe(1);
-    expect(refused.stderr).toMatch(/Fehler: .*existiert bereits/);
+    expect(refused.stderr).toMatch(/Error: .*already exists/);
     expect(fs.readFileSync(file, 'utf8'), 'the file is unchanged').toBe(original);
     const forced = await box.run('setup.sh', [...common, '--force', '--frame-ancestors', 'https://embed.example.ch'], { input: 'Zweites-Passwort-2026\n' });
     expect(forced.code, forced.output.slice(-1000)).toBe(0);
