@@ -28,13 +28,14 @@ internal sealed class StartupInitializer(
     IOptions<OutputMonitorOptions> output,
     IOptions<RealtimeOptions> realtime,
     IOptions<DatabaseOptions> database,
+    IOptions<BackupOptions> backup,
     ILogger<StartupInitializer> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
         _ = (admin.Value, liveKit.Value, media.Value, studio.Value);
-        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value);
+        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         if (admin.Value.UsesPlainPassword)
