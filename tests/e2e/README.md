@@ -78,6 +78,16 @@ Keep the browsers apart as well: cookies are per host name, not per port, so one
 `H-STACK-02` (smoke) checks that the stack under test is the selected one: compose project label, network and subnet,
 fixed addresses, published ports, public URL and volumes.
 
+## CI
+
+GitHub Actions runs the harness as numbered stack 1 (`docs/testing.md` 6.1). `ci.yml` (every pull request and push to
+`main`) loads the images that its `build-images` job built, sets `E2E_NO_BUILD=1`, starts the stack with
+`tests/e2e/stack.sh up 1` and runs `E2E_REUSE_STACK=1 tests/e2e/stack.sh test 1 --project=smoke`; `e2e-full.yml`
+(nightly on working days, and on demand) lets the harness build the images and runs every project except `soak`.
+`CI` is set, so Playwright retries a failed test once and refuses `test.only`. A failed run uploads `tests/e2e/.output`
+(report, traces, `logs/<service>.log`) as artifact. To reproduce a CI failure locally, run the same two commands (with
+`E2E_NO_BUILD` unset the harness builds the images itself).
+
 ## UI fixtures
 
 `support/ui/` holds the page objects and helpers of the UI tests; `import { test, expect } from
