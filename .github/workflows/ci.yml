@@ -1,7 +1,8 @@
 # Build and tests of every pull request and of main (docs/testing.md, section 6.1).
 #
 # All jobs run in parallel; e2e-smoke starts from the images that build-images built. A red job blocks the merge once
-# branch protection for main requires them (repository setting of the owner: pull request required, all six jobs green).
+# branch protection for main requires them (repository setting of the owner: pull request required, all six jobs green;
+# the audit job is a report and is not required).
 # The nightly full run is .github/workflows/e2e-full.yml.
 #
 # Every action is pinned by commit SHA (supply chain); the comment names the release.
@@ -123,6 +124,41 @@ jobs:
             exit 1
           }
 
+  # Known vulnerabilities of the dependencies (issue 16). A report, never a blocker: it does not belong to the required
+  # checks, the job stays green, and the findings appear as warnings and in the job summary. Renovate opens the pull
+  # requests that fix them (security updates at once, .github/renovate.json5).
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            apps/api/Directory.Packages.props
+            apps/api/**/*.csproj
+      - name: npm audit
+        run: |
+          if ! npm audit --audit-level=low > "$RUNNER_TEMP/npm-audit.txt" 2>&1; then
+            echo "::warning title=npm audit::The npm dependencies have known vulnerabilities (job summary)."
+          fi
+          { echo '### npm audit'; echo '```'; cat "$RUNNER_TEMP/npm-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: NuGet vulnerabilities
+        run: |
+          dotnet list apps/api/StudioFlow.slnx package --vulnerable --include-transitive > "$RUNNER_TEMP/nuget-audit.txt" 2>&1 || true
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/nuget-audit.txt"; then
+            echo "::warning title=NuGet audit::The NuGet packages have known vulnerabilities (job summary)."
+          fi
+          { echo '### dotnet list package --vulnerable'; echo '```'; cat "$RUNNER_TEMP/nuget-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
   # Builds the two images of docker-compose.yml that have a build section. The Caddy build fails on a broken Caddyfile
   # (it runs `caddy validate` for every TLS mode) and builds the three frontends. Docker layers come from the GitHub
   # Actions cache; the images go to e2e-smoke as an artifact, so the stack under test is the image that was validated here.
@@ -151,6 +187,12 @@ jobs:
           outputs: type=docker,dest=${{ runner.temp }}/caddy.tar
           cache-from: type=gha,scope=caddy
           cache-to: type=gha,scope=caddy,mode=max
+      # The backup service (profile "backup") is not part of the smoke stack. Building it here catches a broken Dockerfile or
+      # a package that has left the Alpine repository. The PostgreSQL image is the pin of docker-compose.yml.
+      - name: Build the backup image
+        run: |
+          postgres_image="$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)"
+          docker build --file infra/backup/Dockerfile --build-arg "POSTGRES_IMAGE=${postgres_image}" --tag studioflow-backup .
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: images
