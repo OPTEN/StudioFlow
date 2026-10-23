@@ -66,7 +66,10 @@ export async function addScreens(
     if (index === 1) await laptop.shareScreen();
     else await laptop.addScreen();
     await laptop.waitForSlot(`screen-${index}`, 'live', 45_000);
-    sources.push(device.sourceId(`screen-${index}`));
+    // The sender shows a further screen as live while the server still allocates the slot (code «…»), so wait for the source.
+    const source = device.sourceId(`screen-${index}`);
+    await waitForSource(deps.api, deps.production.id, source, (candidate) => candidate.status === 'ok', 30_000);
+    sources.push(source);
   }
   const snapshot = (await deps.api.getSnapshot(deps.production.id)).body;
   const codes = sources.map((source) => snapshot.sources.find((candidate) => candidate.id === source)?.code ?? '');
