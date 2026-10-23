@@ -99,6 +99,12 @@ because the gate "CI is green on this commit" is stated exactly, `ci.yml` keeps 
 and the tests do not run a second time. Consequences: the workflow only takes effect on `main`, and it checks out
 `head_sha` explicitly.
 
+CI (`ci.yml`) builds the same three images from the same Dockerfiles and writes the Docker layer cache (GitHub Actions
+cache, scopes `api`, `caddy`, `backup`); `release.yml` only reads those scopes, so the build of a release normally takes
+the time of the push and the upload. Every workflow runs on `ubuntu-24.04` instead of `ubuntu-latest`, so that a new
+default image of GitHub cannot change a release; the pin is moved on purpose. The timing budget of CI and the layout of
+its jobs are in `docs/testing.md`, section 6.1.
+
 ```text
 plan -> images (api, web, backup) -> smoke ------> main-tag
                           -> scan   \---> release-please -> release (only for a release commit)
@@ -182,7 +188,7 @@ transparency log (Rekor); the images themselves stay private.
 | Setting | Why |
 |---|---|
 | Settings > General > Pull Requests: allow **squash merging**, set "Default commit message" to **Pull request title**; switch off merge commits and rebase merging | The title becomes the commit message |
-| Settings > Branches > rule for `main`: require a pull request and the checks `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images`, `e2e-smoke` and **Conventional Commits title** | CI and the title rule block the merge |
+| Settings > Branches > rule for `main`: require a pull request and the checks `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (backup)`, `e2e-smoke` and **Conventional Commits title** | CI and the title rule block the merge |
 | Settings > Actions > General > Workflow permissions: **Allow GitHub Actions to create and approve pull requests** | release-please opens the release pull request |
 | Secret `RELEASE_PLEASE_TOKEN`: fine-grained personal access token (or GitHub App token) with *Contents* and *Pull requests* write access to this repository | A pull request created with the default token starts no workflow, so CI would never run on the release pull request and the required checks could not turn green. Without the secret the workflow uses the default token and the release pull request needs an administrator's merge |
 | Packages: after the first Release run, open the packages `studioflow-api`, `studioflow-web` and `studioflow-backup` and check that the repository has access ("Manage Actions access") | The smoke test and the scan pull the images with the workflow token |
