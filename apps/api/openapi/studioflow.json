@@ -3818,7 +3818,7 @@
           "sourceLost",
           "sourceRecovered"
         ],
-        "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\r\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
+        "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
       "LogEntryDto": {
         "required": [
@@ -3928,7 +3928,7 @@
             ]
           }
         },
-        "description": "Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):\r\nchanges the output must not see – devices, pairing, invites, incidents, log, output status and health-only source\r\nchanges – appear as RevisionOnlyEvent with the same revision."
+        "description": "Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):\nchanges the output must not see – devices, pairing, invites, incidents, log, output status and health-only source\nchanges – appear as RevisionOnlyEvent with the same revision."
       },
       "OutputReport": {
         "required": [
@@ -4296,7 +4296,7 @@
             ]
           }
         },
-        "description": "Answer to a (re)subscribe or `GET …/changes?since=`: either the missed events (delta) or a full snapshot when the\r\nserver no longer holds all events since the requested revision."
+        "description": "Answer to a (re)subscribe or `GET …/changes?since=`: either the missed events (delta) or a full snapshot when the\nserver no longer holds all events since the requested revision."
       },
       "ProductionDto": {
         "required": [
@@ -4468,7 +4468,7 @@
             "$ref": "#/components/schemas/ProductionEventRevisionOnlyEvent"
           }
         ],
-        "description": "A revisioned change of the production state, pushed over SignalR (method string HubMethods.Event).\r\nClients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync\r\n(new snapshot), a smaller revision is ignored.",
+        "description": "A revisioned change of the production state, pushed over SignalR (method string HubMethods.Event).\nClients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync\n(new snapshot), a smaller revision is ignored.",
         "discriminator": {
           "propertyName": "type",
           "mapping": {

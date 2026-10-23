@@ -71,6 +71,7 @@ internal static class StudioFlowHost
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer<ContractSchemasTransformer>();
+            options.AddDocumentTransformer<LineEndingTransformer>();
             options.AddSchemaTransformer<DiscriminatorRequiredTransformer>();
         });
 
