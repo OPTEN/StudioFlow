@@ -46,6 +46,8 @@ jobs:
         run: npm run typecheck
       - name: Prettier
         run: npm run format:check
+      - name: i18n catalogues (index, prefixes, banned formatting)
+        run: npm run check:i18n
       - name: dotnet format
         run: dotnet format apps/api/StudioFlow.slnx --verify-no-changes
 
