@@ -6,7 +6,7 @@ param([string[]]$Only)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root '.impeccable\review'
-$tmp = Join-Path $env:TEMP 'flowstudio-capture'
+$tmp = Join-Path $env:TEMP 'studioflow-capture'
 New-Item -ItemType Directory -Force $out, $tmp | Out-Null
 $edge = @('C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedge.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1
 $base = ([System.Uri](Join-Path $root 'prototype\regie.html')).AbsoluteUri

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back).</summary>
 /// <param name="Id">Scene id, e.g. <c>scn_…</c>.</param>

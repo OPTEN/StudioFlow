@@ -1,7 +1,7 @@
 # Macht aus einer vollständigen HTML-Datei die Fassung für ein Claude-Artifact:
 # ohne doctype, html, head, body und ohne charset- und viewport-Meta, die setzt die Plattform selbst.
 # Aufruf:  pwsh tools/make-artifact.ps1 -In prototype/regie.html -Out $env:TEMP/regie-artifact.html
-#          pwsh tools/make-artifact.ps1 -In "plan/FlowStudio Architekturplan.html" -Out $env:TEMP/plan-artifact.html
+#          pwsh tools/make-artifact.ps1 -In "plan/StudioFlow Architekturplan.html" -Out $env:TEMP/plan-artifact.html
 # Beim Veröffentlichen die Zusatzdateien mitgeben: fonts/* beim Prototyp, regie-*.png beim Plan.
 param([Parameter(Mandatory)][string]$In, [Parameter(Mandatory)][string]$Out)
 $s = Get-Content -Raw -Encoding UTF8 $In

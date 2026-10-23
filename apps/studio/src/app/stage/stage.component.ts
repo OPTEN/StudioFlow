@@ -9,7 +9,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { SceneDto } from '@flowstudio/scene-model';
+import type { SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ViewportService } from '../core/ui/viewport.service';
 import { DockLayoutService } from '../shell/workspace/dock-layout.service';
@@ -25,7 +25,7 @@ import { SwitcherService } from './switcher.service';
 const EDITABLE_SCREEN = '.c-monitor.is-editable .c-monitor__screen';
 /** Controls inside the stage that keep their own pointer behaviour (no deselect). */
 const STAGE_CONTROLS =
-  'button, a, input, select, textarea, label, [role="separator"], [role="switch"], .c-pop, fs-control-column';
+  'button, a, input, select, textarea, label, [role="separator"], [role="switch"], .c-pop, sf-control-column';
 
 function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | null {
   return id ? (scenes.find((scene) => scene.id === id) ?? null) : null;
@@ -43,14 +43,14 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
  * - Both monitors show the scenes with local edit drafts (`EditorService.scenes`); the Program plays the transition of
  *   every program switch event and flashes.
  * - Sizes: a ResizeObserver measures the stage and writes the monitor widths (`monitor-layout.ts`) as the custom
- *   properties `--fs-preview-w` / `--fs-program-w` directly on the host, so resizing never runs change detection.
+ *   properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing never runs change detection.
  * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
  * - A press on the stage around the editable screen (monitor headers, the «Preview aus» space, the other monitor,
  *   the free stage) clears the element selection, so Eigenschaften shows the scene again even when an element fills
  *   the whole editable screen («Vollbild»). Controls (control column, splitter) are left alone.
  */
 @Component({
-  selector: 'fs-stage',
+  selector: 'sf-stage',
   imports: [MonitorComponent, ControlColumnComponent, SplitterDirective],
   templateUrl: './stage.component.html',
   styleUrl: './stage.component.scss',
@@ -129,8 +129,8 @@ export class StageComponent {
       heightBound: !this.viewport.stacked(),
       fullWidth: this.viewport.narrow(),
     });
-    this.host.style.setProperty('--fs-preview-w', `${widths.preview}px`);
-    this.host.style.setProperty('--fs-program-w', `${widths.program}px`);
+    this.host.style.setProperty('--sf-preview-w', `${widths.preview}px`);
+    this.host.style.setProperty('--sf-program-w', `${widths.program}px`);
   }
 
   private observeSize(): void {

@@ -2,12 +2,12 @@
  * Test doubles for the stage specs: a scriptable scene renderer and a manual animation-frame scheduler. Test-only
  * (imported by *.spec.ts files only).
  */
-import type { CanvasRect, SceneDto, TransitionDto } from '@flowstudio/scene-model';
+import type { CanvasRect, SceneDto, TransitionDto } from '@studioflow/scene-model';
 import type {
   RendererStats,
   SceneRenderer,
   SceneRendererOptions,
-} from '@flowstudio/scene-renderer';
+} from '@studioflow/scene-renderer';
 import type { FrameScheduler } from '../frame-scheduler';
 import type { SceneRendererFactory } from '../scene-view.component';
 

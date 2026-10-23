@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// Keeps the published-track state in sync with LiveKit (spec 7): applies verified webhooks, reconciles with

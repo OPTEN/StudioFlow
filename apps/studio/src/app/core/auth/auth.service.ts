@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import type { SessionDto } from '@flowstudio/scene-model';
+import type { SessionDto } from '@studioflow/scene-model';
 import { ApiError } from '../api/api-error';
 import { StudioApiService } from '../api/studio-api.service';
 
@@ -19,7 +19,7 @@ export function safeNextPath(next: string | null | undefined): string {
 }
 
 /**
- * Admin session of the Regie (spec 5: cookie `fs_session`, sliding 12 h). Holds the session in signals, signs in and
+ * Admin session of the Regie (spec 5: cookie `sf_session`, sliding 12 h). Holds the session in signals, signs in and
  * out, and sends the operator to the login page whenever the API or a hub answers 401/403
  * ({@link handleUnauthorized}). Services that hold server connections register {@link onSignedOut} to stop them.
  */
@@ -133,7 +133,7 @@ export class AuthService {
       try {
         handler();
       } catch (error) {
-        console.warn('[FlowStudio] sign-out handler failed', error);
+        console.warn('[StudioFlow] sign-out handler failed', error);
       }
     }
   }

@@ -23,7 +23,7 @@ export const SLUG_PATTERN = /^[a-z0-9-]{1,48}$/;
 export const KEY_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
 
 /** sessionStorage key prefix; the slug follows. */
-export const KEY_STORAGE_PREFIX = 'flowstudio.output.key:';
+export const KEY_STORAGE_PREFIX = 'studioflow.output.key:';
 
 /** Letterbox and stage background. */
 export type OutputBackground = 'black' | 'transparent';

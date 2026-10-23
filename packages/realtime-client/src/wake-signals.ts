@@ -14,7 +14,7 @@ export interface WakeTargets {
  * Wake signals of a page (spec 6): `online` and `pageshow` (back/forward cache restore) on `window`, `resume`
  * (Chromium un-freeze) and `visibilitychange` to visible on `document` – a phone or laptop coming back from sleep,
  * the background or the network. Used by the hubs (`ResilientHub`) and, through `watchPageLifecycle`, by the LiveKit
- * sessions of `@flowstudio/media-client`. With `null` targets (no DOM) it subscribes to nothing.
+ * sessions of `@studioflow/media-client`. With `null` targets (no DOM) it subscribes to nothing.
  */
 export function pageWakeSignals(targets: WakeTargets | null): WakeSignals {
   return (wake) => {

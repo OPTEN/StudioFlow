@@ -1,11 +1,11 @@
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>Builds the full Regie and output snapshots inside the production lock, so their revision is exact.</summary>
-public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, FlowStudioOptions options)
+public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioFlowOptions options)
 {
     /// <summary>Entries of «Letzte Ereignisse» in the snapshot.</summary>
     public const int RecentLogSize = 20;
@@ -87,13 +87,13 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, FlowStu
     {
         if (sinceRevision < 0)
         {
-            throw FlowStudioException.Invalid("since", "Die Revision muss 0 oder grösser sein.");
+            throw StudioFlowException.Invalid("since", "Die Revision muss 0 oder grösser sein.");
         }
     }
 
     private static async Task<(Production Production, IReadOnlyList<Device> Devices, IReadOnlyList<Asset> Assets)> LoadAsync(MutationContext context, CancellationToken cancellationToken)
     {
-        var production = await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw FlowStudioException.NotFound("Die Produktion");
+        var production = await context.Data.Productions.GetAsync(context.ProductionId, cancellationToken) ?? throw StudioFlowException.NotFound("Die Produktion");
         context.Runtime.OnAir ??= OnAirState.From(production);
         var devices = await context.Data.Devices.ListAsync(production.Id, cancellationToken);
         var assets = await context.Data.Assets.ListAsync(production.Id, cancellationToken);

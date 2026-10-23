@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Opten.FlowStudio.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
+namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
 {
-    [DbContext(typeof(FlowStudioDbContext))]
+    [DbContext(typeof(StudioFlowDbContext))]
     [Migration("20261022103345_InitialCreate")]
     partial class InitialCreate
     {
@@ -25,7 +25,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Asset", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Asset", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -93,7 +93,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("assets", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.AuditEntry", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.AuditEntry", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -137,7 +137,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_entries", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Device", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Device", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -208,7 +208,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("devices", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Invite", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Invite", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -272,7 +272,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("invites", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Production", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Production", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -381,7 +381,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("productions", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Scene", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Scene", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -433,9 +433,9 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                     b.ToTable("scenes", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Asset", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Asset", b =>
                 {
-                    b.HasOne("Opten.FlowStudio.Core.Domain.Production", null)
+                    b.HasOne("Opten.StudioFlow.Core.Domain.Production", null)
                         .WithMany()
                         .HasForeignKey("ProductionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -443,9 +443,9 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_assets_production_id");
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Device", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Device", b =>
                 {
-                    b.HasOne("Opten.FlowStudio.Core.Domain.Production", null)
+                    b.HasOne("Opten.StudioFlow.Core.Domain.Production", null)
                         .WithMany()
                         .HasForeignKey("ProductionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -453,9 +453,9 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_devices_production_id");
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Invite", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Invite", b =>
                 {
-                    b.HasOne("Opten.FlowStudio.Core.Domain.Production", null)
+                    b.HasOne("Opten.StudioFlow.Core.Domain.Production", null)
                         .WithMany()
                         .HasForeignKey("ProductionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -463,9 +463,9 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_invites_production_id");
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Scene", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Scene", b =>
                 {
-                    b.HasOne("Opten.FlowStudio.Core.Domain.Production", null)
+                    b.HasOne("Opten.StudioFlow.Core.Domain.Production", null)
                         .WithMany("Scenes")
                         .HasForeignKey("ProductionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -473,7 +473,7 @@ namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_scenes_production_id");
                 });
 
-            modelBuilder.Entity("Opten.FlowStudio.Core.Domain.Production", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Production", b =>
                 {
                     b.Navigation("Scenes");
                 });

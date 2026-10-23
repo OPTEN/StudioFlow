@@ -7,19 +7,19 @@ import {
   type OutputChangesDto,
   type OutputReport,
   type TransitionDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import {
   ProductionSync,
   ResilientHub,
   type HubState,
   type ResilientHubOptions,
-} from '@flowstudio/realtime-client';
+} from '@studioflow/realtime-client';
 import {
   createSceneRenderer,
   type SceneRenderer,
   type SceneRendererOptions,
-} from '@flowstudio/scene-renderer';
-import type { MediaSessionState } from '@flowstudio/media-client';
+} from '@studioflow/scene-renderer';
+import type { MediaSessionState } from '@studioflow/media-client';
 import { ACCESS_RETRY_MS, AccessGuard } from './access-guard';
 import {
   createOutputApi,

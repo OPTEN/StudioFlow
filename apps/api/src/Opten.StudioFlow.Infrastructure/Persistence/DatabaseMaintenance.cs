@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>Database schema management for the web host.</summary>
 public static class DatabaseMaintenance
@@ -52,7 +52,7 @@ public static class DatabaseMaintenance
 
     private static async Task MigrateOnceAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var contexts = services.GetRequiredService<IDbContextFactory<FlowStudioDbContext>>();
+        var contexts = services.GetRequiredService<IDbContextFactory<StudioFlowDbContext>>();
         await using var db = await contexts.CreateDbContextAsync(cancellationToken);
         db.Database.SetCommandTimeout(DatabaseOptions.MigrationCommandTimeout);
         var creator = db.GetService<IRelationalDatabaseCreator>();

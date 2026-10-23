@@ -11,7 +11,7 @@ import {
   type SceneDto,
   type SceneItemDto,
   type SceneLayoutMode,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { KeyboardService } from '../core/ui/keyboard.service';

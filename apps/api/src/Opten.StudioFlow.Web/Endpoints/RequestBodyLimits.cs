@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.Media;
-using Opten.FlowStudio.Web.Errors;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.Media;
+using Opten.StudioFlow.Web.Errors;
 
-namespace Opten.FlowStudio.Web.Endpoints;
+namespace Opten.StudioFlow.Web.Endpoints;
 
 /// <summary>Endpoint metadata that raises the request body limit (spec 5: JSON ≤ 256 KB, bandwidth test ≤ 4 MB, uploads).</summary>
 /// <param name="MaxBytes">Limit for this endpoint; ignored for uploads.</param>

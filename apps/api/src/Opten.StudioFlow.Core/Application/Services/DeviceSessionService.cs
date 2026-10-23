@@ -1,9 +1,9 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>A device authenticated by its bearer credential.</summary>
 /// <param name="DeviceId">Device id.</param>
@@ -79,10 +79,10 @@ public sealed class DeviceSessionService(
     {
         ArgumentNullException.ThrowIfNull(identity);
         await using var unit = data.Create();
-        var device = await unit.Devices.GetAsync(identity.DeviceId, cancellationToken) ?? throw FlowStudioException.NotFound("Das Gerät");
+        var device = await unit.Devices.GetAsync(identity.DeviceId, cancellationToken) ?? throw StudioFlowException.NotFound("Das Gerät");
         if (device.IsBlocked)
         {
-            throw new FlowStudioException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
+            throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
         }
 
         return tokens.IssueSenderToken(device.ProductionId, device.Id, device.Name);
@@ -100,7 +100,7 @@ public sealed class DeviceSessionService(
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(hello);
-        var sessionId = TextRules.Truncate(hello.SessionId, SessionIdMax) ?? throw FlowStudioException.Invalid("sessionId", "Sitzungs-ID fehlt.");
+        var sessionId = TextRules.Truncate(hello.SessionId, SessionIdMax) ?? throw StudioFlowException.Invalid("sessionId", "Sitzungs-ID fehlt.");
         var session = await coordinator.ExecuteAsync(
             identity.ProductionId,
             async context =>
@@ -108,7 +108,7 @@ public sealed class DeviceSessionService(
                 var device = await context.DeviceAsync(identity.DeviceId, cancellationToken);
                 if (device.IsBlocked)
                 {
-                    throw new FlowStudioException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
+                    throw new StudioFlowException(ErrorKind.Forbidden, ErrorCodes.DeviceBlocked, "Das Gerät ist gesperrt.");
                 }
 
                 var live = context.Runtime.Device(device.Id);
@@ -149,7 +149,7 @@ public sealed class DeviceSessionService(
                 return new DeviceSessionDto(Dtos.Self(device, await context.ProductionNameAsync(cancellationToken)), tally);
             },
             cancellationToken);
-        return session ?? throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Diese Sitzung wurde in einem anderen Tab übernommen.");
+        return session ?? throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Diese Sitzung wurde in einem anderen Tab übernommen.");
     }
 
     /// <summary>
@@ -201,7 +201,7 @@ public sealed class DeviceSessionService(
         ArgumentNullException.ThrowIfNull(identity);
         if (report is null)
         {
-            throw FlowStudioException.Invalid("report", "Bericht fehlt.");
+            throw StudioFlowException.Invalid("report", "Bericht fehlt.");
         }
 
         return coordinator.ExecuteAsync(
@@ -307,7 +307,7 @@ public sealed class DeviceSessionService(
             async context =>
             {
                 var device = await context.DeviceAsync(identity.DeviceId, cancellationToken);
-                var released = device.ReleaseSlot(slot) ?? throw FlowStudioException.NotFound("Der Slot");
+                var released = device.ReleaseSlot(slot) ?? throw StudioFlowException.NotFound("Der Slot");
                 var sourceId = device.SourceIdOf(released);
                 SourceMonitor.Forget(context, sourceId);
                 context.Emit(revision => new SourceRemovedEvent(revision, sourceId));

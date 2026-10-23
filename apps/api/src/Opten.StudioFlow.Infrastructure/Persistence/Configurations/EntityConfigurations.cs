@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence.Configurations;
+namespace Opten.StudioFlow.Infrastructure.Persistence.Configurations;
 
 /// <summary>Length of ids (prefix + 16 characters; client item ids may be longer, but they live inside jsonb).</summary>
 internal static class Columns

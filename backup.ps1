@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    FlowStudio sichern: Datenbank (pg_dump) und die Volumes media, keys und caddy_data.
+    StudioFlow sichern: Datenbank (pg_dump) und die Volumes media, keys und caddy_data.
 
 .DESCRIPTION
     Gleiches Verhalten wie backup.sh. Ergebnis: <basis>/YYYY-MM-DD_HHMM[_label]/ mit database.dump, media.tar.gz,
@@ -33,8 +33,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version 3.0
-Import-Module (Join-Path $PSScriptRoot 'infra/scripts/FlowStudio.psm1') -Force
-Initialize-FlowStudio -Root $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'infra/scripts/StudioFlow.psm1') -Force
+Initialize-StudioFlow -Root $PSScriptRoot
 
 $target = $null
 $completed = $false
@@ -54,13 +54,13 @@ try
     if ($PSBoundParameters.ContainsKey('Keep') -and $Keep -lt 1) { throw '-Keep erwartet eine Zahl ab 1.' }
     if ($Label -and $Label -notmatch '^[A-Za-z0-9-]{1,40}$') { throw '-Label erlaubt nur Buchstaben, Ziffern und - (max. 40).' }
 
-    Assert-FsDocker
-    Assert-FsEnvFile
-    if (-not (Test-FsServiceRunning 'postgres')) { throw 'PostgreSQL läuft nicht. Zuerst den Stack starten: docker compose up -d' }
+    Assert-SfDocker
+    Assert-SfEnvFile
+    if (-not (Test-SfServiceRunning 'postgres')) { throw 'PostgreSQL läuft nicht. Zuerst den Stack starten: docker compose up -d' }
 
     # --- target folder (private: it holds login keys, certificates and the CA key) -------------------------------
 
-    if (-not $Dir) { $Dir = Join-Path (Get-FsRoot) 'backups' }
+    if (-not $Dir) { $Dir = Join-Path (Get-SfRoot) 'backups' }
     $baseDir = (New-Item -ItemType Directory -Path $Dir -Force).FullName
     $name = (Get-Date -Format 'yyyy-MM-dd_HHmm') + $(if ($Label) { "_$Label" } else { '' })
     $target = Join-Path $baseDir $name
@@ -71,41 +71,41 @@ try
         $suffix++
     }
     New-Item -ItemType Directory -Path $target | Out-Null
-    Protect-FsPath -Path $target -Directory
+    Protect-SfPath -Path $target -Directory
 
-    Write-FsStep "Sicherung nach $target"
+    Write-SfStep "Sicherung nach $target"
 
     # --- database ---------------------------------------------------------------------------------------------------
 
-    Write-FsInfo 'Datenbank (pg_dump) …'
-    Invoke-FsCompose -Arguments @('exec', '-T', 'postgres', 'pg_dump', '-U', 'flowstudio', '-d', 'flowstudio', '-Fc', '-f', '/tmp/flowstudio-backup.dump') `
+    Write-SfInfo 'Datenbank (pg_dump) …'
+    Invoke-SfCompose -Arguments @('exec', '-T', 'postgres', 'pg_dump', '-U', 'studioflow', '-d', 'studioflow', '-Fc', '-f', '/tmp/studioflow-backup.dump') `
         -FailMessage 'pg_dump ist fehlgeschlagen.'
-    Invoke-FsCompose -Arguments @('cp', 'postgres:/tmp/flowstudio-backup.dump', (Join-Path $target $DbDumpName)) -Quiet `
+    Invoke-SfCompose -Arguments @('cp', 'postgres:/tmp/studioflow-backup.dump', (Join-Path $target $DbDumpName)) -Quiet `
         -FailMessage 'Die Datenbanksicherung konnte nicht kopiert werden.'
-    $postgresVersion = (Get-FsComposeOutput -Arguments @('exec', '-T', 'postgres', 'psql', '-U', 'flowstudio', '-d', 'flowstudio', '-tAc', 'SHOW server_version')).Lines |
+    $postgresVersion = (Get-SfComposeOutput -Arguments @('exec', '-T', 'postgres', 'psql', '-U', 'studioflow', '-d', 'studioflow', '-tAc', 'SHOW server_version')).Lines |
         Where-Object { $_ } | Select-Object -First 1
-    $postgresId = (Get-FsComposeOutput -Arguments @('ps', '-q', 'postgres')).Lines | Select-Object -First 1
+    $postgresId = (Get-SfComposeOutput -Arguments @('ps', '-q', 'postgres')).Lines | Select-Object -First 1
     $project = if ($postgresId) { & docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' $postgresId 2> $null } else { $null }
 
     # --- volumes ----------------------------------------------------------------------------------------------------
 
-    $toolbox = Start-FsToolbox
+    $toolbox = Start-SfToolbox
     foreach ($volume in $BackupVolumes)
     {
-        Write-FsInfo "Volume $volume …"
-        Invoke-FsNative -FilePath 'docker' -ArgumentList @('exec', $toolbox, 'tar', '-czf', "/tmp/$volume.tar.gz", '-C', "/volumes/$volume", '.') `
+        Write-SfInfo "Volume $volume …"
+        Invoke-SfNative -FilePath 'docker' -ArgumentList @('exec', $toolbox, 'tar', '-czf', "/tmp/$volume.tar.gz", '-C', "/volumes/$volume", '.') `
             -FailMessage "Das Archiv für $volume konnte nicht erstellt werden."
-        Invoke-FsNative -FilePath 'docker' -ArgumentList @('cp', "${toolbox}:/tmp/$volume.tar.gz", (Join-Path $target "$volume.tar.gz")) -Quiet `
+        Invoke-SfNative -FilePath 'docker' -ArgumentList @('cp', "${toolbox}:/tmp/$volume.tar.gz", (Join-Path $target "$volume.tar.gz")) -Quiet `
             -FailMessage "Das Archiv für $volume konnte nicht kopiert werden."
     }
 
     # --- description and checksums ----------------------------------------------------------------------------------
 
     $archives = @($BackupVolumes | ForEach-Object { "$_.tar.gz" })
-    $git = if (Get-Command git -ErrorAction SilentlyContinue) { & git -C (Get-FsRoot) rev-parse --short HEAD 2> $null } else { $null }
+    $git = if (Get-Command git -ErrorAction SilentlyContinue) { & git -C (Get-SfRoot) rev-parse --short HEAD 2> $null } else { $null }
     if ($LASTEXITCODE -ne 0) { $git = $null }
     $info = @(
-        'FlowStudio-Sicherung'
+        'StudioFlow-Sicherung'
         "erstellt:  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"
         "rechner:   $([Environment]::MachineName)"
         "projekt:   $(if ($project) { $project } else { 'unbekannt' })"
@@ -118,7 +118,7 @@ try
 
     $sums = foreach ($file in @($DbDumpName) + $archives + @($BackupInfoName))
     {
-        "$(Get-FsSha256 (Join-Path $target $file))  $file"
+        "$(Get-SfSha256 (Join-Path $target $file))  $file"
     }
     [IO.File]::WriteAllText((Join-Path $target $ChecksumsName), ($sums -join "`n") + "`n", $utf8)
     $completed = $true
@@ -136,14 +136,14 @@ try
         {
             if ($backups[$i].FullName -eq $target) { continue }
             Remove-Item -LiteralPath $backups[$i].FullName -Recurse -Force
-            Write-FsInfo "Alte Sicherung entfernt: $($backups[$i].Name)"
+            Write-SfInfo "Alte Sicherung entfernt: $($backups[$i].Name)"
         }
     }
 
     $bytes = (Get-ChildItem -LiteralPath $target -File | Measure-Object Length -Sum).Sum
     $size = if ($bytes -ge 1GB) { '{0:N1} GB' -f ($bytes / 1GB) } elseif ($bytes -ge 1MB) { '{0:N1} MB' -f ($bytes / 1MB) } else { '{0:N0} KB' -f [math]::Ceiling($bytes / 1KB) }
-    Write-FsStep "Sicherung fertig: $target ($size)"
-    Write-FsInfo "Wiederherstellen mit: ./restore.ps1 `"$target`""
+    Write-SfStep "Sicherung fertig: $target ($size)"
+    Write-SfInfo "Wiederherstellen mit: ./restore.ps1 `"$target`""
 }
 catch
 {
@@ -152,11 +152,11 @@ catch
 }
 finally
 {
-    Stop-FsToolbox $toolbox
-    if ($target) { Get-FsComposeOutput -Arguments @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/flowstudio-backup.dump') | Out-Null }
+    Stop-SfToolbox $toolbox
+    if ($target) { Get-SfComposeOutput -Arguments @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/studioflow-backup.dump') | Out-Null }
     if ($target -and -not $completed -and (Test-Path -LiteralPath $target))
     {
         Remove-Item -LiteralPath $target -Recurse -Force
-        Write-FsWarn 'Die unvollständige Sicherung wurde entfernt.'
+        Write-SfWarn 'Die unvollständige Sicherung wurde entfernt.'
     }
 }

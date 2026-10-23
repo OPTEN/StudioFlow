@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Slot names of a device: <c>camera</c> and <c>screen-1</c> … <c>screen-9</c>; the slot is the LiveKit track name.</summary>
 public static class DeviceSlots

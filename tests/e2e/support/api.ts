@@ -101,7 +101,7 @@ export interface CallOptions {
   body?: Buffer | string;
   headers?: Record<string, string | undefined>;
   query?: Record<string, string | number | undefined>;
-  /** Do not send the X-FlowStudio header on unsafe requests. */
+  /** Do not send the X-StudioFlow header on unsafe requests. */
   noCsrf?: boolean;
   /** Do not send the credential (cookie/bearer) of this client. */
   anonymous?: boolean;
@@ -120,7 +120,7 @@ export class HttpApi {
 
   async call<T = unknown>(method: string, route: string, options: CallOptions = {}): Promise<ApiResult<T>> {
     const headers: Record<string, string | undefined> = options.anonymous ? {} : { ...this.defaultHeaders() };
-    if (options.noCsrf) delete headers['X-FlowStudio'];
+    if (options.noCsrf) delete headers['X-StudioFlow'];
     Object.assign(headers, options.headers);
     let url = `${this.base}${route}`;
     if (options.query) {
@@ -147,7 +147,7 @@ export class AdminApi extends HttpApi {
   protected override defaultHeaders(): Record<string, string> {
     return {
       ...(this.cookie ? { Cookie: this.cookie } : {}),
-      'X-FlowStudio': '1',
+      'X-StudioFlow': '1',
       ...(this.forwardedFor ? { 'X-Forwarded-For': this.forwardedFor } : {}),
     };
   }
@@ -167,7 +167,7 @@ export class AdminApi extends HttpApi {
   // --- auth -------------------------------------------------------------------------------------------------------
   async login(username: string, password: string): Promise<ApiResult<SessionDto & Problem>> {
     const result = await this.call<SessionDto & Problem>('POST', '/api/auth/login', { json: { username, password }, anonymous: true, headers: this.forwardedFor ? { 'X-Forwarded-For': this.forwardedFor } : {} });
-    const cookie = result.raw.setCookies.map((value) => value.split(';')[0]!).find((value) => value.startsWith('fs_session='));
+    const cookie = result.raw.setCookies.map((value) => value.split(';')[0]!).find((value) => value.startsWith('sf_session='));
     if (result.status === 200 && cookie) this.cookie = cookie;
     return result;
   }

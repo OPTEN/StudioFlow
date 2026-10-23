@@ -8,7 +8,7 @@ handle /ca.crt {
 	# The rewrite pins the one file that is served; root.key next to it stays unreachable.
 	rewrite * /root.crt
 	header Content-Type application/x-x509-ca-cert
-	header Content-Disposition `attachment; filename="flowstudio-root-ca.crt"`
+	header Content-Disposition `attachment; filename="studioflow-root-ca.crt"`
 	header Cache-Control "no-cache"
 	file_server
 }

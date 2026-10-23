@@ -12,10 +12,10 @@ export const LAYOUT_POPOVER = 'layout';
  * and hairlines work. Rendered by the header inside its popover wrapper while open.
  */
 @Component({
-  selector: 'fs-layout-popover',
+  selector: 'sf-layout-popover',
   imports: [IconComponent, PopoverDirective],
   template: `
-    <div class="c-pop" role="dialog" aria-label="Docks und Layout" [fsPopover]="popoverId">
+    <div class="c-pop" role="dialog" aria-label="Docks und Layout" [sfPopover]="popoverId">
       <div class="c-pop-h">Docks</div>
       @for (id of dockIds; track id) {
         <label class="c-menu-item">
@@ -26,7 +26,7 @@ export const LAYOUT_POPOVER = 'layout';
       }
       <div class="c-menu-sep"></div>
       <button class="c-menu-item" type="button" (click)="layout.resetLayout()">
-        <svg fsIcon="refresh"></svg>Layout zurücksetzen
+        <svg sfIcon="refresh"></svg>Layout zurücksetzen
       </button>
       <div class="c-pop-note">
         Ein Dock an der Kopfzeile nach unten, links oder rechts ziehen. Trennlinien ziehen ändert

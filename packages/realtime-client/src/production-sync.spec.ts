@@ -6,7 +6,7 @@ import {
   type OutputChangesDto,
   type ProductionChangesDto,
   type ProductionEvent,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import {
   deviceFixture,
   outputSnapshotFixture,

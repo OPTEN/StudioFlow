@@ -5,7 +5,7 @@ import { Directive, ElementRef, effect, inject, input } from '@angular/core';
  * `playsinline` and `autoplay` so phones play it without a gesture.
  */
 @Directive({
-  selector: 'video[fsMediaPreview]',
+  selector: 'video[sfMediaPreview]',
   host: {
     '[muted]': 'true',
     '[attr.playsinline]': '""',
@@ -14,13 +14,13 @@ import { Directive, ElementRef, effect, inject, input } from '@angular/core';
 })
 export class MediaPreviewDirective {
   /** The stream to show; null clears the element. */
-  readonly fsMediaPreview = input<MediaStream | null>(null);
+  readonly sfMediaPreview = input<MediaStream | null>(null);
 
   private readonly element = inject<ElementRef<HTMLVideoElement>>(ElementRef).nativeElement;
 
   constructor() {
     effect(() => {
-      const stream = this.fsMediaPreview();
+      const stream = this.sfMediaPreview();
       if (this.element.srcObject === stream) {
         return;
       }

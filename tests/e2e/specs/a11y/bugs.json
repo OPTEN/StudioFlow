@@ -1,5 +1,5 @@
 {
-  "_comment": "Confirmed product bugs of the a11y area (prefix A11Y-nn), same schema as ../../known-bugs.json; the orchestrator merges them. support/a11y/known-bug.ts reads this file next to the shared registry, so the tests are marked before and after the merge. Evidence paths are relative to the repository root; the .output folders are produced by the tests themselves (stack 4: tests/e2e/.output/fs-e2e-4).",
+  "_comment": "Confirmed product bugs of the a11y area (prefix A11Y-nn), same schema as ../../known-bugs.json; the orchestrator merges them. support/a11y/known-bug.ts reads this file next to the shared registry, so the tests are marked before and after the merge. Evidence paths are relative to the repository root; the .output folders are produced by the tests themselves (stack 4: tests/e2e/.output/sf-e2e-4).",
   "bugs": {
     "A11Y-01": {
       "status": "open",
@@ -10,7 +10,7 @@
       "steps": "Log in, open the Regie (any state), run axe-core (wcag2a, wcag2aa, wcag21a, wcag21aa) on [role=separator]. Reproduced in 4 runs on stack 4.",
       "expected": "A focusable separator is a widget (ARIA 1.2): it exposes aria-valuenow (and ideally aria-valuemin/-max) so a screen reader can announce its position; axe reports no critical violation.",
       "actual": "Separators 'Höhe der Docks unten', 'Grösse von Szenen und Quellen', 'Grösse von Quellen und Eigenschaften', 'Grösse von Eigenschaften und Stationen' and (Studio-Modus) 'Grösse von Preview und Program' have role=separator, tabindex=0, aria-label and aria-orientation but no aria-valuenow: 'Required ARIA attribute not present: aria-valuenow' (critical, 4 nodes direct mode, 5 in Studio-Modus).",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/regie-separators.json (axe result with targets and html); tests/e2e/.output/fs-e2e-4/a11y/axe-summary.jsonl",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-separators.json (axe result with targets and html); tests/e2e/.output/sf-e2e-4/a11y/axe-summary.jsonl",
       "fix": "Set aria-valuenow (percentage or px of the split), aria-valuemin and aria-valuemax in SplitterDirective, or drop role=separator in favour of role=slider."
     },
     "A11Y-02": {
@@ -22,7 +22,7 @@
       "steps": "Open the Regie with a production on air (scene row with the PGM tag), run axe color-contrast on .c-tag--pgm. Reproduced in 4 runs.",
       "expected": "Contrast >= 4.5:1 (WCAG 1.4.3).",
       "actual": "foreground #f85149 on background #31262e (red wash on the current row), 10 px bold: 4.32:1.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/regie-pgm-tag.json",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-pgm-tag.json",
       "fix": "Lighter red for the tag text (e.g. --red-flash #ff8a80) or a darker wash behind it."
     },
     "A11Y-03": {
@@ -34,7 +34,7 @@
       "steps": "Open the Regie, switch Studio-Modus on, run axe color-contrast on .c-take. Reproduced in 4 runs.",
       "expected": "Contrast >= 4.5:1.",
       "actual": "small.c-take__hint: foreground #dde9fc on #1f6feb, 11 px normal: 3.78:1.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/regie-take-hint.json; screen: tests/e2e/.output/fs-e2e-4/screens/regie-1440x900-studio.png",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-take-hint.json; screen: tests/e2e/.output/sf-e2e-4/screens/regie-1440x900-studio.png",
       "fix": "Use #ffffff for the hint (white on #1f6feb is 4.9:1) or raise it to 12.5 px bold."
     },
     "A11Y-04": {
@@ -46,7 +46,7 @@
       "steps": "1. Open the Regie with several scenes (Studio-Modus off). 2. Toggle Studio-Modus with the mouse (click) or with the keyboard (Tab to the switch, Space). The focus stays on the switch. 3. Press 4 (load scene 4 into the Preview) or Space (Take). Reproduced 3 times (keyboard) and once with the mouse.",
       "expected": "The global shortcuts work whenever the focus is not in a text field: the Preview shows scene 4; Space on the switch only toggles it (acceptable), but digits are not typed text.",
       "actual": "KeyboardService treats every INPUT as a typing target (TYPING_TAGS), so digits do nothing while the switch (input type=checkbox role=switch) has the focus; the Preview stays on the old scene without a message. After a mouse click on the switch a second Space (meant as Take) flips the mode off again.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/artifacts (trace of the failing run with E2E_BUG_REPORT=1); apps/studio/src/app/core/ui/keyboard.service.ts (isTypingTarget)",
+      "evidence": "tests/e2e/.output/sf-e2e-4/artifacts (trace of the failing run with E2E_BUG_REPORT=1); apps/studio/src/app/core/ui/keyboard.service.ts (isTypingTarget)",
       "fix": "isTypingTarget: only text-like input types (text, search, number, password, email, url, tel ...), not checkbox, radio, range, button; or blur the switch after toggling."
     },
     "A11Y-05": {
@@ -58,7 +58,7 @@
       "steps": "Open the Regie at 1180x800, Studio-Modus on, press Tab through the page. Reproduced 2 times.",
       "expected": "docs/testing.md DEV-04: grips and splitters are hidden (display:none) in the stacked layout (DEV-20: inert).",
       "actual": "'Grösse von Preview und Program' (20 x 295 px at x=484) is in the tab order with a focus indicator; Arrow keys do nothing (preview width stays 468 px). The dock splitters are display:none as specified; only .c-stage__split is not hidden below 1180 px (it is hidden at <= 900 px).",
-      "evidence": "tests/e2e/.output/fs-e2e-4/screens/regie-1180x800-studio.png (splitter between the monitors); apps/studio/src/app/stage/stage.component.scss (.c-stage__split has no display:none under the stacked mixin)",
+      "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-1180x800-studio.png (splitter between the monitors); apps/studio/src/app/stage/stage.component.scss (.c-stage__split has no display:none under the stacked mixin)",
       "fix": "display: none for .c-stage__split in the stacked mixin, or tabindex -1 and aria-hidden while splitterDisabled()."
     },
     "A11Y-06": {
@@ -70,7 +70,7 @@
       "steps": "Open the Regie with seven scenes, five stations and an incident, run axe with the wcag21a tag. 10-15 nodes per state, reproduced in every Regie scan (12 states, 3 runs).",
       "expected": "The accessible name contains the visible label text, so voice control («Klick Handy Eingang») finds the control.",
       "actual": "Incident target: visible «K3 Handy Eingang», aria-label «K3 bei den Stationen zeigen». Scene row: visible «Pause leer» with keycap, aria-label «Pause». Station row: visible «K3 Handy Eingang PVW verbindet neu 00:03 Standbild», aria-label «K3 Handy Eingang, in der Preview, verbindet neu». Source row: visible «K3 Handy Eingang verbindet neu 00:03», aria-label «Auswählen: K3 Handy Eingang». The key part of the label is in the name for the rows, but not for the incident target (the device name is missing).",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/regie-label-in-name.json (nodes and html)",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-label-in-name.json (nodes and html)",
       "fix": "Incident target: aria-label «K3 Handy Eingang bei den Stationen zeigen» (starts with the visible text); rows: keep the visible text first in the name, then add the state."
     },
     "A11Y-07": {
@@ -82,7 +82,7 @@
       "steps": "Pair a phone (Pixel 7 profile), camera live, press «Dunkel», run axe color-contrast on .c-phone__dark. Reproduced 2 times.",
       "expected": "Contrast >= 4.5:1, or a documented design exception (the mode is meant to emit almost no light on a stage).",
       "actual": ".c-phone__dark-code 2.96:1, .c-phone__dark-hint 2.35:1. Both are aria-hidden, so only sighted users are affected; this is probably a deliberate trade-off between legibility and stage light and needs a decision.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/sender-phone-dark-contrast.json",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/sender-phone-dark-contrast.json",
       "fix": "Decide: raise the dim text to 4.5:1 or record the exception in DESIGN.md and accept the finding in the test."
     },
     "A11Y-09": {
@@ -94,7 +94,7 @@
       "steps": "Open the Regie, select (or switch to) a scene without elements («Pause»), run axe on the Quellen dock. Reproduced in 4 scans (direct mode after a switch to «Pause», Studio-Modus, station expanded, block confirmation).",
       "expected": "A role=list contains listitems, or the empty state is rendered outside of the list.",
       "actual": "<div class=\"c-src-dock__list\" role=\"list\" aria-label=\"Elemente der Szene\"> contains <strong>Diese Szene ist leer.</strong> and the hint text only: 'Element has children which are not allowed: strong, text' (critical).",
-      "evidence": "tests/e2e/.output/fs-e2e-4/a11y/axe/regie-empty-source-list.json; first seen in tests/e2e/.output/fs-e2e-4/a11y/axe/regie-toast.json",
+      "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-empty-source-list.json; first seen in tests/e2e/.output/sf-e2e-4/a11y/axe/regie-toast.json",
       "fix": "Render the list only when there are rows (@if rows().length) and the empty note next to it."
     },
     "A11Y-10": {
@@ -106,7 +106,7 @@
       "steps": "Open the Regie with emulateMedia({reducedMotion: 'reduce'}); read getComputedStyle(document.documentElement).getPropertyValue('--dur-state') and the transition-duration of any button (button.c-chipbtn, button.c-scene, ...); trigger a new outage (lamp pulse) or expand a station. Reproduced 4 times (first run: 80 elements with a transition-duration of 0.15 s at rest).",
       "expected": "docs/testing.md DEV-16 / GAP-28: computed transition-duration and animation-duration are 0 s on UI elements, lamp pulse and flash animations are absent; _base.scss documents it: every duration token drops to 0 s with reduce.",
       "actual": "--dur-state is .15s and --dur-lamp-pulse 1.2s under reduce. Cause: in styles.scss the base partial (with @media (prefers-reduced-motion: reduce) { :root { --dur-state: 0s ... } }) is emitted before the final :root block with the token values, which has the same specificity and wins; the universal '*, *::before, *::after { animation-duration: 0s; transition-duration: 0s }' has specificity 0 and loses to every component rule that sets a transition shorthand. The recorder sees css-transition and css-animation entries (lamp pulse, station flash/reveal) with reduce on.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/artifacts (attachments motion-no-preference.json, motion-reduce.json, durations-at-rest.json of the failing run with E2E_BUG_REPORT=1); apps/studio/src/styles.scss, apps/studio/src/styles/_base.scss",
+      "evidence": "tests/e2e/.output/sf-e2e-4/artifacts (attachments motion-no-preference.json, motion-reduce.json, durations-at-rest.json of the failing run with E2E_BUG_REPORT=1); apps/studio/src/styles.scss, apps/studio/src/styles/_base.scss",
       "fix": "Emit the reduced-motion token overrides after the token block (media query inside the :root block of styles.scss), and use !important in the universal rule or put it in an @layer that wins."
     },
     "A11Y-11": {
@@ -118,7 +118,7 @@
       "steps": "Open the Regie with emulateMedia({forcedColors: 'active'}) (Windows contrast themes), Studio-Modus on, look at the control column; compare the computed style of the two Übergang buttons. Reproduced 3 times.",
       "expected": "docs/testing.md DEV-22: states remain distinguishable without colour. A switch needs a visible border; a selected segment a border, outline or weight.",
       "actual": "The switch is an appearance:none input painted with background colours and a thumb pseudo-element; forced colours replaces the backgrounds with the canvas colour, so only the label «Studio-Modus» is left (screenshot). The selected segment's underline is an inset box-shadow, which forced colours removes; border, outline, decoration and weight are identical for both segments, only an 8 % background tint is left. The CSS contains no @media (forced-colors: active) rule.",
-      "evidence": "tests/e2e/.output/fs-e2e-4/screens/regie-1440x900-forced-colors.png",
+      "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-1440x900-forced-colors.png",
       "fix": "@media (forced-colors: active): border: 1px solid ButtonText on the switch input and the thumb in CanvasText; for the segments a border-bottom or outline on [aria-pressed=true]."
     },
     "A11Y-12": {
@@ -130,7 +130,7 @@
       "steps": "Open the Regie at 390x844 with a station that has an open incident (K3 verbindet neu) and whose device name has 60 characters (PATCH /devices/{id} name of 60 characters, allowed), direct mode. Reproduced 2 times (once with the device name 'Handy mit sehr langem Namen für die Stationsliste und die Mel...').",
       "expected": "docs/testing.md DEV-18: ellipsis or wrap inside rows, strip entries and station rows; no horizontal scroll.",
       "actual": "document scrollWidth 431 > clientWidth 390: div.c-status__inc.is-warn spans x 16..431, button.c-status__target x 20..421. The same long name in the Stationen dock, the monitors and the scene rows stays inside (tested at 1280, 900 and 390 px).",
-      "evidence": "tests/e2e/.output/fs-e2e-4/screens/regie-long-text-390x844-long-incident-direct.png (the strip entry reaches beyond the right edge); assertion message of the run with E2E_BUG_REPORT=1",
+      "evidence": "tests/e2e/.output/sf-e2e-4/screens/regie-long-text-390x844-long-incident-direct.png (the strip entry reaches beyond the right edge); assertion message of the run with E2E_BUG_REPORT=1",
       "fix": "min-width: 0 and text-overflow: ellipsis (or wrapping) on .c-status__target and its name text; the strip entry is a flex container."
     },
     "A11Y-13": {

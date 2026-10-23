@@ -3,16 +3,16 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.LiveKit;
-using Opten.FlowStudio.Infrastructure.Media;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Infrastructure.Security;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.LiveKit;
+using Opten.StudioFlow.Infrastructure.Media;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Security;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 public sealed class MediaInspectorTests
 {
@@ -100,7 +100,7 @@ public sealed class MediaInspectorTests
 public sealed class FileMediaStoreTests : IDisposable
 {
     private const string ProductionId = "prd_aaaaaaaaaaaaaaaa";
-    private readonly string root = Path.Combine(Path.GetTempPath(), "fs-store-" + Guid.NewGuid().ToString("N"));
+    private readonly string root = Path.Combine(Path.GetTempPath(), "sf-store-" + Guid.NewGuid().ToString("N"));
     private readonly FileMediaStore store;
 
     public FileMediaStoreTests() => store = new FileMediaStore(Options.Create(new MediaOptions { Path = root, MaxImageBytes = 1000, MaxVideoBytes = 2000 }));
@@ -118,7 +118,7 @@ public sealed class FileMediaStoreTests : IDisposable
     [Fact]
     public async Task StoreAsync_LyingLength_IsStoppedAtTheLimitAndLeavesNoFile()
     {
-        var error = await Assert.ThrowsAsync<Core.Domain.FlowStudioException>(() =>
+        var error = await Assert.ThrowsAsync<Core.Domain.StudioFlowException>(() =>
             store.StoreAsync(ProductionId, "ast_cccccccccccccccc", new MemoryStream(MediaSamples.Png(1, 1, 5000)), 10, CancellationToken.None));
 
         Assert.Equal(Core.Domain.ErrorKind.PayloadTooLarge, error.Kind);
@@ -128,7 +128,7 @@ public sealed class FileMediaStoreTests : IDisposable
     [Fact]
     public async Task StoreAsync_DeclaredTooLarge_FailsBeforeWriting()
     {
-        await Assert.ThrowsAsync<Core.Domain.FlowStudioException>(() =>
+        await Assert.ThrowsAsync<Core.Domain.StudioFlowException>(() =>
             store.StoreAsync(ProductionId, "ast_dddddddddddddddd", new MemoryStream(MediaSamples.Mp4()), 5000, CancellationToken.None));
 
         Assert.False(Directory.Exists(Path.Combine(root, ProductionId)));
@@ -137,7 +137,7 @@ public sealed class FileMediaStoreTests : IDisposable
     [Fact]
     public async Task StoreAsync_Svg_IsUnsupported()
     {
-        var error = await Assert.ThrowsAsync<Core.Domain.FlowStudioException>(() =>
+        var error = await Assert.ThrowsAsync<Core.Domain.StudioFlowException>(() =>
             store.StoreAsync(ProductionId, "ast_eeeeeeeeeeeeeeee", new MemoryStream(MediaSamples.Svg()), null, CancellationToken.None));
 
         Assert.Equal(ErrorCodes.UnsupportedMedia, error.Code);
@@ -177,7 +177,7 @@ public sealed class LiveKitTokenIssuerTests
 
     private static LiveKitTokenIssuer Issuer(string publicUrl = "") => new(
         Options.Create(new LiveKitOptions { ApiKey = "key", ApiSecret = "sk-secret-with-more-than-thirty-two-chars", PublicUrl = publicUrl }),
-        Options.Create(new FlowStudioOptions { PublicBaseUrl = "https://flowstudio.opten.ch/" }),
+        Options.Create(new StudioFlowOptions { PublicBaseUrl = "https://studioflow.opten.ch/" }),
         Clock);
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed class LiveKitTokenIssuerTests
         var token = new JsonWebToken(dto.Token);
         using var video = JsonDocument.Parse(token.GetPayloadValue<JsonElement>("video").GetRawText());
 
-        Assert.Equal("wss://flowstudio.opten.ch", dto.Url);
+        Assert.Equal("wss://studioflow.opten.ch", dto.Url);
         Assert.Equal("key", token.Issuer);
         Assert.Equal("dev_a", token.Subject);
         Assert.Equal("Handy 1", token.GetPayloadValue<string>("name"));
@@ -231,7 +231,7 @@ public sealed class LiveKitWebhookReceiverTests
 {
     private const string Body = """{"event":"track_published","room":{"sid":"RM_1","name":"prd_x"},"participant":{"sid":"PA_1","identity":"dev_a"},"track":{"name":"screen-2"}}""";
 
-    private static readonly LiveKitWebhookReceiver Receiver = new(Options.Create(new LiveKitOptions { ApiKey = FlowStudioApp.LiveKitKey, ApiSecret = FlowStudioApp.LiveKitSecret }));
+    private static readonly LiveKitWebhookReceiver Receiver = new(Options.Create(new LiveKitOptions { ApiKey = StudioFlowApp.LiveKitKey, ApiSecret = StudioFlowApp.LiveKitSecret }));
 
     [Fact]
     public async Task VerifyAsync_ValidSignature_IsTrue() => Assert.True(await Receiver.VerifyAsync(Webhooks.Sign(Body), Encoding.UTF8.GetBytes(Body)));
@@ -284,7 +284,7 @@ public sealed class LiveKitRoomClientTests
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://livekit:7880/") };
         var issuer = new LiveKitTokenIssuer(
             Options.Create(new LiveKitOptions { ApiKey = "key", ApiSecret = "sk-secret-with-more-than-thirty-two-chars" }),
-            Options.Create(new FlowStudioOptions()),
+            Options.Create(new StudioFlowOptions()),
             TimeProvider.System);
         return (new LiveKitRoomClient(http, issuer, Options.Create(new LiveKitOptions { RequestTimeout = timeout ?? TimeSpan.FromSeconds(5) })), handler);
     }
@@ -324,7 +324,7 @@ public sealed class LiveKitRoomClientTests
     [Fact]
     public async Task ListParticipantsAsync_Unreachable_IsUnavailable()
     {
-        var issuer = new LiveKitTokenIssuer(Options.Create(new LiveKitOptions { ApiKey = "k", ApiSecret = "sk-secret-with-more-than-thirty-two-chars" }), Options.Create(new FlowStudioOptions()), TimeProvider.System);
+        var issuer = new LiveKitTokenIssuer(Options.Create(new LiveKitOptions { ApiKey = "k", ApiSecret = "sk-secret-with-more-than-thirty-two-chars" }), Options.Create(new StudioFlowOptions()), TimeProvider.System);
         using var http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:1/"), Timeout = TimeSpan.FromSeconds(2) };
 
         await Assert.ThrowsAsync<LiveKitUnavailableException>(() => new LiveKitRoomClient(http, issuer, Options.Create(new LiveKitOptions())).ListParticipantsAsync("prd_x", CancellationToken.None));
@@ -404,5 +404,5 @@ public sealed class SnakeCaseTests
     [InlineData("OutputKeyCreatedAt", "output_key_created_at")]
     [InlineData("Id", "id")]
     [InlineData("SizeBytes", "size_bytes")]
-    public void ToSnakeCase_PascalCase_IsConverted(string input, string expected) => Assert.Equal(expected, FlowStudioDbContext.ToSnakeCase(input));
+    public void ToSnakeCase_PascalCase_IsConverted(string input, string expected) => Assert.Equal(expected, StudioFlowDbContext.ToSnakeCase(input));
 }

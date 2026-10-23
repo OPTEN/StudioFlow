@@ -7,7 +7,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { formatDuration, type InviteDto } from '@flowstudio/scene-model';
+import { formatDuration, type InviteDto } from '@studioflow/scene-model';
 import { toGermanMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -38,16 +38,16 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
  * an expired code is replaced automatically.
  */
 @Component({
-  selector: 'fs-phone-tab',
+  selector: 'sf-phone-tab',
   imports: [IconComponent, QrCodeComponent],
   template: `
     <h3 class="c-pair__title">Handy als Kamera</h3>
     <p class="c-pair__text">
-      Mit der Kamera-App scannen. Das Handy öffnet FlowStudio und erscheint danach unter Stationen.
+      Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.
     </p>
     <div class="c-pair__qr-wrap">
       @if (invite(); as invite) {
-        <fs-qr-code [value]="invite.url" label="QR-Code zum Koppeln eines Handys" />
+        <sf-qr-code [value]="invite.url" label="QR-Code zum Koppeln eines Handys" />
       } @else {
         <div class="c-pair__qr-empty" role="status">
           {{ error() ?? 'QR-Code wird erzeugt …' }}
@@ -67,7 +67,7 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
           [disabled]="commands.blocked('pairing:renew') || loading()"
           (click)="renew()"
         >
-          <svg fsIcon="refresh" [size]="14"></svg>Neuen Code erzeugen
+          <svg sfIcon="refresh" [size]="14"></svg>Neuen Code erzeugen
         </button>
       </div>
     </div>

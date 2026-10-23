@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.Errors;
+namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
 /// RFC 7807 problem details with the extension <c>code</c> (spec 5). Titles are German because the Regie may show them.

@@ -1,4 +1,4 @@
-import type { OutputReport } from '@flowstudio/scene-model';
+import type { OutputReport } from '@studioflow/scene-model';
 
 /** Cadence of `OutputReport` over the hub (spec 4.8: «every 2 s»). */
 export const REPORT_INTERVAL_MS = 2000;

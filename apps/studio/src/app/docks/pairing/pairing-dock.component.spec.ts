@@ -1,5 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import type { InviteDto } from '@flowstudio/scene-model';
+import type { InviteDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
@@ -23,8 +23,8 @@ function invite(
     kind,
     url:
       kind === 'phoneQr'
-        ? `https://flowstudio.opten.ch/join/i/${id}`
-        : `https://flowstudio.opten.ch/j/${id}`,
+        ? `https://studioflow.opten.ch/join/i/${id}`
+        : `https://studioflow.opten.ch/j/${id}`,
     createdAt: new Date(created).toISOString(),
     expiresAt: new Date(Date.now() + minutes * 60_000).toISOString(),
   };
@@ -41,7 +41,7 @@ describe('pairing helpers', () => {
   });
 
   it('formats URLs and remaining times', () => {
-    expect(displayUrl('https://flowstudio.opten.ch/join/')).toBe('flowstudio.opten.ch/join');
+    expect(displayUrl('https://studioflow.opten.ch/join/')).toBe('studioflow.opten.ch/join');
     expect(expiryText(28 * 60_000)).toBe('läuft in 28 Minuten ab');
     expect(expiryText(50_000)).toBe('läuft in 1 Minute ab');
     expect(expiryText(10_000)).toBe('läuft gleich ab');
@@ -112,10 +112,10 @@ describe('PairingDockComponent', () => {
     ]);
     expect(tabs().map((tab) => tab.tabIndex)).toEqual([-1, 0, -1]);
     expect(element.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(
-      'fs-pair-tab-laptop',
+      'sf-pair-tab-laptop',
     );
     expect(text(element.querySelector('.c-pair__url'))).toBe('regie.example.ch/join');
-    expect(text(element.querySelector('fs-pairing-requests'))).toContain('Noch keine Anfrage.');
+    expect(text(element.querySelector('sf-pairing-requests'))).toContain('Noch keine Anfrage.');
     tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await render();
     expect(layout.pairingTab()).toBe('link');
@@ -130,7 +130,7 @@ describe('PairingDockComponent', () => {
       .expectOne(`${BASE}/pairing/phone-invite`)
       .flush(invite('inv_aaaaaaaaaaaaaaaa', 'phoneQr'));
     await render();
-    expect(element.querySelector('fs-qr-code svg path')?.getAttribute('d')).toBeTruthy();
+    expect(element.querySelector('sf-qr-code svg path')?.getAttribute('d')).toBeTruthy();
     expect(text(element.querySelector('.c-pair__qr-side .c-hint'))).toMatch(
       /^Gilt einmal, noch (29:59|30:00) min\.$/,
     );
@@ -160,9 +160,9 @@ describe('PairingDockComponent', () => {
     });
     await render();
     expect(text(element.querySelector('.c-pair__url'))).toBe(
-      'flowstudio.opten.ch/j/inv_cccccccccccccccc',
+      'studioflow.opten.ch/j/inv_cccccccccccccccc',
     );
-    expect(text(element.querySelector('fs-link-tab .c-hint'))).toBe(
+    expect(text(element.querySelector('sf-link-tab .c-hint'))).toBe(
       'Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.',
     );
     button('Link widerrufen')?.click();

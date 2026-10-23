@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Infrastructure.Security;
+namespace Opten.StudioFlow.Infrastructure.Security;
 
 /// <summary>Admin login settings (configuration section <c>Admin</c>).</summary>
 public sealed class AdminOptions
@@ -21,7 +21,7 @@ public sealed class AdminOptions
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
-    /// <c>Admin:SessionLifetime</c>: sliding lifetime of the session cookie <c>fs_session</c> (spec 5, default 12 h); a
+    /// <c>Admin:SessionLifetime</c>: sliding lifetime of the session cookie <c>sf_session</c> (spec 5, default 12 h); a
     /// studio hub connection is closed when its session expires.
     /// </summary>
     public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(12);

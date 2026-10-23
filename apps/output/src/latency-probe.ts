@@ -4,11 +4,11 @@ import { decodeStamp, latencyMs, STAMP, stripLuma } from './latency-stamp';
  * TEST AID, off by default (`?latency=1`): measures glass-to-glass latency for automated tests. For every device
  * source video on the stage it decodes the latency stamp (latency-stamp.ts) on each new video frame
  * (`requestVideoFrameCallback`; browsers without it are skipped) and appends a sample to
- * `window.__flowstudioLatency` (oldest samples dropped beyond {@link MAX_LATENCY_SAMPLES}). This is the only
+ * `window.__studioflowLatency` (oldest samples dropped beyond {@link MAX_LATENCY_SAMPLES}). This is the only
  * per-frame JavaScript of the page and costs one 640 × 48 canvas read per frame and video; never enable it on air.
  */
 
-/** Cap of `window.__flowstudioLatency`. */
+/** Cap of `window.__studioflowLatency`. */
 export const MAX_LATENCY_SAMPLES = 1000;
 /** Decoded values above this are treated as decode errors (no real stream is a minute late). */
 const MAX_PLAUSIBLE_MS = 60_000;
@@ -29,13 +29,13 @@ export interface LatencySample {
 declare global {
   interface Window {
     /** Latency samples of the `?latency=1` test aid. */
-    __flowstudioLatency?: LatencySample[];
+    __studioflowLatency?: LatencySample[];
   }
 }
 
 /** Where samples go (the window). */
 export interface LatencySampleTarget {
-  __flowstudioLatency?: LatencySample[];
+  __studioflowLatency?: LatencySample[];
 }
 
 /** The video registrations the probe follows (DeferredSourceProvider). */
@@ -90,7 +90,7 @@ export function startLatencyProbe(
   const readStrip = options.readStrip ?? canvasStripReader(options.doc);
   const wallClock =
     options.wallClock ?? ((performanceNow: number) => performance.timeOrigin + performanceNow);
-  const samples = (options.target.__flowstudioLatency ??= []);
+  const samples = (options.target.__studioflowLatency ??= []);
   const watched = new Map<HTMLVideoElement, number | null>();
 
   const record = (sample: LatencySample): void => {

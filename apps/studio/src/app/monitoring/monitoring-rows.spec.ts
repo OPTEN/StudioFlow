@@ -1,4 +1,4 @@
-import type { DeviceTelemetryDto } from '@flowstudio/scene-model';
+import type { DeviceTelemetryDto } from '@studioflow/scene-model';
 import { deviceFixture, sourceFixture } from '../../testing/fixtures';
 import {
   STALE_AFTER_MS,

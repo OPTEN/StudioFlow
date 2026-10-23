@@ -1,13 +1,13 @@
 <main class="c-pairing">
   <div class="c-pairing__inner">
-    <fs-brand-mark class="c-pairing__brand" />
+    <sf-brand-mark class="c-pairing__brand" />
 
     @switch (state()) {
       @case ('expired') {
         <section class="c-pairing__inner" data-testid="pairing-expired">
           <h1 class="c-pairing__title" data-route-focus tabindex="-1">Einladung abgelaufen</h1>
           <div class="c-notice c-notice--warn" role="alert">
-            <fs-icon class="c-notice__icon" name="alert" />
+            <sf-icon class="c-notice__icon" name="alert" />
             <p class="c-notice__text">
               Dieser {{ isPhone() ? 'QR-Code' : 'Link' }} ist abgelaufen oder wurde schon verwendet.
               Bitte in der Regie einen neuen erzeugen lassen.
@@ -19,7 +19,7 @@
       @case ('failed') {
         <h1 class="c-pairing__title" data-route-focus tabindex="-1">Koppeln hat nicht geklappt</h1>
         <div class="c-notice c-notice--bad" role="alert">
-          <fs-icon class="c-notice__icon" name="alert" />
+          <sf-icon class="c-notice__icon" name="alert" />
           <p class="c-notice__text">{{ errorMessage() }}</p>
         </div>
         <div class="c-pairing__actions">

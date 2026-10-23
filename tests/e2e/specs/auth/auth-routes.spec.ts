@@ -21,7 +21,7 @@ interface Operation {
 }
 
 function operations(): Operation[] {
-  const document = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'apps/api/openapi/flowstudio.json'), 'utf8')) as {
+  const document = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'apps/api/openapi/studioflow.json'), 'utf8')) as {
     paths: Record<string, Record<string, { operationId: string }>>;
   };
   const result: Operation[] = [];
@@ -65,7 +65,7 @@ const CRLF = String.fromCharCode(13, 10);
 test.describe('AUTH routes', () => {
   test('INT-AUTH-09 [stack] every operation of the API surface is classified by the policy matrix', t.p0, async () => {
     const all = operations();
-    expect(all.length, 'operations in openapi/flowstudio.json').toBeGreaterThan(50);
+    expect(all.length, 'operations in openapi/studioflow.json').toBeGreaterThan(50);
     for (const operation of all) {
       if (policyOf(operation) === 'admin') {
         // The admin group is everything under /api/productions plus the three session routes.
@@ -250,7 +250,7 @@ test.describe('AUTH routes', () => {
     const base = config.baseURL;
     // studio: admin cookie
     expect((await negotiate(base, 'studio')).status).toBe(401);
-    expect((await negotiate(base, 'studio', { cookie: 'fs_session=garbage' })).status).toBe(401);
+    expect((await negotiate(base, 'studio', { cookie: 'sf_session=garbage' })).status).toBe(401);
     expect((await negotiate(base, 'studio', { accessTokenQuery: phone.bearer })).status).toBe(401);
     expect((await negotiate(base, 'studio', { cookie: api.cookie })).status).toBe(200);
     // device: bearer in access_token
@@ -341,7 +341,7 @@ test.describe('AUTH routes', () => {
         const response = await api.call(method, route, { json: method === 'GET' || method === 'DELETE' ? undefined : {} });
         const label = `${method} ${route.slice(0, 80)} -> ${response.status}`;
         // Caddy decodes %2f and normalises the path: a request that leaves /api/ lands on the SPA shell (200 html).
-        const spaShell = response.status === 200 && /html/.test(response.headers['content-type'] ?? '') && /<fs-root|<title>FlowStudio/.test(response.raw.text());
+        const spaShell = response.status === 200 && /html/.test(response.headers['content-type'] ?? '') && /<sf-root|<title>StudioFlow/.test(response.raw.text());
         if (!spaShell) expect([400, 404, 414, 431, 405], label).toContain(response.status);
         expect(response.raw.text(), label).not.toMatch(/root:|\[boot loader\]|\bat [A-Z][\w.]+\(|\.cs:line/);
       }
@@ -426,7 +426,7 @@ test.describe('AUTH routes', () => {
         port: stackConfig().httpsPort,
         tls: true,
         servername: 'localhost',
-        bytes: ['POST /api/productions/ HTTP/1.1', 'Host: localhost', 'Content-Type: application/json', `Content-Length: ${bytes}`, 'X-FlowStudio: 1', `Cookie: ${api.cookie}`, 'Connection: close', '', ''].join(CRLF),
+        bytes: ['POST /api/productions/ HTTP/1.1', 'Host: localhost', 'Content-Type: application/json', `Content-Length: ${bytes}`, 'X-StudioFlow: 1', `Cookie: ${api.cookie}`, 'Connection: close', '', ''].join(CRLF),
         readMs: 2500,
       });
     const caddy5 = await announce(5 * 1024 * 1024);
@@ -450,7 +450,7 @@ test.describe('AUTH routes', () => {
 
   test('INT-AUTH-24 [stack] no CORS headers anywhere', t.p2, async ({ config, api }) => {
     for (const request of [
-      { method: 'OPTIONS', url: `${config.baseURL}/api/auth/login`, headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-flowstudio' } },
+      { method: 'OPTIONS', url: `${config.baseURL}/api/auth/login`, headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-studioflow' } },
       { method: 'GET', url: `${config.baseURL}/api/auth/me`, headers: { Origin: 'https://evil.example', Cookie: api.cookie } },
       { method: 'GET', url: `${config.baseURL}/api/system/info`, headers: { Origin: 'https://evil.example' } },
     ]) {
@@ -461,7 +461,7 @@ test.describe('AUTH routes', () => {
   });
 
   test('E2E-AUTH-27 the server surface is not exposed through Caddy or the API', t.p1, async ({ config, stack }) => {
-    for (const route of ['/openapi/v1.json', '/swagger', '/swagger/index.html', '/metrics', '/health/live', '/health/ready', '/appsettings.json', '/.env', '/Opten.FlowStudio.Web.dll', '/appsettings.Production.json', '/web.config']) {
+    for (const route of ['/openapi/v1.json', '/swagger', '/swagger/index.html', '/metrics', '/health/live', '/health/ready', '/appsettings.json', '/.env', '/Opten.StudioFlow.Web.dll', '/appsettings.Production.json', '/web.config']) {
       const response = await send({ method: 'GET', url: `${config.baseURL}${route}` });
       const body = response.text();
       // Either 404 or the SPA shell; never the content of the file/endpoint.

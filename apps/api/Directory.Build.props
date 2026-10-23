@@ -1,5 +1,5 @@
 <Project>
-  <!-- Shared build settings for every FlowStudio .NET project. -->
+  <!-- Shared build settings for every StudioFlow .NET project. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>

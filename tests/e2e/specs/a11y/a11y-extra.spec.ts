@@ -86,10 +86,10 @@ test.describe('Forced colours and zoom', () => {
     const overlaps = await findOverlaps(page, 'body');
     expect(overlaps, 'no overlapping controls at 640x360').toEqual([]);
     // the one-column order of the 900 px layout: Program, controls, Preview, docks
-    const program = (await boxOf(page.locator('fs-monitor[kind=program] .c-monitor__screen')))!;
+    const program = (await boxOf(page.locator('sf-monitor[kind=program] .c-monitor__screen')))!;
     const take = (await boxOf(regie.take()))!;
-    const preview = (await boxOf(page.locator('fs-monitor[kind=preview] .c-monitor__screen')))!;
-    const scenes = (await boxOf(page.locator('fs-dock-slot[aria-label=Szenen]')))!;
+    const preview = (await boxOf(page.locator('sf-monitor[kind=preview] .c-monitor__screen')))!;
+    const scenes = (await boxOf(page.locator('sf-dock-slot[aria-label=Szenen]')))!;
     expect(take.y, 'Take follows the Program monitor').toBeGreaterThan(program.y + program.h - 2);
     expect(preview.y, 'Preview follows the controls').toBeGreaterThan(take.y);
     expect(scenes.y, 'the docks follow the Preview').toBeGreaterThan(preview.y + preview.h - 2);
@@ -143,7 +143,7 @@ test.describe('Long text', () => {
         await saveScreen(page, `regie-long-text-${entry.viewport.width}x${entry.viewport.height}-${entry.incidentName}-incident-${studio ? 'studio' : 'direct'}`);
         await expectNoOverflow(page, { label });
         if (entry.viewport.width >= 1280) await expectNoOverflow(page, { vertical: false, label });
-        for (const scope of ['header.c-header', 'fs-control-column', 'fs-workspace', 'fs-status-line']) expect(await findOverlaps(page, scope), `${label}: no overlapping controls in ${scope}`).toEqual([]);
+        for (const scope of ['header.c-header', 'sf-control-column', 'sf-workspace', 'sf-status-line']) expect(await findOverlaps(page, scope), `${label}: no overlapping controls in ${scope}`).toEqual([]);
         // text is cut by an ellipsis or wrapped inside its row: nothing is wider than its container's visible box
         const cut = await page.evaluate(() => {
           const offenders: string[] = [];

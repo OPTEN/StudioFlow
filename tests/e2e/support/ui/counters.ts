@@ -4,7 +4,7 @@ import type { CDPSession, Frame, Page } from '@playwright/test';
  * CDP memory and DOM counters for leak and soak checks (docs/testing.md 1.6, research section 5: the JS heap alone hides
  * leaked DOM nodes and listeners). One DevTools session per page or frame, a forced garbage collection before every
  * sample, plus what the page itself knows: `<video>`/`<canvas>`/`<iframe>` elements and the open WebSockets and
- * RTCPeerConnections of the init script (`window.__fsNet`).
+ * RTCPeerConnections of the init script (`window.__sfNet`).
  */
 
 export interface Counters {
@@ -71,8 +71,8 @@ export class CdpCounters {
       elements: document.getElementsByTagName('*').length,
       net:
         (
-          window as unknown as { __fsNet?: { counts(): { sockets: number; peers: number } } }
-        ).__fsNet?.counts() ?? null,
+          window as unknown as { __sfNet?: { counts(): { sockets: number; peers: number } } }
+        ).__sfNet?.counts() ?? null,
     }));
     const counters: Counters = {
       jsHeapUsed: metric('JSHeapUsedSize'),

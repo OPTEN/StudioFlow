@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { LIMITS, formatBytes, type AssetDto } from '@flowstudio/scene-model';
+import { LIMITS, formatBytes, type AssetDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
@@ -35,7 +35,7 @@ export const MEDIA_POPOVER = 'media';
  * directly.
  */
 @Component({
-  selector: 'fs-media-popover',
+  selector: 'sf-media-popover',
   imports: [ConfirmBoxComponent, IconComponent, InlineEditComponent, PopoverDirective],
   templateUrl: './media-popover.component.html',
   styleUrl: './media-popover.component.scss',

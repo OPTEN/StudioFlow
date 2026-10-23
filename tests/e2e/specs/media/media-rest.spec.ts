@@ -394,7 +394,7 @@ test.describe('MEDIA', () => {
           'Host: localhost',
           'Content-Type: multipart/form-data; boundary=----x',
           `Content-Length: ${bytes}`,
-          'X-FlowStudio: 1',
+          'X-StudioFlow: 1',
           `Cookie: ${api.cookie}`,
           'Connection: close',
           '',

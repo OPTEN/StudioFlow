@@ -32,7 +32,7 @@ import { dragHasFiles } from './upload-validation';
  * on the dock are uploaded.
  */
 @Component({
-  selector: 'fs-sources-dock',
+  selector: 'sf-sources-dock',
   imports: [
     AddSourcePopoverComponent,
     DockFrameComponent,

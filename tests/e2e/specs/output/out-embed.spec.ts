@@ -15,7 +15,7 @@ import { t } from '../../support/tags';
 /**
  * The output page in the places it is used: inside an iframe of the proxy product, in frames of every shape, on a
  * transparent background for overlays, with a light page weight and silent (docs/testing.md E2E-OUT-03, -04, -16, -18,
- * -24). The iframes sit on the fake origin https://embed.test, which FLOWSTUDIO_FRAME_ANCESTORS of the test stack lists.
+ * -24). The iframes sit on the fake origin https://embed.test, which STUDIOFLOW_FRAME_ANCESTORS of the test stack lists.
  */
 
 const SIZES: Array<{ name: string; width: number; height: number }> = [
@@ -59,7 +59,7 @@ test.describe('OUT embedding', () => {
           (expected) =>
             new Promise<number>((resolve) => {
               let count = 0;
-              const stage = document.querySelector('.fs-r-stage') as HTMLElement;
+              const stage = document.querySelector('.sf-r-stage') as HTMLElement;
               const check = () => {
                 const box = stage.getBoundingClientRect();
                 const ok = Math.abs(box.width - expected.width) <= 1 && Math.abs(box.height - expected.height) <= 1;
@@ -143,7 +143,7 @@ test.describe('OUT embedding', () => {
         expect(await retina.output.page.evaluate(() => window.devicePixelRatio)).toBe(2);
       }
 
-      // Not allowed: an origin that FLOWSTUDIO_FRAME_ANCESTORS does not list gets no output.
+      // Not allowed: an origin that STUDIOFLOW_FRAME_ANCESTORS does not list gets no output.
       const context = await newUiContext(browser);
       onCleanup(() => context.close());
       const foreign = await OutputPage.embed(context, production, { origin: FOREIGN_ORIGIN, waitForFrame: false, size: { width: 640, height: 360 } });
@@ -191,9 +191,9 @@ test.describe('OUT embedding', () => {
       const computed = await frame.evaluate(() => ({
         html: getComputedStyle(document.documentElement).backgroundColor,
         body: getComputedStyle(document.body).backgroundColor,
-        viewport: getComputedStyle(document.querySelector('.fs-r-viewport')!).backgroundColor,
-        stage: getComputedStyle(document.querySelector('.fs-r-stage')!).backgroundColor,
-        layer: getComputedStyle(document.querySelector('.fs-r-layer')!).backgroundColor,
+        viewport: getComputedStyle(document.querySelector('.sf-r-viewport')!).backgroundColor,
+        stage: getComputedStyle(document.querySelector('.sf-r-stage')!).backgroundColor,
+        layer: getComputedStyle(document.querySelector('.sf-r-layer')!).backgroundColor,
         isTransparent: document.documentElement.classList.contains('is-transparent'),
       }));
       for (const [name, value] of Object.entries(computed).filter(([key]) => key !== 'isTransparent')) expect(value, `${name} background`).toBe('rgba(0, 0, 0, 0)');
@@ -291,7 +291,7 @@ test.describe('OUT embedding', () => {
         if (entry) entry.bytes = event.encodedDataLength;
       });
       await page.goto(outputPath(production));
-      await expect.poll(() => page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toContain(DE.slateStandby);
       await sleep(4000); // livekit-client is loaded after the first frame
       const all = [...requests.values()];
       const counted = all.filter((entry) => ['Document', 'Script', 'Stylesheet'].includes(entry.type));
@@ -329,7 +329,7 @@ test.describe('OUT embedding', () => {
       await sleep(3000);
       const frame = await output.frame();
       const facts = await frame.evaluate(() => {
-        const media = (window as unknown as { __fsMedia?: { userMediaCalls: unknown[]; displayCalls: number } }).__fsMedia;
+        const media = (window as unknown as { __sfMedia?: { userMediaCalls: unknown[]; displayCalls: number } }).__sfMedia;
         return {
           videos: [...document.querySelectorAll('video')].map((video) => ({ muted: video.muted, volume: video.volume, tracksWithAudio: ((video.srcObject as MediaStream | null)?.getAudioTracks().length ?? 0) })),
           audioElements: document.querySelectorAll('audio').length,

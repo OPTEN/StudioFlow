@@ -24,11 +24,11 @@ export const SPLITTER_STEP_LARGE_PX = 64;
  * listeners outside Angular's template bindings; only the behaviour decides what to update.
  *
  * ```html
- * <div class="c-splitter" [fsSplitter]="behavior" orientation="vertical" aria-label="Grösse von Preview und Program"></div>
+ * <div class="c-splitter" [sfSplitter]="behavior" orientation="vertical" aria-label="Grösse von Preview und Program"></div>
  * ```
  */
 @Directive({
-  selector: '[fsSplitter]',
+  selector: '[sfSplitter]',
   host: {
     role: 'separator',
     tabindex: '0',
@@ -40,7 +40,7 @@ export const SPLITTER_STEP_LARGE_PX = 64;
 })
 export class SplitterDirective {
   /** What the splitter resizes. */
-  readonly fsSplitter = input.required<SplitterBehavior>();
+  readonly sfSplitter = input.required<SplitterBehavior>();
   /** `vertical`: moves along x; `horizontal`: moves along y. */
   readonly orientation = input<'vertical' | 'horizontal'>('vertical');
   /** Disables pointer and keyboard resizing (e.g. on stacked layouts). */
@@ -73,7 +73,7 @@ export class SplitterDirective {
     if (event.button !== 0 || this.splitterDisabled() || this.drag) {
       return;
     }
-    const run = this.fsSplitter().begin();
+    const run = this.sfSplitter().begin();
     if (!run) {
       return;
     }
@@ -97,7 +97,7 @@ export class SplitterDirective {
       return;
     }
     event.preventDefault();
-    this.fsSplitter().reset();
+    this.sfSplitter().reset();
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
@@ -106,7 +106,7 @@ export class SplitterDirective {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      this.fsSplitter().reset();
+      this.sfSplitter().reset();
       return;
     }
     const step = event.shiftKey ? SPLITTER_STEP_LARGE_PX : SPLITTER_STEP_PX;
@@ -118,7 +118,7 @@ export class SplitterDirective {
       return;
     }
     event.preventDefault();
-    const run = this.fsSplitter().begin();
+    const run = this.sfSplitter().begin();
     if (!run) {
       return;
     }

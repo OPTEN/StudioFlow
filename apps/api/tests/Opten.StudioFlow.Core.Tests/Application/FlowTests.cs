@@ -1,8 +1,8 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 public sealed class ProductionCoordinatorTests : IDisposable
 {
@@ -28,10 +28,10 @@ public sealed class ProductionCoordinatorTests : IDisposable
     {
         var before = harness.Runtime.Revision;
 
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Coordinator.ExecuteAsync(harness.Production.Id, context =>
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Coordinator.ExecuteAsync(harness.Production.Id, context =>
         {
             context.Emit(r => new RevisionOnlyEvent(r));
-            throw FlowStudioException.NotFound("X");
+            throw StudioFlowException.NotFound("X");
         }, CancellationToken.None));
 
         Assert.Empty(harness.Events);
@@ -57,7 +57,7 @@ public sealed class ProductionCoordinatorTests : IDisposable
 
     [Fact]
     public async Task ExecuteAsync_UnknownProduction_IsNotFound() =>
-        Assert.Equal(ErrorKind.NotFound, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Coordinator.ExecuteAsync("prd_unknown", _ => Task.CompletedTask, CancellationToken.None))).Kind);
+        Assert.Equal(ErrorKind.NotFound, (await Assert.ThrowsAsync<StudioFlowException>(() => harness.Coordinator.ExecuteAsync("prd_unknown", _ => Task.CompletedTask, CancellationToken.None))).Kind);
 
     [Fact]
     public async Task ExecuteAsync_ParallelMutations_AreSerializedAndOrdered()
@@ -159,7 +159,7 @@ public sealed class SwitchingFlowTests : IDisposable
 
     [Fact]
     public async Task AcknowledgeIncident_Unknown_IsNotFound() =>
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, "inc_none", CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, "inc_none", CancellationToken.None));
 
     public void Dispose() => harness.Dispose();
 }
@@ -356,8 +356,8 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(SourceStatus.Blocked, harness.Source($"{device.Id}/camera").Status);
         Assert.Single(harness.Events.OfType<IncidentRemovedEvent>());
         Assert.Contains("K1 Handy 1 gesperrt", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.IssueTokenAsync(identity, CancellationToken.None));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.IssueTokenAsync(identity, CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None));
     }
 
     [Fact]
@@ -399,7 +399,7 @@ public sealed class DeviceFlowTests : IDisposable
 
         var slot = await harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Screen), CancellationToken.None);
         await harness.Devices.ReleaseSlotAsync(identity, slot.Slot, CancellationToken.None);
-        var unknown = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.ReleaseSlotAsync(identity, "screen-7", CancellationToken.None));
+        var unknown = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.ReleaseSlotAsync(identity, "screen-7", CancellationToken.None));
 
         Assert.Equal(new DeviceSlotDto("screen-2", "S2", SourceKind.Screen), slot);
         Assert.Equal(SourceStatus.Connecting, harness.Source($"{identity.DeviceId}/screen-2").Status);
@@ -413,9 +413,9 @@ public sealed class DeviceFlowTests : IDisposable
     {
         var (_, identity) = await harness.PairPhoneAsync();
 
-        var screen = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Screen), CancellationToken.None));
-        var camera = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Camera), CancellationToken.None));
-        var release = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.ReleaseSlotAsync(identity, "camera", CancellationToken.None));
+        var screen = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Screen), CancellationToken.None));
+        var camera = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.AllocateSlotAsync(identity, new AllocateSlotRequest(SourceKind.Camera), CancellationToken.None));
+        var release = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.ReleaseSlotAsync(identity, "camera", CancellationToken.None));
 
         Assert.Equal(ErrorCodes.ValidationFailed, screen.Code);
         Assert.Equal(ErrorCodes.LimitReached, camera.Code);
@@ -487,8 +487,8 @@ public sealed class DeviceFlowTests : IDisposable
     {
         var (device, _) = await LiveDeviceAsync("c1");
 
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Reshare, "camera", null), CancellationToken.None));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, new string('x', 141)), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Reshare, "camera", null), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, new string('x', 141)), CancellationToken.None));
         var command = await harness.DeviceAdmin.SendCommandAsync(harness.Production.Id, device.Id, new DeviceCommandRequest(DeviceCommandKind.Message, null, " In 10 s live "), CancellationToken.None);
 
         Assert.Equal("In 10 s live", command.Text);
@@ -524,7 +524,7 @@ public sealed class PairingFlowTests : IDisposable
 
         Assert.Equal(first.Id, again.Id);
         Assert.NotEqual(first.Id, renewed.Id);
-        Assert.StartsWith("https://fs.example/join/i/", first.Url, StringComparison.Ordinal);
+        Assert.StartsWith("https://sf.example/join/i/", first.Url, StringComparison.Ordinal);
         Assert.Contains(harness.Events, e => e is InviteRemovedEvent r && r.InviteId == first.Id);
     }
 
@@ -551,13 +551,13 @@ public sealed class PairingFlowTests : IDisposable
         var invite = await harness.Pairing.CreateInviteAsync(harness.Production.Id, new CreateInviteRequest(InviteKind.LaptopLink), CancellationToken.None);
         await harness.Pairing.RedeemAsync(Token(invite), new RedeemInviteRequest("client-1", "Lea", DeviceKind.Laptop, "Mac"), CancellationToken.None);
 
-        var other = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RedeemAsync(Token(invite), new RedeemInviteRequest("client-2", "Lea", DeviceKind.Laptop, "Mac"), CancellationToken.None));
+        var other = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RedeemAsync(Token(invite), new RedeemInviteRequest("client-2", "Lea", DeviceKind.Laptop, "Mac"), CancellationToken.None));
         harness.Clock.Advance(TimeSpan.FromMinutes(6));
-        var late = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RedeemAsync(Token(invite), new RedeemInviteRequest("client-1", "Lea", DeviceKind.Laptop, "Mac"), CancellationToken.None));
+        var late = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RedeemAsync(Token(invite), new RedeemInviteRequest("client-1", "Lea", DeviceKind.Laptop, "Mac"), CancellationToken.None));
 
         Assert.Equal(ErrorCodes.PairingExpired, other.Code);
         Assert.Equal(ErrorCodes.PairingExpired, late.Code);
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RedeemAsync("unknown-token", new RedeemInviteRequest("c", null, DeviceKind.Phone, "x"), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RedeemAsync("unknown-token", new RedeemInviteRequest("c", null, DeviceKind.Phone, "x"), CancellationToken.None));
     }
 
     [Theory]
@@ -565,7 +565,7 @@ public sealed class PairingFlowTests : IDisposable
     [InlineData("has space", DeviceKind.Phone)]
     [InlineData("ok", (DeviceKind)7)]
     public async Task Redeem_InvalidRequest_IsValidationError(string clientId, DeviceKind kind) =>
-        Assert.Equal(ErrorKind.Validation, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RedeemAsync("x", new RedeemInviteRequest(clientId, null, kind, "p"), CancellationToken.None))).Kind);
+        Assert.Equal(ErrorKind.Validation, (await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RedeemAsync("x", new RedeemInviteRequest(clientId, null, kind, "p"), CancellationToken.None))).Kind);
 
     [Fact]
     public async Task Knock_ApprovedThenPolled_ReturnsSameCredentialsRepeatedly()
@@ -582,7 +582,7 @@ public sealed class PairingFlowTests : IDisposable
         Assert.Equal(device.Id, first.Credentials!.DeviceId);
         Assert.Equal(PairingMethod.Code, device.PairingMethod);
         Assert.Equal(PairingRequestStatus.Expired, harness.Pairing.Poll(knock.RequestId, "wrong").Status);
-        Assert.Equal(ErrorCodes.NotFound, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None))).Code);
+        Assert.Equal(ErrorCodes.NotFound, (await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None))).Code);
         Assert.Single(harness.Data.Devices);
         Assert.Contains(harness.Events, e => e is PairingRequestRemovedEvent { Outcome: PairingRequestStatus.Approved });
     }
@@ -593,7 +593,7 @@ public sealed class PairingFlowTests : IDisposable
         var knock = await harness.Pairing.CreateRequestAsync(new CreatePairingRequest("Laptop Lea", DeviceKind.Laptop, "Windows"), CancellationToken.None);
         harness.Clock.Advance(harness.PairingOptions.RequestTtl);
 
-        var error = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None));
+        var error = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.ApproveAsync(harness.Production.Id, knock.RequestId, CancellationToken.None));
 
         Assert.Equal(ErrorCodes.PairingExpired, error.Code);
     }
@@ -646,7 +646,7 @@ public sealed class PairingFlowTests : IDisposable
         var other = Production.Create("Andere", "andere", isActive: false, Build.T0);
         harness.Data.Productions.Add(other);
 
-        Assert.Equal(ErrorKind.NotFound, (await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.ApproveAsync(other.Id, knock.RequestId, CancellationToken.None))).Kind);
+        Assert.Equal(ErrorKind.NotFound, (await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.ApproveAsync(other.Id, knock.RequestId, CancellationToken.None))).Kind);
     }
 
     [Fact]
@@ -698,8 +698,8 @@ public sealed class PairingFlowTests : IDisposable
         await harness.Pairing.RevokeInviteAsync(harness.Production.Id, phone.Id, CancellationToken.None);
 
         Assert.Equal(2, harness.Events.OfType<InviteUpsertedEvent>().Count());
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RevokeInviteAsync(harness.Production.Id, "inv_none", CancellationToken.None));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Pairing.RedeemAsync(Token(phone), new RedeemInviteRequest("c", null, DeviceKind.Phone, "x"), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RevokeInviteAsync(harness.Production.Id, "inv_none", CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Pairing.RedeemAsync(Token(phone), new RedeemInviteRequest("c", null, DeviceKind.Phone, "x"), CancellationToken.None));
     }
 
     public void Dispose() => harness.Dispose();
@@ -715,11 +715,11 @@ public sealed class OutputFlowTests : IDisposable
         var key = harness.Production.OutputKey;
 
         Assert.Equal(harness.Production.Id, (await harness.Outputs.AuthorizeAsync("webinar", key, null, CancellationToken.None)).ProductionId);
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Outputs.AuthorizeAsync("webinar", key + "x", null, CancellationToken.None));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Outputs.AuthorizeAsync("other", key, null, CancellationToken.None));
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Outputs.AuthorizeAsync("../x", key, null, CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.AuthorizeAsync("webinar", key + "x", null, CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.AuthorizeAsync("other", key, null, CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.AuthorizeAsync("../x", key, null, CancellationToken.None));
         await harness.Outputs.UpdateAccessAsync(harness.Production.Id, new UpdateOutputAccessRequest(["10.0.0.0/8"]), CancellationToken.None);
-        await Assert.ThrowsAsync<FlowStudioException>(() => harness.Outputs.AuthorizeAsync("webinar", key, System.Net.IPAddress.Parse("192.168.1.1"), CancellationToken.None));
+        await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.AuthorizeAsync("webinar", key, System.Net.IPAddress.Parse("192.168.1.1"), CancellationToken.None));
         Assert.NotNull(await harness.Outputs.AuthorizeAsync("webinar", key, System.Net.IPAddress.Parse("10.1.1.1"), CancellationToken.None));
     }
 
@@ -747,7 +747,7 @@ public sealed class OutputFlowTests : IDisposable
 
         Assert.Equal(["o1"], harness.Publisher.Aborted);
         Assert.Equal(["output_webinar_abc"], harness.Rooms.Removed);
-        Assert.Equal($"https://fs.example/o/webinar?k={harness.Production.OutputKey}", settings.Url);
+        Assert.Equal($"https://sf.example/o/webinar?k={harness.Production.OutputKey}", settings.Url);
         Assert.Equal(OutputState.None, harness.Events.OfType<OutputStatusChangedEvent>().Last().Status.State);
     }
 

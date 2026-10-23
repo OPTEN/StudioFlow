@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { SourceAvailability, SourceMediaProvider } from '@flowstudio/scene-renderer';
+import type { SourceAvailability, SourceMediaProvider } from '@studioflow/scene-renderer';
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 

@@ -11,7 +11,7 @@ export const E2E_DIR = path.resolve(__dirname, '..');
 export const REPO_ROOT = path.resolve(E2E_DIR, '..', '..');
 
 /** Compose project of the default stack (no E2E_STACK / E2E_PROJECT). */
-export const DEFAULT_PROJECT = 'fs-e2e';
+export const DEFAULT_PROJECT = 'sf-e2e';
 /** Numbered stacks E2E_STACK=1..MAX_STACK run side by side on one machine (README, "Parallel stacks"). */
 export const MAX_STACK = 4;
 
@@ -19,7 +19,7 @@ export const MAX_STACK = 4;
 export interface StackSettings {
   /** The N of E2E_STACK, undefined for the default stack or a hand-made E2E_PROJECT. */
   stack: number | undefined;
-  /** Compose project: container names `<project>-<service>-1`, network `<project>_flowstudio`, volumes `<project>_<name>`. */
+  /** Compose project: container names `<project>-<service>-1`, network `<project>_studioflow`, volumes `<project>_<name>`. */
   project: string;
   httpPort: number;
   httpsPort: number;
@@ -41,10 +41,10 @@ export interface StackSettings {
  * 172.31.250.0/24) and from each other:
  *
  *   N  project     https http rtc tcp/udp api   livekit postgres subnet
- *   1  fs-e2e-1    8491  8091 7901/7902  18091 17891   15491    172.31.201.0/24
- *   2  fs-e2e-2    8492  8092 7903/7904  18092 17892   15492    172.31.202.0/24
- *   3  fs-e2e-3    8493  8093 7905/7906  18093 17893   15493    172.31.203.0/24
- *   4  fs-e2e-4    8494  8094 7907/7908  18094 17894   15494    172.31.204.0/24
+ *   1  sf-e2e-1    8491  8091 7901/7902  18091 17891   15491    172.31.201.0/24
+ *   2  sf-e2e-2    8492  8092 7903/7904  18092 17892   15492    172.31.202.0/24
+ *   3  sf-e2e-3    8493  8093 7905/7906  18093 17893   15493    172.31.203.0/24
+ *   4  sf-e2e-4    8494  8094 7907/7908  18094 17894   15494    172.31.204.0/24
  */
 export function numberedStack(n: number): StackSettings {
   if (!Number.isInteger(n) || n < 1 || n > MAX_STACK) throw new Error(`E2E_STACK must be an integer from 1 to ${MAX_STACK}, got ${n}`);
@@ -88,17 +88,17 @@ function portOf(env: NodeJS.ProcessEnv, name: string, fallback: number): number 
 /**
  * The stack this process works with, from the environment (a pure function, so the runner and every worker agree):
  * `E2E_STACK=N` selects a numbered set, each explicit variable overrides one value of it, and without any of them
- * the defaults of the single-stack setup apply unchanged. `E2E_PROJECT=fs-e2e-N` (N = 1..4) alone selects the numbered
+ * the defaults of the single-stack setup apply unchanged. `E2E_PROJECT=sf-e2e-N` (N = 1..4) alone selects the numbered
  * set as well, so a project named like a numbered stack never runs on the ports of another stack.
  *
- *   E2E_PROJECT  compose project (default fs-e2e)
+ *   E2E_PROJECT  compose project (default sf-e2e)
  *   E2E_HTTPS_PORT, E2E_HTTP_PORT, E2E_API_PORT, E2E_LIVEKIT_PORT, E2E_POSTGRES_PORT  host ports
- *   E2E_RTC_TCP_PORT, E2E_RTC_UDP_PORT  LiveKit media ports (FLOWSTUDIO_RTC_TCP_PORT / FLOWSTUDIO_RTC_UDP_PORT)
+ *   E2E_RTC_TCP_PORT, E2E_RTC_UDP_PORT  LiveKit media ports (STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT)
  *   E2E_SUBNET   /24 of the compose network, E2E_OPS_SUBNET the one of the OPS scratch stack
  */
 export function resolveStackSettings(env: NodeJS.ProcessEnv = process.env): StackSettings {
   const rawStack = env['E2E_STACK']?.trim();
-  const projectStack = /^fs-e2e-([1-4])$/.exec(env['E2E_PROJECT']?.trim() ?? '')?.[1];
+  const projectStack = /^sf-e2e-([1-4])$/.exec(env['E2E_PROJECT']?.trim() ?? '')?.[1];
   const base = rawStack ? numberedStack(Number(rawStack)) : projectStack ? numberedStack(Number(projectStack)) : DEFAULT_SETTINGS;
   const project = env['E2E_PROJECT']?.trim() || base.project;
   // Compose project names: lower-case letters, digits, "-" and "_", starting with a letter or digit.
@@ -124,7 +124,7 @@ export function resolveStackSettings(env: NodeJS.ProcessEnv = process.env): Stac
 export const SETTINGS: StackSettings = resolveStackSettings();
 /** Compose project of the stack under test. */
 export const PROJECT = SETTINGS.project;
-/** True for the unchanged single-stack setup (fs-e2e): its files keep their historical locations. */
+/** True for the unchanged single-stack setup (sf-e2e): its files keep their historical locations. */
 export const IS_DEFAULT_PROJECT = PROJECT === DEFAULT_PROJECT;
 
 /** Generated, git-ignored environment file with throwaway test credentials (`.env.e2e`, `.env.e2e.<project>`). */
@@ -139,7 +139,7 @@ export function containerNameOf(service: string, project: string = PROJECT): str
   return `${project}-${service}-1`;
 }
 export function networkNameOf(project: string = PROJECT): string {
-  return `${project}_flowstudio`;
+  return `${project}_studioflow`;
 }
 export function volumeNameOf(name: string, project: string = PROJECT): string {
   return `${project}_${name}`;
@@ -165,7 +165,7 @@ export const TEST_LIVEKIT = {
 export const TEST_POSTGRES_PASSWORD = 'e2ePostgresPassw0rd2026abcdefghij';
 
 export interface StackConfig {
-  /** Compose project of this stack (`fs-e2e`, `fs-e2e-2`, ...). */
+  /** Compose project of this stack (`sf-e2e`, `sf-e2e-2`, ...). */
   project: string;
   /** https origin of Caddy, e.g. https://localhost or https://localhost:8492 */
   baseURL: string;
@@ -217,26 +217,26 @@ export function stackConfig(): StackConfig {
   if (!fs.existsSync(ENV_FILE)) throw new Error(`${ENV_FILE} does not exist: global setup has not run`);
   const env = parseEnvFile(ENV_FILE);
   const httpsPort = Number(env['E2E_HTTPS_PORT'] ?? SETTINGS.httpsPort);
-  const host = env['FLOWSTUDIO_DOMAIN'] ?? 'localhost';
-  const subnet = env['FLOWSTUDIO_SUBNET'] ?? SETTINGS.subnet;
+  const host = env['STUDIOFLOW_DOMAIN'] ?? 'localhost';
+  const subnet = env['STUDIOFLOW_SUBNET'] ?? SETTINGS.subnet;
   const prefix = subnet.split('/')[0]!.split('.').slice(0, 3).join('.');
   cached = {
     project: PROJECT,
-    baseURL: env['FLOWSTUDIO_PUBLIC_BASE_URL'] || originFor(host, httpsPort),
+    baseURL: env['STUDIOFLOW_PUBLIC_BASE_URL'] || originFor(host, httpsPort),
     host,
     httpsPort,
     httpPort: Number(env['E2E_HTTP_PORT'] ?? SETTINGS.httpPort),
-    rtcTcpPort: Number(env['FLOWSTUDIO_RTC_TCP_PORT'] ?? SETTINGS.rtcTcpPort),
-    rtcUdpPort: Number(env['FLOWSTUDIO_RTC_UDP_PORT'] ?? SETTINGS.rtcUdpPort),
+    rtcTcpPort: Number(env['STUDIOFLOW_RTC_TCP_PORT'] ?? SETTINGS.rtcTcpPort),
+    rtcUdpPort: Number(env['STUDIOFLOW_RTC_UDP_PORT'] ?? SETTINGS.rtcUdpPort),
     apiDirect: `http://127.0.0.1:${env['E2E_API_PORT'] ?? SETTINGS.apiPort}`,
     livekitAdmin: `http://127.0.0.1:${env['E2E_LIVEKIT_PORT'] ?? SETTINGS.livekitPort}`,
     postgresPort: Number(env['E2E_POSTGRES_PORT'] ?? SETTINGS.postgresPort),
-    nodeIp: env['FLOWSTUDIO_NODE_IP'] ?? '127.0.0.1',
+    nodeIp: env['STUDIOFLOW_NODE_IP'] ?? '127.0.0.1',
     subnet,
     admin: { username: env['ADMIN__USERNAME'] ?? TEST_ADMIN.username, password: env['ADMIN__PASSWORD'] ?? TEST_ADMIN.password },
     livekit: { apiKey: env['LIVEKIT_API_KEY'] ?? TEST_LIVEKIT.apiKey, apiSecret: env['LIVEKIT_API_SECRET'] ?? TEST_LIVEKIT.apiSecret },
     postgresPassword: env['POSTGRES_PASSWORD'] ?? TEST_POSTGRES_PASSWORD,
-    frameAncestors: env['FLOWSTUDIO_FRAME_ANCESTORS'] ?? '',
+    frameAncestors: env['STUDIOFLOW_FRAME_ANCESTORS'] ?? '',
     ips: {
       livekit: env['E2E_IP_LIVEKIT'] ?? `${prefix}.10`,
       api: env['E2E_IP_API'] ?? `${prefix}.11`,
@@ -252,25 +252,25 @@ export function stackConfig(): StackConfig {
 
 /**
  * Content of the generated environment file. The ports, the subnet and the fixed container addresses come from the
- * stack settings (E2E_STACK / E2E_* variables); LiveKit's media ports are written as FLOWSTUDIO_RTC_TCP_PORT and
- * FLOWSTUDIO_RTC_UDP_PORT, the names docker-compose.yml reads (host and container port are the same number).
+ * stack settings (E2E_STACK / E2E_* variables); LiveKit's media ports are written as STUDIOFLOW_RTC_TCP_PORT and
+ * STUDIOFLOW_RTC_UDP_PORT, the names docker-compose.yml reads (host and container port are the same number).
  */
 export function renderEnvFile(nodeIp: string, overrides: Record<string, string> = {}, settings: StackSettings = SETTINGS): string {
-  const subnet = overrides['FLOWSTUDIO_SUBNET'] ?? settings.subnet;
+  const subnet = overrides['STUDIOFLOW_SUBNET'] ?? settings.subnet;
   const prefix = subnet.split('/')[0]!.split('.').slice(0, 3).join('.');
   const values: Record<string, string> = {
-    FLOWSTUDIO_DOMAIN: 'localhost',
-    FLOWSTUDIO_TLS_MODE: 'internal',
+    STUDIOFLOW_DOMAIN: 'localhost',
+    STUDIOFLOW_TLS_MODE: 'internal',
     // The same site under the IPv4 address: WebKit on Windows resolves "localhost" to ::1, where Docker Desktop accepts
     // the connection and never answers; https://127.0.0.1 reaches the stack (webkit project).
-    FLOWSTUDIO_EXTRA_HOSTS: '127.0.0.1',
-    FLOWSTUDIO_NODE_IP: nodeIp,
-    FLOWSTUDIO_SUBNET: subnet,
-    FLOWSTUDIO_RTC_TCP_PORT: String(settings.rtcTcpPort),
-    FLOWSTUDIO_RTC_UDP_PORT: String(settings.rtcUdpPort),
+    STUDIOFLOW_EXTRA_HOSTS: '127.0.0.1',
+    STUDIOFLOW_NODE_IP: nodeIp,
+    STUDIOFLOW_SUBNET: subnet,
+    STUDIOFLOW_RTC_TCP_PORT: String(settings.rtcTcpPort),
+    STUDIOFLOW_RTC_UDP_PORT: String(settings.rtcUdpPort),
     // 'self' is always allowed by Caddy; the UI tests embed the output on https://embed.test (fake origin served with
     // page.route), the embedding specs on https://embed.e2e.test.
-    FLOWSTUDIO_FRAME_ANCESTORS: 'https://embed.e2e.test https://embed.test',
+    STUDIOFLOW_FRAME_ANCESTORS: 'https://embed.e2e.test https://embed.test',
     ADMIN__USERNAME: TEST_ADMIN.username,
     ADMIN__PASSWORD: TEST_ADMIN.password,
     ADMIN__PASSWORDHASH: '',
@@ -292,7 +292,7 @@ export function renderEnvFile(nodeIp: string, overrides: Record<string, string> 
     ...overrides,
   };
   // The API builds absolute links (pairing, output) from this; Caddy keeps the Host header with the published port.
-  if (settings.httpsPort !== 443) values['FLOWSTUDIO_PUBLIC_BASE_URL'] = `https://localhost:${settings.httpsPort}`;
+  if (settings.httpsPort !== 443) values['STUDIOFLOW_PUBLIC_BASE_URL'] = `https://localhost:${settings.httpsPort}`;
   const lines = [
     `# Generated by tests/e2e/global-setup.ts - throwaway test values, never used outside the E2E stack (${settings.project}).`,
     ...Object.entries(values).map(([key, value]) => `${key}=${value}`),

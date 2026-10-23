@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>Minimal files with valid headers for the media type checks.</summary>
 public static class MediaSamples

@@ -68,7 +68,7 @@ test.describe('SRC stations', () => {
       await stations.get('K4')!.set('camera', 'live');
       await expect.poll(() => order(regie), { message: 'K4 is live now', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K5', 'K6', 'K4', 'K7']);
       // «Gesehen» on K3 removes the recovered rank.
-      await regie.page.locator('fs-status-line').getByRole('button', { name: 'Gesehen' }).click();
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Gesehen' }).click();
       await expect.poll(() => order(regie), { message: 'K3 after «Gesehen»', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
     },
   );

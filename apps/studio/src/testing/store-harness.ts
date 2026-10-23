@@ -6,7 +6,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import type { EnvironmentProviders, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { HUB, type ProductionEvent, type ProductionSnapshot } from '@flowstudio/scene-model';
+import { HUB, type ProductionEvent, type ProductionSnapshot } from '@studioflow/scene-model';
 import { csrfInterceptor } from '../app/core/api/csrf.interceptor';
 import { MEDIA_CLIENT_LOADER } from '../app/core/media/studio-media.service';
 import { ProductionStoreService } from '../app/core/state/production-store.service';

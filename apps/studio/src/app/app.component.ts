@@ -4,11 +4,11 @@ import { ToastHostComponent } from './shell/toast-host.component';
 
 /** Root component: the routed page and the toast live region (available on every page, also on the login). */
 @Component({
-  selector: 'fs-root',
+  selector: 'sf-root',
   imports: [RouterOutlet, ToastHostComponent],
   template: `
     <router-outlet />
-    <fs-toast-host />
+    <sf-toast-host />
   `,
   styles: `
     :host {

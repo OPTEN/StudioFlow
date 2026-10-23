@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Domain;
+namespace Opten.StudioFlow.Core.Tests.Domain;
 
 public sealed class SceneTests
 {
@@ -56,7 +56,7 @@ public sealed class SceneTests
     [Fact]
     public void AddItem_UnknownSource_IsValidationError()
     {
-        var error = Assert.Throws<FlowStudioException>(() => Scene.AddItem(Build.Add("dev_unknown1/camera"), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add("dev_unknown1/camera"), catalog));
 
         Assert.True(error.Errors!.ContainsKey("source"));
     }
@@ -64,7 +64,7 @@ public sealed class SceneTests
     [Fact]
     public void AddItem_GeometryOutOfBounds_ReportsEveryField()
     {
-        var error = Assert.Throws<FlowStudioException>(() => Scene.AddItem(new AddSceneItemRequest(Camera, -3841, 2161, 15, 2161, (ItemFit)9, 201), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(new AddSceneItemRequest(Camera, -3841, 2161, 15, 2161, (ItemFit)9, 201), catalog));
 
         Assert.Equal(["fit", "h", "radius", "w", "x", "y"], error.Errors!.Keys.Order(StringComparer.Ordinal));
     }
@@ -77,7 +77,7 @@ public sealed class SceneTests
             Scene.AddItem(Build.Add(Camera), catalog);
         }
 
-        var error = Assert.Throws<FlowStudioException>(() => Scene.AddItem(Build.Add(Camera), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add(Camera), catalog));
 
         Assert.Equal(ErrorCodes.LimitReached, error.Code);
         Assert.Equal(ErrorKind.Conflict, error.Kind);
@@ -103,7 +103,7 @@ public sealed class SceneTests
         }
         else
         {
-            Assert.Throws<FlowStudioException>(replace);
+            Assert.Throws<StudioFlowException>(replace);
         }
     }
 
@@ -155,7 +155,7 @@ public sealed class SceneTests
     [Fact]
     public void ReplaceItems_FallbackSameAsSource_IsInvalid()
     {
-        var error = Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems([Build.Item(Camera) with { OnLost = new LostBehaviorDto(3000, Camera) }], null, catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems([Build.Item(Camera) with { OnLost = new LostBehaviorDto(3000, Camera) }], null, catalog));
 
         Assert.True(error.Errors!.ContainsKey("items[0].onLost.fallbackSource"));
     }
@@ -173,7 +173,7 @@ public sealed class SceneTests
     {
         var item = Build.Item(Camera);
 
-        var error = Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems([item, item with { Source = Screen }], null, catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems([item, item with { Source = Screen }], null, catalog));
 
         Assert.True(error.Errors!.ContainsKey("items[1].id"));
     }
@@ -195,7 +195,7 @@ public sealed class SceneTests
     {
         var withoutPhone = new SourceCatalog([laptop], [image]);
 
-        Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems([Build.Item(Camera)], null, withoutPhone));
+        Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems([Build.Item(Camera)], null, withoutPhone));
     }
 
     [Fact]
@@ -203,14 +203,14 @@ public sealed class SceneTests
     {
         var items = Enumerable.Range(0, 33).Select(_ => Build.Item(Camera)).ToList();
 
-        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems(items, null, catalog)).Code);
+        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems(items, null, catalog)).Code);
     }
 
     [Fact]
     public void ReplaceItems_NullItemsOrNullEntry_AreInvalid()
     {
-        Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems(null, null, catalog));
-        Assert.Throws<FlowStudioException>(() => Scene.ReplaceItems([null!], null, catalog));
+        Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems(null, null, catalog));
+        Assert.Throws<StudioFlowException>(() => Scene.ReplaceItems([null!], null, catalog));
     }
 
     [Fact]
@@ -240,12 +240,12 @@ public sealed class SceneTests
     {
         var item = Scene.AddItem(Build.Add(Camera), catalog);
 
-        Assert.Throws<FlowStudioException>(() => Scene.UpdateItem(item.Id, item with { Source = "dev_gone1234/camera" }, catalog));
+        Assert.Throws<StudioFlowException>(() => Scene.UpdateItem(item.Id, item with { Source = "dev_gone1234/camera" }, catalog));
     }
 
     [Fact]
     public void UpdateItem_UnknownItem_IsNotFound() =>
-        Assert.Equal(ErrorKind.NotFound, Assert.Throws<FlowStudioException>(() => Scene.UpdateItem("itm_none", Build.Item(Camera), catalog)).Kind);
+        Assert.Equal(ErrorKind.NotFound, Assert.Throws<StudioFlowException>(() => Scene.UpdateItem("itm_none", Build.Item(Camera), catalog)).Kind);
 
     [Fact]
     public void RemoveItem_Existing_RemovesAndUnknownIsNotFound()
@@ -255,7 +255,7 @@ public sealed class SceneTests
         Scene.RemoveItem(item.Id);
 
         Assert.Empty(Scene.Items);
-        Assert.Throws<FlowStudioException>(() => Scene.RemoveItem(item.Id));
+        Assert.Throws<StudioFlowException>(() => Scene.RemoveItem(item.Id));
     }
 
     [Fact]
@@ -273,8 +273,8 @@ public sealed class SceneTests
         var video = Build.Video(production, codes: ["M1"]);
         var withVideo = new SourceCatalog([phone], [image, video]);
 
-        Assert.Throws<FlowStudioException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#12345", null)), withVideo));
-        Assert.Throws<FlowStudioException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#123456", video.Id)), withVideo));
+        Assert.Throws<StudioFlowException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#12345", null)), withVideo));
+        Assert.Throws<StudioFlowException>(() => Scene.Update(new UpdateSceneRequest(null, null, new SceneBackgroundDto("#123456", video.Id)), withVideo));
         Assert.True(Scene.Update(new UpdateSceneRequest("Neu", null, new SceneBackgroundDto("#123456", image.Id)), withVideo));
         Assert.Equal("Neu", Scene.Name);
     }

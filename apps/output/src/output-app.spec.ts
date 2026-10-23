@@ -1,6 +1,6 @@
-import { HUB, type OutputChangesDto, type OutputReport } from '@flowstudio/scene-model';
-import type { ResilientHubOptions } from '@flowstudio/realtime-client';
-import type { SceneRendererOptions } from '@flowstudio/scene-renderer';
+import { HUB, type OutputChangesDto, type OutputReport } from '@studioflow/scene-model';
+import type { ResilientHubOptions } from '@studioflow/realtime-client';
+import type { SceneRendererOptions } from '@studioflow/scene-renderer';
 import { ACCESS_RETRY_MS } from './access-guard';
 import type { OutputConfig, OutputFlags } from './config';
 import { NO_ACCESS_SLATE } from './slates';
@@ -458,8 +458,8 @@ describe('output app: optional parts', () => {
   it('exposes latency samples with ?latency=1', async () => {
     await boot({ latency: true });
     await flush(10);
-    expect(window.__flowstudioLatency).toEqual([]);
-    delete window.__flowstudioLatency;
+    expect(window.__studioflowLatency).toEqual([]);
+    delete window.__studioflowLatency;
   });
 
   it('reloads once after a reconnect to a new build, but not on air', async () => {

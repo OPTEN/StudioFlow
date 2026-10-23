@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-22T12:00:00+02:00",
-  "title": "Design System: FlowStudio",
+  "title": "Design System: StudioFlow",
   "extensions": {
     "colorMeta": {
       "ground": {
@@ -383,7 +383,7 @@
     "typographyMeta": {
       "brand": {
         "displayName": "Brand",
-        "purpose": "FlowStudio word mark in the header only."
+        "purpose": "StudioFlow word mark in the header only."
       },
       "title": {
         "displayName": "Title",
@@ -567,7 +567,7 @@
       "dockSideWidth": "320px (220px min, 42% max)",
       "splitterHitArea": "9px",
       "splitterKeys": "Arrow keys 16px, Shift 64px; Enter or double-click resets",
-      "persistence": "Layout and Studio-Modus stored per browser (localStorage keys flowstudio.layout, flowstudio.studio)"
+      "persistence": "Layout and Studio-Modus stored per browser (localStorage keys studioflow.layout, studioflow.studio)"
     }
   },
   "components": [

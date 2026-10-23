@@ -6,7 +6,7 @@ import { sleep } from './shell';
 
 /**
  * A Node implementation of the Regie's synchronisation rule (spec 6) on top of the product's own reducer
- * (`@flowstudio/scene-model`): apply an event when revision == local + 1, ignore <= local, on a gap or after a
+ * (`@studioflow/scene-model`): apply an event when revision == local + 1, ignore <= local, on a gap or after a
  * reconnect call Subscribe(local). Events that arrive while a Subscribe is pending are buffered and applied after it.
  */
 export class SyncClient {

@@ -1,4 +1,4 @@
-import type { LiveKitTokenDto } from '@flowstudio/scene-model';
+import type { LiveKitTokenDto } from '@studioflow/scene-model';
 import { ConnectionState, DisconnectReason, RoomEvent, type RoomOptions } from 'livekit-client';
 import type { Mock } from 'vitest';
 import { silentLogger } from './logger';

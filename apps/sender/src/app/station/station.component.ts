@@ -30,7 +30,7 @@ const UNREACHABLE_AFTER_MS = 5000;
  * tally frame, Regie messages, the technical check and the screens for blocked devices and replaced sessions.
  */
 @Component({
-  selector: 'fs-station',
+  selector: 'sf-station',
   imports: [
     ConnectionStatusComponent,
     IconComponent,

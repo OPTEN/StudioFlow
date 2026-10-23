@@ -1,4 +1,4 @@
-import { ITEM_BOUNDS, type CanvasRect, type CropDto } from '@flowstudio/scene-model';
+import { ITEM_BOUNDS, type CanvasRect, type CropDto } from '@studioflow/scene-model';
 import {
   MIN_DRAG_HEIGHT,
   MIN_DRAG_WIDTH,

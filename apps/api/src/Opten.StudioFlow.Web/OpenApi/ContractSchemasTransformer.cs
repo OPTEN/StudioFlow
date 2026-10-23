@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.OpenApi;
+namespace Opten.StudioFlow.Web.OpenApi;
 
 /// <summary>
-/// Adds the public types of <see cref="Opten.FlowStudio.Core.Contracts"/> that no REST endpoint references (SignalR-only
+/// Adds the public types of <see cref="Opten.StudioFlow.Core.Contracts"/> that no REST endpoint references (SignalR-only
 /// messages) to the OpenAPI components. The TypeScript contracts (packages/scene-model) are
 /// generated from this document, so REST and SignalR share one source of truth.
 /// </summary>

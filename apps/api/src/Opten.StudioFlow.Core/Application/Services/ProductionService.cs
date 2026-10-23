@@ -1,9 +1,9 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>Use cases of productions: list, create, activate, broadcast, switching, incidents, snapshot (spec 4.2, 5).</summary>
 public sealed class ProductionService(
@@ -32,7 +32,7 @@ public sealed class ProductionService(
     public async Task<ProductionSummaryDto> GetActiveAsync(CancellationToken cancellationToken)
     {
         await using var unit = data.Create();
-        var active = await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken) ?? throw FlowStudioException.NotFound("Eine aktive Produktion");
+        var active = await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken) ?? throw StudioFlowException.NotFound("Eine aktive Produktion");
         return Dtos.Summary(active);
     }
 
@@ -122,7 +122,7 @@ public sealed class ProductionService(
             {
                 if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
                 {
-                    throw FlowStudioException.NotFound("Die Produktion");
+                    throw StudioFlowException.NotFound("Die Produktion");
                 }
 
                 previous = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id;
@@ -192,7 +192,7 @@ public sealed class ProductionService(
             context =>
             {
                 var health = context.Runtime.Sources.Values.FirstOrDefault(h => string.Equals(h.Incident?.Id, incidentId, StringComparison.Ordinal))
-                    ?? throw FlowStudioException.NotFound("Die Meldung");
+                    ?? throw StudioFlowException.NotFound("Die Meldung");
                 health.Acknowledge(incidentId);
                 context.Emit(revision => new IncidentRemovedEvent(revision, incidentId));
                 return Task.CompletedTask;
@@ -205,7 +205,7 @@ public sealed class ProductionService(
         await using var unit = data.Create();
         if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
         {
-            throw FlowStudioException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Die Produktion");
         }
 
         return tokens.IssueViewerToken(productionId, StudioIdentityPrefix + EntityIds.RandomBase32(EntityIds.RandomLength), "Regie");

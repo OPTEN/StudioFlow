@@ -1,4 +1,4 @@
-import type { DeviceTelemetryDto, SourceDto, TallyState } from '@flowstudio/scene-model';
+import type { DeviceTelemetryDto, SourceDto, TallyState } from '@studioflow/scene-model';
 import { deviceFixture, incidentFixture, sourceFixture } from '../../../testing/fixtures';
 import {
   incidentSeconds,

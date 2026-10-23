@@ -1,5 +1,5 @@
 ---
-name: FlowStudio
+name: StudioFlow
 description: Web-Regie nach dem Vorbild von OBS für Webinare. Eine durchgehende Konsole auf Graphit, in der Farbe nur Zuständen gehört.
 colors:
   ground: "#0d1117"
@@ -248,7 +248,7 @@ components:
     height: "20px"
 ---
 
-# Design System: FlowStudio
+# Design System: StudioFlow
 
 ## Overview
 
@@ -310,7 +310,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 **Font delivery:** both families are self-hosted. The prototype loads them from `prototype/fonts/` with `@font-face`. These are variable latin woff2 files under the SIL Open Font License; the license texts sit next to them. Sofia Sans Semi Condensed is used at weights 400–700 and JetBrains Mono at 400–600. The Angular build ships the same files, with no external CDN, because the Regie runs in a LAN.
 
 ### Hierarchy
-- **Brand** (700, 16.5px, +0.01em): the "FlowStudio" word next to the mark in the header. It is the largest UI text.
+- **Brand** (700, 16.5px, +0.01em): the "StudioFlow" word next to the mark in the header. It is the largest UI text.
 - **Title** (600, 15px): monitor scene names. The pairing dock headings use the same step at 15.5px/700.
 - **Body** (400, 14px, line-height 1.4): default text and scene names (600, 14px).
 - **Control** (600, 13px): buttons, header chips, segmented controls and tabs (13–13.5px). Small buttons use 12.5px.

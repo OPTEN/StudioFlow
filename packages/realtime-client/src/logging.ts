@@ -27,7 +27,7 @@ export function consoleLogger(minimum: LogLevel): ILogger {
       if (level < minimum || level === LogLevel.None) {
         return;
       }
-      const line = `[FlowStudio realtime] ${message}`;
+      const line = `[StudioFlow realtime] ${message}`;
       if (level >= LogLevel.Error) {
         console.error(line);
       } else if (level === LogLevel.Warning) {

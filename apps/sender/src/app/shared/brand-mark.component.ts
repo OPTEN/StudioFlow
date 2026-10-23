@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-/** The FlowStudio mark and word, as in the Regie header. */
+/** The StudioFlow mark and word, as in the Regie header. */
 @Component({
-  selector: 'fs-brand-mark',
+  selector: 'sf-brand-mark',
   template: `
     <svg class="c-brand__mark" viewBox="0 0 22 18" aria-hidden="true" focusable="false">
       <rect
@@ -17,7 +17,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       />
       <rect x="7" y="7" width="14" height="10" rx="1.5" fill="currentColor" />
     </svg>
-    <span class="c-brand__word">FlowStudio</span>
+    <span class="c-brand__word">StudioFlow</span>
   `,
   styles: `
     :host {

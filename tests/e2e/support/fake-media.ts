@@ -13,8 +13,8 @@ export const FAKE_MEDIA_ARGS = [
 
 export const CHROMIUM_ARGS = [
   ...FAKE_MEDIA_ARGS,
-  // getDisplayMedia() picks the tab titled "FlowStudio Timecode" without a picker (E2E_SCREEN_MODE=tab).
-  '--auto-select-tab-capture-source-by-title=FlowStudio Timecode',
+  // getDisplayMedia() picks the tab titled "StudioFlow Timecode" without a picker (E2E_SCREEN_MODE=tab).
+  '--auto-select-tab-capture-source-by-title=StudioFlow Timecode',
   // ICE host candidates with real addresses (no mDNS names) and loopback candidates.
   '--allow-loopback-in-peer-connection',
   // One --disable-features list (a second flag would replace the first). LocalNetworkAccessChecks: the embedding

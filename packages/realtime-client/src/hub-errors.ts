@@ -9,7 +9,7 @@
 const HUB_ERROR_CODE = /(?:^|HubException: )([a-z][a-z0-9_]*):/;
 
 /**
- * The FlowStudio error code (`ERROR_CODES`: `not_found`, `device_blocked`, `service_unavailable` …) of a rejected
+ * The StudioFlow error code (`ERROR_CODES`: `not_found`, `device_blocked`, `service_unavailable` …) of a rejected
  * hub invocation, or null for anything else (connection loss, timeouts, unexpected values).
  */
 export function hubErrorCode(error: unknown): string | null {

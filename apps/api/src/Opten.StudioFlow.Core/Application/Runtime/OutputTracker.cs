@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// Output consumer status of a production (spec 4.8): connected output hub pages, their addresses and the last report.

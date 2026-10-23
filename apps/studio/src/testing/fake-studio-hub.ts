@@ -1,8 +1,8 @@
 /**
  * Scriptable stand-in for the Regie hub (`ResilientHub` on /hubs/studio). Test-only.
  */
-import type { HubHandler, HubState } from '@flowstudio/realtime-client';
-import { HUB, type ProductionChangesDto } from '@flowstudio/scene-model';
+import type { HubHandler, HubState } from '@studioflow/realtime-client';
+import { HUB, type ProductionChangesDto } from '@studioflow/scene-model';
 import type { StudioHub } from '../app/core/state/studio-hub';
 
 /** Records a hub invocation. */

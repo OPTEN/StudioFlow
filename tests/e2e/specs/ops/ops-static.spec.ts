@@ -127,7 +127,7 @@ test.describe('OPS setup.sh', () => {
     // `docker compose down` would need the whole .env; the project only left a network and the built image behind.
     const leftovers = (await docker(['ps', '-aq', '--filter', `label=com.docker.compose.project=${OPS_HASH_PROJECT}`])).stdout.split(/\s+/).filter(Boolean);
     if (leftovers.length) await docker(['rm', '-f', ...leftovers]);
-    await docker(['network', 'rm', `${OPS_HASH_PROJECT}_flowstudio`]).catch(() => undefined);
+    await docker(['network', 'rm', `${OPS_HASH_PROJECT}_studioflow`]).catch(() => undefined);
     const volumes = (await docker(['volume', 'ls', '-q', '--filter', `label=com.docker.compose.project=${OPS_HASH_PROJECT}`])).stdout.split(/\s+/).filter(Boolean);
     if (volumes.length) await docker(['volume', 'rm', ...volumes]).catch(() => undefined);
     await docker(['image', 'rm', `${OPS_HASH_PROJECT}-api`]).catch(() => undefined);
@@ -156,16 +156,16 @@ test.describe('OPS setup.sh', () => {
     for (const run of runs) {
       const text = fs.readFileSync(run.file, 'utf8');
       const env = parseEnvFile(run.file);
-      expect(env['FLOWSTUDIO_DOMAIN']).toBe('localhost');
-      expect(env['FLOWSTUDIO_NODE_IP']).toBe('127.0.0.1');
-      expect(env['FLOWSTUDIO_TLS_MODE']).toBe('internal');
+      expect(env['STUDIOFLOW_DOMAIN']).toBe('localhost');
+      expect(env['STUDIOFLOW_NODE_IP']).toBe('127.0.0.1');
+      expect(env['STUDIOFLOW_TLS_MODE']).toBe('internal');
       expect(env['ADMIN__USERNAME']).toBe('admin');
-      expect(env['LIVEKIT_API_KEY'], 'the key is the non-secret id').toBe('flowstudio');
+      expect(env['LIVEKIT_API_KEY'], 'the key is the non-secret id').toBe('studioflow');
       expect(env['LIVEKIT_API_SECRET'], 'LiveKit secret: starts with a letter, at least 32 characters').toMatch(/^[A-Za-z][A-Za-z0-9]{31,}$/);
       expect(env['POSTGRES_PASSWORD'], 'database password').toMatch(/^[A-Za-z0-9]{32}$/);
       expect(env['ADMIN__PASSWORDHASH'], 'ASP.NET Identity v3 hash').toMatch(/^AQAAAA[A-Za-z0-9+/]{20,}={0,2}$/);
       expect(env['ADMIN__PASSWORD'] ?? '', 'no plain password next to the hash').toBe('');
-      expect(env['FLOWSTUDIO_HSTS_MAX_AGE'], 'internal mode: short HSTS').toBe('3600');
+      expect(env['STUDIOFLOW_HSTS_MAX_AGE'], 'internal mode: short HSTS').toBe('3600');
       expect(text, 'no known default or placeholder').not.toMatch(/changeme|password123|devkey|=example|=secret\b/i);
       expect(text, 'the generated password is not in the file').not.toContain(run.password);
     }
@@ -202,7 +202,7 @@ test.describe('OPS setup.sh', () => {
     const file = box.path('auto', '.env');
     const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file], { input: 'Auto-Passwort-2026-xyz\n' });
     expect(result.code, result.output.slice(-1500)).toBe(0);
-    const ip = parseEnvFile(file)['FLOWSTUDIO_NODE_IP']!;
+    const ip = parseEnvFile(file)['STUDIOFLOW_NODE_IP']!;
     expect(ip, 'a private IPv4').toMatch(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/);
     expect(ip, 'the address of the default route').toBe(await detectLanIPv4());
   });
@@ -234,7 +234,7 @@ test.describe('OPS setup.sh', () => {
     const file = box.path('emptydomain', '.env');
     const result = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file], { input: 'Passwort-2026-lang-genug\n' });
     expect(result.code, result.output.slice(-600)).toBe(0);
-    expect(parseEnvFile(file)['FLOWSTUDIO_DOMAIN'], 'the node IP is the domain').toBe('127.0.0.1');
+    expect(parseEnvFile(file)['STUDIOFLOW_DOMAIN'], 'the node IP is the domain').toBe('127.0.0.1');
 
     fs.mkdirSync(box.path('emptydomain-acme'));
     const acme = box.path('emptydomain-acme', '.env');
@@ -264,7 +264,7 @@ test.describe('OPS setup.sh', () => {
     expect(before['LIVEKIT_API_SECRET'], 'LiveKit secret kept').toBe(old['LIVEKIT_API_SECRET']);
     expect(before['POSTGRES_PASSWORD'], 'database password kept (PostgreSQL is initialised with it)').toBe(old['POSTGRES_PASSWORD']);
     expect(before['ADMIN__PASSWORD'], 'the new password was taken').toBe('Zweites-Passwort-2026');
-    expect(before['FLOWSTUDIO_FRAME_ANCESTORS']).toBe('https://embed.example.ch');
+    expect(before['STUDIOFLOW_FRAME_ANCESTORS']).toBe('https://embed.example.ch');
   });
 
   test('E2E-OPS-02 [setup.sh] TLS mode names equal those of .env.example and the compose file', t.p2, async () => {
@@ -366,7 +366,7 @@ test.describe('OPS admin hash path', () => {
 
   test('E2E-OPS-15 [image] hash-password reads the password from stdin, prints a salted Identity v3 hash and never echoes the password', t.p1, async () => {
     const password = 'Hash-Test-Passwort-2026';
-    const run = () => exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', IMAGE, 'Opten.FlowStudio.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
+    const run = () => exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', IMAGE, 'Opten.StudioFlow.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
     const [first, second] = [await run(), await run()];
     for (const result of [first, second]) {
       expect(result.code, result.output).toBe(0);
@@ -383,7 +383,7 @@ test.describe('OPS admin hash path', () => {
       'docker',
       [
         'run', '--rm', '--network', 'none',
-        '-e', `CONNECTIONSTRINGS__FLOWSTUDIO=Host=nowhere;Database=flowstudio;Username=flowstudio;Password=${config.postgresPassword}`,
+        '-e', `CONNECTIONSTRINGS__STUDIOFLOW=Host=nowhere;Database=studioflow;Username=studioflow;Password=${config.postgresPassword}`,
         '-e', `LIVEKIT__APIKEY=${config.livekit.apiKey}`,
         '-e', `LIVEKIT__APISECRET=${config.livekit.apiSecret}`,
         '-e', `ADMIN__USERNAME=${TEST_ADMIN.username}`,

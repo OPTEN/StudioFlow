@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Npgsql;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>
 /// GAP-32 / BUG-21: PostgreSQL down or silent → 503 <c>service_unavailable</c> within seconds (also for queued requests),
@@ -91,7 +91,7 @@ public sealed class DatabaseOutageTests(OutageApp app) : IClassFixture<OutageApp
             var first = await Task.WhenAll(
                 TimedAsync(() => admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", cancellation)),
                 TimedAsync(() => admin.Client.PatchJsonAsync($"/api/productions/{admin.ProductionId}/scenes/{snapshot.Scenes[0].Id}", new UpdateSceneRequest("Während", null, null))),
-                TimedAsync(() => app.Anonymous().PostAsJsonAsync("/api/auth/login", new LoginRequest(FlowStudioApp.AdminUser, FlowStudioApp.AdminPassword), ContractJson.Options, cancellation)));
+                TimedAsync(() => app.Anonymous().PostAsJsonAsync("/api/auth/login", new LoginRequest(StudioFlowApp.AdminUser, StudioFlowApp.AdminPassword), ContractJson.Options, cancellation)));
             var again = await TimedAsync(() => admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", cancellation));
             var ready = await TimedAsync(() => client.GetAsync("/health/ready", cancellation));
             using var live = await client.GetAsync("/health/live", cancellation);
@@ -197,7 +197,7 @@ public sealed class DatabaseOutageTests(OutageApp app) : IClassFixture<OutageApp
 }
 
 /// <summary>The app with its database behind a switchable TCP proxy.</summary>
-public sealed class OutageApp(PostgresFixture postgres) : FlowStudioApp(postgres)
+public sealed class OutageApp(PostgresFixture postgres) : StudioFlowApp(postgres)
 {
     private TcpProxy? proxy;
 
@@ -217,6 +217,6 @@ public sealed class OutageApp(PostgresFixture postgres) : FlowStudioApp(postgres
         base.ConfigureWebHost(builder);
         var direct = new NpgsqlConnectionStringBuilder(ConnectionString);
         proxy ??= new TcpProxy(direct.Host!, direct.Port);
-        builder.UseSetting("ConnectionStrings:FlowStudio", new NpgsqlConnectionStringBuilder(ConnectionString) { Host = "127.0.0.1", Port = proxy.Port }.ConnectionString);
+        builder.UseSetting("ConnectionStrings:StudioFlow", new NpgsqlConnectionStringBuilder(ConnectionString) { Host = "127.0.0.1", Port = proxy.Port }.ConnectionString);
     }
 }

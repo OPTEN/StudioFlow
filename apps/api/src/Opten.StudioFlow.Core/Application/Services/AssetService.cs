@@ -1,10 +1,10 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>A stored asset file ready to be streamed.</summary>
 /// <param name="Path">Absolute file path.</param>
@@ -92,7 +92,7 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
                 var production = await context.ProductionAsync(cancellationToken);
                 if (production.UsesAsset(asset.Id))
                 {
-                    throw FlowStudioException.Conflict(ErrorCodes.AssetInUse, "Das Medium wird noch verwendet.");
+                    throw StudioFlowException.Conflict(ErrorCodes.AssetInUse, "Das Medium wird noch verwendet.");
                 }
 
                 context.Data.Assets.Remove(asset);
@@ -113,20 +113,20 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
     {
         if (!isAdmin && string.IsNullOrEmpty(outputKey))
         {
-            throw new FlowStudioException(ErrorKind.Unauthorized, ErrorCodes.Unauthorized, "Anmeldung oder Output-Schlüssel erforderlich.");
+            throw new StudioFlowException(ErrorKind.Unauthorized, ErrorCodes.Unauthorized, "Anmeldung oder Output-Schlüssel erforderlich.");
         }
 
         await using var unit = data.Create();
         var access = await unit.Productions.GetOutputKeyAsync(productionId, cancellationToken)
-            ?? throw (isAdmin ? FlowStudioException.NotFound("Die Produktion") : OutputService.NoAccess());
+            ?? throw (isAdmin ? StudioFlowException.NotFound("Die Produktion") : OutputService.NoAccess());
 
         if (!isAdmin && !(Secrets.FixedTimeEquals(outputKey, access.OutputKey) && IpRule.IsAllowed(access.AllowedIps, client)))
         {
             throw OutputService.NoAccess();
         }
 
-        var asset = await unit.Assets.GetAsync(productionId, assetId, cancellationToken) ?? throw FlowStudioException.NotFound("Das Medium");
-        var path = media.GetPath(productionId, asset.FileName) ?? throw FlowStudioException.NotFound("Die Datei");
+        var asset = await unit.Assets.GetAsync(productionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Das Medium");
+        var path = media.GetPath(productionId, asset.FileName) ?? throw StudioFlowException.NotFound("Die Datei");
         return new AssetContent(path, asset.ContentType, asset.CreatedAt, asset.Name + Path.GetExtension(asset.FileName), $"\"{asset.Id}\"");
     }
 
@@ -134,7 +134,7 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
     {
         if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
         {
-            throw FlowStudioException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Die Produktion");
         }
     }
 

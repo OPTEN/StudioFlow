@@ -23,7 +23,7 @@ const VIEWPORT = { width: 1440, height: 900 };
 /** The slate fades in and out; axe measures the colours, so wait until the slate is fully opaque. */
 async function slateOpaque(page: import('@playwright/test').Page): Promise<void> {
   await expect
-    .poll(() => page.locator('.fs-r-slate').first().evaluate((element) => getComputedStyle(element).opacity), { message: 'the slate is fully opaque (the fade is over)' })
+    .poll(() => page.locator('.sf-r-slate').first().evaluate((element) => getComputedStyle(element).opacity), { message: 'the slate is fully opaque (the fade is over)' })
     .toBe('1');
 }
 
@@ -343,7 +343,7 @@ test.describe('Regie semantics', () => {
     // landmarks and regions
     for (const name of ['Monitore', 'Szenen', 'Quellen der Szene', 'Eigenschaften', 'Stationen', 'Meldungen']) await expect(page.getByRole('region', { name }), `region «${name}»`).toHaveCount(1);
     await expect(page.getByRole('banner'), 'the header is the banner landmark').toHaveCount(1);
-    expect(await page.locator('fs-status-line').evaluate((element) => element.getAttribute('role')), 'the message strip is a region').toBe('region');
+    expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the message strip is a region').toBe('region');
     // switch and groups
     await expect(page.getByRole('switch', { name: 'Studio-Modus' })).toBeChecked();
     await expect(page.getByRole('group', { name: 'Art des Übergangs' }).getByRole('button')).toHaveCount(2);
@@ -373,6 +373,6 @@ test.describe('Regie semantics', () => {
     // toast: polite live region
     await regie.clickScene('Pause');
     await expect(regie.toast().first()).toBeVisible();
-    expect(await page.locator('fs-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic'), lang: element.getAttribute('lang') }))).toEqual({ role: 'status', live: 'polite', atomic: 'true', lang: 'de-CH' });
+    expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic'), lang: element.getAttribute('lang') }))).toEqual({ role: 'status', live: 'polite', atomic: 'true', lang: 'de-CH' });
   });
 });

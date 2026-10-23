@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { DeviceKind } from '@flowstudio/scene-model';
+import type { DeviceKind } from '@studioflow/scene-model';
 import { toApiError, type ApiError } from '../core/api-error';
 import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';

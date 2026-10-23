@@ -6,7 +6,7 @@ import { PixelImage, type Rect } from '../ui/pixels';
 
 /**
  * Local helpers of the Regie specs (specs/regie): seeding scenes and sources through the API, reading the monitor DOM
- * (the scene renderer's `.fs-r-item` elements) and the edit overlay (`.c-edit-box`), a canvas-to-screen mapping for
+ * (the scene renderer's `.sf-r-item` elements) and the edit overlay (`.c-edit-box`), a canvas-to-screen mapping for
  * pointer gestures, pixel sampling of a monitor, request recording and toasts. Nothing here changes a shared support
  * file; the specs of this folder are the only users.
  */
@@ -188,9 +188,9 @@ export async function expectStableScene(
 export type MonitorKind = 'program' | 'preview';
 
 export const monitorOf = (page: Page, kind: MonitorKind): Locator =>
-  page.locator(`fs-monitor.c-monitor--${kind}`);
+  page.locator(`sf-monitor.c-monitor--${kind}`);
 
-/** An item as the scene renderer draws it, in canvas pixels (inline styles of `.fs-r-item`). */
+/** An item as the scene renderer draws it, in canvas pixels (inline styles of `.sf-r-item`). */
 export interface RenderedItem {
   id: string;
   x: number;
@@ -214,14 +214,14 @@ export async function renderedItems(
   where: MonitorKind | string = 'program',
 ): Promise<RenderedItem[]> {
   const selector =
-    where === 'program' || where === 'preview' ? `fs-monitor.c-monitor--${where}` : where;
+    where === 'program' || where === 'preview' ? `sf-monitor.c-monitor--${where}` : where;
   return page.evaluate((root) => {
     const container = document.querySelector(root);
     if (!container) return [];
-    const layers = [...container.querySelectorAll<HTMLElement>('.fs-r-layer[data-scene-id]')];
+    const layers = [...container.querySelectorAll<HTMLElement>('.sf-r-layer[data-scene-id]')];
     const layer = layers[layers.length - 1];
     if (!layer) return [];
-    return [...layer.querySelectorAll<HTMLElement>('.fs-r-item[data-item-id]')]
+    return [...layer.querySelectorAll<HTMLElement>('.sf-r-item[data-item-id]')]
       .map((element) => {
         const transform = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(element.style.transform);
         const media = element.querySelector<HTMLElement>('img, video');
@@ -251,10 +251,10 @@ export async function renderedSceneIds(
 ): Promise<string[]> {
   return page.evaluate(
     (selector) =>
-      [...document.querySelectorAll(`${selector} .fs-r-layer[data-scene-id]`)].map(
+      [...document.querySelectorAll(`${selector} .sf-r-layer[data-scene-id]`)].map(
         (element) => element.getAttribute('data-scene-id') ?? '',
       ),
-    `fs-monitor.c-monitor--${kind}`,
+    `sf-monitor.c-monitor--${kind}`,
   );
 }
 
@@ -272,7 +272,7 @@ export interface OverlayBox {
 }
 
 export const overlayOf = (page: Page, kind: MonitorKind = 'program'): Locator =>
-  monitorOf(page, kind).locator('fs-edit-overlay');
+  monitorOf(page, kind).locator('sf-edit-overlay');
 
 export async function overlayBoxes(
   page: Page,
@@ -280,7 +280,7 @@ export async function overlayBoxes(
 ): Promise<OverlayBox[]> {
   return page.evaluate((selector) => {
     return [
-      ...document.querySelectorAll<HTMLElement>(`${selector} fs-edit-overlay .c-edit-box`),
+      ...document.querySelectorAll<HTMLElement>(`${selector} sf-edit-overlay .c-edit-box`),
     ].map((element) => {
       const box = element.getBoundingClientRect();
       return {
@@ -293,7 +293,7 @@ export async function overlayBoxes(
         rect: { x: box.x, y: box.y, width: box.width, height: box.height },
       };
     });
-  }, `fs-monitor.c-monitor--${kind}`);
+  }, `sf-monitor.c-monitor--${kind}`);
 }
 
 /** Mapping between canvas pixels (1920 x 1080) and client pixels of the editable monitor. */
@@ -467,8 +467,8 @@ export function recordRequests(
 
 // --- feedback -------------------------------------------------------------------------------------------------------
 
-/** The visible toast (`fs-toast-host`), without the message strip or other `role=status` regions. */
-export const toastOf = (page: Page): Locator => page.locator('fs-toast-host .c-toast');
+/** The visible toast (`sf-toast-host`), without the message strip or other `role=status` regions. */
+export const toastOf = (page: Page): Locator => page.locator('sf-toast-host .c-toast');
 
 export async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(toastOf(page), `toast ${String(text)}`).toContainText(text);
@@ -493,7 +493,7 @@ export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
 
 /** A number field of the element inspector: `x`, `y`, `w`, `h`. */
 export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>
-  page.locator(`#fs-insp-${key}`);
+  page.locator(`#sf-insp-${key}`);
 export const radiusField = (page: Page): Locator => page.getByLabel('Eckenradius');
 
 /** Dock title text in the inspector header (`Szene` or `Element`) and its subtitle. */
@@ -538,10 +538,10 @@ export interface RecordedAnimation {
 /** Wraps `Element.prototype.animate` of the page (idempotent) so tests can see every Web Animation the app starts. */
 export async function installAnimationHook(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const w = window as unknown as { __fsAnims?: unknown[]; __fsAnimHook?: boolean };
-    if (w.__fsAnimHook) return;
-    w.__fsAnimHook = true;
-    w.__fsAnims = [];
+    const w = window as unknown as { __sfAnims?: unknown[]; __sfAnimHook?: boolean };
+    if (w.__sfAnimHook) return;
+    w.__sfAnimHook = true;
+    w.__sfAnims = [];
     const original = Element.prototype.animate;
     Element.prototype.animate = function (
       this: Element,
@@ -572,7 +572,7 @@ export async function installAnimationHook(page: Page): Promise<void> {
         timelineStart: null as number | null,
         cancelled: false,
       };
-      w.__fsAnims!.push(record);
+      w.__sfAnims!.push(record);
       animation.ready.then(
         () => {
           record.timelineStart = Number(animation.startTime);
@@ -597,7 +597,7 @@ export async function installAnimationHook(page: Page): Promise<void> {
 export async function animationsOf(page: Page): Promise<RecordedAnimation[]> {
   return page.evaluate(
     () =>
-      ((window as unknown as { __fsAnims?: unknown[] }).__fsAnims ?? []).map((entry) => ({
+      ((window as unknown as { __sfAnims?: unknown[] }).__sfAnims ?? []).map((entry) => ({
         ...(entry as object),
       })) as never,
   );
@@ -619,63 +619,63 @@ export async function flashes(page: Page): Promise<RecordedAnimation[]> {
 /** Records the text of every toast that appears (the toast lives 3.2 s; a test may look late). Read with {@link toastLog}. */
 export async function trackToasts(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const w = window as unknown as { __fsToasts?: string[]; __fsToastObserver?: MutationObserver };
-    if (w.__fsToastObserver) return;
-    w.__fsToasts = [];
-    const host = document.querySelector('fs-toast-host');
+    const w = window as unknown as { __sfToasts?: string[]; __sfToastObserver?: MutationObserver };
+    if (w.__sfToastObserver) return;
+    w.__sfToasts = [];
+    const host = document.querySelector('sf-toast-host');
     if (!host) return;
     const take = () => {
       const text = host.querySelector('.c-toast span')?.textContent?.trim();
-      if (text && w.__fsToasts![w.__fsToasts!.length - 1] !== text) w.__fsToasts!.push(text);
+      if (text && w.__sfToasts![w.__sfToasts!.length - 1] !== text) w.__sfToasts!.push(text);
     };
-    w.__fsToastObserver = new MutationObserver(take);
-    w.__fsToastObserver.observe(host, { childList: true, subtree: true, characterData: true });
+    w.__sfToastObserver = new MutationObserver(take);
+    w.__sfToastObserver.observe(host, { childList: true, subtree: true, characterData: true });
     take();
   });
 }
 
 export async function toastLog(page: Page): Promise<string[]> {
   return page.evaluate(() => [
-    ...((window as unknown as { __fsToasts?: string[] }).__fsToasts ?? []),
+    ...((window as unknown as { __sfToasts?: string[] }).__sfToasts ?? []),
   ]);
 }
 
-/** Opens a pointerdown probe: `window.__fsT0` is `Date.now()` of the last pointerdown (capture phase, before the app). */
+/** Opens a pointerdown probe: `window.__sfT0` is `Date.now()` of the last pointerdown (capture phase, before the app). */
 export async function installPointerProbe(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const w = window as unknown as { __fsT0?: number; __fsPointerProbe?: boolean };
-    if (w.__fsPointerProbe) return;
-    w.__fsPointerProbe = true;
-    document.addEventListener('pointerdown', () => (w.__fsT0 = Date.now()), true);
+    const w = window as unknown as { __sfT0?: number; __sfPointerProbe?: boolean };
+    if (w.__sfPointerProbe) return;
+    w.__sfPointerProbe = true;
+    document.addEventListener('pointerdown', () => (w.__sfT0 = Date.now()), true);
   });
 }
 
 export async function lastPointerDown(page: Page): Promise<number | null> {
-  return page.evaluate(() => (window as unknown as { __fsT0?: number }).__fsT0 ?? null);
+  return page.evaluate(() => (window as unknown as { __sfT0?: number }).__sfT0 ?? null);
 }
 
 /**
  * On the output page: `watchScene(id)` notes the first moment a scene layer with that id is in the document
- * (`window.__fsHit`), through a MutationObserver, so the time is not limited by polling.
+ * (`window.__sfHit`), through a MutationObserver, so the time is not limited by polling.
  */
 export async function installSceneProbe(page: Page): Promise<void> {
   await page.evaluate(() => {
     const w = window as unknown as {
-      __fsTarget?: string | null;
-      __fsHit?: number | null;
-      __fsSceneProbe?: boolean;
+      __sfTarget?: string | null;
+      __sfHit?: number | null;
+      __sfSceneProbe?: boolean;
     };
-    if (w.__fsSceneProbe) return;
-    w.__fsSceneProbe = true;
-    w.__fsTarget = null;
-    w.__fsHit = null;
+    if (w.__sfSceneProbe) return;
+    w.__sfSceneProbe = true;
+    w.__sfTarget = null;
+    w.__sfHit = null;
     const check = () => {
       if (
-        w.__fsTarget &&
-        w.__fsHit === null &&
-        document.querySelector(`.fs-r-layer[data-scene-id="${w.__fsTarget}"]`)
+        w.__sfTarget &&
+        w.__sfHit === null &&
+        document.querySelector(`.sf-r-layer[data-scene-id="${w.__sfTarget}"]`)
       )
-        w.__fsHit = Date.now();
+        w.__sfHit = Date.now();
     };
     new MutationObserver(check).observe(document.documentElement, {
       childList: true,
@@ -688,14 +688,14 @@ export async function installSceneProbe(page: Page): Promise<void> {
 
 export async function watchScene(page: Page, sceneId: string): Promise<void> {
   await page.evaluate((id) => {
-    const w = window as unknown as { __fsTarget?: string | null; __fsHit?: number | null };
-    w.__fsTarget = id;
-    w.__fsHit = null;
+    const w = window as unknown as { __sfTarget?: string | null; __sfHit?: number | null };
+    w.__sfTarget = id;
+    w.__sfHit = null;
   }, sceneId);
 }
 
 export async function sceneHit(page: Page): Promise<number | null> {
-  return page.evaluate(() => (window as unknown as { __fsHit?: number | null }).__fsHit ?? null);
+  return page.evaluate(() => (window as unknown as { __sfHit?: number | null }).__sfHit ?? null);
 }
 
 /** The data-scene-id layers of an output page (two while a fade runs) with their computed opacity. */
@@ -703,7 +703,7 @@ export async function outputLayers(
   page: Page,
 ): Promise<Array<{ sceneId: string; opacity: number }>> {
   return page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('#output .fs-r-layer[data-scene-id]')].map(
+    [...document.querySelectorAll<HTMLElement>('#output .sf-r-layer[data-scene-id]')].map(
       (element) => ({
         sceneId: element.getAttribute('data-scene-id') ?? '',
         opacity: Number(getComputedStyle(element).opacity),

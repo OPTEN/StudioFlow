@@ -54,7 +54,7 @@ describe('HeaderComponent', () => {
 
   it('shows brand, production, quiet BEREIT, output, health, presence and clock', async () => {
     await setup();
-    expect(text()).toContain('FlowStudio');
+    expect(text()).toContain('StudioFlow');
     expect(text()).toContain('Webinar');
     expect(text()).toContain('BEREIT');
     expect(button('Sendung starten').disabled).toBe(false);
@@ -140,7 +140,7 @@ describe('HeaderComponent', () => {
     element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
     await render();
     harness.http.expectOne(`${BASE}/output`).flush({
-      url: 'https://flowstudio.opten.ch/o/webinar?k=geheim123',
+      url: 'https://studioflow.opten.ch/o/webinar?k=geheim123',
       keyCreatedAt: '2026-10-22T08:00:00Z',
       allowedIps: [],
       frameAncestors: ["'self'"],
@@ -149,7 +149,7 @@ describe('HeaderComponent', () => {
     expect(text()).toContain('verbunden, 1 Abnehmer');
     expect(text()).toContain('10.0.0.42');
     expect(text()).toContain('1920 × 1080 · 30 fps');
-    expect(text()).toContain('flowstudio.opten.ch/o/webinar?k=••••••');
+    expect(text()).toContain('studioflow.opten.ch/o/webinar?k=••••••');
     expect(text()).not.toContain('geheim123');
   });
 

@@ -5,7 +5,7 @@
 Set-StrictMode -Version 3.0
 
 # Commands the API image provides (see docs/architecture/implementation-spec.md section 5 and 10).
-$script:ApiDll = 'Opten.FlowStudio.Web.dll'
+$script:ApiDll = 'Opten.StudioFlow.Web.dll'
 $script:BroadcastLiveExitCode = 3
 $script:WaitTimeoutSeconds = 600
 
@@ -19,21 +19,21 @@ $script:Root = $null
 
 # Called first by every script: remembers the repository root and writes UTF-8 when the output is redirected
 # (log files of scheduled backups would otherwise use the console code page and garble «» and umlauts).
-function Initialize-FlowStudio
+function Initialize-StudioFlow
 {
     param([Parameter(Mandatory)][string] $Root)
     $script:Root = (Resolve-Path -LiteralPath $Root).Path
     if ([Console]::IsOutputRedirected) { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false) }
 }
 
-function Get-FsRoot { $script:Root }
+function Get-SfRoot { $script:Root }
 
-function Write-FsInfo { param([string] $Message = '') Write-Host $Message }
-function Write-FsStep { param([string] $Message) Write-Host ''; Write-Host "==> $Message" }
-function Write-FsWarn { param([string] $Message) Write-Host "Warnung: $Message" -ForegroundColor Yellow }
+function Write-SfInfo { param([string] $Message = '') Write-Host $Message }
+function Write-SfStep { param([string] $Message) Write-Host ''; Write-Host "==> $Message" }
+function Write-SfWarn { param([string] $Message) Write-Host "Warnung: $Message" -ForegroundColor Yellow }
 
 # Runs a native command; throws with $FailMessage when it exits with a non-zero code.
-function Invoke-FsNative
+function Invoke-SfNative
 {
     param(
         [Parameter(Mandatory)][string] $FilePath,
@@ -46,7 +46,7 @@ function Invoke-FsNative
 }
 
 # docker compose, always from the repository root (picks up .env and docker-compose.override.yml).
-function Invoke-FsCompose
+function Invoke-SfCompose
 {
     param(
         [Parameter(Mandatory)][string[]] $Arguments,
@@ -54,12 +54,12 @@ function Invoke-FsCompose
         [switch] $Quiet
     )
     Push-Location -LiteralPath $script:Root
-    try { Invoke-FsNative -FilePath 'docker' -ArgumentList (@('compose') + $Arguments) -FailMessage $FailMessage -Quiet:$Quiet }
+    try { Invoke-SfNative -FilePath 'docker' -ArgumentList (@('compose') + $Arguments) -FailMessage $FailMessage -Quiet:$Quiet }
     finally { Pop-Location }
 }
 
 # docker compose that returns stdout lines and the exit code instead of throwing.
-function Get-FsComposeOutput
+function Get-SfComposeOutput
 {
     param([Parameter(Mandatory)][string[]] $Arguments)
     Push-Location -LiteralPath $script:Root
@@ -71,7 +71,7 @@ function Get-FsComposeOutput
     finally { Pop-Location }
 }
 
-function Test-FsDockerAvailable
+function Test-SfDockerAvailable
 {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
     & docker info *> $null
@@ -80,7 +80,7 @@ function Test-FsDockerAvailable
     $LASTEXITCODE -eq 0
 }
 
-function Assert-FsDocker
+function Assert-SfDocker
 {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue))
     {
@@ -92,7 +92,7 @@ function Assert-FsDocker
     if ($LASTEXITCODE -ne 0) { throw 'Docker läuft nicht oder dieser Benutzer darf es nicht verwenden (Linux: Gruppe «docker»).' }
 }
 
-function Assert-FsEnvFile
+function Assert-SfEnvFile
 {
     if (-not (Test-Path -LiteralPath (Join-Path $script:Root '.env') -PathType Leaf))
     {
@@ -101,7 +101,7 @@ function Assert-FsEnvFile
 }
 
 # Yes/no question. Without an interactive host the default applies.
-function Read-FsConfirm
+function Read-SfConfirm
 {
     param([Parameter(Mandatory)][string] $Question, [ValidateSet('j', 'n')][string] $Default = 'n')
     if (-not [Environment]::UserInteractive -or [Console]::IsInputRedirected) { return $Default -eq 'j' }
@@ -111,24 +111,24 @@ function Read-FsConfirm
     $answer.Trim() -in @('j', 'J', 'ja', 'Ja', 'JA', 'y', 'Y', 'yes')
 }
 
-function Get-FsRunningService
+function Get-SfRunningService
 {
-    (Get-FsComposeOutput -Arguments @('ps', '--status', 'running', '--services')).Lines | Where-Object { $_ }
+    (Get-SfComposeOutput -Arguments @('ps', '--status', 'running', '--services')).Lines | Where-Object { $_ }
 }
 
-function Test-FsServiceRunning
+function Test-SfServiceRunning
 {
     param([Parameter(Mandatory)][string] $Service)
-    @(Get-FsRunningService) -contains $Service
+    @(Get-SfRunningService) -contains $Service
 }
 
-# live | idle | stopped | unknown (see fs_broadcast_status in common.sh).
-function Get-FsBroadcastStatus
+# live | idle | stopped | unknown (see sf_broadcast_status in common.sh).
+function Get-SfBroadcastStatus
 {
-    $running = @(Get-FsRunningService)
+    $running = @(Get-SfRunningService)
     if ($running.Count -eq 0) { return 'stopped' }
     if ($running -notcontains 'api') { return 'unknown' }
-    $result = Get-FsComposeOutput -Arguments @('exec', '-T', 'api', 'dotnet', $script:ApiDll, 'broadcast-status')
+    $result = Get-SfComposeOutput -Arguments @('exec', '-T', 'api', 'dotnet', $script:ApiDll, 'broadcast-status')
     switch ($result.ExitCode)
     {
         0 { 'idle' }
@@ -138,20 +138,20 @@ function Get-FsBroadcastStatus
 }
 
 # Refuses to continue while a broadcast may be on air. $Action = German noun («Das Update»).
-function Assert-FsBroadcastIdle
+function Assert-SfBroadcastIdle
 {
     param([Parameter(Mandatory)][string] $Action, [bool] $Force = $false)
-    switch (Get-FsBroadcastStatus)
+    switch (Get-SfBroadcastStatus)
     {
-        'idle' { Write-FsInfo 'Sendestatus: keine Sendung live.' }
-        'stopped' { Write-FsInfo 'Sendestatus: Stack läuft nicht, keine Sendung live.' }
+        'idle' { Write-SfInfo 'Sendestatus: keine Sendung live.' }
+        'stopped' { Write-SfInfo 'Sendestatus: Stack läuft nicht, keine Sendung live.' }
         'live'
         {
             if (-not $Force)
             {
                 throw "Eine Sendung ist LIVE. $Action ist während einer Sendung gesperrt. Zuerst «Sendung beenden» in der Regie (oder -Force, wenn es wirklich sein muss)."
             }
-            Write-FsWarn "Eine Sendung ist LIVE. $Action wird wegen -Force trotzdem ausgeführt – das Bild beim Proxy bricht ab."
+            Write-SfWarn "Eine Sendung ist LIVE. $Action wird wegen -Force trotzdem ausgeführt – das Bild beim Proxy bricht ab."
         }
         default
         {
@@ -159,13 +159,13 @@ function Assert-FsBroadcastIdle
             {
                 throw 'Sendestatus unbekannt: die API läuft nicht oder antwortet nicht. Prüfen mit «docker compose ps» und «docker compose logs api»; mit -Force trotzdem fortfahren.'
             }
-            Write-FsWarn "Sendestatus unbekannt (API antwortet nicht). $Action wird wegen -Force trotzdem ausgeführt."
+            Write-SfWarn "Sendestatus unbekannt (API antwortet nicht). $Action wird wegen -Force trotzdem ausgeführt."
         }
     }
 }
 
 # Starts the stack (or the given services) and waits until every healthcheck passes.
-function Start-FsStackAndWait
+function Start-SfStackAndWait
 {
     param([string[]] $ExtraArguments = @())
     Push-Location -LiteralPath $script:Root
@@ -182,28 +182,28 @@ function Start-FsStackAndWait
 }
 
 # Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes.
-function Start-FsToolbox
+function Start-SfToolbox
 {
-    $result = Get-FsComposeOutput -Arguments @('--profile', 'tools', 'run', '-d', '--rm', '--no-deps', 'toolbox')
+    $result = Get-SfComposeOutput -Arguments @('--profile', 'tools', 'run', '-d', '--rm', '--no-deps', 'toolbox')
     $id = $result.Lines | Where-Object { $_ -match '^[0-9a-f]{12,64}$' } | Select-Object -Last 1
     if ($result.ExitCode -ne 0 -or -not $id) { throw 'Der Hilfscontainer (toolbox) liess sich nicht starten.' }
     $id
 }
 
-function Stop-FsToolbox
+function Stop-SfToolbox
 {
     param([string] $Id)
     if ($Id) { & docker rm -f $Id *> $null }
 }
 
-function Get-FsSha256
+function Get-SfSha256
 {
     param([Parameter(Mandatory)][string] $Path)
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
 # Restricts a file or folder to the current user (chmod 600/700 on Linux and macOS; Windows keeps its ACL).
-function Protect-FsPath
+function Protect-SfPath
 {
     param([Parameter(Mandatory)][string] $Path, [switch] $Directory)
     if ($IsWindows) { return }

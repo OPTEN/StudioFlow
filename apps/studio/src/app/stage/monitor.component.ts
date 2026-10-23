@@ -12,7 +12,7 @@ import {
   CANVAS_WIDTH,
   formatItemCount,
   type SceneDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ViewportService } from '../core/ui/viewport.service';
 import { EditOverlayComponent } from './edit-overlay.component';
 import { SceneViewComponent, type SceneTransitionCue } from './scene-view.component';
@@ -40,10 +40,10 @@ let nextMonitorId = 0;
  *
  * The screen holds a {@link SceneViewComponent}; on the editable monitor also the {@link EditOverlayComponent}, and
  * the live note while editing is locked. The Program monitor flashes once whenever a cued program switch has been
- * played. The width comes from the stage (`--fs-preview-w` / `--fs-program-w`, see `monitor-layout.ts`).
+ * played. The width comes from the stage (`--sf-preview-w` / `--sf-program-w`, see `monitor-layout.ts`).
  */
 @Component({
-  selector: 'fs-monitor',
+  selector: 'sf-monitor',
   imports: [SceneViewComponent, EditOverlayComponent],
   templateUrl: './monitor.component.html',
   styleUrl: './monitor.component.scss',
@@ -78,7 +78,7 @@ export class MonitorComponent {
 
   /** The scene view (Auto-Grid rectangles for the overlay). */
   protected readonly view = viewChild(SceneViewComponent);
-  protected readonly labelId = `fs-monitor-label-${++nextMonitorId}`;
+  protected readonly labelId = `sf-monitor-label-${++nextMonitorId}`;
   protected readonly title = computed(() => (this.kind() === 'program' ? 'Program' : 'Preview'));
   protected readonly meta = computed(() => {
     if (this.kind() === 'program') {

@@ -2,14 +2,14 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Hubs;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Hubs;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>Device hub sessions across a reload: the dead connection of the old page and the states it reported.</summary>
-public sealed class DeviceSessionTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class DeviceSessionTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     private static readonly DeviceReportDto LiveCamera =
         new(RtcState.Connected, [new SlotTelemetryDto("camera", SlotState.Live, 1280, 720, 30, 2500, 0, "h264")], 80, false, "wifi", 20, null);
@@ -61,7 +61,7 @@ public sealed class DeviceSessionTests(FlowStudioApp app) : IClassFixture<FlowSt
         || entry.Level >= LogLevel.Error
         || entry.Category.StartsWith("Microsoft.AspNetCore.SignalR", StringComparison.Ordinal)
         || entry.Category.StartsWith("Microsoft.AspNetCore.Http.Connections", StringComparison.Ordinal)
-        || entry.Category.StartsWith("Opten.FlowStudio.Web.Hubs", StringComparison.Ordinal)
+        || entry.Category.StartsWith("Opten.StudioFlow.Web.Hubs", StringComparison.Ordinal)
         || entry.Category.Contains("DeviceSession", StringComparison.Ordinal);
 
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
@@ -92,7 +92,7 @@ public sealed class DeviceSessionTests(FlowStudioApp app) : IClassFixture<FlowSt
 /// The sender measures its RTT with the <c>Report</c> invocation round trip, so <c>Report</c> must answer at once: one
 /// device read, no database write while nothing changes, delivery to the Regie outside the call.
 /// </summary>
-public sealed class DeviceReportLatencyTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class DeviceReportLatencyTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     private const int Warmup = 50;
     private const int Samples = 500;

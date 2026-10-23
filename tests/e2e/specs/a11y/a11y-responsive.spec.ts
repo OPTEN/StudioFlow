@@ -39,13 +39,13 @@ async function metrics(page: Page): Promise<Metrics> {
     };
     return {
       header: box('header.c-header'),
-      strip: box('fs-status-line'),
-      program: box('fs-monitor[kind=program] .c-monitor__screen'),
-      preview: box('fs-monitor[kind=preview] .c-monitor__screen'),
-      control: box('fs-control-column'),
+      strip: box('sf-status-line'),
+      program: box('sf-monitor[kind=program] .c-monitor__screen'),
+      preview: box('sf-monitor[kind=preview] .c-monitor__screen'),
+      control: box('sf-control-column'),
       take: box('.c-take'),
       bottomZone: box('[data-zone=bottom]'),
-      docks: Array.from(document.querySelectorAll('fs-dock-slot')).map((dock) => {
+      docks: Array.from(document.querySelectorAll('sf-dock-slot')).map((dock) => {
         const r = dock.getBoundingClientRect();
         return { name: dock.getAttribute('aria-label') ?? '', box: { x: r.x, y: r.y, w: r.width, h: r.height } };
       }),
@@ -89,7 +89,7 @@ async function checkMonitors(regie: RegiePage, studio: boolean, label: string): 
 }
 
 async function expectNoOverlappingControls(page: Page, label: string): Promise<void> {
-  for (const scope of ['header.c-header', 'fs-control-column', 'fs-workspace']) {
+  for (const scope of ['header.c-header', 'sf-control-column', 'sf-workspace']) {
     const overlaps = await findOverlaps(page, scope);
     expect(overlaps, `${label}: no overlapping controls in ${scope}`).toEqual([]);
   }
@@ -141,7 +141,7 @@ async function checkDesktop(regie: RegiePage, options: { name: string; studio: b
     expect(row.y, `${label}: scene ${index + 1} starts below the dock header`).toBeGreaterThanOrEqual(zone.y + m.dockHeadHeight! - 1);
     expect(row.y + row.h, `${label}: scene ${index + 1} ends inside the viewport`).toBeLessThanOrEqual(viewport.height + 0.5);
   }
-  const scrolls = await page.locator('fs-dock-slot[aria-label=Szenen] .c-dock-frame__body').evaluate((body) => ({ scrollable: body.scrollHeight > body.clientHeight + 1, scrollHeight: body.scrollHeight, clientHeight: body.clientHeight }));
+  const scrolls = await page.locator('sf-dock-slot[aria-label=Szenen] .c-dock-frame__body').evaluate((body) => ({ scrollable: body.scrollHeight > body.clientHeight + 1, scrollHeight: body.scrollHeight, clientHeight: body.clientHeight }));
   expect(scrolls.scrollable, `${label}: the Szenen dock does not scroll (${scrolls.scrollHeight} > ${scrolls.clientHeight})`).toBe(false);
 
   // the critical controls are inside the viewport and not covered
@@ -224,10 +224,10 @@ test.describe('Regie responsive layout', () => {
     // the monitor never exceeds the stage region (monitors left of the control column)
     expect(direct.program!.x + direct.program!.w, 'Program ends before the control column').toBeLessThanOrEqual(direct.control!.x + 0.5);
     // inspector rows keep their layout: label left of its field, one row, the field not wider than the dock
-    const inspector = await regie.page.locator('fs-dock-slot[aria-label=Eigenschaften]').evaluate((dock) => {
+    const inspector = await regie.page.locator('sf-dock-slot[aria-label=Eigenschaften]').evaluate((dock) => {
       const dockBox = dock.getBoundingClientRect();
       const field = dock.querySelector<HTMLElement>('input[type=text], input:not([type])');
-      const label = field?.closest('label, div, fs-scene-inspector')?.querySelector('span, label');
+      const label = field?.closest('label, div, sf-scene-inspector')?.querySelector('span, label');
       const fieldBox = field?.getBoundingClientRect();
       const labelBox = label?.getBoundingClientRect();
       return { dock: { w: dockBox.width }, field: fieldBox ? { x: fieldBox.x, y: fieldBox.y, w: fieldBox.width, h: fieldBox.height } : null, label: labelBox ? { x: labelBox.x, y: labelBox.y, w: labelBox.width, h: labelBox.height } : null };
@@ -300,9 +300,9 @@ test.describe('Regie responsive layout', () => {
     // the pairing dock spans both columns
     await regie.openPairing('phone');
     await settle(page);
-    const pairing = await boxOf(page.locator('fs-dock-slot[data-dock=pair]'));
+    const pairing = await boxOf(page.locator('sf-dock-slot[data-dock=pair]'));
     expect(pairing, 'the pairing dock is rendered').not.toBeNull();
-    const workspace = (await boxOf(page.locator('fs-workspace')))!;
+    const workspace = (await boxOf(page.locator('sf-workspace')))!;
     expect(pairing!.w, 'the pairing dock spans both columns').toBeGreaterThan(workspace.w - 80);
     await expectNoOverflow(page, { label: '1180x800 pairing dock' });
     await saveScreen(page, '1180x800-pairing', { fullPage: true });
@@ -325,16 +325,16 @@ test.describe('Regie responsive layout', () => {
     const grip = page.getByRole('button', { name: 'Dock Stationen verschieben, mit Pfeiltasten' });
     await grip.focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-zone=right] fs-dock-slot[aria-label=Stationen]')).toHaveCount(1);
-    const stored = await page.evaluate(() => localStorage.getItem('flowstudio.layout'));
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stationen]')).toHaveCount(1);
+    const stored = await page.evaluate(() => localStorage.getItem('studioflow.layout'));
     expect(stored, 'the layout is stored').not.toBeNull();
     await page.setViewportSize(VIEWPORTS.w1180);
     await settle(page);
     await expectNoOverflow(page, { label: 'stacked with a moved dock' });
-    expect(await page.evaluate(() => localStorage.getItem('flowstudio.layout')), 'the stacked view leaves the stored layout alone').toBe(stored);
+    expect(await page.evaluate(() => localStorage.getItem('studioflow.layout')), 'the stacked view leaves the stored layout alone').toBe(stored);
     await page.setViewportSize(VIEWPORTS.w1440);
     await settle(page);
-    await expect(page.locator('[data-zone=right] fs-dock-slot[aria-label=Stationen]'), 'the dock is on the right again at the wide size').toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stationen]'), 'the dock is on the right again at the wide size').toHaveCount(1);
   });
 
   test('E2E-DEV-05 [regie-900x700] one column by priority: Program, controls (Take full width, >= 48 px), Preview, docks in one column; scenes as a 200 px card strip; strip shows only ok and incidents', tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -376,7 +376,7 @@ test.describe('Regie responsive layout', () => {
       expect(cards, `${label}: seven scene cards`).toHaveLength(7);
       expect(new Set(cards.map((card) => Math.round(card.y))).size, `${label}: the scene cards share one row`).toBe(1);
       for (const [index, card] of cards.entries()) expect(card.w, `${label}: scene card ${index + 1} is 200 px wide`).toBeCloseTo(200, 0);
-      const strip = await page.locator('fs-dock-slot[aria-label=Szenen] .c-dock-frame__body, fs-dock-slot[aria-label=Szenen] .c-scenes-dock__list').evaluateAll((elements) => elements.map((element) => ({ cls: element.className, scrollW: element.scrollWidth, clientW: element.clientWidth, overflowX: getComputedStyle(element).overflowX })));
+      const strip = await page.locator('sf-dock-slot[aria-label=Szenen] .c-dock-frame__body, sf-dock-slot[aria-label=Szenen] .c-scenes-dock__list').evaluateAll((elements) => elements.map((element) => ({ cls: element.className, scrollW: element.scrollWidth, clientW: element.clientWidth, overflowX: getComputedStyle(element).overflowX })));
       expect(strip.some((entry) => entry.scrollW > entry.clientW + 1 && /(auto|scroll)/.test(entry.overflowX)), `${label}: the scene strip scrolls horizontally inside its dock (${JSON.stringify(strip)})`).toBe(true);
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}`);
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}-full`, { fullPage: true });
@@ -473,7 +473,7 @@ test.describe('Regie responsive layout', () => {
 });
 
 async function expectNoOverlappingControlsAt390(page: Page): Promise<void> {
-  for (const scope of ['header.c-header', 'fs-control-column', 'fs-workspace']) {
+  for (const scope of ['header.c-header', 'sf-control-column', 'sf-workspace']) {
     const overlaps = await findOverlaps(page, scope);
     expect(overlaps, `390x844: no overlapping controls in ${scope}`).toEqual([]);
   }

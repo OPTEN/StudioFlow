@@ -1,4 +1,4 @@
-import type { SlotFailure } from '@flowstudio/media-client/device';
+import type { SlotFailure } from '@studioflow/media-client/device';
 
 /** What went wrong with the camera, derived from the publisher's failure code. */
 export type CameraProblemKind = 'denied' | 'busy' | 'missing' | 'lost' | 'publish' | 'other';
@@ -21,7 +21,7 @@ export type PermissionPlatform =
   | 'desktop-chromium'
   | 'other';
 
-/** Classifies the failure code of a `failed` camera slot (`SlotFailure` of `@flowstudio/media-client`). */
+/** Classifies the failure code of a `failed` camera slot (`SlotFailure` of `@studioflow/media-client`). */
 export function classifyCameraFailure(failure: SlotFailure | null | undefined): CameraProblemKind {
   switch (failure) {
     case 'permission-denied':

@@ -6,7 +6,7 @@ import {
   inject,
   viewChild,
 } from '@angular/core';
-import { formatCheckCode, type PairingRequestDto } from '@flowstudio/scene-model';
+import { formatCheckCode, type PairingRequestDto } from '@studioflow/scene-model';
 import { ClipboardService } from '../../core/ui/clipboard.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PairingRequestsService } from './pairing-requests.service';
@@ -21,7 +21,7 @@ const EXAMPLE_CODE = '47 12';
  * waiting request, or an example). The requests themselves appear in the side column.
  */
 @Component({
-  selector: 'fs-laptop-tab',
+  selector: 'sf-laptop-tab',
   imports: [IconComponent],
   template: `
     <h3 class="c-pair__title">Laptop ohne QR-Code</h3>
@@ -29,7 +29,7 @@ const EXAMPLE_CODE = '47 12';
     <div class="c-pair__big-url">
       <span class="c-pair__url" #url>{{ shownUrl() }}</span>
       <button class="c-btn c-btn--sm" type="button" (click)="copy()">
-        <svg fsIcon="copy" [size]="14"></svg>Kopieren
+        <svg sfIcon="copy" [size]="14"></svg>Kopieren
       </button>
     </div>
     <p class="c-pair__text">

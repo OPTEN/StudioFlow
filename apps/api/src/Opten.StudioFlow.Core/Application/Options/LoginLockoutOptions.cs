@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>Login lockout (configuration section <c>Admin:Lockout</c>, spec 5, GAP-03).</summary>
 public sealed class LoginLockoutOptions : IValidatedOptions

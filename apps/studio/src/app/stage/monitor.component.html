@@ -9,7 +9,7 @@
   }}</span>
 </div>
 <div class="c-monitor__screen" #screen>
-  <fs-scene-view
+  <sf-scene-view
     class="c-monitor__view"
     mode="monitor"
     [scene]="scene()"
@@ -21,7 +21,7 @@
     <span class="c-monitor__empty">{{ text }}</span>
   }
   @if (editable()) {
-    <fs-edit-overlay [view]="view() ?? null" />
+    <sf-edit-overlay [view]="view() ?? null" />
   }
   @if (locked()) {
     <div class="c-monitor__live-note">{{ liveNote }}</div>

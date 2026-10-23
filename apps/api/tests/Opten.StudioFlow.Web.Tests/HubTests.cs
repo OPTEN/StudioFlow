@@ -3,12 +3,12 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class StudioHubTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class StudioHubTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Subscribe_WithoutRevision_ReturnsSnapshotThenOrderedEvents()
@@ -146,7 +146,7 @@ public sealed class StudioHubTests(FlowStudioApp app) : IClassFixture<FlowStudio
     private HubConnection Studio(AdminSession admin) => app.Hub(HubMethods.StudioHubPath, o => o.Headers["Cookie"] = admin.Cookie);
 }
 
-public sealed class DeviceHubTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class DeviceHubTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Hello_ThenTake_PushesPreviewAndProgramTally()
@@ -341,7 +341,7 @@ public sealed class DeviceHubTests(FlowStudioApp app) : IClassFixture<FlowStudio
         app.Hub(HubMethods.DeviceHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>($"{credentials.DeviceId}.{credentials.DeviceSecret}"));
 }
 
-public sealed class OutputHubTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class OutputHubTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task SubscribeOutput_PrivateChanges_ArriveAsRevisionOnly()

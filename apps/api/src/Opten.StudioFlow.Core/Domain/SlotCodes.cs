@@ -1,7 +1,7 @@
 using System.Globalization;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// Slot codes (spec 4.4): K = camera, S = screen, M = media, followed by the lowest number of that letter that is free in

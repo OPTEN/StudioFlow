@@ -1,18 +1,18 @@
-<fs-dock-frame dock="st" [count]="loading() ? null : entries().length">
+<sf-dock-frame dock="st" [count]="loading() ? null : entries().length">
   <button
     #pairButton
-    fsDockActions
+    sfDockActions
     class="c-btn c-btn--sm c-btn--primary"
     type="button"
-    aria-controls="fs-pairing-dock"
+    aria-controls="sf-pairing-dock"
     [attr.aria-expanded]="layout.pairingOpen()"
     (click)="layout.togglePairing()"
   >
-    <svg fsIcon="plus" [size]="14"></svg>Gerät koppeln
+    <svg sfIcon="plus" [size]="14"></svg>Gerät koppeln
   </button>
 
   @for (knock of knocks(); track knock.id) {
-    <fs-knock-card [request]="knock" />
+    <sf-knock-card [request]="knock" />
   }
 
   @if (loading()) {
@@ -22,7 +22,7 @@
   } @else {
     <div class="c-st-dock__list">
       @for (entry of entries(); track entry.view.id) {
-        <fs-station-row
+        <sf-station-row
           [device]="entry.device"
           [sources]="entry.sources"
           [view]="entry.view"
@@ -39,4 +39,4 @@
       }
     </div>
   }
-</fs-dock-frame>
+</sf-dock-frame>

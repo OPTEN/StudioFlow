@@ -2,7 +2,7 @@ import type {
   DesiredSize,
   SourceAvailability,
   SourceMediaProvider,
-} from '@flowstudio/scene-renderer';
+} from '@studioflow/scene-renderer';
 
 const PENDING: SourceAvailability = { state: 'pending' };
 

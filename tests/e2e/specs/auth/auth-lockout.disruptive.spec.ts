@@ -72,7 +72,7 @@ test.describe('AUTH lockout', () => {
     const login = (password: string) => send({ method: 'POST', url: `${stack.direct}/api/auth/login`, headers: { 'X-Forwarded-For': ip }, json: { username: config.admin.username, password } });
     expect((await login(config.admin.password)).status).toBe(200);
     for (let index = 0; index < 5; index++) await login(secret);
-    const rows = await compose(['exec', '-T', 'postgres', 'psql', '-U', 'flowstudio', '-d', 'flowstudio', '-Atc', `select action || '|' || actor || '|' || details::text from audit_entries where action like 'login.%' and details::text like '%${ip}%' order by id`]);
+    const rows = await compose(['exec', '-T', 'postgres', 'psql', '-U', 'studioflow', '-d', 'studioflow', '-Atc', `select action || '|' || actor || '|' || details::text from audit_entries where action like 'login.%' and details::text like '%${ip}%' order by id`]);
     expect(rows.code, rows.stderr).toBe(0);
     const lines = rows.stdout.trim().split(/\r?\n/);
     const actions = lines.map((line) => line.split('|')[0]);

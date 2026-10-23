@@ -153,7 +153,7 @@ test.describe('OPS admin hash path', () => {
     test.setTimeout(420_000);
     const config = stackConfig();
     const password = 'Hash-Login-Passwort-2026';
-    const hashRun = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', imageNameOf('api'), 'Opten.FlowStudio.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
+    const hashRun = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', imageNameOf('api'), 'Opten.StudioFlow.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
     expect(hashRun.code, hashRun.output).toBe(0);
     const hash = hashRun.stdout.trim().split(/\r?\n/).pop()!;
     expect(hash).toMatch(/^AQAAAA/);

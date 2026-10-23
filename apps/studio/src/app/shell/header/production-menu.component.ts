@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@flowstudio/scene-model';
+import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@studioflow/scene-model';
 import { toGermanMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -52,7 +52,7 @@ function textControl(required: boolean): FormControl<string> {
  * create another production (not while the broadcast is live) and sign out. Typed reactive forms for every input.
  */
 @Component({
-  selector: 'fs-production-menu',
+  selector: 'sf-production-menu',
   imports: [IconComponent, PopoverDirective, PopoverTriggerDirective, ReactiveFormsModule],
   templateUrl: './production-menu.component.html',
   styleUrl: './production-menu.component.scss',
@@ -70,7 +70,7 @@ export class ProductionMenuComponent {
   protected readonly busy = signal(false);
   protected readonly productions = signal<readonly ProductionSummaryDto[] | null>(null);
   protected readonly listError = signal(false);
-  protected readonly name = computed(() => this.store.production()?.name ?? 'FlowStudio');
+  protected readonly name = computed(() => this.store.production()?.name ?? 'StudioFlow');
   protected readonly live = computed(() => this.store.broadcast() === 'live');
 
   protected readonly renameControl = nameControl();

@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
-using Opten.FlowStudio.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Ports;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// Hands realtime deliveries (events, tallies, device messages, aborts) to the clients in the order they were queued per

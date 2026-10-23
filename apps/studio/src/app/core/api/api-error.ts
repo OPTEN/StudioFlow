@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ERROR_CODES, type ErrorCode } from '@flowstudio/scene-model';
+import { ERROR_CODES, type ErrorCode } from '@studioflow/scene-model';
 
 /**
  * Error codes the API may put into `ProblemDetails.code` (spec 5): the shared `ERROR_CODES`, which include the
@@ -19,7 +19,7 @@ export type ApiErrorCode = ErrorCode | 'unauthorized' | 'forbidden' | 'internal_
  */
 export type ClientErrorCode = 'network' | 'aborted';
 
-/** RFC 7807 problem body with the FlowStudio extensions `code` and (for validation) `errors`. */
+/** RFC 7807 problem body with the StudioFlow extensions `code` and (for validation) `errors`. */
 export interface ProblemBody {
   readonly type?: string | null;
   readonly title?: string | null;
@@ -131,7 +131,7 @@ function normalizeFieldErrors(
 }
 
 /**
- * Error of a REST call: HTTP status (0 = no answer), the FlowStudio `code`, title/detail of the problem body, field
+ * Error of a REST call: HTTP status (0 = no answer), the StudioFlow `code`, title/detail of the problem body, field
  * errors of a validation problem and `Retry-After`. Every `StudioApiService` method rejects with an `ApiError`.
  * The numeric `status` also lets `MediaSession` recognise 401/403 from the token provider.
  */

@@ -23,7 +23,7 @@ type RedeemState = 'redeeming' | 'already' | 'expired' | 'failed';
  * names the device («Handy 3»), the Regie can rename it. On success the token leaves the address bar (replaceUrl).
  */
 @Component({
-  selector: 'fs-redeem',
+  selector: 'sf-redeem',
   imports: [RouterLink, BrandMarkComponent, IconComponent],
   templateUrl: './redeem.component.html',
   styleUrl: './redeem.component.scss',

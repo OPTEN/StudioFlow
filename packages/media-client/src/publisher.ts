@@ -3,8 +3,8 @@
  * state machine (`starting → live`, `paused`, `ended`, `failed`, `idle`). Survives rejoins of the {@link MediaSession}
  * by republishing every slot that should be live into the new room.
  */
-import { backoffDelay } from '@flowstudio/realtime-client';
-import { slotKind, type SlotState, type SlotTelemetryDto } from '@flowstudio/scene-model';
+import { backoffDelay } from '@studioflow/realtime-client';
+import { slotKind, type SlotState, type SlotTelemetryDto } from '@studioflow/scene-model';
 import {
   RoomEvent,
   TrackEvent,

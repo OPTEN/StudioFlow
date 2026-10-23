@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Collects field errors (camelCase field paths such as <c>items[2].crop.top</c>) and throws them at once.</summary>
 public sealed class ValidationErrors
@@ -22,12 +22,12 @@ public sealed class ValidationErrors
         messages.Add(message);
     }
 
-    /// <summary>Throws a validation <see cref="FlowStudioException"/> when errors were collected.</summary>
+    /// <summary>Throws a validation <see cref="StudioFlowException"/> when errors were collected.</summary>
     public void ThrowIfAny()
     {
         if (HasErrors)
         {
-            throw new FlowStudioException(ErrorKind.Validation, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", ToDictionary());
+            throw new StudioFlowException(ErrorKind.Validation, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", ToDictionary());
         }
     }
 

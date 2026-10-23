@@ -6,7 +6,7 @@ import {
   snapRotation,
   type ItemFit,
   type SceneItemDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { EditorService } from '../../stage/editor.service';
@@ -37,7 +37,7 @@ type NumberKey = 'x' | 'y' | 'w' | 'h' | 'radius';
  * `focusin` → `pushUndo`). Everything is disabled while the scene is live in Studio-Modus or the Regie is offline.
  */
 @Component({
-  selector: 'fs-element-inspector',
+  selector: 'sf-element-inspector',
   imports: [IconComponent, NumberFieldDirective],
   templateUrl: './element-inspector.component.html',
   styleUrl: './element-inspector.component.scss',

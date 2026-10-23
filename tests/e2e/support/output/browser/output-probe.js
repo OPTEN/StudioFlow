@@ -8,9 +8,9 @@
  *
  * The output page has no data-state / data-slate hooks (docs/testing.md 1.7 lists them, the product has none), so the
  * state of an item is derived from the computed styles of the elements the renderer toggles:
- *   fallback  .fs-r-fallback is displayed (the fallback source instead of the lost picture)
- *   held      .fs-r-held is displayed (blurred picture, dark scrim, «Bild kommt gleich zurück»)
- *   hold      the hold-frame canvas (.fs-r-hold-frame) is displayed (last picture of a lost source, sharp)
+ *   fallback  .sf-r-fallback is displayed (the fallback source instead of the lost picture)
+ *   held      .sf-r-held is displayed (blurred picture, dark scrim, «Bild kommt gleich zurück»)
+ *   hold      the hold-frame canvas (.sf-r-hold-frame) is displayed (last picture of a lost source, sharp)
  *   live      a device video with a decoded picture
  *   connecting a device video without a picture yet
  *   media     an image or video asset
@@ -62,34 +62,34 @@
   function scanAdded(node) {
     if (!(node instanceof Element)) return;
     const visit = (el) => {
-      if (el.matches('.fs-r-layer[data-scene-id]')) log('layer+', { id: el.getAttribute('data-scene-id') });
-      else if (el.matches('.fs-r-slate')) {
-        const title = (el.querySelector('.fs-r-slate-title') || {}).textContent || '';
+      if (el.matches('.sf-r-layer[data-scene-id]')) log('layer+', { id: el.getAttribute('data-scene-id') });
+      else if (el.matches('.sf-r-slate')) {
+        const title = (el.querySelector('.sf-r-slate-title') || {}).textContent || '';
         if (title.indexOf(STANDBY) >= 0) probe.standbySeen = true;
         if (title.indexOf(DENIED) >= 0) probe.denySeen = true;
         log('slate+', { title: title });
       } else if (el.matches('video')) {
         const item = itemOf(el);
         log('video+', { item: item ? item.getAttribute('data-item-id') : null });
-      } else if (el.matches('.fs-r-slate-title')) {
+      } else if (el.matches('.sf-r-slate-title')) {
         const text = el.textContent || '';
         if (text.indexOf(STANDBY) >= 0) probe.standbySeen = true;
         if (text.indexOf(DENIED) >= 0) probe.denySeen = true;
       }
     };
     visit(node);
-    node.querySelectorAll('.fs-r-layer[data-scene-id], .fs-r-slate, video, .fs-r-slate-title').forEach(visit);
+    node.querySelectorAll('.sf-r-layer[data-scene-id], .sf-r-slate, video, .sf-r-slate-title').forEach(visit);
   }
 
   function scanRemoved(node) {
     if (!(node instanceof Element)) return;
     const visit = (el) => {
-      if (el.matches('.fs-r-layer[data-scene-id]')) log('layer-', { id: el.getAttribute('data-scene-id') });
-      else if (el.matches('.fs-r-slate')) log('slate-', {});
+      if (el.matches('.sf-r-layer[data-scene-id]')) log('layer-', { id: el.getAttribute('data-scene-id') });
+      else if (el.matches('.sf-r-slate')) log('slate-', {});
       else if (el.matches('video')) log('video-', {});
     };
     visit(node);
-    node.querySelectorAll('.fs-r-layer[data-scene-id], .fs-r-slate, video').forEach(visit);
+    node.querySelectorAll('.sf-r-layer[data-scene-id], .sf-r-slate, video').forEach(visit);
   }
 
   const observer = new MutationObserver((records) => {
@@ -99,7 +99,7 @@
       if (record.type === 'characterData' || record.type === 'childList') {
         const target = record.target;
         const el = target instanceof Element ? target : target.parentElement;
-        const title = el && el.closest ? el.closest('.fs-r-slate-title') : null;
+        const title = el && el.closest ? el.closest('.sf-r-slate-title') : null;
         if (title) {
           const text = title.textContent || '';
           if (text.indexOf(STANDBY) >= 0) probe.standbySeen = true;
@@ -116,11 +116,11 @@
   }
 
   function itemState(item) {
-    if (displayed(item.querySelector('.fs-r-fallback'))) return 'fallback';
-    if (displayed(item.querySelector('.fs-r-held'))) return 'held';
-    if (displayed(item.querySelector('canvas.fs-r-hold-frame'))) return 'hold';
-    const video = item.querySelector('video.fs-r-media--device');
-    if (!video) return item.querySelector('.fs-r-media') ? 'media' : 'missing';
+    if (displayed(item.querySelector('.sf-r-fallback'))) return 'fallback';
+    if (displayed(item.querySelector('.sf-r-held'))) return 'held';
+    if (displayed(item.querySelector('canvas.sf-r-hold-frame'))) return 'hold';
+    const video = item.querySelector('video.sf-r-media--device');
+    if (!video) return item.querySelector('.sf-r-media') ? 'media' : 'missing';
     return video.videoWidth > 0 && video.readyState >= 2 ? 'live' : 'connecting';
   }
 
@@ -141,10 +141,10 @@
 
   function snapshotItem(item, withLuma) {
     const rect = item.getBoundingClientRect();
-    const video = item.querySelector('video.fs-r-media--device');
-    const layer = item.closest('.fs-r-layer');
-    const hold = item.querySelector('canvas.fs-r-hold-frame');
-    const box = item.querySelector('.fs-r-box');
+    const video = item.querySelector('video.sf-r-media--device');
+    const layer = item.closest('.sf-r-layer');
+    const hold = item.querySelector('canvas.sf-r-hold-frame');
+    const box = item.querySelector('.sf-r-box');
     const out = {
       id: item.getAttribute('data-item-id'),
       layer: layer ? layer.getAttribute('data-scene-id') : null,
@@ -167,10 +167,10 @@
   }
 
   function snapshotSlate() {
-    const slate = document.querySelector('.fs-r-slate');
+    const slate = document.querySelector('.sf-r-slate');
     if (!slate) return null;
-    const title = slate.querySelector('.fs-r-slate-title');
-    const subtitle = slate.querySelector('.fs-r-slate-subtitle');
+    const title = slate.querySelector('.sf-r-slate-title');
+    const subtitle = slate.querySelector('.sf-r-slate-subtitle');
     return {
       opacity: parseFloat(getComputedStyle(slate).opacity),
       title: title ? title.textContent : '',
@@ -195,14 +195,14 @@
   }
 
   probe.snapshot = function (withLuma, withAnimations) {
-    const layers = [...document.querySelectorAll('.fs-r-layer')].map((l) => ({
+    const layers = [...document.querySelectorAll('.sf-r-layer')].map((l) => ({
       id: l.getAttribute('data-scene-id'),
       opacity: parseFloat(getComputedStyle(l).opacity),
     }));
     return {
       t: epoch(),
       layers: layers,
-      items: [...document.querySelectorAll('.fs-r-item')].map((i) => snapshotItem(i, !!withLuma)),
+      items: [...document.querySelectorAll('.sf-r-item')].map((i) => snapshotItem(i, !!withLuma)),
       slate: snapshotSlate(),
       videos: document.querySelectorAll('video').length,
       anims: withAnimations ? snapshotAnimations() : undefined,

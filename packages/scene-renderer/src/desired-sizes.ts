@@ -1,4 +1,4 @@
-import { parseSourceRef, type SceneDto } from '@flowstudio/scene-model';
+import { parseSourceRef, type SceneDto } from '@studioflow/scene-model';
 
 import { maxDesiredSize } from './geometry';
 import type { DesiredSize, SourceMediaProvider } from './types';

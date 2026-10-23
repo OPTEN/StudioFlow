@@ -1,4 +1,4 @@
-import type { LiveKitTokenDto, OutputReport } from '@flowstudio/scene-model';
+import type { LiveKitTokenDto, OutputReport } from '@studioflow/scene-model';
 
 /**
  * REST calls of the output page (`ApiSurface.cs`, group `/api/output/{slug}`). The key travels only in the

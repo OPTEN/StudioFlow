@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>How a new hub session relates to the previous one of the same device.</summary>
 /// <param name="ReplacedConnectionId">Old connection to abort, if any.</param>

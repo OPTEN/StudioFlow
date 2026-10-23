@@ -4,9 +4,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Ports;
 
-namespace Opten.FlowStudio.Infrastructure.LiveKit;
+namespace Opten.StudioFlow.Infrastructure.LiveKit;
 
 /// <summary>
 /// LiveKit room service over Twirp (<c>POST /twirp/livekit.RoomService/{Method}</c>, spec 7). Requests are camelCase,

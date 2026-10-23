@@ -1,7 +1,7 @@
 /**
  * Page lifecycle signals relevant for reconnecting media:
  * - «wake» moments where an immediate retry is worthwhile: the wake signals shared with the hubs (`pageWakeSignals`
- *   of `@flowstudio/realtime-client`: `online`, the document becoming visible, `pageshow` and `resume`);
+ *   of `@studioflow/realtime-client`: `online`, the document becoming visible, `pageshow` and `resume`);
  * - «suspended» phases where no connect attempt should start: between `pagehide`/`freeze` and the next wake signal.
  *   livekit-client itself disconnects on `pagehide` and `freeze` (CLIENT_INITIATED), so a retry during that phase
  *   would only open a socket that the browser is about to freeze.
@@ -9,7 +9,7 @@
  * Visibility alone never suspends: a laptop sharing its screen usually has the sender tab in the background, and it
  * must keep reconnecting there.
  */
-import { browserWakeTargets, pageWakeSignals, type WakeTargets } from '@flowstudio/realtime-client';
+import { browserWakeTargets, pageWakeSignals, type WakeTargets } from '@studioflow/realtime-client';
 
 /** Wake signals plus the suspended phase of the page (see the module comment). */
 export interface PageLifecycle {

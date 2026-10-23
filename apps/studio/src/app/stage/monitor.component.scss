@@ -11,11 +11,11 @@
 
 // Widths come from the stage (monitor-layout.ts): 16:9 from the stage's width and height, never overflowing.
 :host(.c-monitor--preview) {
-  width: var(--fs-preview-w, 50%);
+  width: var(--sf-preview-w, 50%);
 }
 
 :host(.c-monitor--program) {
-  width: var(--fs-program-w, 100%);
+  width: var(--sf-program-w, 100%);
 }
 
 .c-monitor__head {

@@ -27,7 +27,7 @@ export function loginErrorMessage(error: unknown): string {
  * missing server. After success it continues to `?next=` (in-app paths only) or `/`.
  */
 @Component({
-  selector: 'fs-login-page',
+  selector: 'sf-login-page',
   imports: [IconComponent, ReactiveFormsModule],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',

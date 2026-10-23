@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { LIMITS } from '@flowstudio/scene-model';
+import { LIMITS } from '@studioflow/scene-model';
 import { DEVICE_ENVIRONMENT } from '../core/device-environment';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
 import { IconComponent } from '../shared/icon.component';
@@ -36,7 +36,7 @@ export function slotStateText(slot: StationSlot): string {
  * ended share or a reshare request, and the optional camera.
  */
 @Component({
-  selector: 'fs-laptop-station',
+  selector: 'sf-laptop-station',
   imports: [BrandMarkComponent, ConnectionStatusComponent, IconComponent, MediaPreviewDirective],
   templateUrl: './laptop-station.component.html',
   styleUrl: './laptop-station.component.scss',

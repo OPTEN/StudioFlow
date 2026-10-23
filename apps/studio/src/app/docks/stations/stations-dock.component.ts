@@ -13,7 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { DeviceDto, IncidentDto, SourceDto } from '@flowstudio/scene-model';
+import type { DeviceDto, IncidentDto, SourceDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ViewportService } from '../../core/ui/viewport.service';
@@ -55,7 +55,7 @@ function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
  * (`StationFocusService`) opens the station, scrolls it into view and flashes it; a new outage pulses its lamp once.
  */
 @Component({
-  selector: 'fs-stations-dock',
+  selector: 'sf-stations-dock',
   imports: [DockFrameComponent, IconComponent, KnockCardComponent, StationRowComponent],
   templateUrl: './stations-dock.component.html',
   styleUrl: './stations-dock.component.scss',

@@ -13,7 +13,7 @@ import {
   formatKbpsAsMbit,
   type TechCheckDto,
   type TechCheckLevel,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { IconComponent } from '../shared/icon.component';
 
 /** One lamp of the check. */
@@ -54,7 +54,7 @@ export function techCheckSummary(result: TechCheckDto | null): string {
 
 /** «Technik-Check»: camera, network and upload as lamps, with the German note and «Erneut prüfen». */
 @Component({
-  selector: 'fs-tech-check-panel',
+  selector: 'sf-tech-check-panel',
   imports: [IconComponent],
   templateUrl: './tech-check-panel.component.html',
   styleUrl: './tech-check-panel.component.scss',

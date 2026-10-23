@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import type { DeviceKind } from '@flowstudio/scene-model';
+import type { DeviceKind } from '@studioflow/scene-model';
 import { toApiError, type ApiError } from '../core/api-error';
 import { SESSION_STORAGE, STORAGE_KEYS } from '../core/browser-storage';
 import { CredentialsService } from '../core/credentials.service';
@@ -19,7 +19,7 @@ export const KNOCK_MAX_BACKOFF_MS = 10_000;
  */
 export type KnockPhase = 'idle' | 'requesting' | 'pending' | 'approved' | 'denied' | 'expired';
 
-/** A pending knock as kept in `sessionStorage` (`flowstudio.pairing`), so a reload keeps the same request and code. */
+/** A pending knock as kept in `sessionStorage` (`studioflow.pairing`), so a reload keeps the same request and code. */
 export interface PendingKnock {
   readonly requestId: string;
   readonly pollToken: string;

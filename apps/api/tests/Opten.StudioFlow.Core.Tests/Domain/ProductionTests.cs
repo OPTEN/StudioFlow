@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Domain;
+namespace Opten.StudioFlow.Core.Tests.Domain;
 
 public sealed class ProductionTests
 {
@@ -25,7 +25,7 @@ public sealed class ProductionTests
     }
 
     [Fact]
-    public void Create_InvalidName_Throws() => Assert.Throws<FlowStudioException>(() => Production.Create(" ", "x", true, Build.T0));
+    public void Create_InvalidName_Throws() => Assert.Throws<StudioFlowException>(() => Production.Create(" ", "x", true, Build.T0));
 
     [Fact]
     public void StartBroadcast_FromStandbyAndEnded_GoesLive()
@@ -42,7 +42,7 @@ public sealed class ProductionTests
 
     [Fact]
     public void EndBroadcast_InStandby_IsConflict() =>
-        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<FlowStudioException>(() => production.EndBroadcast(Build.T0)).Code);
+        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<StudioFlowException>(() => production.EndBroadcast(Build.T0)).Code);
 
     [Fact]
     public void EndBroadcast_Twice_IsNoOp()
@@ -87,7 +87,7 @@ public sealed class ProductionTests
     {
         production.SwitchProgram(Scenes[1].Id, Build.Fade(300), Build.T0);
 
-        var error = Assert.Throws<FlowStudioException>(() => production.SwitchProgram(Scenes[2].Id, Transitions.Cut, Build.T0.AddMilliseconds(299)));
+        var error = Assert.Throws<StudioFlowException>(() => production.SwitchProgram(Scenes[2].Id, Transitions.Cut, Build.T0.AddMilliseconds(299)));
 
         Assert.Equal(ErrorCodes.TransitionRunning, error.Code);
         Assert.NotNull(production.SwitchProgram(Scenes[2].Id, Transitions.Cut, Build.T0.AddMilliseconds(300)));
@@ -114,7 +114,7 @@ public sealed class ProductionTests
 
     [Fact]
     public void SwitchProgram_UnknownScene_IsNotFound() =>
-        Assert.Equal(ErrorKind.NotFound, Assert.Throws<FlowStudioException>(() => production.SwitchProgram("scn_none", Transitions.Cut, Build.T0)).Kind);
+        Assert.Equal(ErrorKind.NotFound, Assert.Throws<StudioFlowException>(() => production.SwitchProgram("scn_none", Transitions.Cut, Build.T0)).Kind);
 
     [Fact]
     public void SetPreview_Changes_ReportCutWithUnchangedProgram()
@@ -131,7 +131,7 @@ public sealed class ProductionTests
     }
 
     [Fact]
-    public void SetPreview_UnknownScene_IsNotFound() => Assert.Throws<FlowStudioException>(() => production.SetPreview("scn_none", Build.T0));
+    public void SetPreview_UnknownScene_IsNotFound() => Assert.Throws<StudioFlowException>(() => production.SetPreview("scn_none", Build.T0));
 
     [Fact]
     public void Take_WithPreview_SwapsProgramAndPreview()
@@ -147,14 +147,14 @@ public sealed class ProductionTests
 
     [Fact]
     public void Take_WithoutPreview_IsConflict() =>
-        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<FlowStudioException>(() => production.Take(Transitions.Cut, Build.T0)).Code);
+        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<StudioFlowException>(() => production.Take(Transitions.Cut, Build.T0)).Code);
 
     [Fact]
     public void Take_PreviewEqualsProgram_IsConflict()
     {
         production.SetPreview(Scenes[0].Id, Build.T0);
 
-        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<FlowStudioException>(() => production.Take(Transitions.Cut, Build.T0)).Code);
+        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<StudioFlowException>(() => production.Take(Transitions.Cut, Build.T0)).Code);
     }
 
     [Fact]
@@ -163,16 +163,16 @@ public sealed class ProductionTests
         production.SetPreview(Scenes[1].Id, Build.T0);
         production.Take(Build.Fade(2000), Build.T0);
 
-        Assert.Equal(ErrorCodes.TransitionRunning, Assert.Throws<FlowStudioException>(() => production.Take(Transitions.Cut, Build.T0.AddSeconds(1))).Code);
+        Assert.Equal(ErrorCodes.TransitionRunning, Assert.Throws<StudioFlowException>(() => production.Take(Transitions.Cut, Build.T0.AddSeconds(1))).Code);
     }
 
     [Fact]
     public void Take_InvalidTransition_IsValidationError() =>
-        Assert.Equal(ErrorKind.Validation, Assert.Throws<FlowStudioException>(() => production.Take(Build.Fade(123), Build.T0)).Kind);
+        Assert.Equal(ErrorKind.Validation, Assert.Throws<StudioFlowException>(() => production.Take(Build.Fade(123), Build.T0)).Kind);
 
     [Fact]
     public void RemoveScene_Program_IsSceneIsLive() =>
-        Assert.Equal(ErrorCodes.SceneIsLive, Assert.Throws<FlowStudioException>(() => production.RemoveScene(Scenes[0].Id, Build.T0)).Code);
+        Assert.Equal(ErrorCodes.SceneIsLive, Assert.Throws<StudioFlowException>(() => production.RemoveScene(Scenes[0].Id, Build.T0)).Code);
 
     [Fact]
     public void RemoveScene_Preview_ClearsPreviewAndRenumbers()
@@ -214,7 +214,7 @@ public sealed class ProductionTests
 
     [Fact]
     public void AddScene_UnknownCloneSource_IsValidationError() =>
-        Assert.True(Assert.Throws<FlowStudioException>(() => production.AddScene("X", "scn_none", Build.T0)).Errors!.ContainsKey("cloneFromSceneId"));
+        Assert.True(Assert.Throws<StudioFlowException>(() => production.AddScene("X", "scn_none", Build.T0)).Errors!.ContainsKey("cloneFromSceneId"));
 
     [Fact]
     public void AddScene_HundredthScene_IsLimitReached()
@@ -224,7 +224,7 @@ public sealed class ProductionTests
             production.AddScene("S", null, Build.T0);
         }
 
-        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<FlowStudioException>(() => production.AddScene("S", null, Build.T0)).Code);
+        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<StudioFlowException>(() => production.AddScene("S", null, Build.T0)).Code);
     }
 
     [Fact]
@@ -242,10 +242,10 @@ public sealed class ProductionTests
     {
         var ids = Scenes.Select(s => s.Id).ToList();
 
-        Assert.Throws<FlowStudioException>(() => production.ReorderScenes([ids[0], ids[1]]));
-        Assert.Throws<FlowStudioException>(() => production.ReorderScenes([ids[0], ids[1], ids[1]]));
-        Assert.Throws<FlowStudioException>(() => production.ReorderScenes([ids[0], ids[1], "scn_other"]));
-        Assert.Throws<FlowStudioException>(() => production.ReorderScenes(null));
+        Assert.Throws<StudioFlowException>(() => production.ReorderScenes([ids[0], ids[1]]));
+        Assert.Throws<StudioFlowException>(() => production.ReorderScenes([ids[0], ids[1], ids[1]]));
+        Assert.Throws<StudioFlowException>(() => production.ReorderScenes([ids[0], ids[1], "scn_other"]));
+        Assert.Throws<StudioFlowException>(() => production.ReorderScenes(null));
     }
 
     [Fact]
@@ -254,7 +254,7 @@ public sealed class ProductionTests
         var video = Build.Video(production);
         var catalog = new SourceCatalog([], [video]);
 
-        var error = Assert.Throws<FlowStudioException>(() => production.Update(new UpdateProductionRequest(null, new SlateDto("Gleich", null, video.Id), null), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => production.Update(new UpdateProductionRequest(null, new SlateDto("Gleich", null, video.Id), null), catalog));
 
         Assert.True(error.Errors!.ContainsKey("standbySlate.backgroundAssetId"));
     }
@@ -285,11 +285,11 @@ public sealed class ProductionTests
 
     [Fact]
     public void SetAllowedIps_InvalidEntry_NamesTheIndex() =>
-        Assert.True(Assert.Throws<FlowStudioException>(() => production.SetAllowedIps(["10.0.0.0/8", "nope"])).Errors!.ContainsKey("allowedIps[1]"));
+        Assert.True(Assert.Throws<StudioFlowException>(() => production.SetAllowedIps(["10.0.0.0/8", "nope"])).Errors!.ContainsKey("allowedIps[1]"));
 
     [Fact]
     public void SetAllowedIps_TooMany_IsValidationError() =>
-        Assert.Throws<FlowStudioException>(() => production.SetAllowedIps([.. Enumerable.Range(0, 51).Select(i => $"10.0.0.{i}")]));
+        Assert.Throws<StudioFlowException>(() => production.SetAllowedIps([.. Enumerable.Range(0, 51).Select(i => $"10.0.0.{i}")]));
 
     [Fact]
     public void RegenerateOutputKey_Always_ReplacesKey()

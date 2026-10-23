@@ -30,10 +30,10 @@ export interface ContextWatch {
 
 const CSP_INIT = `
 (() => {
-  if (window.__fsCspLog) return;
-  window.__fsCspLog = [];
+  if (window.__sfCspLog) return;
+  window.__sfCspLog = [];
   document.addEventListener('securitypolicyviolation', (event) => {
-    window.__fsCspLog.push(event.violatedDirective + ' blocked ' + event.blockedURI + ' on ' + event.documentURI);
+    window.__sfCspLog.push(event.violatedDirective + ' blocked ' + event.blockedURI + ' on ' + event.documentURI);
   });
 })();
 `;
@@ -52,7 +52,7 @@ export async function watchContext(context: BrowserContext): Promise<ContextWatc
       const found: string[] = [];
       for (const page of watch.pages) {
         if (page.isClosed()) continue;
-        const log = await page.evaluate(() => (window as unknown as { __fsCspLog?: string[] }).__fsCspLog ?? []).catch(() => []);
+        const log = await page.evaluate(() => (window as unknown as { __sfCspLog?: string[] }).__sfCspLog ?? []).catch(() => []);
         found.push(...log);
       }
       return found;

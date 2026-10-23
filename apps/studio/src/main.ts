@@ -5,7 +5,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
 
-// German (Switzerland) formats for Angular pipes; FlowStudio's own formatting lives in @flowstudio/scene-model.
+// German (Switzerland) formats for Angular pipes; StudioFlow's own formatting lives in @studioflow/scene-model.
 registerLocaleData(localeDeCh, 'de-CH', localeDeChExtra);
 
 bootstrapApplication(AppComponent, appConfig).catch((error: unknown) => console.error(error));

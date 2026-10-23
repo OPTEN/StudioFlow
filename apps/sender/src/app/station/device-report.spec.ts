@@ -1,4 +1,4 @@
-import type { SlotTelemetryDto } from '@flowstudio/scene-model';
+import type { SlotTelemetryDto } from '@studioflow/scene-model';
 import { TECH_CHECK_OK } from '../../testing/sender-fakes';
 import { buildDeviceReport, type DeviceReportInput } from './device-report';
 

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>A source that scene items can show.</summary>
 /// <param name="Id">Source reference: <c>{deviceId}/{slot}</c> or <c>{assetId}</c>.</param>

@@ -11,12 +11,12 @@
       <video
         class="c-phone__video"
         [class.is-mirrored]="facing() === 'user'"
-        [fsMediaPreview]="stream"
+        [sfMediaPreview]="stream"
         aria-label="Vorschau der Kamera"
       ></video>
     } @else if (!problem()) {
       <div class="c-phone__placeholder">
-        <fs-icon class="c-phone__placeholder-icon" name="camera" />
+        <sf-icon class="c-phone__placeholder-icon" name="camera" />
         <p>{{ cameraState() === 'starting' ? 'Kamera startet …' : 'Die Kamera ist aus.' }}</p>
       </div>
     }
@@ -38,7 +38,7 @@
         {{ name() }}
       </h1>
     </div>
-    <fs-connection-status
+    <sf-connection-status
       [view]="session.connection()"
       [since]="session.degradedSince()"
       [now]="session.now()"
@@ -48,7 +48,7 @@
   @if (problem(); as issue) {
     <div class="c-phone__problem" role="alert">
       <div class="c-notice c-notice--bad">
-        <fs-icon class="c-notice__icon" name="alert" />
+        <sf-icon class="c-notice__icon" name="alert" />
         <div class="c-notice__body">
           <p class="c-notice__title">{{ issue.title }}</p>
           <ol class="c-phone__steps">
@@ -81,7 +81,7 @@
       [class.c-button--fill]="!running()"
       (click)="toggleCamera()"
     >
-      <fs-icon [name]="running() ? 'close' : 'camera'" />
+      <sf-icon [name]="running() ? 'close' : 'camera'" />
       {{ running() ? 'Kamera stoppen' : 'Kamera starten' }}
     </button>
 
@@ -147,7 +147,7 @@
       [attr.aria-pressed]="dark()"
       (click)="toggleDark(); $event.stopPropagation()"
     >
-      <fs-icon name="moon" />
+      <sf-icon name="moon" />
       Dunkel
     </button>
 
@@ -156,7 +156,7 @@
       type="button"
       (click)="openTechCheck.emit()"
     >
-      <fs-icon name="gauge" />
+      <sf-icon name="gauge" />
       Technik-Check
     </button>
   </div>

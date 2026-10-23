@@ -31,17 +31,17 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
  * component wraps its content in it:
  *
  * ```html
- * <fs-dock-frame dock="st" [count]="stations().length">
- *   <button fsDockActions class="c-btn c-btn--sm c-btn--primary" type="button">…Gerät koppeln</button>
+ * <sf-dock-frame dock="st" [count]="stations().length">
+ *   <button sfDockActions class="c-btn c-btn--sm c-btn--primary" type="button">…Gerät koppeln</button>
  *   …body…
- * </fs-dock-frame>
+ * </sf-dock-frame>
  * ```
  *
  * Dragging the header (or the grip) moves the dock between zones; arrow keys on the grip move it step by step.
  * The pairing dock uses `[draggable]="false"`. On stacked layouts (≤ 1180 px) the grip is hidden.
  */
 @Component({
-  selector: 'fs-dock-frame',
+  selector: 'sf-dock-frame',
   imports: [IconComponent],
   template: `
     <div
@@ -56,7 +56,7 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
           [attr.aria-label]="'Dock ' + dockTitle() + ' verschieben, mit Pfeiltasten'"
           (keydown)="onGripKeyDown($event)"
         >
-          <svg fsIcon="grip"></svg>
+          <svg sfIcon="grip"></svg>
         </button>
       }
       <span
@@ -73,7 +73,7 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
         <span class="c-dock-frame__count">{{ count() }}</span>
       }
       <span class="u-spacer"></span>
-      <ng-content select="[fsDockActions]" />
+      <ng-content select="[sfDockActions]" />
     </div>
     <div class="c-dock-frame__body" [class.c-dock-frame__body--static]="!scroll()">
       <ng-content />

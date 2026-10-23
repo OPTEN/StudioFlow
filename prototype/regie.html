@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FlowStudio Regie</title>
+<title>StudioFlow Regie</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: eine flache Fläche ohne Rahmen. Kopfzeile, Meldungszeile, Bühne mit Program (und im Studio-Modus Preview), unten Szenen | Quellen | Eigenschaften | Stationen, getrennt durch 1-px-Linien. */
@@ -541,7 +541,7 @@ button { font: inherit; color: inherit; }
   <header class="top">
     <div class="brand">
       <svg class="mark" viewBox="0 0 22 18" aria-hidden="true"><rect x="1" y="1" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7" y="7" width="14" height="10" rx="1.5" fill="currentColor"/></svg>
-      FlowStudio
+      StudioFlow
     </div>
     <span class="prod">Webinar «Headless mit Umbraco»</span>
     <div class="pop-wrap">
@@ -738,7 +738,7 @@ const autoSlots = (n) => {
 
 const demo = new Set(location.hash.slice(1).split('+'));
 const S = {
-  studio: demo.has('studio') || store.get('flowstudio.studio') === '1',
+  studio: demo.has('studio') || store.get('studioflow.studio') === '1',
   program: 'lea', preview: 'demo', sel: null, transition: 'fade', duration: 300, trans: null,
   liveSince: Date.now() - (42 * 60 + 13) * 1000,
   incidents: [], pending: null, tab: 'laptop', pairOpen: false, undo: [], open: null, linkMade: false, outConfirm: false, sceneConfirm: false, blockConfirm: null,
@@ -1659,7 +1659,7 @@ function take() {
 $('#takeBtn').addEventListener('click', take);
 function setStudio(on) {
   S.studio = on;
-  store.set('flowstudio.studio', on ? '1' : '0');
+  store.set('studioflow.studio', on ? '1' : '0');
   if (on && S.preview === S.program) {
     const i = SCENES.findIndex((s) => s.id === S.program);
     S.preview = SCENES[(i + 1) % SCENES.length].id;
@@ -1909,20 +1909,20 @@ function renderPair() {
   const b = $('#pairBody'), side = $('#pairSide');
   if (S.tab === 'phone') {
     const left = Math.max(0, 30 * 60 * 1000 - (Date.now() - S.qrIssued));
-    b.innerHTML = `<h3>Handy als Kamera</h3><p>Mit der Kamera-App scannen. Das Handy öffnet FlowStudio und erscheint danach unter Stationen.</p>
+    b.innerHTML = `<h3>Handy als Kamera</h3><p>Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.</p>
       <div class="qr-wrap"><canvas class="qr" id="qr" role="img" aria-label="QR-Code zum Koppeln (Beispiel)"></canvas><div style="display:grid;gap:10px"><span class="hint">Gilt einmal, noch <span class="mono" id="qrLeft">${fmtDur(left)}</span> min.</span><button class="btn btn-sm" type="button" data-newqr>${icon('refresh', 14)}Neuen Code erzeugen</button></div></div>`;
-    side.innerHTML = `<h3>Tipps für fest montierte Handys</h3><p>Ans Ladekabel hängen und im Querformat montieren. FlowStudio hält den Bildschirm selbst wach und startet nach einem Neuladen mit den letzten Einstellungen.</p>`;
+    side.innerHTML = `<h3>Tipps für fest montierte Handys</h3><p>Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm selbst wach und startet nach einem Neuladen mit den letzten Einstellungen.</p>`;
     drawQR($('#qr'), (S.qrIssued % 100000) + 7);
   } else if (S.tab === 'laptop') {
     b.innerHTML = `<h3>Laptop ohne QR-Code</h3><p>Auf dem Laptop im Browser diese Adresse öffnen:</p>
-      <div class="big-url"><span id="joinUrl">flowstudio.opten.ch/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Kopieren</button></div>
+      <div class="big-url"><span id="joinUrl">studioflow.opten.ch/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Kopieren</button></div>
       <p>Dort einen Namen eingeben. Die Anfrage erscheint rechts mit einem Prüfcode.</p>
       <div class="mini" aria-hidden="true"><div class="mini-bar">So sieht es auf dem Laptop aus</div><div class="mini-b"><span class="mini-field">Laptop Mia</span><span class="mini-cap">Prüfcode für die Regie</span><span class="mini-code">${S.pending ? S.pending.code : '47 12'}</span></div></div>`;
     side.innerHTML = requestsHtml();
   } else {
     b.innerHTML = `<h3>Einladungslink</h3><p>Für Laptops, die schon vor dem Webinar gekoppelt werden sollen. Den Link per Teams oder Mail schicken.</p>
       ${S.linkMade
-        ? `<div class="big-url"><span id="inviteUrl">flowstudio.opten.ch/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Kopieren</button></div><p class="hint">Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Link widerrufen</button></div>`
+        ? `<div class="big-url"><span id="inviteUrl">studioflow.opten.ch/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Kopieren</button></div><p class="hint">Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Link widerrufen</button></div>`
         : `<div><button class="btn btn-fill" type="button" data-mklink>${icon('link', 15)}Link erstellen</button></div>`}`;
     side.innerHTML = requestsHtml();
   }
@@ -1978,7 +1978,7 @@ function answerKnock(ok) {
 function renderOutPop() {
   $('#outPop').innerHTML = `<div class="pop-h">Output an Proxy</div>
     <dl class="kv"><dt>Zustand</dt><dd class="state-ok">verbunden, 1 Abnehmer</dd><dt>Abnehmer</dt><dd class="mono">10.0.0.42</dd><dt>Format</dt><dd class="mono">1920 × 1080 · 30 fps</dd><dt>Latenz</dt><dd><span class="mono">${$('#outLat').textContent}</span> gemessen</dd></dl>
-    <div class="linkbox"><span id="outUrl">flowstudio.opten.ch/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Kopieren</button></div>
+    <div class="linkbox"><span id="outUrl">studioflow.opten.ch/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Kopieren</button></div>
     ${S.outConfirm
       ? `<div class="confirm"><span>Der alte Link hört sofort auf. Der Proxy braucht danach den neuen.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-out="yes">Neu erzeugen</button><button class="btn btn-sm" type="button" data-out="no">Abbrechen</button></div></div>`
       : `<div style="padding:10px 8px 4px;border-top:1px solid var(--seam-strong);margin-top:6px;display:flex;align-items:center;gap:10px"><span class="hint" style="flex:1">Bei Verdacht auf Weitergabe</span><button class="btn btn-sm btn-danger" type="button" data-out="ask">Link neu erzeugen</button></div>`}`;
@@ -2016,7 +2016,7 @@ $('#protoMenu').addEventListener('click', (e) => {
   if (d.dataset.demo === 'k2') { if (SOURCES.K2.status === 'ok') { startIncident('K2', 'reconnecting'); setTimeout(() => { if (SOURCES.K2.status === 'reconnecting') resolveIncident('K2'); }, 9000); } }
   if (d.dataset.demo === 's1') { if (SOURCES.S1.status === 'ok') startIncident('S1', 'ended'); }
   if (d.dataset.demo === 'knock') knockNow();
-  if (d.dataset.demo === 'reset') { store.set('flowstudio.layout', ''); store.set('flowstudio.studio', '0'); location.reload(); }
+  if (d.dataset.demo === 'reset') { store.set('studioflow.layout', ''); store.set('studioflow.studio', '0'); location.reload(); }
 });
 
 /* ---------- Meldung ---------- */
@@ -2088,7 +2088,7 @@ const defaultLayout = () => ({ v: 1, zones: { left: [], bottom: ['scenes', 'src'
 function loadLayout() {
   const D = defaultLayout();
   try {
-    const l = JSON.parse(store.get('flowstudio.layout') || 'null');
+    const l = JSON.parse(store.get('studioflow.layout') || 'null');
     if (!l || l.v !== 1 || !l.zones) return D;
     const ids = Object.keys(DOCKS);
     const all = ZONES.flatMap((z) => (Array.isArray(l.zones[z]) ? l.zones[z] : []));
@@ -2097,7 +2097,7 @@ function loadLayout() {
   } catch (e) { return D; }
 }
 let L = loadLayout();
-const saveLayout = () => store.set('flowstudio.layout', JSON.stringify(L));
+const saveLayout = () => store.set('studioflow.layout', JSON.stringify(L));
 const dockTitle = (id) => DOCKS[id] || 'Gerät koppeln';
 const zoneEl = (z) => $(`.zone-${z}`);
 const dockEl = (id) => $(`[data-dock="${id}"]`);

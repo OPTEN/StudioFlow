@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 /// <summary>In-memory persistence; objects are shared references, so "saving" is a no-op except for the counter.</summary>
 internal sealed class InMemoryData : IUnitOfWorkFactory

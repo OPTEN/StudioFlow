@@ -14,7 +14,7 @@ import type {
   SourceDto,
   SourceKind,
   SourceStatus,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /** Production id of the fixtures. */
 export const PRODUCTION_ID = 'prd_aaaaaaaaaaaaaaaa';

@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Ports;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// Published tracks of one LiveKit room as learned from webhooks and <c>ListParticipants</c> (spec 7). Webhooks are

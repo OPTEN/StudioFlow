@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// Regie hub sessions (spec 6): subscribe with delta or snapshot, presence counting and switching between productions.

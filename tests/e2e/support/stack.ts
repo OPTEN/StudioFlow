@@ -11,7 +11,7 @@ export interface ComposeOptions extends ExecOptions {
   profiles?: string[];
 }
 
-/** Arguments that select the compose project of the stack (E2E_PROJECT, default fs-e2e), its env file and compose files. */
+/** Arguments that select the compose project of the stack (E2E_PROJECT, default sf-e2e), its env file and compose files. */
 export function composeBaseArgs(options: Pick<ComposeOptions, 'extraFiles' | 'profiles'> = {}): string[] {
   const args = ['compose', '-p', PROJECT, '--env-file', ENV_FILE, '-f', COMPOSE_FILES.base, '-f', COMPOSE_FILES.e2e];
   for (const file of options.extraFiles ?? []) args.push('-f', file);

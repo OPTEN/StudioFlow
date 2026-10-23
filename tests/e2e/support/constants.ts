@@ -118,8 +118,8 @@ export const THRESHOLD = {
 } as const;
 
 /** Security-relevant names. */
-export const SESSION_COOKIE = 'fs_session';
-export const CSRF_HEADER = 'X-FlowStudio';
+export const SESSION_COOKIE = 'sf_session';
+export const CSRF_HEADER = 'X-StudioFlow';
 
 /** XSS payloads of docs/testing.md 1.8 (reused for names stored by the API). */
 export const XSS = [

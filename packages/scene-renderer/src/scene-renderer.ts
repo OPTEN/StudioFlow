@@ -1,5 +1,5 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@flowstudio/scene-model';
-import type { SceneDto, SlateDto, TransitionDto } from '@flowstudio/scene-model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
+import type { SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
 
 import { DesiredSizeCollector, DesiredSizeReporter, preloadRequests } from './desired-sizes';
 import { createElement, FILL, px, setStyle } from './dom';
@@ -107,7 +107,7 @@ class DomSceneRenderer implements SceneRenderer {
     });
 
     const background = this.ctx.transparent ? 'transparent' : PALETTE.stage;
-    this.viewport = createElement(doc, 'div', 'fs-r-viewport', {
+    this.viewport = createElement(doc, 'div', 'sf-r-viewport', {
       position: 'relative',
       width: '100%',
       height: '100%',
@@ -116,7 +116,7 @@ class DomSceneRenderer implements SceneRenderer {
       'pointer-events': 'none',
       'user-select': 'none',
     });
-    this.element = createElement(doc, 'div', 'fs-r-stage', {
+    this.element = createElement(doc, 'div', 'sf-r-stage', {
       position: 'absolute',
       left: '0',
       top: '0',
@@ -130,8 +130,8 @@ class DomSceneRenderer implements SceneRenderer {
     this.element.setAttribute('role', 'img');
     this.element.setAttribute('aria-label', options.label?.trim() || DEFAULT_STAGE_LABEL);
     // Scenes and slates are separate stacking contexts, the slate always on top.
-    this.scenesEl = createElement(doc, 'div', 'fs-r-scenes', { ...FILL, 'z-index': '0' });
-    const slateHost = createElement(doc, 'div', 'fs-r-slates', { ...FILL, 'z-index': '1' });
+    this.scenesEl = createElement(doc, 'div', 'sf-r-scenes', { ...FILL, 'z-index': '0' });
+    const slateHost = createElement(doc, 'div', 'sf-r-slates', { ...FILL, 'z-index': '1' });
     this.element.append(this.scenesEl, slateHost);
     this.viewport.append(this.element);
     container.append(this.viewport);

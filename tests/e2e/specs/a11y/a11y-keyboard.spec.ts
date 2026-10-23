@@ -167,7 +167,7 @@ test.describe('Keyboard-only Regie', () => {
     await tabTo(page, byName('Studio-Modus', 'switch'), { what: 'the Studio-Modus switch' });
     await page.keyboard.press('Space');
     await expect(regie.studioModeSwitch()).toBeChecked();
-    expect(await page.evaluate(() => localStorage.getItem('flowstudio.studio')), 'the mode is stored').toBe('1');
+    expect(await page.evaluate(() => localStorage.getItem('studioflow.studio')), 'the mode is stored').toBe('1');
     expect(await programSceneId(regie, production.id), 'Space on the switch toggles it and does not take').toBe(id(0));
     await expect(page.getByRole('button', { name: /^Take/ })).toHaveAttribute('aria-keyshortcuts', 'Space');
 
@@ -377,7 +377,7 @@ test.describe('Keyboard-only Regie', () => {
     // a dock drag by pointer is the first layer: Escape ends it without moving the dock
     const grip = page.getByRole('button', { name: 'Dock Szenen verschieben, mit Pfeiltasten' });
     const gripBox = (await boxOf(grip))!;
-    const zoneBefore = await page.locator('fs-dock-slot[aria-label=Szenen]').evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone'));
+    const zoneBefore = await page.locator('sf-dock-slot[aria-label=Szenen]').evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone'));
     await page.mouse.move(gripBox.x + gripBox.w / 2, gripBox.y + gripBox.h / 2);
     await page.mouse.down();
     await page.mouse.move(gripBox.x + 40, gripBox.y + 20, { steps: 4 });
@@ -387,7 +387,7 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.c-drop-zone'), 'Escape ends the dock drag').toHaveCount(0);
     await page.mouse.up();
-    const zoneAfter = await page.locator('fs-dock-slot[aria-label=Szenen]').evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone'));
+    const zoneAfter = await page.locator('sf-dock-slot[aria-label=Szenen]').evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone'));
     expect(zoneAfter, 'the dock did not move').toBe(zoneBefore);
   });
 
@@ -418,7 +418,7 @@ test.describe('Keyboard-only Regie', () => {
 });
 
 test.describe('Dock moves and splitters by keyboard', () => {
-  const zoneOf = (page: Page, name: string) => page.locator(`fs-dock-slot[aria-label="${name}"]`).evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone') ?? null);
+  const zoneOf = (page: Page, name: string) => page.locator(`sf-dock-slot[aria-label="${name}"]`).evaluate((dock) => dock.closest('[data-zone]')?.getAttribute('data-zone') ?? null);
 
   test('E2E-DEV-14 [grip] the grip arrows move a dock step by step through left, bottom and right with a toast and «Layout zurücksetzen»; the focus stays on the grip, no move beyond the ends, persisted', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
@@ -427,7 +427,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const grip = page.getByRole('button', { name: 'Dock Szenen verschieben, mit Pfeiltasten' });
     const toast = regie.toast().first();
     const focusIsOnGrip = () => grip.evaluate((element) => element === document.activeElement);
-    const bottomOrder = () => page.locator('[data-zone=bottom] fs-dock-slot').evaluateAll((docks) => docks.map((dock) => dock.getAttribute('aria-label')));
+    const bottomOrder = () => page.locator('[data-zone=bottom] sf-dock-slot').evaluateAll((docks) => docks.map((dock) => dock.getAttribute('aria-label')));
     await grip.focus();
     expect(await zoneOf(page, 'Szenen')).toBe('bottom');
     expect(await bottomOrder(), 'default order').toEqual(['Szenen', 'Quellen der Szene', 'Eigenschaften', 'Stationen']);
@@ -472,10 +472,10 @@ test.describe('Dock moves and splitters by keyboard', () => {
     await expect.poll(() => zoneOf(page, 'Szenen')).toBe('right');
 
     // aria: the toast is a polite live region in German
-    const live = await page.locator('fs-toast-host').evaluate((host) => ({ role: host.getAttribute('role'), live: host.getAttribute('aria-live'), lang: host.getAttribute('lang') }));
+    const live = await page.locator('sf-toast-host').evaluate((host) => ({ role: host.getAttribute('role'), live: host.getAttribute('aria-live'), lang: host.getAttribute('lang') }));
     expect(live).toEqual({ role: 'status', live: 'polite', lang: 'de-CH' });
     // persisted: the layout survives a reload
-    const stored = await page.evaluate(() => localStorage.getItem('flowstudio.layout'));
+    const stored = await page.evaluate(() => localStorage.getItem('studioflow.layout'));
     expect(stored, 'the layout is stored').not.toBeNull();
     await page.reload();
     await regie.waitReady();
@@ -517,7 +517,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     await expect.poll(dockHeight, { message: 'Shift+ArrowUp: another 64 px' }).toBe(start + 80);
     await page.keyboard.press('ArrowDown');
     await expect.poll(dockHeight, { message: 'ArrowDown: 16 px lower' }).toBe(start + 64);
-    expect(await page.evaluate(() => localStorage.getItem('flowstudio.layout')), 'the height is stored').toContain('bottomH');
+    expect(await page.evaluate(() => localStorage.getItem('studioflow.layout')), 'the height is stored').toContain('bottomH');
     await page.keyboard.press('Enter');
     await expect.poll(dockHeight, { message: 'Enter resets the height' }).toBe(start);
     // bounds: pushing the hairline up and down never leaves the allowed range (stage >= 160 px, docks >= 150 px)
@@ -548,7 +548,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
 
     // monitor split (Studio-Modus): ArrowLeft moves the hairline, Enter resets
     const split = page.getByRole('separator', { name: 'Grösse von Preview und Program' });
-    const previewWidth = async () => Math.round((await boxOf(page.locator('fs-monitor[kind=preview] .c-monitor__screen')))!.w);
+    const previewWidth = async () => Math.round((await boxOf(page.locator('sf-monitor[kind=preview] .c-monitor__screen')))!.w);
     const preview0 = await previewWidth();
     await split.focus();
     await page.keyboard.press('ArrowLeft');
@@ -586,7 +586,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const { page } = regie;
     await page.getByRole('button', { name: 'Dock Stationen verschieben, mit Pfeiltasten' }).focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-zone=right] fs-dock-slot[aria-label=Stationen]')).toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stationen]')).toHaveCount(1);
     const splitter = page.getByRole('separator', { name: 'Breite der Docks rechts' });
     await expect(splitter).toHaveAttribute('aria-orientation', 'vertical');
     const width = async () => Math.round((await boxOf(page.locator('[data-zone=right]')))!.w);

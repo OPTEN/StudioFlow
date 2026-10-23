@@ -222,7 +222,7 @@ export function inviteFixture(id: string): InviteDto {
   return {
     id,
     kind: 'phoneQr',
-    url: `https://flowstudio.test/join/i/${id}`,
+    url: `https://studioflow.test/join/i/${id}`,
     createdAt: FIXTURE_TIME,
     expiresAt: FIXTURE_TIME,
   };

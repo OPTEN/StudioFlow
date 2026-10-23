@@ -1,7 +1,7 @@
 /**
  * Telemetry of one publisher slot for the device report (`SlotTelemetryDto`).
  */
-import type { SlotState, SlotTelemetryDto } from '@flowstudio/scene-model';
+import type { SlotState, SlotTelemetryDto } from '@studioflow/scene-model';
 import type { LocalVideoTrack, VideoSenderStats } from 'livekit-client';
 import { errorContext, type MediaLogger } from './logger';
 import { summarizeSenderStats, type DeltaRatio } from './media-stats';

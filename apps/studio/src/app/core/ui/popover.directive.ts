@@ -79,7 +79,7 @@ export class PopoverService {
 
   /** DOM id of a popover panel, used for `aria-controls`. */
   domId(id: string): string {
-    return `fs-pop-${id}`;
+    return `sf-pop-${id}`;
   }
 
   /** @internal Registers an element that belongs to a popover (trigger or panel); clicks inside keep it open. */
@@ -116,11 +116,11 @@ export class PopoverService {
 }
 
 /**
- * Trigger of a popover: `<button fsPopoverTrigger="output" aria-haspopup="dialog">`. Toggles the popover on click and
+ * Trigger of a popover: `<button sfPopoverTrigger="output" aria-haspopup="dialog">`. Toggles the popover on click and
  * keeps `aria-expanded` and `aria-controls` in sync.
  */
 @Directive({
-  selector: '[fsPopoverTrigger]',
+  selector: '[sfPopoverTrigger]',
   host: {
     '[attr.aria-expanded]': 'expanded()',
     '[attr.aria-controls]': 'controls()',
@@ -129,52 +129,52 @@ export class PopoverService {
 })
 export class PopoverTriggerDirective {
   /** Id of the popover this element opens. */
-  readonly fsPopoverTrigger = input.required<string>();
+  readonly sfPopoverTrigger = input.required<string>();
 
   private readonly popovers = inject(PopoverService);
-  protected readonly expanded = computed(() => this.popovers.openId() === this.fsPopoverTrigger());
-  protected readonly controls = computed(() => this.popovers.domId(this.fsPopoverTrigger()));
+  protected readonly expanded = computed(() => this.popovers.openId() === this.sfPopoverTrigger());
+  protected readonly controls = computed(() => this.popovers.domId(this.sfPopoverTrigger()));
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     let unregister: (() => void) | null = null;
     afterNextRender(() => {
-      unregister = this.popovers.registerScope(this.fsPopoverTrigger(), element, true);
+      unregister = this.popovers.registerScope(this.sfPopoverTrigger(), element, true);
     });
     inject(DestroyRef).onDestroy(() => unregister?.());
   }
 
   protected toggle(): void {
-    this.popovers.toggle(this.fsPopoverTrigger());
+    this.popovers.toggle(this.sfPopoverTrigger());
   }
 }
 
 /**
  * Panel of a popover: render it only while open (`@if (popovers.isOpen('output'))`) and mark it with
- * `<div class="c-pop" fsPopover="output" role="dialog" aria-label="Output">`. Sets the DOM id for `aria-controls`
+ * `<div class="c-pop" sfPopover="output" role="dialog" aria-label="Output">`. Sets the DOM id for `aria-controls`
  * and moves the focus to the first focusable element after opening (`[popoverFocus]="false"` keeps it on the trigger,
  * like the prototype's Output popover).
  */
 @Directive({
-  selector: '[fsPopover]',
+  selector: '[sfPopover]',
   host: {
     '[id]': 'domId()',
   },
 })
 export class PopoverDirective {
   /** Id of the popover. */
-  readonly fsPopover = input.required<string>();
+  readonly sfPopover = input.required<string>();
   /** Focus the first focusable element when the panel appears (default true). */
   readonly popoverFocus = input(true);
 
   private readonly popovers = inject(PopoverService);
-  protected readonly domId = computed(() => this.popovers.domId(this.fsPopover()));
+  protected readonly domId = computed(() => this.popovers.domId(this.sfPopover()));
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     let unregister: (() => void) | null = null;
     afterNextRender(() => {
-      unregister = this.popovers.registerScope(this.fsPopover(), element, false);
+      unregister = this.popovers.registerScope(this.sfPopover(), element, false);
       if (this.popoverFocus()) {
         element.querySelector<HTMLElement>(FOCUSABLE)?.focus();
       }

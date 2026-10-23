@@ -12,15 +12,15 @@ import type {
   LiveKitSourceProvider,
   MediaSession,
   MediaSessionState,
-} from '@flowstudio/media-client';
-import type { SourceMediaProvider } from '@flowstudio/scene-renderer';
+} from '@studioflow/media-client';
+import type { SourceMediaProvider } from '@studioflow/scene-renderer';
 import { StudioApiService } from '../api/studio-api.service';
 import { AuthService } from '../auth/auth.service';
 import { ProductionStoreService } from '../state/production-store.service';
 
-/** The parts of `@flowstudio/media-client` the Regie loads lazily (livekit-client is ~150 KB gzip). */
+/** The parts of `@studioflow/media-client` the Regie loads lazily (livekit-client is ~150 KB gzip). */
 export type MediaClientModule = Pick<
-  typeof import('@flowstudio/media-client'),
+  typeof import('@studioflow/media-client'),
   'MediaSession' | 'LiveKitSourceProvider'
 >;
 
@@ -29,7 +29,7 @@ export const MEDIA_CLIENT_LOADER = new InjectionToken<() => Promise<MediaClientM
   'MEDIA_CLIENT_LOADER',
   {
     providedIn: 'root',
-    factory: () => () => import('@flowstudio/media-client'),
+    factory: () => () => import('@studioflow/media-client'),
   },
 );
 
@@ -44,7 +44,7 @@ export type StudioSourceProvider = SourceMediaProvider &
   Pick<LiveKitSourceProvider, 'getStats' | 'estimateLatencyMs'>;
 
 /**
- * The Regie's LiveKit connection (spec 7, 8.4): loads `@flowstudio/media-client` lazily as soon as the store is live,
+ * The Regie's LiveKit connection (spec 7, 8.4): loads `@studioflow/media-client` lazily as soon as the store is live,
  * then keeps one `MediaSession` (role studio) connected forever and exposes a `LiveKitSourceProvider` for every
  * scene renderer (monitors, thumbnails, station previews). Tokens come from `POST …/livekit-token`; a 401/403 stops
  * the session (`unauthorized`). When the active production changes the session rejoins the new room with a fresh
@@ -125,7 +125,7 @@ export class StudioMediaService {
       })
       .catch((error: unknown) => {
         if (generation === this.generation) {
-          console.warn('[FlowStudio] media client could not be loaded', error);
+          console.warn('[StudioFlow] media client could not be loaded', error);
           this.stateSignal.set('failed');
         }
       })

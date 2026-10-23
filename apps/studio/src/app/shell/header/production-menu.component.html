@@ -4,10 +4,10 @@
     type="button"
     aria-haspopup="dialog"
     [attr.aria-label]="'Produktion ' + name() + ', Menü'"
-    [fsPopoverTrigger]="popoverId"
+    [sfPopoverTrigger]="popoverId"
   >
     <span class="c-prod__name">{{ name() }}</span>
-    <svg fsIcon="chev" [size]="13"></svg>
+    <svg sfIcon="chev" [size]="13"></svg>
   </button>
 
   @if (popovers.isOpen(popoverId)) {
@@ -15,7 +15,7 @@
       class="c-pop c-pop--left c-prod__pop"
       role="dialog"
       aria-label="Produktion"
-      [fsPopover]="popoverId"
+      [sfPopover]="popoverId"
     >
       @switch (mode()) {
         @case ('rename') {
@@ -159,7 +159,7 @@
             [disabled]="!store.canCommand()"
             (click)="show('rename')"
           >
-            <svg fsIcon="pencil"></svg>Umbenennen
+            <svg sfIcon="pencil"></svg>Umbenennen
           </button>
           <button
             class="c-menu-item"
@@ -167,7 +167,7 @@
             [disabled]="!store.canCommand()"
             (click)="show('slates')"
           >
-            <svg fsIcon="image"></svg>Slates bearbeiten
+            <svg sfIcon="image"></svg>Slates bearbeiten
           </button>
           <div class="c-menu-sep"></div>
           <div class="c-pop-h">Produktion wechseln</div>
@@ -181,7 +181,7 @@
                 (click)="switchTo(production)"
               >
                 @if (production.isActive) {
-                  <svg fsIcon="check"></svg>
+                  <svg sfIcon="check"></svg>
                 } @else {
                   <span class="c-prod__spacer" aria-hidden="true"></span>
                 }
@@ -204,11 +204,11 @@
             [disabled]="!store.canCommand()"
             (click)="show('create')"
           >
-            <svg fsIcon="plus"></svg>Neue Produktion …
+            <svg sfIcon="plus"></svg>Neue Produktion …
           </button>
           <div class="c-menu-sep"></div>
           <button class="c-menu-item" type="button" (click)="logout()">
-            <svg fsIcon="logout"></svg>Abmelden
+            <svg sfIcon="logout"></svg>Abmelden
           </button>
         }
       }

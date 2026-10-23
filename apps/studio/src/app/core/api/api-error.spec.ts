@@ -1,5 +1,5 @@
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { ERROR_CODES } from '@flowstudio/scene-model';
+import { ERROR_CODES } from '@studioflow/scene-model';
 import {
   ApiError,
   ERROR_CODE_MESSAGES,

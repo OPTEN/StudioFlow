@@ -126,8 +126,8 @@ test.describe('OUT media and reports', () => {
       const frame = await output.frame();
       await expect
         .poll(() => frame.evaluate(() => {
-          const img = document.querySelector('img.fs-r-media--image') as HTMLImageElement | null;
-          const clip = document.querySelector('video.fs-r-media--video') as HTMLVideoElement | null;
+          const img = document.querySelector('img.sf-r-media--image') as HTMLImageElement | null;
+          const clip = document.querySelector('video.sf-r-media--video') as HTMLVideoElement | null;
           return Boolean(img && img.naturalWidth > 0 && getComputedStyle(img).visibility === 'visible' && clip && clip.readyState >= 2 && getComputedStyle(clip).visibility === 'visible');
         }), { timeout: 20_000, message: 'image visible, video loaded' })
         .toBe(true);
@@ -142,7 +142,7 @@ test.describe('OUT media and reports', () => {
       expect(videoResponses[0]!.cache).toBe('private, max-age=3600');
       // The video plays and loops (the clip is 3 s long): its time wraps within 8 s.
       const loop = await frame.evaluate(async () => {
-        const clip = document.querySelector('video.fs-r-media--video') as HTMLVideoElement;
+        const clip = document.querySelector('video.sf-r-media--video') as HTMLVideoElement;
         let previous = clip.currentTime;
         let wrapped = false;
         let advanced = false;
@@ -176,9 +176,9 @@ test.describe('OUT media and reports', () => {
       expect(new Set(refused.map((entry) => entry.status)), 'a wrong key is 403').toEqual(new Set([403]));
       const wrongFrame = await wrong.output.frame();
       const state = await wrongFrame.evaluate(() => ({
-        image: getComputedStyle(document.querySelector('img.fs-r-media--image')!).visibility,
-        video: getComputedStyle(document.querySelector('video.fs-r-media--video')!).visibility,
-        imageNatural: (document.querySelector('img.fs-r-media--image') as HTMLImageElement).naturalWidth,
+        image: getComputedStyle(document.querySelector('img.sf-r-media--image')!).visibility,
+        video: getComputedStyle(document.querySelector('video.sf-r-media--video')!).visibility,
+        imageNatural: (document.querySelector('img.sf-r-media--image') as HTMLImageElement).naturalWidth,
       }));
       expect(state.image, 'no broken-image icon: the image stays invisible').toBe('hidden');
       expect(state.video).toBe('hidden');

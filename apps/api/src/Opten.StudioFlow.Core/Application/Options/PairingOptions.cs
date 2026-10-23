@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>Durations and limits of pairing (configuration section <c>Pairing</c>, spec 4.6).</summary>
 public sealed class PairingOptions : IValidatedOptions

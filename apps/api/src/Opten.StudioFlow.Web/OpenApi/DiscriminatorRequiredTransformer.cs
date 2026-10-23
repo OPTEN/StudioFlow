@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.OpenApi;
+namespace Opten.StudioFlow.Web.OpenApi;
 
 /// <summary>
 /// Marks the <c>type</c> discriminator of every <see cref="ProductionEvent"/> subtype as required. System.Text.Json always

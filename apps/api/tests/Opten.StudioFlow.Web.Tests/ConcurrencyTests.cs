@@ -1,11 +1,11 @@
 using System.Net;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Errors;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class ConcurrencyTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class ConcurrencyTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Approve_SameKnockInParallel_ExactlyOneDeviceIsCreated()

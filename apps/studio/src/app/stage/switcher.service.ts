@@ -5,7 +5,7 @@ import {
   type FadeDurationMs,
   type TransitionDto,
   type TransitionKind,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ApiError } from '../core/api/api-error';
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
@@ -60,11 +60,11 @@ export class SwitcherService {
   /** Guards the automatic preview assignment against repeating a failed request. */
   private previewFixKey: string | null = null;
 
-  /** Studio-Modus (persisted per browser as `flowstudio.studio`). */
+  /** Studio-Modus (persisted per browser as `studioflow.studio`). */
   readonly studioMode = this.studioModeSignal.asReadonly();
   /** Schnitt or Blende. */
   readonly transitionKind = this.transitionKindSignal.asReadonly();
-  /** Fade duration; kept while Schnitt is chosen (persisted as `flowstudio.transition`). */
+  /** Fade duration; kept while Schnitt is chosen (persisted as `studioflow.transition`). */
   readonly fadeDurationMs = this.fadeDurationSignal.asReadonly();
   /** Transition sent with switches: `{ cut, 0 }` or `{ fade, duration }`. */
   readonly transition = computed<TransitionDto>(() =>

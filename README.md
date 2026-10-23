@@ -1,6 +1,6 @@
-# FlowStudio
+# StudioFlow
 
-FlowStudio ist eine Web-Regie nach dem Vorbild von OBS, gedacht für Webinare.
+StudioFlow ist eine Web-Regie nach dem Vorbild von OBS, gedacht für Webinare.
 
 - Handys und Laptops senden Kamera und Bildschirm direkt aus dem Browser.
 - Die Regie stellt daraus Szenen zusammen.
@@ -13,7 +13,7 @@ Stand 22.10.2026: Plan und klickbarer Regie-Prototyp sind fertig. Es gibt noch k
 
 | Pfad | Inhalt |
 |---|---|
-| `plan/FlowStudio Architekturplan.html` | Architektur und Plan, Entwurf 2. Im Browser öffnen. |
+| `plan/StudioFlow Architekturplan.html` | Architektur und Plan, Entwurf 2. Im Browser öffnen. |
 | `plan/regie-*.png` | Bilder der Regie im Plan |
 | `plan/archiv/` | ältere Fassung (Entwurf 1 vom 21.10.2026) |
 | `prototype/regie.html` | klickbarer Regie-Prototyp mit Beispieldaten |
@@ -70,9 +70,9 @@ Beide Seiten sind privat. Freigeben kannst du sie über «Teilen» auf der jewei
 ## Offen
 
 - **Proxy:** Was genau ist der Proxy, zum Beispiel eine Browserquelle? Davon hängt ab, ob der Air-Modus nötig wird.
-- **Zertifikat:** Welche Domain und welcher DNS-Anbieter, zum Beispiel `flowstudio.opten.ch`?
+- **Zertifikat:** Welche Domain und welcher DNS-Anbieter, zum Beispiel `studioflow.opten.ch`?
 - **Server:** Läuft er auf dem Regie-Laptop oder auf der VPS? Empfehlung: VPS oder ein zweiter Rechner per Kabel.
-- **Leeres Artifact:** Das leere Design-Artifact «FlowStudio Regie» (https://claude.ai/artifact/NkhevB8Mp4ez2SmZoufRkN) wird nicht gebraucht und kann gelöscht werden.
+- **Leeres Artifact:** Das leere Design-Artifact «StudioFlow Regie» (https://claude.ai/artifact/NkhevB8Mp4ez2SmZoufRkN) wird nicht gebraucht und kann gelöscht werden.
 - **Docks:** Ziehen und Andocken sind von Hand getestet, aber nicht als Screenshot festgehalten.
 
 ## Nächster Schritt

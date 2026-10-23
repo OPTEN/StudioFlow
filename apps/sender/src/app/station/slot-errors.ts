@@ -1,4 +1,4 @@
-import { ERROR_CODES, LIMITS } from '@flowstudio/scene-model';
+import { ERROR_CODES, LIMITS } from '@studioflow/scene-model';
 import { toApiError } from '../core/api-error';
 
 /** German messages for the refused slot requests of a station (GAP-05, GAP-19). */

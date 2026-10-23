@@ -30,7 +30,7 @@ export type IconName = keyof typeof ICONS;
 
 /** Inline stroke icon; decorative (aria-hidden) – the button or text next to it carries the meaning. */
 @Component({
-  selector: 'fs-icon',
+  selector: 'sf-icon',
   template: `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path [attr.d]="path()" />

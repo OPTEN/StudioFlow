@@ -3,7 +3,7 @@
 # resolvers: public resolvers check the challenge record, so a local or split-horizon DNS (the A record of the
 # subdomain points to a LAN address) cannot get in the way.
 # dns_challenge_override_domain: where the TXT record is written. The default _acme-challenge.<domain> is exactly
-# what Caddy would use anyway; set FLOWSTUDIO_DNS_CHALLENGE_DOMAIN when _acme-challenge is delegated by CNAME to
+# what Caddy would use anyway; set STUDIOFLOW_DNS_CHALLENGE_DOMAIN when _acme-challenge is delegated by CNAME to
 # another zone (for example a provider without a Caddy module, such as Hostpoint or cyon, delegating to deSEC).
-resolvers {$FLOWSTUDIO_DNS_RESOLVERS}
-dns_challenge_override_domain {$FLOWSTUDIO_DNS_CHALLENGE_DOMAIN}
+resolvers {$STUDIOFLOW_DNS_RESOLVERS}
+dns_challenge_override_domain {$STUDIOFLOW_DNS_CHALLENGE_DOMAIN}

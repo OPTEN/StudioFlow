@@ -1,4 +1,4 @@
-# FlowStudio edge proxy (Caddy 2.11): TLS, security headers, the three frontends and the reverse proxy for the API,
+# StudioFlow edge proxy (Caddy 2.11): TLS, security headers, the three frontends and the reverse proxy for the API,
 # the SignalR hubs and LiveKit signalling. WebRTC media never passes through Caddy (LiveKit 7881/tcp, 7882/udp).
 #
 # Every {$VAR} is set by docker-compose.yml, which also holds the defaults (documented in .env.example).
@@ -6,7 +6,7 @@
 # and is used for secrets in tls/*.caddy.
 {
 	# Browsers send no SNI when they connect to an IP address; this name selects the certificate then.
-	default_sni {$FLOWSTUDIO_DEFAULT_SNI}
+	default_sni {$STUDIOFLOW_DEFAULT_SNI}
 	# Internal mode: devices download the root from /ca.crt; never touch the container's own trust store.
 	skip_install_trust
 
@@ -22,7 +22,7 @@
 	servers {
 		# Only these peers may set X-Forwarded-For. The default (loopback) trusts nobody, so LAN clients cannot
 		# spoof their address for the output IP restriction.
-		trusted_proxies static {$FLOWSTUDIO_TRUSTED_PROXIES}
+		trusted_proxies static {$STUDIOFLOW_TRUSTED_PROXIES}
 
 		timeouts {
 			# Caddy's defaults are 1m. A phone upload may stall during a WLAN handover; only stalls count,
@@ -36,7 +36,7 @@
 # Headers for every response of the site (static files, proxied responses, redirects and errors).
 (base_headers) {
 	header {
-		Strict-Transport-Security "max-age={$FLOWSTUDIO_HSTS_MAX_AGE}; includeSubDomains"
+		Strict-Transport-Security "max-age={$STUDIOFLOW_HSTS_MAX_AGE}; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
 		X-Robots-Tag "noindex, nofollow"
@@ -102,8 +102,8 @@ http://127.0.0.1:2020 {
 	respond 404
 }
 
-{$FLOWSTUDIO_DOMAIN} {$FLOWSTUDIO_EXTRA_HOSTS} {
-	import /etc/caddy/tls/{$FLOWSTUDIO_TLS_MODE}.caddy
+{$STUDIOFLOW_DOMAIN} {$STUDIOFLOW_EXTRA_HOSTS} {
+	import /etc/caddy/tls/{$STUDIOFLOW_TLS_MODE}.caddy
 	import base_headers
 
 	log {
@@ -140,13 +140,13 @@ http://127.0.0.1:2020 {
 		}
 		handle @asset_upload {
 			request_body {
-				max_size {$FLOWSTUDIO_MAX_UPLOAD}
+				max_size {$STUDIOFLOW_MAX_UPLOAD}
 			}
 			import api_proxy 15m
 		}
 		handle {
 			request_body {
-				max_size {$FLOWSTUDIO_MAX_BODY}
+				max_size {$STUDIOFLOW_MAX_BODY}
 			}
 			import api_proxy 60s
 		}
@@ -190,7 +190,7 @@ http://127.0.0.1:2020 {
 
 	# Output page (Vite, base /o/), one index.html for every /o/{slug}. Embedding only by the allowed origins.
 	handle_path /o/* {
-		import page_headers "'self' {$FLOWSTUDIO_FRAME_ANCESTORS}" "camera=(), microphone=(), display-capture=(), autoplay=(self), fullscreen=(self), geolocation=(), payment=(), usb=()"
+		import page_headers "'self' {$STUDIOFLOW_FRAME_ANCESTORS}" "camera=(), microphone=(), display-capture=(), autoplay=(self), fullscreen=(self), geolocation=(), payment=(), usb=()"
 		root * /srv/o
 		import spa ^/assets/
 	}

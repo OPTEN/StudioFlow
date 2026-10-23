@@ -1,18 +1,18 @@
 <div class="c-insp">
   <div class="c-insp__row">
-    <span class="c-insp__label" id="fs-insp-pos">Position</span>
-    <div class="c-insp__pair" role="group" aria-labelledby="fs-insp-pos">
+    <span class="c-insp__label" id="sf-insp-pos">Position</span>
+    <div class="c-insp__pair" role="group" aria-labelledby="sf-insp-pos">
       <div class="c-num">
-        <label class="c-num__label" for="fs-insp-x">X</label>
+        <label class="c-num__label" for="sf-insp-x">X</label>
         <input
           class="c-num__input"
-          id="fs-insp-x"
+          id="sf-insp-x"
           type="number"
           step="1"
           [min]="bounds.minX"
           [max]="bounds.maxX"
           [disabled]="disabled()"
-          [fsNumberField]="item().x"
+          [sfNumberField]="item().x"
           (numberChange)="setNumber('x', $event)"
           (editStart)="beginEdit()"
           (editEnd)="endEdit()"
@@ -20,16 +20,16 @@
         <span class="c-num__unit">px</span>
       </div>
       <div class="c-num">
-        <label class="c-num__label" for="fs-insp-y">Y</label>
+        <label class="c-num__label" for="sf-insp-y">Y</label>
         <input
           class="c-num__input"
-          id="fs-insp-y"
+          id="sf-insp-y"
           type="number"
           step="1"
           [min]="bounds.minY"
           [max]="bounds.maxY"
           [disabled]="disabled()"
-          [fsNumberField]="item().y"
+          [sfNumberField]="item().y"
           (numberChange)="setNumber('y', $event)"
           (editStart)="beginEdit()"
           (editEnd)="endEdit()"
@@ -40,19 +40,19 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="fs-insp-size">Grösse</span>
-    <div class="c-insp__pair" role="group" aria-labelledby="fs-insp-size">
+    <span class="c-insp__label" id="sf-insp-size">Grösse</span>
+    <div class="c-insp__pair" role="group" aria-labelledby="sf-insp-size">
       <div class="c-num">
-        <label class="c-num__label" for="fs-insp-w">B</label>
+        <label class="c-num__label" for="sf-insp-w">B</label>
         <input
           class="c-num__input"
-          id="fs-insp-w"
+          id="sf-insp-w"
           type="number"
           step="1"
           [min]="bounds.minW"
           [max]="bounds.maxW"
           [disabled]="disabled()"
-          [fsNumberField]="item().w"
+          [sfNumberField]="item().w"
           (numberChange)="setNumber('w', $event)"
           (editStart)="beginEdit()"
           (editEnd)="endEdit()"
@@ -60,16 +60,16 @@
         <span class="c-num__unit">px</span>
       </div>
       <div class="c-num">
-        <label class="c-num__label" for="fs-insp-h">H</label>
+        <label class="c-num__label" for="sf-insp-h">H</label>
         <input
           class="c-num__input"
-          id="fs-insp-h"
+          id="sf-insp-h"
           type="number"
           step="1"
           [min]="bounds.minH"
           [max]="bounds.maxH"
           [disabled]="disabled()"
-          [fsNumberField]="item().h"
+          [sfNumberField]="item().h"
           (numberChange)="setNumber('h', $event)"
           (editStart)="beginEdit()"
           (editEnd)="endEdit()"
@@ -80,8 +80,8 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="fs-insp-fit">Einpassen</span>
-    <div class="c-seg" role="group" aria-labelledby="fs-insp-fit">
+    <span class="c-insp__label" id="sf-insp-fit">Einpassen</span>
+    <div class="c-seg" role="group" aria-labelledby="sf-insp-fit">
       <button
         type="button"
         [attr.aria-pressed]="item().fit === 'cover'"
@@ -113,7 +113,7 @@
           aria-label="Eckenradius"
           [max]="bounds.maxRadius"
           [disabled]="disabled()"
-          [fsNumberField]="item().radius"
+          [sfNumberField]="item().radius"
           (numberChange)="setNumber('radius', $event)"
           (editStart)="beginEdit()"
           (editEnd)="endEdit()"
@@ -132,8 +132,8 @@
   </div>
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="fs-insp-rot">Drehen</span>
-    <div class="c-seg" role="group" aria-labelledby="fs-insp-rot">
+    <span class="c-insp__label" id="sf-insp-rot">Drehen</span>
+    <div class="c-seg" role="group" aria-labelledby="sf-insp-rot">
       @for (degrees of rotations; track degrees) {
         <button
           type="button"
@@ -149,12 +149,12 @@
   </div>
 
   <div class="c-insp__row c-insp__row--top">
-    <span class="c-insp__label" id="fs-insp-crop">Zuschnitt</span>
-    <div class="c-insp__crop" role="group" aria-labelledby="fs-insp-crop">
+    <span class="c-insp__label" id="sf-insp-crop">Zuschnitt</span>
+    <div class="c-insp__crop" role="group" aria-labelledby="sf-insp-crop">
       <div class="c-insp__pair">
         @for (entry of cropSides; track entry.side) {
           <div class="c-num">
-            <label class="c-num__label c-num__label--word" [for]="'fs-insp-crop-' + entry.side">{{
+            <label class="c-num__label c-num__label--word" [for]="'sf-insp-crop-' + entry.side">{{
               entry.label
             }}</label>
             <input
@@ -162,11 +162,11 @@
               type="number"
               step="1"
               min="0"
-              [id]="'fs-insp-crop-' + entry.side"
+              [id]="'sf-insp-crop-' + entry.side"
               [max]="maxCrop"
               [disabled]="disabled()"
               [fractionDigits]="1"
-              [fsNumberField]="cropPercent(entry.side)"
+              [sfNumberField]="cropPercent(entry.side)"
               (numberChange)="setCrop(entry.side, $event)"
               (editStart)="beginEdit()"
               (editEnd)="endEdit()"
@@ -207,7 +207,7 @@
             aria-label="Breite des Rahmens"
             [max]="bounds.maxBorderWidth"
             [disabled]="disabled()"
-            [fsNumberField]="border.width"
+            [sfNumberField]="border.width"
             (numberChange)="setBorderWidth($event)"
             (editStart)="beginEdit()"
             (editEnd)="endEdit()"
@@ -227,8 +227,8 @@
   </div>
 
   <div class="c-insp__row">
-    <label class="c-insp__label" for="fs-insp-hold">Bei Ausfall</label>
-    <select class="c-select" id="fs-insp-hold" [disabled]="disabled()" (change)="setHold($event)">
+    <label class="c-insp__label" for="sf-insp-hold">Bei Ausfall</label>
+    <select class="c-select" id="sf-insp-hold" [disabled]="disabled()" (change)="setHold($event)">
       @for (choice of holdChoices(); track choice.value) {
         <option [value]="choice.value" [selected]="choice.value === holdValue()">
           {{ choice.label }}
@@ -238,10 +238,10 @@
   </div>
 
   <div class="c-insp__row">
-    <label class="c-insp__label" for="fs-insp-fallback">Ersatzquelle</label>
+    <label class="c-insp__label" for="sf-insp-fallback">Ersatzquelle</label>
     <select
       class="c-select"
-      id="fs-insp-fallback"
+      id="sf-insp-fallback"
       [title]="
         item().onLost.holdMs === null
           ? 'Mit «Standbild halten» bleibt das letzte Bild stehen.'
@@ -275,7 +275,7 @@
         [disabled]="disabled() || !canFront()"
         (click)="moveLayer('up')"
       >
-        <svg fsIcon="up" [size]="14"></svg>Nach vorne
+        <svg sfIcon="up" [size]="14"></svg>Nach vorne
       </button>
       <button
         class="c-btn c-btn--sm"
@@ -283,7 +283,7 @@
         [disabled]="disabled() || !canBack()"
         (click)="moveLayer('down')"
       >
-        <svg fsIcon="down" [size]="14"></svg>Nach hinten
+        <svg sfIcon="down" [size]="14"></svg>Nach hinten
       </button>
     </div>
   </div>

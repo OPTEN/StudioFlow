@@ -20,7 +20,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <!-- xunit.v3 without Microsoft Testing Platform: `dotnet test apps/api/FlowStudio.slnx` then runs through VSTest from
+    <!-- xunit.v3 without Microsoft Testing Platform: `dotnet test apps/api/StudioFlow.slnx` then runs through VSTest from
          any directory. The MTP variant needs a global.json "test.runner" entry next to the caller (the repository root). -->
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />

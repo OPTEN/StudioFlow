@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Opten.FlowStudio.Infrastructure.Persistence.Migrations
+namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddSourceActivity : Migration

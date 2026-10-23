@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// Tells the application services that the host is shutting down (BUG-20, OBS-01). The hub connections that end

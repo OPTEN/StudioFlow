@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { formatHm } from '@flowstudio/scene-model';
+import { formatHm } from '@studioflow/scene-model';
 import { IconComponent } from '../shared/icon.component';
 import type { RegieMessage } from './device-session.service';
 
 /** A message from the Regie (Regie-Chat), prominent, with time and «OK». */
 @Component({
-  selector: 'fs-message-banner',
+  selector: 'sf-message-banner',
   imports: [IconComponent],
   template: `
     <section
@@ -14,7 +14,7 @@ import type { RegieMessage } from './device-session.service';
       role="alert"
       aria-labelledby="regie-message-title"
     >
-      <fs-icon class="c-message__icon" name="message" />
+      <sf-icon class="c-message__icon" name="message" />
       <div class="c-message__body">
         <h2 class="c-message__title" id="regie-message-title">
           Nachricht der Regie <span class="c-message__time u-mono">{{ time() }}</span>

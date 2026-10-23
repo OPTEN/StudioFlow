@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { LIMITS, isHexColor, type LayoutTemplateId, type SceneDto } from '@flowstudio/scene-model';
+import { LIMITS, isHexColor, type LayoutTemplateId, type SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { EditorService } from '../../stage/editor.service';
@@ -25,7 +25,7 @@ import { TemplatePickerComponent } from './template-picker.component';
  * Studio-Modus or the Regie is offline.
  */
 @Component({
-  selector: 'fs-scene-inspector',
+  selector: 'sf-scene-inspector',
   imports: [ConfirmBoxComponent, ReactiveFormsModule, TemplatePickerComponent],
   templateUrl: './scene-inspector.component.html',
   styleUrl: './scene-inspector.component.scss',

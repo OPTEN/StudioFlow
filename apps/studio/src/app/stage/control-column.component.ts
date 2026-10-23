@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import type { TransitionKind } from '@flowstudio/scene-model';
+import type { TransitionKind } from '@studioflow/scene-model';
 import { IconComponent } from '../core/ui/icon.component';
 import { SwitcherService } from './switcher.service';
 
@@ -13,7 +13,7 @@ let nextSwitchId = 0;
  * and the hint text. Everything is wired to {@link SwitcherService}, which also guards against rapid repeats.
  */
 @Component({
-  selector: 'fs-control-column',
+  selector: 'sf-control-column',
   imports: [IconComponent],
   templateUrl: './control-column.component.html',
   styleUrl: './control-column.component.scss',
@@ -22,7 +22,7 @@ let nextSwitchId = 0;
 })
 export class ControlColumnComponent {
   protected readonly switcher = inject(SwitcherService);
-  protected readonly switchId = `fs-studio-switch-${++nextSwitchId}`;
+  protected readonly switchId = `sf-studio-switch-${++nextSwitchId}`;
 
   protected onStudioModeChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;

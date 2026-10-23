@@ -13,7 +13,7 @@ import {
   type SceneItemDto,
   type SourceDto,
   type TransitionDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 export const FIXTURE_TIME = '2026-10-22T10:00:00.000Z';
 export const KEY = 'k3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yA';

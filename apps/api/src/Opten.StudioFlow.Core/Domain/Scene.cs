@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// A scene of a production (spec 4.3): ordered items on the 1920 × 1080 canvas, back to front. Every change increments
@@ -127,7 +127,7 @@ public sealed class Scene
         errors.ThrowIfAny();
         if (Items.Count >= SceneItemRules.MaxItems)
         {
-            throw FlowStudioException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
+            throw StudioFlowException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
         }
 
         var item = SceneItemRules.CreateItem(request, source!.Kind);
@@ -143,7 +143,7 @@ public sealed class Scene
         var index = IndexOf(itemId);
         if (index < 0)
         {
-            throw FlowStudioException.NotFound("Das Element");
+            throw StudioFlowException.NotFound("Das Element");
         }
 
         var existing = Items[index];
@@ -162,7 +162,7 @@ public sealed class Scene
     {
         if (IndexOf(itemId) < 0)
         {
-            throw FlowStudioException.NotFound("Das Element");
+            throw StudioFlowException.NotFound("Das Element");
         }
 
         Items = [.. Items.Where(i => !string.Equals(i.Id, itemId, StringComparison.Ordinal))];
@@ -186,7 +186,7 @@ public sealed class Scene
 
         if (items.Count > SceneItemRules.MaxItems)
         {
-            throw FlowStudioException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
+            throw StudioFlowException.LimitReached("Eine Szene kann höchstens 32 Elemente haben.");
         }
 
         if (layoutMode is { } mode && !Enum.IsDefined(mode))

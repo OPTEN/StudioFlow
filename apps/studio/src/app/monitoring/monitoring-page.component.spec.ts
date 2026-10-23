@@ -1,5 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { HUB } from '@flowstudio/scene-model';
+import { HUB } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import { snapshotFixture } from '../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../testing/store-harness';

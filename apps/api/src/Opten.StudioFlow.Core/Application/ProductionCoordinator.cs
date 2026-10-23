@@ -1,9 +1,9 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>
 /// One mutation of a production in progress: its unit of work, the time, and everything that is published once the
@@ -190,7 +190,7 @@ public sealed class ProductionCoordinator(
     {
         if (string.IsNullOrEmpty(productionId))
         {
-            throw FlowStudioException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Die Produktion");
         }
 
         if (runtimes.Find(productionId) is { } known)
@@ -201,7 +201,7 @@ public sealed class ProductionCoordinator(
         await using var unit = data.Create();
         if (!await unit.Productions.ExistsAsync(productionId, cancellationToken))
         {
-            throw FlowStudioException.NotFound("Die Produktion");
+            throw StudioFlowException.NotFound("Die Produktion");
         }
 
         return runtimes.GetOrAdd(productionId);

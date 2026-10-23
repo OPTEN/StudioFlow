@@ -1,11 +1,11 @@
 using System.Net;
 using System.Text.Json;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class SceneApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Create_AndClone_CopiesItems()

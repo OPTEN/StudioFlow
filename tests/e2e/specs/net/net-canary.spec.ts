@@ -219,7 +219,7 @@ test.describe('NET canary', () => {
   test('E2E-NET-00 [screen-share] a screen share can be produced (native tab capture or the canvas override) and ends on stop()', t.smoke, async ({ context, config }) => {
     await installInitScript(context);
     const page = await context.newPage();
-    await page.route(`${config.baseURL}/__e2e/blank`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>FlowStudio Timecode</title>' }));
+    await page.route(`${config.baseURL}/__e2e/blank`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>StudioFlow Timecode</title>' }));
     await page.goto(`${config.baseURL}/__e2e/blank`);
     const native = await page.evaluate(async () => {
       try {
@@ -232,14 +232,14 @@ test.describe('NET canary', () => {
       }
     });
     const canvas = await page.evaluate(async () => {
-      (window as unknown as { __fsMedia: { canvasScreen: boolean } }).__fsMedia.canvasScreen = true;
+      (window as unknown as { __sfMedia: { canvasScreen: boolean } }).__sfMedia.canvasScreen = true;
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const track = stream.getVideoTracks()[0]!;
       let ended = false;
       track.addEventListener('ended', () => (ended = true));
       track.stop();
       track.dispatchEvent(new Event('ended'));
-      return { ok: stream.getVideoTracks().length === 1, endedAfterStop: ended, calls: (window as unknown as { __fsMedia: { displayCalls: number } }).__fsMedia.displayCalls };
+      return { ok: stream.getVideoTracks().length === 1, endedAfterStop: ended, calls: (window as unknown as { __sfMedia: { displayCalls: number } }).__sfMedia.displayCalls };
     });
     const mode = native.ok ? 'tab (native fake capture)' : 'canvas (override)';
     record('screen-share', native.ok || (canvas.ok && canvas.endedAfterStop), `E2E_SCREEN_MODE=${mode}; native: ${JSON.stringify(native)}; canvas: ${JSON.stringify(canvas)}`);

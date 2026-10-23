@@ -7,8 +7,8 @@ import type { BrowserContext, Page } from '@playwright/test';
  */
 
 const WAKE_LOCK_STUB = `(() => {
-  if (window.__fsWake) return;
-  const state = (window.__fsWake = { requests: 0, released: 0, active: 0, hiddenRequests: 0 });
+  if (window.__sfWake) return;
+  const state = (window.__sfWake = { requests: 0, released: 0, active: 0, hiddenRequests: 0 });
   let hidden = false;
   let current = null;
   const sentinel = () => {
@@ -66,23 +66,23 @@ export interface WakeLockState {
 
 export async function wakeLockState(page: Page): Promise<WakeLockState | null> {
   return page.evaluate(() => {
-    const state = (window as unknown as { __fsWake?: WakeLockState }).__fsWake;
+    const state = (window as unknown as { __sfWake?: WakeLockState }).__sfWake;
     return state ? { requests: state.requests, released: state.released, active: state.active, hiddenRequests: state.hiddenRequests } : null;
   });
 }
 
 /** The page goes to the background (`false`: the lock is released, `visibilitychange` fires) or comes back. */
 export async function setPageVisible(page: Page, visible: boolean): Promise<void> {
-  await page.evaluate((value) => (window as unknown as { __fsWake: { setVisible(visible: boolean): void } }).__fsWake.setVisible(value), visible);
+  await page.evaluate((value) => (window as unknown as { __sfWake: { setVisible(visible: boolean): void } }).__sfWake.setVisible(value), visible);
 }
 
-/** `navigator.getBattery()` with a fixed level (0..1) that can be changed through `window.__fsBattery`. */
+/** `navigator.getBattery()` with a fixed level (0..1) that can be changed through `window.__sfBattery`. */
 export async function installBatteryStub(context: BrowserContext, level = 0.15, charging = false): Promise<void> {
   await context.addInitScript(
     ({ initialLevel, initialCharging }) => {
       const battery = Object.assign(new EventTarget(), { level: initialLevel, charging: initialCharging, chargingTime: 0, dischargingTime: 3600 });
       Object.defineProperty(navigator, 'getBattery', { configurable: true, value: () => Promise.resolve(battery) });
-      (window as unknown as { __fsBattery: unknown }).__fsBattery = battery;
+      (window as unknown as { __sfBattery: unknown }).__sfBattery = battery;
     },
     { initialLevel: level, initialCharging: charging },
   );
@@ -96,23 +96,23 @@ export async function installBatteryStub(context: BrowserContext, level = 0.15, 
  */
 export async function suspendCamera(page: Page, suspended: boolean): Promise<number> {
   return page.evaluate((mute) => {
-    const w = window as unknown as { __fsNet?: { peers: Set<RTCPeerConnection> }; __fsSuspended?: MediaStreamTrack[] };
+    const w = window as unknown as { __sfNet?: { peers: Set<RTCPeerConnection> }; __sfSuspended?: MediaStreamTrack[] };
     if (!mute) {
       // After upstreamPaused the sender holds no track any more: the remembered ones get their `unmute`.
-      const tracks = w.__fsSuspended ?? [];
+      const tracks = w.__sfSuspended ?? [];
       for (const track of tracks) track.dispatchEvent(new Event('unmute'));
-      w.__fsSuspended = [];
+      w.__sfSuspended = [];
       return tracks.length;
     }
     const found: MediaStreamTrack[] = [];
-    for (const peer of w.__fsNet?.peers ?? []) {
+    for (const peer of w.__sfNet?.peers ?? []) {
       for (const sender of peer.getSenders()) {
         const track = sender.track;
         if (track && track.kind === 'video' && track.readyState === 'live') found.push(track);
       }
     }
     for (const track of found) track.dispatchEvent(new Event('mute'));
-    w.__fsSuspended = found;
+    w.__sfSuspended = found;
     return found.length;
   }, suspended);
 }

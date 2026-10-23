@@ -1,14 +1,14 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
-/// The FlowStudio database (PostgreSQL 17): productions with scenes (items as <c>jsonb</c>), devices, assets, invites,
+/// The StudioFlow database (PostgreSQL 17): productions with scenes (items as <c>jsonb</c>), devices, assets, invites,
 /// the audit log and the last-live times of sources. Tables, columns, keys and indexes use snake_case names.
 /// </summary>
-public sealed class FlowStudioDbContext(DbContextOptions<FlowStudioDbContext> options) : DbContext(options)
+public sealed class StudioFlowDbContext(DbContextOptions<StudioFlowDbContext> options) : DbContext(options)
 {
     /// <summary>Productions.</summary>
     public DbSet<Production> Productions => Set<Production>();
@@ -35,7 +35,7 @@ public sealed class FlowStudioDbContext(DbContextOptions<FlowStudioDbContext> op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(FlowStudioDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(StudioFlowDbContext).Assembly);
         ApplySnakeCaseNames(modelBuilder);
     }
 

@@ -1,4 +1,4 @@
-import { parseSourceRef } from '@flowstudio/scene-model';
+import { parseSourceRef } from '@studioflow/scene-model';
 
 import type { AssetMediaKind } from './types';
 

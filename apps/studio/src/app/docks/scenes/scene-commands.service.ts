@@ -4,7 +4,7 @@ import {
   type SceneBackgroundDto,
   type SceneDto,
   type SceneLayoutMode,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ToastService } from '../../core/ui/toast.service';

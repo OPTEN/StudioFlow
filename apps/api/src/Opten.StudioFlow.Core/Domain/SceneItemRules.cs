@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// Validation bounds and defaults of scene items and backgrounds (spec 4.3). The server is authoritative; the clients

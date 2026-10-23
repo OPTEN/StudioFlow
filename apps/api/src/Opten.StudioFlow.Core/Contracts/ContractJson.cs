@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>
 /// The JSON format of every contract (spec 6): camelCase properties, enums as camelCase strings, numbers never as

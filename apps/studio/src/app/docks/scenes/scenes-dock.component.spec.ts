@@ -168,7 +168,7 @@ describe('ScenesDockComponent', () => {
     create.flush(created, { status: 201, statusText: 'Created' });
     await harness.settle();
     await render();
-    const input = element.querySelector<HTMLInputElement>('fs-inline-edit input');
+    const input = element.querySelector<HTMLInputElement>('sf-inline-edit input');
     expect(input?.value).toBe('Neue Szene 4');
     expect(input?.getAttribute('aria-label')).toBe('Name der Szene');
     expect(document.activeElement).toBe(input);
@@ -180,7 +180,7 @@ describe('ScenesDockComponent', () => {
     const rename = harness.http.expectOne(`${BASE}/scenes/scn_d`);
     expect(rename.request.body).toEqual({ name: 'Abschluss', layoutMode: null, background: null });
     await render();
-    expect(element.querySelector('fs-inline-edit')).toBeNull();
+    expect(element.querySelector('sf-inline-edit')).toBeNull();
     expect(text(rows()[3].querySelector('.c-scene__name'))).toBe('Abschluss');
     rename.flush({ ...created, name: 'Abschluss' });
     await render();
@@ -190,11 +190,11 @@ describe('ScenesDockComponent', () => {
     await setup();
     rows()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
     await render();
-    const input = element.querySelector<HTMLInputElement>('fs-inline-edit input');
+    const input = element.querySelector<HTMLInputElement>('sf-inline-edit input');
     expect(input?.value).toBe('Begrüssung');
     input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await render();
-    expect(element.querySelector('fs-inline-edit')).toBeNull();
+    expect(element.querySelector('sf-inline-edit')).toBeNull();
     harness.http.expectNone(() => true);
   });
 

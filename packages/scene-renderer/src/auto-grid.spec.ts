@@ -1,4 +1,4 @@
-import { autoGridSlots } from '@flowstudio/scene-model';
+import { autoGridSlots } from '@studioflow/scene-model';
 
 import { autoGridRects } from './auto-grid';
 

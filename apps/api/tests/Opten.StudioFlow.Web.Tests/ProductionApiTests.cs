@@ -1,12 +1,12 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class ProductionApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Seed_FirstStart_CreatesActiveWebinarWithThreeScenes()
@@ -206,8 +206,8 @@ public sealed class ProductionApiTests(FlowStudioApp app) : IClassFixture<FlowSt
 
         Assert.StartsWith("studio_", token.Identity, StringComparison.Ordinal);
         Assert.Equal(admin.ProductionId, token.Room);
-        Assert.Equal("wss://fs.test", token.Url);
-        Assert.Equal(FlowStudioApp.LiveKitKey, jwt.Issuer);
+        Assert.Equal("wss://sf.test", token.Url);
+        Assert.Equal(StudioFlowApp.LiveKitKey, jwt.Issuer);
         Assert.Contains("\"hidden\":true", jwt.GetPayloadValue<JsonElement>("video").GetRawText(), StringComparison.Ordinal);
         Assert.True(token.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(9));
     }

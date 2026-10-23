@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import type { TestRequest } from '@angular/common/http/testing';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import type { SceneDto, SceneItemDto } from '@flowstudio/scene-model';
+import type { SceneDto, SceneItemDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import {
   PRODUCTION_ID,
@@ -28,8 +28,8 @@ import { FakeRendererFactory, ManualFrames } from './testing/stage-fakes';
 @Component({
   imports: [EditOverlayComponent, SceneViewComponent],
   template: `
-    <fs-scene-view #view [scene]="editor.editScene()" />
-    <fs-edit-overlay [view]="view" />
+    <sf-scene-view #view [scene]="editor.editScene()" />
+    <sf-edit-overlay [view]="view" />
   `,
 })
 class OverlayHostComponent {
@@ -77,7 +77,7 @@ describe('EditOverlayComponent', () => {
     editor = TestBed.inject(EditorService);
     toasts = TestBed.inject(ToastService);
     fixture = TestBed.createComponent(OverlayHostComponent);
-    overlay = fixture.nativeElement.querySelector('fs-edit-overlay') as HTMLElement;
+    overlay = fixture.nativeElement.querySelector('sf-edit-overlay') as HTMLElement;
     overlay.getBoundingClientRect = () =>
       ({ ...SCREEN, x: 0, y: 0, right: 960, bottom: 540, toJSON: () => SCREEN }) as DOMRect;
     await render();

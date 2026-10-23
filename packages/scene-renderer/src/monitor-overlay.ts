@@ -30,7 +30,7 @@ export class MonitorOverlay {
   private readonly labelEl: HTMLDivElement;
 
   constructor(doc: Document) {
-    this.missingEl = createElement(doc, 'div', 'fs-r-missing', {
+    this.missingEl = createElement(doc, 'div', 'sf-r-missing', {
       ...FILL,
       display: 'none',
       'align-items': 'center',
@@ -42,13 +42,13 @@ export class MonitorOverlay {
       'font-weight': '600',
     });
     this.missingEl.textContent = MISSING_MESSAGE;
-    this.outlineEl = createElement(doc, 'div', 'fs-r-alert', {
+    this.outlineEl = createElement(doc, 'div', 'sf-r-alert', {
       position: 'absolute',
       'border-style': 'dashed',
       'box-sizing': 'border-box',
       display: 'none',
     });
-    this.labelEl = createElement(doc, 'div', 'fs-r-alert-label', {
+    this.labelEl = createElement(doc, 'div', 'sf-r-alert-label', {
       position: 'absolute',
       color: PALETTE.ground,
       'font-family': UI_FONT,

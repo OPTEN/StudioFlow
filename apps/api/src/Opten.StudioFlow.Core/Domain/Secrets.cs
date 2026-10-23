@@ -2,7 +2,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// Secrets (device secret, output key, invite token, poll token): 32 random bytes, base64url without padding (spec 4.1).

@@ -12,7 +12,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { LIMITS, type SceneDto } from '@flowstudio/scene-model';
+import { LIMITS, type SceneDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
   PopoverDirective,
@@ -40,7 +40,7 @@ const MENU_HEIGHT = 168;
  * clipped); scrolling or resizing closes it.
  */
 @Component({
-  selector: 'fs-scene-row',
+  selector: 'sf-scene-row',
   imports: [
     IconComponent,
     InlineEditComponent,

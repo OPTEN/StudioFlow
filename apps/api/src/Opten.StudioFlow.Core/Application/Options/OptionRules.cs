@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>
 /// Settings that check their own values (GAP-01: every duration and limit is configurable, with the spec value as

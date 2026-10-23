@@ -236,7 +236,7 @@ describe('scene renderer: lifecycle and robustness', () => {
         mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', source)], { version }));
       }
     }
-    expect(mounted.container.querySelectorAll('.fs-r-item')).toHaveLength(1);
+    expect(mounted.container.querySelectorAll('.sf-r-item')).toHaveLength(1);
     expect(mounted.container.querySelectorAll('video')).toHaveLength(1);
     expect(mounted.provider.registrationCount).toBe(1);
     expect(mounted.provider.desiredCount).toBe(1);

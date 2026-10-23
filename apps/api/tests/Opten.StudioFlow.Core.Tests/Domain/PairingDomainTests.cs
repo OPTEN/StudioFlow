@@ -1,8 +1,8 @@
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Domain;
+namespace Opten.StudioFlow.Core.Tests.Domain;
 
 public sealed class DeviceTests
 {
@@ -42,7 +42,7 @@ public sealed class DeviceTests
             Assert.Equal($"screen-{i}", laptop.AllocateSlot(SourceKind.Screen, laptop.Slots.Select(s => s.Code)).Slot);
         }
 
-        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<FlowStudioException>(() => laptop.AllocateSlot(SourceKind.Screen, [])).Code);
+        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<StudioFlowException>(() => laptop.AllocateSlot(SourceKind.Screen, [])).Code);
         Assert.Equal(["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"], laptop.Slots.Select(s => s.Code));
     }
 
@@ -55,7 +55,7 @@ public sealed class DeviceTests
 
         Assert.Equal("K2", camera.Code);
         Assert.Equal("Laptop Lea · Kamera", laptop.LabelOf(camera));
-        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<FlowStudioException>(() => laptop.AllocateSlot(SourceKind.Camera, [])).Code);
+        Assert.Equal(ErrorCodes.LimitReached, Assert.Throws<StudioFlowException>(() => laptop.AllocateSlot(SourceKind.Camera, [])).Code);
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public sealed class DeviceTests
     [InlineData(SourceKind.Video)]
     [InlineData((SourceKind)42)]
     public void AllocateSlot_MediaKind_IsValidationError(SourceKind kind) =>
-        Assert.Equal(ErrorKind.Validation, Assert.Throws<FlowStudioException>(() => Build.Laptop(production).AllocateSlot(kind, [])).Kind);
+        Assert.Equal(ErrorKind.Validation, Assert.Throws<StudioFlowException>(() => Build.Laptop(production).AllocateSlot(kind, [])).Kind);
 
     [Fact]
     public void ReleaseSlot_FreesScreenNumberForReuse()
@@ -129,7 +129,7 @@ public sealed class DeviceTests
     {
         var device = Build.Phone(production);
 
-        Assert.Throws<FlowStudioException>(() => device.Rename(new string('x', 61)));
+        Assert.Throws<StudioFlowException>(() => device.Rename(new string('x', 61)));
         device.Rename("Kamera Bühne");
         Assert.Equal("Kamera Bühne", device.LabelOf(device.Slots[0]));
         Assert.Equal("K1", device.CodesText());
@@ -154,8 +154,8 @@ public sealed class InviteTests
         var phone = Invite.Create("prd_x", InviteKind.PhoneQr, Build.T0, TimeSpan.FromMinutes(30));
         var link = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
 
-        Assert.Equal($"https://fs.example/join/i/{phone.Token}", phone.UrlFor("https://fs.example/"));
-        Assert.Equal($"https://fs.example/j/{link.Token}", link.UrlFor("https://fs.example"));
+        Assert.Equal($"https://sf.example/join/i/{phone.Token}", phone.UrlFor("https://sf.example/"));
+        Assert.Equal($"https://sf.example/j/{link.Token}", link.UrlFor("https://sf.example"));
         Assert.Equal(PairingMethod.Link, link.PairingMethod);
     }
 
@@ -165,7 +165,7 @@ public sealed class InviteTests
         var invite = Invite.Create("prd_x", InviteKind.LaptopLink, Build.T0, TimeSpan.FromMinutes(30));
         invite.Redeem("client-1", "dev_aaaa", Build.T0);
 
-        Assert.Equal(ErrorCodes.PairingExpired, Assert.Throws<FlowStudioException>(() => invite.Redeem("client-2", "dev_bbbb", Build.T0)).Code);
+        Assert.Equal(ErrorCodes.PairingExpired, Assert.Throws<StudioFlowException>(() => invite.Redeem("client-2", "dev_bbbb", Build.T0)).Code);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed class InviteTests
         Assert.True(invite.Revoke(Build.T0));
         Assert.False(invite.IsOpen(Build.T0));
         Assert.False(invite.Revoke(Build.T0));
-        Assert.Throws<FlowStudioException>(() => invite.Redeem("c", "dev_x", Build.T0));
+        Assert.Throws<StudioFlowException>(() => invite.Redeem("c", "dev_x", Build.T0));
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public sealed class PairingRequestTests
     [InlineData("", DeviceKind.Laptop)]
     [InlineData("x", (DeviceKind)5)]
     public void Create_Invalid_IsValidationError(string name, DeviceKind kind) =>
-        Assert.Throws<FlowStudioException>(() => PairingRequest.Create("prd_x", new CreatePairingRequest(name, kind, "p"), "0001", Build.T0));
+        Assert.Throws<StudioFlowException>(() => PairingRequest.Create("prd_x", new CreatePairingRequest(name, kind, "p"), "0001", Build.T0));
 
     [Fact]
     public void Approve_Pending_ReturnsSameCredentialsForFiveMinutes()
@@ -244,8 +244,8 @@ public sealed class PairingRequestTests
         var (expired, _) = PairingRequest.Create("prd_x", Knock, "4713", Build.T0);
         request.Deny(Build.T0);
 
-        Assert.Equal(ErrorCodes.PairingExpired, Assert.Throws<FlowStudioException>(() => request.Approve(new("dev_a", "s", "prd_x"), Build.T0)).Code);
-        Assert.Throws<FlowStudioException>(() => expired.Approve(new("dev_a", "s", "prd_x"), Build.T0.AddMinutes(11)));
+        Assert.Equal(ErrorCodes.PairingExpired, Assert.Throws<StudioFlowException>(() => request.Approve(new("dev_a", "s", "prd_x"), Build.T0)).Code);
+        Assert.Throws<StudioFlowException>(() => expired.Approve(new("dev_a", "s", "prd_x"), Build.T0.AddMinutes(11)));
         Assert.Equal(new PairingRequestStatusDto(PairingRequestStatus.Denied, null), request.StatusFor(Build.T0.AddMinutes(1)));
     }
 
@@ -272,7 +272,7 @@ public sealed class PairingRequestStoreTests
             Assert.True(codes.Add(store.Create("prd_x", Knock, Build.T0).Request.CheckCode));
         }
 
-        var error = Assert.Throws<FlowStudioException>(() => store.Create("prd_y", Knock, Build.T0));
+        var error = Assert.Throws<StudioFlowException>(() => store.Create("prd_y", Knock, Build.T0));
 
         Assert.Equal(ErrorCodes.RateLimited, error.Code);
         Assert.NotNull(error.RetryAfter);
@@ -326,7 +326,7 @@ public sealed class PairingRequestStoreTests
             {
                 return store.Create("prd_x", Knock, Build.T0).Request.CheckCode;
             }
-            catch (FlowStudioException)
+            catch (StudioFlowException)
             {
                 return null;
             }

@@ -12,7 +12,7 @@ import { regieBug } from '../../support/regie/bugs';
  * DOCK in the Regie UI (docs/testing.md 2.9: E2E-DOCK-01 ... 10, 2.8 E2E-DEV-14): default arrangement, dragging docks with
  * the drop strips and the insertion line, splitters by pointer and keyboard, hide/show, reset, corrupted storage, the
  * pairing dock, Studio-Modus layout stability, per-browser persistence, side zones. The layout lives in
- * `localStorage['flowstudio.layout']` (version 1).
+ * `localStorage['studioflow.layout']` (version 1).
  */
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -37,14 +37,14 @@ const DEFAULT_LAYOUT = {
 };
 const BLUE = 'rgb(121, 192, 255)';
 
-const dock = (page: Page, id: string): Locator => page.locator(`fs-dock-slot[data-dock="${id}"]`);
+const dock = (page: Page, id: string): Locator => page.locator(`sf-dock-slot[data-dock="${id}"]`);
 const zoneOf = (page: Page, id: string) =>
   dock(page, id).evaluate(
     (element) => element.closest('[data-zone]')?.getAttribute('data-zone') ?? null,
   );
 const stored = (page: Page) =>
   page.evaluate(() => {
-    const raw = localStorage.getItem('flowstudio.layout');
+    const raw = localStorage.getItem('studioflow.layout');
     return raw === null ? null : (JSON.parse(raw) as Record<string, any>);
   });
 const sep = (page: Page, name: string) => page.getByRole('separator', { name });
@@ -55,7 +55,7 @@ async function order(page: Page, zone: 'left' | 'bottom' | 'right'): Promise<str
     (name) =>
       [
         ...document.querySelectorAll(
-          `[data-zone="${name}"] > fs-dock-slot[data-dock], [data-zone="${name}"] fs-dock-slot[data-dock]`,
+          `[data-zone="${name}"] > sf-dock-slot[data-dock], [data-zone="${name}"] sf-dock-slot[data-dock]`,
         ),
       ].map((element) => element.getAttribute('data-dock') ?? ''),
     zone,
@@ -105,7 +105,7 @@ async function seedLayout(regie: RegiePage, layout: unknown): Promise<void> {
   await regie.page.evaluate(
     (value) =>
       localStorage.setItem(
-        'flowstudio.layout',
+        'studioflow.layout',
         typeof value === 'string' ? value : JSON.stringify(value),
       ),
     layout,
@@ -391,8 +391,8 @@ test.describe('REGIE docks', () => {
       // Preview | Program (Studio-Modus): the split follows within 0.3 ... 0.7.
       await regie.setStudioMode(true);
       const monitors = async () => [
-        (await page.locator('fs-monitor.c-monitor--preview').boundingBox())!.width,
-        (await page.locator('fs-monitor.c-monitor--program').boundingBox())!.width,
+        (await page.locator('sf-monitor.c-monitor--preview').boundingBox())!.width,
+        (await page.locator('sf-monitor.c-monitor--program').boundingBox())!.width,
       ];
       const [p0] = await monitors();
       await dragSeparator('Grösse von Preview und Program', 40, 0);
@@ -474,7 +474,7 @@ test.describe('REGIE docks', () => {
       await expectOrder(page, 'bottom', []);
       expect((await stored(page))!['hidden'].sort()).toEqual(['insp', 'scenes', 'src', 'st']);
       await expect(
-        page.locator('fs-stage'),
+        page.locator('sf-stage'),
         'with every dock hidden the stage stays',
       ).toBeVisible();
       await expect(page.locator('.c-workspace__zone--bottom')).toHaveClass(/is-empty/);
@@ -605,7 +605,7 @@ test.describe('REGIE docks', () => {
         const page = await context.newPage();
         await page.addInitScript((raw) => {
           try {
-            if (raw !== null) localStorage.setItem('flowstudio.layout', raw);
+            if (raw !== null) localStorage.setItem('studioflow.layout', raw);
           } catch {
             // too large for the quota: the app then sees no value
           }
@@ -629,12 +629,12 @@ test.describe('REGIE docks', () => {
 
       // The next change replaces a broken value by valid JSON.
       const page = await context.newPage();
-      await page.addInitScript(() => localStorage.setItem('flowstudio.layout', '{broken'));
+      await page.addInitScript(() => localStorage.setItem('studioflow.layout', '{broken'));
       const view = new RegiePage(page);
       await view.loginViaApi(regie.requireAdmin().cookie);
       await page.goto('/');
       await view.waitReady();
-      await page.evaluate(() => localStorage.setItem('flowstudio.layout', '{broken')); // survived the load unchanged
+      await page.evaluate(() => localStorage.setItem('studioflow.layout', '{broken')); // survived the load unchanged
       await page.getByRole('button', { name: 'Docks und Layout' }).click();
       await page.getByRole('checkbox', { name: 'Stationen' }).uncheck();
       const fixed = await stored(page);
@@ -645,7 +645,7 @@ test.describe('REGIE docks', () => {
       for (const studio of ['yes', '2', '']) {
         const next = await context.newPage();
         await next.addInitScript(
-          (value) => localStorage.setItem('flowstudio.studio', value),
+          (value) => localStorage.setItem('studioflow.studio', value),
           studio,
         );
         const nextView = new RegiePage(next);
@@ -658,7 +658,7 @@ test.describe('REGIE docks', () => {
       for (const transition of ['"abc"', '{', '{"kind":"zoom","durationMs":"x"}', '[1,2]']) {
         const next = await context.newPage();
         await next.addInitScript(
-          (value) => localStorage.setItem('flowstudio.transition', value),
+          (value) => localStorage.setItem('studioflow.transition', value),
           transition,
         );
         const nextView = new RegiePage(next);
@@ -774,7 +774,7 @@ test.describe('REGIE docks', () => {
         zones: { left: ['scenes'], bottom: ['src', 'insp'], right: ['st'] },
       });
       const boxes = async (target: Page) => ({
-        column: await target.locator('fs-control-column').boundingBox(),
+        column: await target.locator('sf-control-column').boundingBox(),
         docks: await Promise.all(
           (['scenes', 'src', 'insp', 'st'] as const).map((id) => dock(target, id).boundingBox()),
         ),
@@ -801,7 +801,7 @@ test.describe('REGIE docks', () => {
       const other = await openRegie();
       await expect(other.studioModeSwitch()).not.toBeChecked();
       await expectOrder(other.page, 'bottom', ['scenes', 'src', 'insp', 'st']);
-      expect(await other.page.evaluate(() => localStorage.getItem('flowstudio.studio'))).not.toBe(
+      expect(await other.page.evaluate(() => localStorage.getItem('studioflow.studio'))).not.toBe(
         '1',
       );
       expect(regie.problems.pageErrors).toEqual([]);
@@ -858,7 +858,7 @@ test.describe('REGIE docks', () => {
           `${label}: no page scroll`,
         ).toEqual([true, true]);
         const monitor = (await page
-          .locator('fs-monitor.c-monitor--program .c-monitor__screen')
+          .locator('sf-monitor.c-monitor--program .c-monitor__screen')
           .boundingBox())!;
         expect(monitor.height, `${label}: Program monitor height`).toBeGreaterThanOrEqual(160);
         const stage = (await page.locator('section.c-workspace__stage').boundingBox())!;
@@ -1044,7 +1044,7 @@ test.describe('REGIE docks by keyboard', () => {
       const monitorSeam = sep(page, 'Grösse von Preview und Program');
       await expect(monitorSeam).toHaveAttribute('aria-orientation', 'vertical');
       const previewWidth = async () =>
-        (await page.locator('fs-monitor.c-monitor--preview').boundingBox())!.width;
+        (await page.locator('sf-monitor.c-monitor--preview').boundingBox())!.width;
       const p0 = await previewWidth();
       await monitorSeam.focus();
       await page.keyboard.press('ArrowRight');

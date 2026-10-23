@@ -13,14 +13,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.Security;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.Security;
 using Testcontainers.PostgreSql;
 
-[assembly: AssemblyFixture(typeof(Opten.FlowStudio.Web.Tests.Support.PostgresFixture))]
+[assembly: AssemblyFixture(typeof(Opten.StudioFlow.Web.Tests.Support.PostgresFixture))]
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>One PostgreSQL 17 container for the whole test run; every app gets its own database.</summary>
 public sealed class PostgresFixture : IAsyncLifetime
@@ -28,7 +28,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:17-alpine")
         .WithDatabase("postgres")
         .WithUsername("postgres")
-        .WithPassword("fs-test-only")
+        .WithPassword("sf-test-only")
         .Build();
 
     public async ValueTask InitializeAsync() => await container.StartAsync();
@@ -38,7 +38,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>Creates an empty database and returns its connection string.</summary>
     public async Task<string> CreateDatabaseAsync()
     {
-        var name = "fs_" + Guid.NewGuid().ToString("N");
+        var name = "sf_" + Guid.NewGuid().ToString("N");
         await using (var connection = new NpgsqlConnection(container.GetConnectionString()))
         {
             await connection.OpenAsync();
@@ -54,7 +54,7 @@ public sealed class PostgresFixture : IAsyncLifetime
 /// The API on a TestServer with its own database, a fake LiveKit room service and a header that sets the client
 /// address (TestServer has none), so rate limits and IP rules can be tested per test.
 /// </summary>
-public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Program>, IAsyncLifetime
+public class StudioFlowApp(PostgresFixture postgres) : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminUser = "admin";
     public const string AdminPassword = "Test-Passwort-1!";
@@ -62,7 +62,7 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
     public const string LiveKitSecret = "sk-test-secret-with-more-than-32-characters";
     public const long MaxImageBytes = 200_000;
     public const long MaxVideoBytes = 400_000;
-    public const string PublicBaseUrl = "https://fs.test";
+    public const string PublicBaseUrl = "https://sf.test";
 
     private static readonly string AdminHash = AdminCredentials.HashPassword(AdminPassword);
     private static int nextAddress;
@@ -77,7 +77,7 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
     /// <summary>Name of the app's own database (for <see cref="SqlCommandRecorder"/>).</summary>
     public string DatabaseName => new NpgsqlConnectionStringBuilder(connectionString).Database!;
 
-    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "fs-media-" + Guid.NewGuid().ToString("N"));
+    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "sf-media-" + Guid.NewGuid().ToString("N"));
 
     public string ConnectionString => connectionString;
 
@@ -121,9 +121,9 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
         var client = Anonymous();
         var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(AdminUser, AdminPassword), ContractJson.Options);
         response.EnsureSuccessStatusCode();
-        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("fs_session=", StringComparison.Ordinal)).Split(';')[0];
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sf_session=", StringComparison.Ordinal)).Split(';')[0];
         client.DefaultRequestHeaders.Add("Cookie", cookie);
-        client.DefaultRequestHeaders.Add("X-FlowStudio", "1");
+        client.DefaultRequestHeaders.Add("X-StudioFlow", "1");
         var active = await client.GetFromJsonAsync<ProductionSummaryDto>("/api/productions/active", ContractJson.Options);
         return new AdminSession(client, cookie, active!.Id);
     }
@@ -157,7 +157,7 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment(EnvironmentName);
-        builder.UseSetting("ConnectionStrings:FlowStudio", connectionString);
+        builder.UseSetting("ConnectionStrings:StudioFlow", connectionString);
         builder.UseSetting("Admin:Username", AdminUser);
         builder.UseSetting("Admin:PasswordHash", AdminHash);
         builder.UseSetting("LiveKit:ApiKey", LiveKitKey);
@@ -166,8 +166,8 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
         builder.UseSetting("Media:Path", MediaPath);
         builder.UseSetting("Media:MaxImageBytes", MaxImageBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Media:MaxVideoBytes", MaxVideoBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        builder.UseSetting("FlowStudio:PublicBaseUrl", PublicBaseUrl);
-        builder.UseSetting("FlowStudio:FrameAncestors", "'self' https://stream.example");
+        builder.UseSetting("StudioFlow:PublicBaseUrl", PublicBaseUrl);
+        builder.UseSetting("StudioFlow:FrameAncestors", "'self' https://stream.example");
         builder.UseSetting("ForwardedHeaders:KnownNetworks:0", "10.99.0.0/16");
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         builder.ConfigureTestServices(services =>
@@ -180,14 +180,14 @@ public class FlowStudioApp(PostgresFixture postgres) : WebApplicationFactory<Pro
 }
 
 /// <summary>The same app in the Production environment (secure cookies, no detailed errors).</summary>
-public sealed class ProductionModeApp(PostgresFixture postgres) : FlowStudioApp(postgres)
+public sealed class ProductionModeApp(PostgresFixture postgres) : StudioFlowApp(postgres)
 {
     protected override string EnvironmentName => "Production";
 }
 
 /// <summary>A signed-in admin.</summary>
 /// <param name="Client">Client with cookie and CSRF header.</param>
-/// <param name="Cookie">The cookie header value <c>fs_session=…</c>.</param>
+/// <param name="Cookie">The cookie header value <c>sf_session=…</c>.</param>
 /// <param name="ProductionId">The active production.</param>
 public sealed record AdminSession(HttpClient Client, string Cookie, string ProductionId);
 

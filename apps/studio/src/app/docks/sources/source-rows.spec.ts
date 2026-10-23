@@ -1,4 +1,4 @@
-import type { SourceDto } from '@flowstudio/scene-model';
+import type { SourceDto } from '@studioflow/scene-model';
 import {
   itemFixture,
   productionFixture,

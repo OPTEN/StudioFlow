@@ -183,7 +183,7 @@ export function rawRequest(options: {
 
 /** Builds a multipart/form-data body. File names are written like browsers do (", CR and LF percent-encoded). */
 export function multipart(parts: Array<{ name: string; value?: string; fileName?: string; contentType?: string; data?: Buffer }>): { body: Buffer; contentType: string } {
-  const boundary = `----fs-e2e-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+  const boundary = `----sf-e2e-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
   const chunks: Buffer[] = [];
   for (const part of parts) {
     let head = `--${boundary}\r\nContent-Disposition: form-data; name="${part.name}"`;

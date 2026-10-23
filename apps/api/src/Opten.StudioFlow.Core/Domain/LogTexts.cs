@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// German texts of «Letzte Ereignisse» derived from audit entries (spec 4.9), e.g. «K2 verbindet neu»,

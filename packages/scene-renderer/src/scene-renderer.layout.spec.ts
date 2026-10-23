@@ -50,10 +50,10 @@ describe('scene renderer: stage and items', () => {
     it('keeps every scene layer in its own stacking context below the slates', () => {
       mounted = mount();
       mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
-      const layer = mounted.container.querySelector<HTMLElement>('.fs-r-layer');
+      const layer = mounted.container.querySelector<HTMLElement>('.sf-r-layer');
       expect(layer?.style.isolation).toBe('isolate');
-      expect(mounted.container.querySelector<HTMLElement>('.fs-r-scenes')?.style.zIndex).toBe('0');
-      expect(mounted.container.querySelector<HTMLElement>('.fs-r-slates')?.style.zIndex).toBe('1');
+      expect(mounted.container.querySelector<HTMLElement>('.sf-r-scenes')?.style.zIndex).toBe('0');
+      expect(mounted.container.querySelector<HTMLElement>('.sf-r-slates')?.style.zIndex).toBe('1');
     });
 
     it('is black by default', () => {
@@ -120,7 +120,7 @@ describe('scene renderer: stage and items', () => {
       mounted = mount();
       const crop = { top: 0.1, right: 0.2, bottom: 0.3, left: 0.05 };
       mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA, { w: 600, h: 300, crop })]));
-      const cropEl = mounted.part('itm_a', '.fs-r-crop');
+      const cropEl = mounted.part('itm_a', '.sf-r-crop');
       expect(cropEl?.style.width).toBe(`${600 / 0.75}px`);
       expect(cropEl?.style.height).toBe(`${300 / 0.6}px`);
       expect(cropEl?.style.left).toBe(`${-0.05 * (600 / 0.75)}px`);
@@ -133,7 +133,7 @@ describe('scene renderer: stage and items', () => {
       mounted.renderer.show(
         scene('scn_a', [sceneItem('itm_a', CAMERA, { w: 800, h: 450, rotation: 90 })]),
       );
-      const box = mounted.part('itm_a', '.fs-r-box');
+      const box = mounted.part('itm_a', '.sf-r-box');
       expect(box?.style.transform).toBe('rotate(90deg)');
       expect(box?.style.width).toBe('450px');
       expect(box?.style.height).toBe('800px');
@@ -167,7 +167,7 @@ describe('scene renderer: stage and items', () => {
         ]),
       );
       expect(mounted.item('itm_a')?.style.borderRadius).toBe('12px');
-      const border = mounted.part('itm_a', '.fs-r-border');
+      const border = mounted.part('itm_a', '.sf-r-border');
       expect(border?.style.boxShadow).toBe('inset 0 0 0 4px #1f6feb');
       expect(border?.style.display).toBe('block');
 
@@ -296,7 +296,7 @@ describe('scene renderer: stage and items', () => {
       );
       for (const id of ['itm_p', 'itm_m', 'itm_x']) {
         expect(mounted.item(id)?.style.backgroundColor).toBe('#121821');
-        expect(mounted.part(id, '.fs-r-missing')?.style.display).toBe('none');
+        expect(mounted.part(id, '.sf-r-missing')?.style.display).toBe('none');
       }
       expect(mounted.part('itm_m', 'img')).toBeNull();
     });
@@ -310,9 +310,9 @@ describe('scene renderer: stage and items', () => {
           sceneItem('itm_m', 'ast_gone0001'),
         ]),
       );
-      expect(mounted.part('itm_ok', '.fs-r-missing')?.style.display).toBe('none');
+      expect(mounted.part('itm_ok', '.sf-r-missing')?.style.display).toBe('none');
       for (const id of ['itm_del', 'itm_m']) {
-        const label = mounted.part(id, '.fs-r-missing');
+        const label = mounted.part(id, '.sf-r-missing');
         expect(label?.style.display).toBe('flex');
         expect(label?.textContent).toBe('Quelle fehlt');
         expect(mounted.item(id)?.style.backgroundColor).toBe('#121821');
@@ -337,7 +337,7 @@ describe('scene renderer: stage and items', () => {
       );
       const layer = mounted.container.querySelector<HTMLElement>('[data-scene-id="scn_a"]');
       expect(layer?.style.backgroundColor).toBe('#123456');
-      const image = layer?.querySelector<HTMLImageElement>('.fs-r-background');
+      const image = layer?.querySelector<HTMLImageElement>('.sf-r-background');
       expect(image?.getAttribute('src')).toBe('/media/image.png');
       expect(image?.style.display).toBe('block');
 
@@ -386,10 +386,10 @@ describe('scene renderer: stage and items', () => {
         { id: 7 },
       ] as unknown as ReturnType<typeof sceneItem>[];
       mounted.renderer.show(scene('scn_a', items));
-      expect(mounted.container.querySelectorAll('.fs-r-item')).toHaveLength(1);
+      expect(mounted.container.querySelectorAll('.sf-r-item')).toHaveLength(1);
       expect(mounted.item('itm_a')?.style.transform).toBe('translate(100px, 50px)');
       mounted.renderer.update(scene('scn_a', undefined as unknown as []));
-      expect(mounted.container.querySelectorAll('.fs-r-item')).toHaveLength(0);
+      expect(mounted.container.querySelectorAll('.sf-r-item')).toHaveLength(0);
       expect(mounted.errors).toEqual([]);
     });
 
@@ -409,7 +409,7 @@ describe('scene renderer: stage and items', () => {
       expect(root?.style.transform).toBe('translate(0px, 50px)');
       expect(root?.style.width).toBe('3840px');
       expect(root?.style.borderRadius).toBe('200px');
-      const cropEl = mounted.part('itm_a', '.fs-r-crop');
+      const cropEl = mounted.part('itm_a', '.sf-r-crop');
       expect(Number.parseFloat(cropEl?.style.width ?? '')).toBeCloseTo(38400, 3);
     });
 
@@ -417,7 +417,7 @@ describe('scene renderer: stage and items', () => {
       mounted = mount();
       mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
       mounted.renderer.show(null);
-      expect(mounted.container.querySelectorAll('.fs-r-layer')).toHaveLength(0);
+      expect(mounted.container.querySelectorAll('.sf-r-layer')).toHaveLength(0);
       expect(mounted.provider.registrationCount).toBe(0);
       expect(mounted.renderer.effectiveRects().size).toBe(0);
     });

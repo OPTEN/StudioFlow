@@ -2,7 +2,7 @@ import type { Routes } from '@angular/router';
 import { startGuard, stationGuard, waitingGuard } from './app.guards';
 
 /** Document title of every screen. */
-const TITLE = 'FlowStudio Sender';
+const TITLE = 'StudioFlow Sender';
 
 /**
  * Routes under the base `/join/` (spec 9.2). Screens are lazy so the app shell stays small; the service worker

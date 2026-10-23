@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Category of an expected error; the web layer maps it to an HTTP status code.</summary>
 public enum ErrorKind
@@ -37,10 +37,10 @@ public enum ErrorKind
 /// An expected error of a use case. Thrown inside a mutation it also discards every event the mutation staged, so a
 /// failed request never publishes a partial change. Messages are German because they reach the user.
 /// </summary>
-public sealed class FlowStudioException : Exception
+public sealed class StudioFlowException : Exception
 {
     /// <summary>Creates an error.</summary>
-    public FlowStudioException(ErrorKind kind, string code, string message, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null)
+    public StudioFlowException(ErrorKind kind, string code, string message, IReadOnlyDictionary<string, string[]>? errors = null, TimeSpan? retryAfter = null)
         : base(message)
     {
         Kind = kind;
@@ -62,24 +62,24 @@ public sealed class FlowStudioException : Exception
     public TimeSpan? RetryAfter { get; }
 
     /// <summary>Entity not found.</summary>
-    public static FlowStudioException NotFound(string what) =>
+    public static StudioFlowException NotFound(string what) =>
         new(ErrorKind.NotFound, ErrorCodes.NotFound, $"{what} wurde nicht gefunden.");
 
     /// <summary>State conflict with a specific code.</summary>
-    public static FlowStudioException Conflict(string code, string message) => new(ErrorKind.Conflict, code, message);
+    public static StudioFlowException Conflict(string code, string message) => new(ErrorKind.Conflict, code, message);
 
     /// <summary>Validation failure of a single field.</summary>
-    public static FlowStudioException Invalid(string field, string message) =>
+    public static StudioFlowException Invalid(string field, string message) =>
         new(ErrorKind.Validation, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [message] });
 
     /// <summary>Invite or pairing request is no longer usable.</summary>
-    public static FlowStudioException PairingExpired() =>
+    public static StudioFlowException PairingExpired() =>
         new(ErrorKind.Gone, ErrorCodes.PairingExpired, "Die Einladung ist abgelaufen oder wurde bereits verwendet.");
 
     /// <summary>Too many attempts.</summary>
-    public static FlowStudioException RateLimited(TimeSpan retryAfter) =>
+    public static StudioFlowException RateLimited(TimeSpan retryAfter) =>
         new(ErrorKind.RateLimited, ErrorCodes.RateLimited, "Zu viele Versuche. Bitte später erneut versuchen.", retryAfter: retryAfter);
 
     /// <summary>A size limit (scenes per production, items per scene, slots per device) was reached (409, GAP-05).</summary>
-    public static FlowStudioException LimitReached(string message) => Conflict(ErrorCodes.LimitReached, message);
+    public static StudioFlowException LimitReached(string message) => Conflict(ErrorCodes.LimitReached, message);
 }

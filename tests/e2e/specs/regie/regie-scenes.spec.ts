@@ -45,7 +45,7 @@ test.describe('REGIE scenes', () => {
       await expect(regie.scene('Szene A')).toBeVisible();
       await expect(inspectorTitle(page)).toHaveText('Szene');
 
-      const name = page.locator('#fs-insp-name');
+      const name = page.locator('#sf-insp-name');
       await expect(name).toHaveValue('Szene A');
       await name.fill('Moderation');
       await name.blur();
@@ -55,7 +55,7 @@ test.describe('REGIE scenes', () => {
         'Moderation',
         { timeout: 1500 },
       );
-      await expect(scenesDock(page).locator('.fs-r-stage[aria-label="Moderation"]')).toHaveCount(
+      await expect(scenesDock(page).locator('.sf-r-stage[aria-label="Moderation"]')).toHaveCount(
         1,
         { timeout: 1500 },
       );
@@ -555,7 +555,7 @@ test.describe('REGIE scenes', () => {
       // Program monitor: the item is still drawn, as the dark placeholder (#121821) with the label «Quelle fehlt».
       await expect.poll(async () => (await renderedItems(page, 'program')).length).toBe(2);
       const monitorItem = monitorOf(page, 'program').locator(
-        `.fs-r-item[data-item-id="${laptopItem!.id}"]`,
+        `.sf-r-item[data-item-id="${laptopItem!.id}"]`,
       );
       await expect(monitorItem).toContainText('Quelle fehlt');
       expect(
@@ -568,7 +568,7 @@ test.describe('REGIE scenes', () => {
       ).toContainText('Quelle fehlt');
       // The thumbnail of the scene row draws it as well.
       expect(
-        (await renderedItems(page, '.c-scenes-dock__list > fs-scene-row:nth-child(1)')).some(
+        (await renderedItems(page, '.c-scenes-dock__list > sf-scene-row:nth-child(1)')).some(
           (entry) => entry.id === laptopItem!.id,
         ),
       ).toBe(true);
@@ -588,7 +588,7 @@ test.describe('REGIE scenes', () => {
       expect(outputItem.text, 'the output shows no «Quelle fehlt»').toBe('');
       expect(
         await output.page
-          .locator(`.fs-r-item[data-item-id="${laptopItem!.id}"]`)
+          .locator(`.sf-r-item[data-item-id="${laptopItem!.id}"]`)
           .evaluate((element) => getComputedStyle(element).backgroundColor),
       ).toBe('rgb(18, 24, 33)');
 
@@ -698,7 +698,7 @@ test.describe('REGIE scenes', () => {
         radius: 0,
       });
       const itemId = scene.items[0]!.id;
-      const thumb = '.c-scenes-dock__list > fs-scene-row:nth-child(1)';
+      const thumb = '.c-scenes-dock__list > sf-scene-row:nth-child(1)';
       await expect
         .poll(
           async () => (await renderedItems(page, thumb)).find((entry) => entry.id === itemId)?.x,

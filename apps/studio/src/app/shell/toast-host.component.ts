@@ -6,7 +6,7 @@ import { ToastService } from '../core/ui/toast.service';
  * optional action button. The host is a permanent polite live region, so screen readers announce every toast.
  */
 @Component({
-  selector: 'fs-toast-host',
+  selector: 'sf-toast-host',
   template: `
     @if (toasts.current(); as toast) {
       <div class="c-toast">

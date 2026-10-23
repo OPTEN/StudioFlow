@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace Opten.FlowStudio.Web.Errors;
+namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
 /// Field errors for request bodies that cannot be bound (BUG-08): an unknown enum text, a wrong type or broken JSON is

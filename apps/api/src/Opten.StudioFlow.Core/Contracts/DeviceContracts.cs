@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>A paired device (station) as shown in the Regie.</summary>
 /// <param name="Id">Device id, e.g. <c>dev_…</c>; equals the LiveKit participant identity.</param>

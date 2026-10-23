@@ -75,7 +75,7 @@ test.describe('DEV sender, PWA', () => {
       const manifestResponse = await page.request.get(`${config.baseURL}/join/manifest.webmanifest`);
       expect(manifestResponse.status()).toBe(200);
       const manifest = (await manifestResponse.json()) as { name: string; short_name?: string; scope: string; start_url: string; display: string; theme_color: string; icons: Array<{ src: string; sizes: string; type?: string; purpose?: string }> };
-      expect(manifest.name).toBe('FlowStudio Sender');
+      expect(manifest.name).toBe('StudioFlow Sender');
       // Relative values ("./") resolve against the manifest URL /join/manifest.webmanifest.
       const manifestUrl = `${config.baseURL}/join/manifest.webmanifest`;
       expect(new URL(manifest.scope, manifestUrl).pathname, 'scope').toBe('/join/');
@@ -121,13 +121,13 @@ test.describe('DEV sender, PWA', () => {
       // Offline: the shell loads and the station says that it is offline.
       await page.context().setOffline(true);
       await page.reload();
-      await expect(page.locator('fs-root, main').first()).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('sf-root, main').first()).toBeVisible({ timeout: 20_000 });
       await expect(page.locator('[data-testid=connection-state]').first()).toContainText(/Offline|Verbindet neu/, { timeout: 20_000 });
       await expect(page.getByText(/Offline: keine Netzwerkverbindung/)).toBeVisible();
       await page.context().setOffline(false);
       await phone.waitConnected(40_000);
       // And the unpaired shell works offline too.
-      await page.evaluate(() => localStorage.removeItem('flowstudio.sender.v1'));
+      await page.evaluate(() => localStorage.removeItem('studioflow.sender.v1'));
       await page.context().setOffline(true);
       await page.goto('/join/');
       await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible({ timeout: 20_000 });

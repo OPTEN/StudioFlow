@@ -12,7 +12,7 @@ import type {
   PairingRequestStatusDto,
   RedeemInviteRequest,
   SourceKind,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { firstValueFrom, timeout, type Observable } from 'rxjs';
 import { toApiError } from './api-error';
 

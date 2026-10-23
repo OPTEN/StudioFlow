@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import type { SceneDto } from '@flowstudio/scene-model';
+import type { SceneDto } from '@studioflow/scene-model';
 import { SceneViewComponent } from '../../stage/scene-view.component';
 
 /**
@@ -8,9 +8,9 @@ import { SceneViewComponent } from '../../stage/scene-view.component';
  * connection exists the renderer shows the layout with dark placeholders and the real images.
  */
 @Component({
-  selector: 'fs-scene-thumb',
+  selector: 'sf-scene-thumb',
   imports: [SceneViewComponent],
-  template: `<fs-scene-view
+  template: `<sf-scene-view
     class="c-scene-thumb__view"
     mode="thumbnail"
     [scene]="scene()"

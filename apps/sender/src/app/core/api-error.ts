@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ERROR_CODES } from '@flowstudio/scene-model';
+import { ERROR_CODES } from '@studioflow/scene-model';
 
 /** Error codes the API may add beyond `ERROR_CODES` (spec 5, `ErrorCodes.cs`). */
 export const EXTRA_ERROR_CODES = {

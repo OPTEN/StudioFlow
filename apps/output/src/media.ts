@@ -1,6 +1,6 @@
-import type { LiveKitTokenDto } from '@flowstudio/scene-model';
-import type { SourceMediaProvider } from '@flowstudio/scene-renderer';
-import type { MediaLogger, MediaSessionState, SourceStats } from '@flowstudio/media-client';
+import type { LiveKitTokenDto } from '@studioflow/scene-model';
+import type { SourceMediaProvider } from '@studioflow/scene-renderer';
+import type { MediaLogger, MediaSessionState, SourceStats } from '@studioflow/media-client';
 
 /** The part of `MediaSession` the page uses. */
 export interface OutputMediaSession {
@@ -48,7 +48,7 @@ export function isTerminalMediaState(state: MediaSessionState): boolean {
 }
 
 /**
- * Default loader: imports `@flowstudio/media-client` (and with it livekit-client, ~150 KB gzip, not tree-shakable)
+ * Default loader: imports `@studioflow/media-client` (and with it livekit-client, ~150 KB gzip, not tree-shakable)
  * as a separate chunk (livekit-media.ts), so the slate or the first scene does not wait for it.
  */
 export const loadOutputMedia: LoadOutputMedia = async (options) => {

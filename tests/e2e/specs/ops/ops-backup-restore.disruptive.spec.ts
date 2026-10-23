@@ -60,7 +60,7 @@ function stable(snapshot: ProductionSnapshot): unknown {
 }
 
 async function psql(sql: string): Promise<string> {
-  const result = await docker(['exec', containerName('postgres'), 'psql', '-U', 'flowstudio', '-d', 'flowstudio', '-tAc', sql], { check: true });
+  const result = await docker(['exec', containerName('postgres'), 'psql', '-U', 'studioflow', '-d', 'studioflow', '-tAc', sql], { check: true });
   return result.stdout.trim();
 }
 
@@ -256,7 +256,7 @@ test.describe('OPS backup', () => {
     const helpers = await docker(['ps', '-a', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--filter', 'label=com.docker.compose.service=toolbox', '-q']);
     expect(helpers.stdout.trim(), 'the toolbox container is removed').toBe('');
     const leftover = await docker(['exec', containerName('postgres'), 'ls', '/tmp']);
-    expect(leftover.stdout, 'the temporary dump is removed from the postgres container').not.toContain('flowstudio-backup.dump');
+    expect(leftover.stdout, 'the temporary dump is removed from the postgres container').not.toContain('studioflow-backup.dump');
     test.info().annotations.push({ type: 'not-automated', description: 'a backup killed with SIGINT/SIGTERM cannot be sent on Windows (Node can only terminate the process); the failing-step variant above exercises the same EXIT trap' });
   });
 });
@@ -352,8 +352,8 @@ test.describe('OPS restore', () => {
     expect(result.stderr).toMatch(/bisherige Datenbank ist unverändert/);
     await ensureHealthy();
     expect(stable((await api.getSnapshot(production.id)).body), 'the existing database is intact').toEqual(seed.snapshot);
-    const databases = await psql("select string_agg(datname, ',' order by datname) from pg_database where datname like 'flowstudio%'");
-    expect(databases, 'no half-restored database is left behind').toBe('flowstudio');
+    const databases = await psql("select string_agg(datname, ',' order by datname) from pg_database where datname like 'studioflow%'");
+    expect(databases, 'no half-restored database is left behind').toBe('studioflow');
   });
 
   test('E2E-OPS-08 [restore.sh] without --yes the script asks and, without a terminal, aborts changing nothing', t.disruptive('@p1'), async ({ api, production, pairContext }) => {

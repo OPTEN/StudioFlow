@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// A parsed source reference as stored in scene items: <c>{deviceId}/{slot}</c> for a device slot or <c>{assetId}</c>

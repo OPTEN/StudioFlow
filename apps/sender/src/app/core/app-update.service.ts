@@ -11,7 +11,7 @@ const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const QUIET_PERIOD_MS = 5_000;
 
 /** Reloads the page (a token so tests can observe it). */
-export const PAGE_RELOAD = new InjectionToken<() => void>('flowstudio.pageReload', {
+export const PAGE_RELOAD = new InjectionToken<() => void>('studioflow.pageReload', {
   providedIn: 'root',
   factory: () => {
     const document = inject(DOCUMENT);

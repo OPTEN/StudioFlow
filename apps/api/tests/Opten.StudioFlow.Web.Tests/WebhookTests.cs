@@ -1,12 +1,12 @@
 using System.Net;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.LiveKit;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.LiveKit;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class WebhookTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class WebhookTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Webhook_ValidSignature_IsAccepted()

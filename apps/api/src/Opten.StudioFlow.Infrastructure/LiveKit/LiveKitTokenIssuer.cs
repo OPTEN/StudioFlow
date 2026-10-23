@@ -3,18 +3,18 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Infrastructure.LiveKit;
+namespace Opten.StudioFlow.Infrastructure.LiveKit;
 
 /// <summary>
 /// Creates LiveKit access tokens (spec 7): HS256 JWT with <c>iss</c> = API key, <c>sub</c> = identity, <c>nbf</c>,
 /// <c>exp</c> (<c>LiveKit:TokenTtl</c>, 10 minutes), <c>name</c>, <c>metadata</c> and the nested <c>video</c> grant.
 /// LiveKit refreshes the token of connected participants itself; clients fetch a new one for every rejoin.
 /// </summary>
-internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOptions<FlowStudioOptions> studio, TimeProvider clock) : ILiveKitTokenIssuer
+internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOptions<StudioFlowOptions> studio, TimeProvider clock) : ILiveKitTokenIssuer
 {
     private static readonly TimeSpan AdminLifetime = TimeSpan.FromMinutes(1);
     private static readonly string[] SenderSources = ["camera", "screen_share"];

@@ -1,9 +1,9 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// The three ways of pairing (spec 4.6): phone QR invite (always fresh), short URL with check code and approval, and
@@ -13,7 +13,7 @@ public sealed class PairingService(
     ProductionCoordinator coordinator,
     IUnitOfWorkFactory data,
     PairingRequestStore requests,
-    FlowStudioOptions options,
+    StudioFlowOptions options,
     PairingOptions pairing,
     TimeProvider clock)
 {
@@ -42,7 +42,7 @@ public sealed class PairingService(
         ArgumentNullException.ThrowIfNull(request);
         if (!Enum.IsDefined(request.Kind))
         {
-            throw FlowStudioException.Invalid("kind", "Unbekannte Einladungsart.");
+            throw StudioFlowException.Invalid("kind", "Unbekannte Einladungsart.");
         }
 
         return coordinator.ExecuteAsync(
@@ -59,7 +59,7 @@ public sealed class PairingService(
             productionId,
             async context =>
             {
-                var invite = await context.Data.Invites.GetAsync(productionId, inviteId, cancellationToken) ?? throw FlowStudioException.NotFound("Die Einladung");
+                var invite = await context.Data.Invites.GetAsync(productionId, inviteId, cancellationToken) ?? throw StudioFlowException.NotFound("Die Einladung");
                 if (!invite.Revoke(context.Now))
                 {
                     return;
@@ -86,12 +86,12 @@ public sealed class PairingService(
                 var request = FindRequest(productionId, requestId);
                 if (request.IsDecided)
                 {
-                    throw FlowStudioException.NotFound("Die Anfrage");
+                    throw StudioFlowException.NotFound("Die Anfrage");
                 }
 
                 if (!request.IsPending(context.Now))
                 {
-                    throw FlowStudioException.PairingExpired();
+                    throw StudioFlowException.PairingExpired();
                 }
 
                 var catalog = await context.CatalogAsync(cancellationToken);
@@ -132,7 +132,7 @@ public sealed class PairingService(
         string productionId;
         await using (var unit = data.Create())
         {
-            productionId = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id ?? throw FlowStudioException.NotFound("Eine aktive Produktion");
+            productionId = (await unit.Productions.GetActiveAsync(Production.DefaultTenant, cancellationToken))?.Id ?? throw StudioFlowException.NotFound("Eine aktive Produktion");
         }
 
         return await coordinator.ExecuteAsync(
@@ -193,23 +193,23 @@ public sealed class PairingService(
         string productionId;
         await using (var unit = data.Create())
         {
-            productionId = (await unit.Invites.GetByTokenAsync(token, cancellationToken))?.ProductionId ?? throw FlowStudioException.PairingExpired();
+            productionId = (await unit.Invites.GetByTokenAsync(token, cancellationToken))?.ProductionId ?? throw StudioFlowException.PairingExpired();
         }
 
         return await coordinator.ExecuteAsync(
             productionId,
             async context =>
             {
-                var invite = await context.Data.Invites.GetByTokenAsync(token, cancellationToken) ?? throw FlowStudioException.PairingExpired();
+                var invite = await context.Data.Invites.GetByTokenAsync(token, cancellationToken) ?? throw StudioFlowException.PairingExpired();
                 if (invite.CanReplay(clientId, context.Now, pairing.RedeemIdempotencyWindow))
                 {
-                    var existing = await context.Data.Devices.GetAsync(invite.RedeemedDeviceId!, cancellationToken) ?? throw FlowStudioException.PairingExpired();
+                    var existing = await context.Data.Devices.GetAsync(invite.RedeemedDeviceId!, cancellationToken) ?? throw StudioFlowException.PairingExpired();
                     return new DeviceCredentialsDto(existing.Id, existing.RotateSecret(), productionId);
                 }
 
                 if (!invite.IsOpen(context.Now))
                 {
-                    throw FlowStudioException.PairingExpired();
+                    throw StudioFlowException.PairingExpired();
                 }
 
                 var devices = await context.Data.Devices.ListAsync(productionId, cancellationToken);
@@ -316,7 +316,7 @@ public sealed class PairingService(
         var request = requests.Find(requestId);
         return request is not null && string.Equals(request.ProductionId, productionId, StringComparison.Ordinal)
             ? request
-            : throw FlowStudioException.NotFound("Die Anfrage");
+            : throw StudioFlowException.NotFound("Die Anfrage");
     }
 
     private InviteDto CreateInvite(MutationContext context, InviteKind kind, string actor)

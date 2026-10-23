@@ -1,4 +1,4 @@
-import { isHexColor } from '@flowstudio/scene-model';
+import { isHexColor } from '@studioflow/scene-model';
 import {
   clampNumber,
   cropBox,

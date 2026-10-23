@@ -86,7 +86,7 @@ async function runSoak(
   });
   const takeSample = async (minute: number) => {
     const sampled = await counters.sample();
-    const dom = await frame.evaluate(() => ({ layers: document.querySelectorAll('.fs-r-layer').length, holdCanvases: document.querySelectorAll('canvas.fs-r-hold-frame').length }));
+    const dom = await frame.evaluate(() => ({ layers: document.querySelectorAll('.sf-r-layer').length, holdCanvases: document.querySelectorAll('canvas.sf-r-hold-frame').length }));
     const status = (await api.getSnapshot(production.id)).body.outputStatus;
     samples.push({ minute, counters: sampled, census: await census.count(), layers: dom.layers, holdCanvases: dom.holdCanvases, reportFps: status.fps, rss: await rss() });
   };

@@ -94,7 +94,7 @@ test.describe('REGIE switching', () => {
       const row = regie.scene('Szene B');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(row).toHaveAccessibleName(/, live im Program$/);
-      await expect(page.locator('fs-scene-row.is-program .c-tag--pgm')).toHaveText('PGM');
+      await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('PGM');
       await expect(regie.scene('Szene A')).toHaveAttribute('aria-pressed', 'false');
       expect(await programId(api, production)).toBe(b);
       await expect
@@ -232,7 +232,7 @@ test.describe('REGIE switching', () => {
       }
       await expect(shorter, 'minus is disabled at 0,2 s').toBeDisabled();
       expect(
-        await page.evaluate(() => JSON.parse(localStorage.getItem('flowstudio.transition')!)),
+        await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.transition')!)),
       ).toEqual({ kind: 'fade', durationMs: 200 });
 
       // Under Schnitt both buttons are disabled and the value is muted; the choice persists.
@@ -242,7 +242,7 @@ test.describe('REGIE switching', () => {
       await expect(page.locator('.c-duration')).toHaveClass(/is-off/);
       await expect(regie.transitionOption('Schnitt')).toHaveAttribute('aria-pressed', 'true');
       expect(
-        await page.evaluate(() => JSON.parse(localStorage.getItem('flowstudio.transition')!)),
+        await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.transition')!)),
       ).toEqual({ kind: 'cut', durationMs: 200 });
       await page.reload();
       await regie.waitReady();
@@ -373,11 +373,11 @@ test.describe('REGIE switching', () => {
       const page = regie.page;
       await regie.transitionOption('Schnitt').click();
       const boxes = async () => ({
-        column: await page.locator('fs-control-column').boundingBox(),
-        scenes: await page.locator('fs-dock-slot[data-dock="scenes"]').boundingBox(),
-        src: await page.locator('fs-dock-slot[data-dock="src"]').boundingBox(),
-        insp: await page.locator('fs-dock-slot[data-dock="insp"]').boundingBox(),
-        st: await page.locator('fs-dock-slot[data-dock="st"]').boundingBox(),
+        column: await page.locator('sf-control-column').boundingBox(),
+        scenes: await page.locator('sf-dock-slot[data-dock="scenes"]').boundingBox(),
+        src: await page.locator('sf-dock-slot[data-dock="src"]').boundingBox(),
+        insp: await page.locator('sf-dock-slot[data-dock="insp"]').boundingBox(),
+        st: await page.locator('sf-dock-slot[data-dock="st"]').boundingBox(),
       });
       const hint = page.locator('.c-control-column__hint');
       await expect(hint).toHaveText('Klick auf eine Szene schaltet sie direkt live.');
@@ -411,8 +411,8 @@ test.describe('REGIE switching', () => {
       await expect.poll(() => previewId(api, production)).toBe(b);
       await expect(regie.scene('Szene B')).toHaveAttribute('aria-pressed', 'true');
       await expect(regie.scene('Szene B')).toHaveAccessibleName(/, in der Preview$/);
-      await expect(page.locator('fs-scene-row.is-preview .c-tag--pvw')).toHaveText('PVW');
-      expect(await page.evaluate(() => localStorage.getItem('flowstudio.studio'))).toBe('1');
+      await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('PVW');
+      expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('1');
 
       // A click only changes the preview: program and output stay.
       await regie.clickScene('Szene C');
@@ -432,7 +432,7 @@ test.describe('REGIE switching', () => {
       await expect(toastOf(page)).toContainText('Studio-Modus aus: Szenen schalten direkt live');
       await expect(page.getByText('Preview aus', { exact: true })).toBeVisible();
       await expect.poll(() => previewId(api, production)).toBeNull();
-      expect(await page.evaluate(() => localStorage.getItem('flowstudio.studio'))).toBe('0');
+      expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('0');
       await expect(regie.take()).toHaveCount(0);
 
       // The preview wraps around after the last scene.
@@ -546,7 +546,7 @@ test.describe('REGIE switching', () => {
       expect(posts.length, 'keys that mean nothing send nothing').toBe(count);
       expect(await programId(api, production)).toBe(ids[0]);
       // Typing into a field does not switch.
-      const name = page.locator('#fs-insp-name');
+      const name = page.locator('#sf-insp-name');
       await name.focus();
       await page.keyboard.press('2');
       await page.waitForTimeout(300);

@@ -12,7 +12,7 @@ import {
   type TallyState,
   type TechCheckDto,
   type TechCheckLevel,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { statusLamp, statusTone, type LampTone, type StateTone } from '../shared/source-view';
 
 /**

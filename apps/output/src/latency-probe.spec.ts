@@ -70,7 +70,7 @@ describe('latency probe (?latency=1 test aid)', () => {
     registry.attach(CAMERA, camera.video);
     camera.frame(1000, 320, 180);
     camera.frame(1000);
-    expect(target.__flowstudioLatency).toEqual([
+    expect(target.__studioflowLatency).toEqual([
       { sourceId: CAMERA, latencyMs: 48, at: 1000, width: 320, height: 180 },
       { sourceId: CAMERA, latencyMs: 48, at: 1000, width: 640, height: 360 },
     ]);
@@ -89,7 +89,7 @@ describe('latency probe (?latency=1 test aid)', () => {
       wallClock: (now) => WALL_ORIGIN + now,
     });
     screen.frame(500);
-    expect(target.__flowstudioLatency?.map((sample) => sample.latencyMs)).toEqual([33]);
+    expect(target.__studioflowLatency?.map((sample) => sample.latencyMs)).toEqual([33]);
   });
 
   it('skips frames without a decodable stamp but keeps listening', () => {
@@ -98,11 +98,11 @@ describe('latency probe (?latency=1 test aid)', () => {
     const { registry, target } = setup(() => stamp);
     registry.attach(CAMERA, camera.video);
     camera.frame(100);
-    expect(target.__flowstudioLatency).toEqual([]);
+    expect(target.__studioflowLatency).toEqual([]);
     expect(camera.pending()).toBe(true);
     stamp = WALL_ORIGIN + 200 - 20;
     camera.frame(200);
-    expect(target.__flowstudioLatency).toHaveLength(1);
+    expect(target.__studioflowLatency).toHaveLength(1);
   });
 
   it('keeps at most 1000 samples', () => {
@@ -112,7 +112,7 @@ describe('latency probe (?latency=1 test aid)', () => {
     for (let index = 0; index < MAX_LATENCY_SAMPLES + 50; index += 1) {
       camera.frame(index);
     }
-    const samples = target.__flowstudioLatency ?? [];
+    const samples = target.__studioflowLatency ?? [];
     expect(samples).toHaveLength(MAX_LATENCY_SAMPLES);
     expect(samples[0].at).toBe(50);
     expect(samples.at(-1)?.at).toBe(MAX_LATENCY_SAMPLES + 49);
@@ -125,14 +125,14 @@ describe('latency probe (?latency=1 test aid)', () => {
     registry.detach(CAMERA, camera.video);
     expect(camera.cancelled).toEqual([1]);
     camera.frame(10);
-    expect(target.__flowstudioLatency).toEqual([]);
+    expect(target.__studioflowLatency).toEqual([]);
   });
 
   it('does nothing in browsers without requestVideoFrameCallback', () => {
     const { registry, target } = setup(() => WALL_ORIGIN);
     const plain = document.createElement('video');
     expect(() => registry.attach(CAMERA, plain)).not.toThrow();
-    expect(target.__flowstudioLatency).toEqual([]);
+    expect(target.__studioflowLatency).toEqual([]);
   });
 
   it('uses the shared canvas reader when none is injected (no 2D canvas in happy-dom: no samples)', () => {
@@ -142,6 +142,6 @@ describe('latency probe (?latency=1 test aid)', () => {
     startLatencyProbe(registry, { target, doc: document });
     registry.attach(CAMERA, camera.video);
     expect(() => camera.frame(1)).not.toThrow();
-    expect(target.__flowstudioLatency).toEqual([]);
+    expect(target.__studioflowLatency).toEqual([]);
   });
 });

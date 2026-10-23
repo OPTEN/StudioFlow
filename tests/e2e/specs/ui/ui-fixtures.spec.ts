@@ -48,19 +48,19 @@ test.describe('UI fixtures', () => {
 
         const hooks = await regie.hooks();
         if (hooks) {
-          expect(hooks.hub, `${login}: hub state through window.__fsStudio`).toBe('connected');
+          expect(hooks.hub, `${login}: hub state through window.__sfStudio`).toBe('connected');
           await regie.waitForConvergence(production.id);
         } else {
           test.info().annotations.push({
             type: 'gap',
-            description: `window.__fsStudio is not exposed (readiness fell back to ${(await regie.readiness()).source})`,
+            description: `window.__sfStudio is not exposed (readiness fell back to ${(await regie.readiness()).source})`,
           });
         }
         expect(regie.problems.pageErrors, `${login}: no uncaught error in the Regie`).toEqual([]);
         expect(regie.problems.cspViolations, `${login}: no CSP violation in the Regie`).toEqual([]);
       }
       // The session cookie of the test's API client works in a browser that never saw the login form.
-      expect(api.cookie).toMatch(/^fs_session=/);
+      expect(api.cookie).toMatch(/^sf_session=/);
     },
   );
 
@@ -83,7 +83,7 @@ test.describe('UI fixtures', () => {
       expect(device.touchPoints).toBeGreaterThan(0);
       expect(await phone.tally(), 'not in the program').toBe('off');
       const hooks = await phone.hooks();
-      if (hooks) expect(hooks.slots['camera'], 'window.__fsSender.slots()').toBe('live');
+      if (hooks) expect(hooks.slots['camera'], 'window.__sfSender.slots()').toBe('live');
       await expect(paired.row).toContainText(/K\d/);
       expect(phone.problems.pageErrors).toEqual([]);
     },

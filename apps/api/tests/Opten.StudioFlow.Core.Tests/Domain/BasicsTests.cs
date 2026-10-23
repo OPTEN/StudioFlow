@@ -1,8 +1,8 @@
 using System.Net;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Domain;
+namespace Opten.StudioFlow.Core.Tests.Domain;
 
 public sealed class EntityIdsTests
 {
@@ -207,7 +207,7 @@ public sealed class TextRulesTests
     [InlineData("\u0001\u0002")]
     public void RequiredName_Empty_ThrowsValidationError(string? input)
     {
-        var error = Assert.Throws<FlowStudioException>(() => TextRules.RequireName(input, 80, "name"));
+        var error = Assert.Throws<StudioFlowException>(() => TextRules.RequireName(input, 80, "name"));
 
         Assert.Equal(ErrorKind.Validation, error.Kind);
         Assert.Equal(ErrorCodes.ValidationFailed, error.Code);
@@ -218,7 +218,7 @@ public sealed class TextRulesTests
     public void RequiredName_TooLong_ThrowsAndExactLimitPasses()
     {
         Assert.Equal(60, TextRules.RequireName(new string('x', 60), 60, "name").Length);
-        Assert.Throws<FlowStudioException>(() => TextRules.RequireName(new string('x', 61), 60, "name"));
+        Assert.Throws<StudioFlowException>(() => TextRules.RequireName(new string('x', 61), 60, "name"));
     }
 
     [Fact]
@@ -251,16 +251,16 @@ public sealed class TransitionsTests
     [InlineData(2001)]
     public void Normalize_OtherFadeDuration_IsInvalid(int ms)
     {
-        var error = Assert.Throws<FlowStudioException>(() => Transitions.Normalize(Build.Fade(ms)));
+        var error = Assert.Throws<StudioFlowException>(() => Transitions.Normalize(Build.Fade(ms)));
 
         Assert.True(error.Errors!.ContainsKey("transition.durationMs"));
     }
 
     [Fact]
-    public void Normalize_Missing_IsInvalid() => Assert.Throws<FlowStudioException>(() => Transitions.Normalize(null));
+    public void Normalize_Missing_IsInvalid() => Assert.Throws<StudioFlowException>(() => Transitions.Normalize(null));
 
     [Fact]
-    public void Normalize_UnknownKind_IsInvalid() => Assert.Throws<FlowStudioException>(() => Transitions.Normalize(new TransitionDto((TransitionKind)7, 300)));
+    public void Normalize_UnknownKind_IsInvalid() => Assert.Throws<StudioFlowException>(() => Transitions.Normalize(new TransitionDto((TransitionKind)7, 300)));
 }
 
 public sealed class IpRuleTests

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import type { ResilientHubOptions } from '@flowstudio/realtime-client';
-import type { DeviceReportDto, DeviceSelfDto, LiveKitTokenDto } from '@flowstudio/scene-model';
+import type { ResilientHubOptions } from '@studioflow/realtime-client';
+import type { DeviceReportDto, DeviceSelfDto, LiveKitTokenDto } from '@studioflow/scene-model';
 import {
   FakeHub,
   FakeWakeLock,
@@ -602,36 +602,36 @@ describe('DeviceSessionService', () => {
     expect(service.degradedSince()).toBeNull();
   });
 
-  it('exposes the read-only test hook window.__fsSender with the opt-in flag', async () => {
+  it('exposes the read-only test hook window.__sfSender with the opt-in flag', async () => {
     window.localStorage.setItem(TEST_HOOKS_FLAG, '1');
     const service = setup();
     await online(service);
     media.publisher.emitSlot('camera', 'live');
 
     const view = window as unknown as {
-      __fsSender: { slots(): unknown; rtc(): string; sessionId: string };
+      __sfSender: { slots(): unknown; rtc(): string; sessionId: string };
     };
-    const hook = view.__fsSender;
+    const hook = view.__sfSender;
     expect(hook.slots()).toEqual({ camera: 'live' });
     expect(hook.rtc()).toBe('connected');
     expect(hook.sessionId).toBe(service.sessionId);
     expect(Object.isFrozen(hook)).toBe(true);
-    expect(Object.keys(window)).not.toContain('__fsSender');
+    expect(Object.keys(window)).not.toContain('__sfSender');
     expect(() => {
-      (view as { __fsSender: unknown }).__fsSender = {};
+      (view as { __sfSender: unknown }).__sfSender = {};
     }).toThrow(TypeError);
-    expect(view.__fsSender).toBe(hook);
+    expect(view.__sfSender).toBe(hook);
 
     hub.emit('sessionReplaced');
     service.takeOver();
     expect(hook.sessionId).toBe(service.sessionId);
 
     TestBed.resetTestingModule();
-    expect('__fsSender' in window).toBe(false);
+    expect('__sfSender' in window).toBe(false);
   });
 
   it.each([null, '0', 'true', ' 1'])(
-    'has no window.__fsSender without the opt-in flag (%s)',
+    'has no window.__sfSender without the opt-in flag (%s)',
     async (flag) => {
       if (flag !== null) {
         window.localStorage.setItem(TEST_HOOKS_FLAG, flag);
@@ -639,7 +639,7 @@ describe('DeviceSessionService', () => {
       const service = setup();
       await online(service);
 
-      expect('__fsSender' in window).toBe(false);
+      expect('__sfSender' in window).toBe(false);
     },
   );
 

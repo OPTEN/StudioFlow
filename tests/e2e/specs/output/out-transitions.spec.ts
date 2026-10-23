@@ -299,7 +299,7 @@ test.describe('OUT transitions', () => {
       await expect.poll(async () => (await slate())?.opacity, { timeout: 2000 }).toBe(1);
       await probe.waitForScene(a);
       const stageBox = (await (await output.stage()).boundingBox())!;
-      const slateBox = (await frame.locator('.fs-r-slate').boundingBox())!;
+      const slateBox = (await frame.locator('.sf-r-slate').boundingBox())!;
       expect([slateBox.x, slateBox.y, slateBox.width, slateBox.height].map(Math.round)).toEqual([stageBox.x, stageBox.y, stageBox.width, stageBox.height].map(Math.round));
 
       await probe.takeEvents();
@@ -315,15 +315,15 @@ test.describe('OUT transitions', () => {
       const assetId = uploaded.body.id;
       expect((await api.updateProduction(production.id, { standbySlate: { ...custom, backgroundAssetId: assetId } })).status).toBe(200);
       await expect
-        .poll(() => frame.evaluate(() => { const image = document.querySelector<HTMLImageElement>('.fs-r-slate-image'); return image ? { display: getComputedStyle(image).display, fit: getComputedStyle(image).objectFit, natural: image.naturalWidth, src: image.src } : null; }), { timeout: 8000, message: 'slate image loaded' })
+        .poll(() => frame.evaluate(() => { const image = document.querySelector<HTMLImageElement>('.sf-r-slate-image'); return image ? { display: getComputedStyle(image).display, fit: getComputedStyle(image).objectFit, natural: image.naturalWidth, src: image.src } : null; }), { timeout: 8000, message: 'slate image loaded' })
         .toMatchObject({ display: 'block', fit: 'cover', natural: 1920 });
-      const image = await frame.evaluate(() => document.querySelector<HTMLImageElement>('.fs-r-slate-image')!.src);
+      const image = await frame.evaluate(() => document.querySelector<HTMLImageElement>('.sf-r-slate-image')!.src);
       expect(image, 'the image is requested with the output key').toContain('?k=');
       const withImage = await output.stagePixels();
       expect(colorsClose(withImage.at(100, 100), '#c82828', 30), 'the slate image covers the stage').toBe(true);
       // Back to the plain slate.
       await api.updateProduction(production.id, { standbySlate: { title: DE.slateStandby, subtitle: production.name, backgroundAssetId: null } });
-      await expect.poll(() => frame.evaluate(() => getComputedStyle(document.querySelector('.fs-r-slate-image')!).display), { timeout: 5000 }).toBe('none');
+      await expect.poll(() => frame.evaluate(() => getComputedStyle(document.querySelector('.sf-r-slate-image')!).display), { timeout: 5000 }).toBe('none');
 
       // Start: the slate fades out over 300 ms to the program (the picture was already behind it).
       await probe.takeEvents();
@@ -338,7 +338,7 @@ test.describe('OUT transitions', () => {
       expect(fadeOut.length, 'the slate is seen at intermediate opacities').toBeGreaterThanOrEqual(8);
       const slateGone = firstEvent(events, 'slate-')!;
       expect(slateGone.t - started, 'start -> slate gone (fade 300 ms + request)').toBeLessThan(300 + 400);
-      const slateAnimation = frames.flatMap((sample) => sample.anims ?? []).find((animation) => animation.cls?.includes('fs-r-slate') && animation.props.includes('opacity'));
+      const slateAnimation = frames.flatMap((sample) => sample.anims ?? []).find((animation) => animation.cls?.includes('sf-r-slate') && animation.props.includes('opacity'));
       expect(slateAnimation?.duration, 'slate fade is a 300 ms opacity animation').toBeLessThanOrEqual(300);
       await output.waitForPlayingVideos(1);
       expect(toneOf((await output.stagePixels()).mean({ x: 600, y: 400, width: 700, height: 300 })), 'the program (S1) is on air').toBe('red');

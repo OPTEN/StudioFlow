@@ -14,7 +14,7 @@ import {
   formatPercent,
   type CanvasRect,
   type CropDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /** Snap distance in screen pixels (prototype: 7 px, divided by the monitor scale). */
 export const SNAP_THRESHOLD_SCREEN_PX = 7;

@@ -1,5 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { HUB, type PairingRequestDto } from '@flowstudio/scene-model';
+import { HUB, type PairingRequestDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, deviceFixture, snapshotFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
@@ -134,7 +134,7 @@ describe('StationsDockComponent', () => {
     const row = station(LAPTOP);
     button(row, 'Nachricht senden')?.click();
     await render();
-    expect(row.querySelector('fs-message-composer')).not.toBeNull();
+    expect(row.querySelector('sf-message-composer')).not.toBeNull();
     button(row, 'Pause')?.click();
     const request = harness.http.expectOne(`${BASE}/devices/${LAPTOP}/commands`);
     expect(request.request.body).toEqual({ kind: 'message', slot: null, text: 'Pause' });

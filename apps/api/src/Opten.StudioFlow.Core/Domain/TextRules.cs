@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Validation and normalisation of user-entered names and short texts.</summary>
 public static class TextRules

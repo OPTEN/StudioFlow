@@ -58,7 +58,7 @@ describe('LoginPageComponent', () => {
 
   it('shows the console look with the brand and «Anmelden»', async () => {
     await setup();
-    expect(element.querySelector('h1')?.textContent).toContain('FlowStudio');
+    expect(element.querySelector('h1')?.textContent).toContain('StudioFlow');
     expect(element.querySelector('button[type="submit"]')?.textContent?.trim()).toBe('Anmelden');
   });
 
@@ -76,7 +76,7 @@ describe('LoginPageComponent', () => {
     await submit();
     const request = http.expectOne('/api/auth/login');
     expect(request.request.body).toEqual({ username: 'admin', password: 'falsch' });
-    expect(request.request.headers.get('X-FlowStudio')).toBe('1');
+    expect(request.request.headers.get('X-StudioFlow')).toBe('1');
     request.flush({ code: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
     await render();
     expect(errorText()).toBe('Benutzername oder Passwort ist falsch.');

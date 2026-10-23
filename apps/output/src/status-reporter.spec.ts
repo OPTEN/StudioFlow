@@ -1,4 +1,4 @@
-import type { OutputReport } from '@flowstudio/scene-model';
+import type { OutputReport } from '@studioflow/scene-model';
 import { REPORT_INTERVAL_MS, REST_REPORT_INTERVAL_MS, StatusReporter } from './status-reporter';
 
 const REPORT: OutputReport = { rendering: true, latencyMs: 60, fps: 60, programSceneId: 'scn_a' };

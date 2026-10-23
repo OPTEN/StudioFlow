@@ -1,8 +1,8 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Infrastructure;
-using Opten.FlowStudio.Infrastructure.Security;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Infrastructure;
+using Opten.StudioFlow.Infrastructure.Security;
 
-namespace Opten.FlowStudio.Web.Hosting;
+namespace Opten.StudioFlow.Web.Hosting;
 
 /// <summary>
 /// Command line modes used by the ops scripts, dispatched on <c>args[0]</c> before the web host is built:
@@ -51,7 +51,7 @@ internal static class CliCommands
         {
             var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = args, ContentRootPath = AppContext.BaseDirectory });
             builder.Logging.ClearProviders();
-            builder.Services.AddFlowStudioPersistence(builder.Configuration);
+            builder.Services.AddStudioFlowPersistence(builder.Configuration);
             using var host = builder.Build();
             await using var unit = host.Services.GetRequiredService<IUnitOfWorkFactory>().Create();
             var live = await unit.Productions.AnyLiveAsync(CancellationToken.None);

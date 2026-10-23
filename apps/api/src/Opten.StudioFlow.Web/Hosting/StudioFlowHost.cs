@@ -10,24 +10,24 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Infrastructure.Security;
-using Opten.FlowStudio.Web.Endpoints;
-using Opten.FlowStudio.Web.Errors;
-using Opten.FlowStudio.Web.Hubs;
-using Opten.FlowStudio.Web.OpenApi;
-using Opten.FlowStudio.Web.Security;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Security;
+using Opten.StudioFlow.Web.Endpoints;
+using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Hubs;
+using Opten.StudioFlow.Web.OpenApi;
+using Opten.StudioFlow.Web.Security;
 
-namespace Opten.FlowStudio.Web.Hosting;
+namespace Opten.StudioFlow.Web.Hosting;
 
 /// <summary>Composition root of the web host: services and the request pipeline.</summary>
-internal static class FlowStudioHost
+internal static class StudioFlowHost
 {
     /// <summary>Environment name of the integration tests (cookies without <c>Secure</c> like Development).</summary>
     public const string TestingEnvironment = "Testing";
@@ -48,7 +48,7 @@ internal static class FlowStudioHost
     public static bool IsDocumentGeneration => Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
     /// <summary>Registers every service.</summary>
-    public static WebApplicationBuilder AddFlowStudio(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddStudioFlow(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         var services = builder.Services;
@@ -64,7 +64,7 @@ internal static class FlowStudioHost
         services.ConfigureHttpJsonOptions(options => ContractJson.Configure(options.SerializerOptions));
 
         // BUG-08: a body that cannot be bound (unknown enum text, wrong type, broken JSON) throws in every environment,
-        // so FlowStudioExceptionHandler can name the field in a 400 validation_failed instead of an empty 400.
+        // so StudioFlowExceptionHandler can name the field in a 400 validation_failed instead of an empty 400.
         services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
         services.Configure<HostOptions>(options => options.ShutdownTimeout = ShutdownTimeout);
         services.AddSingleton(sp => new HostShutdown(sp.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping));
@@ -74,16 +74,16 @@ internal static class FlowStudioHost
             options.AddSchemaTransformer<DiscriminatorRequiredTransformer>();
         });
 
-        services.AddOptions<FlowStudioOptions>().Bind(configuration.GetSection(FlowStudioOptions.Section))
-            .Validate(o => Uri.TryCreate(o.PublicBaseUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp), "FlowStudio:PublicBaseUrl must be an absolute http(s) URL.");
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<FlowStudioOptions>>().Value);
+        services.AddOptions<StudioFlowOptions>().Bind(configuration.GetSection(StudioFlowOptions.Section))
+            .Validate(o => Uri.TryCreate(o.PublicBaseUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp), "StudioFlow:PublicBaseUrl must be an absolute http(s) URL.");
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<StudioFlowOptions>>().Value);
         services.AddValidatedOptions<PairingOptions>(configuration, PairingOptions.Section);
         services.AddValidatedOptions<LoginLockoutOptions>(configuration, LoginLockoutOptions.Section);
         services.AddValidatedOptions<SourceMonitorOptions>(configuration, SourceMonitorOptions.Section);
         services.AddValidatedOptions<OutputMonitorOptions>(configuration, OutputMonitorOptions.Section);
         services.AddValidatedOptions<RealtimeOptions>(configuration, RealtimeOptions.Section);
         services.AddSingleton(TimeProvider.System);
-        services.AddFlowStudioInfrastructure(configuration);
+        services.AddStudioFlowInfrastructure(configuration);
         AddApplication(services);
         AddSecurity(services, configuration, environment);
         AddRealtime(services, environment);
@@ -97,7 +97,7 @@ internal static class FlowStudioHost
                 context.ProblemDetails.Title = Problems.TitleFor(status);
             }
         });
-        services.AddExceptionHandler<FlowStudioExceptionHandler>();
+        services.AddExceptionHandler<StudioFlowExceptionHandler>();
         services.AddHealthChecks().AddDatabaseCheck();
 
         if (!IsDocumentGeneration)
@@ -110,7 +110,7 @@ internal static class FlowStudioHost
     }
 
     /// <summary>Builds the request pipeline and maps endpoints and hubs.</summary>
-    public static WebApplication UseFlowStudio(this WebApplication app)
+    public static WebApplication UseStudioFlow(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
@@ -134,7 +134,7 @@ internal static class FlowStudioHost
 
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
         app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(DatabaseMaintenance.ReadyTag) }).DisableRateLimiting();
-        app.MapFlowStudioApi();
+        app.MapStudioFlowApi();
 
         // A Regie connection ends with its admin session (GAP-04b).
         app.MapHub<StudioHub>(HubMethods.StudioHubPath, options => options.CloseOnAuthenticationExpiration = true);
@@ -144,7 +144,7 @@ internal static class FlowStudioHost
         // OBS-01: close every hub connection as soon as the host begins to stop. The disconnects caused by this are no
         // outage (BUG-20, HostShutdown); without the abort Kestrel waits for the WebSockets until the shutdown timeout.
         var registry = app.Services.GetRequiredService<HubConnectionRegistry>();
-        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(FlowStudioHost).FullName!);
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(StudioFlowHost).FullName!);
         app.Lifetime.ApplicationStopping.Register(() =>
         {
             var closed = registry.AbortAll();
@@ -190,7 +190,7 @@ internal static class FlowStudioHost
 
     private static void AddSecurity(IServiceCollection services, ConfigurationManager configuration, IWebHostEnvironment environment)
     {
-        var dataProtection = services.AddDataProtection().SetApplicationName("FlowStudio");
+        var dataProtection = services.AddDataProtection().SetApplicationName("StudioFlow");
         if (configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
         {
             dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));

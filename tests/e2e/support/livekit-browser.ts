@@ -59,7 +59,7 @@ export class LiveKitPage {
   static async open(context: BrowserContext, label = 'lk'): Promise<LiveKitPage> {
     const base = stackConfig().baseURL;
     const page = await context.newPage();
-    await page.route(`${base}/__e2e/blank`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>FlowStudio E2E</title><body></body>' }));
+    await page.route(`${base}/__e2e/blank`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>StudioFlow E2E</title><body></body>' }));
     await page.goto(`${base}/__e2e/blank`);
     await page.addScriptTag({ content: LK_UMD });
     await page.addScriptTag({ content: CODEC });

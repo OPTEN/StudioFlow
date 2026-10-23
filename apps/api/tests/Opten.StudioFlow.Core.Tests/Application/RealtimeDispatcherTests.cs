@@ -1,14 +1,14 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 /// <summary>The ordered dispatcher between the production lock and the clients (mutations never wait for SignalR).</summary>
 public sealed class RealtimeDispatcherTests : IAsyncDisposable
@@ -84,9 +84,9 @@ public sealed class RealtimeDispatcherTests : IAsyncDisposable
         await dispatcher.DisposeAsync();
         dispatcher = new OrderedRealtimeDispatcher(log, new RealtimeOptions(), TimeProvider.System, NullLogger<OrderedRealtimeDispatcher>.Instance);
         coordinator = new ProductionCoordinator(runtimes, data, dispatcher, TimeProvider.System);
-        var snapshots = new SnapshotBuilder(requests, new FlowStudioOptions());
+        var snapshots = new SnapshotBuilder(requests, new StudioFlowOptions());
         productions = new ProductionService(coordinator, data, snapshots, new FakeTokens(), requests, TimeProvider.System);
-        var pairing = new PairingService(coordinator, data, requests, new FlowStudioOptions(), new PairingOptions(), TimeProvider.System);
+        var pairing = new PairingService(coordinator, data, requests, new StudioFlowOptions(), new PairingOptions(), TimeProvider.System);
         var kicker = new LiveKitKicker(new FakeRoomClient(), NullLogger<LiveKitKicker>.Instance);
         var devices = new DeviceSessionService(coordinator, data, runtimes, new FakeTokens(), kicker, new SourceMonitorOptions());
         var scenes = new SceneService(coordinator);
@@ -131,7 +131,7 @@ public sealed class RealtimeDispatcherTests : IAsyncDisposable
     {
         var created = new OrderedRealtimeDispatcher(publisher, new RealtimeOptions { DeliveryWait = deliveryWait }, TimeProvider.System, NullLogger<OrderedRealtimeDispatcher>.Instance);
         var newCoordinator = new ProductionCoordinator(runtimes, data, created, TimeProvider.System);
-        var service = new ProductionService(newCoordinator, data, new SnapshotBuilder(requests, new FlowStudioOptions()), new FakeTokens(), requests, TimeProvider.System);
+        var service = new ProductionService(newCoordinator, data, new SnapshotBuilder(requests, new StudioFlowOptions()), new FakeTokens(), requests, TimeProvider.System);
         return (created, newCoordinator, service);
     }
 

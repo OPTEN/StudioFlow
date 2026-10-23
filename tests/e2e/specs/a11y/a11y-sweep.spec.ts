@@ -182,7 +182,7 @@ test.describe('CSP and external hosts', () => {
     const denied = await OutputPage.open(deniedContext, { slug: production.slug, outputKey: 'falscher-schluessel' });
     await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(DE.slateDenied);
     const allowed = [{ status: 403, pathPattern: /^\/(api|hubs)\/output/ }];
-    const refusal = unexpectedConsole(deniedWatch, allowed).filter((entry) => !/^\[FlowStudio Output\] hub: /.test(entry.text));
+    const refusal = unexpectedConsole(deniedWatch, allowed).filter((entry) => !/^\[StudioFlow Output\] hub: /.test(entry.text));
     expect(refusal.map((entry) => entry.text.slice(0, 200)), 'denied: the console holds only the output page\'s own log lines about the refused key').toEqual([]);
     expect(await deniedWatch.cspViolations(), 'denied: no securitypolicyviolation').toEqual([]);
     expect(deniedWatch.external(origin).map((request) => request.url), 'denied: only the stack origin').toEqual([]);

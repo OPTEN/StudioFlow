@@ -1,8 +1,8 @@
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// No outage goes unnoticed across an API restart (spec 12, GAP-08): the last-live time of every device source is
@@ -87,7 +87,7 @@ public sealed class SourceRestartWatch(
                 },
                 cancellationToken);
         }
-        catch (FlowStudioException exception) when (exception.Kind == ErrorKind.NotFound)
+        catch (StudioFlowException exception) when (exception.Kind == ErrorKind.NotFound)
         {
             // The production was deleted meanwhile: nothing to watch.
         }

@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
-import { ResilientHub, type SyncHub } from '@flowstudio/realtime-client';
-import { HUB } from '@flowstudio/scene-model';
+import { ResilientHub, type SyncHub } from '@studioflow/realtime-client';
+import { HUB } from '@studioflow/scene-model';
 
 /**
  * The part of `ResilientHub` the Regie uses for `/hubs/studio`: lifecycle, server → client handlers and invoke.

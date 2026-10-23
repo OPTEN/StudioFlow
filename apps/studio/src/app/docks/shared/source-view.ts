@@ -3,7 +3,7 @@ import {
   type SourceDto,
   type SourceKind,
   type SourceStatus,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import type { IconName } from '../../core/ui/icon.component';
 
 /**

@@ -102,7 +102,7 @@ test.describe('Reduced motion', () => {
     const webAnimations = recorded.entries.filter((entry) => entry.kind === 'animate');
     expect(webAnimations.map((entry) => `${entry.name} ${entry.duration} ms on ${entry.target}`), 'no Web Animation: no fade of the monitors or thumbnails, no flash of the Program outline').toEqual([]);
     // the monitors cut: the Program monitor holds exactly one scene layer and shows the new scene
-    expect(await reduced.page.locator('fs-monitor[kind=program] .fs-r-layer').count(), 'the Program monitor holds one scene layer (no outgoing layer)').toBe(1);
+    expect(await reduced.page.locator('sf-monitor[kind=program] .sf-r-layer').count(), 'the Program monitor holds one scene layer (no outgoing layer)').toBe(1);
     // the stepper keeps its value
     await expect(reduced.page.getByRole('group', { name: 'Dauer der Blende' })).toContainText(/1(,0)? s/);
     expect(reduced.problems.pageErrors).toEqual([]);

@@ -1,4 +1,4 @@
-import type { SlateDto } from '@flowstudio/scene-model';
+import type { SlateDto } from '@studioflow/scene-model';
 
 /**
  * Texts the output page shows by itself (DESIGN.md, spec 9.3). Everything else on the page comes from the
@@ -14,5 +14,5 @@ export const NO_ACCESS_SLATE: SlateDto = {
 
 /** Hint under the measurement clock (`/o/_uhr`, plan phase 0). */
 export const CLOCK_HINT =
-  'Mit einer Kamera filmen, die in FlowStudio live ist, und Uhr und Output gemeinsam fotografieren. ' +
+  'Mit einer Kamera filmen, die in StudioFlow live ist, und Uhr und Output gemeinsam fotografieren. ' +
   'Die Differenz ist die Latenz.';

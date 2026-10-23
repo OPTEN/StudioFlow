@@ -1,13 +1,13 @@
-# FlowStudio – Test plan
+# StudioFlow – Test plan
 
-Authoritative, concrete test plan for FlowStudio. Later test agents implement the tests exactly as written here.
-Source of truth for behaviour: `docs/architecture/implementation-spec.md` (binding), `apps/api/src/Opten.FlowStudio.Web/Endpoints/ApiSurface.cs`
-and `apps/api/src/Opten.FlowStudio.Core/Contracts/*.cs` (wire contract), `plan/FlowStudio Architekturplan.html` (sections 4–7),
+Authoritative, concrete test plan for StudioFlow. Later test agents implement the tests exactly as written here.
+Source of truth for behaviour: `docs/architecture/implementation-spec.md` (binding), `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs`
+and `apps/api/src/Opten.StudioFlow.Core/Contracts/*.cs` (wire contract), `plan/StudioFlow Architekturplan.html` (sections 4–7),
 `DESIGN.md` (responsive rules, outage language), `prototype/regie.html` (Regie behaviour and German strings).
 Where the sources are silent or contradict each other, this plan **pins** an interpretation and marks it `[GAP-nn]`; all gaps are listed in
 section 7 and must be resolved by the implementers (fix the code to the pinned value, or change the pin here deliberately).
 
-Status: version 1, written 2026-10-22 against `docs/architecture/implementation-spec.md` (repository HEAD `00a6deb`) and the work in progress in the working tree (`docker-compose.yml`, `.env.example`, the ops scripts, `apps/api/src/Opten.FlowStudio.Core/Domain` and `Application`).
+Status: version 1, written 2026-10-22 against `docs/architecture/implementation-spec.md` (repository HEAD `00a6deb`) and the work in progress in the working tree (`docker-compose.yml`, `.env.example`, the ops scripts, `apps/api/src/Opten.StudioFlow.Core/Domain` and `Application`).
 Where the working tree already fixes a name or behaviour that is consistent with the spec, this plan follows it; where it deviates from the spec, the deviation is listed as a gap in section 7.
 Version 2 (2026-10-22, after the first full E2E run): aligned with implementation-spec 4.3, 4.5 and 12 and with the findings of `tests/e2e/known-bugs.json` (DOC-01 … DOC-07,
 BUG-05/08/10/16/18/19/20/21/22, OBS-01; summary in 7.2): paused/ended semantics, template z-order, 5 s hub timeout, LiveKit token TTL 10 min, crash method and healthcheck method under Docker 29,
@@ -26,8 +26,8 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 | Level | Meaning | Runner (stated in each header) |
 |---|---|---|
-| `UNIT` | Pure logic, no network, no database, no browser | `xunit` (Core, `apps/api/tests/Opten.FlowStudio.Core.Tests`), `vitest` (`packages/*`, `apps/output`), `ng` (`ng test studio`, `ng test sender`) |
-| `INT` | API in-process with real PostgreSQL, real SignalR, fake LiveKit | `xunit` (`apps/api/tests/Opten.FlowStudio.Web.Tests`) |
+| `UNIT` | Pure logic, no network, no database, no browser | `xunit` (Core, `apps/api/tests/Opten.StudioFlow.Core.Tests`), `vitest` (`packages/*`, `apps/output`), `ng` (`ng test studio`, `ng test sender`) |
+| `INT` | API in-process with real PostgreSQL, real SignalR, fake LiveKit | `xunit` (`apps/api/tests/Opten.StudioFlow.Web.Tests`) |
 | `E2E` | Real docker compose stack, real browsers | `pw` (Playwright, `tests/e2e`) |
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
@@ -67,8 +67,8 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 
 | Level | Tooling | Where | Command |
 |---|---|---|---|
-| .NET unit | xUnit v3 (`xunit.v3` 4.0.2), `Microsoft.Extensions.TimeProvider.Testing` (`FakeTimeProvider`; **add to `Directory.Packages.props`**), hand-written fakes (no mocking framework required) | `apps/api/tests/Opten.FlowStudio.Core.Tests` | `dotnet test apps/api/FlowStudio.slnx` (`npm run test:api`) |
-| .NET integration | `WebApplicationFactory<Program>` (`Program` must be `public partial class Program`), `Testcontainers.PostgreSql` (image `postgres:17-alpine`), `Microsoft.AspNetCore.SignalR.Client`, fake `ILiveKitRoomService`, fake `TimeProvider`, `IMediaStore` on a temp dir | `apps/api/tests/Opten.FlowStudio.Web.Tests` | same |
+| .NET unit | xUnit v3 (`xunit.v3` 4.0.2), `Microsoft.Extensions.TimeProvider.Testing` (`FakeTimeProvider`; **add to `Directory.Packages.props`**), hand-written fakes (no mocking framework required) | `apps/api/tests/Opten.StudioFlow.Core.Tests` | `dotnet test apps/api/StudioFlow.slnx` (`npm run test:api`) |
+| .NET integration | `WebApplicationFactory<Program>` (`Program` must be `public partial class Program`), `Testcontainers.PostgreSql` (image `postgres:17-alpine`), `Microsoft.AspNetCore.SignalR.Client`, fake `ILiveKitRoomService`, fake `TimeProvider`, `IMediaStore` on a temp dir | `apps/api/tests/Opten.StudioFlow.Web.Tests` | same |
 | TypeScript unit (packages, output) | Vitest 5, projects `model` (node) and `dom` (happy-dom) from `vitest.config.ts`, `vi.useFakeTimers()`, fake hub/room classes | `packages/*/src/**/*.spec.ts`, `apps/output/src/**/*.spec.ts` | `npm run test:unit` |
 | Angular unit | `ng test studio --watch=false`, `ng test sender --watch=false` (Vitest builder), `TestBed`, signals | `apps/studio`, `apps/sender` | `npm run test:studio`, `npm run test:sender` |
 | E2E | Playwright `@playwright/test` ^1.64, real stack, Chromium (default), Edge channel, Firefox, WebKit | `tests/e2e` | `npm run test:e2e` |
@@ -79,7 +79,7 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 
 **Integration test recipe (`INT-*`).**
 - One `PostgreSqlContainer` per test class (xUnit class fixture), one database per test method (`CREATE DATABASE t_<guid>`) so tests run in parallel; migrations applied by the factory.
-- Factory environment `Testing` (cookie `Secure` policy `SameAsRequest`, see spec 5), but all clients use `https://localhost` base addresses so `Secure` is emitted. Configuration overrides (the names `docker-compose.yml` passes as `FLOWSTUDIO__…`, `ADMIN__…`, `LIVEKIT__…`, `MEDIA__…`, `DATAPROTECTION__…`, `FORWARDEDHEADERS__…` environment variables): `Admin:Username`, `Admin:Password`, `FlowStudio:PublicBaseUrl=https://flowstudio.test`, `LiveKit:ApiKey`, `LiveKit:ApiSecret`, `LiveKit:InternalUrl=<fake server>`, `ConnectionStrings:FlowStudio=<Testcontainers database>`, `Media:Path=<temp>`, `Media:MaxImageBytes=1048576`, `Media:MaxVideoBytes=2097152`, `DataProtection:KeysPath=<temp>`, `ForwardedHeaders:KnownNetworks:0=<test proxy network>`.
+- Factory environment `Testing` (cookie `Secure` policy `SameAsRequest`, see spec 5), but all clients use `https://localhost` base addresses so `Secure` is emitted. Configuration overrides (the names `docker-compose.yml` passes as `STUDIOFLOW__…`, `ADMIN__…`, `LIVEKIT__…`, `MEDIA__…`, `DATAPROTECTION__…`, `FORWARDEDHEADERS__…` environment variables): `Admin:Username`, `Admin:Password`, `StudioFlow:PublicBaseUrl=https://studioflow.test`, `LiveKit:ApiKey`, `LiveKit:ApiSecret`, `LiveKit:InternalUrl=<fake server>`, `ConnectionStrings:StudioFlow=<Testcontainers database>`, `Media:Path=<temp>`, `Media:MaxImageBytes=1048576`, `Media:MaxVideoBytes=2097152`, `DataProtection:KeysPath=<temp>`, `ForwardedHeaders:KnownNetworks:0=<test proxy network>`.
 - Replaced services: `TimeProvider` → `FakeTimeProvider` (all expiry/lockout/rate-limit/fade-guard code must read `TimeProvider`, [GAP-01]); `ILiveKitRoomService` → recording fake (`RemoveParticipant`, `ListParticipants` calls captured, scripted failures); remote IP → test middleware that sets `HttpContext.Connection.RemoteIpAddress` from header `X-Test-Remote-IP` (and forwarded-header trust configured for the test proxy network).
 - SignalR: `HubConnectionBuilder().WithUrl(new Uri(server.BaseAddress, "/hubs/studio"), o => { o.HttpMessageHandlerFactory = _ => server.CreateHandler(); o.WebSocketFactory = (ctx, ct) => server.CreateWebSocketClient().ConnectAsync(ctx.Uri, ct); o.Headers["Cookie"] = cookie; })`, JSON protocol with the same camelCase/enum options as the server. Helper `HubRecorder` stores every `event`, `tally`, `presence`, `telemetry`, `resync` message with arrival time.
 - Webhook helper `LiveKitWebhookSigner.Sign(body)` builds the HS256 JWT (`iss`=API key, `sha256` claim = base64 SHA-256 of the body) exactly like LiveKit.
@@ -106,31 +106,31 @@ results/                      gitignored: junit.xml, latency-*.json, soak-*.csv,
 #### 1.2.2 Starting the stack
 
 ```
-docker compose -p fs-e2e --env-file tests/e2e/env/test.env \
+docker compose -p sf-e2e --env-file tests/e2e/env/test.env \
   -f docker-compose.yml -f tests/e2e/docker-compose.test.yml up -d --build --wait --wait-timeout 600
 ```
 
 `docker-compose.test.yml` (the production `docker-compose.yml` is never edited by tests):
 - publishes `127.0.0.1:18081:8080` (api: direct access that bypasses Caddy for header-trust tests), `127.0.0.1:17880:7880` (livekit admin/Twirp for the `lk` helper), `127.0.0.1:15432:5432` (postgres for audit and DB assertions), as `docker-compose.override.example.yml` does for development;
-- CI uses the fixed 80/443 of the base file. On developer machines where they are taken the override replaces the list with `caddy.ports: !override ["18080:80", "18443:443", "18443:443/udp"]` and `test.env` sets `FLOWSTUDIO_PUBLIC_BASE_URL=https://localhost:18443` (the base file has no port variables, [GAP-16]);
-- sets `FLOWSTUDIO_SUBNET=172.31.250.0/24` (the variable the base file uses for the network and for the API's trusted forwarded-header network) and gives each service a fixed `ipv4_address` on the `flowstudio` network (livekit `.10`, api `.11`, postgres `.12`, caddy `.13`) so `docker network connect --ip` restores the same address after a disconnect; with `-p fs-e2e` the network is `fs-e2e_flowstudio`;
+- CI uses the fixed 80/443 of the base file. On developer machines where they are taken the override replaces the list with `caddy.ports: !override ["18080:80", "18443:443", "18443:443/udp"]` and `test.env` sets `STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:18443` (the base file has no port variables, [GAP-16]);
+- sets `STUDIOFLOW_SUBNET=172.31.250.0/24` (the variable the base file uses for the network and for the API's trusted forwarded-header network) and gives each service a fixed `ipv4_address` on the `studioflow` network (livekit `.10`, api `.11`, postgres `.12`, caddy `.13`) so `docker network connect --ip` restores the same address after a disconnect; with `-p sf-e2e` the network is `sf-e2e_studioflow`;
 - sets `ASPNETCORE_ENVIRONMENT=Production` for the api (cookie flags are asserted in their production form; INT tests cover `Testing`);
 - keeps the image pins, healthchecks and restart policies of the base file (they are part of the system under test, see OPS).
 
 Profiles:
-- **default** (all OS, Docker Desktop included): `FLOWSTUDIO_DOMAIN=localhost`, `FLOWSTUDIO_NODE_IP=127.0.0.1`, browsers run on the host.
-- **netns** (Linux CI only, `E2E_PROFILE=netns`, tests tagged `@netns`): `FLOWSTUDIO_DOMAIN=fs.e2e.test` (all browsers use `--host-resolver-rules="MAP fs.e2e.test 172.31.250.1"`), `FLOWSTUDIO_NODE_IP=172.31.250.1` (bridge gateway, reachable from the host and from containers), and sender browsers run in **phone host containers** (`mcr.microsoft.com/playwright:v<pw-version>-noble`, `npx playwright run-server --port 3000`, joined to the compose network, connected with `chromium.connect()`). This gives each phone its own network namespace, so netem/disconnect on the *phone container* impairs hub and media of that phone only (real uplink loss).
+- **default** (all OS, Docker Desktop included): `STUDIOFLOW_DOMAIN=localhost`, `STUDIOFLOW_NODE_IP=127.0.0.1`, browsers run on the host.
+- **netns** (Linux CI only, `E2E_PROFILE=netns`, tests tagged `@netns`): `STUDIOFLOW_DOMAIN=sf.e2e.test` (all browsers use `--host-resolver-rules="MAP sf.e2e.test 172.31.250.1"`), `STUDIOFLOW_NODE_IP=172.31.250.1` (bridge gateway, reachable from the host and from containers), and sender browsers run in **phone host containers** (`mcr.microsoft.com/playwright:v<pw-version>-noble`, `npx playwright run-server --port 3000`, joined to the compose network, connected with `chromium.connect()`). This gives each phone its own network namespace, so netem/disconnect on the *phone container* impairs hub and media of that phone only (real uplink loss).
 - **short-ttl** (project `short-ttl`, tests tagged `@short-ttl`): `env/test-short.env` sets the TTL keys of [GAP-01]; the project restarts the api at its start and end.
 
 #### 1.2.3 Test environment (`env/test.env`, committed because test-only)
 
 ```
-FLOWSTUDIO_DOMAIN=localhost
-FLOWSTUDIO_TLS_MODE=internal                 # Caddy local CA; browsers use ignoreHTTPSErrors
-FLOWSTUDIO_NODE_IP=127.0.0.1
-FLOWSTUDIO_SUBNET=172.31.250.0/24
-FLOWSTUDIO_FRAME_ANCESTORS=https://embed.e2e.test   # 'self' is always allowed by Caddy
-# FLOWSTUDIO_PUBLIC_BASE_URL=https://localhost:18443   # only when Caddy is not on 443 (port override of docker-compose.test.yml)
+STUDIOFLOW_DOMAIN=localhost
+STUDIOFLOW_TLS_MODE=internal                 # Caddy local CA; browsers use ignoreHTTPSErrors
+STUDIOFLOW_NODE_IP=127.0.0.1
+STUDIOFLOW_SUBNET=172.31.250.0/24
+STUDIOFLOW_FRAME_ANCESTORS=https://embed.e2e.test   # 'self' is always allowed by Caddy
+# STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:18443   # only when Caddy is not on 443 (port override of docker-compose.test.yml)
 ADMIN__USERNAME=e2e-admin
 ADMIN__PASSWORD=<fixed test-only value>      # plain password path (setup.sh --plain-password, "local setups only", spec 5); E2E-OPS-15 also runs with ADMIN__PASSWORDHASH
 LIVEKIT_API_KEY=e2e_lk_key
@@ -157,7 +157,7 @@ checks (E2E-OPS-02) assert that `setup.sh` never emits fixed values.
 
 #### 1.2.5 Typed API client and fixtures
 
-`apiClient` wraps Playwright's `APIRequestContext` with the admin cookie (obtained once in global setup, stored in `storageState`) and the header `X-FlowStudio: 1` on every unsafe
+`apiClient` wraps Playwright's `APIRequestContext` with the admin cookie (obtained once in global setup, stored in `storageState`) and the header `X-StudioFlow: 1` on every unsafe
 request. Method names equal the `operationId`s of `ApiSurface.cs` (`switchProgram`, `take`, `addSceneItem`, …) and use the generated types of
 `packages/scene-model/src/generated/api.ts`. `apiClient.raw` gives untyped access (wrong headers, malformed bodies).
 
@@ -178,7 +178,7 @@ type Fixtures = {
   net: NetworkControl;               // 1.6
   docker: DockerControl;             // restart/stop/start/kill/pause/unpause/networkDisconnect/networkConnect/logs/stats per service
   lk: LiveKitAdmin;                  // listParticipants/removeParticipant via Twirp on 127.0.0.1:17880 with a self-signed roomAdmin JWT
-  clock: TimecodeSource;             // opens the "FlowStudio Timecode" tab
+  clock: TimecodeSource;             // opens the "StudioFlow Timecode" tab
 };
 interface PhoneSender { deviceId: string; code: string /* K1 */; page: Page; context: BrowserContext;
   startCamera(): Promise<void>; stopCamera(): Promise<void>; tally(): Promise<'program'|'preview'|'off'>;
@@ -193,7 +193,7 @@ interface OutputView { page: Page; frame: FrameLocator | null; sceneId(): Promis
 ```
 
 `pairPhone(via:'ui')` opens the phone invite URL in a fresh context (device descriptor + fake media args) and waits for «Verbunden»; `via:'api'` redeems through REST and writes the
-credentials to localStorage key `flowstudio.sender.v1` (fast path for tests that are not about pairing). `pairLaptop` is analogous (`code`: `/join` form + approval through the
+credentials to localStorage key `studioflow.sender.v1` (fast path for tests that are not about pairing). `pairLaptop` is analogous (`code`: `/join` form + approval through the
 admin API; `link`: `/j/{token}`).
 
 #### 1.2.6 Short-TTL overrides (keys to be provided, [GAP-01])
@@ -208,7 +208,7 @@ admin API; `link`: `/j/{token}`).
 ```
 --use-fake-device-for-media-stream        # synthetic camera (moving pattern), any requested resolution
 --use-fake-ui-for-media-stream            # auto-accept camera permission
---auto-select-tab-capture-source-by-title=FlowStudio Timecode   # getDisplayMedia() picks the tab titled "FlowStudio Timecode" without a picker
+--auto-select-tab-capture-source-by-title=StudioFlow Timecode   # getDisplayMedia() picks the tab titled "StudioFlow Timecode" without a picker
 --allow-loopback-in-peer-connection --disable-features=WebRtcHideLocalIpsWithMdns   # ICE host candidates 127.0.0.1
 --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows
 --enable-precise-memory-info              # performance.memory
@@ -217,7 +217,7 @@ admin API; `link`: `/j/{token}`).
 Optional: `--use-file-for-fake-video-capture=tests/e2e/assets/camera.y4m` (generated in global setup with `ffmpeg -f lavfi -i testsrc2=size=1280x720:rate=30 -t 10 -pix_fmt yuv420p camera.y4m`)
 for a deterministic camera picture. Never pass `--autoplay-policy=no-user-gesture-required` (it would hide autoplay defects of the output page).
 
-**Fake screen share.** `E2E_SCREEN_MODE=tab` (default on Chromium): `clock.open()` opens a tab titled `FlowStudio Timecode` in the same browser; the sender's `getDisplayMedia()` captures it.
+**Fake screen share.** `E2E_SCREEN_MODE=tab` (default on Chromium): `clock.open()` opens a tab titled `StudioFlow Timecode` in the same browser; the sender's `getDisplayMedia()` captures it.
 Closing that tab ends the capture and fires `ended` on the track (this is the automatable equivalent of the browser's «Stop sharing» button, `laptop.endShare(n)`).
 Fallbacks if the flag misbehaves in a Chromium version: `--auto-accept-this-tab-capture` (shares the sender tab itself), or `E2E_SCREEN_MODE=canvas` (init script replaces
 `navigator.mediaDevices.getDisplayMedia` with a `canvas.captureStream(30)` of the timecode canvas; `endShare` then calls `track.stop()` and dispatches `ended` manually). `canvas` mode is
@@ -229,7 +229,7 @@ of its 5 bytes, encoded as 48 black/white blocks (16 columns × 3 rows, each 80�
 `readTimecode()` (helper) draws the received `<video>` into a 2D canvas, samples the centre 20×20 px of each block at `videoWidth/16` pitch, thresholds at luminance 128, verifies the checksum
 (frames that fail are counted and discarded), and returns `Date.now() % 2^40` of the source paint time. Latency = `(Date.now() % 2^40) − decoded` (wrap safe). Both clocks are the host clock, so there is no skew.
 
-**Init script (all projects, `helpers/init-script.ts`, `context.addInitScript`).** Wraps `WebSocket` and `RTCPeerConnection` to keep registries `window.__fsNet.sockets/peers` and `window.__fsNet.counts()`; records every `getUserMedia` constraint object in `window.__fsMedia.userMediaCalls` and counts `getDisplayMedia` calls in `window.__fsMedia.displayCalls`; optionally replaces `getUserMedia({video})`/`getDisplayMedia` with the timecode canvas streams (`timecodeCamera`, `E2E_SCREEN_MODE=canvas`); can make `getUserMedia` reject (`window.__fsMedia.failCamera = true`); stubs `navigator.getBattery` and `navigator.wakeLock` when a test asks for it; installs the `window.__xss` canary check. None of this ships in the product.
+**Init script (all projects, `helpers/init-script.ts`, `context.addInitScript`).** Wraps `WebSocket` and `RTCPeerConnection` to keep registries `window.__sfNet.sockets/peers` and `window.__sfNet.counts()`; records every `getUserMedia` constraint object in `window.__sfMedia.userMediaCalls` and counts `getDisplayMedia` calls in `window.__sfMedia.displayCalls`; optionally replaces `getUserMedia({video})`/`getDisplayMedia` with the timecode canvas streams (`timecodeCamera`, `E2E_SCREEN_MODE=canvas`); can make `getUserMedia` reject (`window.__sfMedia.failCamera = true`); stubs `navigator.getBattery` and `navigator.wakeLock` when a test asks for it; installs the `window.__xss` canary check. None of this ships in the product.
 
 **Firefox** (`firefoxUserPrefs`): `media.navigator.streams.fake=true`, `media.navigator.permission.disabled=true`, `media.peerconnection.ice.loopback=true`,
 `media.peerconnection.ice.obfuscate_host_addresses=false`, `media.getusermedia.screensharing.enabled=true`. Camera works; screen share only in `canvas` mode. H.264 may be unavailable
@@ -296,18 +296,18 @@ export async function expectVideoFrozen(video: Locator, ms = 1500) { /* totalVid
 | Helper | Effect | Affects | Does not affect |
 |---|---|---|---|
 | `net.browserOffline(ctx, on)` → `context.setOffline` | fetch, XHR and new WebSocket connections of that browser context (existing sockets are closed or stall in current Chromium – verified by `E2E-NET-00`) | REST, SignalR hubs, LiveKit signalling | established WebRTC media (UDP) |
-| `net.cut(ctx)` / `net.restore(ctx)` (what `phone.goOffline()/goOnline()` and the Regie equivalents use) | `setOffline` **plus** closing every tracked `WebSocket` and `RTCPeerConnection` (the init script keeps the registries `window.__fsNet.sockets/peers`); `restore` clears offline so the browser fires `online` | hub **and** media of that page: the closest software equivalent of "the Wi-Fi is gone" | other pages, the server |
+| `net.cut(ctx)` / `net.restore(ctx)` (what `phone.goOffline()/goOnline()` and the Regie equivalents use) | `setOffline` **plus** closing every tracked `WebSocket` and `RTCPeerConnection` (the init script keeps the registries `window.__sfNet.sockets/peers`); `restore` clears offline so the browser fires `online` | hub **and** media of that page: the closest software equivalent of "the Wi-Fi is gone" | other pages, the server |
 | `net.cdpThrottle(page, profile)` → CDP `Network.emulateNetworkConditions` | latency and throughput of HTTP requests (WebSocket frames are not reliably throttled by Chromium, so hub behaviour under throttling is judged on negotiate/REST) | REST, uploads, page load | WebRTC media, WebSocket frames |
 | `net.routeFault(page, urlGlob, { status \| delayMs \| abort })` → `page.route` | selected requests | one page | others |
 | `lk.pause()/unpause()` → `docker pause <livekit>` / `docker unpause <livekit>` | process frozen, sockets stay open, no RST: **silent loss** for all media and the signalling WebSocket | all browsers | api, hubs |
-| `lk.disconnect()/connect()` → `docker network disconnect fs-e2e_flowstudio <livekit>` / `docker network connect --ip 172.31.250.10 --alias livekit fs-e2e_flowstudio <livekit>` | container unreachable (no RST for new packets) | all browsers | — (published ports can need a restart after reconnect; the canary checks it) |
-| `lk.netem({ delayMs, jitterMs, lossPct, rateKbit })` → `docker compose -p fs-e2e --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate]` (e.g. `apply 200 20 0`, `apply 0 0 5`, `apply 0 0 0 1mbit`), `lk.clearNetem()` → `… netem clear`, `… netem show`: the `netem` service of the base compose file (`infra/netem/netem.sh`) shares LiveKit's network namespace and shapes **egress and ingress** (ingress mirrored to `ifb0`). Fallback without that service (egress only): `docker run --rm --net container:<livekit> --cap-add NET_ADMIN nicolaka/netshoot tc qdisc replace dev eth0 root netem delay 200ms 20ms loss 5% rate 1mbit`, clear with `tc qdisc del dev eth0 root` | all traffic of LiveKit in both directions: phone uplink, subscriber downlink, signalling through Caddy, and the LiveKit → API webhooks | media and signalling of every client at once | browser ↔ API/Caddy HTTP traffic |
+| `lk.disconnect()/connect()` → `docker network disconnect sf-e2e_studioflow <livekit>` / `docker network connect --ip 172.31.250.10 --alias livekit sf-e2e_studioflow <livekit>` | container unreachable (no RST for new packets) | all browsers | — (published ports can need a restart after reconnect; the canary checks it) |
+| `lk.netem({ delayMs, jitterMs, lossPct, rateKbit })` → `docker compose -p sf-e2e --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate]` (e.g. `apply 200 20 0`, `apply 0 0 5`, `apply 0 0 0 1mbit`), `lk.clearNetem()` → `… netem clear`, `… netem show`: the `netem` service of the base compose file (`infra/netem/netem.sh`) shares LiveKit's network namespace and shapes **egress and ingress** (ingress mirrored to `ifb0`). Fallback without that service (egress only): `docker run --rm --net container:<livekit> --cap-add NET_ADMIN nicolaka/netshoot tc qdisc replace dev eth0 root netem delay 200ms 20ms loss 5% rate 1mbit`, clear with `tc qdisc del dev eth0 root` | all traffic of LiveKit in both directions: phone uplink, subscriber downlink, signalling through Caddy, and the LiveKit → API webhooks | media and signalling of every client at once | browser ↔ API/Caddy HTTP traffic |
 | `phone.netem(...)`, `phone.disconnect()` (profile `netns`) | same on the phone host container: real silent loss, real uplink loss | that phone's hub **and** media | other phones |
-| `docker.restart(svc)`, `docker.stop(svc)`, `docker.start(svc)`, `docker.kill(svc)` with `svc` in `api`, `livekit`, `postgres`, `caddy` → `docker compose -p fs-e2e <cmd> <service>`; `kill` = crash: `kill -TERM 1` inside the container (`kill -QUIT 1` for PostgreSQL), relies on `restart: unless-stopped` – since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04] | container lifecycle | per service | — |
+| `docker.restart(svc)`, `docker.stop(svc)`, `docker.start(svc)`, `docker.kill(svc)` with `svc` in `api`, `livekit`, `postgres`, `caddy` → `docker compose -p sf-e2e <cmd> <service>`; `kill` = crash: `kill -TERM 1` inside the container (`kill -QUIT 1` for PostgreSQL), relies on `restart: unless-stopped` – since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04] | container lifecycle | per service | — |
 | `docker.logs(service, since)`, `docker.stats(service)` (`docker stats --no-stream --format json`) | evidence and memory | — | — |
 
 CPU and memory: `cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })`; `cdp.send('HeapProfiler.collectGarbage')` before each sample, then `Performance.getMetrics`
-(`JSHeapUsedSize`, `Nodes`, `JSEventListeners`, `Documents`, `TaskDuration`); the same init script exposes `window.__fsNet.counts()` (live `RTCPeerConnection`s and open `WebSocket`s) and tests count `document.querySelectorAll('video').length`.
+(`JSHeapUsedSize`, `Nodes`, `JSEventListeners`, `Documents`, `TaskDuration`); the same init script exposes `window.__sfNet.counts()` (live `RTCPeerConnection`s and open `WebSocket`s) and tests count `document.querySelectorAll('video').length`.
 
 `netem` needs the kernel modules `sch_netem`, `ifb` and `act_mirred` (CI: `sudo apt-get install -y linux-modules-extra-$(uname -r) && sudo modprobe sch_netem ifb act_mirred`; WSL2/Docker Desktop kernels normally have them). **`E2E-NET-00` (canary) must pass before any impairment test runs**: if a tool does not work, the
 dependent tests fail with a clear message instead of passing vacuously.
@@ -316,11 +316,11 @@ dependent tests fail with a clear message instead of passing vacuously.
 
 The spec defines no DOM hooks; the following are required so tests do not depend on layout or CSS ([GAP-15]).
 
-**Opt-in for the global state views (spec 12).** `window.__fsStudio` and `window.__fsSender` exist only when `localStorage['flowstudio.testHooks']` is exactly `'1'`
+**Opt-in for the global state views (spec 12).** `window.__sfStudio` and `window.__sfSender` exist only when `localStorage['studioflow.testHooks']` is exactly `'1'`
 when the app starts (Regie: when the production store is created; sender: when the station starts); E2E sets the flag with an init script before any page script runs. Without the flag
-(also `'0'`, `'true'`, `' 1'`, or storage blocked) the properties do not exist (`'__fsStudio' in window === false`). With it they are frozen, non-enumerable and non-writable objects whose
-getters read the live state; assignments throw in strict mode; they live as long as the page (removed when the Angular service is destroyed; after a sign-out `__fsStudio` reports `revision: null`, `hub: 'idle'`). No other global debug object exists in a
-production build except the output page's `?latency=1` aid (`window.__flowstudioLatency`).
+(also `'0'`, `'true'`, `' 1'`, or storage blocked) the properties do not exist (`'__sfStudio' in window === false`). With it they are frozen, non-enumerable and non-writable objects whose
+getters read the live state; assignments throw in strict mode; they live as long as the page (removed when the Angular service is destroyed; after a sign-out `__sfStudio` reports `revision: null`, `hub: 'idle'`). No other global debug object exists in a
+production build except the output page's `?latency=1` aid (`window.__studioflowLatency`).
 
 **Regie** (`apps/studio`): the roles/names of the prototype are the contract (`Studio-Modus` switch (`role=switch`), group `Art des Übergangs` with `Schnitt`/`Blende`, group `Dauer der Blende` with
 `Blende kürzer`/`Blende länger`, `Take` with `aria-keyshortcuts="Space"`, scene buttons `<name>[, live im Program][, in der Preview][, K2 gestört]` with `aria-pressed`, `Docks und Layout`, `Gerät koppeln`,
@@ -328,19 +328,19 @@ grips `Dock <Titel> verschieben, mit Pfeiltasten`, separators `Höhe der Docks u
 `<code> <name>[, im Program|in der Preview][, <Zustand>]`, canvases `role=img` `Program-Monitor: <Szene>, entspricht dem Output`, toast `role=status`). Additionally:
 `[data-testid=regie-ready]` (set after the first snapshot), `[data-testid=connection-state][data-state=connected|reconnecting|disconnected]` (hub state, visible indicator), `[data-testid=toast]`,
 `[data-scene-id]` on scene buttons, `[data-code]` on station rows, `[data-item-id]` on Quellen rows and overlay boxes, `[data-testid=monitor-program|monitor-preview]`, `[data-testid=overlay]`.
-`window.__fsStudio = { revision: number|null, lastSync: 'delta'|'snapshot'|null, hub: 'idle'|'connecting'|'connected'|'reconnecting'|'unauthorized'|'stopped' }` (read-only, opt-in; `revision` null before the first snapshot, `lastSync` = kind of the last `Subscribe` answer).
+`window.__sfStudio = { revision: number|null, lastSync: 'delta'|'snapshot'|null, hub: 'idle'|'connecting'|'connected'|'reconnecting'|'unauthorized'|'stopped' }` (read-only, opt-in; `revision` null before the first snapshot, `lastSync` = kind of the last `Subscribe` answer).
 
 **Sender** (`apps/sender`): `[data-testid=tally][data-tally=program|preview|off]`, `[data-testid=connection-state][data-state=connected|reconnecting|blocked|replaced]`,
 `[data-testid=check-code]`, `[data-testid=pairing-denied|pairing-expired]`, `[data-testid=slot-<slot>][data-state=starting|live|paused|ended|failed]`, `[data-testid=message-banner]`.
-`window.__fsSender = { slots(): Record<string,string>, rtc(): string, sessionId: string }` (read-only, opt-in). Storage as implemented [GAP-15]: localStorage `flowstudio.sender.v1` =
-`{"deviceId","secret","productionId"}` once paired (before that only `{"clientId"}`, the redeem client id); localStorage `flowstudio.sender.settings` =
-`{"facing","resolution","dark","cameraOn","sharedScreens","techCheck"}`; sessionStorage `flowstudio.pairing` = `{"requestId","pollToken","checkCode","expiresAt","name","kind"}`.
+`window.__sfSender = { slots(): Record<string,string>, rtc(): string, sessionId: string }` (read-only, opt-in). Storage as implemented [GAP-15]: localStorage `studioflow.sender.v1` =
+`{"deviceId","secret","productionId"}` once paired (before that only `{"clientId"}`, the redeem client id); localStorage `studioflow.sender.settings` =
+`{"facing","resolution","dark","cameraOn","sharedScreens","techCheck"}`; sessionStorage `studioflow.pairing` = `{"requestId","pollToken","checkCode","expiresAt","name","kind"}`.
 
 **Output** (`apps/output`): stage element `[data-scene-id]`; per item `[data-item-id][data-source][data-state=live|hold|held|fallback|missing|connecting]`;
 slate `[data-slate=standby|end|denied]` with `[data-testid=slate-title]`, `[data-testid=slate-subtitle]`; debug overlay `[data-testid=debug-overlay]` (one `key: value` per line);
-No `window.__fsOutput` (spec 12): tests read the DOM attributes above and the `debug=1` overlay; `?latency=1` collects latency samples in `window.__flowstudioLatency`.
+No `window.__sfOutput` (spec 12): tests read the DOM attributes above and the `debug=1` overlay; `?latency=1` collects latency samples in `window.__studioflowLatency`.
 
-**localStorage (Regie)**: `flowstudio.studio` = `'1'|'0'`; `flowstudio.layout` = JSON v1 (prototype shape); `flowstudio.transition` = `{"kind":"cut"|"fade","durationMs":300}` [GAP-34].
+**localStorage (Regie)**: `studioflow.studio` = `'1'|'0'`; `studioflow.layout` = JSON v1 (prototype shape); `studioflow.transition` = `{"kind":"cut"|"fade","durationMs":300}` [GAP-34].
 
 ### 1.8 Test data
 
@@ -412,7 +412,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **UNIT-AUTH-03** · P1 · xunit — Constant-time secret comparison
 - Steps: compare equal strings, strings differing in the first/last char, different lengths, empty, null; verify device secrets through `SecretHasher.Verify(secret, storedSha256)`.
-- Expect: results correct, no exception on length mismatch; the implementation uses `CryptographicOperations.FixedTimeEquals`; an architecture test (source scan) fails when `==` or `string.Equals` is used to compare secrets, hashes or keys in `Opten.FlowStudio.*`.
+- Expect: results correct, no exception on length mismatch; the implementation uses `CryptographicOperations.FixedTimeEquals`; an architecture test (source scan) fails when `==` or `string.Equals` is used to compare secrets, hashes or keys in `Opten.StudioFlow.*`.
 
 **UNIT-AUTH-04** · P0 · xunit — Login lockout state machine (FakeTimeProvider) [GAP-03]
 - Steps: same IP: failures 1–4; the 5th failure; the next attempt with the correct password; advance 14:59 / 15:00; failures spread over > 15 min; success after 3 failures; different IPs interleaved; 20 failures for one username across 20 IPs.
@@ -444,11 +444,11 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **UNIT-AUTH-11** · P1 · ng — Regie HTTP interceptor and route guard
 - Steps: HttpClient `GET/POST/PUT/PATCH/DELETE` to same-origin `/api/...` and to a foreign URL; 401 responses from several calls at once; navigation to `/`, `/monitoring`, `/login` with and without a session.
-- Expect: `X-FlowStudio: 1` is added to POST/PUT/PATCH/DELETE to same-origin `/api` only (never to GET, never to foreign hosts); a 401 from any call except the login call clears the session state and navigates to `/login` exactly once (no loop); the guard lets `/` and `/monitoring` through only after `GET /api/auth/me` succeeded; `returnUrl` is ignored unless it is a same-origin path.
+- Expect: `X-StudioFlow: 1` is added to POST/PUT/PATCH/DELETE to same-origin `/api` only (never to GET, never to foreign hosts); a 401 from any call except the login call clears the session state and navigates to `/login` exactly once (no loop); the guard lets `/` and `/monitoring` through only after `GET /api/auth/me` succeeded; `returnUrl` is ignored unless it is a same-origin path.
 
 **INT-AUTH-01** · P0 · xunit — Login success and cookie
 - Steps: `POST /api/auth/login {username, password}` over `https://localhost`.
-- Expect: 200 `SessionDto{username}`; exactly one `Set-Cookie: fs_session=…` with `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`; no `Domain`; cookie value is opaque (not containing the username or password); response `Cache-Control: no-store`.
+- Expect: 200 `SessionDto{username}`; exactly one `Set-Cookie: sf_session=…` with `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`; no `Domain`; cookie value is opaque (not containing the username or password); response `Cache-Control: no-store`.
 
 **INT-AUTH-02** · P1 · xunit — Login failures do not enumerate
 - Steps: wrong password for the real user; unknown user; empty body; missing fields; `username` 10 kB; malformed JSON; wrong content type.
@@ -467,15 +467,15 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Expect: `audit_entries` rows `login.succeeded` (actor `admin`), `login.failed`, `login.locked`; `details` jsonb contains remote IP and username, never a password or hash.
 
 **INT-AUTH-06** · P0 · xunit — Session endpoints and logout
-- Steps: `GET /api/auth/me` with/without cookie; `POST /api/auth/logout` with and without `X-FlowStudio: 1`; reuse the old cookie value after logout.
-- Expect: 200 with username / 401 ProblemDetails (never a redirect, no `Location`); logout without header → 403, with header → 204 and `Set-Cookie: fs_session=; expires=Thu, 01 Jan 1970…`; the old cookie value is rejected (401) after logout [GAP-04: server-side invalidation].
+- Steps: `GET /api/auth/me` with/without cookie; `POST /api/auth/logout` with and without `X-StudioFlow: 1`; reuse the old cookie value after logout.
+- Expect: 200 with username / 401 ProblemDetails (never a redirect, no `Location`); logout without header → 403, with header → 204 and `Set-Cookie: sf_session=; expires=Thu, 01 Jan 1970…`; the old cookie value is rejected (401) after logout [GAP-04: server-side invalidation].
 
 **INT-AUTH-07** · P1 · xunit — Sliding 12 h expiration
 - Steps: login at t = 0; call `me` at t = 6 h; call `me` again at t = 17 h (11 h after the last use); then advance 12 h 1 min without any call.
 - Expect: both calls succeed (the expiration slides with use); after 12 h of inactivity the cookie is rejected (401).
 
 **INT-AUTH-08** · P0 · xunit — CSRF header matrix
-- Steps: for every Admin POST/PUT/PATCH/DELETE endpoint (generated from endpoint metadata) send with the cookie and: no header; `X-FlowStudio: 0`; `X-FlowStudio: true`; empty value; `x-flowstudio: 1` (case-insensitive name) ; value `1`. Also GETs without header. Also `POST /api/auth/login` and Device/Output/Pairing endpoints without the header.
+- Steps: for every Admin POST/PUT/PATCH/DELETE endpoint (generated from endpoint metadata) send with the cookie and: no header; `X-StudioFlow: 0`; `X-StudioFlow: true`; empty value; `x-studioflow: 1` (case-insensitive name) ; value `1`. Also GETs without header. Also `POST /api/auth/login` and Device/Output/Pairing endpoints without the header.
 - Expect: no header / wrong value → 403 ProblemDetails before any handler side effect (DB unchanged); `1` passes CSRF (handler result, e.g. 404/409/200); GET never needs the header; login, device bearer, output key and anonymous pairing routes are exempt; the asset upload (`DisableAntiforgery`) still requires the header with a cookie.
 
 **INT-AUTH-09** · P0 · xunit — Unauthenticated access matrix
@@ -552,7 +552,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-01** · P0 · pw — Login via UI and cookie flags
 - Steps: open `/` unauthenticated; land on `/login`; fill username/password (`getByLabel(/benutzer/i)`, `getByLabel(/passwort/i)`, `getByRole('button', {name: /anmelden/i})` [GAP-27]); submit.
-- Expect: URL `/`, `[data-testid=regie-ready]` within `T-LOAD`; `context.cookies()` shows `fs_session` with `httpOnly:true, secure:true, sameSite:'Strict', path:'/'`; `document.cookie` does not contain `fs_session`; header shows production name and a clock.
+- Expect: URL `/`, `[data-testid=regie-ready]` within `T-LOAD`; `context.cookies()` shows `sf_session` with `httpOnly:true, secure:true, sameSite:'Strict', path:'/'`; `document.cookie` does not contain `sf_session`; header shows production name and a clock.
 
 **E2E-AUTH-02** · P1 · pw — Login failure
 - Steps: wrong password; unknown user.
@@ -575,7 +575,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Expect: 401 for Admin routes and the studio hub; `/openapi/**` not JSON (404 or SPA HTML); no route answers 200 with data; public routes respond as specified.
 
 **E2E-AUTH-07** · P0 · pw — CSRF header through Caddy
-- Steps: with the admin cookie `POST …/take` without `X-FlowStudio`, with `X-FlowStudio: 1`.
+- Steps: with the admin cookie `POST …/take` without `X-StudioFlow`, with `X-StudioFlow: 1`.
 - Expect: 403 without; with the header the request reaches the API (409 `conflict` because there is no preview) – proves Caddy forwards the custom header.
 
 **E2E-AUTH-08** · P1 · pw — Hub Origin check through Caddy
@@ -584,7 +584,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-09** · P0 · pw — Security headers on every entry point
 - Steps: `GET` `/`, `/login`, `/join/`, `/join/i/x`, `/o/webinar?k=x`, `/api/system/info` (authenticated), a hashed asset, `index.html`, `ngsw.json`, `/j/x`.
-- Expect: `Strict-Transport-Security` with `max-age` = `FLOWSTUDIO_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year; `setup.sh` writes 3600 for TLS mode `internal`, the test env leaves the default); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `microphone=(self)`, `display-capture=(self)` (spec 10 and the Caddyfile; no audio track is published) [DOC-01]; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `FLOWSTUDIO_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
+- Expect: `Strict-Transport-Security` with `max-age` = `STUDIOFLOW_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year; `setup.sh` writes 3600 for TLS mode `internal`, the test env leaves the default); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `microphone=(self)`, `display-capture=(self)` (spec 10 and the Caddyfile; no audio track is published) [DOC-01]; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `STUDIOFLOW_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
 
 **E2E-AUTH-10** · P0 · pw — Embedding limited by frame-ancestors
 - Steps: `embedHost` serves a page at `https://embed.e2e.test` (allowed) and `https://other.e2e.test` (not allowed) each containing `<iframe src="https://localhost/o/{slug}?k=…" allow="autoplay; fullscreen">`; also iframes of `/`, `/join/`, `/login`.
@@ -614,7 +614,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-16** · P1 · pw — Device credentials handling on the sender
 - Steps: redeem an invite; inspect URL history, storage, cookies, service worker caches, network log.
-- Expect: credentials only in localStorage `flowstudio.sender.v1`; URL `/join/i/{token}` replaced by `/join/station` (`history.replaceState`) so the invite token is not in history; `document.cookie` empty; no secret in any URL; service worker cache contains no `/api`, `/hubs`, `/rtc` responses; `Referer` on later requests has no token (`Referrer-Policy: no-referrer`).
+- Expect: credentials only in localStorage `studioflow.sender.v1`; URL `/join/i/{token}` replaced by `/join/station` (`history.replaceState`) so the invite token is not in history; `document.cookie` empty; no secret in any URL; service worker cache contains no `/api`, `/hubs`, `/rtc` responses; `Referer` on later requests has no token (`Referrer-Policy: no-referrer`).
 
 **E2E-AUTH-17** · P1 · pw — Asset content access
 - Steps: upload `tiny.png`; request `…/assets/{id}/content` without credentials, with the admin cookie, with `?k=<key>`, with a wrong `k`, with the key of another production, `HEAD`.
@@ -653,11 +653,11 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Expect: both stay logged in across reload; presence shows two operators in both (`.sr` text «Zwei Personen in der Regie»); closing one decrements within 8 s.
 
 **E2E-AUTH-26** · P1 · pw — Session expiry while the Regie is open [GAP-27]
-- Steps: Regie open; delete the `fs_session` cookie from the context; trigger an action; wait.
+- Steps: Regie open; delete the `sf_session` cookie from the context; trigger an action; wait.
 - Expect: within 10 s the app is on `/login`; the hub does not retry forever (≤ 3 negotiate attempts after the first 401); no uncaught exception in the console.
 
 **E2E-AUTH-27** · P1 · pw — Server surface is not exposed
-- Steps: request `/openapi/v1.json`, `/swagger`, `/metrics`, `/health/live` and `/health/ready` through Caddy and `/appsettings.json`, `/.env`, `/Opten.FlowStudio.Web.dll`.
+- Steps: request `/openapi/v1.json`, `/swagger`, `/metrics`, `/health/live` and `/health/ready` through Caddy and `/appsettings.json`, `/.env`, `/Opten.StudioFlow.Web.dll`.
 - Expect: OpenAPI/swagger/metrics/appsettings/.env/dll are 404 (or SPA HTML, never their content); health endpoints answer only the status document (no connection strings, versions or exception text).
 
 ### 2.2 PAIR – Pairing
@@ -695,12 +695,12 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: lowest free number per letter at creation time (K cameras incl. laptop cameras, S screens, M media); freed numbers are reused; codes never change while the source exists; parallel allocation yields distinct codes.
 
 **UNIT-PAIR-08** · P1 · ng — Sender pairing state machine
-- Steps: fake timers and fake API: form validation (name trimmed 1–60), kind detection (`getDisplayMedia` present, mobile UA), `POST requests` then polling; statuses `pending → approved|denied|expired`; network error during polling; reload with `flowstudio.pairing` in sessionStorage; invite redeem with `clientId` generation and a lost response; stored credentials → `GET /api/device/me` (200, 401, 403 `device_blocked`); URL clean-up after redeem.
-- Expect: states `form → waiting → paired|denied|expired`; polling every 1,5 s (±0,2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `flowstudio.sender.v1` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
+- Steps: fake timers and fake API: form validation (name trimmed 1–60), kind detection (`getDisplayMedia` present, mobile UA), `POST requests` then polling; statuses `pending → approved|denied|expired`; network error during polling; reload with `studioflow.pairing` in sessionStorage; invite redeem with `clientId` generation and a lost response; stored credentials → `GET /api/device/me` (200, 401, 403 `device_blocked`); URL clean-up after redeem.
+- Expect: states `form → waiting → paired|denied|expired`; polling every 1,5 s (±0,2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `studioflow.sender.v1` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
 
 **INT-PAIR-01** · P0 · xunit — QR flow over REST and events
 - Steps: connect a studio hub client and `Subscribe`; `GET …/pairing/phone-invite`; redeem with `{clientId, kind:'phone', platform:'Pixel 7 · Chrome'}`; `GET /api/device/me`.
-- Expect: invite `Url` = `https://flowstudio.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order (as implemented, DOC-02): `inviteRemoved` (the redeemed invite), `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `logAppended` «K1 Handy 1 gekoppelt», `inviteUpserted` (the next phone invite); revisions strictly consecutive (the reducer accepts any order).
+- Expect: invite `Url` = `https://studioflow.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order (as implemented, DOC-02): `inviteRemoved` (the redeemed invite), `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `logAppended` «K1 Handy 1 gekoppelt», `inviteUpserted` (the next phone invite); revisions strictly consecutive (the reducer accepts any order).
 
 **INT-PAIR-02** · P0 · xunit — Redeem idempotency
 - Steps: redeem with clientId A twice (simulating a lost response), then use the first secret; redeem with clientId B afterwards.
@@ -732,7 +732,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **INT-PAIR-09** · P0 · xunit — Laptop invite link
 - Steps: `POST …/pairing/invites {kind:'laptopLink'}`; redeem `kind:'laptop'`; second redeem; create another and `DELETE …/invites/{id}`; redeem the revoked.
-- Expect: 201 `InviteDto.Url` = `https://flowstudio.test/j/{token}`; redeem → device with method `link` and `screen-1`; second redeem 410; revoked 410; events `inviteUpserted`/`inviteRemoved`; audit `invite.created`, `invite.revoked`; creating `{kind:'phoneQr'}` through this endpoint behaves exactly like `phone-invite/renew` [GAP-19].
+- Expect: 201 `InviteDto.Url` = `https://studioflow.test/j/{token}`; redeem → device with method `link` and `screen-1`; second redeem 410; revoked 410; events `inviteUpserted`/`inviteRemoved`; audit `invite.created`, `invite.revoked`; creating `{kind:'phoneQr'}` through this endpoint behaves exactly like `phone-invite/renew` [GAP-19].
 
 **INT-PAIR-10** · P1 · xunit — Redeem kind vs invite kind [GAP-19]
 - Steps: redeem a `phoneQr` invite with body `kind:'laptop'` and a `laptopLink` invite with `kind:'phone'`.
@@ -792,7 +792,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **E2E-PAIR-07** · P1 · pw (`@short-ttl` for the expiry half) — Polling survives and window ends
 - Steps: laptop requests and waits; the laptop goes offline (`net.cut`); the Regie approves; the laptop comes back 5 s later and polls; separately: reload the tab on `/join/warten` while pending; separately: approve, then wait beyond the credentials window (15 s in the profile) before the laptop polls.
-- Expect: reload keeps the same request and the same check code (state in sessionStorage `flowstudio.pairing`); credentials are obtained when polling resumes inside the window; after the window the laptop shows `pairing-expired` and offers a new request.
+- Expect: reload keeps the same request and the same check code (state in sessionStorage `studioflow.pairing`); credentials are obtained when polling resumes inside the window; after the window the laptop shows `pairing-expired` and offers a new request.
 
 **E2E-PAIR-08** · P1 · pw — Unique codes, identical names
 - Steps: create 8 pending requests through the API and one through the real `/join` form of a laptop context, all named «Laptop» (9 in total, under the 10-per-IP limit); open the pairing dock.
@@ -1094,7 +1094,7 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **UNIT-SWITCH-09** · P1 · ng — Regie switching and keyboard logic
 - Steps: store with scenes; direct mode `chooseScene`; Studio-Modus on/off; `take`; local transition guard derived from the event `At` + `durationMs` and the server offset; keys 1–9, Space (on body, on button, in input), Escape order, Ctrl+Z; toggling Studio-Modus with `presence` 1 and 2.
-- Expect: no request while a transition is running locally; Take disabled when preview is null or equals program; payloads are exactly `SwitchProgramRequest{sceneId, transition}` / `TakeRequest{transition}` with the selected transition; key handling equals the prototype (typing excluded, modifier keys ignored); toggling on sets the preview to the next scene (wrapping), toggling off clears the preview only when `presence ≤ 1`; settings written to `flowstudio.studio` / `flowstudio.transition`.
+- Expect: no request while a transition is running locally; Take disabled when preview is null or equals program; payloads are exactly `SwitchProgramRequest{sceneId, transition}` / `TakeRequest{transition}` with the selected transition; key handling equals the prototype (typing excluded, modifier keys ignored); toggling on sets the preview to the next scene (wrapping), toggling off clears the preview only when `presence ≤ 1`; settings written to `studioflow.studio` / `studioflow.transition`.
 
 **INT-SWITCH-01** · P0 · xunit — Switch over REST with the guard
 - Steps: `POST …/program {sceneId, transition:{fade,300}}` then immediately again; wait 300 ms (real time, margin 20 ms) and again; 10 parallel switches to 10 scenes with fade 500.
@@ -1130,7 +1130,7 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **E2E-SWITCH-03** · P1 · pw — Fade duration stepper
 - Steps: press «Blende länger» up to the end and «Blende kürzer» down to the start; switch to «Schnitt»; reload.
-- Expect: values in order «0,2 s», «0,3 s», «0,5 s», «0,8 s», «1 s», «1,5 s», «2 s»; minus disabled at «0,2 s», plus disabled at «2 s»; both disabled and the value muted under «Schnitt»; selection persisted in `flowstudio.transition`; the request body carries the matching `durationMs`.
+- Expect: values in order «0,2 s», «0,3 s», «0,5 s», «0,8 s», «1 s», «1,5 s», «2 s»; minus disabled at «0,2 s», plus disabled at «2 s»; both disabled and the value muted under «Schnitt»; selection persisted in `studioflow.transition`; the request body carries the matching `durationMs`.
 
 **E2E-SWITCH-04** · P0 · pw — A fade always completes; switches during a fade are ignored
 - Steps: duration 2 s; operator A clicks «Szene B», 300 ms later clicks «Szene C» and presses key `3`; operator B (separate Regie) clicks «Szene C» 500 ms after A's switch.
@@ -1138,7 +1138,7 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **E2E-SWITCH-05** · P0 · pw — Studio-Modus
 - Steps: toggle the `Studio-Modus` switch on; click «Szene C»; toggle off; reload with it on.
-- Expect: toast «Studio-Modus an: Preview und Take»; Preview monitor and Take appear, docks and control column do not move (bounding boxes unchanged ±0 px, E2E-DOCK-09); preview defaults to the scene after the program (wrapping to the first after the last) when none is set [GAP-18]; clicking a scene only changes the preview (program and output unchanged); "Änderungen gehen sofort live" hidden; hint «Klick auf eine Szene lädt sie in die Preview. Take schaltet live.»; off: toast «Studio-Modus aus: Szenen schalten direkt live», Preview area shows «Preview aus»; state persists in `flowstudio.studio`.
+- Expect: toast «Studio-Modus an: Preview und Take»; Preview monitor and Take appear, docks and control column do not move (bounding boxes unchanged ±0 px, E2E-DOCK-09); preview defaults to the scene after the program (wrapping to the first after the last) when none is set [GAP-18]; clicking a scene only changes the preview (program and output unchanged); "Änderungen gehen sofort live" hidden; hint «Klick auf eine Szene lädt sie in die Preview. Take schaltet live.»; off: toast «Studio-Modus aus: Szenen schalten direkt live», Preview area shows «Preview aus»; state persists in `studioflow.studio`.
 
 **E2E-SWITCH-06** · P0 · pw — Take
 - Steps: Studio-Modus on, preview «Szene C», program «Szene A»; press `Space` with focus on the page body; click «Take»; Space with focus on a button; Take with preview == program.
@@ -1351,7 +1351,7 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **E2E-SRC-19** · P1 · pw (`pixel7`) — Phone behaviour: wake lock, auto-start, settings, dark mode
 - Steps: stub `navigator.wakeLock`; start camera; hide/show the page (`visibilitychange`); reload; switch 720p/1080p; toggle dark mode; stop.
-- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`flowstudio.sender.settings`); published resolution matches (station «Auflösung» `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `ended` → Regie `ended` (red incident, log «K1 Kamera beendet»); the page in the background (the OS suspends the camera) → slot `paused` → `reconnecting` («K1 verbindet neu»), back in the foreground → `ok` and «wieder da» [DOC-06, spec 4.5].
+- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`studioflow.sender.settings`); published resolution matches (station «Auflösung» `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `ended` → Regie `ended` (red incident, log «K1 Kamera beendet»); the page in the background (the OS suspends the camera) → slot `paused` → `reconnecting` («K1 verbindet neu»), back in the foreground → `ok` and «wieder da» [DOC-06, spec 4.5].
 
 **E2E-SRC-20** · P0 · pw — A returning source keeps its place
 - Steps: scene with K1 at a custom rectangle and z-order; K1 offline 10 s and back; reload the phone.
@@ -1614,12 +1614,12 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 - Expect: per service within its threshold (`T-RESTART-API`, `T-RESTART-LK`, 30 s for postgres/caddy after healthy): all clients reconnect without manual reload; Regie `connection-state=connected`; output playing; stations `ok`; no permanent incident; for `caddy` the media (UDP 7882) keeps flowing throughout; revisions of both Regies equal the server's; logs contain no unexpected errors beyond connection failures; `api`: the graceful restart takes a few seconds (`T-SHUTDOWN`, OBS-01) and writes no «verbindet neu» and no incident for sources whose device comes back (BUG-20), while a source on air whose device does not come back is flagged by the restart watch (spec 12).
 
 **E2E-NET-13** · P0 · pw (`@disruptive`) — Whole stack restart
-- Steps: `docker compose -p fs-e2e restart` (then crash all containers once: `kill -TERM 1` inside each, `kill -QUIT 1` for PostgreSQL [DOC-04]); same clients as -12.
+- Steps: `docker compose -p sf-e2e restart` (then crash all containers once: `kill -TERM 1` inside each, `kill -QUIT 1` for PostgreSQL [DOC-04]); same clients as -12.
 - Expect: all containers return via restart policy, healthy ≤ 90 s; all browsers return without reload within `T-RESTART-STACK`; persistent data intact: scenes, devices recognised with their old credentials, output key unchanged, admin session still valid (Data Protection keys volume), assets served, `LiveSince` unchanged so the LIVE runtime keeps counting [GAP-33]; incident history is empty.
 
 **E2E-NET-14** · P0 · pw — Reconnect with delta and with snapshot
 - Steps: (a) Regie A `setOffline` 5 s while Regie B makes 10 changes; (b) Regie A offline while B makes 520 changes (scene renames via API); (c) restart the API while A is connected; inspect hub frames with `page.on('websocket')` (parse `0x1e` delimited JSON).
-- Expect: (a) A calls `Subscribe` with its last revision and receives `events` (no `snapshot`, no `GET …/snapshot`), UI converges ≤ `T-SYNC-DELTA`; (b) receives `snapshot` (501+ events behind) and converges ≤ 3 s; (c) snapshot after restart; in all cases A's final state equals the API snapshot and `window.__fsStudio.lastSync` is `'delta'|'snapshot'` accordingly.
+- Expect: (a) A calls `Subscribe` with its last revision and receives `events` (no `snapshot`, no `GET …/snapshot`), UI converges ≤ `T-SYNC-DELTA`; (b) receives `snapshot` (501+ events behind) and converges ≤ 3 s; (c) snapshot after restart; in all cases A's final state equals the API snapshot and `window.__sfStudio.lastSync` is `'delta'|'snapshot'` accordingly.
 
 **E2E-NET-15** · P2 · pw (`@disruptive`) — Reconnect storm
 - Steps: 5 Regie contexts, 10 output pages, 6 senders; `docker.restart('api')`.
@@ -1635,7 +1635,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-18** · P1 · pw (`soak`, nightly 30 min; weekly 60 min) — Soak
 - Pre: 3 phones + 2 laptops live, Regie ×2, output ×1 (plus one `debug=1` output), scene set with fades and cuts.
-- Steps: every 20 s a random program switch (alternating cut/fade); every 5 min one phone offline for 8 s; every 10 min one laptop ends and re-shares; sample every 60 s (after `HeapProfiler.collectGarbage`): per page `JSHeapUsedSize`, `Nodes`, `JSEventListeners`, `Documents`, video element count, `window.__fsNet.counts()` (WebSockets, RTCPeerConnections), console errors; api/livekit/postgres/caddy RSS (`docker stats`), `select count(*) from pg_stat_activity`, hub connection count.
+- Steps: every 20 s a random program switch (alternating cut/fade); every 5 min one phone offline for 8 s; every 10 min one laptop ends and re-shares; sample every 60 s (after `HeapProfiler.collectGarbage`): per page `JSHeapUsedSize`, `Nodes`, `JSEventListeners`, `Documents`, video element count, `window.__sfNet.counts()` (WebSockets, RTCPeerConnections), console errors; api/livekit/postgres/caddy RSS (`docker stats`), `select count(*) from pg_stat_activity`, hub connection count.
 - Expect: `T-MEM` thresholds met between minute 10 and the end; video element count == item count of the current scene ± 0; RTCPeerConnection count constant; WebSocket count constant; zero uncaught exceptions; no container restarts (`docker events`); latency p95 at the end ≤ start + 50 ms; revisions of both Regies equal the server's; CSV in `results/soak-<ts>.csv`.
 
 **E2E-NET-19** · P1 · pw — Many sources
@@ -1757,7 +1757,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DEV-21** · P1 · pw — PWA and service worker of the sender
 - Steps: fetch `/join/manifest.webmanifest`; register check; go offline after first load; inspect caches.
-- Expect: manifest `name` «FlowStudio Sender», `scope` and `start_url` `/join/`, `display: standalone`, `theme_color #0d1117`, icons 192/512 (+ maskable) resolvable; service worker at `/join/ngsw-worker.js` with scope `/join/`; app shell loads offline and shows «Verbindet neu …»; requests to `/api`, `/hubs`, `/rtc` never come from the service worker cache; `ngsw.json` served `no-cache`.
+- Expect: manifest `name` «StudioFlow Sender», `scope` and `start_url` `/join/`, `display: standalone`, `theme_color #0d1117`, icons 192/512 (+ maskable) resolvable; service worker at `/join/ngsw-worker.js` with scope `/join/`; app shell loads offline and shows «Verbindet neu …»; requests to `/api`, `/hubs`, `/rtc` never come from the service worker cache; `ngsw.json` served `no-cache`.
 
 **E2E-DEV-22** · P2 · pw — Forced colours and zoom
 - Steps: `forcedColors: 'active'`; viewport 640×360 (≙ 200 % zoom at 1280×720).
@@ -1795,11 +1795,11 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DOCK-02** · P0 · pw — Drag docks to left, bottom, right
 - Steps: pointer-drag the «Stationen» header to the right edge, then to the left edge, then back to the bottom between «Szenen» and «Quellen»; drag with less than 5 px; Escape during a drag; `pointercancel`.
-- Expect: while dragging a ghost follows the pointer, empty zones show dashed drop strips «Rechts andocken»/«Links andocken»/«Unten andocken», occupied zones show a 3 px blue insertion line; drop applies the move, toast «Stationen ist rechts angedockt» + «Layout zurücksetzen»; side zones default to 340 px (right) / 320 px (left); under 5 px nothing happens; Escape/cancel leaves the layout unchanged; `localStorage['flowstudio.layout']` updated (v:1).
+- Expect: while dragging a ghost follows the pointer, empty zones show dashed drop strips «Rechts andocken»/«Links andocken»/«Unten andocken», occupied zones show a 3 px blue insertion line; drop applies the move, toast «Stationen ist rechts angedockt» + «Layout zurücksetzen»; side zones default to 340 px (right) / 320 px (left); under 5 px nothing happens; Escape/cancel leaves the layout unchanged; `localStorage['studioflow.layout']` updated (v:1).
 
 **E2E-DOCK-03** · P1 · pw — Resize with the pointer
 - Steps: drag the horizontal seam above the bottom zone (±100 px, beyond limits), the vertical seam of a side zone, the seam between two docks, the Preview/Program seam (Studio-Modus on); double-click each.
-- Expect: sizes follow the pointer within the limits of UNIT-DOCK-04; seam turns blue 3 px on hover/focus/drag (`box-shadow: 0 0 0 1px #79c0ff`), cursors `row-resize`/`col-resize`; double-click resets that seam to default; persisted in `flowstudio.layout`; stage never shrinks below 160 px.
+- Expect: sizes follow the pointer within the limits of UNIT-DOCK-04; seam turns blue 3 px on hover/focus/drag (`box-shadow: 0 0 0 1px #79c0ff`), cursors `row-resize`/`col-resize`; double-click resets that seam to default; persisted in `studioflow.layout`; stage never shrinks below 160 px.
 
 **E2E-DOCK-04** · P1 · pw — Hide and show docks
 - Steps: «Docks und Layout» popover: uncheck/check each dock; hide all four; re-show.
@@ -1810,8 +1810,8 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Expect: zones, sizes, weights and hidden reset to defaults, toast «Layout zurückgesetzt», storage updated.
 
 **E2E-DOCK-06** · P0 · pw — Corrupted localStorage falls back
-- Steps: `addInitScript` sets `flowstudio.layout` to each value of UNIT-DOCK-02, then load.
-- Expect: default layout is shown, no console errors, subsequent changes overwrite the broken value with valid JSON; `flowstudio.studio` invalid (`"yes"`, `"2"`) → Studio-Modus off; `flowstudio.transition` invalid → fade 0,3 s.
+- Steps: `addInitScript` sets `studioflow.layout` to each value of UNIT-DOCK-02, then load.
+- Expect: default layout is shown, no console errors, subsequent changes overwrite the broken value with valid JSON; `studioflow.studio` invalid (`"yes"`, `"2"`) → Studio-Modus off; `studioflow.transition` invalid → fade 0,3 s.
 
 **E2E-DOCK-07** · P1 · pw — Pairing dock takes the place of Quellen and Eigenschaften
 - Steps: «Gerät koppeln» with default and custom layouts; close with the X button and with Escape.
@@ -1819,7 +1819,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DOCK-08** · P1 · pw — Studio-Modus persistence and layout stability
 - Steps: toggle Studio-Modus with a custom layout; reload; second context.
-- Expect: control column and docks keep their bounding boxes (±0 px) when the switch toggles; `flowstudio.studio` persists across reload; independent per browser context.
+- Expect: control column and docks keep their bounding boxes (±0 px) when the switch toggles; `studioflow.studio` persists across reload; independent per browser context.
 
 **E2E-DOCK-09** · P2 · pw — Per browser, survives logout
 - Steps: two contexts with different layouts; logout/login.
@@ -1920,8 +1920,8 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Expect: output shows them as in E2E-OUT-07/-11; deletion blocked while in use.
 
 **E2E-MEDIA-07** · P1 · pw — Large upload and body limits
-- Steps: upload a 200 MB MP4 (generated with ffmpeg, MaxVideoBytes default 1 GB); watch `docker.stats('api')`; raw TLS requests (headers only) with `Content-Length: 1153433601` (`FLOWSTUDIO_MAX_UPLOAD` 1100 MiB + 1) and `1073741825` (`MEDIA__MAXVIDEOBYTES` 1 GiB + 1) to the asset route; a 5 MB and an 11 MB JSON `POST` to a normal route.
-- Expect: upload succeeds, API RSS grows by ≤ 100 MB (streaming); the first raw request gets 413 from Caddy before any body is sent, the second 413 from the API; the 5 MB JSON request gets 413 from the API (256 KB limit), the 11 MB one from Caddy (`FLOWSTUDIO_MAX_BODY` 10 MB); the 4 MB bandwidth test still passes.
+- Steps: upload a 200 MB MP4 (generated with ffmpeg, MaxVideoBytes default 1 GB); watch `docker.stats('api')`; raw TLS requests (headers only) with `Content-Length: 1153433601` (`STUDIOFLOW_MAX_UPLOAD` 1100 MiB + 1) and `1073741825` (`MEDIA__MAXVIDEOBYTES` 1 GiB + 1) to the asset route; a 5 MB and an 11 MB JSON `POST` to a normal route.
+- Expect: upload succeeds, API RSS grows by ≤ 100 MB (streaming); the first raw request gets 413 from Caddy before any body is sent, the second 413 from the API; the 5 MB JSON request gets 413 from the API (256 KB limit), the 11 MB one from Caddy (`STUDIOFLOW_MAX_BODY` 10 MB); the 4 MB bandwidth test still passes.
 
 **E2E-MEDIA-08** · P2 · pw — Seeking
 - Steps: seek the video in a monitor to 2 s.
@@ -1945,7 +1945,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
 - Steps: run `printf '%s' "$PW" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --admin-password-stdin --env-file <dir>/.env` twice into two directories, once with `--generate-password`, once with `--plain-password`, once without `--node-ip` (auto-detection); invalid inputs (invalid IP, `--tls-mode foo`, password shorter than 12 characters; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
-- Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode, admin user; secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `flowstudio`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); the admin password is stored as `ADMIN__PASSWORDHASH` starting `AQAAAA` with `ADMIN__PASSWORD` empty (the plain password only with `--plain-password`) and is never printed or logged (except the single display of `--generate-password`); `FLOWSTUDIO_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; invalid inputs exit ≠ 0 with a German «Fehler: …» message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets.
+- Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode, admin user; secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `studioflow`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); the admin password is stored as `ADMIN__PASSWORDHASH` starting `AQAAAA` with `ADMIN__PASSWORD` empty (the plain password only with `--plain-password`) and is never printed or logged (except the single display of `--generate-password`); `STUDIOFLOW_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; invalid inputs exit ≠ 0 with a German «Fehler: …» message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets.
 
 **E2E-OPS-03** · P1 · pw (Windows runner) — `setup.ps1`
 - Steps/Expect: as -02 with `setup.ps1` (same options, same results); ACL of `.env` limited to the current user.
@@ -1972,14 +1972,14 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-09** · P0 · pw — `update.sh` refuses while live [GAP-31]
 - Steps: local bare git remote with one extra commit; (a) broadcast `live`, (b) `standby`, (c) `ended`, (d) api container stopped while the other services run, (e) the whole stack stopped; also `--no-pull`, `--backup`, `--force`, and a remote that is not fast-forward.
-- Expect: the script asks the API image: `docker compose exec api dotnet Opten.FlowStudio.Web.dll broadcast-status` (exit 0 = none live, 3 = live, anything else = unknown; [GAP-31]); (a) exit ≠ 0 with «Eine Sendung ist LIVE …», no `git pull`, no rebuild, container ids and uptime unchanged; (b)(c) `git pull --ff-only`, `docker compose up -d --build`, waits until all services are healthy, volumes retained, «Update abgeschlossen.»; (d) refuses (state unknown) unless `--force`; (e) proceeds («Stack läuft nicht, keine Sendung live»); `--backup` writes a `…_vor-update` backup first; a non-fast-forward pull aborts without restarting anything; `--no-pull` rebuilds only.
+- Expect: the script asks the API image: `docker compose exec api dotnet Opten.StudioFlow.Web.dll broadcast-status` (exit 0 = none live, 3 = live, anything else = unknown; [GAP-31]); (a) exit ≠ 0 with «Eine Sendung ist LIVE …», no `git pull`, no rebuild, container ids and uptime unchanged; (b)(c) `git pull --ff-only`, `docker compose up -d --build`, waits until all services are healthy, volumes retained, «Update abgeschlossen.»; (d) refuses (state unknown) unless `--force`; (e) proceeds («Stack läuft nicht, keine Sendung live»); `--backup` writes a `…_vor-update` backup first; a non-fast-forward pull aborts without restarting anything; `--no-pull` rebuilds only.
 
 **E2E-OPS-10** · P2 · pw — Update with a new migration
 - Steps: build a variant image with an extra EF migration; run `update.sh`.
 - Expect: migration applied at API start, data preserved, health green; a downgrade (older image on newer schema) is rejected with a clear log message rather than corrupting data.
 
 **E2E-OPS-11** · P1 · pw — TLS modes
-- Steps: `internal`: HTTPS works with Caddy's local CA, the root certificate is downloadable at `https://<domain>/ca.crt`, an IP listed in `FLOWSTUDIO_EXTRA_HOSTS` works; `dns-cloudflare` without `CF_API_TOKEN`; `acme` on an unreachable domain; `custom` without `./certs/fullchain.pem`; `FLOWSTUDIO_TLS_MODE=foo` (mode names as in `.env.example`, [GAP-16]).
+- Steps: `internal`: HTTPS works with Caddy's local CA, the root certificate is downloadable at `https://<domain>/ca.crt`, an IP listed in `STUDIOFLOW_EXTRA_HOSTS` works; `dns-cloudflare` without `CF_API_TOKEN`; `acme` on an unreachable domain; `custom` without `./certs/fullchain.pem`; `STUDIOFLOW_TLS_MODE=foo` (mode names as in `.env.example`, [GAP-16]).
 - Expect: internal works; a missing token or certificate makes Caddy unhealthy/exit with a clear log line while the other services keep running; unknown mode → startup error naming the variable; no certificate warning in `internal` mode after trusting the CA (manual MAN-05 for real devices).
 
 **E2E-OPS-12** · P0 · pw — Network exposure
@@ -1995,7 +1995,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Expect: no device secret, output key, password, LiveKit secret, JWT, `access_token` or `k` value; no stack traces for expected 4xx; log level default Information; structured templates (no string concatenation of secrets); Caddy access log redacts `access_token`/`k`.
 
 **E2E-OPS-15** · P1 · pw — Admin hash path and startup validation
-- Steps: `dotnet Opten.FlowStudio.Web.dll hash-password` with the password on stdin (in the api image); start the API with that hash; start with neither password nor hash.
+- Steps: `dotnet Opten.StudioFlow.Web.dll hash-password` with the password on stdin (in the api image); start the API with that hash; start with neither password nor hash.
 - Expect: the hash logs in; the process without credentials exits ≠ 0 with a message naming `Admin:PasswordHash`/`Admin:Password` and no secret; the password never appears in `docker inspect` when hashed.
 
 **E2E-OPS-16** · P1 · pw — No external requests at runtime
@@ -2008,7 +2008,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-18** · P1 · pw — Host header and AllowedHosts
 - Steps: request the stack with `Host: evil.example` (direct to the published API port in the test override) and through Caddy with a foreign SNI.
-- Expect: API answers 400 when `AllowedHosts` is restricted to `FLOWSTUDIO_DOMAIN` (the repository default `*` is flagged); Caddy serves no site for a foreign host.
+- Expect: API answers 400 when `AllowedHosts` is restricted to `STUDIOFLOW_DOMAIN` (the repository default `*` is flagged); Caddy serves no site for a foreign host.
 
 **E2E-OPS-19** · P2 · pw — Time zone and clock
 - Steps: compare `date` in containers with the host; Regie clock vs `ServerTime`.
@@ -2062,7 +2062,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **INT-SYNC-08** · P0 · xunit — Contract and surface completeness
 - Steps: run the OpenAPI generation (`npm run gen:contracts`) and diff against the committed `packages/scene-model/src/generated/api.ts`; enumerate endpoints; call each with a minimal valid request as admin/device/output as appropriate.
-- Expect: no drift between ApiSurface, `openapi/flowstudio.json` and the generated TypeScript; operation ids equal the ApiSurface names; **no endpoint answers 501 `Not implemented`** (placeholders replaced); every operation id is exercised by at least one integration test (meta test scanning test names for the operation id).
+- Expect: no drift between ApiSurface, `openapi/studioflow.json` and the generated TypeScript; operation ids equal the ApiSurface names; **no endpoint answers 501 `Not implemented`** (placeholders replaced); every operation id is exercised by at least one integration test (meta test scanning test names for the operation id).
 
 ### 2.13 LK – LiveKit integration
 
@@ -2159,7 +2159,7 @@ Equipment: two access points (same SSID, 5 GHz), a phone sending, Regie and outp
 Equipment: the actual proxy product or an OBS instance (CEF Browser Source), the production domain (or staging), IP of the proxy. Procedure: embed `/o/{slug}?k=…` exactly as in the plan (iframe with `allow="autoplay; fullscreen"`) and as OBS Browser Source (1920×1080; with and without `bg=transparent`); set `frame-ancestors` to the proxy's domain; set the IP restriction to the proxy's egress IP; run 60 min; rotate the key and give the proxy the new link; restart the proxy page. Pass: autoplay without interaction, letterboxing correct in a non-16:9 frame, transparent overlay shows alpha in OBS, restricted IP works (other IP gets «Kein Zugang»), rotation kicks the old session ≤ 2 s, no frozen picture over 60 min, end-to-end latency measured with MAN-08.
 
 **MAN-05 · Real certificates (DNS challenge) and device trust.**
-Equipment: the real domain (e.g. `flowstudio.opten.ch`), DNS provider API token with minimal scope, iOS/Android/Windows/macOS devices without any installed CA. Procedure: `FLOWSTUDIO_TLS_MODE=dns-<provider>` first start; check issuance (staging CA first, then production), the certificate chain, HSTS; open the Regie, `/join` and an invite link on each device; restart the stack (certificate reused from `caddy_data`); simulate renewal (`caddy reload` with a near-expiry staging cert, or wait); revoke/rotate the token and confirm the failure mode is logged clearly; for `internal` mode install the Caddy root (`https://<domain>/ca.crt`) on one device per OS using the documented steps. Pass: no browser warning on any device in `dns` mode; camera/screen permissions are offered (secure context); renewal succeeds without downtime; internal-CA instructions work in ≤ 5 min per device.
+Equipment: the real domain (e.g. `studioflow.opten.ch`), DNS provider API token with minimal scope, iOS/Android/Windows/macOS devices without any installed CA. Procedure: `STUDIOFLOW_TLS_MODE=dns-<provider>` first start; check issuance (staging CA first, then production), the certificate chain, HSTS; open the Regie, `/join` and an invite link on each device; restart the stack (certificate reused from `caddy_data`); simulate renewal (`caddy reload` with a near-expiry staging cert, or wait); revoke/rotate the token and confirm the failure mode is logged clearly; for `internal` mode install the Caddy root (`https://<domain>/ca.crt`) on one device per OS using the documented steps. Pass: no browser warning on any device in `dns` mode; camera/screen permissions are offered (secure context); renewal succeeds without downtime; internal-CA instructions work in ≤ 5 min per device.
 
 **MAN-06 · Real screen-share stop UI.**
 Equipment: Windows 11 + Chrome and Edge, macOS + Chrome, Safari, Firefox. Procedure: share entire screen, a window and a tab; end via the browser's «Stop sharing» bar, via the OS (macOS menu bar), by closing the shared window, by minimising it, by switching tabs; press «Erneut teilen» from the sender; share two screens; share with a laptop sleeping/waking. Pass: every end path raises a red incident «Teilen beendet» ≤ 2 s (window closed/minimised may only freeze the picture – record behaviour); the browser never restarts sharing by itself; «Erneut teilen» works only from a click; the same slot and place in the scene are reused; text on screen stays sharp (`contentHint detail`).
@@ -2174,7 +2174,7 @@ Equipment: a phone camera (or the sender phone) filming a running millisecond cl
 Equipment: 3 phones, 2 laptops, 2 operators, the proxy; 60 min. Script: pair everything with the three methods; build four scenes with templates; run with Studio-Modus off and on; at minute 10 unplug one phone's Wi-Fi for 10 s; minute 20 a speaker stops sharing; minute 30 block/unblock a phone; minute 40 rotate the output key; minute 50 `Sendung beenden` and restart. Pass: no outage goes unnoticed (all six places), no operator-visible error text other than designed ones, picture never black, the proxy needs only the planned manual step (new link), runtime/latency numbers recorded, operators rate the Regie usable at 1440×900 and 1280×720.
 
 **MAN-10 · Server placement: Regie laptop, Docker Desktop, VPS.**
-Procedure: run the stack (a) on the Regie laptop with Docker Desktop (WSL2): check UDP 7882/TCP 7881 reachability from phones, Windows Defender prompts, correct `FLOWSTUDIO_NODE_IP`, behaviour when the laptop sleeps/changes network (expected: stack unavailable, documented); (b) on a Linux server on cable. Pass: phones send via both setups; no extra manual firewall steps beyond the runbook; load on the laptop leaves the Regie responsive (`T-FPS`).
+Procedure: run the stack (a) on the Regie laptop with Docker Desktop (WSL2): check UDP 7882/TCP 7881 reachability from phones, Windows Defender prompts, correct `STUDIOFLOW_NODE_IP`, behaviour when the laptop sleeps/changes network (expected: stack unavailable, documented); (b) on a Linux server on cable. Pass: phones send via both setups; no extra manual firewall steps beyond the runbook; load on the laptop leaves the Regie responsive (`T-FPS`).
 
 **MAN-11 · Camera conflicts on laptops and phones.**
 Procedure: laptop camera as slot while Teams/Zoom opens the camera; unplug a USB webcam; revoke the browser camera permission while live; phone: incoming call, another app takes the camera. Pass: slot becomes `failed` → «kein Bild» (red) after the re-acquire attempts; restarting from the sender returns «wieder da»; no endless loop of permission prompts.
@@ -2295,7 +2295,7 @@ Docker with Compose v2 (`--wait`), Node ≥ 22.12, .NET 10 SDK, Playwright brows
 ## 7. Spec gaps, contradictions and pinned decisions
 
 Each entry: where the sources are silent or disagree, what this plan pins (and tests assert), and what the implementation must provide or decide. When a gap is resolved, update the pin here and the tests that cite it.
-"Spec" = `docs/architecture/implementation-spec.md`; "Plan" = `plan/FlowStudio Architekturplan.html`; "ApiSurface" = `apps/api/src/Opten.FlowStudio.Web/Endpoints/ApiSurface.cs`.
+"Spec" = `docs/architecture/implementation-spec.md`; "Plan" = `plan/StudioFlow Architekturplan.html`; "ApiSurface" = `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs`.
 
 **GAP-01 · Time-based rules can be faked but not configured.** Spec 4.6 (invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min), 5 (lockout 15 min, sliding cookie 12 h), 7 (token TTL 10 min, `empty_timeout` 300 s), 4.2 (fade guard). The working tree injects `TimeProvider` into the services (so expiry tests can use `FakeTimeProvider`), but the durations are `static readonly` constants (`Invite.Lifetime`, `Invite.ReplayWindow`, `PairingRequest.PendingLifetime`/`DecisionLifetime`, `LoginThrottle.Window`/`Lockout`, `PairingRequestStore.MaxPending`), so no short-TTL stack can be built.
 Pin: every duration and limit becomes an option with the spec default; configuration keys: `Pairing:InviteTtl`, `Pairing:RequestTtl`, `Pairing:CredentialsWindow`, `Pairing:RedeemIdempotencyWindow`, `Pairing:Limits:RequestsPerIpPer10Min` (10), `Pairing:Limits:PendingTotal` (20), `Pairing:Limits:RedeemPerIpPer10Min` (20), `Admin:Lockout:*`, `LiveKit:TokenTtl` (LiveKit's own `room.empty_timeout` is set in the `LIVEKIT_CONFIG` block of the compose file). Without them `E2E-PAIR-05/06/07`, `E2E-LK-03`, `E2E-NET-26` and all expiry integration tests cannot run.
@@ -2338,9 +2338,9 @@ Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; im
 **GAP-14 · Content-Security-Policy is not specified.** Spec 10 says "strict CSP (see security review)", but no security-review document exists (`docs/` has only `architecture/`).
 Pin: invariants **I-CSP** (see `E2E-AUTH-09`); the exact policy is to be written in the security review; Angular's inline styles may require `style-src 'unsafe-inline'` (allowed, flagged P2); Safari needs the explicit `wss://<host>` in `connect-src`.
 
-**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__fsStudio|__fsSender`); spec 12 adds: tests prefer roles, labels and visible German text; the two global state views exist only with the opt-in flag `localStorage['flowstudio.testHooks'] = '1'`; there is no `window.__fsOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `flowstudio.sender.v1` (credentials, before pairing the redeem client id), `flowstudio.sender.settings`, sessionStorage `flowstudio.pairing`; Regie localStorage `flowstudio.studio`, `flowstudio.layout`, `flowstudio.transition`; the opt-in flag `flowstudio.testHooks`.
+**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible German text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
 
-**GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `FLOWSTUDIO_PUBLIC_BASE_URL`, `FLOWSTUDIO_SUBNET`, `FLOWSTUDIO_TRUSTED_PROXIES`, `FLOWSTUDIO_MAX_UPLOAD`, `FLOWSTUDIO_MAX_BODY`, `FLOWSTUDIO_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
+**GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `STUDIOFLOW_PUBLIC_BASE_URL`, `STUDIOFLOW_SUBNET`, `STUDIOFLOW_TRUSTED_PROXIES`, `STUDIOFLOW_MAX_UPLOAD`, `STUDIOFLOW_MAX_BODY`, `STUDIOFLOW_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
 Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags.
 
 **GAP-17 · Client-supplied ids and source references.** Spec 4.1 defines id shapes, 4.3 lets `ReplaceSceneItems` carry client item ids and "may keep a source that was deleted later" – without saying how the server distinguishes "kept" from "newly introduced".
@@ -2373,7 +2373,7 @@ Pin: the sequence 0, 300, 600, 1200, 2400, 4800, 5000 (+ jitter 0–250 from the
 **GAP-26 · Output may subscribe to every track.** Plan §7 accepts that the output token can subscribe to all sources (it composes scenes itself), Spec 7 grants `canSubscribe` without per-track limits.
 Pin: the output client subscribes only to sources of scenes (`E2E-OUT-22`); a server-side per-track restriction is not required but should be considered because the output link is a bearer secret that can be extracted from the page.
 
-**GAP-27 · German UI strings the spec does not define.** Login title, labels, error and lockout message; logout action; confirmation text of «Sendung beenden»; reset-broadcast action; connection-lost banner in the Regie; generic request-failure toast; messages for expired/denied/limited pairing and expired invite; «Neue Szene», «Duplizieren», upload and asset-delete controls and errors; slate editor; message composer and offline toast; sender banners for removed device and camera restart; technical-check re-run button; session-expired notice; the shape of `flowstudio.transition`.
+**GAP-27 · German UI strings the spec does not define.** Login title, labels, error and lockout message; logout action; confirmation text of «Sendung beenden»; reset-broadcast action; connection-lost banner in the Regie; generic request-failure toast; messages for expired/denied/limited pairing and expired invite; «Neue Szene», «Duplizieren», upload and asset-delete controls and errors; slate editor; message composer and offline toast; sender banners for removed device and camera restart; technical-check re-run button; session-expired notice; the shape of `studioflow.transition`.
 Pin: tests locate these by role/regex or `data-testid` as written in each entry; implementers must choose the final texts (German CH, «ss», « ») and report them so the tests can assert them exactly. Reported so far (assert exactly): state word «Kamera beendet» for a camera stopped on purpose (screens «Teilen beendet»); Regie element view button «Zur Szene» (accessible name «Auswahl aufheben, zurück zur Szene», tooltip «Auswahl aufheben (Esc)»), upload toast action «Zur Szene hinzufügen»; logout failure toast «Abmelden hat nicht geklappt. {Grund}»; Regie strip without an active production «Keine aktive Produktion gefunden.», when the server cannot be reached «Der Server ist nicht erreichbar. Die Regie verbindet neu …»; toasts «K1 gesperrt und getrennt» / «K1 entsperrt» (codes only); sender slot errors «Ein Handy kann keinen Bildschirm teilen. Dafür bitte einen Laptop koppeln.», «Pro Gerät sind höchstens 9 Bildschirme möglich.», «Dieses Gerät hat schon eine Kamera.», «Die Kamera eines Handys lässt sich nicht entfernen. Die Regie kann das ganze Gerät entfernen.»; database outage «Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.» (ProblemDetails `detail`, title «Vorübergehend nicht verfügbar»); binding errors «Ungültiger Wert.» per field.
 
 **GAP-28 · Reduced motion scope.** Spec 8.3 gives the renderer a `reducedMotion` option; the Regie must honour `prefers-reduced-motion`; whether the *output page* does is open.
@@ -2385,7 +2385,7 @@ Pin: battery 0–100, loss 0–100, bitrate/fps/size ≥ 0 else `null`; ≤ 10 s
 **GAP-30 · Regie-Chat semantics.** Not defined: text trimming, behaviour for blocked/offline devices, queueing.
 Pin: trimmed 1–140 chars; always 202; delivered only to a connected device, never queued; the Regie shows a toast when the device is offline.
 
-**GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `dotnet Opten.FlowStudio.Web.dll hash-password`; `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.FlowStudio.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
+**GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `dotnet Opten.StudioFlow.Web.dll hash-password`; `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.StudioFlow.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
 Pin: the API image provides `broadcast-status` (exit codes 0/3, other = unknown) and spec 5 is extended; the scripts refuse while live or unknown unless `--force`; backup folders contain `database.dump`, `media.tar.gz`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt`, `SHA256SUMS` (suffix `-2` on a name clash); `restore.sh <dir>` verifies the checksums, writes a `…_vor-restore` safety backup, restores the database into a new database before swapping, and asks for confirmation unless `--yes`.
 
 **GAP-32 · Database outage behaviour.** Spec 5 defines `/health/live` and `/health/ready` but not behaviour of writes and hubs while PostgreSQL is down.
@@ -2393,7 +2393,7 @@ Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE
 
 **GAP-33 · `LiveSince` across restarts.** Pin: persisted with the production; the LIVE runtime continues after a restart.
 
-**GAP-34 · Local storage schemas.** Spec 9.1 names `flowstudio.studio`, `flowstudio.layout` (v1) and `flowstudio.transition` but only the layout shape exists (prototype). Pin: `flowstudio.transition` = `{"kind":"cut"|"fade","durationMs":<allowed value>}`; layout numeric fields are validated and clamped on load (the prototype does not validate them).
+**GAP-34 · Local storage schemas.** Spec 9.1 names `studioflow.studio`, `studioflow.layout` (v1) and `studioflow.transition` but only the layout shape exists (prototype). Pin: `studioflow.transition` = `{"kind":"cut"|"fade","durationMs":<allowed value>}`; layout numeric fields are validated and clamped on load (the prototype does not validate them).
 
 **GAP-35 · Device removal while connected.** `deleteDevice` is in ApiSurface; the sender's reaction is undefined. Pin: LiveKit removal + hub close; the sender shows a terminal «entfernt»-type state with a way to pair again and does not reconnect in a loop.
 

@@ -30,13 +30,13 @@ export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
  * dock), the focus moves to the dock heading «Szene», so keyboard users continue from the top of the scene view.
  */
 @Component({
-  selector: 'fs-properties-dock',
+  selector: 'sf-properties-dock',
   imports: [DockFrameComponent, ElementInspectorComponent, IconComponent, SceneInspectorComponent],
   template: `
-    <fs-dock-frame dock="insp" [title]="title()" [subtitle]="subtitle()">
+    <sf-dock-frame dock="insp" [title]="title()" [subtitle]="subtitle()">
       @if (showsElement()) {
         <button
-          fsDockActions
+          sfDockActions
           class="c-btn c-btn--sm"
           type="button"
           aria-keyshortcuts="Escape"
@@ -44,7 +44,7 @@ export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
           [title]="backTitle"
           (click)="backToScene()"
         >
-          <svg fsIcon="close" [size]="14"></svg>Zur Szene
+          <svg sfIcon="close" [size]="14"></svg>Zur Szene
         </button>
       }
       @if (loading()) {
@@ -52,15 +52,15 @@ export const BACK_TO_SCENE_TITLE = 'Auswahl aufheben (Esc)';
           <strong>Eigenschaften werden geladen …</strong>Die Regie verbindet mit dem Server.
         </div>
       } @else if (editor.selectedItem(); as item) {
-        <fs-element-inspector [item]="item" />
+        <sf-element-inspector [item]="item" />
       } @else if (editor.editScene(); as scene) {
-        <fs-scene-inspector [scene]="scene" />
+        <sf-scene-inspector [scene]="scene" />
       } @else {
         <div class="c-empty">
           <strong>Keine Szene.</strong>Unter Szenen mit «+ Szene» eine Szene anlegen.
         </div>
       }
-    </fs-dock-frame>
+    </sf-dock-frame>
   `,
   host: { style: 'display: contents', '(keydown)': 'onKeyDown($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,

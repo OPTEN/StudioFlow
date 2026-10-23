@@ -15,7 +15,7 @@ import {
  * E2E-SCENE-06: Auto-Grid reflow when a camera drops (docs/testing.md 2.3). Four phones publish a camera into an Auto-Grid scene
  * that is on air; one of them goes away. After its hold time the other three fill a 2 + 1 grid, when it is back the grid
  * has four tiles again, and the pictures of the three others never restart (same `<video>` elements, frames keep coming).
- * The output page and the Regie's Program monitor are read through their DOM (the renderer's `.fs-r-item` rectangles in
+ * The output page and the Regie's Program monitor are read through their DOM (the renderer's `.sf-r-item` rectangles in
  * canvas pixels).
  *
  * Two ways for the camera to go away: the sender stops it («Kamera stoppen», the track is unpublished at once: the reflow
@@ -141,7 +141,7 @@ test.describe('REGIE auto-grid', () => {
         const surviving = await frame.evaluate(() =>
           [...document.querySelectorAll<HTMLVideoElement>('#output video')].map((video) => ({
             mark: (video as unknown as { __mark?: number }).__mark ?? 0,
-            id: video.closest('.fs-r-item')?.getAttribute('data-item-id') ?? '',
+            id: video.closest('.sf-r-item')?.getAttribute('data-item-id') ?? '',
             ready: video.readyState,
             playing: !video.paused,
           })),
@@ -157,7 +157,7 @@ test.describe('REGIE auto-grid', () => {
         const counters = () =>
           frame.evaluate(() =>
             [...document.querySelectorAll<HTMLVideoElement>('#output video')].map((video) => ({
-              id: video.closest('.fs-r-item')?.getAttribute('data-item-id') ?? '',
+              id: video.closest('.sf-r-item')?.getAttribute('data-item-id') ?? '',
               frames: video.getVideoPlaybackQuality().totalVideoFrames,
             })),
           );
@@ -189,7 +189,7 @@ test.describe('REGIE auto-grid', () => {
         const after = await frame.evaluate(() =>
           [...document.querySelectorAll<HTMLVideoElement>('#output video')].map((video) => ({
             mark: (video as unknown as { __mark?: number }).__mark ?? 0,
-            id: video.closest('.fs-r-item')?.getAttribute('data-item-id') ?? '',
+            id: video.closest('.sf-r-item')?.getAttribute('data-item-id') ?? '',
           })),
         );
         for (const id of [firstId, secondId, thirdId])

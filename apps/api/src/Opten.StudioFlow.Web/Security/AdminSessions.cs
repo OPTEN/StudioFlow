@@ -3,10 +3,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Web.Hubs;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Web.Hubs;
 
-namespace Opten.FlowStudio.Web.Security;
+namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>
 /// Server-side end of admin sessions (GAP-04b). Every login gets a random session id claim; logout puts that id on an
@@ -25,7 +25,7 @@ public sealed class AdminSessions(HubConnectionRegistry hubs, TimeProvider clock
 
     /// <summary>The principal of a new session.</summary>
     public static ClaimsPrincipal Principal(string username) => new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.Name, username), new Claim(FlowStudioClaims.SessionId, NewSessionId())],
+        [new Claim(ClaimTypes.Name, username), new Claim(StudioFlowClaims.SessionId, NewSessionId())],
         AuthSchemes.Admin));
 
     /// <summary>True when the session was ended by a logout.</summary>
@@ -67,7 +67,7 @@ public sealed class AdminSessions(HubConnectionRegistry hubs, TimeProvider clock
         var services = context.HttpContext.RequestServices;
         var admin = services.GetRequiredService<IAdminCredentials>();
         var sessions = services.GetRequiredService<AdminSessions>();
-        var sessionId = context.Principal?.FindFirstValue(FlowStudioClaims.SessionId);
+        var sessionId = context.Principal?.FindFirstValue(StudioFlowClaims.SessionId);
         if (!string.Equals(context.Principal?.Identity?.Name, admin.Username, StringComparison.Ordinal)
             || string.IsNullOrEmpty(sessionId)
             || sessions.IsRevoked(sessionId))

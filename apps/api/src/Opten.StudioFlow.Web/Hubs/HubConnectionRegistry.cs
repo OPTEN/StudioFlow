@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR;
-using Opten.FlowStudio.Core.Application;
+using Opten.StudioFlow.Core.Application;
 
-namespace Opten.FlowStudio.Web.Hubs;
+namespace Opten.StudioFlow.Web.Hubs;
 
 /// <summary>
 /// The live hub connections of all three hubs. Every connection has its own ordered outbox with a bounded length

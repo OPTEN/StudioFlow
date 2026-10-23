@@ -6,8 +6,8 @@ import {
   type LocalSlotState,
   type MediaSessionState,
   type SlotFailure,
-} from '@flowstudio/media-client';
-import { backoffDelay, type HubState } from '@flowstudio/realtime-client';
+} from '@studioflow/media-client';
+import { backoffDelay, type HubState } from '@studioflow/realtime-client';
 import {
   HUB,
   screenSlot,
@@ -21,7 +21,7 @@ import {
   type TallyDto,
   type TallyState,
   type TechCheckDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { toApiError, type ApiError } from '../core/api-error';
 import { APP_VERSION } from '../core/app-version';
 import { CredentialsService } from '../core/credentials.service';
@@ -97,7 +97,7 @@ export interface SlotView {
   readonly state: LocalSlotState;
   /** German explanation (failure, cancelled or ended share). */
   readonly message: string | null;
-  /** Cause of a `failed` slot or a cancelled share (codes of `@flowstudio/media-client`), else null. */
+  /** Cause of a `failed` slot or a cancelled share (codes of `@studioflow/media-client`), else null. */
   readonly failure: SlotFailure | null;
 }
 
@@ -164,7 +164,7 @@ export class DeviceSessionService {
   private readonly network = inject(NetworkStatusService);
   private readonly notices = inject(NoticeService);
   private readonly document = inject(DOCUMENT);
-  /** Removes `window.__fsSender` again (no-op while it is not installed). */
+  /** Removes `window.__sfSender` again (no-op while it is not installed). */
   private removeTestHook: () => void = () => undefined;
   private readonly hubFactory = inject(DEVICE_HUB_FACTORY);
   private readonly mediaFactory = inject(SENDER_MEDIA_FACTORY);
@@ -1232,8 +1232,8 @@ export class DeviceSessionService {
   }
 
   /**
-   * `window.__fsSender` (spec 12, docs/testing.md 1.7): a read-only view of the slot states, the media state and the
-   * session id for the E2E tests. Only with the opt-in flag `localStorage['flowstudio.testHooks'] = '1'`.
+   * `window.__sfSender` (spec 12, docs/testing.md 1.7): a read-only view of the slot states, the media state and the
+   * session id for the E2E tests. Only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`.
    */
   private installTestHook(): void {
     const view = this.document.defaultView;
@@ -1242,7 +1242,7 @@ export class DeviceSessionService {
     }
     const session = this;
     this.removeTestHook();
-    this.removeTestHook = exposeTestHook(view, '__fsSender', {
+    this.removeTestHook = exposeTestHook(view, '__sfSender', {
       slots: (): Record<string, string> =>
         Object.fromEntries(this.slots().map((slot) => [slot.slot, slot.state])),
       rtc: (): string => toRtcState(this.mediaState()),

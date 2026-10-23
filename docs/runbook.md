@@ -1,6 +1,6 @@
-# FlowStudio – Betriebshandbuch (Runbook)
+# StudioFlow – Betriebshandbuch (Runbook)
 
-Für alle, die FlowStudio vor Ort oder auf einer VPS betreiben: einrichten, starten, sichern, aktualisieren und im
+Für alle, die StudioFlow vor Ort oder auf einer VPS betreiben: einrichten, starten, sichern, aktualisieren und im
 Webinar schnell reagieren. Technische Details stehen in `docs/architecture/implementation-spec.md` (Abschnitt 10),
 alle Variablen in `.env.example`.
 
@@ -39,8 +39,8 @@ Zwei Betriebsarten:
   `/join` in 10 Minuten). Für den Betrieb deshalb einen Linux-Server bevorzugen.
 - **Netz vor Ort:** eigenes WLAN (5 GHz) für die Handys, ohne Client-Isolation («AP isolation», Gäste-WLAN), Server
   und Regie-Laptop per Kabel. Der Server bekommt im Router eine feste IP (DHCP-Reservierung): LiveKit gibt diese IP
-  den Geräten weiter (`FLOWSTUDIO_NODE_IP`).
-- **Domain:** eine Subdomain, z. B. `flowstudio.opten.ch`, bei einem DNS-Anbieter mit API (siehe Abschnitt 4).
+  den Geräten weiter (`STUDIOFLOW_NODE_IP`).
+- **Domain:** eine Subdomain, z. B. `studioflow.opten.ch`, bei einem DNS-Anbieter mit API (siehe Abschnitt 4).
 
 Nach dem Klonen auf Linux die Skripte ausführbar machen, falls nötig: `chmod +x *.sh`.
 
@@ -64,17 +64,17 @@ Nicht veröffentlicht und nie freigeben: 7880 (LiveKit-Signalisierung, nur über
   Freigaben für Docker Desktop – zulassen. Falls Geräte nicht verbinden, Regeln anlegen (PowerShell als Administrator):
 
   ```powershell
-  New-NetFirewallRule -DisplayName 'FlowStudio HTTPS' -Direction Inbound -Protocol TCP -LocalPort 80,443 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'FlowStudio HTTP/3' -Direction Inbound -Protocol UDP -LocalPort 443 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'FlowStudio Medien TCP' -Direction Inbound -Protocol TCP -LocalPort 7881 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'FlowStudio Medien UDP' -Direction Inbound -Protocol UDP -LocalPort 7882 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow HTTPS' -Direction Inbound -Protocol TCP -LocalPort 80,443 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow HTTP/3' -Direction Inbound -Protocol UDP -LocalPort 443 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow Medien TCP' -Direction Inbound -Protocol TCP -LocalPort 7881 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow Medien UDP' -Direction Inbound -Protocol UDP -LocalPort 7882 -Profile Private -Action Allow
   ```
 
-- **VPS:** dieselben Ports in der Firewall des Anbieters öffnen. `FLOWSTUDIO_NODE_IP` ist dann die öffentliche IP.
+- **VPS:** dieselben Ports in der Firewall des Anbieters öffnen. `STUDIOFLOW_NODE_IP` ist dann die öffentliche IP.
 
 ## 4. DNS und Zertifikat
 
-Browser geben Kamera und Bildschirm nur über HTTPS frei – auch im WLAN. Der TLS-Modus steht in `FLOWSTUDIO_TLS_MODE`.
+Browser geben Kamera und Bildschirm nur über HTTPS frei – auch im WLAN. Der TLS-Modus steht in `STUDIOFLOW_TLS_MODE`.
 
 | Modus | Wann | Was nötig ist |
 |---|---|---|
@@ -85,13 +85,13 @@ Browser geben Kamera und Bildschirm nur über HTTPS frei – auch im WLAN. Der T
 
 ### 4.1 Subdomain auf die interne IP
 
-Beim DNS-Anbieter einen A-Record anlegen: `flowstudio.opten.ch` → `192.168.1.50` (die LAN-IP des Servers). Das ist
+Beim DNS-Anbieter einen A-Record anlegen: `studioflow.opten.ch` → `192.168.1.50` (die LAN-IP des Servers). Das ist
 unbedenklich: die Adresse ist nur im eigenen Netz erreichbar.
 
 - Manche Router verwerfen DNS-Antworten mit privaten Adressen («DNS-Rebind-Schutz», z. B. FRITZ!Box, pfSense).
   Dann für die Domain eine Ausnahme eintragen (FRITZ!Box: Heimnetz › Netzwerk › Netzwerkeinstellungen ›
   DNS-Rebind-Schutz) oder im Router einen lokalen DNS-Eintrag anlegen.
-- Prüfen von einem Gerät im WLAN: `nslookup flowstudio.opten.ch` muss die interne IP liefern.
+- Prüfen von einem Gerät im WLAN: `nslookup studioflow.opten.ch` muss die interne IP liefern.
 
 ### 4.2 DNS-Challenge pro Anbieter
 
@@ -115,19 +115,19 @@ Das Zertifikat holt Caddy beim ersten Start; Erneuerung automatisch. Kontrolle:
 Für Hostpoint und cyon gibt es kein Caddy-Modul. Die Lösung: nur den Prüfeintrag `_acme-challenge` per CNAME an eine
 Zone bei deSEC (kostenlos) oder Cloudflare delegieren. Der A-Record bleibt beim bisherigen Anbieter.
 
-1. Bei [deSEC](https://desec.io) ein Konto und eine Domain anlegen, z. B. `flowstudio-opten.dedyn.io`, und einen
+1. Bei [deSEC](https://desec.io) ein Konto und eine Domain anlegen, z. B. `studioflow-opten.dedyn.io`, und einen
    Token erstellen.
 2. Beim bisherigen Anbieter (Zone `opten.ch`) einen CNAME anlegen:
-   `_acme-challenge.flowstudio` → `_acme-challenge.flowstudio-opten.dedyn.io.`
+   `_acme-challenge.studioflow` → `_acme-challenge.studioflow-opten.dedyn.io.`
 3. Setup mit Delegation:
 
    ```bash
-   DESEC_TOKEN=… ./setup.sh --domain flowstudio.opten.ch --tls-mode dns-desec \
-       --dns-challenge-domain _acme-challenge.flowstudio-opten.dedyn.io
+   DESEC_TOKEN=… ./setup.sh --domain studioflow.opten.ch --tls-mode dns-desec \
+       --dns-challenge-domain _acme-challenge.studioflow-opten.dedyn.io
    ```
 
-   (Windows: `$env:DESEC_TOKEN = '…'; ./setup.ps1 -Domain flowstudio.opten.ch -TlsMode dns-desec -DnsChallengeDomain _acme-challenge.flowstudio-opten.dedyn.io`)
-4. Prüfen: `nslookup -type=CNAME _acme-challenge.flowstudio.opten.ch` zeigt das Ziel bei deSEC.
+   (Windows: `$env:DESEC_TOKEN = '…'; ./setup.ps1 -Domain studioflow.opten.ch -TlsMode dns-desec -DnsChallengeDomain _acme-challenge.studioflow-opten.dedyn.io`)
+4. Prüfen: `nslookup -type=CNAME _acme-challenge.studioflow.opten.ch` zeigt das Ziel bei deSEC.
 
 Mit Cloudflare genauso (`dns-cloudflare`, CNAME-Ziel in einer Zone bei Cloudflare).
 
@@ -146,18 +146,18 @@ Download auf dem Gerät: `https://<domain>/ca.crt` (die Zertifikatswarnung beim 
   Anmeldedaten › Zertifikat installieren › **CA-Zertifikat** › Datei wählen. Chrome vertraut ihr danach.
 - **Windows:** Datei doppelklicken › Zertifikat installieren › Lokaler Computer › «Alle Zertifikate in folgendem
   Speicher speichern» › Vertrauenswürdige Stammzertifizierungsstellen. Oder als Administrator:
-  `certutil -addstore -f Root flowstudio-root-ca.crt`.
+  `certutil -addstore -f Root studioflow-root-ca.crt`.
 - **macOS:** Datei doppelklicken › Schlüsselbund «System» › Zertifikat öffnen › Vertrauen › «Immer vertrauen».
 - **Firefox** (eigener Zertifikatsspeicher, falls die Warnung bleibt): Einstellungen › Datenschutz & Sicherheit ›
   Zertifikate anzeigen › Zertifizierungsstellen › Importieren › «Dieser CA vertrauen, um Websites zu identifizieren».
 
-Zugriff per IP statt Name: `--extra-hosts 192.168.1.50` bei `setup` (setzt auch `FLOWSTUDIO_DEFAULT_SNI`), dann
+Zugriff per IP statt Name: `--extra-hosts 192.168.1.50` bei `setup` (setzt auch `STUDIOFLOW_DEFAULT_SNI`), dann
 gilt das Zertifikat auch für `https://192.168.1.50`. Oder gleich `--domain 192.168.1.50`.
 
 ## 5. Einrichten
 
 ```bash
-git clone <repo> flowstudio && cd flowstudio
+git clone <repo> studioflow && cd studioflow
 ./setup.sh                      # Linux/macOS (Git Bash geht auch)
 pwsh ./setup.ps1                # Windows
 docker compose up -d --build    # erster Start: baut die Images (einige Minuten)
@@ -165,7 +165,7 @@ docker compose ps               # alle vier Dienste «healthy»?
 ```
 
 `setup` fragt: LAN-IPv4 (automatisch erkannt, bestätigen), TLS-Modus (+ E-Mail und Token), Domain, weitere Adressen
-(nur `internal`), Origins für das Einbetten des Outputs (`FLOWSTUDIO_FRAME_ANCESTORS`, z. B. die Domain des Proxys),
+(nur `internal`), Origins für das Einbetten des Outputs (`STUDIOFLOW_FRAME_ANCESTORS`, z. B. die Domain des Proxys),
 Admin-Benutzer und Passwort (zweimal verdeckt, oder leer lassen für ein erzeugtes Passwort, das genau einmal
 angezeigt wird). Es erzeugt LiveKit-Schlüssel und Datenbank-Passwort, baut das API-Image und speichert nur den
 **Hash** des Passworts. Die `.env` bekommt die Rechte 600.
@@ -196,7 +196,7 @@ Produktion «Webinar» an.
 - Alle Container haben `restart: unless-stopped` und starten nach einem Absturz oder Neustart von selbst.
 - Logs sind pro Container auf 5 × 10 MB begrenzt. Tokens, Output-Schlüssel und Einladungslinks werden in den
   Caddy-Logs geschwärzt (`REDACTED`).
-- Healthcheck im Detail: `docker inspect --format '{{json .State.Health}}' flowstudio-api-1`.
+- Healthcheck im Detail: `docker inspect --format '{{json .State.Health}}' studioflow-api-1`.
 
 ## 7. Sicherung und Wiederherstellung
 
@@ -214,10 +214,10 @@ ein anderes Gerät kopieren.
 Automatisch jede Nacht (Linux, `crontab -e`):
 
 ```cron
-15 3 * * * cd /opt/flowstudio && ./backup.sh --keep 14 >> backups/backup.log 2>&1
+15 3 * * * cd /opt/studioflow && ./backup.sh --keep 14 >> backups/backup.log 2>&1
 ```
 
-Windows: Aufgabenplanung › Aufgabe erstellen › Aktion `pwsh.exe -NoProfile -File C:\flowstudio\backup.ps1 -Keep 14`.
+Windows: Aufgabenplanung › Aufgabe erstellen › Aktion `pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`.
 
 Wiederherstellen (`./restore.sh` / `restore.ps1`): prüft die Prüfsummen, fragt nach (ausser `--yes`), legt zuerst
 eine Sicherung des aktuellen Stands an (`backups/…_vor-restore`), stoppt API und Caddy, spielt die Datenbank in eine
@@ -255,13 +255,13 @@ Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung 
 - [ ] `docker compose ps`: alle Dienste «healthy». Zertifikat gültig (Regie lädt ohne Warnung).
 - [ ] Szenen, Fallbacks pro Element und Slates («Gleich geht's los», «Danke fürs Zuschauen») vorbereitet.
 - [ ] Output-Link beim Proxy getestet: Seite lädt im iframe, Bild läuft, die Domain des Proxys steht in
-      `FLOWSTUDIO_FRAME_ANCESTORS`; falls IP-Sperre aktiv: Proxy-IP eingetragen (auf Docker Desktop sieht die API
+      `STUDIOFLOW_FRAME_ANCESTORS`; falls IP-Sperre aktiv: Proxy-IP eingetragen (auf Docker Desktop sieht die API
       nur die interne Docker-Adresse – die IP-Sperre funktioniert zuverlässig nur auf einem Linux-Server).
 
 **Vor Ort, 60 Minuten vorher**
 
 - [ ] Server und Regie-Laptop **per Kabel** am Router; Handys im **5-GHz**-WLAN ohne Gäste und ohne
-      Client-Isolation; der Server hat seine feste IP (`FLOWSTUDIO_NODE_IP`).
+      Client-Isolation; der Server hat seine feste IP (`STUDIOFLOW_NODE_IP`).
 - [ ] Handys **am Ladekabel**, fest montiert, «Nicht stören» an, Energiesparmodus aus, automatische Sperre aus.
 - [ ] Geräte koppeln (Handys per QR-Code, Laptops per `/join` mit Prüfcode oder Einladungslink).
 - [ ] **Technik-Check** in jedem Sender: Kamera, Netzwerk, Bandbreite (≥ 6 Mbit/s gut, ≥ 3 Mbit/s knapp).
@@ -276,7 +276,7 @@ Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung 
 
 ## 10. Was tun, wenn …
 
-| Ereignis | FlowStudio reagiert von selbst | Beim Proxy | Was tun |
+| Ereignis | StudioFlow reagiert von selbst | Beim Proxy | Was tun |
 |---|---|---|---|
 | Ein Handy verliert kurz das WLAN | ICE-Restart, die Session bleibt; die Station blinkt amber «verbindet neu» | kurzes Standbild (≈ 1–3 s) | Nichts. Danach «wieder da · war 9 s weg» mit «Gesehen» bestätigen. Dauert es länger als ≈ 30 s: Handy prüfen (WLAN, Sender-Seite im Vordergrund, Akku); bis dahin eine Szene ohne diese Kamera nehmen – nach der Haltezeit greift der Fallback bzw. das abgedunkelte Standbild. |
 | Anruf oder andere App belegt die Kamera | Sender fordert die Kamera neu an und publiziert neu (3 Versuche) | Standbild, dann wieder live | Anruf beenden/ablehnen, die Sender-Seite wieder in den Vordergrund holen. Zeigt die Station «kein Bild»: Kamera in der Sender-Seite neu starten oder die Seite neu laden. Vorbeugen: «Nicht stören». |
@@ -287,7 +287,7 @@ Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung 
 | API-Neustart oder Update | die API trennt beim Herunterfahren alle Hub-Verbindungen sofort (Neustart in wenigen Sekunden, ohne «verbindet neu»); SignalR verbindet neu, der Zustand wird per Version abgeglichen; Medien laufen weiter. Kommt ein Gerät mit einer Quelle im Program oder in der Preview nicht innert 15 s zurück, meldet die Regie es («verbindet neu») | nichts | Nichts. (Updates trotzdem nie während einer Sendung.) |
 | Die Datenbank (PostgreSQL) ist weg | Befehle der Regie scheitern innert weniger Sekunden mit «Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.»; Hubs, Output und Medien laufen weiter; ist die Datenbank zurück, funktioniert alles wieder ohne API-Neustart | nichts | `docker compose ps` / `docker compose logs --tail 200 postgres`; `docker compose start postgres`. Danach den Befehl wiederholen. |
 | Ein Container stürzt ab | Docker startet ihn neu; alle Clients verbinden sich selbst neu | Standbild, einige Sekunden (LiveKit) | `docker compose ps`; startet ein Dienst dauernd neu («Restarting»): `docker compose logs --tail 200 <dienst>` und Abschnitt 11. |
-| Der ganze Server startet neu | alle Container starten automatisch, alle Geräte kommen von selbst zurück | Unterbruch, bis der Server wieder da ist | Windows: anmelden, damit Docker Desktop startet. Warten, bis `docker compose ps` alles «healthy» zeigt. Hat der Server eine neue IP bekommen: `FLOWSTUDIO_NODE_IP` in `.env` anpassen, `docker compose up -d`. |
+| Der ganze Server startet neu | alle Container starten automatisch, alle Geräte kommen von selbst zurück | Unterbruch, bis der Server wieder da ist | Windows: anmelden, damit Docker Desktop startet. Warten, bis `docker compose ps` alles «healthy» zeigt. Hat der Server eine neue IP bekommen: `STUDIOFLOW_NODE_IP` in `.env` anpassen, `docker compose up -d`. |
 | Ein Gerät wird in einem zweiten Tab geöffnet | der alte Tab wird getrennt und bleibt aus («In einem anderen Tab geöffnet»), kein Ping-Pong | nichts | Im gewünschten Tab «Hier weitermachen». |
 
 ## 11. Fehlersuche
@@ -307,7 +307,7 @@ Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung 
 
 **Die Seite lädt, aber kein Bild («verbindet …»)**
 
-1. `FLOWSTUDIO_NODE_IP` falsch oder veraltet: `docker compose logs livekit | grep nodeIP` zeigt die angekündigte
+1. `STUDIOFLOW_NODE_IP` falsch oder veraltet: `docker compose logs livekit | grep nodeIP` zeigt die angekündigte
    IP. Sie muss die aktuelle LAN-IP des Servers sein (nicht 127.0.0.1, nicht eine Docker- oder WSL-Adresse).
    Korrigieren in `.env`, dann `docker compose up -d`.
 2. Medienports: 7882/udp und 7881/tcp freigegeben (Abschnitt 3)? Test: `Test-NetConnection <ip> -Port 7881`.
@@ -329,13 +329,13 @@ Ablauf: Sendestatus prüfen (`broadcast-status` der API) → optional Sicherung 
 - Server oder Regie über WLAN statt Kabel? Handys im 2,4-GHz-Band? Überlastetes WLAN (Abschnitt 10)?
 - Medien über TCP statt UDP (7882/udp blockiert): in Chrome `chrome://webrtc-internals` › aktives Candidate-Paar
   zeigt `udp` oder `tcp`.
-- Was der Proxy an Puffer dazufügt, liegt ausserhalb von FlowStudio.
+- Was der Proxy an Puffer dazufügt, liegt ausserhalb von StudioFlow.
 
 ### Zertifikat wird nicht ausgestellt (dns-*, acme)
 
 - `docker compose logs caddy | grep -i -E "acme|challenge|obtain|error"`.
 - Token und Rechte des Anbieters (Abschnitt 4.2); Token in `.env` ohne Leerzeichen am Ende.
-- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` zeigt das Ziel; `FLOWSTUDIO_DNS_CHALLENGE_DOMAIN`
+- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` zeigt das Ziel; `STUDIOFLOW_DNS_CHALLENGE_DOMAIN`
   stimmt genau mit dem Ziel überein.
 - Modus `acme`: 80/tcp und 443/tcp aus dem Internet erreichbar, A-Record auf die öffentliche IP.
 - Nach mehreren Fehlversuchen sperrt Let's Encrypt für eine Stunde; Caddy versucht es selbst weiter (auch bei
@@ -367,7 +367,7 @@ Die Einstellung bleibt bis `clear` oder bis der LiveKit-Container neu erstellt w
 - `.env`, `backups/` und das Volume `caddy_data` enthalten Secrets und private Schlüssel: nie weitergeben, Backups
   verschlüsselt oder an einem geschützten Ort aufbewahren.
 - Nur die Ports aus Abschnitt 3 freigeben. API, Datenbank und LiveKit-Signalisierung sind nur über Caddy erreichbar.
-- `FLOWSTUDIO_TRUSTED_PROXIES` nie auf das LAN setzen – sonst lässt sich die IP-Sperre des Outputs mit einem
+- `STUDIOFLOW_TRUSTED_PROXIES` nie auf das LAN setzen – sonst lässt sich die IP-Sperre des Outputs mit einem
   gefälschten `X-Forwarded-For` umgehen.
 - Den Output-Link nur dem Proxy geben; bei Verdacht in der Regie den Schlüssel neu erzeugen.
-- Betriebssystem und Docker aktuell halten; FlowStudio-Updates nach Abschnitt 8.
+- Betriebssystem und Docker aktuell halten; StudioFlow-Updates nach Abschnitt 8.

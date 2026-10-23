@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { LIMITS, type DeviceDto } from '@flowstudio/scene-model';
+import { LIMITS, type DeviceDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
 import { QUICK_MESSAGES, StationCommandsService } from './station-commands.service';
 
@@ -20,7 +20,7 @@ import { QUICK_MESSAGES, StationCommandsService } from './station-commands.servi
  * banner. Escape closes the composer. Sending is locked while a message is in flight.
  */
 @Component({
-  selector: 'fs-message-composer',
+  selector: 'sf-message-composer',
   imports: [IconComponent, ReactiveFormsModule],
   template: `
     <form class="c-composer" (submit)="send($event)">
@@ -36,7 +36,7 @@ import { QUICK_MESSAGES, StationCommandsService } from './station-commands.servi
           (keydown.escape)="onEscape($event)"
         />
         <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy() || !canSend()">
-          <svg fsIcon="send" [size]="14"></svg>Senden
+          <svg sfIcon="send" [size]="14"></svg>Senden
         </button>
       </div>
       <div class="c-composer__row">

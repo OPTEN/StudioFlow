@@ -1,10 +1,10 @@
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 public sealed class EventRingTests
 {

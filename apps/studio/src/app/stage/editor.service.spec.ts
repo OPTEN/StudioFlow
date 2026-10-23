@@ -1,6 +1,6 @@
 import type { TestRequest } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import type { SceneDto, SceneItemDto } from '@flowstudio/scene-model';
+import type { SceneDto, SceneItemDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import {
   PRODUCTION_ID,

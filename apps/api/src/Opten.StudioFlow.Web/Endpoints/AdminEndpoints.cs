@@ -4,14 +4,14 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.Security;
-using Opten.FlowStudio.Web.Errors;
-using Opten.FlowStudio.Web.Security;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.Security;
+using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Security;
 
-namespace Opten.FlowStudio.Web.Endpoints;
+namespace Opten.StudioFlow.Web.Endpoints;
 
 /// <summary>Admin session: login with lockout, logout, current session.</summary>
 internal static class AuthEndpoints
@@ -37,7 +37,7 @@ internal static class AuthEndpoints
     // this session are closed.
     public static async Task<IResult> LogoutAsync(HttpContext context, AdminSessions sessions, TimeProvider clock, IOptions<AdminOptions> admin)
     {
-        if (context.User.FindFirstValue(FlowStudioClaims.SessionId) is { Length: > 0 } sessionId)
+        if (context.User.FindFirstValue(StudioFlowClaims.SessionId) is { Length: > 0 } sessionId)
         {
             // No copy of the cookie (sliding renewals included) can be valid longer than one lifetime from now.
             sessions.Revoke(sessionId, clock.GetUtcNow() + admin.Value.SessionLifetime);
@@ -55,7 +55,7 @@ internal static class SystemEndpoints
 {
     private static readonly string Version = typeof(SystemEndpoints).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
 
-    public static IResult GetInfo(FlowStudioOptions options) =>
+    public static IResult GetInfo(StudioFlowOptions options) =>
         TypedResults.Ok(new SystemInfoDto(Version, options.BaseUrl, 1920, 1080));
 }
 

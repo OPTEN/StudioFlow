@@ -1,6 +1,6 @@
 /**
  * Small DOM helpers. All styles are inline (no stylesheet), so the renderer works unchanged inside Angular components
- * with any view encapsulation and on the plain output page. Class names (`fs-r-*`) only label the elements.
+ * with any view encapsulation and on the plain output page. Class names (`sf-r-*`) only label the elements.
  */
 
 /** A set of CSS properties (kebab-case names, as for `style.setProperty`). */

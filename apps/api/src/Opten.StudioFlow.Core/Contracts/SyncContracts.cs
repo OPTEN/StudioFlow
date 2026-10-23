@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>
 /// Answer to a (re)subscribe or <c>GET …/changes?since=</c>: either the missed events (delta) or a full snapshot when the

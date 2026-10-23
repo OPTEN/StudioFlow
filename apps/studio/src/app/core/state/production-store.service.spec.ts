@@ -1,6 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { HUB } from '@flowstudio/scene-model';
+import { HUB } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import {
   deltaChanges,
@@ -288,7 +288,7 @@ describe('ProductionStoreService', () => {
 });
 
 describe('ProductionStoreService test hook (spec 12)', () => {
-  const view = window as unknown as { __fsStudio?: StudioTestHook };
+  const view = window as unknown as { __sfStudio?: StudioTestHook };
 
   afterEach(() => TestBed.resetTestingModule());
 
@@ -302,10 +302,10 @@ describe('ProductionStoreService test hook (spec 12)', () => {
     return hub;
   }
 
-  it('exposes a read-only window.__fsStudio with the opt-in flag', async () => {
+  it('exposes a read-only window.__sfStudio with the opt-in flag', async () => {
     const hub = configure('1');
     const harness = await startStore(hub);
-    const hook = view.__fsStudio!;
+    const hook = view.__sfStudio!;
 
     expect(hook.revision).toBe(100);
     expect(hook.lastSync).toBe('snapshot');
@@ -326,26 +326,26 @@ describe('ProductionStoreService test hook (spec 12)', () => {
     hub.setState('reconnecting');
     expect(hook.hub).toBe('reconnecting');
     expect(Object.isFrozen(hook)).toBe(true);
-    expect(Object.keys(window)).not.toContain('__fsStudio');
+    expect(Object.keys(window)).not.toContain('__sfStudio');
     expect(() => {
-      (view as { __fsStudio: unknown }).__fsStudio = {};
+      (view as { __sfStudio: unknown }).__sfStudio = {};
     }).toThrow(TypeError);
     expect(() => {
       (hook as { revision: number | null }).revision = 1;
     }).toThrow(TypeError);
-    expect(view.__fsStudio).toBe(hook);
+    expect(view.__sfStudio).toBe(hook);
 
     TestBed.resetTestingModule();
-    expect('__fsStudio' in window).toBe(false);
+    expect('__sfStudio' in window).toBe(false);
   });
 
   it.each([null, '0', 'true', ' 1'])(
-    'has no window.__fsStudio without the opt-in flag (%s)',
+    'has no window.__sfStudio without the opt-in flag (%s)',
     async (flag) => {
       const hub = configure(flag);
       await startStore(hub);
 
-      expect('__fsStudio' in window).toBe(false);
+      expect('__sfStudio' in window).toBe(false);
     },
   );
 });

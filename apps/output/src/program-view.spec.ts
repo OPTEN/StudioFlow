@@ -1,4 +1,4 @@
-import { applyEvent, type ProductionEvent, type ProductionState } from '@flowstudio/scene-model';
+import { applyEvent, type ProductionEvent, type ProductionState } from '@studioflow/scene-model';
 import { preloadScenesFor, ProgramView, slateFor } from './program-view';
 import { NO_ACCESS_SLATE } from './slates';
 import { FakeRenderer } from './testing/fakes';

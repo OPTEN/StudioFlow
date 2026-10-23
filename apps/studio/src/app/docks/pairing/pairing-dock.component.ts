@@ -56,7 +56,7 @@ export function tabForKey(current: PairingTab, key: string): PairingTab | null {
  * button close it. Opening it moves the focus to the selected tab.
  */
 @Component({
-  selector: 'fs-pairing-dock',
+  selector: 'sf-pairing-dock',
   imports: [
     DockFrameComponent,
     IconComponent,
@@ -67,7 +67,7 @@ export function tabForKey(current: PairingTab, key: string): PairingTab | null {
   ],
   templateUrl: './pairing-dock.component.html',
   styleUrl: './pairing-dock.component.scss',
-  host: { id: 'fs-pairing-dock', style: 'display: contents' },
+  host: { id: 'sf-pairing-dock', style: 'display: contents' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PairingDockComponent {
@@ -104,6 +104,6 @@ export class PairingDockComponent {
   }
 
   private focusTab(tab: PairingTab): void {
-    this.element.querySelector<HTMLButtonElement>(`#fs-pair-tab-${tab}`)?.focus();
+    this.element.querySelector<HTMLButtonElement>(`#sf-pair-tab-${tab}`)?.focus();
   }
 }

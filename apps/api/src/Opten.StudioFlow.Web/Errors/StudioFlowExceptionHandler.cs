@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Web.Errors;
+namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
 /// Turns exceptions into problem details with a <c>code</c>: expected use case errors keep their status and German
@@ -12,7 +12,7 @@ namespace Opten.FlowStudio.Web.Errors;
 /// unreachable database 503 <c>service_unavailable</c> with
 /// <c>Retry-After</c> (GAP-32), everything else 500 without internals (the message only in Development).
 /// </summary>
-internal sealed class FlowStudioExceptionHandler(IProblemDetailsService problems, IHostEnvironment environment, ILogger<FlowStudioExceptionHandler> logger) : IExceptionHandler
+internal sealed class StudioFlowExceptionHandler(IProblemDetailsService problems, IHostEnvironment environment, ILogger<StudioFlowExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
@@ -70,7 +70,7 @@ internal sealed class FlowStudioExceptionHandler(IProblemDetailsService problems
 
     private (int Status, string Code, string Detail, IReadOnlyDictionary<string, string[]>? Errors, TimeSpan? RetryAfter) Describe(Exception exception) => exception switch
     {
-        FlowStudioException e => (StatusOf(e.Kind), e.Code, e.Message, e.Errors, e.RetryAfter),
+        StudioFlowException e => (StatusOf(e.Kind), e.Code, e.Message, e.Errors, e.RetryAfter),
         _ when DatabaseOutage.IsOutage(exception) => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.ServiceUnavailable, DatabaseOutage.Message, null, DatabaseOutage.RetryAfter),
         BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } => (StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "Die Anfrage ist zu gross.", null, null),
         BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest } e when JsonBindingErrors.From(e) is { } fields => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "Die Eingabe ist ungültig.", fields, null),

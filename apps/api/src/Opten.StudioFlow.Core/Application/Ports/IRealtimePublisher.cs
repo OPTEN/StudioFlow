@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Application.Ports;
+namespace Opten.StudioFlow.Core.Application.Ports;
 
 /// <summary>
 /// Fan-out to the SignalR hubs (spec 6). Called only by the ordered dispatcher of a production (never inside the

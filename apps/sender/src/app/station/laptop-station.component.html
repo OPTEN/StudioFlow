@@ -1,7 +1,7 @@
 <div class="c-laptop">
   <header class="c-laptop__bar">
-    <fs-brand-mark class="c-laptop__brand" />
-    <fs-connection-status
+    <sf-brand-mark class="c-laptop__brand" />
+    <sf-connection-status
       class="c-laptop__connection"
       [view]="session.connection()"
       [since]="session.degradedSince()"
@@ -26,7 +26,7 @@
       </h1>
       <p class="c-laptop__lead">
         @if (justPaired()) {
-          «{{ self()?.name }}» ist mit der Regie verbunden. Beim nächsten Mal erkennt FlowStudio
+          «{{ self()?.name }}» ist mit der Regie verbunden. Beim nächsten Mal erkennt StudioFlow
           diesen Laptop wieder.
         } @else {
           Gekoppelt mit «{{ self()?.productionName }}».
@@ -36,7 +36,7 @@
 
     @if (!canShareScreen) {
       <div class="c-notice c-notice--warn" role="status">
-        <fs-icon class="c-notice__icon" name="alert" />
+        <sf-icon class="c-notice__icon" name="alert" />
         <p class="c-notice__text">
           Bildschirm teilen geht nur auf Laptops und Desktop-Browsern. Auf diesem Gerät kannst du
           die Kamera senden.
@@ -60,7 +60,7 @@
             type="button"
             (click)="share(slot)"
           >
-            <fs-icon name="screen" />
+            <sf-icon name="screen" />
             Erneut teilen
           </button>
           <button class="c-button" type="button" (click)="session.dismissReshare(slot.slot)">
@@ -82,9 +82,9 @@
         >
           <div class="c-slot__thumb">
             @if (preview(slot); as stream) {
-              <video class="c-slot__video" [fsMediaPreview]="stream" aria-hidden="true"></video>
+              <video class="c-slot__video" [sfMediaPreview]="stream" aria-hidden="true"></video>
             } @else {
-              <fs-icon class="c-slot__placeholder" name="screen" />
+              <sf-icon class="c-slot__placeholder" name="screen" />
             }
           </div>
           <div class="c-slot__info">
@@ -179,11 +179,11 @@
               <video
                 class="c-slot__video"
                 [class.is-mirrored]="facing() === 'user'"
-                [fsMediaPreview]="stream"
+                [sfMediaPreview]="stream"
                 aria-hidden="true"
               ></video>
             } @else {
-              <fs-icon class="c-slot__placeholder" name="camera" />
+              <sf-icon class="c-slot__placeholder" name="camera" />
             }
           </div>
           <div class="c-slot__info">
@@ -239,7 +239,7 @@
     <div class="c-laptop__add">
       @if (screens().length === 0 && canShareScreen) {
         <button class="c-button c-button--fill c-button--large" type="button" (click)="addScreen()">
-          <fs-icon name="screen" />
+          <sf-icon name="screen" />
           Bildschirm teilen
         </button>
       }
@@ -250,7 +250,7 @@
       }
       @if (camera() === null) {
         <button class="c-button" type="button" (click)="session.addCamera()">
-          <fs-icon name="camera" />
+          <sf-icon name="camera" />
           Kamera hinzufügen
         </button>
       }
@@ -258,7 +258,7 @@
 
     @if (session.actionError(); as error) {
       <div class="c-notice c-notice--bad" role="alert">
-        <fs-icon class="c-notice__icon" name="alert" />
+        <sf-icon class="c-notice__icon" name="alert" />
         <p class="c-notice__text">{{ error }}</p>
       </div>
     }

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.Hubs;
+namespace Opten.StudioFlow.Web.Hubs;
 
 /// <summary>
 /// Delivers realtime messages through the three hubs. Every message goes into the outbox of each target connection

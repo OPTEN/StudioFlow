@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// A one-time invite (spec 4.6): the phone QR code or a laptop invite link. Valid once (30 minutes by default,
@@ -83,7 +83,7 @@ public sealed class Invite
     {
         if (!IsOpen(now))
         {
-            throw FlowStudioException.PairingExpired();
+            throw StudioFlowException.PairingExpired();
         }
 
         RedeemedAt = now;

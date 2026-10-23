@@ -3,7 +3,7 @@
  *
  * All types come from `./generated/api.ts`, which is generated from the OpenAPI document of the ASP.NET Core API
  * (`npm run gen:contracts`). Never edit the generated file by hand; change the C# contracts in
- * `apps/api/src/Opten.FlowStudio.Core/Contracts` instead and regenerate.
+ * `apps/api/src/Opten.StudioFlow.Core/Contracts` instead and regenerate.
  */
 import type * as Api from './generated/api';
 
@@ -126,7 +126,7 @@ export type EventOfType<T extends ProductionEventType> = Extract<Api.ProductionE
 
 /**
  * SignalR hub paths and method names. Mirrors `HubMethods` in
- * `apps/api/src/Opten.FlowStudio.Core/Contracts/HubContracts.cs`.
+ * `apps/api/src/Opten.StudioFlow.Core/Contracts/HubContracts.cs`.
  */
 export const HUB = {
   studioPath: '/hubs/studio',

@@ -5,9 +5,9 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Opten.FlowStudio.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Ports;
 
-namespace Opten.FlowStudio.Infrastructure.LiveKit;
+namespace Opten.StudioFlow.Infrastructure.LiveKit;
 
 /// <summary>
 /// Verifies and parses LiveKit webhooks (spec 7). <c>Authorization</c> carries the raw JWT (no <c>Bearer</c>), signed

@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 /// <summary>The application services wired with in-memory fakes and a manual clock.</summary>
 internal sealed class ServiceHarness : IDisposable
@@ -47,7 +47,7 @@ internal sealed class ServiceHarness : IDisposable
 
     public PairingRequestStore Requests { get; }
 
-    public FlowStudioOptions Options { get; } = new() { PublicBaseUrl = "https://fs.example" };
+    public StudioFlowOptions Options { get; } = new() { PublicBaseUrl = "https://sf.example" };
 
     public Production Production { get; }
 

@@ -12,20 +12,20 @@
     class="c-workspace__split c-workspace__split--v"
     orientation="vertical"
     aria-label="Breite der Docks links"
-    [fsSplitter]="leftSplit"
+    [sfSplitter]="leftSplit"
     [splitterDisabled]="viewport.stacked()"
   ></div>
 }
 <div class="c-workspace__center" #center>
   <section class="c-workspace__stage" #stage aria-label="Monitore">
-    <fs-stage />
+    <sf-stage />
   </section>
   @if (zones().bottom.length > 0) {
     <div
       class="c-workspace__split c-workspace__split--h"
       orientation="horizontal"
       aria-label="Höhe der Docks unten"
-      [fsSplitter]="bottomSplit"
+      [sfSplitter]="bottomSplit"
       [splitterDisabled]="viewport.stacked()"
     ></div>
   }
@@ -44,7 +44,7 @@
     class="c-workspace__split c-workspace__split--v"
     orientation="vertical"
     aria-label="Breite der Docks rechts"
-    [fsSplitter]="rightSplit"
+    [sfSplitter]="rightSplit"
     [splitterDisabled]="viewport.stacked()"
   ></div>
 }
@@ -70,7 +70,7 @@
     </div>
   }
   <div class="c-dock-ghost" aria-hidden="true">
-    <svg fsIcon="grip" [size]="14"></svg>{{ titles[dragging.id] }}
+    <svg sfIcon="grip" [size]="14"></svg>{{ titles[dragging.id] }}
   </div>
   <div class="c-drop-line" aria-hidden="true"></div>
 }

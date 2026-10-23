@@ -1,7 +1,7 @@
 using System.Globalization;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>A slot of a device with its permanent slot code.</summary>
 /// <param name="Slot">Slot name (LiveKit track name).</param>
@@ -112,14 +112,14 @@ public sealed class Device
         string slot;
         if (kind == SourceKind.Screen && Kind == DeviceKind.Phone)
         {
-            throw FlowStudioException.Invalid("kind", "Ein Handy kann keinen Bildschirm teilen.");
+            throw StudioFlowException.Invalid("kind", "Ein Handy kann keinen Bildschirm teilen.");
         }
 
         if (kind == SourceKind.Camera)
         {
             if (FindSlot(DeviceSlots.Camera) is not null)
             {
-                throw FlowStudioException.LimitReached("Dieses Gerät hat bereits eine Kamera.");
+                throw StudioFlowException.LimitReached("Dieses Gerät hat bereits eine Kamera.");
             }
 
             slot = DeviceSlots.Camera;
@@ -127,12 +127,12 @@ public sealed class Device
         else if (kind == SourceKind.Screen)
         {
             var free = Enumerable.Range(1, DeviceSlots.MaxScreens).Select(DeviceSlots.Screen).FirstOrDefault(s => FindSlot(s) is null)
-                ?? throw FlowStudioException.LimitReached("Pro Gerät sind höchstens 9 Bildschirme möglich.");
+                ?? throw StudioFlowException.LimitReached("Pro Gerät sind höchstens 9 Bildschirme möglich.");
             slot = free;
         }
         else
         {
-            throw FlowStudioException.Invalid("kind", "Ein Gerät kann nur Kamera- oder Bildschirm-Slots haben.");
+            throw StudioFlowException.Invalid("kind", "Ein Gerät kann nur Kamera- oder Bildschirm-Slots haben.");
         }
 
         var allocated = new DeviceSlot(slot, SlotCodes.Allocate(kind, codesInUse), kind);
@@ -154,7 +154,7 @@ public sealed class Device
 
         if (Kind == DeviceKind.Phone && existing.Kind == SourceKind.Camera)
         {
-            throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Die Kamera eines Handys kann nicht entfernt werden.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Kamera eines Handys kann nicht entfernt werden.");
         }
 
         Slots = [.. Slots.Where(s => s != existing)];
