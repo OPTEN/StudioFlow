@@ -115,7 +115,8 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "apps/studio/tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "setupFiles": ["apps/studio/src/testing/setup-i18n.ts"]
           }
         }
       }
@@ -230,7 +231,8 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "apps/sender/tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "setupFiles": ["apps/sender/src/testing/setup-i18n.ts"]
           }
         }
       }

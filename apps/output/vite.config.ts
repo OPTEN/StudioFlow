@@ -15,6 +15,8 @@ export default defineConfig({
   publicDir: 'public',
   resolve: {
     alias: {
+      // Only the framework-free entry: the output bundle must never pull in Angular (@studioflow/i18n/angular).
+      '@studioflow/i18n': fromRoot('packages/i18n/src/index.ts'),
       '@studioflow/scene-model': fromRoot('packages/scene-model/src/index.ts'),
       '@studioflow/scene-renderer': fromRoot('packages/scene-renderer/src/index.ts'),
       '@studioflow/media-client/device': fromRoot('packages/media-client/src/device.ts'),
