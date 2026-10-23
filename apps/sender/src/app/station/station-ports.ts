@@ -1,12 +1,12 @@
 import { InjectionToken } from '@angular/core';
-import { MediaSession, Publisher } from '@flowstudio/media-client';
+import { MediaSession, Publisher } from '@studioflow/media-client';
 import {
   ScreenWakeLock,
   runTechCheck,
   type TechCheckOptions,
-} from '@flowstudio/media-client/device';
-import { ResilientHub, type ResilientHubOptions } from '@flowstudio/realtime-client';
-import type { LiveKitTokenDto, TechCheckDto } from '@flowstudio/scene-model';
+} from '@studioflow/media-client/device';
+import { ResilientHub, type ResilientHubOptions } from '@studioflow/realtime-client';
+import type { LiveKitTokenDto, TechCheckDto } from '@studioflow/scene-model';
 
 /**
  * Seams between the station and the shared packages. The real implementations are the package classes; unit tests
@@ -14,7 +14,7 @@ import type { LiveKitTokenDto, TechCheckDto } from '@flowstudio/scene-model';
  * so a package API change breaks the build here.
  */
 
-/** The device hub connection (`ResilientHub` from `@flowstudio/realtime-client`). */
+/** The device hub connection (`ResilientHub` from `@studioflow/realtime-client`). */
 export type DeviceHub = Pick<
   ResilientHub,
   | 'state'
@@ -32,13 +32,13 @@ export type DeviceHub = Pick<
 /** Creates the device hub connection. */
 export type DeviceHubFactory = (options: ResilientHubOptions) => DeviceHub;
 
-/** The sender's LiveKit session (`MediaSession` from `@flowstudio/media-client`, role `sender`). */
+/** The sender's LiveKit session (`MediaSession` from `@studioflow/media-client`, role `sender`). */
 export type SenderMediaSession = Pick<
   MediaSession,
   'state' | 'onStateChange' | 'start' | 'restart' | 'stop'
 >;
 
-/** Camera and screen publishing (`Publisher` from `@flowstudio/media-client`). */
+/** Camera and screen publishing (`Publisher` from `@studioflow/media-client`). */
 export type SenderPublisher = Pick<
   Publisher,
   | 'publishCamera'
@@ -63,15 +63,15 @@ export interface SenderMedia {
 /** Creates the media pair; `tokenProvider` fetches a fresh LiveKit token for every join. */
 export type SenderMediaFactory = (tokenProvider: () => Promise<LiveKitTokenDto>) => SenderMedia;
 
-/** Screen wake lock (`ScreenWakeLock` from `@flowstudio/media-client`). */
+/** Screen wake lock (`ScreenWakeLock` from `@studioflow/media-client`). */
 export type StationWakeLock = Pick<ScreenWakeLock, 'enable' | 'disable' | 'dispose' | 'active'>;
 
-/** Runs the technical check (`runTechCheck` from `@flowstudio/media-client`). */
+/** Runs the technical check (`runTechCheck` from `@studioflow/media-client`). */
 export type TechCheckRunner = (options: TechCheckOptions) => Promise<TechCheckDto>;
 
 /** Factory of the device hub. */
 export const DEVICE_HUB_FACTORY = new InjectionToken<DeviceHubFactory>(
-  'flowstudio.deviceHubFactory',
+  'studioflow.deviceHubFactory',
   {
     providedIn: 'root',
     factory: () => (options) => new ResilientHub(options),
@@ -80,7 +80,7 @@ export const DEVICE_HUB_FACTORY = new InjectionToken<DeviceHubFactory>(
 
 /** Factory of the LiveKit session and publisher. */
 export const SENDER_MEDIA_FACTORY = new InjectionToken<SenderMediaFactory>(
-  'flowstudio.senderMediaFactory',
+  'studioflow.senderMediaFactory',
   {
     providedIn: 'root',
     factory: () => (tokenProvider) => {
@@ -92,7 +92,7 @@ export const SENDER_MEDIA_FACTORY = new InjectionToken<SenderMediaFactory>(
 
 /** Factory of the screen wake lock. */
 export const WAKE_LOCK_FACTORY = new InjectionToken<() => StationWakeLock>(
-  'flowstudio.wakeLockFactory',
+  'studioflow.wakeLockFactory',
   {
     providedIn: 'root',
     factory: () => () => new ScreenWakeLock(),
@@ -100,7 +100,7 @@ export const WAKE_LOCK_FACTORY = new InjectionToken<() => StationWakeLock>(
 );
 
 /** The technical check. */
-export const TECH_CHECK_RUNNER = new InjectionToken<TechCheckRunner>('flowstudio.techCheckRunner', {
+export const TECH_CHECK_RUNNER = new InjectionToken<TechCheckRunner>('studioflow.techCheckRunner', {
   providedIn: 'root',
   factory: () => runTechCheck,
 });

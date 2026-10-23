@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>The two lifetimes of a knock.</summary>
 /// <param name="Pending">How long a request waits for the Regie (<c>Pairing:RequestTtl</c>, default 10 minutes).</param>
@@ -148,7 +148,7 @@ public sealed class PairingRequest
     {
         if (!IsPending(now))
         {
-            throw FlowStudioException.PairingExpired();
+            throw StudioFlowException.PairingExpired();
         }
     }
 }

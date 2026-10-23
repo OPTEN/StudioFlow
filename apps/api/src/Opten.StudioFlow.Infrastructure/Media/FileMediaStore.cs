@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Infrastructure.Media;
+namespace Opten.StudioFlow.Infrastructure.Media;
 
 /// <summary>Media settings (configuration section <c>Media</c>).</summary>
 public sealed class MediaOptions
@@ -45,7 +45,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
         var header = new byte[MediaInspector.HeaderLength];
         var headerLength = await content.ReadAtLeastAsync(header, header.Length, throwOnEndOfStream: false, cancellationToken);
         var type = MediaInspector.Detect(header.AsSpan(0, headerLength))
-            ?? throw new FlowStudioException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, "Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.");
+            ?? throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, "Erlaubt sind PNG, JPEG, WebP, MP4 und WebM.");
         var limit = type.Kind == AssetKind.Image ? options.Value.MaxImageBytes : options.Value.MaxVideoBytes;
         if (declaredLength > limit)
         {
@@ -76,7 +76,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
                 // An image without a readable size, with a zero side or larger than 16384 px is not accepted (GAP-13).
                 if (!MediaInspector.IsAcceptedSize(size))
                 {
-                    throw new FlowStudioException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, $"Bilder brauchen eine lesbare Grösse von 1 bis {MediaInspector.MaxDimension} Pixeln pro Seite.");
+                    throw new StudioFlowException(ErrorKind.UnsupportedMedia, ErrorCodes.UnsupportedMedia, $"Bilder brauchen eine lesbare Grösse von 1 bis {MediaInspector.MaxDimension} Pixeln pro Seite.");
                 }
             }
 
@@ -103,7 +103,7 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
         }
     }
 
-    private static FlowStudioException TooLarge(MediaType type) => new(
+    private static StudioFlowException TooLarge(MediaType type) => new(
         ErrorKind.PayloadTooLarge,
         ErrorCodes.UnsupportedMedia,
         type.Kind == AssetKind.Image ? "Das Bild ist zu gross." : "Das Video ist zu gross.");

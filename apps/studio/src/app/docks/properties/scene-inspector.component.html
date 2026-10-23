@@ -1,9 +1,9 @@
 <div class="c-insp">
   <div class="c-insp__row">
-    <label class="c-insp__label" for="fs-insp-name">Name</label>
+    <label class="c-insp__label" for="sf-insp-name">Name</label>
     <input
       class="c-input"
-      id="fs-insp-name"
+      id="sf-insp-name"
       type="text"
       autocomplete="off"
       spellcheck="false"
@@ -22,15 +22,15 @@
       <span class="c-insp__mode">Auto-Grid aktiv</span>
     }
   </div>
-  <fs-template-picker
+  <sf-template-picker
     [autoGridActive]="autoGrid()"
     [disabled]="disabled()"
     (pick)="applyTemplate($event)"
   />
 
   <div class="c-insp__row">
-    <span class="c-insp__label" id="fs-insp-bg">Hintergrund</span>
-    <div class="c-insp__background" role="group" aria-labelledby="fs-insp-bg">
+    <span class="c-insp__label" id="sf-insp-bg">Hintergrund</span>
+    <div class="c-insp__background" role="group" aria-labelledby="sf-insp-bg">
       <input
         class="c-insp__color"
         type="color"
@@ -60,7 +60,7 @@
 
   <div class="c-insp__danger">
     @if (confirming()) {
-      <fs-confirm-box
+      <sf-confirm-box
         label="Szene löschen"
         confirmLabel="Szene löschen"
         [flush]="true"

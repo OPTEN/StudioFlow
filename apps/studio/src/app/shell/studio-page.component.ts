@@ -16,12 +16,12 @@ import { WorkspaceComponent } from './workspace/workspace.component';
  * (`:host-context(.is-studio)`).
  */
 @Component({
-  selector: 'fs-studio-page',
+  selector: 'sf-studio-page',
   imports: [HeaderComponent, StatusLineComponent, WorkspaceComponent],
   template: `
-    <fs-header />
-    <fs-status-line />
-    <fs-workspace />
+    <sf-header />
+    <sf-status-line />
+    <sf-workspace />
   `,
   styleUrl: './studio-page.component.scss',
   host: {

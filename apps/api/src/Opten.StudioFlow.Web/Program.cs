@@ -1,4 +1,4 @@
-using Opten.FlowStudio.Web.Hosting;
+using Opten.StudioFlow.Web.Hosting;
 
 if (await CliCommands.TryRunAsync(args) is { } exitCode)
 {
@@ -6,10 +6,10 @@ if (await CliCommands.TryRunAsync(args) is { } exitCode)
 }
 
 var builder = WebApplication.CreateBuilder(args);
-builder.AddFlowStudio();
+builder.AddStudioFlow();
 
 var app = builder.Build();
-app.UseFlowStudio();
+app.UseStudioFlow();
 
 await app.RunAsync();
 return 0;

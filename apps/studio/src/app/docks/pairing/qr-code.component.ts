@@ -42,7 +42,7 @@ export function qrMatrix(value: string, ecc: QrEcc = 'M'): boolean[][] {
  * The size comes from CSS (`width` of the host, default 168 px).
  */
 @Component({
-  selector: 'fs-qr-code',
+  selector: 'sf-qr-code',
   template: `
     <svg
       class="c-qr__svg"

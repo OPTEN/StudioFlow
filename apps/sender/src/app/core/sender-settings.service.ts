@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import type { DeviceKind, TechCheckDto } from '@flowstudio/scene-model';
+import type { DeviceKind, TechCheckDto } from '@studioflow/scene-model';
 import { LOCAL_STORAGE, STORAGE_KEYS } from './browser-storage';
 
 /** Front (`user`) or back (`environment`) camera. */
@@ -8,7 +8,7 @@ export type Facing = 'user' | 'environment';
 /** Camera picture height. */
 export type Resolution = 720 | 1080;
 
-/** Per-browser settings of the station (`flowstudio.sender.settings`). */
+/** Per-browser settings of the station (`studioflow.sender.settings`). */
 export interface SenderSettings {
   /** Camera direction; null until the device kind is known (phones default to the back camera). */
   readonly facing: Facing | null;

@@ -37,7 +37,7 @@ export type IconName =
   | 'pencil'
   | 'trash'
   | 'upload'
-  // The FlowStudio brand mark (22 × 18)
+  // The StudioFlow brand mark (22 × 18)
   | 'mark';
 
 /** Icon for a source kind (prototype `KIND_ICON`). */
@@ -50,15 +50,15 @@ export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | '
   };
 
 /**
- * Inline SVG icon: `<svg fsIcon="camera" [size]="14"></svg>`. The host element is the `<svg class="c-icon">`
+ * Inline SVG icon: `<svg sfIcon="camera" [size]="14"></svg>`. The host element is the `<svg class="c-icon">`
  * itself (16 px, 1.6 px stroke, `currentColor`), always `aria-hidden`; give the surrounding control an accessible
  * name. The paths are inlined instead of `<use href="#…">` because fragment references break under `<base href>`
  * on deep routes such as /monitoring.
  */
 @Component({
-  selector: 'svg[fsIcon]',
+  selector: 'svg[sfIcon]',
   template: `
-    @switch (fsIcon()) {
+    @switch (sfIcon()) {
       @case ('camera') {
         <svg:path
           d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"
@@ -221,7 +221,7 @@ export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | '
   `,
   host: {
     class: 'c-icon',
-    '[class.c-icon--mark]': "fsIcon() === 'mark'",
+    '[class.c-icon--mark]': "sfIcon() === 'mark'",
     '[attr.viewBox]': 'viewBox()',
     'aria-hidden': 'true',
     focusable: 'false',
@@ -232,11 +232,11 @@ export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | '
 })
 export class IconComponent {
   /** Icon name. */
-  readonly fsIcon = input.required<IconName>();
+  readonly sfIcon = input.required<IconName>();
   /** Edge length in px; default 16 (CSS). */
   readonly size = input<number | null>(null);
 
   protected readonly viewBox = computed(() =>
-    this.fsIcon() === 'mark' ? '0 0 22 18' : '0 0 24 24',
+    this.sfIcon() === 'mark' ? '0 0 22 18' : '0 0 24 24',
   );
 }

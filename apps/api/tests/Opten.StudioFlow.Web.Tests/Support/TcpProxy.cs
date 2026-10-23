@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>
 /// A TCP forwarder in front of PostgreSQL that a test can switch off and on again – a database outage for one app

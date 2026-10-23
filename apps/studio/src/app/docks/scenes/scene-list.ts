@@ -1,4 +1,4 @@
-import { LIMITS, sourcesInScene, type SceneDto, type SceneHealth } from '@flowstudio/scene-model';
+import { LIMITS, sourcesInScene, type SceneDto, type SceneHealth } from '@studioflow/scene-model';
 
 /**
  * Pure helpers of the Szenen dock (prototype «Szenenliste»): row texts and labels, names for new and copied scenes,

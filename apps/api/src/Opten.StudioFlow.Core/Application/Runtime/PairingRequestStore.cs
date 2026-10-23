@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// Pending and recently decided /join requests (spec 4.6), in memory only. At most <c>Pairing:Limits:PendingTotal</c>
@@ -33,7 +33,7 @@ public sealed class PairingRequestStore(PairingOptions options)
             var pending = requests.Values.Where(r => r.IsPending(now)).ToList();
             if (pending.Count >= MaxPending)
             {
-                throw FlowStudioException.RateLimited(FullRetryAfter < lifetimes.Pending ? FullRetryAfter : lifetimes.Pending);
+                throw StudioFlowException.RateLimited(FullRetryAfter < lifetimes.Pending ? FullRetryAfter : lifetimes.Pending);
             }
 
             var code = PairingRequest.NewCheckCode(pending.Select(r => r.CheckCode).ToHashSet(StringComparer.Ordinal));

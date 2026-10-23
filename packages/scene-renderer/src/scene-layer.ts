@@ -1,4 +1,4 @@
-import { isHexColor, type SceneDto, type SceneItemDto } from '@flowstudio/scene-model';
+import { isHexColor, type SceneDto, type SceneItemDto } from '@studioflow/scene-model';
 
 import { autoGridRects } from './auto-grid';
 import type { DesiredSizeCollector } from './desired-sizes';
@@ -88,7 +88,7 @@ export class SceneLayer {
     options: { readonly pool?: MediaPool; readonly opacity?: number } = {},
   ) {
     // Own stacking context: item z-indexes must never reach above a later layer or the slate.
-    this.element = createElement(ctx.doc, 'div', 'fs-r-layer', {
+    this.element = createElement(ctx.doc, 'div', 'sf-r-layer', {
       ...FILL,
       overflow: 'hidden',
       isolation: 'isolate',
@@ -97,13 +97,13 @@ export class SceneLayer {
     if (options.opacity !== undefined) {
       this.element.style.opacity = String(options.opacity);
     }
-    this.backgroundImage = createImage(ctx.doc, 'fs-r-background', {
+    this.backgroundImage = createImage(ctx.doc, 'sf-r-background', {
       ...FILL,
       'object-fit': 'cover',
       display: 'none',
     });
     this.backgroundLoader = new AssetLoader(this.backgroundImage);
-    this.itemsEl = createElement(ctx.doc, 'div', 'fs-r-items', FILL);
+    this.itemsEl = createElement(ctx.doc, 'div', 'sf-r-items', FILL);
     this.element.append(this.backgroundImage, this.itemsEl);
     host.append(this.element);
     this.scene = scene;

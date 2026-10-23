@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { DeviceCredentialsDto } from '@flowstudio/scene-model';
+import type { DeviceCredentialsDto } from '@studioflow/scene-model';
 import { LOCAL_STORAGE, STORAGE_KEYS } from './browser-storage';
 import { createClientId } from './random-id';
 
@@ -10,7 +10,7 @@ export interface DeviceCredentials {
   readonly productionId: string;
 }
 
-/** Stored record (`flowstudio.sender.v1`): credentials once paired, the redeem client id before. */
+/** Stored record (`studioflow.sender.v1`): credentials once paired, the redeem client id before. */
 interface StoredRecord {
   readonly deviceId?: string;
   readonly secret?: string;

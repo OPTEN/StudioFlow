@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { LIMITS, type SceneDto } from '@flowstudio/scene-model';
+import { LIMITS, type SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
@@ -24,7 +24,7 @@ interface SceneEntry {
  * ≤ 820 px, a horizontal strip at widths ≤ 900 px.
  */
 @Component({
-  selector: 'fs-scenes-dock',
+  selector: 'sf-scenes-dock',
   imports: [DockFrameComponent, IconComponent, SceneRowComponent],
   templateUrl: './scenes-dock.component.html',
   styleUrl: './scenes-dock.component.scss',

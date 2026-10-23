@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# FlowStudio edge image: Caddy with the DNS-challenge modules, the Caddyfile and the three built frontends.
+# StudioFlow edge image: Caddy with the DNS-challenge modules, the Caddyfile and the three built frontends.
 # Build context is the repository root (docker-compose.yml: context ".", dockerfile infra/caddy/Dockerfile).
 
 ARG NODE_VERSION=22.22.3
@@ -66,10 +66,10 @@ COPY --from=web /src/dist/output/ /srv/o/
 # caddy_data volume.
 RUN set -eu; \
     export XDG_DATA_HOME=/tmp/validate/data XDG_CONFIG_HOME=/tmp/validate/config \
-      FLOWSTUDIO_DOMAIN=build.invalid FLOWSTUDIO_DEFAULT_SNI=build.invalid \
-      FLOWSTUDIO_TRUSTED_PROXIES=127.0.0.1/32 FLOWSTUDIO_HSTS_MAX_AGE=0 FLOWSTUDIO_FRAME_ANCESTORS= \
-      FLOWSTUDIO_MAX_UPLOAD=1MiB FLOWSTUDIO_MAX_BODY=1MiB \
-      FLOWSTUDIO_DNS_RESOLVERS=1.1.1.1 FLOWSTUDIO_DNS_CHALLENGE_DOMAIN=_acme-challenge.build.invalid \
+      STUDIOFLOW_DOMAIN=build.invalid STUDIOFLOW_DEFAULT_SNI=build.invalid \
+      STUDIOFLOW_TRUSTED_PROXIES=127.0.0.1/32 STUDIOFLOW_HSTS_MAX_AGE=0 STUDIOFLOW_FRAME_ANCESTORS= \
+      STUDIOFLOW_MAX_UPLOAD=1MiB STUDIOFLOW_MAX_BODY=1MiB \
+      STUDIOFLOW_DNS_RESOLVERS=1.1.1.1 STUDIOFLOW_DNS_CHALLENGE_DOMAIN=_acme-challenge.build.invalid \
       CF_API_TOKEN=build-validation-dummy-token-0123456789abcdef \
       INFOMANIAK_API_TOKEN=dummy HETZNER_API_TOKEN=dummy DESEC_TOKEN=dummy GANDI_BEARER_TOKEN=dummy \
       AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_REGION=eu-central-1 \
@@ -79,7 +79,7 @@ RUN set -eu; \
       [ "$mode" = custom ] && continue; \
       for email in '' build@example.com; do \
         echo "validate TLS mode: $mode (e-mail: ${email:-none})"; \
-        FLOWSTUDIO_TLS_MODE="$mode" FLOWSTUDIO_ACME_EMAIL="$email" FLOWSTUDIO_EXTRA_HOSTS="${email:+127.0.0.1 build2.invalid}" \
+        STUDIOFLOW_TLS_MODE="$mode" STUDIOFLOW_ACME_EMAIL="$email" STUDIOFLOW_EXTRA_HOSTS="${email:+127.0.0.1 build2.invalid}" \
           caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; \
       done; \
     done; \

@@ -218,7 +218,7 @@ test.describe('SRC device operations', () => {
       const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
       const row = await openStation(regie, k1.device.id);
       await row.getByRole('button', { name: 'Nachricht senden' }).click();
-      const composer = row.locator('fs-message-composer');
+      const composer = row.locator('sf-message-composer');
       await expect(composer.getByLabel('Nachricht an Handy Eins')).toBeFocused();
 
       await composer.getByRole('button', { name: 'Schnell senden: In 10 s live' }).click();
@@ -253,7 +253,7 @@ test.describe('SRC device operations', () => {
       const offlineRow = await openStation(regie, offline.id);
       await expect(offlineRow.locator('.c-st__l2')).toContainText('nicht verbunden');
       await offlineRow.getByRole('button', { name: 'Nachricht senden' }).click();
-      const offlineComposer = offlineRow.locator('fs-message-composer');
+      const offlineComposer = offlineRow.locator('sf-message-composer');
       await offlineComposer.getByLabel('Nachricht an Handy Offline').fill('Kommt nie an');
       const posted = regie.page.waitForResponse((response) => /\/devices\/[^/]+\/commands$/.test(response.url()) && response.request().method() === 'POST');
       await offlineComposer.getByRole('button', { name: 'Senden', exact: true }).click();
@@ -292,7 +292,7 @@ test.describe('SRC device operations', () => {
       await expect.poll(() => k1.phone.facing(), { message: 'the phone switched to the other camera', timeout: 10_000 }).not.toBe(facingBefore);
       const after = await k1.phone.mediaCalls();
       expect(after.userMedia, 'the sender asked the browser for a camera again').toBeGreaterThan(before.userMedia);
-      const calls = await k1.phone.page.evaluate(() => (window as unknown as { __fsMedia: { userMediaCalls: Array<{ video?: { facingMode?: unknown } }> } }).__fsMedia.userMediaCalls);
+      const calls = await k1.phone.page.evaluate(() => (window as unknown as { __sfMedia: { userMediaCalls: Array<{ video?: { facingMode?: unknown } }> } }).__sfMedia.userMediaCalls);
       const facings = calls.map((call) => JSON.stringify(call.video?.facingMode ?? null));
       expect(facings.at(-1), 'the last request names the opposite facing mode').toContain(facingBefore === 'user' ? 'environment' : 'user');
       await k1.phone.waitForCamera('live', 15_000);
@@ -315,7 +315,7 @@ test.describe('SRC device operations', () => {
       const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
       const phone = k1.phone;
       const lastFacing = async () => {
-        const calls = await phone.page.evaluate(() => (window as unknown as { __fsMedia: { userMediaCalls: Array<{ video?: { facingMode?: unknown } }> } }).__fsMedia.userMediaCalls);
+        const calls = await phone.page.evaluate(() => (window as unknown as { __sfMedia: { userMediaCalls: Array<{ video?: { facingMode?: unknown } }> } }).__sfMedia.userMediaCalls);
         return JSON.stringify(calls.at(-1)?.video?.facingMode ?? null);
       };
       expect(await phone.facing(), 'a fixed phone films with the back camera by default').toBe('environment');
@@ -324,7 +324,7 @@ test.describe('SRC device operations', () => {
       await expect.poll(lastFacing, { message: 'the browser was asked for the front camera', timeout: 10_000 }).toContain('user');
       await expect(phone.preview(), 'the front picture is mirrored').toHaveClass(/is-mirrored/);
       await phone.waitForCamera('live', 15_000);
-      expect((await phone.page.evaluate(() => JSON.parse(localStorage.getItem('flowstudio.sender.settings') ?? '{}'))).facing).toBe('user');
+      expect((await phone.page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.sender.settings') ?? '{}'))).facing).toBe('user');
 
       await phone.page.reload();
       await phone.waitConnected();
@@ -431,8 +431,8 @@ test.describe('SRC device operations', () => {
       expect(afterRemoval.length, 'no reconnect loop: at most one request per 15 s').toBeLessThanOrEqual(2);
       await expect(regie.station('Handy Eins')).toHaveCount(0);
       expect((await readPlaces(regie.page)).stations, 'the other station stays').toHaveLength(1);
-      await expect(regie.page.locator('.c-monitor--program .fs-r-missing').first(), 'the item shows «Quelle fehlt»').toBeVisible();
-      await expect(regie.page.locator('.c-monitor--program .fs-r-missing').first()).toHaveText('Quelle fehlt');
+      await expect(regie.page.locator('.c-monitor--program .sf-r-missing').first(), 'the item shows «Quelle fehlt»').toBeVisible();
+      await expect(regie.page.locator('.c-monitor--program .sf-r-missing').first()).toHaveText('Quelle fehlt');
 
       // An offline station (paired, never connected): «Entfernen» with the dashed confirmation.
       const never = await pairPhone(pairContext, { name: 'Handy Nie' });
@@ -459,7 +459,7 @@ test.describe('SRC device operations', () => {
       const page = k1.phone.page;
       const killCamera = () =>
         page.evaluate(() => {
-          const peers = [...((window as unknown as { __fsNet: { peers: Set<RTCPeerConnection> } }).__fsNet.peers)];
+          const peers = [...((window as unknown as { __sfNet: { peers: Set<RTCPeerConnection> } }).__sfNet.peers)];
           const tracks = peers.flatMap((peer) => peer.getSenders().flatMap((sender) => (sender.track && sender.track.kind === 'video' ? [sender.track] : [])));
           for (const track of tracks) {
             track.stop();
@@ -479,7 +479,7 @@ test.describe('SRC device operations', () => {
       await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.line ?? '', { timeout: 20_000 }).toMatch(/Mbit\/s/);
 
       // A camera that cannot be started: three attempts (0.3 / 0.6 / 1.2 s), then «failed».
-      await page.evaluate(() => ((window as unknown as { __fsMedia: { failCamera: boolean } }).__fsMedia.failCamera = true));
+      await page.evaluate(() => ((window as unknown as { __sfMedia: { failCamera: boolean } }).__sfMedia.failCamera = true));
       await killCamera();
       const failedAt = Date.now();
       await k1.phone.waitForSlot('camera', 'failed', 20_000);
@@ -495,7 +495,7 @@ test.describe('SRC device operations', () => {
       expect(await logTexts(api, production)).toContain('K1 kein Bild');
 
       // Clear the fault and restart from the phone: K1 is ok and «wieder da».
-      await page.evaluate(() => ((window as unknown as { __fsMedia: { failCamera: boolean } }).__fsMedia.failCamera = false));
+      await page.evaluate(() => ((window as unknown as { __sfMedia: { failCamera: boolean } }).__sfMedia.failCamera = false));
       await page.getByRole('button', { name: 'Erneut versuchen' }).click();
       await k1.phone.waitForCamera('live', 30_000);
       await waitForRecovered(regie, 'K1', { timeoutMs: 30_000 });
@@ -525,7 +525,7 @@ test.describe('SRC device operations', () => {
       await k1.phone.setResolution(1080);
       const row = await openStation(regie, k1.device.id);
       await expect(row.locator('.c-st__kv'), 'published resolution 1080p').toContainText(/Auflösung\s*1080p/, { timeout: 30_000 });
-      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('flowstudio.sender.settings') ?? '{}'));
+      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.sender.settings') ?? '{}'));
       expect(stored.resolution).toBe(1080);
       expect(stored.cameraOn).toBe(true);
       await page.reload();
@@ -558,7 +558,7 @@ test.describe('SRC device operations', () => {
       expect(dark.thin, 'thin tally frame').toBe(true);
       expect(dark.tally).toBe('program');
       expect(dark.frame, 'the frame is red (the tally colour)').toMatch(/rgb\(248, 81, 73\)/);
-      expect((await page.evaluate(() => JSON.parse(localStorage.getItem('flowstudio.sender.settings') ?? '{}'))).dark).toBe(true);
+      expect((await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.sender.settings') ?? '{}'))).dark).toBe(true);
       await page.locator('main.c-phone').click({ position: { x: 20, y: 400 } }); // tap wakes the controls
       await k1.phone.darkToggle().click();
 

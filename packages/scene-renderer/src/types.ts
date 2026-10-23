@@ -1,9 +1,9 @@
 /**
  * Interfaces between the scene renderer and whoever supplies the pictures (LiveKit in the Regie and on the output,
- * fakes in tests). The renderer never imports livekit-client; `@flowstudio/media-client` implements
+ * fakes in tests). The renderer never imports livekit-client; `@studioflow/media-client` implements
  * {@link SourceMediaProvider}.
  */
-import type { SceneDto, SlateDto, TransitionDto } from '@flowstudio/scene-model';
+import type { SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
 
 /** Availability of a source picture as seen by one client. */
 export type SourceAvailability =

@@ -16,8 +16,8 @@ services:
       LIVEKIT_CONFIG: |
         port: 7880
         rtc:
-          tcp_port: ${FLOWSTUDIO_RTC_TCP_PORT:-7881}
-          udp_port: ${FLOWSTUDIO_RTC_UDP_PORT:-7882}
+          tcp_port: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
+          udp_port: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
           use_external_ip: false
         room:
           auto_create: true

@@ -1,4 +1,4 @@
-# Test-only override of docker-compose.yml for the compose project of the stack under test: "fs-e2e" by default, "fs-e2e-N"
+# Test-only override of docker-compose.yml for the compose project of the stack under test: "sf-e2e" by default, "sf-e2e-N"
 # for numbered stacks (E2E_STACK=N) - see tests/e2e/global-setup.ts and the README, "Parallel stacks".
 # The production compose file is never edited by tests; everything the tests need on top is here:
 #   - 127.0.0.1-only published ports for the API (header-trust tests), LiveKit signalling/Twirp (the `lk` helper) and
@@ -6,7 +6,7 @@
 #   - fixed addresses on the compose network, so `docker network connect --ip` restores the same address after a
 #     disconnect;
 #   - Caddy's host ports can be moved with E2E_HTTP_PORT / E2E_HTTPS_PORT (the generated env file then also sets
-#     FLOWSTUDIO_PUBLIC_BASE_URL); the LiveKit media ports with FLOWSTUDIO_RTC_TCP_PORT / FLOWSTUDIO_RTC_UDP_PORT
+#     STUDIOFLOW_PUBLIC_BASE_URL); the LiveKit media ports with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT
 #     (docker-compose.yml: host and container port are the same number).
 # Values come from tests/e2e/.env.e2e (default stack) or tests/e2e/.env.e2e.<project> (generated, git-ignored).
 services:
@@ -16,7 +16,7 @@ services:
       - "${E2E_HTTPS_PORT:-443}:443"
       - "${E2E_HTTPS_PORT:-443}:443/udp"
     networks:
-      flowstudio:
+      studioflow:
         ipv4_address: ${E2E_IP_CADDY:-172.31.250.13}
 
   api:
@@ -25,19 +25,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     networks:
-      flowstudio:
+      studioflow:
         ipv4_address: ${E2E_IP_API:-172.31.250.11}
 
   livekit:
     ports:
       - "127.0.0.1:${E2E_LIVEKIT_PORT:-17880}:7880"
     networks:
-      flowstudio:
+      studioflow:
         ipv4_address: ${E2E_IP_LIVEKIT:-172.31.250.10}
 
   postgres:
     ports:
       - "127.0.0.1:${E2E_POSTGRES_PORT:-15432}:5432"
     networks:
-      flowstudio:
+      studioflow:
         ipv4_address: ${E2E_IP_POSTGRES:-172.31.250.12}

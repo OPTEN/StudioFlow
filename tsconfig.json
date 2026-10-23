@@ -18,11 +18,11 @@
     "moduleResolution": "bundler",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "paths": {
-      "@flowstudio/scene-model": ["./packages/scene-model/src/index.ts"],
-      "@flowstudio/scene-renderer": ["./packages/scene-renderer/src/index.ts"],
-      "@flowstudio/media-client": ["./packages/media-client/src/index.ts"],
-      "@flowstudio/media-client/device": ["./packages/media-client/src/device.ts"],
-      "@flowstudio/realtime-client": ["./packages/realtime-client/src/index.ts"]
+      "@studioflow/scene-model": ["./packages/scene-model/src/index.ts"],
+      "@studioflow/scene-renderer": ["./packages/scene-renderer/src/index.ts"],
+      "@studioflow/media-client": ["./packages/media-client/src/index.ts"],
+      "@studioflow/media-client/device": ["./packages/media-client/src/device.ts"],
+      "@studioflow/realtime-client": ["./packages/realtime-client/src/index.ts"]
     }
   },
   "angularCompilerOptions": {

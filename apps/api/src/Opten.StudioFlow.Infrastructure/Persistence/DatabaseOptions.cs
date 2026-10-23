@@ -1,7 +1,7 @@
 using System.Globalization;
 using Npgsql;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// How long the API waits for PostgreSQL (configuration section <c>Database</c>, GAP-32). The values bound every request

@@ -1,4 +1,4 @@
-import type { SlateDto } from '@flowstudio/scene-model';
+import type { SlateDto } from '@studioflow/scene-model';
 
 import { createElement, FILL, setStyle, setText, setVisible } from './dom';
 import { AssetLoader } from './asset-loader';
@@ -80,7 +80,7 @@ export class SlateView {
   }
 
   private build(): HTMLDivElement {
-    const element = createElement(this.doc, 'div', 'fs-r-slate', {
+    const element = createElement(this.doc, 'div', 'sf-r-slate', {
       ...FILL,
       display: 'flex',
       'flex-direction': 'column',
@@ -93,20 +93,20 @@ export class SlateView {
       'text-align': 'center',
       overflow: 'hidden',
     });
-    const image = createImage(this.doc, 'fs-r-slate-image', {
+    const image = createImage(this.doc, 'sf-r-slate-image', {
       ...FILL,
       'object-fit': 'cover',
       display: 'none',
     });
     this.imageLoader = new AssetLoader(image);
     const textStyles = { position: 'relative', 'max-width': '80%', 'overflow-wrap': 'anywhere' };
-    const title = createElement(this.doc, 'div', 'fs-r-slate-title', {
+    const title = createElement(this.doc, 'div', 'sf-r-slate-title', {
       ...textStyles,
       'font-weight': '600',
       'font-size': '72px',
       'line-height': '1.1',
     });
-    const subtitle = createElement(this.doc, 'div', 'fs-r-slate-subtitle', {
+    const subtitle = createElement(this.doc, 'div', 'sf-r-slate-subtitle', {
       ...textStyles,
       'font-weight': '400',
       'font-size': '36px',

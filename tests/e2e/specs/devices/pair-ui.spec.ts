@@ -31,7 +31,7 @@ test.describe('PAIR phone, QR code', () => {
         await openPairingTab(regie, 'phone');
         await expect(regie.page.getByRole('tab', { name: 'Handy' })).toHaveAttribute('aria-selected', 'true');
         // The title «Handy als Kamera» is hidden on short laptops (height <= 820 px, by design): the text under it is the check.
-        await expect(regie.page.locator('fs-phone-tab')).toContainText('Mit der Kamera-App scannen. Das Handy öffnet FlowStudio und erscheint danach unter Stationen.');
+        await expect(regie.page.locator('sf-phone-tab')).toContainText('Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.');
         // The countdown: «Gilt einmal, noch 29:5x min.» and it runs down.
         const countdown = regie.page.locator('.c-pair__qr-side .c-hint .u-mono');
         await expect(countdown).toHaveText(/^(30:00|29:[0-5]\d)$/);
@@ -88,7 +88,7 @@ test.describe('PAIR phone, QR code', () => {
         const row = document.querySelector('.c-tabs') as HTMLElement;
         const reachable: Record<string, boolean> = {};
         for (const id of ['phone', 'laptop', 'link']) {
-          const tab = document.getElementById(`fs-pair-tab-${id}`) as HTMLElement;
+          const tab = document.getElementById(`sf-pair-tab-${id}`) as HTMLElement;
           const box = tab.getBoundingClientRect();
           const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
           reachable[id] = Boolean(hit && (hit === tab || tab.contains(hit)));
@@ -141,7 +141,7 @@ test.describe('PAIR phone, QR code', () => {
       expect((await readPlaces(regie.page)).strip).toHaveLength(0);
       // The sender's own preview and tally agree: K1 is in the program scene, the broadcast has not started.
       expect(await phone.tally(), 'standby: nothing is on air').toBe('off');
-      await expectVideoPlaying(paired.row.locator('fs-station-thumb video'), { minFps: 3, timeout: 20_000 });
+      await expectVideoPlaying(paired.row.locator('sf-station-thumb video'), { minFps: 3, timeout: 20_000 });
     },
   );
 
@@ -261,7 +261,7 @@ test.describe('PAIR laptop, check code', () => {
       await laptop.page.reload();
       expect(await laptop.checkCode(), 'same request, same check code after a reload').toBe(code);
       expect((await snapshotOf(api, production.id)).pairingRequests, 'no second request was made').toHaveLength(1);
-      expect(await laptop.page.evaluate(() => JSON.parse(sessionStorage.getItem('flowstudio.pairing') ?? '{}').checkCode)).toBeTruthy();
+      expect(await laptop.page.evaluate(() => JSON.parse(sessionStorage.getItem('studioflow.pairing') ?? '{}').checkCode)).toBeTruthy();
 
       // The laptop goes offline, the Regie approves, the laptop comes back 5 s later and polls.
       await net.cut(laptop.context);
@@ -550,7 +550,7 @@ test.describe('PAIR kind detection', () => {
         expect(request.kind).toBe(entry.kind);
         const pending = (await snapshotOf(api, production.id)).pairingRequests;
         for (const candidate of pending) {
-          const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('flowstudio.pairing') ?? '{}').pollToken as string | undefined);
+          const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('studioflow.pairing') ?? '{}').pollToken as string | undefined);
           if (token) production.pendingRequests.push({ requestId: candidate.id, pollToken: token });
         }
         await page.getByRole('button', { name: 'Abbrechen' }).click();
@@ -622,7 +622,7 @@ test.describe('PAIR entry points', () => {
       for (const entry of ['/join', '/join/', '/join/warten', '/join/station', '/join/irgendwas/unbekannt']) {
         const response = await page.goto(entry);
         expect(response?.status(), `${entry} is served`).toBeLessThan(400);
-        expect(await page.title(), `${entry}: the sender shell`).toBe('FlowStudio Sender');
+        expect(await page.title(), `${entry}: the sender shell`).toBe('StudioFlow Sender');
         await expect(page.getByRole('heading', { name: 'Gerät koppeln' }), `${entry}: an unpaired browser sees the pairing form, not a server error`).toBeVisible();
       }
       const token = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';

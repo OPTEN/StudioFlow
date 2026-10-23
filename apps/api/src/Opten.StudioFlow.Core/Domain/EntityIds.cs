@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// Random, URL-safe identifiers: a type prefix plus 16 lowercase base32 characters (80 bits of entropy, spec 4.1).

@@ -94,7 +94,7 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
   // The API builds absolute links from the public URL, which carries the https port.
   const apiEnv = inspected.get('api')!.Config.Env;
   expect(apiEnv, 'public base URL of the API').toContain(
-    `FLOWSTUDIO__PUBLICBASEURL=${config.baseURL}`,
+    `STUDIOFLOW__PUBLICBASEURL=${config.baseURL}`,
   );
   expect(new URL(config.baseURL).port, 'public URL port').toBe(
     config.httpsPort === 443 ? '' : String(config.httpsPort),

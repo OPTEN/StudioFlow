@@ -7,7 +7,7 @@ import {
   applyChanges,
   type ProductionChangesDto,
   type ProductionEvent,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { snapshotFixture } from '../../scene-model/src/testing/fixtures';
 import { SERVER_TIMEOUT_MS } from './hub-connection';
 import { ProductionSync } from './production-sync';

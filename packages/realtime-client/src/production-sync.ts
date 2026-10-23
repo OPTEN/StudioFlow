@@ -11,7 +11,7 @@ import {
   type ProductionChangesDto,
   type ProductionEvent,
   type ProductionState,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { defaultSchedule, promiseFrom, type Schedule } from './async';
 import { backoffDelay } from './backoff';
 import { consoleLogger, describeError, logSafely } from './logging';

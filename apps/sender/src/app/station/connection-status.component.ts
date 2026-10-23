@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { formatDuration } from '@flowstudio/scene-model';
+import { formatDuration } from '@studioflow/scene-model';
 import type { ConnectionView } from './device-session.service';
 
 /** Lamp class per connection view (amber = reconnecting, red = down, DESIGN «Lamps»). */
@@ -25,7 +25,7 @@ const LABELS: Readonly<Record<ConnectionView, string>> = {
 
 /** The connection line: lamp, state word and the outage timer («Verbindet neu … 00:12»). */
 @Component({
-  selector: 'fs-connection-status',
+  selector: 'sf-connection-status',
   template: `
     <span class="c-connection" data-testid="connection-state" [attr.data-state]="view()">
       <span class="c-lamp" [class]="lampClass()" aria-hidden="true"></span>

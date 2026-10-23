@@ -79,7 +79,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await saveScreen(page, SCREEN_PREFIX(`${browserName}-regie-direct`));
 
       // render: monitors are 16:9 inside the viewport, the docks sit at the bottom
-      const monitor = (await page.locator('fs-monitor[kind=program] .c-monitor__screen').boundingBox())!;
+      const monitor = (await page.locator('sf-monitor[kind=program] .c-monitor__screen').boundingBox())!;
       expect(Math.abs(monitor.width / monitor.height - 16 / 9), 'the Program monitor is 16:9').toBeLessThan(0.012);
       expect(monitor.x + monitor.width, 'and inside the viewport').toBeLessThanOrEqual(page.viewportSize()!.width);
       await expectNoOverflow(page, { vertical: false, label: `${browserName} Regie` });
@@ -123,10 +123,10 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await page.mouse.move(40, 300, { steps: 10 });
       await expect(page.locator('.c-drop-zone--left, .c-drop-zone')).not.toHaveCount(0);
       await page.mouse.up();
-      await expect(page.locator('[data-zone=left] fs-dock-slot[aria-label=Szenen]'), 'the dock moved to the left zone').toHaveCount(1);
+      await expect(page.locator('[data-zone=left] sf-dock-slot[aria-label=Szenen]'), 'the dock moved to the left zone').toHaveCount(1);
       await saveScreen(page, SCREEN_PREFIX(`${browserName}-regie-dock-left`));
       await page.getByRole('button', { name: 'Layout zurücksetzen' }).click();
-      await expect(page.locator('[data-zone=bottom] fs-dock-slot[aria-label=Szenen]')).toHaveCount(1);
+      await expect(page.locator('[data-zone=bottom] sf-dock-slot[aria-label=Szenen]')).toHaveCount(1);
 
       // drag a splitter: the docks grow
       const split = page.getByRole('separator', { name: 'Höhe der Docks unten' });
@@ -178,7 +178,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
           await settle(page);
           const l = `${browserName} ${name} ${studio ? 'Studio-Modus' : 'direct'}`;
           await expectNoOverflow(page, { label: l });
-          const programBox = (await page.locator('fs-monitor[kind=program] .c-monitor__screen').boundingBox())!;
+          const programBox = (await page.locator('sf-monitor[kind=program] .c-monitor__screen').boundingBox())!;
           expect(Math.abs(programBox.width / programBox.height - 16 / 9), `${l}: Program is 16:9`).toBeLessThan(0.012);
           expect(programBox.x + programBox.width, `${l}: Program inside the viewport`).toBeLessThanOrEqual(viewport.width + 0.5);
           if (studio) {
@@ -199,7 +199,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await expect.poll(() => output.slateText(), { message: 'standby slate', timeout: 20_000 }).toContain(DE.slateStandby);
       expect(await loadedFontFamilies(output.page), 'the slate font is loaded').toContain('Sofia Sans Semi Condensed');
       await saveScreen(output.page, SCREEN_PREFIX(`${browserName}-output-standby`));
-      const stage = (await output.page.locator('.fs-r-stage').boundingBox())!;
+      const stage = (await output.page.locator('.sf-r-stage').boundingBox())!;
       expect(Math.abs(stage.width / stage.height - 16 / 9), 'the stage is 16:9').toBeLessThan(0.012);
       expect((await api.startBroadcast(production.id)).status).toBe(200);
       await expect.poll(() => output.slateText(), { message: 'the slate is gone while live', timeout: 20_000 }).not.toContain(DE.slateStandby);

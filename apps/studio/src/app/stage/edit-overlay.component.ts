@@ -15,7 +15,7 @@ import {
   type CanvasRect,
   type CropDto,
   type SceneItemDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { DragCursorService, type DragCursor } from '../core/ui/drag-cursor.service';
 import { ToastService } from '../core/ui/toast.service';
@@ -157,7 +157,7 @@ function isHandle(value: string | undefined): value is Handle {
  *   `pointercancel`/`lostpointercapture`, mouse, pen and touch are handled alike.
  */
 @Component({
-  selector: 'fs-edit-overlay',
+  selector: 'sf-edit-overlay',
   templateUrl: './edit-overlay.component.html',
   styleUrl: './edit-overlay.component.scss',
   host: {

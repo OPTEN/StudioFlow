@@ -1,4 +1,4 @@
-import type { TransitionDto } from '@flowstudio/scene-model';
+import type { TransitionDto } from '@studioflow/scene-model';
 
 import {
   CAMERA,
@@ -35,7 +35,7 @@ describe('scene renderer: transitions', () => {
   });
 
   const layers = (): HTMLElement[] => [
-    ...mounted.container.querySelectorAll<HTMLElement>('.fs-r-layer'),
+    ...mounted.container.querySelectorAll<HTMLElement>('.sf-r-layer'),
   ];
   const layerIds = (): (string | null)[] =>
     layers().map((layer) => layer.getAttribute('data-scene-id'));
@@ -292,25 +292,25 @@ describe('scene renderer: slates', () => {
     vi.useRealTimers();
   });
 
-  const slate = (): HTMLElement | null => mounted.container.querySelector('.fs-r-slate');
+  const slate = (): HTMLElement | null => mounted.container.querySelector('.sf-r-slate');
 
   it('fades a slate in above the scenes', async () => {
     mounted = mount();
     mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
     mounted.renderer.showSlate(standby);
     const element = slate();
-    expect(element?.querySelector('.fs-r-slate-title')?.textContent).toBe('Gleich geht’s los');
-    expect(element?.querySelector('.fs-r-slate-subtitle')?.textContent).toBe('Webinar Q4');
+    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Gleich geht’s los');
+    expect(element?.querySelector('.sf-r-slate-subtitle')?.textContent).toBe('Webinar Q4');
     expect(element?.style.backgroundColor).toBe('#0d1117');
     expect(element?.style.color).toBe('#ffffff');
-    expect(element?.querySelector<HTMLElement>('.fs-r-slate-title')?.style.fontSize).toBe('72px');
-    expect(element?.querySelector<HTMLElement>('.fs-r-slate-subtitle')?.style.fontSize).toBe(
+    expect(element?.querySelector<HTMLElement>('.sf-r-slate-title')?.style.fontSize).toBe('72px');
+    expect(element?.querySelector<HTMLElement>('.sf-r-slate-subtitle')?.style.fontSize).toBe(
       '36px',
     );
     expect(animations[0].element).toBe(element);
     expect(animations[0].duration).toBe(300);
     // Above every scene layer.
-    const scenes = mounted.container.querySelector('.fs-r-scenes');
+    const scenes = mounted.container.querySelector('.sf-r-scenes');
     expect(scenes?.compareDocumentPosition(element as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     await vi.advanceTimersByTimeAsync(300);
     expect(element?.style.opacity).toBe('1');
@@ -337,8 +337,8 @@ describe('scene renderer: slates', () => {
     });
     expect(slate()).toBe(element);
     expect(animations).toHaveLength(1);
-    expect(element?.querySelector('.fs-r-slate-title')?.textContent).toBe('Danke fürs Zuschauen');
-    expect(element?.querySelector<HTMLElement>('.fs-r-slate-subtitle')?.style.display).toBe('none');
+    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Danke fürs Zuschauen');
+    expect(element?.querySelector<HTMLElement>('.sf-r-slate-subtitle')?.style.display).toBe('none');
   });
 
   it('fades out and removes the slate', async () => {

@@ -21,12 +21,12 @@ import {
  * name counts as cancel. The parent shows it in place of the name and removes it on `save` or `cancel`.
  *
  * ```html
- * <fs-inline-edit label="Name der Szene" [value]="scene.name" [maxLength]="80"
+ * <sf-inline-edit label="Name der Szene" [value]="scene.name" [maxLength]="80"
  *   (save)="rename($event)" (cancel)="renaming.set(false)" />
  * ```
  */
 @Component({
-  selector: 'fs-inline-edit',
+  selector: 'sf-inline-edit',
   imports: [ReactiveFormsModule],
   template: `
     <input

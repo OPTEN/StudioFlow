@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { TallyState } from '@flowstudio/scene-model';
+import type { TallyState } from '@studioflow/scene-model';
 
 /**
  * Tally around the whole viewport (plan «Tally auf dem Gerät»): red frame and «LIVE» while in the program, green
  * frame and «Als Nächstes» while in the preview, nothing otherwise. Screen readers get the state as text.
  */
 @Component({
-  selector: 'fs-tally-frame',
+  selector: 'sf-tally-frame',
   templateUrl: './tally-frame.component.html',
   styleUrl: './tally-frame.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

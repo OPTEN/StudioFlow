@@ -45,11 +45,11 @@ describe('consoleLogger', () => {
     logger.log(LogLevel.Critical, 'critical');
     logger.log(LogLevel.None, 'none');
     consoleLogger(LogLevel.Trace).log(LogLevel.Trace, 'trace');
-    expect(debug).toHaveBeenCalledWith('[FlowStudio realtime] trace');
-    expect(info).toHaveBeenCalledWith('[FlowStudio realtime] info');
-    expect(warn).toHaveBeenCalledWith('[FlowStudio realtime] warn');
+    expect(debug).toHaveBeenCalledWith('[StudioFlow realtime] trace');
+    expect(info).toHaveBeenCalledWith('[StudioFlow realtime] info');
+    expect(warn).toHaveBeenCalledWith('[StudioFlow realtime] warn');
     expect(error).toHaveBeenCalledTimes(1);
-    expect(error).toHaveBeenCalledWith('[FlowStudio realtime] critical');
+    expect(error).toHaveBeenCalledWith('[StudioFlow realtime] critical');
     expect(debug).toHaveBeenCalledTimes(1);
     vi.restoreAllMocks();
   });

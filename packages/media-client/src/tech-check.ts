@@ -3,7 +3,7 @@
  * rated as a traffic light and summarized in a {@link TechCheckDto}. Every step has a timeout and the check never
  * throws: a failing step is rated `bad` and explained in the German note.
  */
-import type { TechCheckDto, TechCheckLevel } from '@flowstudio/scene-model';
+import type { TechCheckDto, TechCheckLevel } from '@studioflow/scene-model';
 import { systemClock, TimeoutError, withTimeout, type Clock } from './clock';
 
 /** Inputs of {@link runTechCheck}. */

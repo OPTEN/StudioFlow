@@ -15,11 +15,11 @@ export default defineConfig({
   publicDir: 'public',
   resolve: {
     alias: {
-      '@flowstudio/scene-model': fromRoot('packages/scene-model/src/index.ts'),
-      '@flowstudio/scene-renderer': fromRoot('packages/scene-renderer/src/index.ts'),
-      '@flowstudio/media-client/device': fromRoot('packages/media-client/src/device.ts'),
-      '@flowstudio/media-client': fromRoot('packages/media-client/src/index.ts'),
-      '@flowstudio/realtime-client': fromRoot('packages/realtime-client/src/index.ts'),
+      '@studioflow/scene-model': fromRoot('packages/scene-model/src/index.ts'),
+      '@studioflow/scene-renderer': fromRoot('packages/scene-renderer/src/index.ts'),
+      '@studioflow/media-client/device': fromRoot('packages/media-client/src/device.ts'),
+      '@studioflow/media-client': fromRoot('packages/media-client/src/index.ts'),
+      '@studioflow/realtime-client': fromRoot('packages/realtime-client/src/index.ts'),
     },
   },
   build: {

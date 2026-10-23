@@ -1,10 +1,10 @@
 using System.Net;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// The output page (spec 4.8): key and IP checks, snapshot and changes without private data, LiveKit token, consumer
@@ -16,7 +16,7 @@ public sealed class OutputService(
     ProductionRuntimeRegistry runtimes,
     ILiveKitTokenIssuer tokens,
     LiveKitKicker kicker,
-    FlowStudioOptions options)
+    StudioFlowOptions options)
 {
     /// <summary>LiveKit identity prefix of the output pages of a slug.</summary>
     public static string IdentityPrefix(string slug) => $"output_{slug}_";
@@ -90,7 +90,7 @@ public sealed class OutputService(
     }
 
     /// <summary>The one answer for every refused output request.</summary>
-    public static FlowStudioException NoAccess() => new(ErrorKind.Forbidden, ErrorCodes.Forbidden, "Kein Zugang.");
+    public static StudioFlowException NoAccess() => new(ErrorKind.Forbidden, ErrorCodes.Forbidden, "Kein Zugang.");
 
     /// <summary>Finds the production of a key for the output hub (the hub URL carries no slug).</summary>
     public async Task<OutputKeyInfo?> FindByKeyAsync(string? key, IPAddress? client, CancellationToken cancellationToken)
@@ -143,7 +143,7 @@ public sealed class OutputService(
     {
         if (report is null)
         {
-            throw FlowStudioException.Invalid("report", "Bericht fehlt.");
+            throw StudioFlowException.Invalid("report", "Bericht fehlt.");
         }
 
         return Track(productionId, (tracker, now) => tracker.Report(report, now), cancellationToken);

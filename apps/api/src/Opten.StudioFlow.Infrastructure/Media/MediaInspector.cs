@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using System.Text;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Infrastructure.Media;
+namespace Opten.StudioFlow.Infrastructure.Media;
 
 /// <summary>A media type recognised by its magic bytes.</summary>
 /// <param name="Kind">Image or video.</param>

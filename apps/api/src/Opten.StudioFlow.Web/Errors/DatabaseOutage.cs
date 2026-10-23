@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Persistence;
 
-namespace Opten.FlowStudio.Web.Errors;
+namespace Opten.StudioFlow.Web.Errors;
 
 /// <summary>
 /// Recognises a database that is down or unreachable (GAP-32): requests that need it answer 503

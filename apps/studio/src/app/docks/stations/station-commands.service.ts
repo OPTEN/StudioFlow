@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { LIMITS, type DeviceDto, type IncidentDto, type SourceDto } from '@flowstudio/scene-model';
+import { LIMITS, type DeviceDto, type IncidentDto, type SourceDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { IncidentAckService } from '../../core/state/incident-ack.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';

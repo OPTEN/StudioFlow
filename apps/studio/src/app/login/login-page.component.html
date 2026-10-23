@@ -1,6 +1,6 @@
 <main class="c-login">
   <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
-    <h1 class="c-login__brand"><svg fsIcon="mark"></svg>FlowStudio</h1>
+    <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
     <p class="c-login__lead">Regie</p>
 
     <label class="c-login__field">
@@ -28,7 +28,7 @@
 
     <p class="c-login__error" role="alert" aria-live="assertive">
       @if (message(); as message) {
-        <svg fsIcon="alert" [size]="14"></svg>{{ message }}
+        <svg sfIcon="alert" [size]="14"></svg>{{ message }}
       }
     </p>
 

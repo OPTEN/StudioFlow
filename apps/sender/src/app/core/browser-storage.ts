@@ -79,13 +79,13 @@ function storageArea(name: 'localStorage' | 'sessionStorage'): () => Storage | n
 }
 
 /** Persistent storage (credentials, settings). Survives reloads and browser restarts. */
-export const LOCAL_STORAGE = new InjectionToken<SafeStorage>('flowstudio.localStorage', {
+export const LOCAL_STORAGE = new InjectionToken<SafeStorage>('studioflow.localStorage', {
   providedIn: 'root',
   factory: () => new WebStorage(storageArea('localStorage')),
 });
 
 /** Per-tab storage (a pending knock). Survives reloads of the same tab only. */
-export const SESSION_STORAGE = new InjectionToken<SafeStorage>('flowstudio.sessionStorage', {
+export const SESSION_STORAGE = new InjectionToken<SafeStorage>('studioflow.sessionStorage', {
   providedIn: 'root',
   factory: () => new WebStorage(storageArea('sessionStorage')),
 });
@@ -93,9 +93,9 @@ export const SESSION_STORAGE = new InjectionToken<SafeStorage>('flowstudio.sessi
 /** Storage keys of the sender. */
 export const STORAGE_KEYS = {
   /** Device credentials and the redeem client id (localStorage). */
-  credentials: 'flowstudio.sender.v1',
+  credentials: 'studioflow.sender.v1',
   /** Camera facing, resolution, dark mode (localStorage). */
-  settings: 'flowstudio.sender.settings',
+  settings: 'studioflow.sender.settings',
   /** Pending knock of this tab (sessionStorage). */
-  pairing: 'flowstudio.pairing',
+  pairing: 'studioflow.pairing',
 } as const;

@@ -8,16 +8,16 @@ import type {
   SceneDto,
   SlateDto,
   TransitionDto,
-} from '@flowstudio/scene-model';
-import type { HubHandler, HubState } from '@flowstudio/realtime-client';
+} from '@studioflow/scene-model';
+import type { HubHandler, HubState } from '@studioflow/realtime-client';
 import type {
   CanvasRect,
   DesiredSize,
   RendererStats,
   SceneRenderer,
   SourceAvailability,
-} from '@flowstudio/scene-renderer';
-import type { MediaSessionState, SourceStats } from '@flowstudio/media-client';
+} from '@studioflow/scene-renderer';
+import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
 import type { OutputApi } from '../api';
 import type { OutputHub } from '../output-app';
 import type { OutputMedia, OutputMediaProvider, OutputMediaSession } from '../media';
@@ -318,7 +318,7 @@ export function fakeApi(): OutputApi & {
   return {
     liveKitToken: vi.fn<() => Promise<LiveKitTokenDto>>(() =>
       Promise.resolve({
-        url: 'wss://flowstudio.test',
+        url: 'wss://studioflow.test',
         token: 'jwt',
         identity: 'output_webinar_x',
         room: 'prd_aaaaaaaaaaaaaaaa',

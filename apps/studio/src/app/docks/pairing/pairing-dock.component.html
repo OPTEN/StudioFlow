@@ -1,12 +1,12 @@
-<fs-dock-frame dock="pair" [draggable]="false" [scroll]="false">
+<sf-dock-frame dock="pair" [draggable]="false" [scroll]="false">
   <button
-    fsDockActions
+    sfDockActions
     class="c-ibtn"
     type="button"
     aria-label="Gerät koppeln schliessen"
     (click)="layout.closePairing()"
   >
-    <svg fsIcon="close"></svg>
+    <svg sfIcon="close"></svg>
   </button>
 
   <div class="c-pair">
@@ -22,31 +22,31 @@
             class="c-tab"
             type="button"
             role="tab"
-            [id]="'fs-pair-tab-' + tab.id"
+            [id]="'sf-pair-tab-' + tab.id"
             [attr.aria-selected]="layout.pairingTab() === tab.id"
-            [attr.aria-controls]="'fs-pair-panel'"
+            [attr.aria-controls]="'sf-pair-panel'"
             [attr.tabindex]="layout.pairingTab() === tab.id ? 0 : -1"
             (click)="select(tab.id)"
           >
-            <svg [fsIcon]="tab.icon"></svg>{{ tab.label }}
+            <svg [sfIcon]="tab.icon"></svg>{{ tab.label }}
           </button>
         }
       </div>
       <div
         class="c-pair__panel"
-        id="fs-pair-panel"
+        id="sf-pair-panel"
         role="tabpanel"
-        [attr.aria-labelledby]="'fs-pair-tab-' + layout.pairingTab()"
+        [attr.aria-labelledby]="'sf-pair-tab-' + layout.pairingTab()"
       >
         @switch (layout.pairingTab()) {
           @case ('phone') {
-            <fs-phone-tab />
+            <sf-phone-tab />
           }
           @case ('laptop') {
-            <fs-laptop-tab />
+            <sf-laptop-tab />
           }
           @case ('link') {
-            <fs-link-tab />
+            <sf-link-tab />
           }
         }
       </div>
@@ -55,15 +55,15 @@
       @if (layout.pairingTab() === 'phone') {
         <h3 class="c-pair__side-title">Tipps für fest montierte Handys</h3>
         <p class="c-pair__side-text">
-          Ans Ladekabel hängen und im Querformat montieren. FlowStudio hält den Bildschirm selbst
+          Ans Ladekabel hängen und im Querformat montieren. StudioFlow hält den Bildschirm selbst
           wach und startet nach einem Neuladen mit den letzten Einstellungen.
         </p>
         @if (requests.pending().length > 0) {
-          <fs-pairing-requests />
+          <sf-pairing-requests />
         }
       } @else {
-        <fs-pairing-requests />
+        <sf-pairing-requests />
       }
     </div>
   </div>
-</fs-dock-frame>
+</sf-dock-frame>

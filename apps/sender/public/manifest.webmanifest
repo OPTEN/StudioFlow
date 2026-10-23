@@ -1,7 +1,7 @@
 {
-  "name": "FlowStudio Sender",
-  "short_name": "FlowStudio",
-  "description": "Kamera und Bildschirm an die FlowStudio-Regie senden.",
+  "name": "StudioFlow Sender",
+  "short_name": "StudioFlow",
+  "description": "Kamera und Bildschirm an die StudioFlow-Regie senden.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>Use cases of scenes and scene items (spec 4.3). Every change emits <c>sceneUpserted</c> with the full scene.</summary>
 public sealed class SceneService(ProductionCoordinator coordinator)

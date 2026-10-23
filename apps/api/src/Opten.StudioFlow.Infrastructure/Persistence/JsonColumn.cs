@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// Maps a value object (record or list of records) to a <c>jsonb</c> column in the contract JSON format. The domain

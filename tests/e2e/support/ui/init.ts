@@ -17,10 +17,10 @@ const FAKE_SOURCES = fs.readFileSync(
   'utf8',
 );
 
-/** localStorage key that switches the read-only state views `window.__fsStudio` / `window.__fsSender` on (the output page has none, spec 12). */
-export const TEST_HOOKS_KEY = 'flowstudio.testHooks';
+/** localStorage key that switches the read-only state views `window.__sfStudio` / `window.__sfSender` on (the output page has none, spec 12). */
+export const TEST_HOOKS_KEY = 'studioflow.testHooks';
 
-/** Fake origin of a page that embeds the output in an iframe (FLOWSTUDIO_FRAME_ANCESTORS of the test env allows it). */
+/** Fake origin of a page that embeds the output in an iframe (STUDIOFLOW_FRAME_ANCESTORS of the test env allows it). */
 export const EMBED_ORIGIN = 'https://embed.test';
 /** An origin the stack does NOT allow to frame the output. */
 export const FOREIGN_ORIGIN = 'https://foreign.test';
@@ -42,7 +42,7 @@ export interface FakeScreenOptions extends FakeSourceOptions {
 }
 
 export interface UiInitOptions {
-  /** Set `localStorage['flowstudio.testHooks'] = '1'` before any app script runs (default true). */
+  /** Set `localStorage['studioflow.testHooks'] = '1'` before any app script runs (default true). */
   testHooks?: boolean;
   /**
    * getDisplayMedia():
@@ -55,7 +55,7 @@ export interface UiInitOptions {
    * `stamp` is a canvas camera that carries the latency stamp (the "latency stamp publisher").
    */
   camera?: 'native' | 'stamp' | FakeSourceOptions;
-  /** Make every camera request fail with NotReadableError (`window.__fsMedia.failCamera`). */
+  /** Make every camera request fail with NotReadableError (`window.__sfMedia.failCamera`). */
   failCamera?: boolean;
   /**
    * The client address the stack sees for the anonymous, rate-limited calls of this context (`POST /api/pairing/requests`
@@ -113,20 +113,20 @@ export async function installUiInit(
   await context.addInitScript({ content: FAKE_SOURCES });
   await context.addInitScript((settings) => {
     try {
-      if (settings.testHooks) window.localStorage.setItem('flowstudio.testHooks', '1');
-      else window.localStorage.removeItem('flowstudio.testHooks');
+      if (settings.testHooks) window.localStorage.setItem('studioflow.testHooks', '1');
+      else window.localStorage.removeItem('studioflow.testHooks');
     } catch {
       // opaque origins (about:blank, data:) have no storage
     }
     const w = window as unknown as {
-      __fsFake?: { config: { screen: unknown; camera: unknown } };
-      __fsMedia?: { failCamera: boolean };
+      __sfFake?: { config: { screen: unknown; camera: unknown } };
+      __sfMedia?: { failCamera: boolean };
     };
-    if (w.__fsFake) {
-      w.__fsFake.config.screen = settings.screen;
-      w.__fsFake.config.camera = settings.camera;
+    if (w.__sfFake) {
+      w.__sfFake.config.screen = settings.screen;
+      w.__sfFake.config.camera = settings.camera;
     }
-    if (w.__fsMedia) w.__fsMedia.failCamera = settings.failCamera;
+    if (w.__sfMedia) w.__sfMedia.failCamera = settings.failCamera;
   }, resolved);
   await routeClientIp(context, resolved.clientIp);
 }
@@ -255,7 +255,7 @@ export async function serveFakeOrigin(
 }
 
 /**
- * Opens the tab titled "FlowStudio Timecode" that Chromium's native screen capture picks without a picker
+ * Opens the tab titled "StudioFlow Timecode" that Chromium's native screen capture picks without a picker
  * (`--auto-select-tab-capture-source-by-title`, fake-media.ts) when a context is used with `screen: 'native'`. The page
  * draws the latency stamp and a running clock, so what is shared is known content.
  */
@@ -266,7 +266,7 @@ export async function openTimecodeTab(context: BrowserContext): Promise<Page> {
     route.fulfill({
       status: 200,
       contentType: 'text/html',
-      body: '<!doctype html><meta charset="utf-8"><title>FlowStudio Timecode</title><body style="margin:0;background:#202020"><canvas id="c" width="1280" height="720" style="width:100vw;height:56.25vw"></canvas></body>',
+      body: '<!doctype html><meta charset="utf-8"><title>StudioFlow Timecode</title><body style="margin:0;background:#202020"><canvas id="c" width="1280" height="720" style="width:100vw;height:56.25vw"></canvas></body>',
     }),
   );
   await page.goto(`${base}/__e2e/timecode`);
@@ -275,11 +275,11 @@ export async function openTimecodeTab(context: BrowserContext): Promise<Page> {
     const g = canvas.getContext('2d')!;
     const fake = (
       window as unknown as {
-        __fsFake?: {
+        __sfFake?: {
           drawStampBar(g: CanvasRenderingContext2D, width: number, height: number): void;
         };
       }
-    ).__fsFake;
+    ).__sfFake;
     setInterval(() => {
       g.fillStyle = '#202020';
       g.fillRect(0, 0, canvas.width, canvas.height);

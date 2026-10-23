@@ -1,5 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import type { AssetDto, SourceDto } from '@flowstudio/scene-model';
+import type { AssetDto, SourceDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import {
   PRODUCTION_ID,
@@ -135,7 +135,7 @@ describe('MediaPopoverComponent', () => {
     assets()[0].querySelector<HTMLButtonElement>('[aria-label="Umbenennen: Titelfolie"]')?.click();
     await render();
     const input = assets()[0].querySelector<HTMLInputElement>(
-      'fs-inline-edit input',
+      'sf-inline-edit input',
     ) as HTMLInputElement;
     input.value = 'Titel 2026';
     input.dispatchEvent(new Event('input'));

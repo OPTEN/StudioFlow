@@ -5,19 +5,19 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Infrastructure.LiveKit;
-using Opten.FlowStudio.Infrastructure.Media;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Infrastructure.Security;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Infrastructure.LiveKit;
+using Opten.StudioFlow.Infrastructure.Media;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Security;
 
-namespace Opten.FlowStudio.Infrastructure;
+namespace Opten.StudioFlow.Infrastructure;
 
 /// <summary>Registers the adapters of the infrastructure layer.</summary>
 public static class InfrastructureServices
 {
     /// <summary>Name of the connection string.</summary>
-    public const string ConnectionStringName = "FlowStudio";
+    public const string ConnectionStringName = "StudioFlow";
 
     /// <summary>Minimum length of the LiveKit API secret (HS256 needs 256 bits).</summary>
     public const int MinSecretLength = 32;
@@ -27,7 +27,7 @@ public static class InfrastructureServices
     /// <see cref="DatabaseOptions"/>, a retry strategy for transient errors and the <see cref="DatabaseCircuit"/> that
     /// makes requests fail fast while PostgreSQL is unreachable (GAP-32).
     /// </summary>
-    public static IServiceCollection AddFlowStudioPersistence(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddStudioFlowPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.Section));
@@ -48,7 +48,7 @@ public static class InfrastructureServices
         });
 
         // Read lazily: build-time OpenAPI generation and design-time tools run the composition without a database.
-        services.AddPooledDbContextFactory<FlowStudioDbContext>((sp, options) =>
+        services.AddPooledDbContextFactory<StudioFlowDbContext>((sp, options) =>
         {
             var database = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
             var circuit = sp.GetRequiredService<DatabaseCircuit>();
@@ -66,10 +66,10 @@ public static class InfrastructureServices
     /// the web host reads them during startup (not with <c>ValidateOnStart</c>, which would also run during the
     /// build-time OpenAPI generation that has no configuration).
     /// </summary>
-    public static IServiceCollection AddFlowStudioInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddStudioFlowInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        services.AddFlowStudioPersistence(configuration);
+        services.AddStudioFlowPersistence(configuration);
 
         services.AddOptions<LiveKitOptions>().Bind(configuration.GetSection(LiveKitOptions.Section))
             .Validate(o => !string.IsNullOrWhiteSpace(o.ApiKey), "LiveKit:ApiKey is required.")

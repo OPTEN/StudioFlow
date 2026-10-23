@@ -1,4 +1,4 @@
-import { clampItem, type SourceDto } from '@flowstudio/scene-model';
+import { clampItem, type SourceDto } from '@studioflow/scene-model';
 import { itemFixture, sourceFixture } from '../../../testing/fixtures';
 import {
   cropToPercent,

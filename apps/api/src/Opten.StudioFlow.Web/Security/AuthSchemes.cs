@@ -1,9 +1,9 @@
-namespace Opten.FlowStudio.Web.Security;
+namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>Authentication schemes.</summary>
 internal static class AuthSchemes
 {
-    /// <summary>Admin cookie <c>fs_session</c>.</summary>
+    /// <summary>Admin cookie <c>sf_session</c>.</summary>
     public const string Admin = "Admin";
 
     /// <summary>Device bearer <c>{deviceId}.{secret}</c>.</summary>
@@ -26,27 +26,27 @@ internal static class Policies
     public const string Output = "Output";
 }
 
-/// <summary>Claims issued by the FlowStudio handlers.</summary>
-internal static class FlowStudioClaims
+/// <summary>Claims issued by the StudioFlow handlers.</summary>
+internal static class StudioFlowClaims
 {
     /// <summary>Production of a device or output connection.</summary>
-    public const string ProductionId = "flowstudio:production";
+    public const string ProductionId = "studioflow:production";
 
     /// <summary>The device is blocked.</summary>
-    public const string Blocked = "flowstudio:blocked";
+    public const string Blocked = "studioflow:blocked";
 
     /// <summary>Random id of an admin session (logout revokes it, GAP-04).</summary>
-    public const string SessionId = "flowstudio:sid";
+    public const string SessionId = "studioflow:sid";
 }
 
 /// <summary>Names of the cookie, headers and query parameters of the security layer.</summary>
 internal static class SecurityNames
 {
     /// <summary>Session cookie of the admin.</summary>
-    public const string SessionCookie = "fs_session";
+    public const string SessionCookie = "sf_session";
 
     /// <summary>CSRF header the Regie sends with every unsafe request.</summary>
-    public const string CsrfHeader = "X-FlowStudio";
+    public const string CsrfHeader = "X-StudioFlow";
 
     /// <summary>Query parameter browsers use for hub tokens.</summary>
     public const string AccessTokenQuery = "access_token";

@@ -1,6 +1,6 @@
 import { LogLevel, type ILogger } from '@microsoft/signalr';
-import { redactSecrets } from '@flowstudio/realtime-client';
-import type { MediaLogger } from '@flowstudio/media-client';
+import { redactSecrets } from '@studioflow/realtime-client';
+import type { MediaLogger } from '@studioflow/media-client';
 
 /**
  * Console logging of the output page. The page may run for days in a proxy and retries forever during outages, so
@@ -42,7 +42,7 @@ export function createOutputLog(
         lastWritten.clear();
       }
       lastWritten.set(text, at);
-      target.warn(`[FlowStudio Output] ${text}`);
+      target.warn(`[StudioFlow Output] ${text}`);
     },
   };
 }

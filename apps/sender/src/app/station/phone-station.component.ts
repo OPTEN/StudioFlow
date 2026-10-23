@@ -23,7 +23,7 @@ const WAKE_MS = 10_000;
  * slot code, connection line, and the controls start/stop, Front/Rück, 720p/1080p, «Dunkel» and «Technik-Check».
  */
 @Component({
-  selector: 'fs-phone-station',
+  selector: 'sf-phone-station',
   imports: [ConnectionStatusComponent, IconComponent, MediaPreviewDirective],
   templateUrl: './phone-station.component.html',
   styleUrl: './phone-station.component.scss',

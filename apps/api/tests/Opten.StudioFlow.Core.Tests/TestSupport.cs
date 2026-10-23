@@ -1,7 +1,7 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests;
+namespace Opten.StudioFlow.Core.Tests;
 
 /// <summary>A clock the tests move by hand.</summary>
 internal sealed class ManualClock(DateTimeOffset start) : TimeProvider

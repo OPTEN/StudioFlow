@@ -1,4 +1,4 @@
-import { formatDuration, statusWord, type SourceKind } from '@flowstudio/scene-model';
+import { formatDuration, statusWord, type SourceKind } from '@studioflow/scene-model';
 
 import { PALETTE } from './palette';
 import type { MonitorSourceStatus } from './types';

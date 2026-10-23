@@ -1,7 +1,7 @@
-# FlowStudio E2E harness
+# StudioFlow E2E harness
 
 Playwright suite for the stack as a user runs it: Caddy, API, LiveKit and PostgreSQL in Docker (compose project
-`fs-e2e`, or `fs-e2e-N` for a numbered stack), driven over REST, SignalR, WebRTC, the real frontends and the operations
+`sf-e2e`, or `sf-e2e-N` for a numbered stack), driven over REST, SignalR, WebRTC, the real frontends and the operations
 scripts. The catalogue and the pass criteria are in `docs/testing.md`; test titles start with the catalogue ID
 (`E2E-AUTH-01 [api] ...`).
 
@@ -16,7 +16,7 @@ npx playwright test -c tests/e2e/playwright.config.ts --project=desktop-chromium
 ```
 
 Global setup writes `tests/e2e/.env.e2e` (git-ignored, throwaway credentials, TLS `internal`, node IP = LAN IPv4,
-fallback 127.0.0.1), checks that the ports and the subnet of the stack are free, builds and starts the project `fs-e2e`
+fallback 127.0.0.1), checks that the ports and the subnet of the stack are free, builds and starts the project `sf-e2e`
 and waits for all four healthchecks. Teardown removes containers and volumes. Logs of every service go to
 `tests/e2e/.output/logs`, reports to `.output/html`, `.output/junit.xml` and `.output/results.json`.
 
@@ -28,9 +28,9 @@ and waits for all four healthchecks. Teardown removes containers and volumes. Lo
 | `E2E_BUG_REPORT=1` | run the tests of open known bugs as plain tests (raw failures as evidence) |
 | `E2E_NODE_IP` | node IP instead of the detected LAN IPv4 |
 | `E2E_STACK=N` (1-4) | one of the four numbered stacks that run side by side, see "Parallel stacks" |
-| `E2E_PROJECT` | compose project (default `fs-e2e`, with `E2E_STACK=N` `fs-e2e-N`); `E2E_PROJECT=fs-e2e-N` (N = 1-4) alone also selects numbered stack N |
+| `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-4) alone also selects numbered stack N |
 | `E2E_HTTPS_PORT`, `E2E_HTTP_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
-| `E2E_RTC_TCP_PORT`, `E2E_RTC_UDP_PORT` | LiveKit media ports (passed on as `FLOWSTUDIO_RTC_TCP_PORT` / `FLOWSTUDIO_RTC_UDP_PORT`; host and container port are the same number) |
+| `E2E_RTC_TCP_PORT`, `E2E_RTC_UDP_PORT` | LiveKit media ports (passed on as `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT`; host and container port are the same number) |
 | `E2E_OPS_SUBNET` | subnet of the scratch stack of the OPS specs (default `172.31.251.0/24`, per numbered stack `172.31.21N.0/24`) |
 | `E2E_BASE_URL` | origin the Playwright `baseURL` points at, if it is not `https://localhost[:E2E_HTTPS_PORT]` |
 | `E2E_BASH` | bash that runs `setup.sh`/`backup.sh`/`restore.sh`/`update.sh` (default: Git Bash on Windows) |
@@ -42,19 +42,19 @@ webkit`), Git Bash on Windows for the OPS specs, ports 80 and 443 free (or moved
 
 Four independent stacks can run on one machine, each with its own compose project, ports, subnet, env file, output
 directory, containers, volumes, network and images. `E2E_STACK=N` selects a set; every other `E2E_*` variable still
-overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: project `fs-e2e`, ports 80/443,
+overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: project `sf-e2e`, ports 80/443,
 7881/7882, 18081, 17880, 15432 and subnet `172.31.250.0/24`, files in `tests/e2e/.env.e2e` and `tests/e2e/.output`.
 
 | N | project | https | http | media tcp / udp | api | livekit | postgres | subnet | env file, output |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `fs-e2e-1` | 8491 | 8091 | 7901 / 7902 | 18091 | 17891 | 15491 | 172.31.201.0/24 | `.env.e2e.fs-e2e-1`, `.output/fs-e2e-1` |
-| 2 | `fs-e2e-2` | 8492 | 8092 | 7903 / 7904 | 18092 | 17892 | 15492 | 172.31.202.0/24 | `.env.e2e.fs-e2e-2`, `.output/fs-e2e-2` |
-| 3 | `fs-e2e-3` | 8493 | 8093 | 7905 / 7906 | 18093 | 17893 | 15493 | 172.31.203.0/24 | `.env.e2e.fs-e2e-3`, `.output/fs-e2e-3` |
-| 4 | `fs-e2e-4` | 8494 | 8094 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.fs-e2e-4`, `.output/fs-e2e-4` |
+| 1 | `sf-e2e-1` | 8491 | 8091 | 7901 / 7902 | 18091 | 17891 | 15491 | 172.31.201.0/24 | `.env.e2e.sf-e2e-1`, `.output/sf-e2e-1` |
+| 2 | `sf-e2e-2` | 8492 | 8092 | 7903 / 7904 | 18092 | 17892 | 15492 | 172.31.202.0/24 | `.env.e2e.sf-e2e-2`, `.output/sf-e2e-2` |
+| 3 | `sf-e2e-3` | 8493 | 8093 | 7905 / 7906 | 18093 | 17893 | 15493 | 172.31.203.0/24 | `.env.e2e.sf-e2e-3`, `.output/sf-e2e-3` |
+| 4 | `sf-e2e-4` | 8494 | 8094 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.sf-e2e-4`, `.output/sf-e2e-4` |
 
 The table lives in `support/env.ts` (`numberedStack`). The services take the addresses `.10` (LiveKit), `.11` (API),
-`.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `FLOWSTUDIO_PUBLIC_BASE_URL` carries the https port
-(`https://localhost:8492`), `FLOWSTUDIO_RTC_TCP_PORT` / `FLOWSTUDIO_RTC_UDP_PORT` the media ports. Global setup refuses to
+`.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `STUDIOFLOW_PUBLIC_BASE_URL` carries the https port
+(`https://localhost:8492`), `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT` the media ports. Global setup refuses to
 start a stack whose port or subnet is taken and names what holds it.
 
 ```
@@ -73,7 +73,7 @@ tests/e2e/stack.sh down 2
 
 Two stacks at the same time are two shells (or two background jobs), each with its own `E2E_STACK`. The Docker layer
 cache is shared, so the second stack builds in seconds once the first one has built. Stacks are independent of
-`fs-e2e`, so the default stack and the numbered ones can run together; the only shared resource is the Docker daemon.
+`sf-e2e`, so the default stack and the numbered ones can run together; the only shared resource is the Docker daemon.
 Keep the browsers apart as well: cookies are per host name, not per port, so one browser context talks to one stack.
 `H-STACK-02` (smoke) checks that the stack under test is the selected one: compose project label, network and subnet,
 fixed addresses, published ports, public URL and volumes.
@@ -88,11 +88,11 @@ installed. Smoke tests for every piece are in `specs/ui/ui-fixtures.spec.ts` (ta
 
 | Module | What it gives |
 | --- | --- |
-| `init.ts` | `installUiInit(context, options)`: sets `localStorage['flowstudio.testHooks'] = '1'` before any app script runs (the read-only state views `window.__fsStudio` / `window.__fsSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `de-CH`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, in `FLOWSTUDIO_FRAME_ANCESTORS` of the test env) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
+| `init.ts` | `installUiInit(context, options)`: sets `localStorage['studioflow.testHooks'] = '1'` before any app script runs (the read-only state views `window.__sfStudio` / `window.__sfSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `de-CH`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, in `STUDIOFLOW_FRAME_ANCESTORS` of the test env) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
 | `regie.ts` | `RegiePage`: `loginViaUi`, `loginViaApi` (session cookie injected into the context), `waitReady` (hub live: hooks, then `data-testid`, then what the DOM shows), `hooks()` / `waitForRevision` / `waitForConvergence` against the API snapshot, scene and Take locators, stations, the pairing dock (`openPairing`, `readPairingQr` with `jsqr`), knock cards (`approveKnock`, `knockCheckCode`) |
-| `sender.ts` | `PhoneSender` / `LaptopSender` in a context of their own or in an existing one: pairing form, check code, connection / tally / slot states through `data-testid`, `window.__fsSender`, stored credentials, camera and screen-share buttons, `browserStopsSharing()` (what the browser's «Stop sharing» does) |
+| `sender.ts` | `PhoneSender` / `LaptopSender` in a context of their own or in an existing one: pairing form, check code, connection / tally / slot states through `data-testid`, `window.__sfSender`, stored credentials, camera and screen-share buttons, `browserStopsSharing()` (what the browser's «Stop sharing» does) |
 | `pairing.ts` | `pairPhoneViaQr(regie, phone)`: QR read from the dock, URL opened in the phone, station row waited for; `pairLaptopViaKnock(regie, laptop, name)`: `/join/`, check code on both screens, «Zulassen»; `pairViaApi(pairContext, sender)`: the fast path for tests that are not about pairing (REST pairing, credentials handed to the sender, it resumes into its station) |
-| `output.ts` | `OutputPage.open` (directly) and `OutputPage.embed` (iframe on `https://embed.test`, `allow="autoplay; fullscreen"`): `waitForPlayingVideos`, `slateText`, `items`, `stagePixels` (screenshot of the stage, canvas coordinates), `collectLatency` and `latencyStats` over `window.__flowstudioLatency` (`?latency=1`) |
+| `output.ts` | `OutputPage.open` (directly) and `OutputPage.embed` (iframe on `https://embed.test`, `allow="autoplay; fullscreen"`): `waitForPlayingVideos`, `slateText`, `items`, `stagePixels` (screenshot of the stage, canvas coordinates), `collectLatency` and `latencyStats` over `window.__studioflowLatency` (`?latency=1`) |
 | `stamp-camera.ts` | the latency stamp publisher: `installStampCamera` / `{ camera: 'stamp' }` replaces `getUserMedia({ video })` by a canvas that draws the stamp of `latency-codec.js`, so the real sender publishes stamped frames |
 | `counters.ts` | `CdpCounters`: heap, nodes, listeners, documents, plus `<video>` / `<canvas>` / `<iframe>` and the sockets and peers of the init script; `growth`, `slopePerMinute` |
 | `a11y.ts` | `runAxe`, `expectNoSeriousViolations` (tags `wcag2a`, `wcag2aa`; accepted rules are named with a reason; the summary is attached to the test) |
@@ -143,7 +143,7 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
 - Failed logins and anonymous calls use a fake client address on the direct API port (`X-Forwarded-For`), so rate
   limits and lockouts never leak between tests.
 - Disruptive specs restore the stack themselves (`ensureHealthy()` after every test).
-- Nothing in a spec names `fs-e2e`, a port or a subnet: take names from `support/env.ts` (`PROJECT`, `containerNameOf`,
+- Nothing in a spec names `sf-e2e`, a port or a subnet: take names from `support/env.ts` (`PROJECT`, `containerNameOf`,
   `volumeNameOf`, `imageNameOf`, `stackConfig()`), so a spec runs on every numbered stack. The origin of the stack is
   `config.baseURL` (`https://localhost:849N` on a numbered one), and an Origin check compares with it, not with
   `https://localhost`.

@@ -1,4 +1,4 @@
-import { parseSourceRef, slotKind, type SceneItemDto } from '@flowstudio/scene-model';
+import { parseSourceRef, slotKind, type SceneItemDto } from '@studioflow/scene-model';
 
 import { SMALL_PICTURE, type DesiredSizeCollector } from './desired-sizes';
 import { createElement, FILL, px, setStyle, setStyles, setVisible } from './dom';
@@ -46,14 +46,14 @@ export type MediaFactory = (source: ResolvedSource) => MediaView;
  * styles that changed.
  *
  * ```
- * div.fs-r-item            position, size, radius, clipping, bars/placeholder colour, z-index
- *   div.fs-r-crop          uncropped picture box (crop math)
- *     div.fs-r-box         rotation, held blur; hidden while the fallback shows
+ * div.sf-r-item            position, size, radius, clipping, bars/placeholder colour, z-index
+ *   div.sf-r-crop          uncropped picture box (crop math)
+ *     div.sf-r-box         rotation, held blur; hidden while the fallback shows
  *       video|img          object-fit, mirror
  *       canvas             hold frame: rolling copy of the live picture, shown while lost
- *   div.fs-r-fallback      fallback source after the hold time
- *   div.fs-r-held          dark scrim + «Bild kommt gleich zurück»
- *   div.fs-r-border        inset box-shadow border
+ *   div.sf-r-fallback      fallback source after the hold time
+ *   div.sf-r-held          dark scrim + «Bild kommt gleich zurück»
+ *   div.sf-r-border        inset box-shadow border
  *   …                      monitor overlay: «Quelle fehlt», alert outline and label ({@link MonitorOverlay})
  * ```
  */
@@ -89,7 +89,7 @@ export class ItemView {
     private readonly createMedia: MediaFactory,
   ) {
     const doc = ctx.doc;
-    this.root = createElement(doc, 'div', 'fs-r-item', {
+    this.root = createElement(doc, 'div', 'sf-r-item', {
       position: 'absolute',
       left: '0',
       top: '0',
@@ -97,13 +97,13 @@ export class ItemView {
       'transform-origin': '0 0',
       contain: 'strict',
     });
-    this.cropEl = createElement(doc, 'div', 'fs-r-crop', { position: 'absolute' });
-    this.boxEl = createElement(doc, 'div', 'fs-r-box', {
+    this.cropEl = createElement(doc, 'div', 'sf-r-crop', { position: 'absolute' });
+    this.boxEl = createElement(doc, 'div', 'sf-r-box', {
       position: 'absolute',
       'transform-origin': '50% 50%',
     });
-    this.fallbackEl = createElement(doc, 'div', 'fs-r-fallback', { ...FILL, display: 'none' });
-    this.heldEl = createElement(doc, 'div', 'fs-r-held', {
+    this.fallbackEl = createElement(doc, 'div', 'sf-r-fallback', { ...FILL, display: 'none' });
+    this.heldEl = createElement(doc, 'div', 'sf-r-held', {
       ...FILL,
       display: 'none',
       'align-items': 'center',
@@ -116,9 +116,9 @@ export class ItemView {
       'font-weight': '600',
       'font-size': '30px',
     });
-    this.heldTextEl = createElement(doc, 'span', 'fs-r-held-text');
+    this.heldTextEl = createElement(doc, 'span', 'sf-r-held-text');
     this.heldTextEl.textContent = HELD_MESSAGE;
-    this.borderEl = createElement(doc, 'div', 'fs-r-border', {
+    this.borderEl = createElement(doc, 'div', 'sf-r-border', {
       ...FILL,
       'border-radius': 'inherit',
       display: 'none',
@@ -337,7 +337,7 @@ export class ItemView {
   private storeHoldFrame(sourceId: string, copy: (canvas: HTMLCanvasElement) => boolean): void {
     const canvas =
       this.holdFrame ??
-      createElement(this.ctx.doc, 'canvas', 'fs-r-hold-frame', { ...FILL, display: 'none' });
+      createElement(this.ctx.doc, 'canvas', 'sf-r-hold-frame', { ...FILL, display: 'none' });
     if (!copy(canvas)) {
       return;
     }

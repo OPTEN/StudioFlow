@@ -7,17 +7,17 @@ import { PopoverDirective, PopoverService, PopoverTriggerDirective } from './pop
   imports: [PopoverDirective, PopoverTriggerDirective],
   template: `
     <div class="c-pop-wrap">
-      <button type="button" class="t-a" fsPopoverTrigger="a">A</button>
+      <button type="button" class="t-a" sfPopoverTrigger="a">A</button>
       @if (popovers.isOpen('a')) {
-        <div class="c-pop p-a" role="dialog" aria-label="A" fsPopover="a">
+        <div class="c-pop p-a" role="dialog" aria-label="A" sfPopover="a">
           <button type="button" class="first">x</button>
         </div>
       }
     </div>
     <div class="c-pop-wrap">
-      <button type="button" class="t-b" fsPopoverTrigger="b">B</button>
+      <button type="button" class="t-b" sfPopoverTrigger="b">B</button>
       @if (popovers.isOpen('b')) {
-        <div class="c-pop p-b" role="dialog" aria-label="B" fsPopover="b" [popoverFocus]="false">
+        <div class="c-pop p-b" role="dialog" aria-label="B" sfPopover="b" [popoverFocus]="false">
           <button type="button">y</button>
         </div>
       }
@@ -54,11 +54,11 @@ describe('PopoverService and directives', () => {
 
   it('toggles with aria-expanded and aria-controls, focusing the first item', async () => {
     expect(trigger('a').getAttribute('aria-expanded')).toBe('false');
-    expect(trigger('a').getAttribute('aria-controls')).toBe('fs-pop-a');
+    expect(trigger('a').getAttribute('aria-controls')).toBe('sf-pop-a');
     trigger('a').click();
     await render();
     expect(trigger('a').getAttribute('aria-expanded')).toBe('true');
-    expect(element.querySelector('.p-a')?.id).toBe('fs-pop-a');
+    expect(element.querySelector('.p-a')?.id).toBe('sf-pop-a');
     expect(document.activeElement?.className).toBe('first');
     trigger('a').click();
     await render();

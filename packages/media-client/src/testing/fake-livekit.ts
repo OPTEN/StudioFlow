@@ -15,7 +15,7 @@ import {
   type VideoCaptureOptions,
   type VideoSenderStats,
 } from 'livekit-client';
-import type { LiveKitTokenDto } from '@flowstudio/scene-model';
+import type { LiveKitTokenDto } from '@studioflow/scene-model';
 import type {
   JitterBufferControl,
   MediaLocalParticipant,

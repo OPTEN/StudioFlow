@@ -1,11 +1,11 @@
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Application;
+namespace Opten.StudioFlow.Core.Tests.Application;
 
 /// <summary>Behaviour pinned in docs/testing.md section 7 and spec 12 (source status, sessions, output view, revisions).</summary>
 public sealed class PinnedBehaviourTests : IDisposable
@@ -61,7 +61,7 @@ public sealed class PinnedBehaviourTests : IDisposable
         await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "p", "1"), CancellationToken.None);
         await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-2", "p", "1"), CancellationToken.None);
 
-        var refused = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "p", "1"), CancellationToken.None));
+        var refused = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "p", "1"), CancellationToken.None));
         await harness.Devices.HelloAsync(identity, "c4", new DeviceHelloDto("tab-2", "p", "1"), CancellationToken.None);
         await harness.Devices.HelloAsync(identity, "c5", new DeviceHelloDto("tab-3", "p", "1"), CancellationToken.None);
 
@@ -99,11 +99,11 @@ public sealed class PinnedBehaviourTests : IDisposable
         await harness.Devices.DisconnectedAsync(identity, "c1", CancellationToken.None);
         var incident = harness.Events.OfType<IncidentUpsertedEvent>().Last().Incident;
 
-        var open = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incident.Id, CancellationToken.None));
+        var open = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incident.Id, CancellationToken.None));
         await harness.Devices.HelloAsync(identity, "c2", new DeviceHelloDto("tab-1", "p", "1"), CancellationToken.None);
         await harness.Devices.ReportAsync(identity, "c2", ServiceHarness.Report("camera", SlotState.Live), CancellationToken.None);
         await harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incident.Id, CancellationToken.None);
-        var again = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incident.Id, CancellationToken.None));
+        var again = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incident.Id, CancellationToken.None));
 
         Assert.Equal((ErrorKind.Conflict, ErrorCodes.Conflict), (open.Kind, open.Code));
         Assert.Equal(ErrorKind.NotFound, again.Kind);
@@ -116,9 +116,9 @@ public sealed class PinnedBehaviourTests : IDisposable
     [InlineData(long.MinValue)]
     public async Task Changes_NegativeRevision_IsValidationFailed(long since)
     {
-        var studio = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Productions.GetChangesAsync(harness.Production.Id, since, CancellationToken.None));
+        var studio = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Productions.GetChangesAsync(harness.Production.Id, since, CancellationToken.None));
         var access = new OutputKeyInfo(harness.Production.Id, harness.Production.Slug, harness.Production.OutputKey, []);
-        var output = await Assert.ThrowsAsync<FlowStudioException>(() => harness.Outputs.GetChangesAsync(access, since, CancellationToken.None));
+        var output = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.GetChangesAsync(access, since, CancellationToken.None));
 
         Assert.Equal(ErrorCodes.ValidationFailed, studio.Code);
         Assert.Equal(ErrorCodes.ValidationFailed, output.Code);

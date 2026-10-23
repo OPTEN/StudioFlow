@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>
 /// In-memory state of one production: the mutation lock, the revision counter, the event ring, what is on air, device

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>Admin login.</summary>
 public sealed record LoginRequest(string Username, string Password);
@@ -16,7 +16,7 @@ public sealed record LiveKitTokenDto(string Url, string Token, string Identity, 
 
 /// <summary>Static information about the installation.</summary>
 /// <param name="Version">Build version.</param>
-/// <param name="PublicBaseUrl">Public base URL, e.g. https://flowstudio.opten.ch.</param>
+/// <param name="PublicBaseUrl">Public base URL, e.g. https://studioflow.opten.ch.</param>
 /// <param name="CanvasWidth">Canvas width (1920).</param>
 /// <param name="CanvasHeight">Canvas height (1080).</param>
 public sealed record SystemInfoDto(string Version, string PublicBaseUrl, int CanvasWidth, int CanvasHeight);

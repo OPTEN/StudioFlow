@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Errors;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Errors;
 
-namespace Opten.FlowStudio.Web.Security;
+namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>
 /// Writes <c>device_blocked</c> problem details when a blocked device is refused (the sender stops reconnecting and
@@ -27,7 +27,7 @@ internal sealed class ProblemAuthorizationResultHandler : IAuthorizationMiddlewa
 }
 
 /// <summary>
-/// CSRF protection (spec 5): unsafe requests that carry the admin cookie must send <c>X-FlowStudio: 1</c>. A foreign
+/// CSRF protection (spec 5): unsafe requests that carry the admin cookie must send <c>X-StudioFlow: 1</c>. A foreign
 /// site can make the browser send the cookie (SameSite=Strict already blocks most cases) but cannot set the header
 /// without CORS, which is not enabled.
 /// </summary>
@@ -40,7 +40,7 @@ internal sealed class CsrfHeaderFilter : IEndpointFilter
             && request.Cookies.ContainsKey(SecurityNames.SessionCookie)
             && !string.Equals(request.Headers[SecurityNames.CsrfHeader].ToString(), "1", StringComparison.Ordinal))
         {
-            return Problems.Result(StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Der Header X-FlowStudio fehlt.");
+            return Problems.Result(StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Der Header X-StudioFlow fehlt.");
         }
 
         return await next(context);

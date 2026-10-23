@@ -3,9 +3,9 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application.Services;
+using Opten.StudioFlow.Core.Application.Services;
 
-namespace Opten.FlowStudio.Web.Security;
+namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>
 /// Authenticates senders by <c>Authorization: Bearer {deviceId}.{secret}</c>; on the device hub also by
@@ -35,11 +35,11 @@ internal sealed class DeviceAuthenticationHandler(
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, identity.DeviceId),
-            new(FlowStudioClaims.ProductionId, identity.ProductionId),
+            new(StudioFlowClaims.ProductionId, identity.ProductionId),
         };
         if (identity.Blocked)
         {
-            claims.Add(new Claim(FlowStudioClaims.Blocked, "true"));
+            claims.Add(new Claim(StudioFlowClaims.Blocked, "true"));
         }
 
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name));
@@ -51,7 +51,7 @@ internal sealed class DeviceNotBlockedRequirement : AuthorizationHandler<DeviceN
 {
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, DeviceNotBlockedRequirement requirement)
     {
-        if (context.User.HasClaim(c => c.Type == FlowStudioClaims.Blocked))
+        if (context.User.HasClaim(c => c.Type == StudioFlowClaims.Blocked))
         {
             context.Fail(new AuthorizationFailureReason(this, "The device is blocked."));
         }

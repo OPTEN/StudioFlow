@@ -1,13 +1,13 @@
 <main class="c-pairing">
   <div class="c-pairing__inner">
-    <fs-brand-mark class="c-pairing__brand" />
+    <sf-brand-mark class="c-pairing__brand" />
 
     @switch (phase()) {
       @case ('denied') {
         <section class="c-pairing__inner" data-testid="pairing-denied">
           <h1 class="c-pairing__title" data-route-focus tabindex="-1">Anfrage abgelehnt</h1>
           <div class="c-notice c-notice--bad" role="alert">
-            <fs-icon class="c-notice__icon" name="alert" />
+            <sf-icon class="c-notice__icon" name="alert" />
             <p class="c-notice__text">
               Die Regie hat die Anfrage von «{{ name() }}» abgelehnt. Frag in der Regie nach und
               versuche es noch einmal.
@@ -26,7 +26,7 @@
         <section class="c-pairing__inner" data-testid="pairing-expired">
           <h1 class="c-pairing__title" data-route-focus tabindex="-1">Anfrage abgelaufen</h1>
           <div class="c-notice c-notice--warn" role="alert">
-            <fs-icon class="c-notice__icon" name="alert" />
+            <sf-icon class="c-notice__icon" name="alert" />
             <p class="c-notice__text">
               Die Regie hat die Anfrage nicht rechtzeitig freigegeben. Eine neue Anfrage bekommt
               einen neuen Prüfcode.

@@ -2,10 +2,10 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.Security;
+namespace Opten.StudioFlow.Web.Security;
 
 /// <summary>
 /// Authenticates output pages on the output hub by their output key (<c>?access_token=</c> or bearer header) and the
@@ -34,7 +34,7 @@ internal sealed class OutputAuthenticationHandler(
         var identity = new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.NameIdentifier, access.Slug),
-                new Claim(FlowStudioClaims.ProductionId, access.ProductionId),
+                new Claim(StudioFlowClaims.ProductionId, access.ProductionId),
             ],
             Scheme.Name);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));

@@ -294,7 +294,7 @@ describe('applyEvent per event type', () => {
 
   it('inviteUpserted replaces in place or appends; inviteRemoved removes', () => {
     const state = baseState();
-    const renewed = { ...inviteFixture('inv_a'), url: 'https://flowstudio.test/join/i/neu' };
+    const renewed = { ...inviteFixture('inv_a'), url: 'https://studioflow.test/join/i/neu' };
     const replaced = apply(state, { type: 'inviteUpserted', invite: renewed });
     expect(replaced.invites).toEqual([renewed]);
     const appended = apply(replaced, { type: 'inviteUpserted', invite: inviteFixture('inv_b') });

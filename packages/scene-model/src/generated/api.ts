@@ -1991,7 +1991,7 @@ export interface components {
         SystemInfoDto: {
             /** @description Build version. */
             version: string;
-            /** @description Public base URL, e.g. https://flowstudio.opten.ch. */
+            /** @description Public base URL, e.g. https://studioflow.opten.ch. */
             publicBaseUrl: string;
             /**
              * Format: int32

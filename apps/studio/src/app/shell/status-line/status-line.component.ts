@@ -6,7 +6,7 @@ import {
   incidentWord,
   type IncidentDto,
   type IncidentPlace,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { StudioMediaService } from '../../core/media/studio-media.service';
 import { IncidentAckService } from '../../core/state/incident-ack.service';
@@ -48,7 +48,7 @@ const LOG_ENTRIES = 4;
  * Meldungen» and the last four log entries. A calm banner segment first reports a lost server or media connection.
  */
 @Component({
-  selector: 'fs-status-line',
+  selector: 'sf-status-line',
   imports: [IconComponent],
   templateUrl: './status-line.component.html',
   styleUrl: './status-line.component.scss',

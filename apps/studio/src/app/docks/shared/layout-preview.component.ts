@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@flowstudio/scene-model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
 
 /** One block of a layout preview: a rectangle in canvas pixels, optionally emphasised (the main slot). */
 export interface PreviewBlock {
@@ -26,7 +26,7 @@ interface PercentBlock {
  * 1920 × 1080 canvas.
  */
 @Component({
-  selector: 'fs-layout-preview',
+  selector: 'sf-layout-preview',
   template: `
     @for (block of percentBlocks(); track block.key) {
       <i

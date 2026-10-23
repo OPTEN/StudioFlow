@@ -1,9 +1,9 @@
 /**
- * @flowstudio/media-client: livekit-client wrapper (sessions with endless reconnect, source provider, publisher, stats)
+ * @studioflow/media-client: livekit-client wrapper (sessions with endless reconnect, source provider, publisher, stats)
  * plus the sender's device helpers (technical check, wake lock, device info).
  *
  * Importing this entry point loads livekit-client (~150 KB gzip, not tree-shakable): the Regie imports it lazily.
- * The device helpers alone are available without livekit-client from `@flowstudio/media-client/device`.
+ * The device helpers alone are available without livekit-client from `@studioflow/media-client/device`.
  */
 export { systemClock, type Clock, type TimerHandle } from './clock';
 export * from './device';

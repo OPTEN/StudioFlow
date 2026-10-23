@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { formatRuntime } from '@flowstudio/scene-model';
+import { formatRuntime } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
@@ -20,7 +20,7 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
  * Bereit» and «Sendung starten». Buttons are disabled while a request runs or the Regie is offline.
  */
 @Component({
-  selector: 'fs-broadcast-control',
+  selector: 'sf-broadcast-control',
   imports: [ConfirmBoxComponent, PopoverTriggerDirective, PopoverDirective],
   template: `
     @switch (broadcast()) {
@@ -34,7 +34,7 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
             class="c-btn c-btn--sm"
             type="button"
             aria-haspopup="dialog"
-            [fsPopoverTrigger]="endPopover"
+            [sfPopoverTrigger]="endPopover"
             [disabled]="busy() || !store.canCommand()"
           >
             Sendung beenden
@@ -44,9 +44,9 @@ export const BROADCAST_END_POPOVER = 'broadcast-end';
               class="c-pop c-broadcast__pop"
               role="dialog"
               aria-label="Sendung beenden"
-              [fsPopover]="endPopover"
+              [sfPopover]="endPopover"
             >
-              <fs-confirm-box
+              <sf-confirm-box
                 label="Sendung beenden"
                 confirmLabel="Sendung beenden"
                 [message]="endMessage()"

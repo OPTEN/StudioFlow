@@ -1,4 +1,4 @@
-import { DEFAULT_HOLD_MS, ITEM_BOUNDS } from '@flowstudio/scene-model';
+import { DEFAULT_HOLD_MS, ITEM_BOUNDS } from '@studioflow/scene-model';
 
 import type { ResolvedSource } from './source-resolver';
 import type { SourceAvailability } from './types';

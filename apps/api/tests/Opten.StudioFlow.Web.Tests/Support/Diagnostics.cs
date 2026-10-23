@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>A log entry of the app under test (warnings and above).</summary>
 /// <param name="Category">Logger category.</param>

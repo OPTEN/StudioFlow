@@ -19,6 +19,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Opten.FlowStudio.Web\Opten.FlowStudio.Web.csproj" />
+    <ProjectReference Include="..\..\src\Opten.StudioFlow.Web\Opten.StudioFlow.Web.csproj" />
   </ItemGroup>
 </Project>

@@ -2,16 +2,16 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>
 /// Request handling details: webhook content types (BUG-05), binding errors that name the field (BUG-08) and HEAD on
 /// the asset content (BUG-16).
 /// </summary>
-public sealed class RequestContractTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class RequestContractTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Theory]
     [InlineData("application/webhook+json")]

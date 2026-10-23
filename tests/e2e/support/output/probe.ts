@@ -6,7 +6,7 @@ import type { OutputPage } from '../ui/output';
 
 /**
  * Node side of the browser-side probe of the output page (`browser/output-probe.js`, injected with `context.addInitScript`, so it also
- * runs inside the iframe of an embedding page and again after a reload). The output page has no `window.__fsOutput` and
+ * runs inside the iframe of an embedding page and again after a reload). The output page has no `window.__sfOutput` and
  * no `data-state` / `data-slate` hooks (spec 12; docs/testing.md 1.7 lists hooks the product does not have), so the OUT
  * specs observe the DOM the renderer builds: layers (`[data-scene-id]`), items (`[data-item-id]`), the slate and the
  * elements it toggles for the hold frame.

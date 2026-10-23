@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.Hubs;
+namespace Opten.StudioFlow.Web.Hubs;
 
 /// <summary>Server → Regie messages. Wire names are the camelCase constants of <see cref="HubMethods"/>.</summary>
 public interface IStudioClient

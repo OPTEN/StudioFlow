@@ -1,6 +1,6 @@
 <div class="c-mon">
   <header class="c-mon__top">
-    <div class="c-mon__brand"><svg fsIcon="mark"></svg>FlowStudio</div>
+    <div class="c-mon__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
     <h1 class="c-mon__title">Monitoring</h1>
     <span class="c-mon__prod">{{ store.production()?.name ?? '' }}</span>
     <span class="c-mon__conn" role="status">
@@ -50,7 +50,7 @@
                     @if (ariaSort(column.id); as direction) {
                       <svg
                         class="c-mon-table__dir"
-                        fsIcon="chev"
+                        sfIcon="chev"
                         [size]="12"
                         [class.is-up]="direction === 'ascending'"
                       ></svg>

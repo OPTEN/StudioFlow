@@ -7,7 +7,7 @@ related_targets: []
 
 # Regie (Studio)
 
-Scope: die Regie-Oberfläche von FlowStudio, als klickbarer Prototyp. Modus: Operate.
+Scope: die Regie-Oberfläche von StudioFlow, als klickbarer Prototyp. Modus: Operate.
 
 Publikum und Aufgabe: eine Person, höchstens zwei, an einem 14–16-Zoll-Laptop vor Ort im WLAN. Vor dem Webinar Geräte koppeln (Handys per QR, Laptops per Kurz-URL mit Prüfcode, Einladungslink), Szenen bauen und die Arbeitsfläche einrichten. Während des Webinars Szenen umschalten: ohne Studio-Modus mit einem Klick direkt live, mit Studio-Modus zuerst in der Preview prüfen und per Take schalten.
 

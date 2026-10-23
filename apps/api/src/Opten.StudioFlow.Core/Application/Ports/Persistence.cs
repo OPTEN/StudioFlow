@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Ports;
+namespace Opten.StudioFlow.Core.Application.Ports;
 
 /// <summary>Output access data of a production (key lookup without loading the aggregate).</summary>
 /// <param name="ProductionId">Production id.</param>

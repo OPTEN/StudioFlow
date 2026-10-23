@@ -53,7 +53,7 @@ const STAGE_VERTICAL_CHROME_PX = 58;
  * it fits the stage to the Studio-Modus monitors (prototype `fitStage`) so no empty band remains.
  */
 @Component({
-  selector: 'fs-workspace',
+  selector: 'sf-workspace',
   imports: [StageComponent, SplitterDirective, IconComponent],
   templateUrl: './workspace.component.html',
   styleUrl: './workspace.component.scss',

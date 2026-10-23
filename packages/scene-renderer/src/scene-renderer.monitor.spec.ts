@@ -52,8 +52,8 @@ describe('scene renderer: monitor alerts', () => {
     mounted.renderer.setSourceStatuses();
   }
 
-  const outline = (id: string): HTMLElement | null => mounted.part(id, '.fs-r-alert');
-  const label = (id: string): HTMLElement | null => mounted.part(id, '.fs-r-alert-label');
+  const outline = (id: string): HTMLElement | null => mounted.part(id, '.sf-r-alert');
+  const label = (id: string): HTMLElement | null => mounted.part(id, '.sf-r-alert-label');
 
   it('draws nothing while sources are ok', () => {
     mountMonitor();

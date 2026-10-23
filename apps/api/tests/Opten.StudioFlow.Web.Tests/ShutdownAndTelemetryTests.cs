@@ -7,12 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Npgsql;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Hosting;
-using Opten.FlowStudio.Web.Hubs;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Hosting;
+using Opten.StudioFlow.Web.Hubs;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>
 /// Graceful shutdown with connected hubs (OBS-01: fast, BUG-20: no invented outage) and the telemetry throttle of the
@@ -30,7 +30,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
         string database;
         string productionId;
         string sourceId;
-        await using (var app = new FlowStudioApp(postgres))
+        await using (var app = new StudioFlowApp(postgres))
         {
             await app.InitializeAsync();
             database = app.ConnectionString;
@@ -74,7 +74,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
             Assert.True(stoppedAfter < TimeSpan.FromSeconds(4), $"host stopped after {stoppedAfter.TotalMilliseconds:F0} ms");
             Assert.True(worker.ExecuteTask!.IsCompleted, "the maintenance loops still run after the stop");
             Assert.Equal(0, registry.Count);
-            Assert.Equal(FlowStudioHost.ShutdownTimeout, shutdownTimeout);
+            Assert.Equal(StudioFlowHost.ShutdownTimeout, shutdownTimeout);
             Assert.Equal(TimeSpan.FromSeconds(5), shutdownTimeout);
             await using var connection = new NpgsqlConnection(database);
             await connection.OpenAsync(cancellation);
@@ -96,7 +96,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
     public async Task Report_TenPerSecond_ReachesTheRegieAtMostOncePerTwoSecondsWithTheLatestValues()
     {
         var cancellation = TestContext.Current.CancellationToken;
-        await using var app = new FlowStudioApp(postgres);
+        await using var app = new StudioFlowApp(postgres);
         await app.InitializeAsync();
         var admin = await app.AdminAsync();
         var credentials = await app.PairPhoneAsync(admin);
@@ -153,7 +153,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
     /// A hub over WebSockets like the browsers use (the token goes in the query, the cookie in the upgrade request), with
     /// the client keep-alive of the apps: the server closes a connection that stays silent for 5 s.
     /// </summary>
-    private static HubConnection WebSocketHub(FlowStudioApp app, string path, string? token, string? cookie = null) => KeepAlive(app.Hub(path, o =>
+    private static HubConnection WebSocketHub(StudioFlowApp app, string path, string? token, string? cookie = null) => KeepAlive(app.Hub(path, o =>
     {
         o.Transports = HttpTransportType.WebSockets;
         o.SkipNegotiation = true;
@@ -178,12 +178,12 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
     }
 
     /// <summary>The app on the database of an earlier app (a restart).</summary>
-    private sealed class SameDatabaseApp(PostgresFixture postgres, string database) : FlowStudioApp(postgres)
+    private sealed class SameDatabaseApp(PostgresFixture postgres, string database) : StudioFlowApp(postgres)
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
-            builder.UseSetting("ConnectionStrings:FlowStudio", database);
+            builder.UseSetting("ConnectionStrings:StudioFlow", database);
         }
     }
 }

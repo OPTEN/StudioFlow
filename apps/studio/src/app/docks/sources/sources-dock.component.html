@@ -1,6 +1,6 @@
-<fs-dock-frame dock="src" [count]="count()">
+<sf-dock-frame dock="src" [count]="count()">
   <button
-    fsDockActions
+    sfDockActions
     class="c-ibtn"
     type="button"
     aria-label="Rückgängig (Ctrl+Z)"
@@ -9,23 +9,23 @@
     [disabled]="!editor.canUndo()"
     (click)="editor.undo()"
   >
-    <svg fsIcon="undo"></svg>
+    <svg sfIcon="undo"></svg>
   </button>
-  <div fsDockActions class="c-pop-wrap">
+  <div sfDockActions class="c-pop-wrap">
     <button
       #addTrigger
       class="c-btn c-btn--sm"
       type="button"
       aria-haspopup="menu"
-      [fsPopoverTrigger]="addPopover"
+      [sfPopoverTrigger]="addPopover"
     >
-      <svg fsIcon="plus" [size]="14"></svg>Quelle
+      <svg sfIcon="plus" [size]="14"></svg>Quelle
     </button>
     @if (popovers.isOpen(addPopover)) {
-      <fs-add-source-popover (upload)="openUpload()" (manage)="openMedia()" />
+      <sf-add-source-popover (upload)="openUpload()" (manage)="openMedia()" />
     }
     @if (popovers.isOpen(mediaPopover)) {
-      <fs-media-popover [pickOnOpen]="pickOnOpen()" (picked)="pickOnOpen.set(false)" />
+      <sf-media-popover [pickOnOpen]="pickOnOpen()" (picked)="pickOnOpen.set(false)" />
     }
   </div>
 
@@ -62,7 +62,7 @@
               [attr.aria-label]="(row.hidden ? 'Einblenden: ' : 'Ausblenden: ') + row.name"
               (click)="toggleHidden(row, $event)"
             >
-              <svg [fsIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
+              <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
             </button>
             <button
               class="c-src__select"
@@ -72,7 +72,7 @@
               [attr.aria-label]="'Auswählen: ' + row.code + ' ' + row.name"
               (click)="select(row, $event)"
             >
-              <span class="c-src__kind"><svg [fsIcon]="row.icon"></svg></span>
+              <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
               <span class="c-code">{{ row.code }}</span>
               <span class="c-src__main">
                 <span class="c-src__name">{{ row.name }}</span>
@@ -80,7 +80,7 @@
                   <span class="c-src__state">
                     <span [class]="toneClass(state.tone)">{{ state.word }}</span>
                     @if (state.timer) {
-                      <span class="u-mono" [fsElapsed]="row.statusSince"></span>
+                      <span class="u-mono" [sfElapsed]="row.statusSince"></span>
                     }
                   </span>
                 }
@@ -98,7 +98,7 @@
               [attr.aria-label]="(row.locked ? 'Entsperren: ' : 'Sperren: ') + row.name"
               (click)="toggleLocked(row, $event)"
             >
-              <svg [fsIcon]="row.locked ? 'lock' : 'unlock'"></svg>
+              <svg [sfIcon]="row.locked ? 'lock' : 'unlock'"></svg>
             </button>
           </div>
         } @empty {
@@ -115,4 +115,4 @@
       <div class="c-src-dock__drop" aria-hidden="true">Bild oder Video hier ablegen</div>
     }
   </div>
-</fs-dock-frame>
+</sf-dock-frame>

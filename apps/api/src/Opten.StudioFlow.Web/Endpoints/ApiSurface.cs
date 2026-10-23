@@ -1,10 +1,10 @@
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Security;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Security;
 
-namespace Opten.FlowStudio.Web.Endpoints;
+namespace Opten.StudioFlow.Web.Endpoints;
 
 /// <summary>
-/// The complete REST surface of FlowStudio. This file is the contract: routes, operation names, request and response
+/// The complete REST surface of StudioFlow. This file is the contract: routes, operation names, request and response
 /// types. It is the input for the generated TypeScript types (packages/scene-model/src/generated/api.ts). The handlers
 /// live in the feature classes next to this file and only delegate to the application services.
 /// </summary>
@@ -17,7 +17,7 @@ internal static class ApiSurface
     public const string RedeemLimit = "pairing-redeem";
 
     /// <summary>Maps every API route.</summary>
-    public static IEndpointRouteBuilder MapFlowStudioApi(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapStudioFlowApi(this IEndpointRouteBuilder app)
     {
         MapAuth(app.MapGroup("/api/auth").WithTags("Auth"));
         MapSystem(app.MapGroup("/api/system").WithTags("System"));

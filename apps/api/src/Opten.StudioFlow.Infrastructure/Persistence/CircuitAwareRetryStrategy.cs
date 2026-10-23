@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// Npgsql's retrying strategy (3 retries, at most 2 s apart) that stops as soon as <see cref="DatabaseCircuit"/> knows

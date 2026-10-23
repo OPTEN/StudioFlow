@@ -1,5 +1,5 @@
-import { ITEM_BOUNDS, isHexColor, snapRotation, type Rotation } from '@flowstudio/scene-model';
-import type { BorderDto, CropDto, ItemFit, SceneItemDto } from '@flowstudio/scene-model';
+import { ITEM_BOUNDS, isHexColor, snapRotation, type Rotation } from '@studioflow/scene-model';
+import type { BorderDto, CropDto, ItemFit, SceneItemDto } from '@studioflow/scene-model';
 
 import type { CanvasRect, DesiredSize } from './types';
 

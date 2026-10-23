@@ -1,5 +1,5 @@
 /**
- * @flowstudio/scene-model: wire contracts and pure helpers shared by the Regie, the sender and the output page.
+ * @studioflow/scene-model: wire contracts and pure helpers shared by the Regie, the sender and the output page.
  */
 export * from './contracts';
 export * from './constants';

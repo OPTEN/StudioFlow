@@ -1,7 +1,7 @@
-# FlowStudio – Implementation specification
+# StudioFlow – Implementation specification
 
 Binding technical specification for the implementation of the plan
-(`plan/FlowStudio Architekturplan.html`, Entwurf 2) and the Regie prototype (`prototype/regie.html`, `DESIGN.md`).
+(`plan/StudioFlow Architekturplan.html`, Entwurf 2) and the Regie prototype (`prototype/regie.html`, `DESIGN.md`).
 Everything here is a decision; if code and this document disagree, fix one of them deliberately.
 
 Language: code, comments and this document are English. **All UI text is German (Switzerland)**: «ss» instead of «ß»,
@@ -22,7 +22,7 @@ Implemented now (plan phases 0–2, everything that is software):
 - Phase 2: backup/restore/update scripts, slates and per-item fallbacks, monitoring view (bitrate, packet loss,
   battery), security review and runbook, Regie-Chat (short messages to devices).
 
-Prepared but not built (plan phases 3–4, confirmed as «später»): audio in FlowStudio (contracts and output page are
+Prepared but not built (plan phases 3–4, confirmed as «später»): audio in StudioFlow (contracts and output page are
 audio-ready, no audio track is published), restream/recording (egress), Air mode (renderer + air room), overlays and
 lower thirds, multiview, Stream Deck, multi-tenancy UI (tenantId exists in the data model), auto-director,
 greenscreen. Do not build them.
@@ -30,7 +30,7 @@ greenscreen. Do not build them.
 ## 2. Repository layout and ownership
 
 ```
-apps/api/            ASP.NET Core (.NET 10): FlowStudio.slnx, src/Opten.FlowStudio.{Core,Infrastructure,Web}, tests/
+apps/api/            ASP.NET Core (.NET 10): StudioFlow.slnx, src/Opten.StudioFlow.{Core,Infrastructure,Web}, tests/
 apps/studio/         Angular app: Regie (served at /)
 apps/sender/         Angular PWA: sender (served at /join/)
 apps/output/         Vanilla TypeScript + Vite: output page (served at /o/)
@@ -48,7 +48,7 @@ docker-compose.yml, .env.example, setup.sh, setup.ps1, backup.sh, restore.sh, up
 Tooling: one root `package.json` (npm, Node ≥ 22.12), one root `angular.json` (projects `studio`, `sender`),
 TypeScript 6 strict, Vitest 5 for packages and output (`vitest.config.ts` at the root), Angular unit tests via
 `ng test <app> --watch=false` (Vitest builder), Playwright for E2E. Packages are consumed as TypeScript source via
-`tsconfig.json` `paths` (`@flowstudio/<name>` → `packages/<name>/src/index.ts`); they have no build step and no
+`tsconfig.json` `paths` (`@studioflow/<name>` → `packages/<name>/src/index.ts`); they have no build step and no
 `package.json` of their own. **Do not change root `package.json`, `package-lock.json`, `angular.json` or
 `tsconfig.json` without the orchestrator**; if you need a dependency, report it.
 
@@ -59,7 +59,7 @@ Commands: `npm run gen:contracts` (build API → OpenAPI → `packages/scene-mod
 ## 3. Conventions
 
 - OPTEN standards apply (read the instruction files listed in your CLAUDE.md for the languages you touch).
-  C#: namespaces `Opten.FlowStudio.*`, primary constructors, file-scoped namespaces, newline before braces,
+  C#: namespaces `Opten.StudioFlow.*`, primary constructors, file-scoped namespaces, newline before braces,
   `is null`, `ArgumentNullException.ThrowIfNull`, `Async` suffix, structured logging with templates, XML docs for
   public APIs, xUnit tests named `MethodName_Condition_ExpectedResult`, no Arrange/Act/Assert comments.
   Angular: standalone, signals (`signal`, `computed`, `effect`, `input()`, `output()`, `viewChild()`), OnPush,
@@ -260,7 +260,7 @@ as `access_token` (output hub). Wrong key → 403 (no hint whether the slug exis
 client IP (from `X-Forwarded-For`, trusted only from the Caddy network) must match one entry (IP or CIDR), else 403.
 `regenerate-key` invalidates the old key immediately: connected output pages are disconnected (hub abort + LiveKit
 `RemoveParticipant` for identity `output_{slug}_*`). Embedding is limited by `frame-ancestors` from
-`FLOWSTUDIO_FRAME_ANCESTORS` (Caddy; shown read-only in the Regie).
+`STUDIOFLOW_FRAME_ANCESTORS` (Caddy; shown read-only in the Regie).
 
 Output status: the API tracks output hub connections (count, remote IPs) and reports (`OutputReport` every 2 s).
 State `connected` if ≥ 1 page connected and reported `rendering` within 6 s, `stale` if connected but no fresh
@@ -277,18 +277,18 @@ text (`LogEntryDto`) for the Regie; `RecentLog` in the snapshot holds the latest
 
 ## 5. API
 
-The REST surface is fixed in `apps/api/src/Opten.FlowStudio.Web/Endpoints/ApiSurface.cs` (routes, verbs, operation
+The REST surface is fixed in `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs` (routes, verbs, operation
 names, request/response types). Implement every route; keep the contract. Successful responses use the documented
 types; errors are RFC 7807 `ProblemDetails` with extension `code` (see `ErrorCodes`) and, for validation, `errors`.
 
 Authentication and authorization:
 - Admin: `POST /api/auth/login` checks `Admin:Username` and `Admin:PasswordHash` (ASP.NET Identity v3 hash; created by
-  `dotnet Opten.FlowStudio.Web.dll hash-password`, which reads the password from stdin) or, for local setups only,
-  `Admin:Password` (plain). Startup fails without one of them. Cookie `fs_session`: HttpOnly, Secure
+  `dotnet Opten.StudioFlow.Web.dll hash-password`, which reads the password from stdin) or, for local setups only,
+  `Admin:Password` (plain). Startup fails without one of them. Cookie `sf_session`: HttpOnly, Secure
   (`SameAsRequest` only in Development/Testing), SameSite=Strict, sliding 12 h. Data Protection keys persisted to
   `/data/keys` (`DataProtection:KeysPath`). Lockout: 5 failed attempts per client IP within 15 minutes → 15 minutes
   429 `rate_limited` with `Retry-After`; additionally 20 failures per username in 15 minutes lock the username.
-- CSRF: cookie-authenticated unsafe requests (POST/PUT/PATCH/DELETE) must carry `X-FlowStudio: 1` (the Angular
+- CSRF: cookie-authenticated unsafe requests (POST/PUT/PATCH/DELETE) must carry `X-StudioFlow: 1` (the Angular
   interceptor sets it); otherwise 403. No CORS is enabled.
 - Hubs reject WebSocket/negotiate requests whose `Origin` host differs from the request host (403).
 - Policies: `Admin` (cookie), `Device` (device bearer), `Output` (key + IP check, per slug).
@@ -397,7 +397,7 @@ Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `
   quality per source from the scene model: program items → dimensions of the item on the canvas (HIGH for large
   items), preview scene items → HIGH (preload before a take), all other scenes' sources → LOW; jitter buffer ≈ 50 ms.
 - The LiveKit URL for clients is the same origin (`wss://{host}`); Caddy proxies `/rtc` to LiveKit 7880. Media goes
-  directly to 7881/tcp and 7882/udp on `FLOWSTUDIO_NODE_IP`.
+  directly to 7881/tcp and 7882/udp on `STUDIOFLOW_NODE_IP`.
 
 Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) that the implementation must respect:
 - `DefaultReconnectPolicy` gives up after ~40 s. Use a policy that never returns null (cap 5 s). The SDK still gives
@@ -436,7 +436,7 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
 
 ## 8. Shared packages (public APIs)
 
-### 8.1 `@flowstudio/scene-model` (pure TypeScript, no DOM)
+### 8.1 `@studioflow/scene-model` (pure TypeScript, no DOM)
 
 - `contracts.ts` (exists): generated wire types under friendly names, `HUB`, `ERROR_CODES`.
 - `constants.ts`: `CANVAS_WIDTH = 1920`, `CANVAS_HEIGHT = 1080`, `SAFE_MARGIN = 40`, `FADE_DURATIONS_MS`,
@@ -462,7 +462,7 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   `statusWord(status, kind)` («verbindet neu», «Teilen beendet» / «Kamera beendet» for a camera, «gesperrt», «verbindet …»,
   «kein Bild», «nicht verbunden»).
 
-### 8.2 `@flowstudio/realtime-client`
+### 8.2 `@studioflow/realtime-client`
 
 - `createHubConnection({ url, accessTokenFactory?, logger? })` → configured `HubConnection` (JSON protocol, WebSockets
   with fallback, timeouts as in section 6, endless `withAutomaticReconnect` policy).
@@ -476,7 +476,7 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   output (OutputChangesDto).
 - `backoffDelay(retryCount)` shared policy: `min(5000, 300 * 2^retryCount) + random(0..250)`; 0 for the first retry.
 
-### 8.3 `@flowstudio/scene-renderer` (DOM, no framework, no livekit)
+### 8.3 `@studioflow/scene-renderer` (DOM, no framework, no livekit)
 
 Interfaces in `types.ts` (exists). Main API:
 
@@ -518,7 +518,7 @@ filled label tab like the prototype. Desired sizes: each renderer reports the on
 source it shows (×devicePixelRatio, rounded to 16 px) via `provider.setDesiredSize`. Auto-Grid as in 4.3.
 Fades use the Web Animations API on opacity (new scene layer over old), `reducedMotion` turns fades into cuts.
 
-### 8.4 `@flowstudio/media-client` (livekit-client)
+### 8.4 `@studioflow/media-client` (livekit-client)
 
 - `MediaSession`: owns a `Room`; `start()` connects with a token from `tokenProvider()` and keeps the room connected
   forever: SDK resume/reconnect first, then rejoin with a fresh token, then wait with `backoffDelay` and retry without
@@ -555,8 +555,8 @@ HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceS
 (1–9, Space, arrows 1 px / Shift 10 px, Escape). Editing: drag, corner resize (aspect ratio locked, Shift frees),
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
-Studio-Modus and layout persist per browser (`localStorage` keys `flowstudio.studio`, `flowstudio.layout` v1,
-`flowstudio.transition`). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
+Studio-Modus and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
+`studioflow.transition`). Fonts self-hosted. Responsive rules from DESIGN.md (1280×720 … 1920×1080; ≤ 1180 px
 stacked docks; ≤ 900 px priority stack).
 
 ### 9.2 Sender (`apps/sender`, Angular PWA, base `/join/`)
@@ -570,7 +570,7 @@ wake lock (re-acquire on visibility), auto-start after reload with the last sett
 «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», a large «Erneut teilen» button when a
 share ended or the Regie asks («Die Regie bittet dich, den Bildschirm erneut zu teilen»), optional camera.
 Messages from the Regie appear as a prominent banner. Technical check runs on first start and on demand; result is
-reported. Reports every 2 s. PWA: manifest (name «FlowStudio Sender», scope/start_url `/join/`, display standalone,
+reported. Reports every 2 s. PWA: manifest (name «StudioFlow Sender», scope/start_url `/join/`, display standalone,
 theme `#0d1117`), Angular service worker for the app shell only (never cache `/api`, `/hubs`, `/rtc`).
 Design: same tokens as the Regie, large touch targets (≥ 44 px), works from 320 px wide, portrait and landscape.
 
@@ -588,7 +588,7 @@ estimated latency). Reports `OutputReport` every 2 s. Bundle target: < 350 KB gz
 
 Operations (German): `docs/runbook.md`. Every variable is documented in `.env.example`.
 
-`docker-compose.yml` (project `flowstudio`, network `flowstudio` with subnet `${FLOWSTUDIO_SUBNET:-172.30.0.0/24}`).
+`docker-compose.yml` (project `studioflow`, network `studioflow` with subnet `${STUDIOFLOW_SUBNET:-172.30.0.0/24}`).
 All services: `restart: unless-stopped`, `no-new-privileges`, json-file logs 5 × 10 MB, a healthcheck, `depends_on`
 with `condition: service_healthy` (caddy waits for api and livekit, api waits for postgres). Required variables fail
 fast (`${VAR:?…}`); optional variables have their default in `docker-compose.yml` and nowhere else.
@@ -609,10 +609,10 @@ fast (`${VAR:?…}`); optional variables have their default in `docker-compose.y
   `docker-compose.yml` (interpolated from `.env`; `infra/livekit/` is not used): `port 7880`, `rtc.tcp_port 7881`,
   `rtc.udp_port 7882`, `rtc.use_external_ip false`, `room.auto_create true`, `room.empty_timeout 300`,
   `room.departure_timeout 20`, `webhook.api_key` = the key, `webhook.urls [http://api:8080/api/livekit/webhook]`.
-  `LIVEKIT_KEYS: "{key}: {secret}"`, `NODE_IP` = `FLOWSTUDIO_NODE_IP`. Ports 7881/tcp and 7882/udp only. Healthcheck
+  `LIVEKIT_KEYS: "{key}: {secret}"`, `NODE_IP` = `STUDIOFLOW_NODE_IP`. Ports 7881/tcp and 7882/udp only. Healthcheck
   `wget -q -O /dev/null http://127.0.0.1:7880/`.
-- `postgres`: `postgres:17.11-alpine`, database and user `flowstudio`, volume `pgdata`, healthcheck
-  `pg_isready -h 127.0.0.1 -U flowstudio -d flowstudio` (TCP: during the first initialisation only the socket
+- `postgres`: `postgres:17.11-alpine`, database and user `studioflow`, volume `pgdata`, healthcheck
+  `pg_isready -h 127.0.0.1 -U studioflow -d studioflow` (TCP: during the first initialisation only the socket
   listens), `stop_grace_period: 30s`, `cap_drop: ALL` with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`,
   `SETUID` (the official entrypoint fixes ownership and mode of the data and socket directories as root and then drops
   to the user `postgres`; without `DAC_OVERRIDE` a restart on a non-empty volume fails).
@@ -626,27 +626,27 @@ fast (`${VAR:?…}`); optional variables have their default in `docker-compose.y
 
 Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS modes in `infra/caddy/tls/`):
 
-- Site `{$FLOWSTUDIO_DOMAIN} {$FLOWSTUDIO_EXTRA_HOSTS}`, `default_sni {$FLOWSTUDIO_DEFAULT_SNI}` (clients without
-  SNI, i.e. access by IP), `trusted_proxies static {$FLOWSTUDIO_TRUSTED_PROXIES}` (default `127.0.0.1/32` = nobody,
+- Site `{$STUDIOFLOW_DOMAIN} {$STUDIOFLOW_EXTRA_HOSTS}`, `default_sni {$STUDIOFLOW_DEFAULT_SNI}` (clients without
+  SNI, i.e. access by IP), `trusted_proxies static {$STUDIOFLOW_TRUSTED_PROXIES}` (default `127.0.0.1/32` = nobody,
   so LAN clients cannot spoof `X-Forwarded-For`), server timeouts `read_body_idle 5m`, `write_idle 2m`.
-- TLS: `import /etc/caddy/tls/{$FLOWSTUDIO_TLS_MODE}.caddy` (an unknown mode fails at startup).
+- TLS: `import /etc/caddy/tls/{$STUDIOFLOW_TLS_MODE}.caddy` (an unknown mode fails at startup).
   `internal` = Caddy's local CA (`skip_install_trust`; the root is served at `/ca.crt` as
   `application/x-x509-ca-cert`, only in this mode); `acme` = Let's Encrypt HTTP-01/TLS-ALPN (public reachability);
   `custom` = `/certs/fullchain.pem` + `/certs/privkey.pem`; `dns-cloudflare | dns-infomaniak | dns-hetzner |
-  dns-desec | dns-route53 | dns-gandi | dns-ovh` = Let's Encrypt DNS-01 with `resolvers {$FLOWSTUDIO_DNS_RESOLVERS}`
-  and `dns_challenge_override_domain {$FLOWSTUDIO_DNS_CHALLENGE_DOMAIN}`. The override defaults to
+  dns-desec | dns-route53 | dns-gandi | dns-ovh` = Let's Encrypt DNS-01 with `resolvers {$STUDIOFLOW_DNS_RESOLVERS}`
+  and `dns_challenge_override_domain {$STUDIOFLOW_DNS_CHALLENGE_DOMAIN}`. The override defaults to
   `_acme-challenge.{domain}`, which is exactly Caddy's own record name; set it to the CNAME target when
   `_acme-challenge` is delegated (providers without a module, e.g. Hostpoint or cyon → deSEC or Cloudflare).
   Provider secrets are read at runtime (`{env.…}`); certificates renew automatically.
-- Routes: `POST /api/productions/{id}/assets[/]` → api with body ≤ `FLOWSTUDIO_MAX_UPLOAD` and response header timeout
-  15 min; all other `/api/*` → api with body ≤ `FLOWSTUDIO_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
+- Routes: `POST /api/productions/{id}/assets[/]` → api with body ≤ `STUDIOFLOW_MAX_UPLOAD` and response header timeout
+  15 min; all other `/api/*` → api with body ≤ `STUDIOFLOW_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
   timeout: long polling); `/rtc`, `/rtc/*` → livekit:7880; `/twirp`, `/twirp/*` and `/api/livekit/*` (webhooks arrive
   inside the network) → 404;
   `/j/{token}` → 302 `/join/i/{token}`; `/join` → 308 `/join/`, `/o` → 308 `/o/` (query kept); `/join/*` sender SPA
   (`/srv/join`), `/o/*` output SPA (`/srv/o`), everything else studio SPA (`/srv/studio`). SPA fallback: paths without
   a file extension get `index.html`, missing files stay 404. Proxies use `dial_timeout 5s` and `stream_close_delay 5m`
   (WebSockets survive a config reload). The API's `/health/*` is not reachable through Caddy.
-- Headers on every response: `Strict-Transport-Security: max-age={FLOWSTUDIO_HSTS_MAX_AGE}; includeSubDomains`,
+- Headers on every response: `Strict-Transport-Security: max-age={STUDIOFLOW_HSTS_MAX_AGE}; includeSubDomains`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no `Server`;
   every header exactly once: the proxies to the API, the hubs and LiveKit drop the upstream's `X-Content-Type-Options`
   (`header_down`), the API keeps sending its own for direct access.
@@ -654,7 +654,7 @@ Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS mod
   img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://{host}
   wss://{host}; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self';
   form-action 'self'; frame-ancestors …; upgrade-insecure-requests` with `frame-ancestors 'none'` for `/` and `/join/`
-  and `'self' {FLOWSTUDIO_FRAME_ANCESTORS}` for `/o/`. `'unsafe-inline'` for styles only, because Angular injects
+  and `'self' {STUDIOFLOW_FRAME_ANCESTORS}` for `/o/`. `'unsafe-inline'` for styles only, because Angular injects
   component styles at runtime. `Permissions-Policy`: studio `camera=(), microphone=(), display-capture=(),
   clipboard-write=(self), screen-wake-lock=(self), fullscreen=(self), autoplay=(self)`; sender `camera=(self),
   microphone=(self), display-capture=(self), screen-wake-lock=(self), fullscreen=(self), clipboard-write=(self)`; output
@@ -676,13 +676,13 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 
 | Variable (`.env`) | Used by | Meaning / default |
 |---|---|---|
-| `FLOWSTUDIO_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `flowstudio.opten.ch` (tests: `localhost`; in mode `internal` also an IP) |
-| `FLOWSTUDIO_NODE_IP` | livekit | **Required.** IPv4 that LiveKit announces for media (`NODE_IP`): the server's LAN IP (VPS: public IP); `127.0.0.1` only for single-machine tests |
-| `FLOWSTUDIO_TLS_MODE` | caddy | **Required.** `internal` \| `acme` \| `custom` \| `dns-cloudflare` \| `dns-infomaniak` \| `dns-hetzner` \| `dns-desec` \| `dns-route53` \| `dns-gandi` \| `dns-ovh` |
-| `FLOWSTUDIO_EXTRA_HOSTS` | caddy | Further site addresses, space-separated (mode `internal`, e.g. the IP); default empty |
-| `FLOWSTUDIO_DEFAULT_SNI` | caddy | Certificate for clients without SNI; default `FLOWSTUDIO_DOMAIN` (setup sets the first IP of the extra hosts) |
-| `FLOWSTUDIO_PUBLIC_BASE_URL` | api → `FLOWSTUDIO__PUBLICBASEURL` | Base of invite, QR and output URLs; default `https://${FLOWSTUDIO_DOMAIN}` (override only for a non-443 port) |
-| `FLOWSTUDIO_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (`acme`, `dns-*`); default empty |
+| `STUDIOFLOW_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `studioflow.opten.ch` (tests: `localhost`; in mode `internal` also an IP) |
+| `STUDIOFLOW_NODE_IP` | livekit | **Required.** IPv4 that LiveKit announces for media (`NODE_IP`): the server's LAN IP (VPS: public IP); `127.0.0.1` only for single-machine tests |
+| `STUDIOFLOW_TLS_MODE` | caddy | **Required.** `internal` \| `acme` \| `custom` \| `dns-cloudflare` \| `dns-infomaniak` \| `dns-hetzner` \| `dns-desec` \| `dns-route53` \| `dns-gandi` \| `dns-ovh` |
+| `STUDIOFLOW_EXTRA_HOSTS` | caddy | Further site addresses, space-separated (mode `internal`, e.g. the IP); default empty |
+| `STUDIOFLOW_DEFAULT_SNI` | caddy | Certificate for clients without SNI; default `STUDIOFLOW_DOMAIN` (setup sets the first IP of the extra hosts) |
+| `STUDIOFLOW_PUBLIC_BASE_URL` | api → `STUDIOFLOW__PUBLICBASEURL` | Base of invite, QR and output URLs; default `https://${STUDIOFLOW_DOMAIN}` (override only for a non-443 port) |
+| `STUDIOFLOW_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (`acme`, `dns-*`); default empty |
 | `CF_API_TOKEN` | caddy | `dns-cloudflare` (Zone:Read, DNS:Edit) |
 | `INFOMANIAK_API_TOKEN` | caddy | `dns-infomaniak` (scopes `domain:read dns:read dns:write`) |
 | `HETZNER_API_TOKEN` | caddy | `dns-hetzner` (Hetzner Cloud DNS API) |
@@ -690,25 +690,25 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | caddy | `dns-route53` |
 | `GANDI_BEARER_TOKEN` | caddy | `dns-gandi` (personal access token) |
 | `OVH_ENDPOINT`, `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | caddy | `dns-ovh` |
-| `FLOWSTUDIO_DNS_CHALLENGE_DOMAIN` | caddy | `dns-*`: where the TXT record is written; default `_acme-challenge.${FLOWSTUDIO_DOMAIN}`; the CNAME target when delegated |
-| `FLOWSTUDIO_DNS_RESOLVERS` | caddy | `dns-*`: resolvers for the propagation check; default `1.1.1.1 9.9.9.9` |
-| `FLOWSTUDIO_HSTS_MAX_AGE` | caddy | Seconds; default `31536000` (setup writes `3600` for `internal`) |
-| `FLOWSTUDIO_FRAME_ANCESTORS` | caddy, api → `FLOWSTUDIO__FRAMEANCESTORS` | Additional origins allowed to embed `/o/*`, space-separated (`'self'` is always allowed and not part of the value); default empty. The API gets the effective list (`'self' …`) and shows it read-only |
-| `FLOWSTUDIO_TRUSTED_PROXIES` | caddy | CIDRs of proxies in front of Caddy whose `X-Forwarded-For` is trusted; default `127.0.0.1/32` (nobody) |
-| `FLOWSTUDIO_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
-| `FLOWSTUDIO_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
-| `FLOWSTUDIO_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `flowstudio`; default `172.30.0.0/24` (only Caddy can reach the API) |
+| `STUDIOFLOW_DNS_CHALLENGE_DOMAIN` | caddy | `dns-*`: where the TXT record is written; default `_acme-challenge.${STUDIOFLOW_DOMAIN}`; the CNAME target when delegated |
+| `STUDIOFLOW_DNS_RESOLVERS` | caddy | `dns-*`: resolvers for the propagation check; default `1.1.1.1 9.9.9.9` |
+| `STUDIOFLOW_HSTS_MAX_AGE` | caddy | Seconds; default `31536000` (setup writes `3600` for `internal`) |
+| `STUDIOFLOW_FRAME_ANCESTORS` | caddy, api → `STUDIOFLOW__FRAMEANCESTORS` | Additional origins allowed to embed `/o/*`, space-separated (`'self'` is always allowed and not part of the value); default empty. The API gets the effective list (`'self' …`) and shows it read-only |
+| `STUDIOFLOW_TRUSTED_PROXIES` | caddy | CIDRs of proxies in front of Caddy whose `X-Forwarded-For` is trusted; default `127.0.0.1/32` (nobody) |
+| `STUDIOFLOW_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
+| `STUDIOFLOW_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
+| `STUDIOFLOW_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `studioflow`; default `172.30.0.0/24` (only Caddy can reach the API) |
 | `ADMIN__USERNAME` | api | **Required.** Admin user name |
 | `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` | api | One of them is required by the API: ASP.NET Identity v3 hash (setup writes it) or plain password (local development, `--plain-password`, or setup's fallback). Compose passes the unset one as an empty string |
-| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `flowstudio`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
-| `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__FLOWSTUDIO` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=flowstudio;Username=flowstudio;Password=…` |
+| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `studioflow`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
+| `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__STUDIOFLOW` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=studioflow;Username=studioflow;Password=…` |
 | `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | Default `26214400`, `1073741824` |
 | – | api | Fixed: `MEDIA__PATH=/data/media`, `DATAPROTECTION__KEYSPATH=/data/keys` |
 
 Nothing but Caddy (80/tcp, 443/tcp+udp) and LiveKit media (7881/tcp, 7882/udp) is published.
 
 Scripts (repository root; bash and PowerShell 7.4+ with the same options and behaviour; shared code in
-`infra/scripts/common.sh` and `infra/scripts/FlowStudio.psm1`; messages in German; `--help` / `Get-Help -Full`):
+`infra/scripts/common.sh` and `infra/scripts/StudioFlow.psm1`; messages in German; `--help` / `Get-Help -Full`):
 
 - `setup.sh` / `setup.ps1`: interactive or `--non-interactive` (`--domain`, `--node-ip` (default: source address of the
   default route, confirmed interactively), `--tls-mode`, `--acme-email`, `--dns-challenge-domain`, `--extra-hosts`,
@@ -716,7 +716,7 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
   `--env-file`, `--force`; PowerShell: `-Domain`, `-NodeIp`, …). Provider credentials come from the environment, the
   existing `.env` or a hidden prompt. Generates the LiveKit secret and the PostgreSQL password, builds the API image
   and stores `ADMIN__PASSWORDHASH` from
-  `docker compose run --rm --no-deps -T --entrypoint dotnet api Opten.FlowStudio.Web.dll hash-password` (falls back to
+  `docker compose run --rm --no-deps -T --entrypoint dotnet api Opten.StudioFlow.Web.dll hash-password` (falls back to
   `ADMIN__PASSWORD` with a warning). Writes `.env` atomically with mode 600; refuses to overwrite it without
   `--force`, then keeps `.env.backup-<time>` and reuses the PostgreSQL password, the LiveKit key pair and (if wanted)
   the admin credentials.
@@ -732,7 +732,7 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
   unknown, `git pull --ff-only`, `docker compose up -d --build --remove-orphans --wait`, prints the status.
 
 What the scripts and Caddy require from the API image:
-- `ENTRYPOINT`/`WORKDIR` such that `dotnet Opten.FlowStudio.Web.dll` works in the working directory, BusyBox `wget`
+- `ENTRYPOINT`/`WORKDIR` such that `dotnet Opten.StudioFlow.Web.dll` works in the working directory, BusyBox `wget`
   for the healthcheck, `/health/live` on port 8080.
 - `hash-password`: reads the password from stdin (sent **without** a trailing newline; tolerate one), prints the
   Identity v3 hash as the last stdout line, exit 0.
@@ -777,13 +777,13 @@ The pins in `docs/testing.md` section 7 (GAP-01 … GAP-38) are binding decision
 - GAP-08 (camera pause): a slot reported `paused` (the OS suspended the camera) means «not live, expected back» →
   `reconnecting` if it was live; only a deliberate stop is `ended` («K1 Kamera beendet», «S1 Teilen beendet»). Every
   device report lists every slot; a new Hello session clears the reported slot states (section 4.5).
-- Test hooks (`window.__fsStudio`, `window.__fsSender`) are read-only state views that exist only when the opt-in
-  flag `localStorage['flowstudio.testHooks'] = '1'` is set (E2E sets it with an init script). The flag is read once
+- Test hooks (`window.__sfStudio`, `window.__sfSender`) are read-only state views that exist only when the opt-in
+  flag `localStorage['studioflow.testHooks'] = '1'` is set (E2E sets it with an init script). The flag is read once
   when the Regie's production store / the sender's station starts and must be exactly `'1'`; the objects are frozen,
   non-enumerable and non-writable (getters read the live state) and live as long as the page (removed when the service is
-  destroyed; after a sign-out `__fsStudio` reports `revision: null`, `hub: 'idle'`).
-  `__fsStudio = { revision: number | null, lastSync: 'delta' | 'snapshot' | null, hub: HubState }`;
-  `__fsSender = { slots(): Record<slot, SlotState>, rtc(): RtcState, sessionId: string }`.
+  destroyed; after a sign-out `__sfStudio` reports `revision: null`, `hub: 'idle'`).
+  `__sfStudio = { revision: number | null, lastSync: 'delta' | 'snapshot' | null, hub: HubState }`;
+  `__sfSender = { slots(): Record<slot, SlotState>, rtc(): RtcState, sessionId: string }`.
 - Log texts of block, unblock and removal name the codes and the device («K1 Handy 1 gesperrt», «S1 S2 Laptop Mia
   entfernt»; known-bugs BUG-10: intended, more informative for devices with several slots); the Regie toasts name the
   codes only («K1 gesperrt und getrennt»).

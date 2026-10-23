@@ -1,4 +1,4 @@
-import type { SceneDto, SceneItemDto } from '@flowstudio/scene-model';
+import type { SceneDto, SceneItemDto } from '@studioflow/scene-model';
 import { vi } from 'vitest';
 
 import { createSceneRenderer } from '../scene-renderer';

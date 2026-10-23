@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>Staleness and restart timings of the source status (configuration section <c>Sources</c>, spec 4.5, GAP-08, GAP-29).</summary>
 public sealed class SourceMonitorOptions : IValidatedOptions

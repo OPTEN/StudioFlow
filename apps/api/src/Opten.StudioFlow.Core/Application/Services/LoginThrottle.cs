@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>
 /// Login lockout (spec 5, GAP-03): by default 5 failed attempts per client IP within 15 minutes lock that IP for 15

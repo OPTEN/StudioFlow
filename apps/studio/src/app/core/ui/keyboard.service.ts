@@ -151,7 +151,7 @@ export class KeyboardService {
     try {
       return callback();
     } catch (error) {
-      console.warn('[FlowStudio] keyboard handler failed', error);
+      console.warn('[StudioFlow] keyboard handler failed', error);
       return false;
     }
   }

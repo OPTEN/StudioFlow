@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LIMITS, type DeviceKind } from '@flowstudio/scene-model';
+import { LIMITS, type DeviceKind } from '@studioflow/scene-model';
 import {
   DEVICE_ENVIRONMENT,
   defaultDeviceName,
@@ -19,7 +19,7 @@ import { KnockService } from './knock.service';
  * with a pending knock never get here (see `startGuard`).
  */
 @Component({
-  selector: 'fs-start',
+  selector: 'sf-start',
   imports: [ReactiveFormsModule, BrandMarkComponent, IconComponent],
   templateUrl: './start.component.html',
   styleUrl: './start.component.scss',

@@ -4,8 +4,8 @@ import {
   type SceneDto,
   type SlateDto,
   type TransitionDto,
-} from '@flowstudio/scene-model';
-import type { SceneRenderer } from '@flowstudio/scene-renderer';
+} from '@studioflow/scene-model';
+import type { SceneRenderer } from '@studioflow/scene-renderer';
 import { NO_ACCESS_SLATE } from './slates';
 
 /** The renderer calls the view makes. */

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>Production (OBS: scene collection): one event with its own devices, scenes and output.</summary>
 /// <param name="Id">Production id, e.g. <c>prd_9x2k…</c>.</param>

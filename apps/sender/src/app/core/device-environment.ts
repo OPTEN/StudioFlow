@@ -1,12 +1,12 @@
 import { InjectionToken } from '@angular/core';
-import type { DeviceKind } from '@flowstudio/scene-model';
+import type { DeviceKind } from '@studioflow/scene-model';
 import {
   battery,
   canShareScreen,
   isLikelyPhone,
   networkType,
   platformLabel,
-} from '@flowstudio/media-client/device';
+} from '@studioflow/media-client/device';
 
 /** Browser facts the sender depends on; a token so tests can describe any device. */
 export interface DeviceEnvironment {
@@ -49,7 +49,7 @@ export const browserEnvironment: DeviceEnvironment = {
 
 /** Environment of the running browser. */
 export const DEVICE_ENVIRONMENT = new InjectionToken<DeviceEnvironment>(
-  'flowstudio.deviceEnvironment',
+  'studioflow.deviceEnvironment',
   {
     providedIn: 'root',
     factory: () => browserEnvironment,

@@ -6,7 +6,7 @@ import {
   formatKbpsAsMbit,
   formatPercent,
   pluralize,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ClockService } from '../core/ui/clock.service';
 import { IconComponent } from '../core/ui/icon.component';
@@ -53,7 +53,7 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
  * as the Regie: one graphite surface, hairlines, mono figures, lamps and washes.
  */
 @Component({
-  selector: 'fs-monitoring-page',
+  selector: 'sf-monitoring-page',
   imports: [IconComponent, RouterLink],
   templateUrl: './monitoring-page.component.html',
   styleUrl: './monitoring-page.component.scss',

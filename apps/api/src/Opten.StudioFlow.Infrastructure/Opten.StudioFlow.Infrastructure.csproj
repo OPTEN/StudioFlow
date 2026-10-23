@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Persistence (EF Core + PostgreSQL), LiveKit server API, media storage, password hashing. -->
   <PropertyGroup>
-    <RootNamespace>Opten.FlowStudio.Infrastructure</RootNamespace>
+    <RootNamespace>Opten.StudioFlow.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
@@ -18,9 +18,9 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Opten.FlowStudio.Core\Opten.FlowStudio.Core.csproj" />
+    <ProjectReference Include="..\Opten.StudioFlow.Core\Opten.StudioFlow.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="Opten.FlowStudio.Web.Tests" />
+    <InternalsVisibleTo Include="Opten.StudioFlow.Web.Tests" />
   </ItemGroup>
 </Project>

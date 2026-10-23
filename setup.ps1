@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    FlowStudio einrichten: schreibt die .env mit zufälligen Secrets und dem Hash des Admin-Passworts.
+    StudioFlow einrichten: schreibt die .env mit zufälligen Secrets und dem Hash des Admin-Passworts.
 
 .DESCRIPTION
     Gleiches Verhalten wie setup.sh. Fragt Domain, LAN-IPv4 (automatisch erkannt), TLS-Modus (+ E-Mail und
@@ -16,7 +16,7 @@
     Danach: docker compose up -d --build (Details: docs/runbook.md).
 
 .PARAMETER Domain
-    Hostname der Regie, z. B. flowstudio.opten.ch (Test: localhost).
+    Hostname der Regie, z. B. studioflow.opten.ch (Test: localhost).
 .PARAMETER NodeIp
     LAN-IPv4 des Servers für die Medien (Standard: automatisch erkannt).
 .PARAMETER TlsMode
@@ -47,7 +47,7 @@
 .EXAMPLE
     ./setup.ps1
 .EXAMPLE
-    ./setup.ps1 -NonInteractive -Domain flowstudio.opten.ch -TlsMode dns-cloudflare -GeneratePassword
+    ./setup.ps1 -NonInteractive -Domain studioflow.opten.ch -TlsMode dns-cloudflare -GeneratePassword
 .EXAMPLE
     $passwort | pwsh -NoProfile -File ./setup.ps1 -NonInteractive -Domain localhost -NodeIp 127.0.0.1 -TlsMode internal -AdminPasswordStdin
 #>
@@ -75,8 +75,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version 3.0
-Import-Module (Join-Path $PSScriptRoot 'infra/scripts/FlowStudio.psm1') -Force
-Initialize-FlowStudio -Root $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'infra/scripts/StudioFlow.psm1') -Force
+Initialize-StudioFlow -Root $PSScriptRoot
 
 $TlsModes = @('internal', 'acme', 'custom', 'dns-cloudflare', 'dns-infomaniak', 'dns-hetzner', 'dns-desec', 'dns-route53', 'dns-gandi', 'dns-ovh')
 $MinPasswordLength = 12
@@ -189,20 +189,20 @@ function Get-PasswordHash
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password')]
     param([string] $EnvPath, [string] $Password)
 
-    Write-FsInfo 'API-Image wird gebaut (für den Passwort-Hash) …'
-    $build = Get-FsComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
+    Write-SfInfo 'API-Image wird gebaut (für den Passwort-Hash) …'
+    $build = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
     if ($build.ExitCode -ne 0)
     {
-        Write-FsWarn 'Das API-Image liess sich nicht bauen.'
+        Write-SfWarn 'Das API-Image liess sich nicht bauen.'
         return $null
     }
 
     $startInfo = [Diagnostics.ProcessStartInfo]::new('docker')
-    foreach ($argument in @('compose', '--env-file', $EnvPath, 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'dotnet', 'api', 'Opten.FlowStudio.Web.dll', 'hash-password'))
+    foreach ($argument in @('compose', '--env-file', $EnvPath, 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'dotnet', 'api', 'Opten.StudioFlow.Web.dll', 'hash-password'))
     {
         $startInfo.ArgumentList.Add($argument)
     }
-    $startInfo.WorkingDirectory = Get-FsRoot
+    $startInfo.WorkingDirectory = Get-SfRoot
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
@@ -244,7 +244,7 @@ try
         throw 'Kein Terminal für Rückfragen. Mit -NonInteractive und den Optionen aufrufen (siehe Get-Help ./setup.ps1 -Full).'
     }
 
-    if (-not $EnvFile) { $EnvFile = Join-Path (Get-FsRoot) '.env' }
+    if (-not $EnvFile) { $EnvFile = Join-Path (Get-SfRoot) '.env' }
     $envDirectory = Split-Path -Parent ([IO.Path]::GetFullPath($EnvFile))
     if (-not (Test-Path -LiteralPath $envDirectory -PathType Container)) { throw "Verzeichnis $envDirectory existiert nicht." }
     $EnvFile = [IO.Path]::GetFullPath($EnvFile)
@@ -256,19 +256,19 @@ try
     $existing = Read-EnvFile $EnvFile
     function Get-Existing([string] $Key) { if ($existing.ContainsKey($Key)) { [string]$existing[$Key] } else { '' } }
 
-    Write-FsStep 'FlowStudio einrichten'
-    if (Test-Path -LiteralPath $EnvFile) { Write-FsInfo "Bestehende $(Split-Path -Leaf $EnvFile) wird ersetzt; Secrets und Admin-Konto werden übernommen." }
+    Write-SfStep 'StudioFlow einrichten'
+    if (Test-Path -LiteralPath $EnvFile) { Write-SfInfo "Bestehende $(Split-Path -Leaf $EnvFile) wird ersetzt; Secrets und Admin-Konto werden übernommen." }
 
     # Node IP
     $nodeIpValue = $NodeIp
     if (-not $nodeIpValue)
     {
         $detectedIp = Get-NodeIp
-        $defaultIp = Get-Existing 'FLOWSTUDIO_NODE_IP'
+        $defaultIp = Get-Existing 'STUDIOFLOW_NODE_IP'
         if (-not $defaultIp) { $defaultIp = $detectedIp }
         if ($interactive)
         {
-            if ($detectedIp) { Write-FsInfo "Erkannte LAN-IPv4 dieses Rechners: $detectedIp" }
+            if ($detectedIp) { Write-SfInfo "Erkannte LAN-IPv4 dieses Rechners: $detectedIp" }
             $nodeIpValue = Read-Prompt 'LAN-IPv4 des Servers (Medien für Handys und Laptops)' $defaultIp
         }
         else { $nodeIpValue = $defaultIp }
@@ -279,12 +279,12 @@ try
     $tlsModeValue = $TlsMode
     if (-not $tlsModeValue)
     {
-        $tlsModeValue = Get-Existing 'FLOWSTUDIO_TLS_MODE'
+        $tlsModeValue = Get-Existing 'STUDIOFLOW_TLS_MODE'
         if (-not $tlsModeValue) { $tlsModeValue = 'internal' }
         if ($interactive)
         {
-            Write-FsInfo 'TLS-Modi: internal (lokale CA, Test) | acme (VPS, öffentlich erreichbar) | custom (eigenes Zertifikat)'
-            Write-FsInfo '          dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh'
+            Write-SfInfo 'TLS-Modi: internal (lokale CA, Test) | acme (VPS, öffentlich erreichbar) | custom (eigenes Zertifikat)'
+            Write-SfInfo '          dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh'
             $tlsModeValue = Read-Prompt 'TLS-Modus' $tlsModeValue
         }
     }
@@ -294,9 +294,9 @@ try
     $domainValue = $Domain
     if (-not $domainValue)
     {
-        $domainValue = Get-Existing 'FLOWSTUDIO_DOMAIN'
+        $domainValue = Get-Existing 'STUDIOFLOW_DOMAIN'
         if (-not $domainValue -and $tlsModeValue -eq 'internal') { $domainValue = $nodeIpValue }
-        if ($interactive) { $domainValue = Read-Prompt 'Domain der Regie (z. B. flowstudio.opten.ch; im Modus internal auch die IP)' $domainValue }
+        if ($interactive) { $domainValue = Read-Prompt 'Domain der Regie (z. B. studioflow.opten.ch; im Modus internal auch die IP)' $domainValue }
     }
     $domainValue = "$domainValue".ToLowerInvariant()
     if (-not (Test-Host $domainValue)) { throw "Ungültige oder fehlende Domain: «$domainValue» (Option -Domain)." }
@@ -313,7 +313,7 @@ try
         if ($PSBoundParameters.ContainsKey('AcmeEmail')) { $acmeEmailValue = $AcmeEmail }
         else
         {
-            $acmeEmailValue = Get-Existing 'FLOWSTUDIO_ACME_EMAIL'
+            $acmeEmailValue = Get-Existing 'STUDIOFLOW_ACME_EMAIL'
             if ($interactive) { $acmeEmailValue = Read-Prompt "E-Mail für Let's Encrypt (leer erlaubt)" $acmeEmailValue }
         }
         if ($acmeEmailValue -and -not (Test-Email $acmeEmailValue)) { throw "Ungültige E-Mail: «$acmeEmailValue»." }
@@ -323,7 +323,7 @@ try
         if ($PSBoundParameters.ContainsKey('DnsChallengeDomain')) { $challengeDomainValue = $DnsChallengeDomain }
         else
         {
-            $challengeDomainValue = Get-Existing 'FLOWSTUDIO_DNS_CHALLENGE_DOMAIN'
+            $challengeDomainValue = Get-Existing 'STUDIOFLOW_DNS_CHALLENGE_DOMAIN'
             if ($interactive) { $challengeDomainValue = Read-Prompt '_acme-challenge per CNAME delegiert? Dann das CNAME-Ziel, sonst leer' $challengeDomainValue }
         }
         $challengeDomainValue = "$challengeDomainValue".ToLowerInvariant()
@@ -353,7 +353,7 @@ try
     if ($PSBoundParameters.ContainsKey('ExtraHosts')) { $extraHostsValue = $ExtraHosts }
     elseif ($tlsModeValue -eq 'internal')
     {
-        $extraHostsValue = Get-Existing 'FLOWSTUDIO_EXTRA_HOSTS'
+        $extraHostsValue = Get-Existing 'STUDIOFLOW_EXTRA_HOSTS'
         if ($interactive -and -not (Test-Ipv4 $domainValue))
         {
             $extraHostsValue = Read-Prompt "Weitere Adressen, z. B. $nodeIpValue für den Zugriff per IP (leer = keine)" $extraHostsValue
@@ -367,17 +367,17 @@ try
     }
     if ($extraHostsValue -and $tlsModeValue -ne 'internal')
     {
-        Write-FsWarn "Weitere Adressen sind nur im Modus internal sinnvoll; für $tlsModeValue braucht jede ein eigenes Zertifikat."
+        Write-SfWarn "Weitere Adressen sind nur im Modus internal sinnvoll; für $tlsModeValue braucht jede ein eigenes Zertifikat."
     }
 
     # Frame ancestors
     if ($PSBoundParameters.ContainsKey('FrameAncestors')) { $frameAncestorsValue = $FrameAncestors }
     else
     {
-        $frameAncestorsValue = Get-Existing 'FLOWSTUDIO_FRAME_ANCESTORS'
+        $frameAncestorsValue = Get-Existing 'STUDIOFLOW_FRAME_ANCESTORS'
         if ($interactive)
         {
-            $frameAncestorsValue = Read-Prompt 'Origins, die den Output einbetten dürfen (z. B. https://proxy.example.ch; leer = nur FlowStudio selbst)' $frameAncestorsValue
+            $frameAncestorsValue = Read-Prompt 'Origins, die den Output einbetten dürfen (z. B. https://proxy.example.ch; leer = nur StudioFlow selbst)' $frameAncestorsValue
         }
     }
     $frameAncestorsValue = ConvertTo-WordList $frameAncestorsValue
@@ -409,7 +409,7 @@ try
         $password = $password.TrimEnd("`r")
     }
     elseif ($GeneratePassword) { $passwordGenerated = $true }
-    elseif (($existingHash -or $existingPlain) -and (-not $interactive -or (Read-FsConfirm 'Bestehendes Admin-Passwort behalten?' 'j')))
+    elseif (($existingHash -or $existingPlain) -and (-not $interactive -or (Read-SfConfirm 'Bestehendes Admin-Passwort behalten?' 'j')))
     {
         $keepCredentials = $true
     }
@@ -419,9 +419,9 @@ try
         {
             $password = Read-SecretPrompt "Admin-Passwort (mind. $MinPasswordLength Zeichen; leer = starkes Passwort erzeugen)"
             if (-not $password) { break }
-            if ($password.Length -lt $MinPasswordLength) { Write-FsWarn 'Zu kurz.'; continue }
+            if ($password.Length -lt $MinPasswordLength) { Write-SfWarn 'Zu kurz.'; continue }
             if ((Read-SecretPrompt 'Admin-Passwort wiederholen') -ceq $password) { break }
-            Write-FsWarn 'Die Eingaben stimmen nicht überein.'
+            Write-SfWarn 'Die Eingaben stimmen nicht überein.'
         }
         if (-not $password) { $passwordGenerated = $true }
     }
@@ -437,7 +437,7 @@ try
     $postgresPassword = Get-Existing 'POSTGRES_PASSWORD'
     if ($postgresPassword -cnotmatch '^[A-Za-z0-9]{16,}$') { $postgresPassword = New-RandomAlphanumeric 32 }
     $liveKitKey = Get-Existing 'LIVEKIT_API_KEY'
-    if ($liveKitKey -cnotmatch '^[A-Za-z][A-Za-z0-9_-]{2,63}$') { $liveKitKey = 'flowstudio' }
+    if ($liveKitKey -cnotmatch '^[A-Za-z][A-Za-z0-9_-]{2,63}$') { $liveKitKey = 'studioflow' }
     $liveKitSecret = Get-Existing 'LIVEKIT_API_SECRET'
     if (-not (Test-LiveKitSecret $liveKitSecret)) { $liveKitSecret = 'sk' + (New-RandomHex 20) }
 
@@ -446,19 +446,19 @@ try
     function New-EnvContent([string[]] $AdminLines)
     {
         $lines = [Collections.Generic.List[string]]::new()
-        $lines.Add("# FlowStudio – erzeugt von setup.ps1 am $(Get-Date -Format 'yyyy-MM-dd HH:mm'). Nie ins Git; Kopie in den Passwort-Tresor.")
+        $lines.Add("# StudioFlow – erzeugt von setup.ps1 am $(Get-Date -Format 'yyyy-MM-dd HH:mm'). Nie ins Git; Kopie in den Passwort-Tresor.")
         $lines.Add('# Alle Variablen: .env.example und docs/architecture/implementation-spec.md (Abschnitt 10).')
         $lines.Add('')
-        $lines.Add((Format-EnvLine 'FLOWSTUDIO_DOMAIN' $domainValue))
-        $lines.Add((Format-EnvLine 'FLOWSTUDIO_NODE_IP' $nodeIpValue))
-        if ($extraHostsValue) { $lines.Add((Format-EnvLine 'FLOWSTUDIO_EXTRA_HOSTS' $extraHostsValue)) }
-        if ($defaultSni) { $lines.Add((Format-EnvLine 'FLOWSTUDIO_DEFAULT_SNI' $defaultSni)) }
-        $lines.Add((Format-EnvLine 'FLOWSTUDIO_TLS_MODE' $tlsModeValue))
-        if ($acmeEmailValue) { $lines.Add((Format-EnvLine 'FLOWSTUDIO_ACME_EMAIL' $acmeEmailValue)) }
-        if ($challengeDomainValue) { $lines.Add((Format-EnvLine 'FLOWSTUDIO_DNS_CHALLENGE_DOMAIN' $challengeDomainValue)) }
+        $lines.Add((Format-EnvLine 'STUDIOFLOW_DOMAIN' $domainValue))
+        $lines.Add((Format-EnvLine 'STUDIOFLOW_NODE_IP' $nodeIpValue))
+        if ($extraHostsValue) { $lines.Add((Format-EnvLine 'STUDIOFLOW_EXTRA_HOSTS' $extraHostsValue)) }
+        if ($defaultSni) { $lines.Add((Format-EnvLine 'STUDIOFLOW_DEFAULT_SNI' $defaultSni)) }
+        $lines.Add((Format-EnvLine 'STUDIOFLOW_TLS_MODE' $tlsModeValue))
+        if ($acmeEmailValue) { $lines.Add((Format-EnvLine 'STUDIOFLOW_ACME_EMAIL' $acmeEmailValue)) }
+        if ($challengeDomainValue) { $lines.Add((Format-EnvLine 'STUDIOFLOW_DNS_CHALLENGE_DOMAIN' $challengeDomainValue)) }
         foreach ($line in $providerLines) { $lines.Add($line) }
-        if ($tlsModeValue -eq 'internal') { $lines.Add((Format-EnvLine 'FLOWSTUDIO_HSTS_MAX_AGE' $InternalHstsMaxAge)) }
-        if ($frameAncestorsValue) { $lines.Add((Format-EnvLine 'FLOWSTUDIO_FRAME_ANCESTORS' $frameAncestorsValue)) }
+        if ($tlsModeValue -eq 'internal') { $lines.Add((Format-EnvLine 'STUDIOFLOW_HSTS_MAX_AGE' $InternalHstsMaxAge)) }
+        if ($frameAncestorsValue) { $lines.Add((Format-EnvLine 'STUDIOFLOW_FRAME_ANCESTORS' $frameAncestorsValue)) }
         $lines.Add('')
         $lines.Add((Format-EnvLine 'ADMIN__USERNAME' $adminUserValue))
         foreach ($line in $AdminLines) { $lines.Add($line) }
@@ -474,7 +474,7 @@ try
     function Write-EnvFile([string[]] $AdminLines)
     {
         [IO.File]::WriteAllText($tmpEnv, (New-EnvContent $AdminLines), $utf8)
-        Protect-FsPath -Path $tmpEnv
+        Protect-SfPath -Path $tmpEnv
     }
 
     try
@@ -488,24 +488,24 @@ try
         }
         elseif ($PlainPassword)
         {
-            Write-FsWarn 'Das Admin-Passwort wird im Klartext gespeichert (-PlainPassword). Nur für lokale Entwicklung.'
+            Write-SfWarn 'Das Admin-Passwort wird im Klartext gespeichert (-PlainPassword). Nur für lokale Entwicklung.'
             Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
         }
         else
         {
             Write-EnvFile @()
-            $dockerAvailable = Test-FsDockerAvailable
+            $dockerAvailable = Test-SfDockerAvailable
             $hash = if ($dockerAvailable) { Get-PasswordHash -EnvPath $tmpEnv -Password $password } else { $null }
             if ($hash)
             {
                 Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORDHASH' $hash)
-                Write-FsInfo 'Admin-Passwort als Hash gespeichert.'
+                Write-SfInfo 'Admin-Passwort als Hash gespeichert.'
             }
             else
             {
-                if (-not $dockerAvailable) { Write-FsWarn 'Docker ist nicht verfügbar; der Passwort-Hash braucht das API-Image.' }
-                Write-FsWarn 'Der Passwort-Hash konnte nicht über das API-Image erzeugt werden (Build fehlgeschlagen oder «hash-password» fehlt).'
-                Write-FsWarn 'Das Passwort wird vorerst im Klartext (ADMIN__PASSWORD) gespeichert. Später ./setup.ps1 -Force ausführen und ein neues Passwort setzen.'
+                if (-not $dockerAvailable) { Write-SfWarn 'Docker ist nicht verfügbar; der Passwort-Hash braucht das API-Image.' }
+                Write-SfWarn 'Der Passwort-Hash konnte nicht über das API-Image erzeugt werden (Build fehlgeschlagen oder «hash-password» fehlt).'
+                Write-SfWarn 'Das Passwort wird vorerst im Klartext (ADMIN__PASSWORD) gespeichert. Später ./setup.ps1 -Force ausführen und ein neues Passwort setzen.'
                 Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
             }
         }
@@ -514,8 +514,8 @@ try
         {
             $backupFile = "$EnvFile.backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
             Copy-Item -LiteralPath $EnvFile -Destination $backupFile
-            Protect-FsPath -Path $backupFile
-            Write-FsInfo "Bisherige Datei gesichert: $backupFile (eigene Ergänzungen von dort übernehmen)."
+            Protect-SfPath -Path $backupFile
+            Write-SfInfo "Bisherige Datei gesichert: $backupFile (eigene Ergänzungen von dort übernehmen)."
         }
         Move-Item -LiteralPath $tmpEnv -Destination $EnvFile -Force
     }
@@ -526,26 +526,26 @@ try
 
     # --- summary ----------------------------------------------------------------------------------------------------
 
-    Write-FsStep "Fertig: $EnvFile"
-    Write-FsInfo "Regie:      https://$domainValue/"
-    Write-FsInfo "Sender:     https://$domainValue/join"
-    Write-FsInfo "Medien:     $nodeIpValue (7881/tcp, 7882/udp)   TLS: $tlsModeValue"
+    Write-SfStep "Fertig: $EnvFile"
+    Write-SfInfo "Regie:      https://$domainValue/"
+    Write-SfInfo "Sender:     https://$domainValue/join"
+    Write-SfInfo "Medien:     $nodeIpValue (7881/tcp, 7882/udp)   TLS: $tlsModeValue"
     switch -Wildcard ($tlsModeValue)
     {
-        'internal' { Write-FsInfo "Zertifikat: lokale CA – auf jedem Gerät einmal https://$domainValue/ca.crt installieren (docs/runbook.md)." }
-        'dns-*' { Write-FsInfo "Zertifikat: Let's Encrypt per DNS-Challenge; der A-Record von $domainValue zeigt auf $nodeIpValue." }
-        'acme' { Write-FsInfo "Zertifikat: Let's Encrypt per HTTP-01; 80/tcp und 443/tcp müssen öffentlich erreichbar sein." }
-        'custom' { Write-FsInfo 'Zertifikat: ./certs/fullchain.pem und privkey.pem nach /certs mounten (docker-compose.override.example.yml).' }
+        'internal' { Write-SfInfo "Zertifikat: lokale CA – auf jedem Gerät einmal https://$domainValue/ca.crt installieren (docs/runbook.md)." }
+        'dns-*' { Write-SfInfo "Zertifikat: Let's Encrypt per DNS-Challenge; der A-Record von $domainValue zeigt auf $nodeIpValue." }
+        'acme' { Write-SfInfo "Zertifikat: Let's Encrypt per HTTP-01; 80/tcp und 443/tcp müssen öffentlich erreichbar sein." }
+        'custom' { Write-SfInfo 'Zertifikat: ./certs/fullchain.pem und privkey.pem nach /certs mounten (docker-compose.override.example.yml).' }
     }
     if ($passwordGenerated)
     {
-        Write-FsInfo ''
-        Write-FsInfo "Admin-Konto: $adminUserValue"
-        Write-FsInfo "Passwort:    $password"
-        Write-FsInfo 'Das Passwort wird nur jetzt angezeigt. Im Passwort-Tresor ablegen.'
+        Write-SfInfo ''
+        Write-SfInfo "Admin-Konto: $adminUserValue"
+        Write-SfInfo "Passwort:    $password"
+        Write-SfInfo 'Das Passwort wird nur jetzt angezeigt. Im Passwort-Tresor ablegen.'
     }
-    Write-FsInfo ''
-    Write-FsInfo 'Nächster Schritt: docker compose up -d --build'
+    Write-SfInfo ''
+    Write-SfInfo 'Nächster Schritt: docker compose up -d --build'
 }
 catch
 {

@@ -9,7 +9,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { InviteDto } from '@flowstudio/scene-model';
+import type { InviteDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClipboardService } from '../../core/ui/clipboard.service';
@@ -44,7 +44,7 @@ interface InviteRow {
  * of the production with its expiry and «Widerrufen».
  */
 @Component({
-  selector: 'fs-link-tab',
+  selector: 'sf-link-tab',
   imports: [IconComponent],
   template: `
     <h3 class="c-pair__title">Einladungslink</h3>
@@ -56,7 +56,7 @@ interface InviteRow {
       <div class="c-pair__big-url">
         <span class="c-pair__url c-pair__url--wrap" #url>{{ row.url }}</span>
         <button class="c-btn c-btn--sm" type="button" (click)="copy(row.invite)">
-          <svg fsIcon="copy" [size]="14"></svg>Kopieren
+          <svg sfIcon="copy" [size]="14"></svg>Kopieren
         </button>
       </div>
       <p class="c-hint">Gilt einmal und {{ row.expiry }}. Wer ihn öffnet, ist direkt gekoppelt.</p>
@@ -67,7 +67,7 @@ interface InviteRow {
           [disabled]="commands.blocked('invite:create')"
           (click)="create()"
         >
-          <svg fsIcon="link" [size]="14"></svg>Weiteren Link erstellen
+          <svg sfIcon="link" [size]="14"></svg>Weiteren Link erstellen
         </button>
         <button
           class="c-btn c-btn--sm c-btn--danger c-pair__danger"
@@ -86,7 +86,7 @@ interface InviteRow {
           [disabled]="commands.blocked('invite:create')"
           (click)="create()"
         >
-          <svg fsIcon="link" [size]="15"></svg>Link erstellen
+          <svg sfIcon="link" [size]="15"></svg>Link erstellen
         </button>
       </div>
     }

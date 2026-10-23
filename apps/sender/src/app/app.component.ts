@@ -5,7 +5,7 @@ import { RouteFocusService } from './core/route-focus.service';
 
 /** Root component: hosts the screens; starts the focus handling and the service worker update logic. */
 @Component({
-  selector: 'fs-root',
+  selector: 'sf-root',
   imports: [RouterOutlet],
   template: '<router-outlet />',
   changeDetection: ChangeDetectionStrategy.OnPush,

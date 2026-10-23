@@ -7,7 +7,7 @@ import {
   inject,
   output,
 } from '@angular/core';
-import type { SourceDto } from '@flowstudio/scene-model';
+import type { SourceDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PopoverDirective, PopoverService } from '../../core/ui/popover.directive';
@@ -27,7 +27,7 @@ export const ADD_SOURCE_POPOVER = 'add-source';
  * While the scene is live in Studio-Modus or the Regie is offline the sources are disabled with a note.
  */
 @Component({
-  selector: 'fs-add-source-popover',
+  selector: 'sf-add-source-popover',
   imports: [IconComponent, PopoverDirective],
   templateUrl: './add-source-popover.component.html',
   styleUrl: './add-source-popover.component.scss',

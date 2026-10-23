@@ -3,7 +3,7 @@ import {
   layoutTemplate,
   type SceneItemDto,
   type SourceKind,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 import {
   CAMERA,

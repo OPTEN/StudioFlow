@@ -13,7 +13,7 @@ import { newUiContext, PROFILE_FACTS, type DeviceProfile, type NewUiContextOptio
  * Page objects of the sender PWA (`apps/sender`, base `/join/`, docs/testing.md 1.7, spec 9.2) for a phone
  * (Pixel 7 / iPhone 15 profiles on Chromium) and a laptop (Desktop profile), each in a context of its own with fake
  * media, the test hooks flag and the init script. The page reports itself through `data-testid`s
- * (`connection-state`, `tally`, `slot-<slot>`, `check-code`, `message-banner`) and `window.__fsSender`.
+ * (`connection-state`, `tally`, `slot-<slot>`, `check-code`, `message-banner`) and `window.__sfSender`.
  */
 
 export type SenderConnection =
@@ -22,8 +22,8 @@ export type SlotState = 'starting' | 'live' | 'paused' | 'ended' | 'failed' | st
 export type Tally = 'program' | 'preview' | 'off';
 
 /**
- * The device credentials the sender stored. The product keeps them in `localStorage['flowstudio.sender.v1']` as
- * `{deviceId, secret, productionId, clientId}`; docs/testing.md 1.7 pins `flowstudio.device` with `deviceSecret`. Both
+ * The device credentials the sender stored. The product keeps them in `localStorage['studioflow.sender.v1']` as
+ * `{deviceId, secret, productionId, clientId}`; docs/testing.md 1.7 pins `studioflow.device` with `deviceSecret`. Both
  * are read and normalised to this shape.
  */
 export interface StoredDevice {
@@ -156,22 +156,22 @@ export abstract class SenderPage {
     return this.page.getByTestId('message-banner');
   }
 
-  /** `window.__fsSender` (needs the test hooks), or null. */
+  /** `window.__sfSender` (needs the test hooks), or null. */
   async hooks(): Promise<SenderHooks | null> {
     return this.page.evaluate(() => {
       const view = (
         window as unknown as {
-          __fsSender?: { slots(): Record<string, string>; rtc(): string; sessionId: string };
+          __sfSender?: { slots(): Record<string, string>; rtc(): string; sessionId: string };
         }
-      ).__fsSender;
+      ).__sfSender;
       return view ? { slots: view.slots(), rtc: view.rtc(), sessionId: view.sessionId } : null;
     });
   }
 
-  /** Credentials the sender stored (`flowstudio.sender.v1`, or the documented `flowstudio.device`), or null before pairing. */
+  /** Credentials the sender stored (`studioflow.sender.v1`, or the documented `studioflow.device`), or null before pairing. */
   async storedDevice(): Promise<StoredDevice | null> {
     return this.page.evaluate(() => {
-      for (const key of ['flowstudio.sender.v1', 'flowstudio.device']) {
+      for (const key of ['studioflow.sender.v1', 'studioflow.device']) {
         try {
           const raw = window.localStorage.getItem(key);
           const record = raw ? (JSON.parse(raw) as Record<string, string | undefined>) : null;
@@ -210,7 +210,7 @@ export abstract class SenderPage {
     );
     await this.page.goto('/__e2e/seed');
     await this.page.evaluate(
-      (record) => window.localStorage.setItem('flowstudio.sender.v1', JSON.stringify(record)),
+      (record) => window.localStorage.setItem('studioflow.sender.v1', JSON.stringify(record)),
       {
         deviceId: credentials.deviceId,
         secret: credentials.deviceSecret,
@@ -225,7 +225,7 @@ export abstract class SenderPage {
     await expect
       .poll(async () => (stored = await this.storedDevice()) !== null, {
         timeout,
-        message: 'the sender stored its credentials (flowstudio.sender.v1)',
+        message: 'the sender stored its credentials (studioflow.sender.v1)',
       })
       .toBe(true);
     return stored!;
@@ -235,13 +235,13 @@ export abstract class SenderPage {
   async mediaCalls(): Promise<{ userMedia: number; display: number }> {
     return this.page.evaluate(() => {
       const media = (
-        window as unknown as { __fsMedia?: { userMediaCalls: unknown[]; displayCalls: number } }
-      ).__fsMedia;
+        window as unknown as { __sfMedia?: { userMediaCalls: unknown[]; displayCalls: number } }
+      ).__sfMedia;
       return { userMedia: media?.userMediaCalls.length ?? 0, display: media?.displayCalls ?? 0 };
     });
   }
 
-  /** The fake sources made so far and whether their tracks are live (`window.__fsFake`). */
+  /** The fake sources made so far and whether their tracks are live (`window.__sfFake`). */
   async fakeSources(): Promise<
     Array<{ kind: string; index: number; frames: number; live: boolean }>
   > {
@@ -249,11 +249,11 @@ export abstract class SenderPage {
       () =>
         (
           window as unknown as {
-            __fsFake?: {
+            __sfFake?: {
               frames(): Array<{ kind: string; index: number; frames: number; live: boolean }>;
             };
           }
-        ).__fsFake?.frames() ?? [],
+        ).__sfFake?.frames() ?? [],
     );
   }
 
@@ -262,8 +262,8 @@ export abstract class SenderPage {
     return this.page.evaluate(
       (i) =>
         (
-          window as unknown as { __fsFake?: { endScreen(i?: number): boolean } }
-        ).__fsFake?.endScreen(i) ?? false,
+          window as unknown as { __sfFake?: { endScreen(i?: number): boolean } }
+        ).__sfFake?.endScreen(i) ?? false,
       index,
     );
   }

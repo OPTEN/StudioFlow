@@ -388,7 +388,7 @@ test.describe('SYNC output hub', () => {
 
 test.describe('SYNC surface', () => {
   test('INT-SYNC-08 [stack] no operation of the API surface is a placeholder: every route is implemented', t.p0, async ({ config, api, production, pairContext, stack }) => {
-    const document = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'apps/api/openapi/flowstudio.json'), 'utf8')) as { paths: Record<string, Record<string, { operationId: string }>> };
+    const document = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'apps/api/openapi/studioflow.json'), 'utf8')) as { paths: Record<string, Record<string, { operationId: string }>> };
     const phone = await pairPhone(pairContext, { name: 'Surface' });
     const output = new OutputApi(config.baseURL, production.slug, production.outputKey);
     const device = new DeviceApi(config.baseURL, phone.credentials);
@@ -428,7 +428,7 @@ test.describe('SYNC surface', () => {
           if (stack.forwardedForWorks) headers['X-Forwarded-For'] = uniqueIp();
           if (route.includes('{requestId}')) headers['X-Pairing-Token'] = knock.body.pollToken;
         } else headers['Cookie'] = api.cookie;
-        if (!route.startsWith('/api/device/') && !route.startsWith('/api/output/') && !route.startsWith('/api/pairing/')) headers['X-FlowStudio'] = '1';
+        if (!route.startsWith('/api/device/') && !route.startsWith('/api/output/') && !route.startsWith('/api/pairing/')) headers['X-StudioFlow'] = '1';
         const { send } = await import('../../support/http');
         const response = await send({
           method,

@@ -16,7 +16,7 @@ import {
   type AbstractControl,
   type ValidationErrors,
 } from '@angular/forms';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, type OutputSettingsDto } from '@flowstudio/scene-model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, type OutputSettingsDto } from '@studioflow/scene-model';
 import { toGermanMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -33,7 +33,7 @@ export const OUTPUT_POPOVER = 'output';
 /** Output frame rate shown in the popover (the output page renders at the display rate, nominally 30 fps). */
 const NOMINAL_FPS = 30;
 
-/** «flowstudio.opten.ch/o/webinar?k=••••••»: without scheme and with the key masked. */
+/** «studioflow.opten.ch/o/webinar?k=••••••»: without scheme and with the key masked. */
 export function maskOutputUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/([?&]k=)[^&#]*/, '$1••••••');
 }
@@ -49,7 +49,7 @@ function ipValidator(control: AbstractControl<string>): ValidationErrors | null 
  * confirmation. Loads the output settings when it opens.
  */
 @Component({
-  selector: 'fs-output-popover',
+  selector: 'sf-output-popover',
   imports: [ConfirmBoxComponent, IconComponent, PopoverDirective, ReactiveFormsModule],
   templateUrl: './output-popover.component.html',
   styleUrl: './output-popover.component.scss',

@@ -4,13 +4,13 @@ import {
   FADE_DURATIONS_MS,
   type FadeDurationMs,
   type TransitionKind,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /** Storage keys of the Regie (spec 9.1). */
 export const PREFERENCE_KEYS = {
-  studioMode: 'flowstudio.studio',
-  transition: 'flowstudio.transition',
-  layout: 'flowstudio.layout',
+  studioMode: 'studioflow.studio',
+  transition: 'studioflow.transition',
+  layout: 'studioflow.layout',
 } as const;
 
 /**
@@ -43,7 +43,7 @@ function isFadeDuration(value: unknown): value is FadeDurationMs {
 export class PreferencesService {
   private readonly storage = inject(BROWSER_STORAGE);
 
-  /** Studio-Modus on/off (`flowstudio.studio` = '1' | '0'); default off. */
+  /** Studio-Modus on/off (`studioflow.studio` = '1' | '0'); default off. */
   readStudioMode(): boolean {
     return this.read(PREFERENCE_KEYS.studioMode) === '1';
   }
@@ -53,7 +53,7 @@ export class PreferencesService {
     this.write(PREFERENCE_KEYS.studioMode, on ? '1' : '0');
   }
 
-  /** Transition kind and fade duration (`flowstudio.transition`); default Blende 0,3 s. */
+  /** Transition kind and fade duration (`studioflow.transition`); default Blende 0,3 s. */
   readTransition(): TransitionPreference {
     const parsed = this.readJson(PREFERENCE_KEYS.transition);
     if (typeof parsed !== 'object' || parsed === null) {

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>
 /// SignalR endpoints and method names. Hub paths: <see cref="StudioHubPath"/> (admin cookie),

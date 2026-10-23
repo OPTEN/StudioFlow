@@ -9,7 +9,7 @@ import {
   type SourceDto,
   type SourceStatus,
   type TechCheckLevel,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { statusLamp, statusTone, type LampTone, type StateTone } from '../docks/shared/source-view';
 import { networkLabel, totalBitrateKbps, worstSource } from '../docks/stations/station-view';
 

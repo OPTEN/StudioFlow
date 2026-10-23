@@ -1,7 +1,7 @@
 import type { HttpInterceptorFn } from '@angular/common/http';
 
 /** Header the API requires on every cookie-authenticated unsafe request (spec 5, CSRF). */
-export const CSRF_HEADER = 'X-FlowStudio';
+export const CSRF_HEADER = 'X-StudioFlow';
 /** Value of {@link CSRF_HEADER}. */
 export const CSRF_HEADER_VALUE = '1';
 
@@ -19,7 +19,7 @@ export function isSameOrigin(url: string, origin = globalThis.location?.origin ?
   }
 }
 
-/** Adds `X-FlowStudio: 1` to POST, PUT, PATCH and DELETE requests to the own origin. */
+/** Adds `X-StudioFlow: 1` to POST, PUT, PATCH and DELETE requests to the own origin. */
 export const csrfInterceptor: HttpInterceptorFn = (request, next) => {
   if (!UNSAFE_METHODS.has(request.method.toUpperCase()) || !isSameOrigin(request.url)) {
     return next(request);

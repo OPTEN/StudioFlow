@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Infrastructure.LiveKit;
-using Opten.FlowStudio.Infrastructure.Media;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Infrastructure.Security;
-using Opten.FlowStudio.Web.Errors;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Infrastructure.LiveKit;
+using Opten.StudioFlow.Infrastructure.Media;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Infrastructure.Security;
+using Opten.StudioFlow.Web.Errors;
 
-namespace Opten.FlowStudio.Web.Hosting;
+namespace Opten.StudioFlow.Web.Hosting;
 
 /// <summary>
 /// Startup work that must finish before Kestrel listens (an <see cref="IHostedService"/>, not a background service):
@@ -21,7 +21,7 @@ internal sealed class StartupInitializer(
     IOptions<AdminOptions> admin,
     IOptions<LiveKitOptions> liveKit,
     IOptions<MediaOptions> media,
-    IOptions<FlowStudioOptions> studio,
+    IOptions<StudioFlowOptions> studio,
     IOptions<PairingOptions> pairing,
     IOptions<LoginLockoutOptions> lockout,
     IOptions<SourceMonitorOptions> sources,

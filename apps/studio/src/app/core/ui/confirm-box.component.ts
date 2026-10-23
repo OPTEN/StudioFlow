@@ -14,12 +14,12 @@ import {
  * `[busy]` disables both buttons while the request runs.
  *
  * ```html
- * <fs-confirm-box message="Der alte Link hört sofort auf. Der Proxy braucht danach den neuen."
+ * <sf-confirm-box message="Der alte Link hört sofort auf. Der Proxy braucht danach den neuen."
  *   confirmLabel="Neu erzeugen" [busy]="regenerating()" (confirm)="regenerate()" (cancel)="asking.set(false)" />
  * ```
  */
 @Component({
-  selector: 'fs-confirm-box',
+  selector: 'sf-confirm-box',
   template: `
     <div
       class="c-confirm"

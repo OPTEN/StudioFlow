@@ -1,7 +1,7 @@
 import { Component, signal, type WritableSignal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import type { SceneDto, TransitionDto } from '@flowstudio/scene-model';
-import type { SourceMediaProvider } from '@flowstudio/scene-renderer';
+import type { SceneDto, TransitionDto } from '@studioflow/scene-model';
+import type { SourceMediaProvider } from '@studioflow/scene-renderer';
 import { FakeStudioHub, flushMicrotasks } from '../../testing/fake-studio-hub';
 import { defaultScenes, itemFixture, sceneFixture, sourceFixture } from '../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../testing/store-harness';
@@ -20,7 +20,7 @@ import { FakeRendererFactory, ManualFrames } from './testing/stage-fakes';
   imports: [SceneViewComponent],
   template: `
     @if (shown()) {
-      <fs-scene-view
+      <sf-scene-view
         [scene]="scene()"
         [cue]="cue()"
         [mode]="mode()"
@@ -89,7 +89,7 @@ describe('SceneViewComponent', () => {
     const renderer = factory.last;
     expect(renderer.options.mode).toBe('monitor');
     expect(renderer.options.provider).toBe(TestBed.inject(PlaceholderMediaProvider));
-    expect(renderer.container.tagName.toLowerCase()).toBe('fs-scene-view');
+    expect(renderer.container.tagName.toLowerCase()).toBe('sf-scene-view');
     expect(renderer.ops()).toEqual(['show:scn_a']);
     expect(renderer.element.getAttribute('aria-label')).toBe('Program-Monitor: Begrüssung');
     expect(renderer.options.statusOf?.('dev_aaaaaaaaaaaaaaaa/camera')).toBe('ok');

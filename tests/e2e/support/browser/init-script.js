@@ -1,12 +1,12 @@
 /*
  * Test init script (docs/testing.md 1.3), injected into every page of a context with context.addInitScript.
- * Registers WebSockets and RTCPeerConnections (window.__fsNet), records media requests (window.__fsMedia), can make the
+ * Registers WebSockets and RTCPeerConnections (window.__sfNet), records media requests (window.__sfMedia), can make the
  * camera fail and can replace getUserMedia/getDisplayMedia by canvas streams with known content. None of this ships in
  * the product.
  */
 (function () {
-  if (window.__fsNet) return;
-  const fsNet = (window.__fsNet = {
+  if (window.__sfNet) return;
+  const sfNet = (window.__sfNet = {
     sockets: new Set(),
     peers: new Set(),
     counts() {
@@ -30,10 +30,10 @@
         return instance;
       },
     });
-  if (window.WebSocket) window.WebSocket = track(window.WebSocket, fsNet.sockets);
-  if (window.RTCPeerConnection) window.RTCPeerConnection = track(window.RTCPeerConnection, fsNet.peers);
+  if (window.WebSocket) window.WebSocket = track(window.WebSocket, sfNet.sockets);
+  if (window.RTCPeerConnection) window.RTCPeerConnection = track(window.RTCPeerConnection, sfNet.peers);
 
-  const media = (window.__fsMedia = { userMediaCalls: [], displayCalls: 0, failCamera: false, canvasScreen: false, timecodeCamera: false });
+  const media = (window.__sfMedia = { userMediaCalls: [], displayCalls: 0, failCamera: false, canvasScreen: false, timecodeCamera: false });
   const devices = navigator.mediaDevices;
   if (!devices) return;
   const timecodeStream = (fps) => {

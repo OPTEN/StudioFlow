@@ -2,7 +2,7 @@ import { stackConfig, PROJECT } from './env';
 import { compose, containerName, docker, ensureHealthy, inspectService, type Service } from './stack';
 import { sleep, waitUntil } from './shell';
 
-/** Lifecycle and fault injection for the services of the fs-e2e project (docs/testing.md 1.6). */
+/** Lifecycle and fault injection for the services of the sf-e2e project (docs/testing.md 1.6). */
 export const dockerCtl = {
   pause: (service: Service) => docker(['pause', containerName(service)], { check: true }),
   unpause: (service: Service) => docker(['unpause', containerName(service)], { check: true }),
@@ -97,7 +97,7 @@ export async function restoreNetwork(): Promise<void> {
   const config = stackConfig();
   for (const service of ['livekit', 'api', 'postgres', 'caddy'] as const) {
     const info = await docker(['inspect', '-f', `{{ json .NetworkSettings.Networks }}`, containerName(service)]);
-    if (info.code === 0 && !info.stdout.includes(`"${PROJECT}_flowstudio"`)) {
+    if (info.code === 0 && !info.stdout.includes(`"${PROJECT}_studioflow"`)) {
       await docker(['network', 'connect', '--ip', config.ips[service], '--alias', service, config.network, containerName(service)]);
     }
   }

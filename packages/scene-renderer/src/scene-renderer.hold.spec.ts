@@ -1,4 +1,4 @@
-import { autoGridSlots } from '@flowstudio/scene-model';
+import { autoGridSlots } from '@studioflow/scene-model';
 
 import {
   CAMERA,
@@ -43,8 +43,8 @@ describe('scene renderer: hold frame', () => {
     return video;
   }
 
-  const held = (): HTMLElement | null => mounted.part('itm_a', '.fs-r-held');
-  const box = (): HTMLElement | null => mounted.part('itm_a', '.fs-r-box');
+  const held = (): HTMLElement | null => mounted.part('itm_a', '.sf-r-held');
+  const box = (): HTMLElement | null => mounted.part('itm_a', '.sf-r-box');
   const snapshot = (): HTMLCanvasElement | null => mounted.part('itm_a', 'canvas');
 
   it('copies the current frame into the hold frame the moment the source is lost', () => {
@@ -190,7 +190,7 @@ describe('scene renderer: hold frame', () => {
     expect(held()?.style.display).toBe('flex');
     expect(held()?.textContent).toBe('Bild kommt gleich zurück');
     expect(held()?.style.background).toBe('rgba(13, 17, 23, 0.72)');
-    expect(mounted.part('itm_a', '.fs-r-held-text')?.style.display).toBe('inline');
+    expect(mounted.part('itm_a', '.sf-r-held-text')?.style.display).toBe('inline');
     expect(box()?.style.filter).toBe('blur(16px)');
     expect(snapshot()).not.toBeNull();
   });
@@ -201,7 +201,7 @@ describe('scene renderer: hold frame', () => {
     mounted.provider.lose(CAMERA);
     await vi.advanceTimersByTimeAsync(3000);
     expect(held()?.style.display).toBe('flex');
-    expect(mounted.part('itm_a', '.fs-r-held-text')?.style.display).toBe('none');
+    expect(mounted.part('itm_a', '.sf-r-held-text')?.style.display).toBe('none');
     expect(box()?.style.filter).toBe('blur(8px)');
   });
 
@@ -309,7 +309,7 @@ describe('scene renderer: hold frame', () => {
     mounted.provider.lose(CAMERA);
     await vi.advanceTimersByTimeAsync(3000);
 
-    const fallback = mounted.part('itm_a', '.fs-r-fallback');
+    const fallback = mounted.part('itm_a', '.sf-r-fallback');
     expect(fallback?.style.display).toBe('block');
     const image = fallback?.querySelector('img');
     expect(image?.getAttribute('src')).toBe('/media/pause.png');
@@ -331,7 +331,7 @@ describe('scene renderer: hold frame', () => {
     showCamera({ onLost: { holdMs: 1000, fallbackSource: CAMERA_2 } });
     mounted.provider.lose(CAMERA);
     await vi.advanceTimersByTimeAsync(1000);
-    const fallbackVideo = mounted.part('itm_a', '.fs-r-fallback video');
+    const fallbackVideo = mounted.part('itm_a', '.sf-r-fallback video');
     expect(fallbackVideo).not.toBeNull();
     expect(mounted.provider.attached(CAMERA_2)).toEqual([fallbackVideo]);
     expect(mounted.provider.desired().has(CAMERA_2)).toBe(true);
@@ -346,7 +346,7 @@ describe('scene renderer: hold frame', () => {
     showCamera({ onLost: { holdMs: 0, fallbackSource: CAMERA } });
     mounted.provider.lose(CAMERA);
     expect(held()?.style.display).toBe('flex');
-    expect(mounted.part('itm_a', '.fs-r-fallback')?.style.display).toBe('none');
+    expect(mounted.part('itm_a', '.sf-r-fallback')?.style.display).toBe('none');
   });
 
   it('shows the dark placeholder for pending sources, never a held frame', async () => {
@@ -373,11 +373,11 @@ describe('scene renderer: hold frame', () => {
     mounted.provider.lose(CAMERA_2);
     expect(vi.getTimerCount()).toBe(1);
     await vi.advanceTimersByTimeAsync(3000);
-    expect(mounted.part('itm_a', '.fs-r-held')?.style.display).toBe('flex');
-    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('none');
+    expect(mounted.part('itm_a', '.sf-r-held')?.style.display).toBe('flex');
+    expect(mounted.part('itm_b', '.sf-r-held')?.style.display).toBe('none');
     expect(vi.getTimerCount()).toBe(1);
     await vi.advanceTimersByTimeAsync(7000);
-    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('flex');
+    expect(mounted.part('itm_b', '.sf-r-held')?.style.display).toBe('flex');
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -388,7 +388,7 @@ describe('scene renderer: hold frame', () => {
     mounted.provider.lose(CAMERA);
     mounted.renderer.show(scene('scn_b', [sceneItem('itm_b', CAMERA, { w: 800 })]));
     await vi.advanceTimersByTimeAsync(3000);
-    expect(mounted.part('itm_b', '.fs-r-held')?.style.display).toBe('flex');
+    expect(mounted.part('itm_b', '.sf-r-held')?.style.display).toBe('flex');
   });
 
   function endTrack(video: HTMLVideoElement): void {

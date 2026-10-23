@@ -7,15 +7,15 @@ import { decodeQr, PixelImage } from './pixels';
 
 /**
  * Page object of the Regie (`apps/studio`, docs/testing.md 1.5 and 1.7): login through the UI or by injecting the
- * session cookie of an API login, waiting until the hub is live, reading state through `window.__fsStudio` and through
+ * session cookie of an API login, waiting until the hub is live, reading state through `window.__sfStudio` and through
  * the API, and the actions the pairing, switching and station tests need. Locators prefer roles and German labels;
  * `data-testid` hooks are used where the product has them.
  *
- * The read-only state view `window.__fsStudio` only exists with `localStorage['flowstudio.testHooks'] = '1'` (set by
+ * The read-only state view `window.__sfStudio` only exists with `localStorage['studioflow.testHooks'] = '1'` (set by
  * `installUiInit`, support/ui/init.ts).
  */
 
-/** Shape of `window.__fsStudio` (docs/testing.md 1.7). */
+/** Shape of `window.__sfStudio` (docs/testing.md 1.7). */
 export interface StudioHooks {
   revision: number | null;
   lastSync: 'delta' | 'snapshot' | null;
@@ -27,7 +27,7 @@ export type PairingTab = 'phone' | 'laptop' | 'link';
 
 const TAB_LABEL: Record<PairingTab, string> = { phone: 'Handy', laptop: 'Laptop', link: 'Link' };
 
-/** `fs_session=value` to a cookie for `context.addCookies`. */
+/** `sf_session=value` to a cookie for `context.addCookies`. */
 function sessionCookie(cookie: string, baseURL: string) {
   const [name, ...rest] = cookie.split('=');
   return {
@@ -53,7 +53,7 @@ export class RegiePage {
 
   // --- opening ----------------------------------------------------------------------------------------------------
 
-  /** Installs a session cookie (the value of `AdminApi.cookie`, `fs_session=...`) in a context: no login screen needed. */
+  /** Installs a session cookie (the value of `AdminApi.cookie`, `sf_session=...`) in a context: no login screen needed. */
   static async injectSession(
     context: BrowserContext,
     cookie: string,
@@ -141,10 +141,10 @@ export class RegiePage {
 
   // --- readiness and state -----------------------------------------------------------------------------------------
 
-  /** Reads `window.__fsStudio`; null when the hooks are off or the Regie has not started. */
+  /** Reads `window.__sfStudio`; null when the hooks are off or the Regie has not started. */
   async hooks(): Promise<StudioHooks | null> {
     return this.page.evaluate(() => {
-      const view = (window as unknown as { __fsStudio?: Record<string, unknown> }).__fsStudio;
+      const view = (window as unknown as { __sfStudio?: Record<string, unknown> }).__sfStudio;
       if (!view) return null;
       const read = (value: unknown) =>
         typeof value === 'function' ? (value as () => unknown)() : value;
@@ -168,7 +168,7 @@ export class RegiePage {
     return this.page.evaluate(() => {
       const read = (value: unknown) =>
         typeof value === 'function' ? (value as () => unknown)() : value;
-      const view = (window as unknown as { __fsStudio?: Record<string, unknown> }).__fsStudio;
+      const view = (window as unknown as { __sfStudio?: Record<string, unknown> }).__sfStudio;
       if (view) {
         const hub = String(read(view['hub']));
         const revision = read(view['revision']);
@@ -188,7 +188,7 @@ export class RegiePage {
           detail: `regie-ready ${Boolean(marker)}, connection ${state}`,
         };
       }
-      const page = document.querySelector('fs-studio-page');
+      const page = document.querySelector('sf-studio-page');
       const loading = [...document.querySelectorAll('.c-empty strong')].some((element) =>
         /werden geladen/.test(element.textContent ?? ''),
       );
@@ -320,7 +320,7 @@ export class RegiePage {
   }
 
   pairingDock(): Locator {
-    return this.page.locator('#fs-pairing-dock');
+    return this.page.locator('#sf-pairing-dock');
   }
 
   pairingTab(tab: PairingTab): Locator {
@@ -402,7 +402,7 @@ export class RegiePage {
 
   /** Text of the visible incident strip («K1 verbindet neu …»). */
   statusLine(): Locator {
-    return this.page.locator('fs-status-line');
+    return this.page.locator('sf-status-line');
   }
 }
 

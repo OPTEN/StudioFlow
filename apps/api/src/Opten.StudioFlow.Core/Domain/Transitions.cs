@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Rules for program transitions (spec 4.2): a cut has no duration, a fade uses one of the fixed durations.</summary>
 public static class Transitions
@@ -16,15 +16,15 @@ public static class Transitions
     {
         if (transition is null)
         {
-            throw FlowStudioException.Invalid(field, "Übergang fehlt.");
+            throw StudioFlowException.Invalid(field, "Übergang fehlt.");
         }
 
         return transition.Kind switch
         {
             TransitionKind.Cut => Cut,
             TransitionKind.Fade when FadeDurationsMs.Contains(transition.DurationMs) => new TransitionDto(TransitionKind.Fade, transition.DurationMs),
-            TransitionKind.Fade => throw FlowStudioException.Invalid($"{field}.durationMs", "Erlaubt sind 200, 300, 500, 800, 1000, 1500 oder 2000 ms."),
-            _ => throw FlowStudioException.Invalid($"{field}.kind", "Unbekannter Übergang."),
+            TransitionKind.Fade => throw StudioFlowException.Invalid($"{field}.durationMs", "Erlaubt sind 200, 300, 500, 800, 1000, 1500 oder 2000 ms."),
+            _ => throw StudioFlowException.Invalid($"{field}.kind", "Unbekannter Übergang."),
         };
     }
 }

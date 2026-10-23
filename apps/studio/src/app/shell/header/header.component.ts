@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { formatClock } from '@flowstudio/scene-model';
+import { formatClock } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -17,7 +17,7 @@ import { ProductionMenuComponent } from './production-menu.component';
  * presence («2 in der Regie») and the mono clock.
  */
 @Component({
-  selector: 'fs-header',
+  selector: 'sf-header',
   imports: [
     IconComponent,
     PopoverTriggerDirective,

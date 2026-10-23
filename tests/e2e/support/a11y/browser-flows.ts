@@ -43,7 +43,7 @@ export async function newBrowserContext(
   });
   await context.addInitScript(() => {
     try {
-      window.localStorage.setItem('flowstudio.testHooks', '1');
+      window.localStorage.setItem('studioflow.testHooks', '1');
     } catch {
       // opaque origins have no storage
     }
@@ -53,7 +53,7 @@ export async function newBrowserContext(
   return { context, watch, baseURL, origin: new URL(baseURL).origin, config };
 }
 
-/** The session cookie of an API login (`fs_session=...`) for the origin the browser uses. */
+/** The session cookie of an API login (`sf_session=...`) for the origin the browser uses. */
 export async function injectCookie(context: BrowserContext, cookie: string, baseURL: string): Promise<void> {
   const [name, ...rest] = cookie.split('=');
   await context.addCookies([{ name: name || SESSION_COOKIE, value: rest.join('='), url: baseURL, httpOnly: true, sameSite: 'Lax' }]);

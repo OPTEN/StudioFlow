@@ -29,14 +29,14 @@ function createVideo(doc: Document, className: string): HTMLVideoElement {
 }
 
 function createDeviceVideo(doc: Document): HTMLVideoElement {
-  const video = createVideo(doc, 'fs-r-media fs-r-media--device');
+  const video = createVideo(doc, 'sf-r-media sf-r-media--device');
   video.disablePictureInPicture = true;
   video.setAttribute('disablepictureinpicture', '');
   return video;
 }
 
 function createAssetVideo(doc: Document): HTMLVideoElement {
-  const video = createVideo(doc, 'fs-r-media fs-r-media--video');
+  const video = createVideo(doc, 'sf-r-media sf-r-media--video');
   video.loop = true;
   video.setAttribute('loop', '');
   video.preload = 'auto';
@@ -86,7 +86,7 @@ export class MediaView {
         this.loader.load(source.url);
         break;
       case 'image':
-        this.element = createImage(host.doc, 'fs-r-media fs-r-media--image', MEDIA_STYLES);
+        this.element = createImage(host.doc, 'sf-r-media sf-r-media--image', MEDIA_STYLES);
         this.video = null;
         this.loader = new AssetLoader(this.element);
         this.loader.load(source.url);

@@ -1,7 +1,7 @@
 /**
  * `Room` options per client role (spec section 7, «Subscribing» and «Verified livekit-client 2.23.0 behaviour»).
  */
-import { backoffDelay } from '@flowstudio/realtime-client';
+import { backoffDelay } from '@studioflow/realtime-client';
 import {
   VideoPresets,
   type ReconnectContext,
@@ -10,7 +10,7 @@ import {
 } from 'livekit-client';
 import { SCREEN_SHARE_ENCODING } from './publish-options';
 
-/** Which FlowStudio client owns a media session. */
+/** Which StudioFlow client owns a media session. */
 export type MediaRole = 'studio' | 'output' | 'sender';
 
 /**

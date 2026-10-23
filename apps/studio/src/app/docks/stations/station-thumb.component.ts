@@ -28,7 +28,7 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
  * it stays an empty well; a down source is dimmed.
  */
 @Component({
-  selector: 'fs-station-thumb',
+  selector: 'sf-station-thumb',
   template: `
     <video
       #video

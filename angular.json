@@ -36,7 +36,7 @@
       },
       "root": "apps/studio",
       "sourceRoot": "apps/studio/src",
-      "prefix": "fs",
+      "prefix": "sf",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
@@ -149,7 +149,7 @@
       },
       "root": "apps/sender",
       "sourceRoot": "apps/sender/src",
-      "prefix": "fs",
+      "prefix": "sf",
       "architect": {
         "build": {
           "builder": "@angular/build:application",

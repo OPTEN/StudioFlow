@@ -1,10 +1,10 @@
-import { toRtcState, type MediaSessionState } from '@flowstudio/media-client';
+import { toRtcState, type MediaSessionState } from '@studioflow/media-client';
 import type {
   DeviceReportDto,
   SlotState,
   SlotTelemetryDto,
   TechCheckDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /** Everything a periodic device report is built from. */
 export interface DeviceReportInput {

@@ -4,9 +4,9 @@ import {
   formatPercent,
   MISSING_VALUE,
   type BroadcastState,
-} from '@flowstudio/scene-model';
-import type { HubState, SyncStatus } from '@flowstudio/realtime-client';
-import type { MediaSessionState, SourceStats } from '@flowstudio/media-client';
+} from '@studioflow/scene-model';
+import type { HubState, SyncStatus } from '@studioflow/realtime-client';
+import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
 
 /**
  * `?debug=1`: a small mono panel top left with what a technician needs at the proxy: production and scene, revision,

@@ -1,10 +1,10 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SignalR.Client;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>An API restart on the same database (GAP-08 / spec 12, GAP-20, GAP-33).</summary>
 public sealed class RestartTests(PostgresFixture postgres)
@@ -72,7 +72,7 @@ public sealed class RestartTests(PostgresFixture postgres)
     }
 
     /// <summary>The app with a 1 s restart grace, optionally on the database of an earlier app.</summary>
-    private sealed class RestartedApp(PostgresFixture postgres, string? database = null) : FlowStudioApp(postgres)
+    private sealed class RestartedApp(PostgresFixture postgres, string? database = null) : StudioFlowApp(postgres)
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -80,7 +80,7 @@ public sealed class RestartTests(PostgresFixture postgres)
             builder.UseSetting("Sources:RestartGrace", "00:00:01");
             if (database is not null)
             {
-                builder.UseSetting("ConnectionStrings:FlowStudio", database);
+                builder.UseSetting("ConnectionStrings:StudioFlow", database);
             }
         }
     }

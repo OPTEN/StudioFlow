@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>EF Core implementation of <see cref="IProductionRepository"/>.</summary>
-internal sealed class ProductionRepository(FlowStudioDbContext db) : IProductionRepository
+internal sealed class ProductionRepository(StudioFlowDbContext db) : IProductionRepository
 {
     public Task<Production?> GetAsync(string productionId, CancellationToken cancellationToken) =>
         db.Productions.Include(p => p.Scenes).AsSplitQuery().FirstOrDefaultAsync(p => p.Id == productionId, cancellationToken);
@@ -41,7 +41,7 @@ internal sealed class ProductionRepository(FlowStudioDbContext db) : IProduction
 }
 
 /// <summary>EF Core implementation of <see cref="IDeviceRepository"/>.</summary>
-internal sealed class DeviceRepository(FlowStudioDbContext db) : IDeviceRepository
+internal sealed class DeviceRepository(StudioFlowDbContext db) : IDeviceRepository
 {
     public Task<Device?> GetAsync(string deviceId, CancellationToken cancellationToken) =>
         db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, cancellationToken);
@@ -55,7 +55,7 @@ internal sealed class DeviceRepository(FlowStudioDbContext db) : IDeviceReposito
 }
 
 /// <summary>EF Core implementation of <see cref="IAssetRepository"/>.</summary>
-internal sealed class AssetRepository(FlowStudioDbContext db) : IAssetRepository
+internal sealed class AssetRepository(StudioFlowDbContext db) : IAssetRepository
 {
     public Task<Asset?> GetAsync(string productionId, string assetId, CancellationToken cancellationToken) =>
         db.Assets.FirstOrDefaultAsync(a => a.Id == assetId && a.ProductionId == productionId, cancellationToken);
@@ -69,7 +69,7 @@ internal sealed class AssetRepository(FlowStudioDbContext db) : IAssetRepository
 }
 
 /// <summary>EF Core implementation of <see cref="IInviteRepository"/>.</summary>
-internal sealed class InviteRepository(FlowStudioDbContext db) : IInviteRepository
+internal sealed class InviteRepository(StudioFlowDbContext db) : IInviteRepository
 {
     public Task<Invite?> GetAsync(string productionId, string inviteId, CancellationToken cancellationToken) =>
         db.Invites.FirstOrDefaultAsync(i => i.Id == inviteId && i.ProductionId == productionId, cancellationToken);
@@ -102,7 +102,7 @@ internal sealed class InviteRepository(FlowStudioDbContext db) : IInviteReposito
 }
 
 /// <summary>EF Core implementation of <see cref="IAuditRepository"/>.</summary>
-internal sealed class AuditRepository(FlowStudioDbContext db) : IAuditRepository
+internal sealed class AuditRepository(StudioFlowDbContext db) : IAuditRepository
 {
     public void Add(AuditEntry entry) => db.AuditEntries.Add(entry);
 
@@ -113,7 +113,7 @@ internal sealed class AuditRepository(FlowStudioDbContext db) : IAuditRepository
 }
 
 /// <summary>EF Core implementation of <see cref="ISourceActivityRepository"/>.</summary>
-internal sealed class SourceActivityRepository(FlowStudioDbContext db) : ISourceActivityRepository
+internal sealed class SourceActivityRepository(StudioFlowDbContext db) : ISourceActivityRepository
 {
     public async Task MarkLiveAsync(string productionId, IReadOnlyCollection<SourceLiveMark> marks, DateTimeOffset at, CancellationToken cancellationToken)
     {
@@ -144,12 +144,12 @@ internal sealed class SourceActivityRepository(FlowStudioDbContext db) : ISource
             .ToListAsync(cancellationToken);
 }
 
-/// <summary>A unit of work over one <see cref="FlowStudioDbContext"/>.</summary>
+/// <summary>A unit of work over one <see cref="StudioFlowDbContext"/>.</summary>
 internal sealed class UnitOfWork : IUnitOfWork
 {
-    private readonly FlowStudioDbContext db;
+    private readonly StudioFlowDbContext db;
 
-    public UnitOfWork(FlowStudioDbContext db)
+    public UnitOfWork(StudioFlowDbContext db)
     {
         this.db = db;
         Productions = new ProductionRepository(db);
@@ -178,7 +178,7 @@ internal sealed class UnitOfWork : IUnitOfWork
 }
 
 /// <summary>Creates a unit of work with a pooled context per mutation.</summary>
-internal sealed class UnitOfWorkFactory(IDbContextFactory<FlowStudioDbContext> contexts) : IUnitOfWorkFactory
+internal sealed class UnitOfWorkFactory(IDbContextFactory<StudioFlowDbContext> contexts) : IUnitOfWorkFactory
 {
     public IUnitOfWork Create() => new UnitOfWork(contexts.CreateDbContext());
 }

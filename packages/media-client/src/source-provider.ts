@@ -3,12 +3,12 @@
  * video tracks, keeps video elements on their last frame across track loss, chooses the simulcast layer from the
  * renderers' desired sizes and sets the playout delay per role.
  */
-import { deviceSourceRef, slotKind } from '@flowstudio/scene-model';
+import { deviceSourceRef, slotKind } from '@studioflow/scene-model';
 import type {
   DesiredSize,
   SourceAvailability,
   SourceMediaProvider,
-} from '@flowstudio/scene-renderer';
+} from '@studioflow/scene-renderer';
 import { RoomEvent, VideoQuality } from 'livekit-client';
 import { systemClock, type Clock, type TimerHandle } from './clock';
 import { DesiredSizes } from './desired-size';
@@ -71,7 +71,7 @@ interface SourceEntry {
   disableTimer: TimerHandle | null;
 }
 
-/** Source id of a remote publication, or null for track names that are not FlowStudio slots (e.g. audio, future). */
+/** Source id of a remote publication, or null for track names that are not StudioFlow slots (e.g. audio, future). */
 function sourceIdOf(identity: string, trackName: string): string | null {
   return slotKind(trackName) === null ? null : deviceSourceRef(identity, trackName);
 }

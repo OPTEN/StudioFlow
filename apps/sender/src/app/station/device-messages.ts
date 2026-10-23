@@ -1,4 +1,4 @@
-import { hubErrorCode } from '@flowstudio/realtime-client';
+import { hubErrorCode } from '@studioflow/realtime-client';
 import {
   ERROR_CODES,
   type DeviceCommandDto,
@@ -6,7 +6,7 @@ import {
   type DeviceSlotDto,
   type TallyDto,
   type TallyState,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /** Tally while nothing is known or nothing is on air. */
 export const OFF_TALLY: TallyDto = { overall: 'off', slots: {} };

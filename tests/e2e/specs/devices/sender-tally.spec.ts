@@ -54,7 +54,7 @@ async function appearance(page: Page) {
       pointerEvents: style.pointerEvents,
       thin: element.classList.contains('c-tally--thin'),
       compact: element.classList.contains('c-tally--compact'),
-      spoken: document.querySelector('fs-tally-frame .u-sr-only')?.textContent?.trim() ?? '',
+      spoken: document.querySelector('sf-tally-frame .u-sr-only')?.textContent?.trim() ?? '',
     };
   });
 }

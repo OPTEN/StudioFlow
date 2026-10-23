@@ -2,7 +2,7 @@
   class="c-pop c-media-pop"
   role="dialog"
   aria-label="Medien"
-  [fsPopover]="popoverId"
+  [sfPopover]="popoverId"
   [popoverFocus]="!pickOnOpen()"
 >
   <div class="c-pop-h">Bild oder Video hochladen</div>
@@ -22,7 +22,7 @@
       [accept]="accept"
       (change)="onFiles($event)"
     />
-    <svg fsIcon="upload"></svg>
+    <svg sfIcon="upload"></svg>
     <span>Hierher ziehen oder <span class="c-media-pop__pick">Datei wählen</span></span>
     <span class="c-hint">{{ hint }}</span>
   </label>
@@ -36,7 +36,7 @@
       @for (entry of uploads.uploads(); track entry.id) {
         <li class="c-media-pop__upload">
           <div class="c-media-pop__row">
-            <svg [fsIcon]="entry.kind"></svg>
+            <svg [sfIcon]="entry.kind"></svg>
             <span class="c-media-pop__name" [title]="entry.name">{{ entry.name }}</span>
             <span class="c-media-pop__meta u-mono">{{ sizeText(entry.size) }}</span>
             @if (entry.state === 'queued' || entry.state === 'uploading') {
@@ -50,7 +50,7 @@
                 [attr.aria-label]="'Aus der Liste entfernen: ' + entry.name"
                 (click)="uploads.dismiss(entry.id)"
               >
-                <svg fsIcon="close" [size]="14"></svg>
+                <svg sfIcon="close" [size]="14"></svg>
               </button>
             }
           </div>
@@ -85,7 +85,7 @@
                       type="button"
                       (click)="addToScene(asset)"
                     >
-                      <svg fsIcon="plus" [size]="14"></svg>Zu «{{ sceneName() }}»
+                      <svg sfIcon="plus" [size]="14"></svg>Zu «{{ sceneName() }}»
                     </button>
                   }
                 </div>
@@ -108,10 +108,10 @@
     @for (asset of assets(); track asset.id) {
       <div class="c-media-pop__asset">
         <div class="c-media-pop__row">
-          <svg [fsIcon]="asset.kind"></svg>
+          <svg [sfIcon]="asset.kind"></svg>
           <span class="c-code">{{ asset.code }}</span>
           @if (renamingId() === asset.id) {
-            <fs-inline-edit
+            <sf-inline-edit
               class="c-media-pop__edit"
               label="Name der Datei"
               [value]="asset.name"
@@ -131,7 +131,7 @@
               [disabled]="commands.blocked('asset:' + asset.id + ':rename')"
               (click)="startRename(asset)"
             >
-              <svg fsIcon="pencil" [size]="14"></svg>
+              <svg sfIcon="pencil" [size]="14"></svg>
             </button>
             <button
               class="c-ibtn c-media-pop__delete"
@@ -139,7 +139,7 @@
               [attr.aria-label]="'Löschen: ' + asset.name"
               (click)="askDelete(asset)"
             >
-              <svg fsIcon="trash" [size]="14"></svg>
+              <svg sfIcon="trash" [size]="14"></svg>
             </button>
           }
         </div>
@@ -149,7 +149,7 @@
           </p>
         }
         @if (confirmingId() === asset.id) {
-          <fs-confirm-box
+          <sf-confirm-box
             label="Datei löschen"
             confirmLabel="Löschen"
             [flush]="true"

@@ -9,8 +9,8 @@ import { expectVideoPlaying, type VideoMeasurement } from './video';
 /**
  * Page object of the output page (`apps/output`, `/o/{slug}?k=…`, docs/testing.md 1.5 and E2E-OUT-*): opened directly or
  * inside an iframe on a fake origin (`https://embed.test`, served with `page.route`; the test stack lists it in
- * FLOWSTUDIO_FRAME_ANCESTORS), plus the checks the output tests share: a playing video, pixels of the stage and the
- * latency samples of the `?latency=1` test aid (`window.__flowstudioLatency`).
+ * STUDIOFLOW_FRAME_ANCESTORS), plus the checks the output tests share: a playing video, pixels of the stage and the
+ * latency samples of the `?latency=1` test aid (`window.__studioflowLatency`).
  */
 
 /** What a production exposes to open its output (the `production` fixture satisfies this). */
@@ -20,7 +20,7 @@ export interface OutputTarget {
 }
 
 export interface OutputFlags {
-  /** `latency=1`: decode latency stamps of device videos into `window.__flowstudioLatency`. */
+  /** `latency=1`: decode latency stamps of device videos into `window.__studioflowLatency`. */
   latency?: boolean;
   /** `debug=1`: measuring overlay. */
   debug?: boolean;
@@ -211,9 +211,9 @@ export class OutputPage {
     return (await this.scope()).locator('#output');
   }
 
-  /** The 1920 x 1080 stage (`.fs-r-stage`) inside the letterbox. */
+  /** The 1920 x 1080 stage (`.sf-r-stage`) inside the letterbox. */
   async stage(): Promise<Locator> {
-    return (await this.scope()).locator('.fs-r-stage').first();
+    return (await this.scope()).locator('.sf-r-stage').first();
   }
 
   async videos(): Promise<Locator> {
@@ -239,7 +239,7 @@ export class OutputPage {
   async slateText(): Promise<string> {
     const frame = await this.scope();
     return frame.evaluate(() => {
-      const slate = document.querySelector('[data-slate], .fs-r-slates');
+      const slate = document.querySelector('[data-slate], .sf-r-slates');
       const text = (slate as HTMLElement | null)?.innerText ?? '';
       return text.trim();
     });
@@ -284,7 +284,7 @@ export class OutputPage {
 
   /**
    * The lines of the debug overlay (page opened with `debug: true`): scene, revision, connection states, per source
-   * resolution/fps/bitrate, estimated latency. The product has no `window.__fsOutput` (spec 12); the overlay and the
+   * resolution/fps/bitrate, estimated latency. The product has no `window.__sfOutput` (spec 12); the overlay and the
    * DOM attributes of the stage are what an output test reads. Empty without the overlay.
    */
   async debugLines(): Promise<string[]> {
@@ -346,8 +346,8 @@ export class OutputPage {
     return frame.evaluate(
       () =>
         (
-          window as unknown as { __flowstudioLatency?: LatencySample[] }
-        ).__flowstudioLatency?.slice() ?? [],
+          window as unknown as { __studioflowLatency?: LatencySample[] }
+        ).__studioflowLatency?.slice() ?? [],
     );
   }
 

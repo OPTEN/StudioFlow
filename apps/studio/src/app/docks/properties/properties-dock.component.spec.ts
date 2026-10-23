@@ -1,5 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import type { SceneDto } from '@flowstudio/scene-model';
+import type { SceneDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, productionFixture, snapshotFixture } from '../../../testing/fixtures';
 import {
@@ -75,7 +75,7 @@ describe('PropertiesDockComponent', () => {
     await setup();
     expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Szene');
     expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('Präsentation');
-    expect(field('fs-insp-name').value).toBe('Präsentation');
+    expect(field('sf-insp-name').value).toBe('Präsentation');
     expect(element.querySelectorAll('.c-preset')).toHaveLength(8);
     expect(text(element.querySelector('.c-insp__danger .c-hint'))).toBe(
       'Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.',
@@ -123,7 +123,7 @@ describe('PropertiesDockComponent', () => {
     await render();
     expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Element');
     expect(text(element.querySelector('.c-dock-frame__sub'))).toBe('S1 · Laptop Lea · Folien');
-    const x = field('fs-insp-x');
+    const x = field('sf-insp-x');
     expect(x.value).toBe('40');
     x.focus();
     x.dispatchEvent(new Event('focus'));
@@ -155,7 +155,7 @@ describe('PropertiesDockComponent', () => {
     await setup();
     editor.select('itm_b1');
     await render();
-    type(field('fs-insp-crop-left'), '60');
+    type(field('sf-insp-crop-left'), '60');
     const crop = harness.http.expectOne(`${BASE}/scenes/scn_b/items/itm_b1`);
     expect(crop.request.body.crop.left).toBeCloseTo(0.45);
     crop.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 2 });
@@ -181,7 +181,7 @@ describe('PropertiesDockComponent', () => {
     expect(rotate.request.body.rotation).toBe(90);
     rotate.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 3 });
     await render();
-    const hold = element.querySelector<HTMLSelectElement>('#fs-insp-hold') as HTMLSelectElement;
+    const hold = element.querySelector<HTMLSelectElement>('#sf-insp-hold') as HTMLSelectElement;
     expect(Array.from(hold.options).map((option) => option.text.trim())).toEqual([
       'Standbild 3 s, dann abgedunkelt',
       'Standbild 10 s, dann abgedunkelt',
@@ -193,7 +193,7 @@ describe('PropertiesDockComponent', () => {
     expect(held.request.body.onLost).toEqual({ holdMs: null, fallbackSource: null });
     held.flush({ ...(harness.store.sceneById('scn_b') as SceneDto), version: 4 });
     await render();
-    expect(element.querySelector<HTMLSelectElement>('#fs-insp-fallback')?.disabled).toBe(true);
+    expect(element.querySelector<HTMLSelectElement>('#sf-insp-fallback')?.disabled).toBe(true);
   });
 
   function backButton(): HTMLButtonElement | null {
@@ -246,7 +246,7 @@ describe('PropertiesDockComponent', () => {
     remove.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await render();
     expect(editor.selectedItemId()).toBeNull();
-    expect(element.querySelector('fs-scene-inspector')).not.toBeNull();
+    expect(element.querySelector('sf-scene-inspector')).not.toBeNull();
     expect(document.activeElement).toBe(heading());
     off();
   });
@@ -270,7 +270,7 @@ describe('PropertiesDockComponent', () => {
     back.click();
     await render();
     expect(editor.selectedItemId()).toBeNull();
-    expect(element.querySelector('fs-scene-inspector')).not.toBeNull();
+    expect(element.querySelector('sf-scene-inspector')).not.toBeNull();
     harness.http.expectNone(() => true);
   });
 
@@ -278,7 +278,7 @@ describe('PropertiesDockComponent', () => {
     await setup({ studio: true, preview: 'scn_b' });
     editor.select('itm_b1');
     await render();
-    expect(field('fs-insp-x').disabled).toBe(true);
+    expect(field('sf-insp-x').disabled).toBe(true);
     expect(button('Aus Szene entfernen')?.disabled).toBe(true);
     harness.http.expectNone(() => true);
   });

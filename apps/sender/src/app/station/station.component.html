@@ -1,9 +1,9 @@
-<fs-tally-frame [state]="tally()" [thin]="dark()" [compact]="kind() === 'laptop'" />
+<sf-tally-frame [state]="tally()" [thin]="dark()" [compact]="kind() === 'laptop'" />
 
 @switch (phase()) {
   @case ('blocked') {
     <main class="c-station-state">
-      <fs-icon class="c-station-state__icon is-bad" name="lock" />
+      <sf-icon class="c-station-state__icon is-bad" name="lock" />
       <h1 class="c-station-state__title" data-route-focus tabindex="-1">
         Dieses Gerät ist gesperrt
       </h1>
@@ -11,15 +11,15 @@
         Die Regie hat dieses Gerät gesperrt. Kamera und Bildschirm sind aus. Sobald die Regie es
         wieder freigibt, geht es hier von selbst weiter.
       </p>
-      <fs-connection-status [view]="session.connection()" />
+      <sf-connection-status [view]="session.connection()" />
       <p class="c-station-state__hint">
-        FlowStudio prüft alle 15 Sekunden, ob das Gerät wieder freigegeben ist.
+        StudioFlow prüft alle 15 Sekunden, ob das Gerät wieder freigegeben ist.
       </p>
     </main>
   }
   @case ('replaced') {
     <main class="c-station-state">
-      <fs-icon class="c-station-state__icon" name="tabs" />
+      <sf-icon class="c-station-state__icon" name="tabs" />
       <h1 class="c-station-state__title" data-route-focus tabindex="-1">
         In einem anderen Tab geöffnet
       </h1>
@@ -27,7 +27,7 @@
         Diese Station läuft jetzt in einem anderen Tab oder Fenster. Dieser Tab bleibt aus, damit
         sich die beiden nicht gegenseitig trennen.
       </p>
-      <fs-connection-status [view]="session.connection()" />
+      <sf-connection-status [view]="session.connection()" />
       <button
         class="c-button c-button--fill c-button--large"
         type="button"
@@ -40,10 +40,10 @@
   @default {
     @switch (kind()) {
       @case ('phone') {
-        <fs-phone-station (openTechCheck)="openTechCheck()" />
+        <sf-phone-station (openTechCheck)="openTechCheck()" />
       }
       @case ('laptop') {
-        <fs-laptop-station [justPaired]="justPaired()" (openTechCheck)="openTechCheck()" />
+        <sf-laptop-station [justPaired]="justPaired()" (openTechCheck)="openTechCheck()" />
       }
       @default {
         <main class="c-station-state">
@@ -52,7 +52,7 @@
             ><span class="c-pulse__dot"></span>
           </span>
           <h1 class="c-station-state__title" data-route-focus tabindex="-1">Station startet</h1>
-          <fs-connection-status
+          <sf-connection-status
             [view]="session.connection()"
             [since]="session.degradedSince()"
             [now]="session.now()"
@@ -65,12 +65,12 @@
 
 <div class="c-station__banners" [class.c-station__banners--phone]="kind() === 'phone'">
   @if (session.message(); as message) {
-    <fs-message-banner [message]="message" (dismiss)="session.dismissMessage()" />
+    <sf-message-banner [message]="message" (dismiss)="session.dismissMessage()" />
   }
 
   @if (greeting() && kind() === 'phone') {
     <div class="c-notice c-notice--ok c-station__banner" role="status">
-      <fs-icon class="c-notice__icon" name="check" />
+      <sf-icon class="c-notice__icon" name="check" />
       <p class="c-notice__text">
         Gekoppelt{{ cameraCode() ? ' als ' + cameraCode() : '' }}. Die Kamera startet, die Regie
         sieht das Bild jetzt.
@@ -80,22 +80,22 @@
 
   @if (session.connection() === 'offline') {
     <div class="c-notice c-notice--warn c-station__banner" role="status">
-      <fs-icon class="c-notice__icon" name="wifiOff" />
+      <sf-icon class="c-notice__icon" name="wifiOff" />
       <p class="c-notice__text">
-        Offline: keine Netzwerkverbindung. FlowStudio verbindet sich von selbst neu, sobald das Netz
+        Offline: keine Netzwerkverbindung. StudioFlow verbindet sich von selbst neu, sobald das Netz
         zurück ist.
       </p>
     </div>
   } @else if (unreachable()) {
     <div class="c-notice c-notice--warn c-station__banner" role="status">
-      <fs-icon class="c-notice__icon" name="refresh" />
-      <p class="c-notice__text">Der Server ist nicht erreichbar. FlowStudio versucht es weiter.</p>
+      <sf-icon class="c-notice__icon" name="refresh" />
+      <p class="c-notice__text">Der Server ist nicht erreichbar. StudioFlow versucht es weiter.</p>
     </div>
   }
 
   @if (showUpdate()) {
     <div class="c-notice c-station__banner c-station__update" role="status">
-      <fs-icon class="c-notice__icon" name="refresh" />
+      <sf-icon class="c-notice__icon" name="refresh" />
       <p class="c-notice__text">Neue Version bereit – nach der Sendung neu laden</p>
       <button class="c-button" type="button" (click)="updates.reloadNow()">Jetzt neu laden</button>
     </div>
@@ -104,7 +104,7 @@
 
 @if (techCheckOpen()) {
   <div class="c-station__sheet">
-    <fs-tech-check-panel
+    <sf-tech-check-panel
       [result]="session.techCheck()"
       [running]="session.techCheckRunning()"
       [withCamera]="session.camera() !== null"

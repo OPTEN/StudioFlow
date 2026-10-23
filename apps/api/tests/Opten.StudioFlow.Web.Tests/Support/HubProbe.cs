@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>Creates probes.</summary>
 public static class HubProbe

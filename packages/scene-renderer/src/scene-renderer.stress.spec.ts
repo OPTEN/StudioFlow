@@ -1,4 +1,4 @@
-import type { SceneDto } from '@flowstudio/scene-model';
+import type { SceneDto } from '@studioflow/scene-model';
 
 import type { MonitorSourceStatus } from './types';
 import {
@@ -154,10 +154,10 @@ describe('scene renderer: randomised stress', () => {
             await flushMicrotasks();
         }
 
-        const deviceVideos = container.querySelectorAll('video.fs-r-media--device').length;
+        const deviceVideos = container.querySelectorAll('video.sf-r-media--device').length;
         expect(provider.registrationCount).toBe(deviceVideos);
-        expect(container.querySelectorAll('.fs-r-layer').length).toBeLessThanOrEqual(2);
-        expect(container.querySelectorAll('.fs-r-slate').length).toBeLessThanOrEqual(1);
+        expect(container.querySelectorAll('.sf-r-layer').length).toBeLessThanOrEqual(2);
+        expect(container.querySelectorAll('.sf-r-slate').length).toBeLessThanOrEqual(1);
         expect(vi.getTimerCount()).toBeLessThan(80);
         expect(mounted.errors).toEqual([]);
       }

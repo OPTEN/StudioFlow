@@ -2,13 +2,13 @@ using System.Buffers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Infrastructure.LiveKit;
-using Opten.FlowStudio.Web.Errors;
-using Opten.FlowStudio.Web.Security;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Infrastructure.LiveKit;
+using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Security;
 
-namespace Opten.FlowStudio.Web.Endpoints;
+namespace Opten.StudioFlow.Web.Endpoints;
 
 /// <summary>The sender's own routes (device bearer).</summary>
 internal static class DeviceEndpoints
@@ -75,8 +75,8 @@ internal static class DeviceEndpoints
 
     private static DeviceIdentity IdentityOf(ClaimsPrincipal user) => new(
         user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-        user.FindFirstValue(FlowStudioClaims.ProductionId) ?? string.Empty,
-        user.HasClaim(c => c.Type == FlowStudioClaims.Blocked));
+        user.FindFirstValue(StudioFlowClaims.ProductionId) ?? string.Empty,
+        user.HasClaim(c => c.Type == StudioFlowClaims.Blocked));
 }
 
 /// <summary>Uploaded images and videos.</summary>

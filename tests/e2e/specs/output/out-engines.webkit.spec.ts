@@ -37,7 +37,7 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
       // The image item: loaded with the key, visible, covering the stage.
       await expect
         .poll(() => output.page.evaluate(() => {
-          const img = document.querySelector('img.fs-r-media--image') as HTMLImageElement | null;
+          const img = document.querySelector('img.sf-r-media--image') as HTMLImageElement | null;
           return Boolean(img && img.naturalWidth > 0 && getComputedStyle(img).visibility === 'visible');
         }), { timeout: 20_000, message: 'the image asset is visible' })
         .toBe(true);

@@ -3,7 +3,7 @@ import { livekitAdmin } from '../livekit';
 import type { Production } from '../production';
 
 /**
- * WebRTC statistics of the output page (through the peer connections the init script tracks, `window.__fsNet.peers`)
+ * WebRTC statistics of the output page (through the peer connections the init script tracks, `window.__sfNet.peers`)
  * mapped to sources: the remote SDP of the subscriber connection names every m-section after the track
  * (`a=msid:PA_...|TR_...`), the LiveKit admin API (Twirp ListParticipants) lists the track SIDs per participant and track
  * name, so `{deviceId}/{slot}` finds its inbound RTP stream (`inbound-rtp.mid` -> m-section).
@@ -30,7 +30,7 @@ export interface InboundVideo {
 /** Every inbound video RTP stream of the page's peer connections. */
 export async function inboundVideo(frame: Frame): Promise<InboundVideo[]> {
   return frame.evaluate(async () => {
-    const peers = [...(window as unknown as { __fsNet: { peers: Set<RTCPeerConnection> } }).__fsNet.peers];
+    const peers = [...(window as unknown as { __sfNet: { peers: Set<RTCPeerConnection> } }).__sfNet.peers];
     const out: Array<Record<string, unknown>> = [];
     for (const peer of peers) {
       if (peer.connectionState === 'closed') continue;
@@ -68,7 +68,7 @@ export async function inboundVideo(frame: Frame): Promise<InboundVideo[]> {
 /** Number of audio RTP streams that received packets. */
 export async function audioFlowing(frame: Frame): Promise<number> {
   return frame.evaluate(async () => {
-    const peers = [...(window as unknown as { __fsNet: { peers: Set<RTCPeerConnection> } }).__fsNet.peers];
+    const peers = [...(window as unknown as { __sfNet: { peers: Set<RTCPeerConnection> } }).__sfNet.peers];
     let flowing = 0;
     for (const peer of peers) {
       for (const entry of (await peer.getStats()).values()) {

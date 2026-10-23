@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>
 /// A revisioned change of the production state, pushed over SignalR (method <see cref="HubMethods.Event"/>).

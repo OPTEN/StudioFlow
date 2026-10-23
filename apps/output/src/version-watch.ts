@@ -12,7 +12,7 @@
  */
 
 /** sessionStorage key: the entry script a reload was already done for. */
-export const RELOAD_MARKER_KEY = 'flowstudio.output.reloadedFor';
+export const RELOAD_MARKER_KEY = 'studioflow.output.reloadedFor';
 /** At most one index check per this interval (reconnect storms during a restart). */
 export const VERSION_CHECK_MIN_INTERVAL_MS = 60_000;
 

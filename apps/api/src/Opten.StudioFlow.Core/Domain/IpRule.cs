@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
 /// An entry of the output IP restriction: a single IPv4/IPv6 address or a CIDR range (spec 4.8). Host bits of a range

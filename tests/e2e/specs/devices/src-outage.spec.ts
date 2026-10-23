@@ -151,10 +151,10 @@ test.describe('SRC outage, phone', () => {
       expect(checkRecovered(await readPlaces(regie.page), 'K1').ok, 'still recovered after 30 s').toBe(true);
 
       const logBefore = await logTexts(api, production);
-      await regie.page.locator('fs-status-line').getByRole('button', { name: 'Gesehen' }).click();
-      await expect(regie.page.locator('fs-status-line .c-status__ok')).toHaveText(/Keine offenen Meldungen/);
-      await expect(regie.page.locator('fs-status-line .c-status__label')).toHaveText('Letzte Ereignisse');
-      const entries = (await regie.page.locator('fs-status-line .c-status__entry').allTextContents()).map((entry) => entry.replace(/\s+/g, ' ').trim());
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Gesehen' }).click();
+      await expect(regie.page.locator('sf-status-line .c-status__ok')).toHaveText(/Keine offenen Meldungen/);
+      await expect(regie.page.locator('sf-status-line .c-status__label')).toHaveText('Letzte Ereignisse');
+      const entries = (await regie.page.locator('sf-status-line .c-status__entry').allTextContents()).map((entry) => entry.replace(/\s+/g, ' ').trim());
       expect(entries.length).toBeLessThanOrEqual(4);
       expect(entries[0], 'newest first').toMatch(/^\d\d:\d\d\s*K1 wieder da, war \d+ s weg$/);
       expect(entries.some((entry) => /^\d\d:\d\d\s*K1 verbindet neu$/.test(entry)), 'the outage is in the last events').toBe(true);
@@ -259,7 +259,7 @@ test.describe('SRC outage, phone', () => {
       // Both operators hold the button of the same entry; the clicks are fired in the same instant by the page itself (a
       // Playwright click waits for actionability and would miss the button once the first acknowledgement removed it).
       const arm = (page: typeof regie.page) => page.evaluate(() => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('fs-status-line .c-status__inc.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Gesehen');
+        const button = [...document.querySelectorAll<HTMLButtonElement>('sf-status-line .c-status__inc.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Gesehen');
         (window as unknown as { __ack?: HTMLButtonElement }).__ack = button;
         return Boolean(button);
       });
@@ -267,7 +267,7 @@ test.describe('SRC outage, phone', () => {
       const fire = (page: typeof regie.page) => page.evaluate(() => (window as unknown as { __ack: HTMLButtonElement }).__ack.click());
       await Promise.all([fire(regie.page), fire(other.page)]);
       for (const page of [regie.page, other.page]) {
-        await expect(page.locator('fs-status-line .c-status__ok'), 'entry gone in both within 1 s').toHaveText(/Keine offenen Meldungen/, { timeout: 1500 });
+        await expect(page.locator('sf-status-line .c-status__ok'), 'entry gone in both within 1 s').toHaveText(/Keine offenen Meldungen/, { timeout: 1500 });
       }
       await expect.poll(() => acks.length, { message: 'both operators sent an acknowledgement', timeout: 5000 }).toBe(2);
       expect(acks.map((ack) => ack.status).sort(), 'one wins (204), the other is told it is gone (404)').toEqual([204, 404]);
@@ -394,20 +394,20 @@ test.describe('SRC outage, phone', () => {
         const [r, g, b] = holding[index]!;
         expect(luma(r, g, b), `${name}: the frozen picture is not black`).toBeGreaterThan(25);
         expect(g, `${name}: it is still the green picture of the fake camera`).toBeGreaterThan(r + 20);
-        const outline = await monitors[index]!.evaluate((element) => getComputedStyle(element.querySelector('.fs-r-alert') as HTMLElement).borderTopStyle);
+        const outline = await monitors[index]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-alert') as HTMLElement).borderTopStyle);
         expect(outline, `${name}: dashed outline`).toBe('dashed');
       }
       // After the item's hold time (3 s default, counted from the moment LiveKit drops the track at the Regie, which is
       // later than the API's «verbindet neu») the monitor shows the blurred, dimmed picture (and the sentence on a wide item).
       const lostAt = Date.now();
       await expect
-        .poll(() => monitors[0]!.evaluate((element) => Boolean(element.querySelector('.fs-r-held') && getComputedStyle(element.querySelector('.fs-r-held')!).display !== 'none')), { message: 'dimmed after the hold time', timeout: 60_000, intervals: [250] })
+        .poll(() => monitors[0]!.evaluate((element) => Boolean(element.querySelector('.sf-r-held') && getComputedStyle(element.querySelector('.sf-r-held')!).display !== 'none')), { message: 'dimmed after the hold time', timeout: 60_000, intervals: [250] })
         .toBe(true);
       test.info().annotations.push({ type: 'measurement', description: `Program monitor dimmed ${Date.now() - lostAt} ms after the six places showed the outage (hold time 3 s)` });
       const [r0, g0, b0] = holding[0]!;
       const [r1, g1, b1] = await brightness(screens[0]!);
       expect(luma(r1, g1, b1), 'the dimmed picture is darker than the held one').toBeLessThan(luma(r0, g0, b0) * 0.8);
-      expect(await monitors[0]!.evaluate((element) => getComputedStyle(element.querySelector('.fs-r-held-text') as HTMLElement).display), 'a full-canvas item is wide enough for «Bild kommt gleich zurück»').not.toBe('none');
+      expect(await monitors[0]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-held-text') as HTMLElement).display), 'a full-canvas item is wide enough for «Bild kommt gleich zurück»').not.toBe('none');
     },
   );
 });

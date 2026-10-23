@@ -41,7 +41,7 @@ test.describe('REGIE login and session', () => {
       const page = regie.page;
       await page.goto('/');
       await expect(page).toHaveURL(/\/login$/);
-      await expect(page.getByRole('heading', { name: /FlowStudio/ })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /StudioFlow/ })).toBeVisible();
       await expect(page.getByLabel('Benutzername')).toBeVisible();
       await expect(page.getByLabel('Passwort')).toHaveAttribute('type', 'password');
       expect(
@@ -71,7 +71,7 @@ test.describe('REGIE login and session', () => {
       ).not.toContain(SESSION_COOKIE);
       await expect(page.locator('.c-prod__name')).toHaveText(production.name);
       await expect(page.locator('.c-header__clock')).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
-      await expect(page.locator('.c-header__brand')).toContainText('FlowStudio');
+      await expect(page.locator('.c-header__brand')).toContainText('StudioFlow');
       expect(regie.problems.pageErrors).toEqual([]);
       expect(regie.problems.cspViolations).toEqual([]);
     },
@@ -227,13 +227,13 @@ test.describe('REGIE login and session', () => {
         negotiates.length,
         'no endless reconnect: at most 3 negotiate attempts',
       ).toBeLessThanOrEqual(3);
-      await expect(second.page.locator('fs-studio-page')).toHaveCount(0);
+      await expect(second.page.locator('sf-studio-page')).toHaveCount(0);
 
       // Back does not show Regie content.
       await first.page.goBack();
       await first.page.waitForLoadState('domcontentloaded');
       await expect(first.page).toHaveURL(/\/login/);
-      await expect(first.page.locator('fs-studio-page')).toHaveCount(0);
+      await expect(first.page.locator('sf-studio-page')).toHaveCount(0);
       await expect(first.page.getByLabel('Benutzername')).toBeVisible();
       expect(first.problems.pageErrors).toEqual([]);
     },
@@ -254,8 +254,8 @@ test.describe('REGIE login and session', () => {
       for (const target of ['/', '/monitoring', '/some/deep/link']) {
         await page.goto(target);
         await expect(page, `${target} -> login`).toHaveURL(/\/login/);
-        await expect(page.locator('fs-studio-page')).toHaveCount(0);
-        await expect(page.locator('fs-monitoring-page')).toHaveCount(0);
+        await expect(page.locator('sf-studio-page')).toHaveCount(0);
+        await expect(page.locator('sf-monitoring-page')).toHaveCount(0);
       }
       expect(
         requests.map((entry) => entry.path).filter((path) => !path.startsWith('/api/auth/me')),

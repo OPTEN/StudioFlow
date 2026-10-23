@@ -7,7 +7,7 @@ import type { BrowserContext, Page } from '@playwright/test';
  * calls them itself: what Firefox's own «Stop sharing» does to the page is the same call. Install it before the sender loads.
  */
 const SHIM = `(() => {
-  if (window.__fsEndedShim) return;
+  if (window.__sfEndedShim) return;
   const original = MediaStreamTrack.prototype.addEventListener;
   const listeners = new WeakMap();
   MediaStreamTrack.prototype.addEventListener = function (type, listener, options) {
@@ -18,7 +18,7 @@ const SHIM = `(() => {
     }
     return original.call(this, type, listener, options);
   };
-  window.__fsEndedShim = {
+  window.__sfEndedShim = {
     fire(track) {
       for (const listener of listeners.get(track) || []) {
         try {
@@ -40,12 +40,12 @@ export async function installEndedShim(context: BrowserContext): Promise<void> {
 /** The browser's «Stop sharing» of the n-th fake screen: the capture stops and the recorded `ended` listeners run. */
 export async function stopSharingInFirefox(page: Page, index?: number): Promise<boolean> {
   return page.evaluate((i) => {
-    const w = window as unknown as { __fsFake?: { streams: Array<{ kind: string; track: MediaStreamTrack; stop(): void }> }; __fsEndedShim?: { fire(track: MediaStreamTrack): void } };
-    const screens = (w.__fsFake?.streams ?? []).filter((entry) => entry.kind === 'screen');
+    const w = window as unknown as { __sfFake?: { streams: Array<{ kind: string; track: MediaStreamTrack; stop(): void }> }; __sfEndedShim?: { fire(track: MediaStreamTrack): void } };
+    const screens = (w.__sfFake?.streams ?? []).filter((entry) => entry.kind === 'screen');
     const entry = i === undefined ? screens[screens.length - 1] : screens[i];
-    if (!entry || !w.__fsEndedShim) return false;
+    if (!entry || !w.__sfEndedShim) return false;
     entry.stop();
-    w.__fsEndedShim.fire(entry.track);
+    w.__sfEndedShim.fire(entry.track);
     return true;
   }, index);
 }

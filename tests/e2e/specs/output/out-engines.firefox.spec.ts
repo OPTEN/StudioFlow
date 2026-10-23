@@ -86,7 +86,7 @@ test.describe('OUT other engines (Firefox)', () => {
       await probe.waitForItemState(cameraItem.id, 'held', 10_000);
       const held = await output.frame().then((frame) => frame.evaluate((id) => {
         const root = document.querySelector(`[data-item-id="${id}"]`)!;
-        return { text: root.querySelector('.fs-r-held-text')?.textContent, display: getComputedStyle(root.querySelector('.fs-r-held')!).display };
+        return { text: root.querySelector('.sf-r-held-text')?.textContent, display: getComputedStyle(root.querySelector('.sf-r-held')!).display };
       }, cameraItem.id));
       expect(held.display).toBe('flex');
       expect(held.text).toBe(DE.holdText);

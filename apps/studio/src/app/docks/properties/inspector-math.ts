@@ -7,7 +7,7 @@ import {
   type CropDto,
   type SceneItemDto,
   type SourceDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 
 /**
  * Pure helpers of the element inspector (prototype «Eigenschaften»): crop in percent, hold-time choices, fallback

@@ -1,5 +1,5 @@
 /**
- * Pure helpers that turn WebRTC statistics into the numbers FlowStudio shows (output debug overlay, monitoring,
+ * Pure helpers that turn WebRTC statistics into the numbers StudioFlow shows (output debug overlay, monitoring,
  * device reports). Statistics objects are read defensively: every field is optional and browser-specific.
  */
 import type { VideoSenderStats } from 'livekit-client';

@@ -7,7 +7,7 @@ import {
   type HubState,
   type SyncCause,
   type SyncStatus,
-} from '@flowstudio/realtime-client';
+} from '@studioflow/realtime-client';
 import {
   ERROR_CODES,
   HUB,
@@ -38,7 +38,7 @@ import {
   type SourceStatus,
   type TallyState,
   type TransitionDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import { ApiError } from '../api/api-error';
 import { StudioApiService } from '../api/studio-api.service';
 import { AuthService } from '../auth/auth.service';
@@ -60,15 +60,15 @@ export interface ProgramSwitchNotice {
   readonly receivedAt: number;
 }
 
-/** Listener for every state change with its cause (see `SyncCause` of `@flowstudio/realtime-client`). */
+/** Listener for every state change with its cause (see `SyncCause` of `@studioflow/realtime-client`). */
 export type StoreChangeListener = (state: ProductionState, cause: SyncCause) => void;
 
 /** What the last subscribe answer carried: missed events (`delta`) or a full `snapshot`; null before the first one. */
 export type LastSyncKind = 'delta' | 'snapshot' | null;
 
 /**
- * `window.__fsStudio` (spec 12, docs/testing.md 1.7): read-only view for the E2E tests, only with the opt-in flag
- * `localStorage['flowstudio.testHooks'] = '1'`.
+ * `window.__sfStudio` (spec 12, docs/testing.md 1.7): read-only view for the E2E tests, only with the opt-in flag
+ * `localStorage['studioflow.testHooks'] = '1'`.
  */
 export interface StudioTestHook {
   /** Revision of the local state, null before the first snapshot. */
@@ -412,7 +412,7 @@ export class ProductionStoreService {
 
   // ---------------------------------------------------------------- Internals
 
-  /** Installs `window.__fsStudio` when the opt-in flag is set; returns the function that removes it. */
+  /** Installs `window.__sfStudio` when the opt-in flag is set; returns the function that removes it. */
   private installTestHook(): () => void {
     if (!testHooksEnabled(this.storage)) {
       return () => undefined;
@@ -431,7 +431,7 @@ export class ProductionStoreService {
         return hub();
       },
     };
-    return exposeTestHook(this.document.defaultView, '__fsStudio', view);
+    return exposeTestHook(this.document.defaultView, '__sfStudio', view);
   }
 
   private async discover(run: number): Promise<void> {
@@ -584,7 +584,7 @@ export class ProductionStoreService {
       try {
         listener(state, cause);
       } catch (error) {
-        console.warn('[FlowStudio] store listener failed', error);
+        console.warn('[StudioFlow] store listener failed', error);
       }
     }
   }

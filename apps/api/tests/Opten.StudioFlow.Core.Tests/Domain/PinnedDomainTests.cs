@@ -1,11 +1,11 @@
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Application.Runtime;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Runtime;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Tests.Domain;
+namespace Opten.StudioFlow.Core.Tests.Domain;
 
 /// <summary>GAP-01: every duration and limit is a validated setting with the spec default.</summary>
 public sealed class OptionsTests
@@ -73,7 +73,7 @@ public sealed class OptionsTests
         store.Create("prd_x", new CreatePairingRequest("A", DeviceKind.Laptop, "p"), Build.T0);
         store.Create("prd_x", new CreatePairingRequest("B", DeviceKind.Laptop, "p"), Build.T0);
 
-        Assert.Equal(ErrorCodes.RateLimited, Assert.Throws<FlowStudioException>(() => store.Create("prd_x", new CreatePairingRequest("C", DeviceKind.Laptop, "p"), Build.T0)).Code);
+        Assert.Equal(ErrorCodes.RateLimited, Assert.Throws<StudioFlowException>(() => store.Create("prd_x", new CreatePairingRequest("C", DeviceKind.Laptop, "p"), Build.T0)).Code);
     }
 }
 
@@ -109,8 +109,8 @@ public sealed class AssetNameTests
         asset.Rename("../../etc/Pause\u202e");
 
         Assert.Equal("Pause", asset.Name);
-        Assert.Equal(ErrorCodes.ValidationFailed, Assert.Throws<FlowStudioException>(() => asset.Rename("..")).Code);
-        Assert.Equal(ErrorCodes.ValidationFailed, Assert.Throws<FlowStudioException>(() => asset.Rename(new string('b', 81))).Code);
+        Assert.Equal(ErrorCodes.ValidationFailed, Assert.Throws<StudioFlowException>(() => asset.Rename("..")).Code);
+        Assert.Equal(ErrorCodes.ValidationFailed, Assert.Throws<StudioFlowException>(() => asset.Rename(new string('b', 81))).Code);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class MediaLossRuleTests
         var health = new SourceHealth("dev_a/camera", "K1", SourceStatus.Ok);
         var incident = health.Apply(SourceStatus.Reconnecting, Build.T0).UpsertedIncident!;
 
-        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<FlowStudioException>(() => health.Acknowledge(incident.Id)).Code);
+        Assert.Equal(ErrorCodes.Conflict, Assert.Throws<StudioFlowException>(() => health.Acknowledge(incident.Id)).Code);
         health.Apply(SourceStatus.Ok, Build.T0.AddSeconds(5));
         Assert.True(health.Acknowledge(incident.Id));
         Assert.False(health.Acknowledge(incident.Id));

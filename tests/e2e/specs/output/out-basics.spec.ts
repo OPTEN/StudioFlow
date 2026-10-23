@@ -26,7 +26,7 @@ test.describe('OUT basics', () => {
         const opened = await openProbedOutput({ browser, onCleanup }, production, {}, {});
         const page = opened.output.page;
         await expect
-          .poll(() => page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000 })
+          .poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 })
           .toContain(DE.slateStandby);
         const timing = await page.evaluate(() => {
           const probe = (window as unknown as { __outProbe?: { events: Array<{ t: number; type: string }> } }).__outProbe;
@@ -58,8 +58,8 @@ test.describe('OUT basics', () => {
         lang: document.documentElement.lang,
         interactive: document.querySelectorAll('button, a, input, select, textarea, [role=button], [tabindex]').length,
         text: document.body.innerText.replace(/\s+/g, ' ').trim(),
-        title: document.querySelector('.fs-r-slate-title')?.textContent,
-        subtitle: document.querySelector('.fs-r-slate-subtitle')?.textContent,
+        title: document.querySelector('.sf-r-slate-title')?.textContent,
+        subtitle: document.querySelector('.sf-r-slate-subtitle')?.textContent,
         videos: document.querySelectorAll('video').length,
       }));
       expect(facts.lang).toBe('de-CH');
@@ -69,7 +69,7 @@ test.describe('OUT basics', () => {
       expect(facts.interactive, 'no controls, links or inputs').toBe(0);
       expect(facts.videos).toBe(0);
       expect(await probe.standbySeen()).toBe(true);
-      const slateBox = await frame.locator('.fs-r-slate').boundingBox();
+      const slateBox = await frame.locator('.sf-r-slate').boundingBox();
       const stageBox = await (await output.stage()).boundingBox();
       expect(slateBox!.width, 'the slate covers the stage').toBeCloseTo(stageBox!.width, 0);
       expect(slateBox!.height).toBeCloseTo(stageBox!.height, 0);
@@ -123,7 +123,7 @@ test.describe('OUT basics', () => {
       // LiveKit negotiates three receive-only audio transceivers up front (the SDK/SFU default, not the product's
       // choice): they exist but stay muted without RTP, so "no audio receiver" is asserted as "no audio arrives".
       const receivers = await frame.evaluate(async () => {
-        const peers = [...(window as unknown as { __fsNet: { peers: Set<RTCPeerConnection> } }).__fsNet.peers];
+        const peers = [...(window as unknown as { __sfNet: { peers: Set<RTCPeerConnection> } }).__sfNet.peers];
         const result: Array<{ audioTracksUnmuted: number; audioInbound: number; videoInbound: number }> = [];
         for (const peer of peers) {
           const stats = [...(await peer.getStats()).values()].filter((entry) => entry.type === 'inbound-rtp');

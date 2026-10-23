@@ -1,6 +1,6 @@
 # dns-ovh: Let's Encrypt DNS-01 via OVHcloud. Application key/secret and consumer key with GET/POST/PUT/DELETE on
 # /domain/zone/*; OVH_ENDPOINT is for example ovh-eu.
-tls {$FLOWSTUDIO_ACME_EMAIL} {
+tls {$STUDIOFLOW_ACME_EMAIL} {
 	dns ovh {
 		endpoint {env.OVH_ENDPOINT}
 		application_key {env.OVH_APPLICATION_KEY}

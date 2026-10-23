@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>A pending /join request as shown to the Regie (knock card).</summary>
 /// <param name="Id">Request id.</param>

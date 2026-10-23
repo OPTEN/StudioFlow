@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 // All enums are serialized as camelCase strings (configured globally for REST and SignalR).
 

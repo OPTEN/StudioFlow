@@ -114,7 +114,7 @@ test.describe('AUTH webhook', () => {
     await production.api.regenerateOutputKey(production.id);
     await production.refreshOutput();
 
-    const dump = await compose(['exec', '-T', 'postgres', 'pg_dump', '-U', 'flowstudio', '-d', 'flowstudio', '--data-only', '--inserts'], { timeoutMs: 120_000 });
+    const dump = await compose(['exec', '-T', 'postgres', 'pg_dump', '-U', 'studioflow', '-d', 'studioflow', '--data-only', '--inserts'], { timeoutMs: 120_000 });
     expect(dump.code, dump.stderr.slice(0, 300)).toBe(0);
     const text = dump.stdout;
     expect(text, 'the dump contains the data of this test').toContain(phone.id);

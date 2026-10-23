@@ -2,14 +2,14 @@
  * Test doubles for the sender's unit tests (happy-dom has no WebRTC and no SignalR server). They implement the narrow
  * port types of `station-ports.ts` and are injected through the DI tokens there – never used by the app itself.
  */
-import type { LocalSlotState, MediaSessionState, SlotFailure } from '@flowstudio/media-client';
-import type { HubHandler, HubState } from '@flowstudio/realtime-client';
+import type { LocalSlotState, MediaSessionState, SlotFailure } from '@studioflow/media-client';
+import type { HubHandler, HubState } from '@studioflow/realtime-client';
 import type {
   DeviceSelfDto,
   LiveKitTokenDto,
   SlotTelemetryDto,
   TechCheckDto,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import type { SafeStorage } from '../app/core/browser-storage';
 import type { DeviceEnvironment } from '../app/core/device-environment';
 import type {

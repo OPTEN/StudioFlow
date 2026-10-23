@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Directive, ElementRef, effect, inject, input, output } from '@angular/core';
 
 /**
- * Numeric inspector field (prototype `#insp` number inputs): `<input type="number" [fsNumberField]="item.x"
+ * Numeric inspector field (prototype `#insp` number inputs): `<input type="number" [sfNumberField]="item.x"
  * (numberChange)="setX($event)" (editStart)="…" (editEnd)="…">`.
  *
  * - Commits on every `input` event with a finite number (empty or partial input such as «-» is ignored).
@@ -12,7 +12,7 @@ import { Directive, ElementRef, effect, inject, input, output } from '@angular/c
  * - `editStart`/`editEnd` fire on focus/blur, so the owner can wrap one editing session into one undo step.
  */
 @Directive({
-  selector: 'input[fsNumberField]',
+  selector: 'input[sfNumberField]',
   host: {
     '(input)': 'onInput()',
     '(focus)': 'editStart.emit()',
@@ -21,7 +21,7 @@ import { Directive, ElementRef, effect, inject, input, output } from '@angular/c
 })
 export class NumberFieldDirective {
   /** The model value shown in the field. */
-  readonly fsNumberField = input.required<number>();
+  readonly sfNumberField = input.required<number>();
   /** Decimals shown (0 = integers). */
   readonly fractionDigits = input(0);
 
@@ -37,7 +37,7 @@ export class NumberFieldDirective {
 
   constructor() {
     effect(() => {
-      const text = this.format(this.fsNumberField());
+      const text = this.format(this.sfNumberField());
       if (this.document.activeElement !== this.element) {
         this.element.value = text;
       }
@@ -53,7 +53,7 @@ export class NumberFieldDirective {
   }
 
   protected onBlur(): void {
-    this.element.value = this.format(this.fsNumberField());
+    this.element.value = this.format(this.sfNumberField());
     this.editEnd.emit();
   }
 

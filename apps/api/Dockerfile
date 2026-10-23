@@ -1,4 +1,4 @@
-# FlowStudio API. Build context: apps/api (docker build apps/api).
+# StudioFlow API. Build context: apps/api (docker build apps/api).
 # Stage 1 restores and publishes with the SDK; stage 2 runs on the small Alpine ASP.NET runtime as a non-root user.
 
 # Pinned to patch versions (SDK 10.0.402 ships runtime 10.0.13, the version of the referenced ASP.NET Core packages);
@@ -8,14 +8,14 @@ WORKDIR /src
 
 # Restore first (cached as long as project files and package versions do not change).
 COPY nuget.config Directory.Build.props Directory.Packages.props ./
-COPY src/Opten.FlowStudio.Core/Opten.FlowStudio.Core.csproj src/Opten.FlowStudio.Core/
-COPY src/Opten.FlowStudio.Infrastructure/Opten.FlowStudio.Infrastructure.csproj src/Opten.FlowStudio.Infrastructure/
-COPY src/Opten.FlowStudio.Web/Opten.FlowStudio.Web.csproj src/Opten.FlowStudio.Web/
-RUN dotnet restore src/Opten.FlowStudio.Web/Opten.FlowStudio.Web.csproj
+COPY src/Opten.StudioFlow.Core/Opten.StudioFlow.Core.csproj src/Opten.StudioFlow.Core/
+COPY src/Opten.StudioFlow.Infrastructure/Opten.StudioFlow.Infrastructure.csproj src/Opten.StudioFlow.Infrastructure/
+COPY src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj src/Opten.StudioFlow.Web/
+RUN dotnet restore src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj
 
 COPY src/ src/
 # The OpenAPI document is generated at development time (npm run gen:contracts), not in the image.
-RUN dotnet publish src/Opten.FlowStudio.Web/Opten.FlowStudio.Web.csproj -c Release -o /app --no-restore \
+RUN dotnet publish src/Opten.StudioFlow.Web/Opten.StudioFlow.Web.csproj -c Release -o /app --no-restore \
     -p:UseAppHost=false -p:OpenApiGenerateDocuments=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-alpine3.24 AS runtime
@@ -41,4 +41,4 @@ VOLUME ["/data/media", "/data/keys"]
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1:8080/health/live || exit 1
 
-ENTRYPOINT ["dotnet", "Opten.FlowStudio.Web.dll"]
+ENTRYPOINT ["dotnet", "Opten.StudioFlow.Web.dll"]

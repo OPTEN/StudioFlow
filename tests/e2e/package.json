@@ -1,5 +1,5 @@
 {
-  "name": "flowstudio-e2e",
+  "name": "studioflow-e2e",
   "private": true,
   "type": "commonjs",
   "description": "Scopes the E2E harness as CommonJS (it uses __dirname and JSON requires) independent of the repository root package.json."

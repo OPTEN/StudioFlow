@@ -1,6 +1,6 @@
 <div class="c-stage__monitors" #monitors>
   @if (switcher.studioMode()) {
-    <fs-monitor
+    <sf-monitor
       kind="preview"
       [scene]="previewScene()"
       [editable]="true"
@@ -11,7 +11,7 @@
       class="c-stage__split"
       orientation="vertical"
       aria-label="Grösse von Preview und Program"
-      [fsSplitter]="splitBehavior"
+      [sfSplitter]="splitBehavior"
       [splitterDisabled]="viewport.stacked()"
     ></div>
   } @else {
@@ -20,7 +20,7 @@
       <span>Mit Studio-Modus erscheint hier die Preview.</span>
     </div>
   }
-  <fs-monitor
+  <sf-monitor
     kind="program"
     [scene]="programScene()"
     [editable]="!switcher.studioMode()"
@@ -29,4 +29,4 @@
     [emptyText]="emptyText()"
   />
 </div>
-<fs-control-column />
+<sf-control-column />

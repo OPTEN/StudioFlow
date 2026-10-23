@@ -13,7 +13,7 @@ import { t } from '../../support/tags';
  * Hold frame, held state, fallback and recovery on the output (docs/testing.md E2E-OUT-06, E2E-OUT-07; spec 8.3: «Standbild
  * 3 s, dann abgedunkelt»). The output derives the state purely from the LiveKit track of the source; the specs make the
  * source go away by closing or stopping the real sender and read the state from the DOM (probe: hold frame canvas shown =
- * `hold`, `.fs-r-held` shown = `held`, `.fs-r-fallback` shown = `fallback`).
+ * `hold`, `.sf-r-held` shown = `held`, `.sf-r-fallback` shown = `fallback`).
  */
 
 interface Placed {
@@ -118,10 +118,10 @@ test.describe('OUT hold frame', () => {
         const out: Record<string, { blur: string; scrim: string; text: string; textDisplay: string; heldDisplay: string }> = {};
         for (const id of ids) {
           const item = document.querySelector(`[data-item-id="${id}"]`)!;
-          const held = item.querySelector('.fs-r-held') as HTMLElement;
-          const text = item.querySelector('.fs-r-held-text') as HTMLElement;
+          const held = item.querySelector('.sf-r-held') as HTMLElement;
+          const text = item.querySelector('.sf-r-held-text') as HTMLElement;
           out[id] = {
-            blur: getComputedStyle(item.querySelector('.fs-r-box')!).filter,
+            blur: getComputedStyle(item.querySelector('.sf-r-box')!).filter,
             scrim: getComputedStyle(held).backgroundColor,
             text: text.textContent ?? '',
             textDisplay: getComputedStyle(text).display,
@@ -217,13 +217,13 @@ test.describe('OUT hold frame', () => {
       const frame = await output.frame();
       const fallback = await frame.evaluate((id) => {
         const root = document.querySelector(`[data-item-id="${id}"]`)!;
-        const fb = root.querySelector('.fs-r-fallback') as HTMLElement;
+        const fb = root.querySelector('.sf-r-fallback') as HTMLElement;
         const img = fb.querySelector('img');
         return {
           display: getComputedStyle(fb).display,
           image: img ? { natural: img.naturalWidth, src: img.src } : null,
-          blur: getComputedStyle(root.querySelector('.fs-r-box')!).filter,
-          held: getComputedStyle(root.querySelector('.fs-r-held')!).display,
+          blur: getComputedStyle(root.querySelector('.sf-r-box')!).filter,
+          held: getComputedStyle(root.querySelector('.sf-r-held')!).display,
         };
       }, item.id);
       expect(fallback.image?.natural, 'the fallback image is loaded').toBe(1920);
@@ -246,20 +246,20 @@ test.describe('OUT hold frame', () => {
       await k1.phone.stopCamera();
       await probe.waitForItemState(item.id, 'fallback', 20_000);
       const camera = await frame.evaluate((id) => {
-        const video = document.querySelector(`[data-item-id="${id}"] .fs-r-fallback video`) as HTMLVideoElement | null;
+        const video = document.querySelector(`[data-item-id="${id}"] .sf-r-fallback video`) as HTMLVideoElement | null;
         return video ? { w: video.videoWidth, ready: video.readyState, paused: video.paused } : null;
       }, item.id);
       expect(camera, 'the fallback camera is a video element in the item').not.toBeNull();
       await expect
         .poll(() => frame.evaluate((id) => {
-          const video = document.querySelector(`[data-item-id="${id}"] .fs-r-fallback video`) as HTMLVideoElement;
+          const video = document.querySelector(`[data-item-id="${id}"] .sf-r-fallback video`) as HTMLVideoElement;
           return video.getVideoPlaybackQuality().totalVideoFrames;
-        }, item.id).then(async (first) => { await sleep(700); return (await frame.evaluate((id) => (document.querySelector(`[data-item-id="${id}"] .fs-r-fallback video`) as HTMLVideoElement).getVideoPlaybackQuality().totalVideoFrames, item.id)) - first; }), { timeout: 15_000, message: 'the fallback camera shows moving frames' })
+        }, item.id).then(async (first) => { await sleep(700); return (await frame.evaluate((id) => (document.querySelector(`[data-item-id="${id}"] .sf-r-fallback video`) as HTMLVideoElement).getVideoPlaybackQuality().totalVideoFrames, item.id)) - first; }), { timeout: 15_000, message: 'the fallback camera shows moving frames' })
         .toBeGreaterThan(5);
       await k1.phone.startCamera();
       await probe.waitForItemState(item.id, 'live', 45_000);
       expect(
-        await frame.evaluate((id) => getComputedStyle(document.querySelector(`[data-item-id="${id}"] .fs-r-fallback`)!).display, item.id),
+        await frame.evaluate((id) => getComputedStyle(document.querySelector(`[data-item-id="${id}"] .sf-r-fallback`)!).display, item.id),
         'the fallback is removed when K1 returns',
       ).toBe('none');
     },

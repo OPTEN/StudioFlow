@@ -1,6 +1,6 @@
 /**
  * Pure model of the dock layout (prototype «Layout: Docks verschieben und Grössen ändern»), stored per browser as
- * `flowstudio.layout` (version 1). No Angular, no DOM: `DockLayoutService` holds it in a signal.
+ * `studioflow.layout` (version 1). No Angular, no DOM: `DockLayoutService` holds it in a signal.
  */
 
 /** The movable docks. */

@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    FlowStudio wiederherstellen: ersetzt Datenbank, Medien, Login-Schlüssel und Zertifikate durch eine Sicherung.
+    StudioFlow wiederherstellen: ersetzt Datenbank, Medien, Login-Schlüssel und Zertifikate durch eine Sicherung.
 
 .DESCRIPTION
     Gleiches Verhalten wie restore.sh. Ablauf: Prüfsummen prüfen → Sicherung des aktuellen Stands
@@ -34,15 +34,15 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version 3.0
-Import-Module (Join-Path $PSScriptRoot 'infra/scripts/FlowStudio.psm1') -Force
-Initialize-FlowStudio -Root $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'infra/scripts/StudioFlow.psm1') -Force
+Initialize-StudioFlow -Root $PSScriptRoot
 
 function Invoke-PsqlAdmin([string[]] $Commands, [switch] $SingleTransaction, [string] $FailMessage)
 {
-    $arguments = @('exec', '-T', 'postgres', 'psql', '-U', 'flowstudio', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q')
+    $arguments = @('exec', '-T', 'postgres', 'psql', '-U', 'studioflow', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q')
     if ($SingleTransaction) { $arguments += '-1' }
     foreach ($command in $Commands) { $arguments += @('-c', $command) }
-    Invoke-FsCompose -Arguments $arguments -Quiet -FailMessage $FailMessage
+    Invoke-SfCompose -Arguments $arguments -Quiet -FailMessage $FailMessage
 }
 
 $toolbox = $null
@@ -64,16 +64,16 @@ try
     if (-not (Test-Path -LiteralPath $BackupDir -PathType Container)) { throw "Ordner nicht gefunden: $BackupDir" }
     $sourceDir = (Resolve-Path -LiteralPath $BackupDir).Path
 
-    Assert-FsDocker
-    Assert-FsEnvFile
+    Assert-SfDocker
+    Assert-SfEnvFile
 
     # --- check the backup -----------------------------------------------------------------------------------------
 
     $checksumFile = Join-Path $sourceDir $ChecksumsName
-    if (-not (Test-Path -LiteralPath $checksumFile -PathType Leaf)) { throw "$ChecksumsName fehlt in $sourceDir – keine vollständige FlowStudio-Sicherung." }
+    if (-not (Test-Path -LiteralPath $checksumFile -PathType Leaf)) { throw "$ChecksumsName fehlt in $sourceDir – keine vollständige StudioFlow-Sicherung." }
     if (-not (Test-Path -LiteralPath (Join-Path $sourceDir $DbDumpName) -PathType Leaf)) { throw "$DbDumpName fehlt in $sourceDir." }
 
-    Write-FsInfo 'Prüfsummen werden geprüft …'
+    Write-SfInfo 'Prüfsummen werden geprüft …'
     foreach ($line in [IO.File]::ReadAllLines($checksumFile))
     {
         if (-not $line.Trim()) { continue }
@@ -83,93 +83,93 @@ try
         if ($file -match '[\\/]' -or $file.StartsWith('..')) { throw "Ungültiger Eintrag in ${ChecksumsName}: $file" }
         $path = Join-Path $sourceDir $file
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Datei aus $ChecksumsName fehlt: $file" }
-        if ((Get-FsSha256 $path) -ne $expected) { throw "Prüfsumme stimmt nicht: $file (Sicherung beschädigt)." }
+        if ((Get-SfSha256 $path) -ne $expected) { throw "Prüfsumme stimmt nicht: $file (Sicherung beschädigt)." }
     }
-    Write-FsInfo 'Prüfsummen in Ordnung.'
+    Write-SfInfo 'Prüfsummen in Ordnung.'
     $infoFile = Join-Path $sourceDir $BackupInfoName
-    if (Test-Path -LiteralPath $infoFile) { Get-Content -LiteralPath $infoFile | ForEach-Object { Write-FsInfo "  $_" } }
+    if (Test-Path -LiteralPath $infoFile) { Get-Content -LiteralPath $infoFile | ForEach-Object { Write-SfInfo "  $_" } }
 
-    Assert-FsBroadcastIdle -Action 'Die Wiederherstellung' -Force $Force.IsPresent
+    Assert-SfBroadcastIdle -Action 'Die Wiederherstellung' -Force $Force.IsPresent
 
     if (-not $Yes)
     {
-        Write-FsWarn 'Datenbank, Medien, Login-Schlüssel und Zertifikate werden durch die Sicherung ersetzt.'
-        if (-not (Read-FsConfirm "Wiederherstellen aus $(Split-Path -Leaf $sourceDir)?" 'n')) { throw 'Abgebrochen, nichts geändert.' }
+        Write-SfWarn 'Datenbank, Medien, Login-Schlüssel und Zertifikate werden durch die Sicherung ersetzt.'
+        if (-not (Read-SfConfirm "Wiederherstellen aus $(Split-Path -Leaf $sourceDir)?" 'n')) { throw 'Abgebrochen, nichts geändert.' }
     }
 
     # --- safety backup of the current state ----------------------------------------------------------------------
 
-    Write-FsStep 'PostgreSQL starten'
-    Start-FsStackAndWait -ExtraArguments @('postgres')
+    Write-SfStep 'PostgreSQL starten'
+    Start-SfStackAndWait -ExtraArguments @('postgres')
 
     if (-not $NoSafetyBackup)
     {
-        Write-FsStep 'Sicherung des aktuellen Stands'
-        & pwsh -NoProfile -File (Join-Path (Get-FsRoot) 'backup.ps1') -Label 'vor-restore'
+        Write-SfStep 'Sicherung des aktuellen Stands'
+        & pwsh -NoProfile -File (Join-Path (Get-SfRoot) 'backup.ps1') -Label 'vor-restore'
         if ($LASTEXITCODE -ne 0) { throw 'Die Sicherung des aktuellen Stands ist fehlgeschlagen; nichts geändert (oder -NoSafetyBackup).' }
     }
 
     # --- database: restore into a new database, then swap (the old one stays intact if anything fails) -----------
 
     $warnOnExit = $true
-    Write-FsStep 'API und Caddy stoppen'
-    Invoke-FsCompose -Arguments @('stop', 'api', 'caddy')
+    Write-SfStep 'API und Caddy stoppen'
+    Invoke-SfCompose -Arguments @('stop', 'api', 'caddy')
 
-    Write-FsStep 'Datenbank wiederherstellen'
-    Invoke-FsCompose -Arguments @('cp', (Join-Path $sourceDir $DbDumpName), 'postgres:/tmp/flowstudio-restore.dump') -Quiet
+    Write-SfStep 'Datenbank wiederherstellen'
+    Invoke-SfCompose -Arguments @('cp', (Join-Path $sourceDir $DbDumpName), 'postgres:/tmp/studioflow-restore.dump') -Quiet
     $dumpCopied = $true
-    Invoke-PsqlAdmin -Commands @('DROP DATABASE IF EXISTS flowstudio_restore', 'CREATE DATABASE flowstudio_restore OWNER flowstudio') `
-        -FailMessage 'Die Hilfsdatenbank flowstudio_restore liess sich nicht anlegen.'
+    Invoke-PsqlAdmin -Commands @('DROP DATABASE IF EXISTS studioflow_restore', 'CREATE DATABASE studioflow_restore OWNER studioflow') `
+        -FailMessage 'Die Hilfsdatenbank studioflow_restore liess sich nicht anlegen.'
     try
     {
-        Invoke-FsCompose -Arguments @('exec', '-T', 'postgres', 'pg_restore', '-U', 'flowstudio', '-d', 'flowstudio_restore',
-            '--no-owner', '--no-privileges', '--exit-on-error', '/tmp/flowstudio-restore.dump')
+        Invoke-SfCompose -Arguments @('exec', '-T', 'postgres', 'pg_restore', '-U', 'studioflow', '-d', 'studioflow_restore',
+            '--no-owner', '--no-privileges', '--exit-on-error', '/tmp/studioflow-restore.dump')
     }
     catch
     {
-        Get-FsComposeOutput -Arguments @('exec', '-T', 'postgres', 'psql', '-U', 'flowstudio', '-d', 'postgres', '-c', 'DROP DATABASE IF EXISTS flowstudio_restore') | Out-Null
-        Get-FsComposeOutput -Arguments @('up', '-d') | Out-Null
+        Get-SfComposeOutput -Arguments @('exec', '-T', 'postgres', 'psql', '-U', 'studioflow', '-d', 'postgres', '-c', 'DROP DATABASE IF EXISTS studioflow_restore') | Out-Null
+        Get-SfComposeOutput -Arguments @('up', '-d') | Out-Null
         $warnOnExit = $false
         throw 'pg_restore ist fehlgeschlagen. Die bisherige Datenbank ist unverändert; der Stack wurde wieder gestartet.'
     }
     Invoke-PsqlAdmin -Commands @(
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'flowstudio' AND pid <> pg_backend_pid()",
-        'DROP DATABASE IF EXISTS flowstudio_replaced') -FailMessage 'Die Verbindungen zur Datenbank liessen sich nicht trennen.'
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'studioflow' AND pid <> pg_backend_pid()",
+        'DROP DATABASE IF EXISTS studioflow_replaced') -FailMessage 'Die Verbindungen zur Datenbank liessen sich nicht trennen.'
     Invoke-PsqlAdmin -SingleTransaction -Commands @(
-        'ALTER DATABASE flowstudio RENAME TO flowstudio_replaced',
-        'ALTER DATABASE flowstudio_restore RENAME TO flowstudio') -FailMessage 'Der Austausch der Datenbank ist fehlgeschlagen.'
-    Invoke-PsqlAdmin -Commands @('DROP DATABASE flowstudio_replaced') -FailMessage 'Die ersetzte Datenbank liess sich nicht entfernen.'
-    Write-FsInfo 'Datenbank ersetzt.'
+        'ALTER DATABASE studioflow RENAME TO studioflow_replaced',
+        'ALTER DATABASE studioflow_restore RENAME TO studioflow') -FailMessage 'Der Austausch der Datenbank ist fehlgeschlagen.'
+    Invoke-PsqlAdmin -Commands @('DROP DATABASE studioflow_replaced') -FailMessage 'Die ersetzte Datenbank liess sich nicht entfernen.'
+    Write-SfInfo 'Datenbank ersetzt.'
 
     # --- volumes ----------------------------------------------------------------------------------------------------
 
-    Write-FsStep 'Volumes wiederherstellen'
-    $toolbox = Start-FsToolbox
+    Write-SfStep 'Volumes wiederherstellen'
+    $toolbox = Start-SfToolbox
     foreach ($volume in $BackupVolumes)
     {
         $archive = "$volume.tar.gz"
         $archivePath = Join-Path $sourceDir $archive
         if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf))
         {
-            Write-FsWarn "$archive fehlt in der Sicherung; Volume $volume bleibt unverändert."
+            Write-SfWarn "$archive fehlt in der Sicherung; Volume $volume bleibt unverändert."
             continue
         }
-        Write-FsInfo "Volume $volume …"
-        Invoke-FsNative -FilePath 'docker' -ArgumentList @('cp', $archivePath, "${toolbox}:/tmp/$archive") -Quiet `
+        Write-SfInfo "Volume $volume …"
+        Invoke-SfNative -FilePath 'docker' -ArgumentList @('cp', $archivePath, "${toolbox}:/tmp/$archive") -Quiet `
             -FailMessage "Das Archiv $archive liess sich nicht kopieren."
-        Invoke-FsNative -FilePath 'docker' -ArgumentList @('exec', $toolbox, 'sh', '-c', "find '/volumes/$volume' -mindepth 1 -delete && tar -xzf '/tmp/$archive' -C '/volumes/$volume'") `
+        Invoke-SfNative -FilePath 'docker' -ArgumentList @('exec', $toolbox, 'sh', '-c', "find '/volumes/$volume' -mindepth 1 -delete && tar -xzf '/tmp/$archive' -C '/volumes/$volume'") `
             -FailMessage "Das Volume $volume liess sich nicht wiederherstellen."
     }
-    Stop-FsToolbox $toolbox
+    Stop-SfToolbox $toolbox
     $toolbox = $null
 
     # --- start ----------------------------------------------------------------------------------------------------
 
-    Write-FsStep 'Stack starten'
-    Start-FsStackAndWait
+    Write-SfStep 'Stack starten'
+    Start-SfStackAndWait
     $warnOnExit = $false
-    Invoke-FsCompose -Arguments @('ps')
-    Write-FsStep "Wiederherstellung abgeschlossen aus $sourceDir"
+    Invoke-SfCompose -Arguments @('ps')
+    Write-SfStep "Wiederherstellung abgeschlossen aus $sourceDir"
 }
 catch
 {
@@ -178,11 +178,11 @@ catch
 }
 finally
 {
-    Stop-FsToolbox $toolbox
-    if ($dumpCopied) { Get-FsComposeOutput -Arguments @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/flowstudio-restore.dump') | Out-Null }
+    Stop-SfToolbox $toolbox
+    if ($dumpCopied) { Get-SfComposeOutput -Arguments @('exec', '-T', 'postgres', 'rm', '-f', '/tmp/studioflow-restore.dump') | Out-Null }
     if ($warnOnExit)
     {
-        Write-FsWarn 'Die Wiederherstellung wurde nicht abgeschlossen; api und caddy sind evtl. gestoppt.'
-        Write-FsWarn 'Ausgabe oben prüfen. Der vorherige Stand liegt in backups/…_vor-restore; Start: docker compose up -d'
+        Write-SfWarn 'Die Wiederherstellung wurde nicht abgeschlossen; api und caddy sind evtl. gestoppt.'
+        Write-SfWarn 'Ausgabe oben prüfen. Der vorherige Stand liegt in backups/…_vor-restore; Start: docker compose up -d'
     }
 }

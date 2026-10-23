@@ -141,7 +141,7 @@ test.describe('AUTH session', () => {
       expectProblem(result, 403, ERROR.forbidden);
     }
     // Accepted: value 1 (case-insensitive header name); the handler then answers 409 (no preview).
-    for (const headers of [{ [CSRF_HEADER]: '1' }, { 'x-flowstudio': '1' }]) {
+    for (const headers of [{ [CSRF_HEADER]: '1' }, { 'x-studioflow': '1' }]) {
       expectProblem(await api.call('POST', route, { json: body, noCsrf: true, headers }), 409, ERROR.conflict);
     }
     // All unsafe verbs are covered by the same filter.

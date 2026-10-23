@@ -13,7 +13,7 @@ import { KEY } from './testing/fixtures';
 const BASE = '/o/';
 
 function at(url: string): { pathname: string; search: string; hash: string } {
-  const parsed = new URL(url, 'https://flowstudio.test');
+  const parsed = new URL(url, 'https://studioflow.test');
   return { pathname: parsed.pathname, search: parsed.search, hash: parsed.hash };
 }
 

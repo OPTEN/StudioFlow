@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class AssetApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class AssetApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     public static TheoryData<string, string, int?> ValidUploads => new()
     {
@@ -50,9 +50,9 @@ public sealed class AssetApiTests(FlowStudioApp app) : IClassFixture<FlowStudioA
     {
         var admin = await app.AdminAsync();
 
-        Assert.Equal(ErrorCodes.UnsupportedMedia, await UploadAsync(admin, MediaSamples.Png(10, 10, (int)FlowStudioApp.MaxImageBytes + 1), "x.png", "image/png").ExpectProblemAsync(HttpStatusCode.RequestEntityTooLarge));
-        await UploadAsync(admin, MediaSamples.Mp4(totalBytes: (int)FlowStudioApp.MaxVideoBytes + 1), "x.mp4", "video/mp4").ExpectProblemAsync(HttpStatusCode.RequestEntityTooLarge);
-        await UploadAsync(admin, MediaSamples.Mp4(totalBytes: (int)FlowStudioApp.MaxImageBytes + 1), "big-but-video.mp4", "video/mp4").ExpectAsync(HttpStatusCode.Created);
+        Assert.Equal(ErrorCodes.UnsupportedMedia, await UploadAsync(admin, MediaSamples.Png(10, 10, (int)StudioFlowApp.MaxImageBytes + 1), "x.png", "image/png").ExpectProblemAsync(HttpStatusCode.RequestEntityTooLarge));
+        await UploadAsync(admin, MediaSamples.Mp4(totalBytes: (int)StudioFlowApp.MaxVideoBytes + 1), "x.mp4", "video/mp4").ExpectProblemAsync(HttpStatusCode.RequestEntityTooLarge);
+        await UploadAsync(admin, MediaSamples.Mp4(totalBytes: (int)StudioFlowApp.MaxImageBytes + 1), "big-but-video.mp4", "video/mp4").ExpectAsync(HttpStatusCode.Created);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public sealed class AssetApiTests(FlowStudioApp app) : IClassFixture<FlowStudioA
     }
 }
 
-public sealed class OutputApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Settings_Default_ContainUrlWithKeyAndFrameAncestors()
@@ -183,7 +183,7 @@ public sealed class OutputApiTests(FlowStudioApp app) : IClassFixture<FlowStudio
 
         var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
 
-        Assert.StartsWith("https://fs.test/o/webinar?k=", settings.Url, StringComparison.Ordinal);
+        Assert.StartsWith("https://sf.test/o/webinar?k=", settings.Url, StringComparison.Ordinal);
         Assert.Equal(["'self'", "https://stream.example"], settings.FrameAncestors);
         Assert.Empty(settings.AllowedIps);
     }

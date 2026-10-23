@@ -27,7 +27,7 @@
         [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
         (click)="show(row)"
       >
-        <svg fsIcon="check"></svg><span class="c-code">{{ row.code }}</span
+        <svg sfIcon="check"></svg><span class="c-code">{{ row.code }}</span
         >{{ row.name }}
       </button>
       <strong class="c-state--ok">wieder da</strong>
@@ -49,7 +49,7 @@
         [attr.aria-label]="row.code + ' bei den Stationen zeigen'"
         (click)="show(row)"
       >
-        <svg fsIcon="alert"></svg><span class="c-code">{{ row.code }}</span
+        <svg sfIcon="alert"></svg><span class="c-code">{{ row.code }}</span
         >{{ row.name }}
       </button>
       <strong [class.c-state--bad]="row.bad" [class.c-state--warn]="!row.bad">{{
@@ -64,13 +64,13 @@
           [disabled]="pending().has(row.incident.id)"
           (click)="reshare(row)"
         >
-          <svg fsIcon="send" [size]="13"></svg>Neu teilen lassen
+          <svg sfIcon="send" [size]="13"></svg>Neu teilen lassen
         </button>
       }
     </div>
   }
 } @empty {
-  <span class="c-status__ok"><svg fsIcon="check"></svg>Keine offenen Meldungen</span>
+  <span class="c-status__ok"><svg sfIcon="check"></svg>Keine offenen Meldungen</span>
   @if (logEntries().length > 0) {
     <span class="c-status__label">Letzte Ereignisse</span>
     <span class="c-status__log">

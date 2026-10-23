@@ -1,13 +1,13 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Opten.FlowStudio.Core.Application.Services;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
-using Opten.FlowStudio.Web.Errors;
-using Opten.FlowStudio.Web.Security;
+using Opten.StudioFlow.Core.Application.Services;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
+using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Security;
 
-namespace Opten.FlowStudio.Web.Hubs;
+namespace Opten.StudioFlow.Web.Hubs;
 
 /// <summary>
 /// Regie hub (<c>/hubs/studio</c>, admin cookie). The connection belongs to the admin session that opened it: logout
@@ -19,7 +19,7 @@ public sealed class StudioHub(StudioSessionService sessions, HubConnectionRegist
     /// <inheritdoc />
     public override async Task OnConnectedAsync()
     {
-        registry.Register(Context, Context.User?.FindFirstValue(FlowStudioClaims.SessionId));
+        registry.Register(Context, Context.User?.FindFirstValue(StudioFlowClaims.SessionId));
         registry.Join(HubConnectionRegistry.AllStudios, Context.ConnectionId);
         await base.OnConnectedAsync();
     }
@@ -68,7 +68,7 @@ public sealed class OutputHub(OutputService outputs, HubConnectionRegistry regis
         await base.OnDisconnectedAsync(exception);
     }
 
-    private string ProductionId => Context.User?.FindFirstValue(FlowStudioClaims.ProductionId) ?? throw new HubException(ErrorCodes.Forbidden);
+    private string ProductionId => Context.User?.FindFirstValue(StudioFlowClaims.ProductionId) ?? throw new HubException(ErrorCodes.Forbidden);
 }
 
 /// <summary>Sender hub (<c>/hubs/device</c>, device credential).</summary>
@@ -101,7 +101,7 @@ public sealed class DeviceHub(DeviceSessionService sessions, HubConnectionRegist
 
     private DeviceIdentity Identity => new(
         Context.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new HubException(ErrorCodes.Unauthorized),
-        Context.User?.FindFirstValue(FlowStudioClaims.ProductionId) ?? throw new HubException(ErrorCodes.Unauthorized),
+        Context.User?.FindFirstValue(StudioFlowClaims.ProductionId) ?? throw new HubException(ErrorCodes.Unauthorized),
         Blocked: false);
 }
 
@@ -117,7 +117,7 @@ internal sealed class HubErrorFilter(ILogger<HubErrorFilter> logger) : IHubFilte
         {
             return await next(invocationContext);
         }
-        catch (FlowStudioException exception)
+        catch (StudioFlowException exception)
         {
             throw new HubException($"{exception.Code}: {exception.Message}");
         }

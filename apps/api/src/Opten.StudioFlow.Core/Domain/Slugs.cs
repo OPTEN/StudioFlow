@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>URL slugs of productions: lowercase <c>[a-z0-9-]{1,48}</c>, derived from the name on creation (spec 4.2).</summary>
 public static class Slugs

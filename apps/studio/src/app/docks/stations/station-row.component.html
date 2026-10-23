@@ -38,7 +38,7 @@
             }
             <span [class]="toneClass(line.tone)">{{ line.word }}</span>
             @if (line.since) {
-              <span class="u-mono" [fsElapsed]="line.since"></span>
+              <span class="u-mono" [sfElapsed]="line.since"></span>
             }
             @if (line.extra) {
               <span>{{ line.extra }}</span>
@@ -66,13 +66,13 @@
         }
       </span>
     </span>
-    <fs-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
-    <svg class="c-st__chev" fsIcon="chev"></svg>
+    <sf-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
+    <svg class="c-st__chev" sfIcon="chev"></svg>
   </button>
 
   @if (view().recovered.length > 0) {
     <div class="c-st__ack">
-      <svg fsIcon="check" [size]="14"></svg>
+      <svg sfIcon="check" [size]="14"></svg>
       <span class="u-spacer"
         >Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.</span
       >
@@ -118,7 +118,7 @@
               [disabled]="busy('reshare:' + source.slot)"
               (click)="reshare(source)"
             >
-              <svg fsIcon="send" [size]="14"></svg
+              <svg sfIcon="send" [size]="14"></svg
               >{{
                 view().endedScreens.length > 1
                   ? source.code + ' neu teilen lassen'
@@ -144,7 +144,7 @@
               [disabled]="busy('message')"
               (click)="toggleComposer()"
             >
-              <svg fsIcon="send" [size]="14"></svg>Nachricht senden
+              <svg sfIcon="send" [size]="14"></svg>Nachricht senden
             </button>
           }
           <button
@@ -190,7 +190,7 @@
         </div>
 
         @if (confirm() === 'block') {
-          <fs-confirm-box
+          <sf-confirm-box
             label="Gerät sperren"
             confirmLabel="Jetzt sperren"
             [flush]="true"
@@ -204,7 +204,7 @@
           />
         }
         @if (confirm() === 'remove') {
-          <fs-confirm-box
+          <sf-confirm-box
             label="Gerät entfernen"
             confirmLabel="Entfernen"
             [flush]="true"
@@ -219,10 +219,10 @@
           />
         }
         @if (composing()) {
-          <fs-message-composer [device]="device()" (closed)="composing.set(false)" />
+          <sf-message-composer [device]="device()" (closed)="composing.set(false)" />
         }
         @if (renaming()) {
-          <fs-inline-edit
+          <sf-inline-edit
             label="Name der Station"
             [value]="device().name"
             [maxLength]="maxNameLength"

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Actions of the audit log (spec 4.9) plus the source status changes that feed «Letzte Ereignisse» (spec 4.5).</summary>
 public static class AuditActions

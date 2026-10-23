@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { TallyState } from '@flowstudio/scene-model';
+import type { TallyState } from '@studioflow/scene-model';
 import { TallyFrameComponent } from './tally-frame.component';
 
 describe('TallyFrameComponent', () => {

@@ -1,5 +1,5 @@
 import { Injectable, computed, inject } from '@angular/core';
-import type { PairingRequestDto } from '@flowstudio/scene-model';
+import type { PairingRequestDto } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';

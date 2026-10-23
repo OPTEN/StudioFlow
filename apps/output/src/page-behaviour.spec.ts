@@ -95,7 +95,7 @@ describe('measurement clock (/o/_uhr)', () => {
     const time = root.querySelector('.c-clock__time');
     expect(time?.textContent).toMatch(/^\d{2}:\d{2}:\d{2}\.\d{3}$/);
     expect(root.querySelector('.c-clock__hint')?.textContent).toBe(CLOCK_HINT);
-    expect(document.title).toBe('FlowStudio Uhr');
+    expect(document.title).toBe('StudioFlow Uhr');
     const before = frames.length;
     frames.at(-1)?.(0);
     expect(frames.length).toBe(before + 1);

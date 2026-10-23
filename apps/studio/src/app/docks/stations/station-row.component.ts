@@ -11,7 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { LIMITS, isDown, type DeviceDto, type SourceDto } from '@flowstudio/scene-model';
+import { LIMITS, isDown, type DeviceDto, type SourceDto } from '@studioflow/scene-model';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ElapsedComponent } from '../shared/elapsed.component';
@@ -33,7 +33,7 @@ type Confirmation = 'block' | 'remove' | null;
  * behind a dashed red confirmation). Closing the details resets confirmations, composer and rename.
  */
 @Component({
-  selector: 'fs-station-row',
+  selector: 'sf-station-row',
   imports: [
     ConfirmBoxComponent,
     ElapsedComponent,
@@ -71,7 +71,7 @@ export class StationRowComponent {
   protected readonly composing = signal(false);
   protected readonly renaming = signal(false);
 
-  protected readonly detailId = computed(() => `fs-station-${this.view().id}`);
+  protected readonly detailId = computed(() => `sf-station-${this.view().id}`);
   protected readonly down = computed(() => isDown(this.view().status));
   protected readonly label = computed(() =>
     this.view().codes.length > 0 ? this.view().codes.join(' ') : this.view().name,

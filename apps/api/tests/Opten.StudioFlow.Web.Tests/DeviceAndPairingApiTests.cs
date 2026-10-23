@@ -2,12 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class DeviceApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class DeviceApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Me_PairedPhone_ReturnsSelfWithSlot()
@@ -208,7 +208,7 @@ public sealed class DeviceApiTests(FlowStudioApp app) : IClassFixture<FlowStudio
     }
 }
 
-public sealed class PairingApiTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class PairingApiTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task PhoneInvite_RedeemedOnce_NextIsCreatedAndTokenIsGone()
@@ -222,7 +222,7 @@ public sealed class PairingApiTests(FlowStudioApp app) : IClassFixture<FlowStudi
         var code = await app.Anonymous().PostJsonAsync($"/api/pairing/invites/{Pairing.TokenOf(invite)}/redeem", request with { ClientId = "client-b" }).ExpectProblemAsync(HttpStatusCode.Gone);
         var next = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/pairing/phone-invite", TestContext.Current.CancellationToken).ExpectAsync<InviteDto>();
 
-        Assert.StartsWith("https://fs.test/join/i/", invite.Url, StringComparison.Ordinal);
+        Assert.StartsWith("https://sf.test/join/i/", invite.Url, StringComparison.Ordinal);
         Assert.Equal(credentials.DeviceId, replay.DeviceId);
         Assert.NotEqual(credentials.DeviceSecret, replay.DeviceSecret);
         Assert.Equal(ErrorCodes.PairingExpired, code);
@@ -240,7 +240,7 @@ public sealed class PairingApiTests(FlowStudioApp app) : IClassFixture<FlowStudi
         await admin.Client.DeleteAsync($"/api/productions/{admin.ProductionId}/pairing/invites/{link.Id}", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
         await admin.Client.DeleteAsync($"/api/productions/{admin.ProductionId}/pairing/invites/inv_unknown", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.NotFound);
 
-        Assert.StartsWith("https://fs.test/j/", link.Url, StringComparison.Ordinal);
+        Assert.StartsWith("https://sf.test/j/", link.Url, StringComparison.Ordinal);
         await app.Anonymous().PostJsonAsync($"/api/pairing/invites/{Pairing.TokenOf(link)}/redeem", new RedeemInviteRequest("c", "Lea", DeviceKind.Laptop, "Mac")).ExpectProblemAsync(HttpStatusCode.Gone);
         await app.Anonymous().PostJsonAsync("/api/pairing/invites/not-a-token/redeem", new RedeemInviteRequest("c", "Lea", DeviceKind.Laptop, "Mac")).ExpectProblemAsync(HttpStatusCode.Gone);
     }

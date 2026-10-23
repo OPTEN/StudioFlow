@@ -6,15 +6,15 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Opten.FlowStudio.Core.Application;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Hubs;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Hubs;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>Sessions end on the server (GAP-04), hub timings (GAP-12) and response hardening.</summary>
-public sealed class SessionAndHardeningTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class SessionAndHardeningTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Logout_OldCookieAndStudioHub_AreRejectedAndClosed()
@@ -95,7 +95,7 @@ public sealed class SessionAndHardeningTests(FlowStudioApp app) : IClassFixture<
 }
 
 /// <summary>GAP-21 and GAP-07 over the real hubs.</summary>
-public sealed class PinnedHubTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class PinnedHubTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Hello_ReplacedTabReconnects_GetsSessionReplacedAndCurrentTabStays()
@@ -189,7 +189,7 @@ public sealed class SessionExpiryTests(ShortSessionApp app) : IClassFixture<Shor
 }
 
 /// <summary>The app with a session lifetime of three seconds.</summary>
-public sealed class ShortSessionApp(PostgresFixture postgres) : FlowStudioApp(postgres)
+public sealed class ShortSessionApp(PostgresFixture postgres) : StudioFlowApp(postgres)
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -291,7 +291,7 @@ public sealed class HubConnectionRegistryTests
 }
 
 /// <summary>GAP-05: limits answer 409 <c>limit_reached</c>, floods 429, invalid values 400.</summary>
-public sealed class LimitTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class LimitTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Items_ThirtyThirdByAddOrReplace_IsLimitReached()

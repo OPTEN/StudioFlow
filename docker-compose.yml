@@ -1,14 +1,14 @@
-# FlowStudio stack: Caddy (TLS, frontends, reverse proxy), API (ASP.NET Core), LiveKit (SFU), PostgreSQL.
+# StudioFlow stack: Caddy (TLS, frontends, reverse proxy), API (ASP.NET Core), LiveKit (SFU), PostgreSQL.
 #
 #   ./setup.sh            # or setup.ps1: writes .env with random secrets (never commit it)
 #   docker compose up -d --build
 #
 # Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
 # Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
-# with FLOWSTUDIO_RTC_TCP_PORT / FLOWSTUDIO_RTC_UDP_PORT).
+# with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT).
 # Required variables fail fast (${VAR:?...}); optional ones have their default here and nowhere else.
 
-name: flowstudio
+name: studioflow
 
 x-postgres-image: &postgres-image postgres:17.11-alpine
 
@@ -22,7 +22,7 @@ x-service-defaults: &service-defaults
       max-size: "10m"
       max-file: "5"
   networks:
-    - flowstudio
+    - studioflow
 
 services:
   caddy:
@@ -40,18 +40,18 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      FLOWSTUDIO_DOMAIN: ${FLOWSTUDIO_DOMAIN:?fehlt in .env - zuerst ./setup.sh (oder setup.ps1) ausfuehren}
-      FLOWSTUDIO_EXTRA_HOSTS: ${FLOWSTUDIO_EXTRA_HOSTS:-}
-      FLOWSTUDIO_DEFAULT_SNI: ${FLOWSTUDIO_DEFAULT_SNI:-${FLOWSTUDIO_DOMAIN:?fehlt in .env}}
-      FLOWSTUDIO_TLS_MODE: ${FLOWSTUDIO_TLS_MODE:?fehlt in .env (internal, acme, custom oder dns-<anbieter>)}
-      FLOWSTUDIO_ACME_EMAIL: ${FLOWSTUDIO_ACME_EMAIL:-}
-      FLOWSTUDIO_DNS_RESOLVERS: ${FLOWSTUDIO_DNS_RESOLVERS:-1.1.1.1 9.9.9.9}
-      FLOWSTUDIO_DNS_CHALLENGE_DOMAIN: ${FLOWSTUDIO_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${FLOWSTUDIO_DOMAIN:?fehlt in .env}}
-      FLOWSTUDIO_FRAME_ANCESTORS: ${FLOWSTUDIO_FRAME_ANCESTORS:-}
-      FLOWSTUDIO_HSTS_MAX_AGE: ${FLOWSTUDIO_HSTS_MAX_AGE:-31536000}
-      FLOWSTUDIO_TRUSTED_PROXIES: ${FLOWSTUDIO_TRUSTED_PROXIES:-127.0.0.1/32}
-      FLOWSTUDIO_MAX_UPLOAD: ${FLOWSTUDIO_MAX_UPLOAD:-1100MiB}
-      FLOWSTUDIO_MAX_BODY: ${FLOWSTUDIO_MAX_BODY:-10MB}
+      STUDIOFLOW_DOMAIN: ${STUDIOFLOW_DOMAIN:?fehlt in .env - zuerst ./setup.sh (oder setup.ps1) ausfuehren}
+      STUDIOFLOW_EXTRA_HOSTS: ${STUDIOFLOW_EXTRA_HOSTS:-}
+      STUDIOFLOW_DEFAULT_SNI: ${STUDIOFLOW_DEFAULT_SNI:-${STUDIOFLOW_DOMAIN:?fehlt in .env}}
+      STUDIOFLOW_TLS_MODE: ${STUDIOFLOW_TLS_MODE:?fehlt in .env (internal, acme, custom oder dns-<anbieter>)}
+      STUDIOFLOW_ACME_EMAIL: ${STUDIOFLOW_ACME_EMAIL:-}
+      STUDIOFLOW_DNS_RESOLVERS: ${STUDIOFLOW_DNS_RESOLVERS:-1.1.1.1 9.9.9.9}
+      STUDIOFLOW_DNS_CHALLENGE_DOMAIN: ${STUDIOFLOW_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${STUDIOFLOW_DOMAIN:?fehlt in .env}}
+      STUDIOFLOW_FRAME_ANCESTORS: ${STUDIOFLOW_FRAME_ANCESTORS:-}
+      STUDIOFLOW_HSTS_MAX_AGE: ${STUDIOFLOW_HSTS_MAX_AGE:-31536000}
+      STUDIOFLOW_TRUSTED_PROXIES: ${STUDIOFLOW_TRUSTED_PROXIES:-127.0.0.1/32}
+      STUDIOFLOW_MAX_UPLOAD: ${STUDIOFLOW_MAX_UPLOAD:-1100MiB}
+      STUDIOFLOW_MAX_BODY: ${STUDIOFLOW_MAX_BODY:-10MB}
       # DNS provider credentials; only the ones of the selected dns-* mode are read.
       CF_API_TOKEN: ${CF_API_TOKEN:-}
       INFOMANIAK_API_TOKEN: ${INFOMANIAK_API_TOKEN:-}
@@ -83,9 +83,9 @@ services:
     cap_drop:
       - ALL
     environment:
-      FLOWSTUDIO__PUBLICBASEURL: ${FLOWSTUDIO_PUBLIC_BASE_URL:-https://${FLOWSTUDIO_DOMAIN:?fehlt in .env}}
+      STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?fehlt in .env}}
       # The effective list Caddy enforces for /o/ (shown read-only in the Regie).
-      FLOWSTUDIO__FRAMEANCESTORS: "'self'${FLOWSTUDIO_FRAME_ANCESTORS:+ $FLOWSTUDIO_FRAME_ANCESTORS}"
+      STUDIOFLOW__FRAMEANCESTORS: "'self'${STUDIOFLOW_FRAME_ANCESTORS:+ $STUDIOFLOW_FRAME_ANCESTORS}"
       ADMIN__USERNAME: ${ADMIN__USERNAME:?fehlt in .env}
       # One of the two must be set (the API refuses to start otherwise); setup writes the hash.
       ADMIN__PASSWORDHASH: ${ADMIN__PASSWORDHASH:-}
@@ -93,13 +93,13 @@ services:
       LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?fehlt in .env}
       LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?fehlt in .env}
       LIVEKIT__INTERNALURL: http://livekit:7880
-      CONNECTIONSTRINGS__FLOWSTUDIO: Host=postgres;Database=flowstudio;Username=flowstudio;Password=${POSTGRES_PASSWORD:?fehlt in .env}
+      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Password=${POSTGRES_PASSWORD:?fehlt in .env}
       MEDIA__PATH: /data/media
       MEDIA__MAXIMAGEBYTES: ${MEDIA__MAXIMAGEBYTES:-26214400}
       MEDIA__MAXVIDEOBYTES: ${MEDIA__MAXVIDEOBYTES:-1073741824}
       DATAPROTECTION__KEYSPATH: /data/keys
       # Only Caddy (inside this network) may set X-Forwarded-For / -Proto.
-      FORWARDEDHEADERS__KNOWNNETWORKS__0: ${FLOWSTUDIO_SUBNET:-172.30.0.0/24}
+      FORWARDEDHEADERS__KNOWNNETWORKS__0: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
     volumes:
       - media:/data/media
       # ASP.NET Core Data Protection keys: logins survive restarts and updates.
@@ -123,18 +123,18 @@ services:
     # Media goes directly to the clients, never through Caddy. Signalling (7880) is only reachable via Caddy (/rtc).
     # Host and container port must be the same number: LiveKit announces the container-side port to the devices.
     ports:
-      - "${FLOWSTUDIO_RTC_TCP_PORT:-7881}:${FLOWSTUDIO_RTC_TCP_PORT:-7881}/tcp"
-      - "${FLOWSTUDIO_RTC_UDP_PORT:-7882}:${FLOWSTUDIO_RTC_UDP_PORT:-7882}/udp"
+      - "${STUDIOFLOW_RTC_TCP_PORT:-7881}:${STUDIOFLOW_RTC_TCP_PORT:-7881}/tcp"
+      - "${STUDIOFLOW_RTC_UDP_PORT:-7882}:${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp"
     environment:
       # The address LiveKit announces to the devices: the server's LAN IPv4 (127.0.0.1 only for single-machine tests).
-      NODE_IP: ${FLOWSTUDIO_NODE_IP:?fehlt in .env (LAN-IPv4 des Servers)}
+      NODE_IP: ${STUDIOFLOW_NODE_IP:?fehlt in .env (LAN-IPv4 des Servers)}
       # YAML "key: secret" - the secret starts with a letter (an all-digit value would be parsed as a number).
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?fehlt in .env}: ${LIVEKIT_API_SECRET:?fehlt in .env}"
       LIVEKIT_CONFIG: |
         port: 7880
         rtc:
-          tcp_port: ${FLOWSTUDIO_RTC_TCP_PORT:-7881}
-          udp_port: ${FLOWSTUDIO_RTC_UDP_PORT:-7882}
+          tcp_port: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
+          udp_port: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
           use_external_ip: false
         room:
           auto_create: true
@@ -169,14 +169,14 @@ services:
       - SETGID
       - SETUID
     environment:
-      POSTGRES_DB: flowstudio
-      POSTGRES_USER: flowstudio
+      POSTGRES_DB: studioflow
+      POSTGRES_USER: studioflow
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?fehlt in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     # TCP, not the socket: during the first initialisation the server listens only on the socket.
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "flowstudio", "-d", "flowstudio"]
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "studioflow", "-d", "studioflow"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -215,10 +215,10 @@ services:
     restart: "no"
 
 networks:
-  flowstudio:
+  studioflow:
     ipam:
       config:
-        - subnet: ${FLOWSTUDIO_SUBNET:-172.30.0.0/24}
+        - subnet: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
 
 volumes:
   caddy_data:

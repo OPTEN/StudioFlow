@@ -31,7 +31,7 @@ function clamp(value: number, min: number, max: number): number {
 /**
  * The dock layout of the Regie (prototype `L`, `applyLayout`, `moveDock`, `resetLayout`): which dock is in which zone,
  * weights, zone sizes, the monitor split, hidden docks and the temporary pairing dock. Persisted per browser
- * (`flowstudio.layout`, v1); a stored layout with any inconsistency is replaced by the default.
+ * (`studioflow.layout`, v1); a stored layout with any inconsistency is replaced by the default.
  *
  * Used by the workspace (rendering, drag and drop, splitters), the header («Docks und Layout»), the stations dock
  * (pairing toggle) and the stage (monitor split: {@link split}, {@link monitorSplitBehavior}).
@@ -234,7 +234,7 @@ export class DockLayoutService {
 
   /**
    * Splitter behaviour for the monitor split between Preview and Program (prototype `.split-mon`): `measureWidth`
-   * returns the width of the monitor row minus the 20 px split. Use with `[fsSplitter]` on the split element.
+   * returns the width of the monitor row minus the 20 px split. Use with `[sfSplitter]` on the split element.
    */
   monitorSplitBehavior(measureWidth: () => number): SplitterBehavior {
     return {

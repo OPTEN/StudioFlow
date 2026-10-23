@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Opten.FlowStudio.Core.Application.Ports;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Core.Domain;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Core.Domain;
 
-namespace Opten.FlowStudio.Core.Application.Services;
+namespace Opten.StudioFlow.Core.Application.Services;
 
 /// <summary>Regie actions on devices: rename, block, unblock, delete, remote commands (spec 4.6).</summary>
 public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKitKicker kicker)
@@ -122,19 +122,19 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
             case DeviceCommandKind.Reshare:
                 if (request.Slot is null || device.FindSlot(request.Slot) is not { Kind: SourceKind.Screen })
                 {
-                    throw FlowStudioException.Invalid("slot", "Das Gerät hat keinen solchen Bildschirm.");
+                    throw StudioFlowException.Invalid("slot", "Das Gerät hat keinen solchen Bildschirm.");
                 }
 
                 return new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, request.Slot, null, now);
             case DeviceCommandKind.SwitchCamera:
                 if (device.FindSlot(DeviceSlots.Camera) is null)
                 {
-                    throw FlowStudioException.Invalid("kind", "Das Gerät hat keine Kamera.");
+                    throw StudioFlowException.Invalid("kind", "Das Gerät hat keine Kamera.");
                 }
 
                 return new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, DeviceSlots.Camera, null, now);
             default:
-                throw FlowStudioException.Invalid("kind", "Unbekannter Befehl.");
+                throw StudioFlowException.Invalid("kind", "Unbekannter Befehl.");
         }
     }
 }

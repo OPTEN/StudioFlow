@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Application.Runtime;
+namespace Opten.StudioFlow.Core.Application.Runtime;
 
 /// <summary>One revision as the Regie and as the output page see it (same revision, possibly <c>revisionOnly</c> for the output).</summary>
 /// <param name="Studio">The full event.</param>

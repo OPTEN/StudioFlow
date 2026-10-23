@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Infrastructure.LiveKit;
+namespace Opten.StudioFlow.Infrastructure.LiveKit;
 
 /// <summary>LiveKit settings (configuration section <c>LiveKit</c>).</summary>
 public sealed class LiveKitOptions

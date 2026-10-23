@@ -78,7 +78,7 @@ test.describe('SRC laptop screens', () => {
       await s1.laptop.browserStopsSharing();
       await waitForOutage(regie, 'S1', 'ended', { source: 'screen', wide: true });
       const logBefore = await logTexts(api, production);
-      await regie.page.locator('fs-status-line').getByRole('button', { name: 'Neu teilen lassen' }).click();
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Neu teilen lassen' }).click();
       await expect(regie.toast()).toContainText('Bitte an Laptop Lea · Screen 1 geschickt: «Bildschirm erneut teilen»');
       await expect(s1.laptop.reshareBanner()).toBeVisible();
       const prompt = s1.laptop.page.locator('.c-laptop__reshare').getByRole('button', { name: 'Erneut teilen' });
@@ -159,7 +159,7 @@ test.describe('SRC laptop screens', () => {
       const scene = (await production.snapshot()).scenes[1]!;
       expect(scene.items.map((item) => item.source), 'the scene keeps the item').toEqual([s3Id]);
       await regie.clickScene(scene.name);
-      await expect(regie.page.locator('.c-monitor--program .fs-r-missing').first()).toHaveText('Quelle fehlt');
+      await expect(regie.page.locator('.c-monitor--program .sf-r-missing').first()).toHaveText('Quelle fehlt');
 
       // The optional camera: a K code and the label «Laptop Lea · Kamera».
       await laptop.addCamera();

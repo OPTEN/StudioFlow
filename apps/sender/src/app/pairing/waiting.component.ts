@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { formatCheckCode, formatDuration } from '@flowstudio/scene-model';
+import { formatCheckCode, formatDuration } from '@studioflow/scene-model';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
 import { IconComponent } from '../shared/icon.component';
 import { KnockService } from './knock.service';
@@ -18,7 +18,7 @@ import { KnockService } from './knock.service';
  * survives reloads, shows a denial or expiry with «Neue Anfrage», and opens the station once approved.
  */
 @Component({
-  selector: 'fs-waiting',
+  selector: 'sf-waiting',
   imports: [BrandMarkComponent, IconComponent],
   templateUrl: './waiting.component.html',
   styleUrl: './waiting.component.scss',

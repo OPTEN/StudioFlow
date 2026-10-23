@@ -1,4 +1,4 @@
-import type { DesiredSize } from '@flowstudio/scene-renderer';
+import type { DesiredSize } from '@studioflow/scene-renderer';
 
 /** Requests above 8K make no difference for layer selection and hint at a unit bug; they are clamped. */
 const MAX_DIMENSION = 7680;

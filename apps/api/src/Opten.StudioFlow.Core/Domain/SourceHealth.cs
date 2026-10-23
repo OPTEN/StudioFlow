@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Everything the server knows about one device slot at a moment (spec 4.5).</summary>
 /// <param name="Blocked">The device is blocked.</param>
@@ -197,7 +197,7 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
 
         if (Incident.EndedAt is null)
         {
-            throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Die Störung dauert noch an; bestätigen geht erst, wenn die Quelle wieder da ist.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Störung dauert noch an; bestätigen geht erst, wenn die Quelle wieder da ist.");
         }
 
         Incident = null;

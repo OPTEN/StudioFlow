@@ -2,7 +2,7 @@
   class="c-pop c-output-pop"
   role="dialog"
   aria-label="Output"
-  [fsPopover]="popoverId"
+  [sfPopover]="popoverId"
   [popoverFocus]="false"
 >
   <div class="c-pop-h">Output an Proxy</div>
@@ -32,13 +32,13 @@
     <div class="c-linkbox">
       <span class="c-linkbox__text" #url>{{ displayUrl() ?? 'Link wird geladen …' }}</span>
       <button class="c-btn c-btn--sm" type="button" [disabled]="!settings()" (click)="copy()">
-        <svg fsIcon="copy" [size]="14"></svg>Kopieren
+        <svg sfIcon="copy" [size]="14"></svg>Kopieren
       </button>
     </div>
   }
 
-  <section class="c-output-pop__section" aria-labelledby="fs-output-access">
-    <div class="c-pop-h" id="fs-output-access">Zugriff</div>
+  <section class="c-output-pop__section" aria-labelledby="sf-output-access">
+    <div class="c-pop-h" id="sf-output-access">Zugriff</div>
     <p class="c-pop-note">
       @if (ips().length === 0) {
         Jede Adresse darf den Output öffnen. Für mehr Sicherheit die Adresse des Proxys eintragen.
@@ -57,7 +57,7 @@
               [attr.aria-label]="ip + ' entfernen'"
               (click)="removeIp(ip)"
             >
-              <svg fsIcon="close" [size]="14"></svg>
+              <svg sfIcon="close" [size]="14"></svg>
             </button>
           </li>
         }
@@ -110,7 +110,7 @@
   </section>
 
   @if (confirming()) {
-    <fs-confirm-box
+    <sf-confirm-box
       label="Link neu erzeugen"
       message="Der alte Link hört sofort auf. Der Proxy braucht danach den neuen."
       confirmLabel="Neu erzeugen"

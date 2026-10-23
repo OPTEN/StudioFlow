@@ -55,14 +55,14 @@ test.describe('German text audit', () => {
     const audit = new Audit(page);
 
     expect(await page.evaluate(() => document.documentElement.lang), 'lang of the document').toBe('de-CH');
-    expect(await page.locator('fs-studio-page').getAttribute('lang'), 'lang of the app root').toBe('de-CH');
+    expect(await page.locator('sf-studio-page').getAttribute('lang'), 'lang of the app root').toBe('de-CH');
     await audit.state('direct mode with an incident');
 
     // toasts: a scene switch, the mode switch, a dock move, the reset
     await regie.clickScene('Pause');
     await expect(regie.toast().first()).toBeVisible();
     await audit.state('toast: scene switch');
-    expect(await page.locator('fs-toast-host').getAttribute('lang'), 'lang of the toast').toBe('de-CH');
+    expect(await page.locator('sf-toast-host').getAttribute('lang'), 'lang of the toast').toBe('de-CH');
     await regie.setStudioMode(true);
     await expect(regie.take()).toBeVisible();
     await audit.state('Studio-Modus');

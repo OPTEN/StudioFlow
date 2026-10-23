@@ -12,14 +12,14 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { CanvasRect, SceneDto, TransitionDto } from '@flowstudio/scene-model';
+import type { CanvasRect, SceneDto, TransitionDto } from '@studioflow/scene-model';
 import {
   createSceneRenderer,
   type AssetMediaKind,
   type SceneRenderer,
   type SceneRendererOptions,
   type SourceMediaProvider,
-} from '@flowstudio/scene-renderer';
+} from '@studioflow/scene-renderer';
 import { StudioMediaService } from '../core/media/studio-media.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ClockService } from '../core/ui/clock.service';
@@ -48,7 +48,7 @@ export type SceneRendererFactory = (
   options: SceneRendererOptions,
 ) => SceneRenderer;
 
-/** The renderer factory of every scene view; defaults to `createSceneRenderer` of `@flowstudio/scene-renderer`. */
+/** The renderer factory of every scene view; defaults to `createSceneRenderer` of `@studioflow/scene-renderer`. */
 export const SCENE_RENDERER_FACTORY = new InjectionToken<SceneRendererFactory>(
   'SCENE_RENDERER_FACTORY',
   { providedIn: 'root', factory: () => createSceneRenderer },
@@ -86,7 +86,7 @@ function sameRects(
  * (mode `monitor`) and the scene thumbnails of the Szenen dock (mode `thumbnail`).
  *
  * ```html
- * <fs-scene-view mode="thumbnail" [scene]="scene" [label]="scene.name" />
+ * <sf-scene-view mode="thumbnail" [scene]="scene" [label]="scene.name" />
  * ```
  *
  * - The host is the renderer's container: give it a definite size (e.g. `width: 64px; aspect-ratio: 16 / 9`, or
@@ -103,7 +103,7 @@ function sameRects(
  * - On destroy the renderer is destroyed (DOM, timers, provider registrations).
  */
 @Component({
-  selector: 'fs-scene-view',
+  selector: 'sf-scene-view',
   template: '',
   styles: `
     :host {
@@ -204,7 +204,7 @@ export class SceneViewComponent {
       assetKindOf: (assetId) => this.assetKind(assetId),
       reducedMotion,
       label: this.label(),
-      onError: (error) => console.warn('[FlowStudio] scene renderer', error),
+      onError: (error) => console.warn('[StudioFlow] scene renderer', error),
     });
     // A new renderer starts with the current scene; cues that arrived before it are not replayed.
     this.playedSeq = this.cue()?.seq ?? null;

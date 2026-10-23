@@ -46,7 +46,7 @@
       "steps": "Regie at 1280 x 720 (the default viewport of the harness), click «Gerät koppeln» (the dock opens on the tab «Laptop»), click the tab «Handy» (works: the Laptop panel is short), wait for the QR code, then try to click the tab «Laptop» or «Link» again.",
       "expected": "The tabs are visible and clickable (a tab button is 32 px high); DEV-01: critical controls reachable at 1280 x 720.",
       "actual": "getBoundingClientRect: .c-tabs 320 x 2 px at (307,465), tab buttons 106 x 32 px overflowing it, the panel (.c-pair__panel, 282 px) starts at y=475 and covers them; Playwright: the click on the tab is intercepted by the panel text (<p class=c-pair__text>) or the dock header, 15 s timeout. On the Laptop and Link tabs the row is 34 px high (the panels are shorter). Only the keyboard (focus + Enter) switches tabs from the Handy tab. Reproduced in every run that clicked a tab after the QR code had loaded.",
-      "evidence": "E2E_BUG_REPORT=1 run (twice): tab row height 2, expected >= 30 (test E2E-PAIR-01 [ui, dock tabs]); screenshot tests/e2e/.output/fs-e2e-2/artifacts/devices-pair-ui-PAIR-phone-74a92--Regie-the-code-is-replaced-smoke/test-failed-1.png of an earlier run shows the hairline above the QR code; measured: .c-tabs 307,465 320x2, tab button 308,466 106x32, panel 307,475 320x282.",
+      "evidence": "E2E_BUG_REPORT=1 run (twice): tab row height 2, expected >= 30 (test E2E-PAIR-01 [ui, dock tabs]); screenshot tests/e2e/.output/sf-e2e-2/artifacts/devices-pair-ui-PAIR-phone-74a92--Regie-the-code-is-replaced-smoke/test-failed-1.png of an earlier run shows the hairline above the QR code; measured: .c-tabs 307,465 320x2, tab button 308,466 106x32, panel 307,475 320x282.",
       "fix": "Give the tab row flex: none (or min-height) so the panel scrolls instead of the tabs shrinking; or scroll the dock body, not the tab row."
     },
     "DEV-05": {
@@ -58,7 +58,7 @@
       "steps": "Pair a phone, start the camera, press «Dunkel»; run axe (wcag2a, wcag2aa) on the black screen.",
       "expected": "docs/testing.md E2E-DEV-15: 0 critical/serious axe violations (colour-contrast findings reviewed individually).",
       "actual": "axe color-contrast (serious): .c-phone__dark-code #53595f on #000000 = 2.96:1 (needs 3:1 for large text); .c-phone__dark-hint #464a4f on #000000 = 2.35:1 (needs 4.5:1). Every other state of the phone and laptop sender passes axe (wcag2a, wcag2aa) without findings. The dimness is probably intended (no glare on a stage); it needs either a decision (accepted finding with reason) or a lighter grey.",
-      "evidence": "tests/e2e/.output/fs-e2e-2/artifacts/devices-dev-sender-modes-D-25a30-contrast-of-WCAG-AA-DEV-05--desktop-chromium/axe-dark-contrast.json (attached by the test)",
+      "evidence": "tests/e2e/.output/sf-e2e-2/artifacts/devices-dev-sender-modes-D-25a30-contrast-of-WCAG-AA-DEV-05--desktop-chromium/axe-dark-contrast.json (attached by the test)",
       "fix": "Lighten the text colours of .c-phone__dark-code (to about #767c84 or lighter, 4.5:1 on black) and .c-phone__dark-hint, or accept the colour-contrast rule for the dark screen with a written reason."
     },
     "DEV-06": {

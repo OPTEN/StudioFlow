@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Application.Ports;
+namespace Opten.StudioFlow.Core.Application.Ports;
 
 /// <summary>Issues LiveKit access tokens (spec 7). The grants follow the role exactly.</summary>
 public interface ILiveKitTokenIssuer
@@ -38,7 +38,7 @@ public sealed class LiveKitUnavailableException : Exception
     }
 }
 
-/// <summary>Kind of a LiveKit webhook event that FlowStudio reacts to.</summary>
+/// <summary>Kind of a LiveKit webhook event that StudioFlow reacts to.</summary>
 public enum LiveKitEventKind
 {
     /// <summary>Any other event (ignored).</summary>

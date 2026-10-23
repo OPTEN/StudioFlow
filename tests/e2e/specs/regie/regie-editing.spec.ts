@@ -636,7 +636,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       // The renderer draws the cropped part at the same picture size: the uncropped box stays 600 wide.
       const cropBox = await page
         .locator(
-          `${'fs-monitor.c-monitor--program'} .fs-r-item[data-item-id="itm_crop1"] .fs-r-crop`,
+          `${'sf-monitor.c-monitor--program'} .sf-r-item[data-item-id="itm_crop1"] .sf-r-crop`,
         )
         .evaluate((element) => ({
           width: parseFloat((element as HTMLElement).style.width),

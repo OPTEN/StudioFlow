@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import { formatBytes, type AssetDto } from '@flowstudio/scene-model';
+import { formatBytes, type AssetDto } from '@studioflow/scene-model';
 import { ApiError, toGermanMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';

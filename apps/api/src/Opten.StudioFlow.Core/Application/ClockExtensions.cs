@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Application;
+namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>Time values that are stored and sent to clients.</summary>
 public static class ClockExtensions

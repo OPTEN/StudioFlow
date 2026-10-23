@@ -32,7 +32,7 @@ services:
   # Weitere Möglichkeiten (bei Bedarf einkommentieren):
   # caddy:
   #   # Andere Host-Ports, wenn 80/443 belegt sind. HTTP/3 (Alt-Svc) und die HTTP->HTTPS-Umleitung gehen von 443
-  #   # aus; dazu in .env FLOWSTUDIO_PUBLIC_BASE_URL=https://localhost:8443 setzen.
+  #   # aus; dazu in .env STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:8443 setzen.
   #   ports: !override
   #     - "8080:80"
   #     - "8443:443"

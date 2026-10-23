@@ -58,17 +58,17 @@ test.describe('OUT access and reload', () => {
       const facts = [];
       for (const entry of opened) {
         await expect
-          .poll(() => entry.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: `${entry.name}: slate` })
+          .poll(() => entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: `${entry.name}: slate` })
           .toBe(DE.slateDenied);
         await sleep(500);
         facts.push(await entry.page.evaluate(() => ({
           text: document.body.innerText.replace(/\s+/g, ' ').trim(),
-          title: document.querySelector('.fs-r-slate-title')?.textContent,
-          subtitle: document.querySelector('.fs-r-slate-subtitle')?.textContent,
-          layers: document.querySelectorAll('.fs-r-layer').length,
+          title: document.querySelector('.sf-r-slate-title')?.textContent,
+          subtitle: document.querySelector('.sf-r-slate-subtitle')?.textContent,
+          layers: document.querySelectorAll('.sf-r-layer').length,
           videos: document.querySelectorAll('video').length,
           items: document.querySelectorAll('[data-item-id]').length,
-          slateOpacity: getComputedStyle(document.querySelector('.fs-r-slate')!).opacity,
+          slateOpacity: getComputedStyle(document.querySelector('.sf-r-slate')!).opacity,
           denySlate: (window as unknown as { __outProbe: { denySeen: boolean } }).__outProbe.denySeen,
         })));
       }
@@ -110,14 +110,14 @@ test.describe('OUT access and reload', () => {
       }
       await recordMeasurement(test.info(), 'out-12-attempts', { attemptsAtSeconds: attempts }, Object.entries(attempts).map(([name, times]) => `${name}: ${times.join('/') || 'none'} s`).join('; '));
       for (const entry of opened) {
-        expect(await entry.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(DE.slateDenied);
+        expect(await entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(DE.slateDenied);
       }
 
       // The corrected link works after a reload.
       const fixed = opened[0]!;
       await fixed.page.goto(`/o/${production.slug}?k=${production.outputKey}`);
       await expect
-        .poll(() => fixed.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: 'the corrected link shows the standby slate' })
+        .poll(() => fixed.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: 'the corrected link shows the standby slate' })
         .toBe(DE.slateStandby);
     },
   );
@@ -166,10 +166,10 @@ test.describe('OUT access and reload', () => {
       expect((await api.getSnapshot(production.id)).body.outputStatus.state, 'the Regie sees no output').toBe('none');
 
       // The old link stays refused (also after a reload), the open page does not come back by itself with the old key.
-      const stillDenied = await output.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent);
+      const stillDenied = await output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent);
       expect(stillDenied).toBe(DE.slateDenied);
       await output.page.goto(oldUrl);
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
       await sleep(2000);
       expect((await outputParticipants(production)).length, 'a refused page joins no room').toBe(0);
 
@@ -211,7 +211,7 @@ test.describe('OUT access and reload', () => {
 
       // A reload with the foreign list stays refused.
       await output.page.reload();
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.fs-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
 
       // Allowed again: the page that is still open (after the reload, with the stored key) retries on its own.
       const allowedAt = Date.now();

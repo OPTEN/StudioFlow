@@ -1,4 +1,4 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@flowstudio/scene-model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
 
 import type { StageFit } from './types';
 

@@ -134,7 +134,7 @@ describe('LiveKitSourceProvider', () => {
       await flushMicrotasks();
     });
 
-    it('ignores tracks that are not FlowStudio video slots', () => {
+    it('ignores tracks that are not StudioFlow video slots', () => {
       const { room, provider, changes } = setup();
       room.subscribe(DEVICE, 'microphone');
       room.subscribe(DEVICE, 'screen-10');

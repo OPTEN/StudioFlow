@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// Row of <c>source_activity</c>: when a device source was last live (GAP-08). Persistence detail only; the core sees

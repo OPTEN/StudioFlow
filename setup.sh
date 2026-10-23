@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# FlowStudio setup: writes .env (domain, node IP, TLS mode, admin account, random secrets).
+# StudioFlow setup: writes .env (domain, node IP, TLS mode, admin account, random secrets).
 # Same behaviour as setup.ps1. Run ./setup.sh --help for the options.
 set -euo pipefail
 # Lists (hosts, origins) are split on whitespace below; never expand globs such as https://*.example.com.
 set -f
 
-FS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=infra/scripts/common.sh
-. "$FS_ROOT/infra/scripts/common.sh"
+. "$SF_ROOT/infra/scripts/common.sh"
 
 readonly TLS_MODES="internal acme custom dns-cloudflare dns-infomaniak dns-hetzner dns-desec dns-route53 dns-gandi dns-ovh"
 readonly MIN_PASSWORD_LENGTH=12
@@ -16,11 +16,11 @@ readonly INTERNAL_HSTS_MAX_AGE=3600
 
 usage() {
 	cat <<'EOF'
-FlowStudio einrichten: schreibt die .env mit zufälligen Secrets und dem Hash des Admin-Passworts.
+StudioFlow einrichten: schreibt die .env mit zufälligen Secrets und dem Hash des Admin-Passworts.
 
 Aufruf: ./setup.sh [Optionen]
 
-  --domain NAME              Hostname der Regie, z. B. flowstudio.opten.ch (Test: localhost)
+  --domain NAME              Hostname der Regie, z. B. studioflow.opten.ch (Test: localhost)
   --node-ip IPV4             LAN-IPv4 des Servers für die Medien (Standard: automatisch erkannt)
   --tls-mode MODUS           internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner |
                              dns-desec | dns-route53 | dns-gandi | dns-ovh
@@ -44,7 +44,7 @@ OVH_APPLICATION_SECRET + OVH_CONSUMER_KEY.
 
 Beispiele:
   ./setup.sh
-  ./setup.sh --non-interactive --domain flowstudio.opten.ch --tls-mode dns-cloudflare --generate-password
+  ./setup.sh --non-interactive --domain studioflow.opten.ch --tls-mode dns-cloudflare --generate-password
   printf '%s' "$PASSWORT" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 \
       --tls-mode internal --admin-password-stdin
 
@@ -55,7 +55,7 @@ EOF
 # --- options ----------------------------------------------------------------------------------------------------
 
 opt_domain="" opt_node_ip="" opt_tls_mode="" opt_acme_email="" opt_challenge_domain="" opt_extra_hosts=""
-opt_frame_ancestors="" opt_admin_user="" password_source="" plain_password=false env_file="$FS_ROOT/.env"
+opt_frame_ancestors="" opt_admin_user="" password_source="" plain_password=false env_file="$SF_ROOT/.env"
 interactive=true force=false
 has_extra_hosts=false has_frame_ancestors=false has_acme_email=false has_challenge_domain=false
 
@@ -68,7 +68,7 @@ while [ $# -gt 0 ]; do
 			arg="${arg%%=*}"
 			;;
 		--domain | --node-ip | --tls-mode | --acme-email | --dns-challenge-domain | --extra-hosts | --frame-ancestors | --admin-user | --env-file)
-			[ $# -ge 2 ] || fs_die "Option $arg braucht einen Wert (siehe --help)."
+			[ $# -ge 2 ] || sf_die "Option $arg braucht einen Wert (siehe --help)."
 			value="$2"
 			shift
 			;;
@@ -92,7 +92,7 @@ while [ $# -gt 0 ]; do
 			usage
 			exit 0
 			;;
-		*) fs_die "Unbekannte Option: $1 (siehe --help)." ;;
+		*) sf_die "Unbekannte Option: $1 (siehe --help)." ;;
 	esac
 	shift
 done
@@ -187,7 +187,7 @@ env_value() {
 env_line() {
 	local key="$1" value="$2"
 	case "$value" in
-		*"'"* | *$'\n'* | *$'\r'*) fs_die "Der Wert für $key enthält ein Hochkomma oder einen Zeilenumbruch; das ist in .env nicht möglich." ;;
+		*"'"* | *$'\n'* | *$'\r'*) sf_die "Der Wert für $key enthält ein Hochkomma oder einen Zeilenumbruch; das ist in .env nicht möglich." ;;
 	esac
 	if [[ "$value" =~ ^[A-Za-z0-9_.,:/@+=-]*$ ]]; then
 		printf '%s=%s\n' "$key" "$value"
@@ -197,7 +197,7 @@ env_line() {
 }
 
 require_tty() {
-	{ : </dev/tty; } 2>/dev/null || fs_die "Kein Terminal für Rückfragen. Mit --non-interactive und den Optionen aufrufen (siehe --help)."
+	{ : </dev/tty; } 2>/dev/null || sf_die "Kein Terminal für Rückfragen. Mit --non-interactive und den Optionen aufrufen (siehe --help)."
 }
 
 # prompt <question> <default> -> answer (default on empty input).
@@ -243,62 +243,62 @@ docker_available() { docker info >/dev/null 2>&1 && docker compose version >/dev
 # --- collect the configuration ------------------------------------------------------------------------------------
 
 if [ "$password_source" = stdin ] && [ "$interactive" = true ]; then
-	fs_die "--admin-password-stdin geht nur zusammen mit --non-interactive."
+	sf_die "--admin-password-stdin geht nur zusammen mit --non-interactive."
 fi
 [ "$interactive" = true ] && require_tty
 
 env_dir="$(dirname "$env_file")"
-[ -d "$env_dir" ] || fs_die "Verzeichnis $env_dir existiert nicht."
+[ -d "$env_dir" ] || sf_die "Verzeichnis $env_dir existiert nicht."
 env_file="$(cd "$env_dir" && pwd)/$(basename "$env_file")"
 
 if [ -e "$env_file" ] && [ "$force" != true ]; then
-	fs_die "$env_file existiert bereits. Mit --force ersetzen (eine Kopie bleibt erhalten, Secrets werden übernommen)."
+	sf_die "$env_file existiert bereits. Mit --force ersetzen (eine Kopie bleibt erhalten, Secrets werden übernommen)."
 fi
 
-fs_step "FlowStudio einrichten"
-[ -e "$env_file" ] && fs_info "Bestehende $(basename "$env_file") wird ersetzt; Secrets und Admin-Konto werden übernommen."
+sf_step "StudioFlow einrichten"
+[ -e "$env_file" ] && sf_info "Bestehende $(basename "$env_file") wird ersetzt; Secrets und Admin-Konto werden übernommen."
 
 # Node IP
 node_ip="$opt_node_ip"
 if [ -z "$node_ip" ]; then
 	detected_ip="$(detect_node_ip || true)"
-	default_ip="$(env_value FLOWSTUDIO_NODE_IP)"
+	default_ip="$(env_value STUDIOFLOW_NODE_IP)"
 	default_ip="${default_ip:-$detected_ip}"
 	if [ "$interactive" = true ]; then
-		[ -n "$detected_ip" ] && fs_info "Erkannte LAN-IPv4 dieses Rechners: $detected_ip"
+		[ -n "$detected_ip" ] && sf_info "Erkannte LAN-IPv4 dieses Rechners: $detected_ip"
 		node_ip="$(prompt "LAN-IPv4 des Servers (Medien für Handys und Laptops)" "$default_ip")"
 	else
 		node_ip="$default_ip"
 	fi
 fi
-is_ipv4 "$node_ip" || fs_die "Ungültige oder fehlende LAN-IPv4: «$node_ip» (Option --node-ip)."
+is_ipv4 "$node_ip" || sf_die "Ungültige oder fehlende LAN-IPv4: «$node_ip» (Option --node-ip)."
 
 # TLS mode
 tls_mode="$opt_tls_mode"
 if [ -z "$tls_mode" ]; then
-	tls_mode="$(env_value FLOWSTUDIO_TLS_MODE)"
+	tls_mode="$(env_value STUDIOFLOW_TLS_MODE)"
 	tls_mode="${tls_mode:-internal}"
 	if [ "$interactive" = true ]; then
-		fs_info "TLS-Modi: internal (lokale CA, Test) | acme (VPS, öffentlich erreichbar) | custom (eigenes Zertifikat)"
-		fs_info "          dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh"
+		sf_info "TLS-Modi: internal (lokale CA, Test) | acme (VPS, öffentlich erreichbar) | custom (eigenes Zertifikat)"
+		sf_info "          dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh"
 		tls_mode="$(prompt "TLS-Modus" "$tls_mode")"
 	fi
 fi
-is_tls_mode "$tls_mode" || fs_die "Unbekannter TLS-Modus: «$tls_mode». Erlaubt: $TLS_MODES"
+is_tls_mode "$tls_mode" || sf_die "Unbekannter TLS-Modus: «$tls_mode». Erlaubt: $TLS_MODES"
 
 # Domain
 domain="$opt_domain"
 if [ -z "$domain" ]; then
-	domain="$(env_value FLOWSTUDIO_DOMAIN)"
+	domain="$(env_value STUDIOFLOW_DOMAIN)"
 	if [ -z "$domain" ] && [ "$tls_mode" = internal ]; then domain="$node_ip"; fi
 	if [ "$interactive" = true ]; then
-		domain="$(prompt "Domain der Regie (z. B. flowstudio.opten.ch; im Modus internal auch die IP)" "$domain")"
+		domain="$(prompt "Domain der Regie (z. B. studioflow.opten.ch; im Modus internal auch die IP)" "$domain")"
 	fi
 fi
 domain="$(printf '%s' "$domain" | tr '[:upper:]' '[:lower:]')"
-is_host "$domain" || fs_die "Ungültige oder fehlende Domain: «$domain» (Option --domain)."
+is_host "$domain" || sf_die "Ungültige oder fehlende Domain: «$domain» (Option --domain)."
 if is_ipv4 "$domain" && [ "$tls_mode" != internal ] && [ "$tls_mode" != custom ]; then
-	fs_die "Für eine IP-Adresse gibt es kein Zertifikat per $tls_mode. TLS-Modus internal verwenden."
+	sf_die "Für eine IP-Adresse gibt es kein Zertifikat per $tls_mode. TLS-Modus internal verwenden."
 fi
 
 # ACME e-mail and DNS challenge delegation
@@ -308,10 +308,10 @@ case "$tls_mode" in
 		if [ "$has_acme_email" = true ]; then
 			acme_email="$opt_acme_email"
 		else
-			acme_email="$(env_value FLOWSTUDIO_ACME_EMAIL)"
+			acme_email="$(env_value STUDIOFLOW_ACME_EMAIL)"
 			[ "$interactive" = true ] && acme_email="$(prompt "E-Mail für Let's Encrypt (leer erlaubt)" "$acme_email")"
 		fi
-		[ -z "$acme_email" ] || is_email "$acme_email" || fs_die "Ungültige E-Mail: «$acme_email»."
+		[ -z "$acme_email" ] || is_email "$acme_email" || sf_die "Ungültige E-Mail: «$acme_email»."
 		;;
 esac
 case "$tls_mode" in
@@ -319,11 +319,11 @@ case "$tls_mode" in
 		if [ "$has_challenge_domain" = true ]; then
 			challenge_domain="$opt_challenge_domain"
 		else
-			challenge_domain="$(env_value FLOWSTUDIO_DNS_CHALLENGE_DOMAIN)"
+			challenge_domain="$(env_value STUDIOFLOW_DNS_CHALLENGE_DOMAIN)"
 			[ "$interactive" = true ] && challenge_domain="$(prompt "_acme-challenge per CNAME delegiert? Dann das CNAME-Ziel, sonst leer" "$challenge_domain")"
 		fi
 		challenge_domain="$(printf '%s' "$challenge_domain" | tr '[:upper:]' '[:lower:]')"
-		[ -z "$challenge_domain" ] || is_hostname "${challenge_domain#_acme-challenge.}" || fs_die "Ungültiges CNAME-Ziel: «$challenge_domain»."
+		[ -z "$challenge_domain" ] || is_hostname "${challenge_domain#_acme-challenge.}" || sf_die "Ungültiges CNAME-Ziel: «$challenge_domain»."
 		;;
 esac
 
@@ -335,7 +335,7 @@ for var in $(provider_vars "$tls_mode"); do
 	if [ -z "$value" ] && [ "$interactive" = true ]; then
 		if is_secret_var "$var"; then value="$(prompt_secret "$var (wird verdeckt eingegeben)")"; else value="$(prompt "$var" "")"; fi
 	fi
-	[ -n "$value" ] || fs_die "$var fehlt für den TLS-Modus $tls_mode (Umgebungsvariable setzen oder interaktiv eingeben)."
+	[ -n "$value" ] || sf_die "$var fehlt für den TLS-Modus $tls_mode (Umgebungsvariable setzen oder interaktiv eingeben)."
 	provider_lines+="$(env_line "$var" "$value")"$'\n'
 done
 
@@ -344,31 +344,31 @@ extra_hosts="" default_sni=""
 if [ "$has_extra_hosts" = true ]; then
 	extra_hosts="$opt_extra_hosts"
 elif [ "$tls_mode" = internal ]; then
-	extra_hosts="$(env_value FLOWSTUDIO_EXTRA_HOSTS)"
+	extra_hosts="$(env_value STUDIOFLOW_EXTRA_HOSTS)"
 	if [ "$interactive" = true ] && ! is_ipv4 "$domain"; then
 		extra_hosts="$(prompt "Weitere Adressen, z. B. $node_ip für den Zugriff per IP (leer = keine)" "$extra_hosts")"
 	fi
 fi
 extra_hosts="$(normalize_list "$(printf '%s' "$extra_hosts" | tr '[:upper:]' '[:lower:]')")"
 for host in $extra_hosts; do
-	is_host "$host" || fs_die "Ungültige weitere Adresse: «$host»."
+	is_host "$host" || sf_die "Ungültige weitere Adresse: «$host»."
 	if [ -z "$default_sni" ] && is_ipv4 "$host"; then default_sni="$host"; fi
 done
 if [ -n "$extra_hosts" ] && [ "$tls_mode" != internal ]; then
-	fs_warn "Weitere Adressen sind nur im Modus internal sinnvoll; für $tls_mode braucht jede ein eigenes Zertifikat."
+	sf_warn "Weitere Adressen sind nur im Modus internal sinnvoll; für $tls_mode braucht jede ein eigenes Zertifikat."
 fi
 
 # Frame ancestors
 if [ "$has_frame_ancestors" = true ]; then
 	frame_ancestors="$opt_frame_ancestors"
 else
-	frame_ancestors="$(env_value FLOWSTUDIO_FRAME_ANCESTORS)"
-	[ "$interactive" = true ] && frame_ancestors="$(prompt "Origins, die den Output einbetten dürfen (z. B. https://proxy.example.ch; leer = nur FlowStudio selbst)" "$frame_ancestors")"
+	frame_ancestors="$(env_value STUDIOFLOW_FRAME_ANCESTORS)"
+	[ "$interactive" = true ] && frame_ancestors="$(prompt "Origins, die den Output einbetten dürfen (z. B. https://proxy.example.ch; leer = nur StudioFlow selbst)" "$frame_ancestors")"
 fi
 frame_ancestors="$(normalize_list "$frame_ancestors")"
 for origin in $frame_ancestors; do
-	[ "$origin" = "'self'" ] && fs_die "'self' ist immer erlaubt und gehört nicht in --frame-ancestors."
-	is_frame_ancestor "$origin" || fs_die "Ungültige Quelle für frame-ancestors: «$origin» (Beispiel: https://proxy.example.ch)."
+	[ "$origin" = "'self'" ] && sf_die "'self' ist immer erlaubt und gehört nicht in --frame-ancestors."
+	is_frame_ancestor "$origin" || sf_die "Ungültige Quelle für frame-ancestors: «$origin» (Beispiel: https://proxy.example.ch)."
 done
 
 # Admin account
@@ -378,27 +378,27 @@ if [ -z "$admin_user" ]; then
 	admin_user="${admin_user:-admin}"
 	[ "$interactive" = true ] && admin_user="$(prompt "Benutzername des Admin-Kontos" "$admin_user")"
 fi
-is_admin_user "$admin_user" || fs_die "Ungültiger Benutzername «$admin_user» (1–64 Zeichen: Buchstaben, Ziffern, . _ @ -)."
+is_admin_user "$admin_user" || sf_die "Ungültiger Benutzername «$admin_user» (1–64 Zeichen: Buchstaben, Ziffern, . _ @ -)."
 
 existing_hash="$(env_value ADMIN__PASSWORDHASH)"
 existing_plain="$(env_value ADMIN__PASSWORD)"
 password="" password_generated=false keep_credentials=false
 case "$password_source" in
 	stdin)
-		IFS= read -r password || [ -n "$password" ] || fs_die "Kein Passwort auf der Standardeingabe."
+		IFS= read -r password || [ -n "$password" ] || sf_die "Kein Passwort auf der Standardeingabe."
 		password="${password%$'\r'}"
 		;;
 	generate) password_generated=true ;;
 	*)
-		if [ -n "$existing_hash$existing_plain" ] && { [ "$interactive" != true ] || fs_confirm "Bestehendes Admin-Passwort behalten?" j; }; then
+		if [ -n "$existing_hash$existing_plain" ] && { [ "$interactive" != true ] || sf_confirm "Bestehendes Admin-Passwort behalten?" j; }; then
 			keep_credentials=true
 		elif [ "$interactive" = true ]; then
 			while :; do
 				password="$(prompt_secret "Admin-Passwort (mind. $MIN_PASSWORD_LENGTH Zeichen; leer = starkes Passwort erzeugen)")"
 				[ -n "$password" ] || break
-				if [ ${#password} -lt "$MIN_PASSWORD_LENGTH" ]; then fs_warn "Zu kurz."; continue; fi
+				if [ ${#password} -lt "$MIN_PASSWORD_LENGTH" ]; then sf_warn "Zu kurz."; continue; fi
 				[ "$(prompt_secret "Admin-Passwort wiederholen")" = "$password" ] && break
-				fs_warn "Die Eingaben stimmen nicht überein."
+				sf_warn "Die Eingaben stimmen nicht überein."
 			done
 			[ -n "$password" ] || password_generated=true
 		else
@@ -409,19 +409,19 @@ esac
 if [ "$password_generated" = true ]; then
 	password="$(random_alnum "$GENERATED_PASSWORD_LENGTH")"
 elif [ "$keep_credentials" != true ] && [ ${#password} -lt "$MIN_PASSWORD_LENGTH" ]; then
-	fs_die "Das Admin-Passwort braucht mindestens $MIN_PASSWORD_LENGTH Zeichen."
+	sf_die "Das Admin-Passwort braucht mindestens $MIN_PASSWORD_LENGTH Zeichen."
 fi
 
 # Secrets: keep existing ones (the database password is fixed once PostgreSQL is initialised).
 postgres_password="$(env_value POSTGRES_PASSWORD)"
 [[ "$postgres_password" =~ ^[A-Za-z0-9]{16,}$ ]] || postgres_password="$(random_alnum 32)"
 livekit_key="$(env_value LIVEKIT_API_KEY)"
-[[ "$livekit_key" =~ ^[A-Za-z][A-Za-z0-9_-]{2,63}$ ]] || livekit_key=flowstudio
+[[ "$livekit_key" =~ ^[A-Za-z][A-Za-z0-9_-]{2,63}$ ]] || livekit_key=studioflow
 livekit_secret="$(env_value LIVEKIT_API_SECRET)"
 is_livekit_secret "$livekit_secret" || livekit_secret="sk$(random_hex 20)"
 
 hsts_line=""
-[ "$tls_mode" = internal ] && hsts_line="$(env_line FLOWSTUDIO_HSTS_MAX_AGE "$INTERNAL_HSTS_MAX_AGE")"$'\n'
+[ "$tls_mode" = internal ] && hsts_line="$(env_line STUDIOFLOW_HSTS_MAX_AGE "$INTERNAL_HSTS_MAX_AGE")"$'\n'
 
 # --- write .env ---------------------------------------------------------------------------------------------------
 
@@ -432,17 +432,17 @@ trap 'rm -f "$tmp_env"' EXIT
 write_env() {
 	local admin_lines="$1"
 	{
-		printf '# FlowStudio – erzeugt von setup.sh am %s. Nie ins Git; Kopie in den Passwort-Tresor.\n' "$(date '+%Y-%m-%d %H:%M')"
+		printf '# StudioFlow – erzeugt von setup.sh am %s. Nie ins Git; Kopie in den Passwort-Tresor.\n' "$(date '+%Y-%m-%d %H:%M')"
 		printf '# Alle Variablen: .env.example und docs/architecture/implementation-spec.md (Abschnitt 10).\n\n'
-		env_line FLOWSTUDIO_DOMAIN "$domain"
-		env_line FLOWSTUDIO_NODE_IP "$node_ip"
-		[ -n "$extra_hosts" ] && env_line FLOWSTUDIO_EXTRA_HOSTS "$extra_hosts"
-		[ -n "$default_sni" ] && env_line FLOWSTUDIO_DEFAULT_SNI "$default_sni"
-		env_line FLOWSTUDIO_TLS_MODE "$tls_mode"
-		[ -n "$acme_email" ] && env_line FLOWSTUDIO_ACME_EMAIL "$acme_email"
-		[ -n "$challenge_domain" ] && env_line FLOWSTUDIO_DNS_CHALLENGE_DOMAIN "$challenge_domain"
+		env_line STUDIOFLOW_DOMAIN "$domain"
+		env_line STUDIOFLOW_NODE_IP "$node_ip"
+		[ -n "$extra_hosts" ] && env_line STUDIOFLOW_EXTRA_HOSTS "$extra_hosts"
+		[ -n "$default_sni" ] && env_line STUDIOFLOW_DEFAULT_SNI "$default_sni"
+		env_line STUDIOFLOW_TLS_MODE "$tls_mode"
+		[ -n "$acme_email" ] && env_line STUDIOFLOW_ACME_EMAIL "$acme_email"
+		[ -n "$challenge_domain" ] && env_line STUDIOFLOW_DNS_CHALLENGE_DOMAIN "$challenge_domain"
 		printf '%s' "$provider_lines" "$hsts_line"
-		[ -n "$frame_ancestors" ] && env_line FLOWSTUDIO_FRAME_ANCESTORS "$frame_ancestors"
+		[ -n "$frame_ancestors" ] && env_line STUDIOFLOW_FRAME_ANCESTORS "$frame_ancestors"
 		printf '\n'
 		env_line ADMIN__USERNAME "$admin_user"
 		printf '%s' "$admin_lines"
@@ -457,13 +457,13 @@ write_env() {
 # the ASP.NET Identity v3 hash. Prints the hash, or returns 1 and shows the end of the error output.
 hash_password() {
 	local env_arg out err hash="" rc=0
-	env_arg="$(fs_host_path "$tmp_env")"
+	env_arg="$(sf_host_path "$tmp_env")"
 	out="$(mktemp)"
 	err="$(mktemp)"
-	fs_info "API-Image wird gebaut (für den Passwort-Hash) …" >&2
-	if ! fs_compose --env-file "$env_arg" build api >"$err" 2>&1; then
+	sf_info "API-Image wird gebaut (für den Passwort-Hash) …" >&2
+	if ! sf_compose --env-file "$env_arg" build api >"$err" 2>&1; then
 		rc=1
-	elif ! printf '%s' "$password" | fs_compose --env-file "$env_arg" run --rm --no-deps -T --entrypoint dotnet api "$FS_API_DLL" hash-password >"$out" 2>"$err"; then
+	elif ! printf '%s' "$password" | sf_compose --env-file "$env_arg" run --rm --no-deps -T --entrypoint dotnet api "$SF_API_DLL" hash-password >"$out" 2>"$err"; then
 		rc=1
 	else
 		hash="$(tr -d '\r' <"$out" | awk 'NF { line = $0 } END { print line }')"
@@ -481,17 +481,17 @@ if [ "$keep_credentials" = true ]; then
 	[ -n "$existing_plain" ] && admin_lines+="$(env_line ADMIN__PASSWORD "$existing_plain")"$'\n'
 	write_env "$admin_lines"
 elif [ "$plain_password" = true ]; then
-	fs_warn "Das Admin-Passwort wird im Klartext gespeichert (--plain-password). Nur für lokale Entwicklung."
+	sf_warn "Das Admin-Passwort wird im Klartext gespeichert (--plain-password). Nur für lokale Entwicklung."
 	write_env "$(env_line ADMIN__PASSWORD "$password")"$'\n'
 else
 	write_env ""
 	if docker_available && hash="$(hash_password)"; then
 		write_env "$(env_line ADMIN__PASSWORDHASH "$hash")"$'\n'
-		fs_info "Admin-Passwort als Hash gespeichert."
+		sf_info "Admin-Passwort als Hash gespeichert."
 	else
-		docker_available || fs_warn "Docker ist nicht verfügbar; der Passwort-Hash braucht das API-Image."
-		fs_warn "Der Passwort-Hash konnte nicht über das API-Image erzeugt werden (Build fehlgeschlagen oder «hash-password» fehlt)."
-		fs_warn "Das Passwort wird vorerst im Klartext (ADMIN__PASSWORD) gespeichert. Später ./setup.sh --force ausführen und ein neues Passwort setzen."
+		docker_available || sf_warn "Docker ist nicht verfügbar; der Passwort-Hash braucht das API-Image."
+		sf_warn "Der Passwort-Hash konnte nicht über das API-Image erzeugt werden (Build fehlgeschlagen oder «hash-password» fehlt)."
+		sf_warn "Das Passwort wird vorerst im Klartext (ADMIN__PASSWORD) gespeichert. Später ./setup.sh --force ausführen und ein neues Passwort setzen."
 		write_env "$(env_line ADMIN__PASSWORD "$password")"$'\n'
 	fi
 fi
@@ -500,7 +500,7 @@ if [ -e "$env_file" ]; then
 	backup_file="$env_file.backup-$(date '+%Y%m%d-%H%M%S')"
 	cp -p "$env_file" "$backup_file"
 	chmod 600 "$backup_file" 2>/dev/null || true
-	fs_info "Bisherige Datei gesichert: $backup_file (eigene Ergänzungen von dort übernehmen)."
+	sf_info "Bisherige Datei gesichert: $backup_file (eigene Ergänzungen von dort übernehmen)."
 fi
 chmod 600 "$tmp_env" 2>/dev/null || true
 mv -f "$tmp_env" "$env_file"
@@ -508,19 +508,19 @@ trap - EXIT
 
 # --- summary ------------------------------------------------------------------------------------------------------
 
-fs_step "Fertig: $env_file"
-fs_info "Regie:      https://$domain/"
-fs_info "Sender:     https://$domain/join"
-fs_info "Medien:     $node_ip (7881/tcp, 7882/udp)   TLS: $tls_mode"
+sf_step "Fertig: $env_file"
+sf_info "Regie:      https://$domain/"
+sf_info "Sender:     https://$domain/join"
+sf_info "Medien:     $node_ip (7881/tcp, 7882/udp)   TLS: $tls_mode"
 case "$tls_mode" in
-	internal) fs_info "Zertifikat: lokale CA – auf jedem Gerät einmal https://$domain/ca.crt installieren (docs/runbook.md)." ;;
-	dns-*) fs_info "Zertifikat: Let's Encrypt per DNS-Challenge; der A-Record von $domain zeigt auf $node_ip." ;;
-	acme) fs_info "Zertifikat: Let's Encrypt per HTTP-01; 80/tcp und 443/tcp müssen öffentlich erreichbar sein." ;;
-	custom) fs_info "Zertifikat: ./certs/fullchain.pem und privkey.pem nach /certs mounten (docker-compose.override.example.yml)." ;;
+	internal) sf_info "Zertifikat: lokale CA – auf jedem Gerät einmal https://$domain/ca.crt installieren (docs/runbook.md)." ;;
+	dns-*) sf_info "Zertifikat: Let's Encrypt per DNS-Challenge; der A-Record von $domain zeigt auf $node_ip." ;;
+	acme) sf_info "Zertifikat: Let's Encrypt per HTTP-01; 80/tcp und 443/tcp müssen öffentlich erreichbar sein." ;;
+	custom) sf_info "Zertifikat: ./certs/fullchain.pem und privkey.pem nach /certs mounten (docker-compose.override.example.yml)." ;;
 esac
 if [ "$password_generated" = true ]; then
 	printf '\nAdmin-Konto: %s\nPasswort:    %s\n' "$admin_user" "$password"
-	fs_info "Das Passwort wird nur jetzt angezeigt. Im Passwort-Tresor ablegen."
+	sf_info "Das Passwort wird nur jetzt angezeigt. Im Passwort-Tresor ablegen."
 fi
-fs_info ""
-fs_info "Nächster Schritt: docker compose up -d --build"
+sf_info ""
+sf_info "Nächster Schritt: docker compose up -d --build"

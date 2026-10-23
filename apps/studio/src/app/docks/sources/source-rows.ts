@@ -7,7 +7,7 @@ import {
   type SceneDto,
   type SourceDto,
   type SourceKind,
-} from '@flowstudio/scene-model';
+} from '@studioflow/scene-model';
 import type { IconName } from '../../core/ui/icon.component';
 import {
   KIND_ICON,

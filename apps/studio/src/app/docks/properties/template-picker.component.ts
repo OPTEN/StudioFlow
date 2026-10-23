@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { LAYOUT_TEMPLATES, autoGridSlots, type LayoutTemplateId } from '@flowstudio/scene-model';
+import { LAYOUT_TEMPLATES, autoGridSlots, type LayoutTemplateId } from '@studioflow/scene-model';
 import { LayoutPreviewComponent, type PreviewBlock } from '../shared/layout-preview.component';
 
 /** Templates whose first slot is the main picture (prototype `presetThumb`: `full`, `pip`, `col`, `onetwo`). */
@@ -32,7 +32,7 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
  * inspector applies it through `EditorService.applyTemplate`.
  */
 @Component({
-  selector: 'fs-template-picker',
+  selector: 'sf-template-picker',
   imports: [LayoutPreviewComponent],
   template: `
     @for (tile of tiles; track tile.id) {
@@ -45,7 +45,7 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
         [disabled]="disabled()"
         (click)="pick.emit(tile.id)"
       >
-        <fs-layout-preview [blocks]="tile.blocks" />
+        <sf-layout-preview [blocks]="tile.blocks" />
         <span class="c-preset__name">{{ tile.name }}</span>
       </button>
     }

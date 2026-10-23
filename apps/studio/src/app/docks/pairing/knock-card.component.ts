@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { formatCheckCode, type PairingRequestDto } from '@flowstudio/scene-model';
+import { formatCheckCode, type PairingRequestDto } from '@studioflow/scene-model';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PairingRequestsService } from './pairing-requests.service';
 
@@ -8,7 +8,7 @@ import { PairingRequestsService } from './pairing-requests.service';
  * large mono, the question and «Zulassen» (go) / «Ablehnen». Both buttons are disabled while an answer is in flight.
  */
 @Component({
-  selector: 'fs-knock-card',
+  selector: 'sf-knock-card',
   imports: [IconComponent],
   template: `
     <div class="c-knock" role="group" aria-label="Kopplungsanfrage">
@@ -22,7 +22,7 @@ import { PairingRequestsService } from './pairing-requests.service';
           [disabled]="busy()"
           (click)="approve()"
         >
-          <svg fsIcon="check" [size]="14"></svg>Zulassen
+          <svg sfIcon="check" [size]="14"></svg>Zulassen
         </button>
         <button class="c-btn c-btn--sm" type="button" [disabled]="busy()" (click)="deny()">
           Ablehnen

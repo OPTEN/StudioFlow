@@ -24,7 +24,7 @@ export const net = {
   /** Offline plus closing every tracked WebSocket and RTCPeerConnection: the closest software "Wi-Fi is gone". */
   async cut(context: BrowserContext): Promise<void> {
     await context.setOffline(true);
-    await Promise.all(context.pages().map((page) => page.evaluate(() => (window as unknown as { __fsNet?: { cut(): void } }).__fsNet?.cut()).catch(() => undefined)));
+    await Promise.all(context.pages().map((page) => page.evaluate(() => (window as unknown as { __sfNet?: { cut(): void } }).__sfNet?.cut()).catch(() => undefined)));
   },
   async restore(context: BrowserContext): Promise<void> {
     await context.setOffline(false);

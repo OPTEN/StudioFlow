@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    FlowStudio aktualisieren: neuen Stand holen, Images bauen, Stack neu starten. Nie während einer Sendung.
+    StudioFlow aktualisieren: neuen Stand holen, Images bauen, Stack neu starten. Nie während einer Sendung.
 
 .DESCRIPTION
     Gleiches Verhalten wie update.sh. Ablauf: Sendestatus prüfen (API: broadcast-status) → optional Sicherung →
@@ -32,8 +32,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version 3.0
-Import-Module (Join-Path $PSScriptRoot 'infra/scripts/FlowStudio.psm1') -Force
-Initialize-FlowStudio -Root $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'infra/scripts/StudioFlow.psm1') -Force
+Initialize-StudioFlow -Root $PSScriptRoot
 
 try
 {
@@ -48,42 +48,42 @@ try
         exit 0
     }
 
-    Assert-FsDocker
-    Assert-FsEnvFile
-    $root = Get-FsRoot
+    Assert-SfDocker
+    Assert-SfEnvFile
+    $root = Get-SfRoot
 
-    Write-FsStep 'Sendestatus prüfen'
-    Assert-FsBroadcastIdle -Action 'Das Update' -Force $Force.IsPresent
+    Write-SfStep 'Sendestatus prüfen'
+    Assert-SfBroadcastIdle -Action 'Das Update' -Force $Force.IsPresent
 
     if ($Backup)
     {
-        Write-FsStep 'Sicherung vor dem Update'
+        Write-SfStep 'Sicherung vor dem Update'
         & pwsh -NoProfile -File (Join-Path $root 'backup.ps1') -Label 'vor-update'
         if ($LASTEXITCODE -ne 0) { throw 'Die Sicherung ist fehlgeschlagen; Update abgebrochen.' }
     }
 
     if (-not $NoPull)
     {
-        Write-FsStep 'Neuen Stand holen (git pull --ff-only)'
+        Write-SfStep 'Neuen Stand holen (git pull --ff-only)'
         if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git wurde nicht gefunden. Neuen Stand von Hand einspielen und ./update.ps1 -NoPull ausführen.' }
         & git -C $root rev-parse --is-inside-work-tree *> $null
         if ($LASTEXITCODE -ne 0) { throw "$root ist kein Git-Arbeitsverzeichnis. Neuen Stand von Hand einspielen und ./update.ps1 -NoPull ausführen." }
         $before = & git -C $root rev-parse --short HEAD
-        Invoke-FsNative -FilePath 'git' -ArgumentList @('-C', $root, 'pull', '--ff-only') `
+        Invoke-SfNative -FilePath 'git' -ArgumentList @('-C', $root, 'pull', '--ff-only') `
             -FailMessage 'git pull --ff-only ist fehlgeschlagen (lokale Änderungen oder abweichender Stand). Nichts neu gestartet.'
         $after = & git -C $root rev-parse --short HEAD
-        if ($before -eq $after) { Write-FsInfo "Bereits aktuell ($after); die Images werden trotzdem neu gebaut und geprüft." }
-        else { Write-FsInfo "Aktualisiert: $before → $after" }
+        if ($before -eq $after) { Write-SfInfo "Bereits aktuell ($after); die Images werden trotzdem neu gebaut und geprüft." }
+        else { Write-SfInfo "Aktualisiert: $before → $after" }
     }
 
-    Write-FsStep 'Images bauen und Stack neu starten'
-    Invoke-FsCompose -Arguments @('config', '--quiet') `
+    Write-SfStep 'Images bauen und Stack neu starten'
+    Invoke-SfCompose -Arguments @('config', '--quiet') `
         -FailMessage 'Die Konfiguration ist ungültig – fehlt eine neue Variable? .env mit .env.example vergleichen.'
-    Start-FsStackAndWait -ExtraArguments @('--build', '--remove-orphans')
+    Start-SfStackAndWait -ExtraArguments @('--build', '--remove-orphans')
 
-    Write-FsStep 'Status'
-    Invoke-FsCompose -Arguments @('ps')
-    Write-FsInfo 'Update abgeschlossen.'
+    Write-SfStep 'Status'
+    Invoke-SfCompose -Arguments @('ps')
+    Write-SfInfo 'Update abgeschlossen.'
 }
 catch
 {

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { operations } from '@flowstudio/scene-model';
+import type { operations } from '@studioflow/scene-model';
 import { firstValueFrom, type Observable } from 'rxjs';
 import { ApiError } from './api-error';
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from './csrf.interceptor';

@@ -18,7 +18,7 @@ import { SplitterDirective } from './splitter.directive';
  * state survives moves and the pairing dock replacing Quellen and Eigenschaften.
  */
 @Component({
-  selector: 'fs-dock-slot',
+  selector: 'sf-dock-slot',
   imports: [
     SplitterDirective,
     ScenesDockComponent,
@@ -32,7 +32,7 @@ import { SplitterDirective } from './splitter.directive';
       <div
         class="c-dock-slot__split"
         [class.c-dock-slot__split--across]="split.across"
-        [fsSplitter]="split.behavior"
+        [sfSplitter]="split.behavior"
         [orientation]="split.across ? 'vertical' : 'horizontal'"
         [splitterDisabled]="viewport.stacked()"
         [attr.aria-label]="split.label"
@@ -40,19 +40,19 @@ import { SplitterDirective } from './splitter.directive';
     }
     @switch (dockId()) {
       @case ('scenes') {
-        <fs-scenes-dock />
+        <sf-scenes-dock />
       }
       @case ('src') {
-        <fs-sources-dock />
+        <sf-sources-dock />
       }
       @case ('insp') {
-        <fs-properties-dock />
+        <sf-properties-dock />
       }
       @case ('st') {
-        <fs-stations-dock />
+        <sf-stations-dock />
       }
       @case ('pair') {
-        <fs-pairing-dock />
+        <sf-pairing-dock />
       }
     }
   `,

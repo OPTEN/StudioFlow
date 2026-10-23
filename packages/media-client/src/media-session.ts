@@ -2,8 +2,8 @@
  * One LiveKit connection that stays up forever (spec 8.4): SDK resume/reconnect first; when the SDK gives up or the
  * room is lost otherwise, the session waits with the shared backoff, fetches a fresh token and joins with a new `Room`.
  */
-import { backoffDelay } from '@flowstudio/realtime-client';
-import type { LiveKitTokenDto, RtcState } from '@flowstudio/scene-model';
+import { backoffDelay } from '@studioflow/realtime-client';
+import type { LiveKitTokenDto, RtcState } from '@studioflow/scene-model';
 import {
   ConnectionState,
   RoomEvent,

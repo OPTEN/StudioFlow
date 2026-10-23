@@ -19,7 +19,7 @@ Angular (Standalone, Signals, OnPush) für Regie und Sender-PWA, ASP.NET Core (.
 
 ## Product Purpose
 
-FlowStudio ist eine Web-Regie nach dem Vorbild von OBS für Webinare. Browser-Clients senden Kamera und Bildschirm mit möglichst kleiner Latenz, die Regie stellt daraus Szenen zusammen (Layout-Vorlagen und freies Verschieben, Skalieren, Zuschneiden), und ein fester 16:9-Output liefert das Program als Webseite.
+StudioFlow ist eine Web-Regie nach dem Vorbild von OBS für Webinare. Browser-Clients senden Kamera und Bildschirm mit möglichst kleiner Latenz, die Regie stellt daraus Szenen zusammen (Layout-Vorlagen und freies Verschieben, Skalieren, Zuschneiden), und ein fester 16:9-Output liefert das Program als Webseite.
 
 Erfolg heisst: Einrichten geht schnell, Umschalten ist sicher, und kein Ausfall einer Quelle bleibt unbemerkt.
 
@@ -32,7 +32,7 @@ Alles läuft im Browser und auf einem eigenen Server: Handys und Laptops werden 
 - Vor Ort, alle Geräte im selben WLAN; der Server läuft lokal (PC mit Docker) oder als VPS im eigenen Betrieb.
 - Vor dem Webinar: Geräte koppeln (Handys per QR-Code, Laptops per Kurz-URL mit Code und Freigabe oder per Einladungslink) und Szenen bauen.
 - Während des Webinars: Szenen mit einem Klick live schalten oder, mit eingeschaltetem Studio-Modus, zuerst in der Preview prüfen und per Take ins Program schalten.
-- Ton läuft ausserhalb von FlowStudio über ein Mischpult; die Architektur bleibt für Ton vorbereitet.
+- Ton läuft ausserhalb von StudioFlow über ein Mischpult; die Architektur bleibt für Ton vorbereitet.
 - Begriffe aus OBS und dem Broadcast: Szene, Quelle, Element, Preview, Program, Take, Tally, Slate, Fallback.
 
 ## Capabilities and Constraints
@@ -45,11 +45,11 @@ Alles läuft im Browser und auf einem eigenen Server: Handys und Laptops werden 
 - Regie-Arbeitsfläche wie bei OBS: Docks (Szenen, Quellen, Eigenschaften, Stationen) lassen sich frei anordnen, in der Grösse ändern und ausblenden; das Layout bleibt pro Browser gespeichert.
 - Schriften und Assets kommen aus dem eigenen Build, ohne externe CDNs, weil die Regie im LAN läuft.
 - Mandantenfähigkeit wird im Datenmodell vorgesehen, vorerst nutzt nur OPTEN das System.
-- Später, nicht jetzt: Restream, Aufnahme, Ton in FlowStudio, öffentlicher Air-Modus für Zuschauer ohne Proxy.
+- Später, nicht jetzt: Restream, Aufnahme, Ton in StudioFlow, öffentlicher Air-Modus für Zuschauer ohne Proxy.
 
 ## Brand Commitments
 
-- Name: FlowStudio.
+- Name: StudioFlow.
 - Eigenständiges Werkzeug mit eigenem Look, nicht an das OPTEN-Website-CI gebunden.
 - Sprache der Oberfläche: Deutsch (Schweiz), mit «ss» statt «ß» und Guillemets « ».
 

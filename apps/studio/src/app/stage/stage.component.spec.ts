@@ -54,7 +54,7 @@ describe('StageComponent', () => {
   }
 
   function monitor(kind: 'preview' | 'program'): HTMLElement | null {
-    return element.querySelector(`fs-monitor.c-monitor--${kind}`);
+    return element.querySelector(`sf-monitor.c-monitor--${kind}`);
   }
 
   function text(node: Element | null): string {
@@ -64,7 +64,7 @@ describe('StageComponent', () => {
   function rendererOf(kind: 'preview' | 'program'): FakeSceneRenderer {
     const found = factory.renderers.filter(
       (renderer) =>
-        !renderer.destroyed && renderer.container.closest('fs-monitor') === monitor(kind),
+        !renderer.destroyed && renderer.container.closest('sf-monitor') === monitor(kind),
     );
     if (found.length !== 1) {
       throw new Error(`expected one ${kind} renderer, found ${found.length}`);
@@ -86,14 +86,14 @@ describe('StageComponent', () => {
       'Änderungen gehen sofort live',
     );
     expect(text(program.querySelector('.c-monitor__meta'))).toBe('1920 × 1080 · 30 fps');
-    expect(program.querySelector('fs-edit-overlay')).not.toBeNull();
+    expect(program.querySelector('sf-edit-overlay')).not.toBeNull();
     const off = element.querySelector('.c-stage__preview-off');
     expect(off?.getAttribute('aria-hidden')).toBe('true');
     expect(text(off?.querySelector('b') ?? null)).toBe('Preview aus');
     expect(text(off?.querySelector('span') ?? null)).toBe(
       'Mit Studio-Modus erscheint hier die Preview.',
     );
-    expect(element.querySelector('fs-control-column')).not.toBeNull();
+    expect(element.querySelector('sf-control-column')).not.toBeNull();
     expect(rendererOf('program').element.getAttribute('aria-label')).toBe(
       'Program-Monitor: Begrüssung, entspricht dem Output',
     );
@@ -108,8 +108,8 @@ describe('StageComponent', () => {
     ).toBeTruthy();
     expect(text(preview.querySelector('.c-monitor__name'))).toBe('Präsentation');
     expect(text(preview.querySelector('.c-monitor__meta'))).toBe('2 Elemente');
-    expect(preview.querySelector('fs-edit-overlay')).not.toBeNull();
-    expect(program.querySelector('fs-edit-overlay')).toBeNull();
+    expect(preview.querySelector('sf-edit-overlay')).not.toBeNull();
+    expect(program.querySelector('sf-edit-overlay')).toBeNull();
     expect(program.querySelector('.c-monitor__live-edit')).toBeNull();
     const split = element.querySelector('.c-stage__split') as HTMLElement;
     expect(split.getAttribute('role')).toBe('separator');
@@ -125,7 +125,7 @@ describe('StageComponent', () => {
       LIVE_NOTE,
     );
     expect(monitor('program')?.querySelector('.c-monitor__live-note')).toBeNull();
-    expect(monitor('preview')?.querySelector('fs-edit-overlay')?.classList).toContain('is-locked');
+    expect(monitor('preview')?.querySelector('sf-edit-overlay')?.classList).toContain('is-locked');
   });
 
   function press(target: Element, init: PointerEventInit = {}): void {
@@ -166,10 +166,10 @@ describe('StageComponent', () => {
     const editor = TestBed.inject(EditorService);
     editor.select('itm_a1');
     const screen = monitor('program')?.querySelector('.c-monitor__screen') as HTMLElement;
-    press(screen.querySelector('fs-scene-view') as Element);
-    press(element.querySelector('fs-control-column') as Element);
-    press(element.querySelector('fs-control-column button') as Element);
-    press(element.querySelector('fs-control-column label') as Element);
+    press(screen.querySelector('sf-scene-view') as Element);
+    press(element.querySelector('sf-control-column') as Element);
+    press(element.querySelector('sf-control-column button') as Element);
+    press(element.querySelector('sf-control-column label') as Element);
     press(element, { button: 2 });
     expect(editor.selectedItemId()).toBe('itm_a1');
     await render();
@@ -182,7 +182,7 @@ describe('StageComponent', () => {
     editor.select('itm_b1');
     press(element.querySelector('.c-stage__split') as Element);
     expect(editor.selectedItemId()).toBe('itm_b1');
-    press(monitor('preview')?.querySelector('.c-monitor__screen fs-scene-view') as Element);
+    press(monitor('preview')?.querySelector('.c-monitor__screen sf-scene-view') as Element);
     expect(editor.selectedItemId()).toBe('itm_b1');
     press(monitor('program')?.querySelector('.c-monitor__screen') as Element);
     expect(editor.selectedItemId()).toBeNull();

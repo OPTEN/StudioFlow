@@ -1,10 +1,10 @@
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Opten.FlowStudio.Infrastructure.Persistence;
-using Opten.FlowStudio.Web.Errors;
+using Opten.StudioFlow.Infrastructure.Persistence;
+using Opten.StudioFlow.Web.Errors;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
 /// <summary>The building blocks of BUG-21 and BUG-08 without a database: circuit, classification, timeouts, field paths.</summary>
 public sealed class DatabaseResilienceUnitTests
@@ -119,11 +119,11 @@ public sealed class DatabaseResilienceUnitTests
     {
         var options = new DatabaseOptions { ConnectTimeout = TimeSpan.FromSeconds(2.5), CommandTimeout = TimeSpan.FromSeconds(5) };
 
-        var pooled = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=fs;Username=u;Password=p;Timeout=30;Command Timeout=60"));
-        var probe = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=fs;Username=u;Password=p", pooled: false));
+        var pooled = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=sf;Username=u;Password=p;Timeout=30;Command Timeout=60"));
+        var probe = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=sf;Username=u;Password=p", pooled: false));
 
         Assert.Equal((3, 5, 1000, true), (pooled.Timeout, pooled.CommandTimeout, pooled.CancellationTimeout, pooled.Pooling));
-        Assert.Equal(("db", "fs", "p"), (pooled.Host, pooled.Database, pooled.Password));
+        Assert.Equal(("db", "sf", "p"), (pooled.Host, pooled.Database, pooled.Password));
         Assert.False(probe.Pooling);
         Assert.Equal(3, probe.Timeout);
     }

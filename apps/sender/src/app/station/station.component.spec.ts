@@ -1,7 +1,7 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
-import type { DeviceSelfDto } from '@flowstudio/scene-model';
+import type { DeviceSelfDto } from '@studioflow/scene-model';
 import { NEVER } from 'rxjs';
 import {
   FakeHub,

@@ -1,6 +1,6 @@
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Core.Domain;
+namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>Result of a program or preview change.</summary>
 /// <param name="ProgramSceneId">New program scene.</param>
@@ -123,7 +123,7 @@ public sealed class Production
     }
 
     /// <summary>The scene with the given id, or a <c>not_found</c> error.</summary>
-    public Scene GetScene(string sceneId) => FindScene(sceneId) ?? throw FlowStudioException.NotFound("Die Szene");
+    public Scene GetScene(string sceneId) => FindScene(sceneId) ?? throw StudioFlowException.NotFound("Die Szene");
 
     /// <summary>The scene with the given id, if any.</summary>
     public Scene? FindScene(string? sceneId) => sceneId is null ? null : scenes.FirstOrDefault(s => string.Equals(s.Id, sceneId, StringComparison.Ordinal));
@@ -194,7 +194,7 @@ public sealed class Production
             case BroadcastState.Ended:
                 return false;
             case BroadcastState.Standby:
-                throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Die Sendung läuft nicht.");
+                throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Die Sendung läuft nicht.");
             default:
                 Broadcast = BroadcastState.Ended;
                 EndedAt = now;
@@ -267,7 +267,7 @@ public sealed class Production
         var preview = FindScene(PreviewSceneId);
         if (preview is null || string.Equals(preview.Id, ProgramSceneId, StringComparison.Ordinal))
         {
-            throw FlowStudioException.Conflict(ErrorCodes.Conflict, "Für einen Take muss eine andere Szene in der Preview sein.");
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "Für einen Take muss eine andere Szene in der Preview sein.");
         }
 
         EnsureNoRunningTransition(now);
@@ -290,7 +290,7 @@ public sealed class Production
         errors.ThrowIfAny();
         if (scenes.Count >= MaxScenes)
         {
-            throw FlowStudioException.LimitReached("Eine Produktion kann höchstens 99 Szenen haben.");
+            throw StudioFlowException.LimitReached("Eine Produktion kann höchstens 99 Szenen haben.");
         }
 
         var sortOrder = scenes.Count == 0 ? 0 : scenes.Max(s => s.SortOrder) + 1;
@@ -315,7 +315,7 @@ public sealed class Production
         var scene = GetScene(sceneId);
         if (string.Equals(scene.Id, ProgramSceneId, StringComparison.Ordinal))
         {
-            throw FlowStudioException.Conflict(ErrorCodes.SceneIsLive, "Die Szene ist live und kann nicht gelöscht werden.");
+            throw StudioFlowException.Conflict(ErrorCodes.SceneIsLive, "Die Szene ist live und kann nicht gelöscht werden.");
         }
 
         ProgramChange? previewChange = null;
@@ -335,7 +335,7 @@ public sealed class Production
         var current = OrderedScenes;
         if (sceneIds is null || sceneIds.Count != current.Count || sceneIds.Distinct(StringComparer.Ordinal).Count() != current.Count || sceneIds.Any(id => FindScene(id) is null))
         {
-            throw FlowStudioException.Invalid("sceneIds", "Die Reihenfolge muss jede Szene genau einmal enthalten.");
+            throw StudioFlowException.Invalid("sceneIds", "Die Reihenfolge muss jede Szene genau einmal enthalten.");
         }
 
         if (current.Select(s => s.Id).SequenceEqual(sceneIds, StringComparer.Ordinal))
@@ -363,12 +363,12 @@ public sealed class Production
     {
         if (rules is null)
         {
-            throw FlowStudioException.Invalid("allowedIps", "Liste fehlt.");
+            throw StudioFlowException.Invalid("allowedIps", "Liste fehlt.");
         }
 
         if (rules.Count > IpRule.MaxRules)
         {
-            throw FlowStudioException.Invalid("allowedIps", $"Höchstens {IpRule.MaxRules} Einträge.");
+            throw StudioFlowException.Invalid("allowedIps", $"Höchstens {IpRule.MaxRules} Einträge.");
         }
 
         var errors = new ValidationErrors();
@@ -411,7 +411,7 @@ public sealed class Production
     {
         if (IsTransitionRunning(now))
         {
-            throw FlowStudioException.Conflict(ErrorCodes.TransitionRunning, "Der Übergang läuft noch.");
+            throw StudioFlowException.Conflict(ErrorCodes.TransitionRunning, "Der Übergang läuft noch.");
         }
     }
 

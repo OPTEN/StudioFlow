@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Opten.FlowStudio.Core.Contracts;
+using Opten.StudioFlow.Core.Contracts;
 
-namespace Opten.FlowStudio.Web.Tests.Support;
+namespace Opten.StudioFlow.Web.Tests.Support;
 
 /// <summary>HTTP helpers in the contract JSON format.</summary>
 public static class Http
@@ -60,7 +60,7 @@ public static class Http
 /// <summary>Signs webhooks like LiveKit: raw JWT, iss = key, claim sha256 = base64 SHA-256 of the body.</summary>
 public static class Webhooks
 {
-    public static string Sign(string body, string? secret = null, string issuer = FlowStudioApp.LiveKitKey, TimeSpan? lifetime = null, string? hashOverride = null)
+    public static string Sign(string body, string? secret = null, string issuer = StudioFlowApp.LiveKitKey, TimeSpan? lifetime = null, string? hashOverride = null)
     {
         var now = DateTime.UtcNow;
         var expires = now + (lifetime ?? TimeSpan.FromMinutes(5));
@@ -71,7 +71,7 @@ public static class Webhooks
             NotBefore = notBefore,
             IssuedAt = notBefore,
             Expires = expires,
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret ?? FlowStudioApp.LiveKitSecret)), SecurityAlgorithms.HmacSha256),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret ?? StudioFlowApp.LiveKitSecret)), SecurityAlgorithms.HmacSha256),
             Claims = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["sha256"] = hashOverride ?? Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(body))),
@@ -103,7 +103,7 @@ public static class Webhooks
 /// <summary>Pairing shortcuts through the public API.</summary>
 public static class Pairing
 {
-    public static async Task<DeviceCredentialsDto> PairPhoneAsync(this FlowStudioApp app, AdminSession admin, string? name = null)
+    public static async Task<DeviceCredentialsDto> PairPhoneAsync(this StudioFlowApp app, AdminSession admin, string? name = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(admin);
@@ -111,7 +111,7 @@ public static class Pairing
         return await app.RedeemAsync(invite, DeviceKind.Phone, name);
     }
 
-    public static async Task<DeviceCredentialsDto> PairLaptopAsync(this FlowStudioApp app, AdminSession admin, string? name = null)
+    public static async Task<DeviceCredentialsDto> PairLaptopAsync(this StudioFlowApp app, AdminSession admin, string? name = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(admin);
@@ -125,6 +125,6 @@ public static class Pairing
         return invite.Url[(invite.Url.LastIndexOf('/') + 1)..];
     }
 
-    private static Task<DeviceCredentialsDto> RedeemAsync(this FlowStudioApp app, InviteDto invite, DeviceKind kind, string? name) =>
+    private static Task<DeviceCredentialsDto> RedeemAsync(this StudioFlowApp app, InviteDto invite, DeviceKind kind, string? name) =>
         app.Anonymous().PostJsonAsync($"/api/pairing/invites/{TokenOf(invite)}/redeem", new RedeemInviteRequest(Guid.NewGuid().ToString(), name, kind, "Test")).ExpectAsync<DeviceCredentialsDto>();
 }

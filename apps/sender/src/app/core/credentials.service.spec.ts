@@ -30,7 +30,7 @@ describe('CredentialsService', () => {
     expect(service.bearer()).toBeNull();
   });
 
-  it('saves the credentials under flowstudio.sender.v1 and reads them back after a reload', () => {
+  it('saves the credentials under studioflow.sender.v1 and reads them back after a reload', () => {
     create().save(DTO);
     TestBed.resetTestingModule();
 

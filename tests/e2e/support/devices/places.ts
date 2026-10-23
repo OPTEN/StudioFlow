@@ -8,7 +8,7 @@ import type { RegiePage } from '../ui/regie';
  * so a test can poll them at 100 ms and measure when the last one changed (T-DETECT-*).
  *
  * The Regie has no data-testid hooks; the class names are the ones of apps/studio (c-status__inc, c-src, c-st, c-scene)
- * and of the scene renderer (fs-r-alert-label inside [data-item-id]). Reads are tolerant: a missing place is null, never
+ * and of the scene renderer (sf-r-alert-label inside [data-item-id]). Reads are tolerant: a missing place is null, never
  * an exception, so `outage()` can report which places are still missing.
  */
 
@@ -65,7 +65,7 @@ export async function readPlaces(page: Page): Promise<Places> {
     const health = chips.find((chip) => !chip.querySelector('.c-header__out-label'));
     const healthLamp = health?.querySelector('.c-lamp');
 
-    const strip = [...document.querySelectorAll('fs-status-line .c-status__inc')].map((row) => {
+    const strip = [...document.querySelectorAll('sf-status-line .c-status__inc')].map((row) => {
       const recovered = row.classList.contains('is-ok');
       return {
         code: text(row.querySelector('.c-code')),
@@ -81,8 +81,8 @@ export async function readPlaces(page: Page): Promise<Places> {
 
     const alerts = (selector: string) =>
       [...document.querySelectorAll(`${selector} [data-item-id]`)].flatMap((item) => {
-        const label = item.querySelector('.fs-r-alert-label');
-        const outline = item.querySelector('.fs-r-alert') as HTMLElement | null;
+        const label = item.querySelector('.sf-r-alert-label');
+        const outline = item.querySelector('.sf-r-alert') as HTMLElement | null;
         if (!label || !visible(label) || !text(label)) return [];
         return [{ itemId: item.getAttribute('data-item-id') ?? '', text: text(label), outline: outline ? `${getComputedStyle(outline).borderTopStyle} ${getComputedStyle(outline).borderTopColor}` : '' }];
       });
@@ -90,7 +90,7 @@ export async function readPlaces(page: Page): Promise<Places> {
     return {
       header: { text: text(health), lamp: healthLamp ? [...healthLamp.classList].filter((name) => name.startsWith('is-')).join(' ') : '' },
       strip,
-      stripCalm: text(document.querySelector('fs-status-line .c-status__ok')) || null,
+      stripCalm: text(document.querySelector('sf-status-line .c-status__ok')) || null,
       program: alerts('.c-monitor--program'),
       preview: alerts('.c-monitor--preview'),
       scenes: [...document.querySelectorAll('button.c-scene[aria-pressed]')].map((button) => ({

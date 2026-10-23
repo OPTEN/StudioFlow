@@ -2,26 +2,26 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using Opten.FlowStudio.Core.Contracts;
-using Opten.FlowStudio.Web.Tests.Support;
+using Opten.StudioFlow.Core.Contracts;
+using Opten.StudioFlow.Web.Tests.Support;
 
-namespace Opten.FlowStudio.Web.Tests;
+namespace Opten.StudioFlow.Web.Tests;
 
-public sealed class AuthTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class AuthTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     [Fact]
     public async Task Login_Correct_SetsHttpOnlyStrictSessionCookie()
     {
-        using var response = await app.Anonymous().PostJsonAsync("/api/auth/login", new LoginRequest(FlowStudioApp.AdminUser, FlowStudioApp.AdminPassword));
+        using var response = await app.Anonymous().PostJsonAsync("/api/auth/login", new LoginRequest(StudioFlowApp.AdminUser, StudioFlowApp.AdminPassword));
 
         await response.ExpectAsync(HttpStatusCode.OK);
-        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("fs_session=", StringComparison.Ordinal)).ToLowerInvariant();
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("sf_session=", StringComparison.Ordinal)).ToLowerInvariant();
         Assert.Contains("httponly", cookie, StringComparison.Ordinal);
         Assert.Contains("samesite=strict", cookie, StringComparison.Ordinal);
         Assert.Contains("path=/", cookie, StringComparison.Ordinal);
         Assert.Contains("expires=", cookie, StringComparison.Ordinal);
         Assert.DoesNotContain("secure", cookie, StringComparison.Ordinal);
-        Assert.Equal(FlowStudioApp.AdminUser, (await response.Content.ReadFromJsonAsync<SessionDto>(ContractJson.Options, TestContext.Current.CancellationToken))!.Username);
+        Assert.Equal(StudioFlowApp.AdminUser, (await response.Content.ReadFromJsonAsync<SessionDto>(ContractJson.Options, TestContext.Current.CancellationToken))!.Username);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class AuthTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
         }
 
         using var locked = await client.PostJsonAsync("/api/auth/login", new LoginRequest("admin", "wrong5"));
-        using var stillLocked = await client.PostJsonAsync("/api/auth/login", new LoginRequest(FlowStudioApp.AdminUser, FlowStudioApp.AdminPassword));
+        using var stillLocked = await client.PostJsonAsync("/api/auth/login", new LoginRequest(StudioFlowApp.AdminUser, StudioFlowApp.AdminPassword));
 
         await locked.ExpectAsync(HttpStatusCode.TooManyRequests);
         await stillLocked.ExpectAsync(HttpStatusCode.TooManyRequests);
@@ -60,7 +60,7 @@ public sealed class AuthTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
     {
         var admin = await app.AdminAsync();
 
-        Assert.Equal(FlowStudioApp.AdminUser, (await admin.Client.GetAsync("/api/auth/me", TestContext.Current.CancellationToken).ExpectAsync<SessionDto>()).Username);
+        Assert.Equal(StudioFlowApp.AdminUser, (await admin.Client.GetAsync("/api/auth/me", TestContext.Current.CancellationToken).ExpectAsync<SessionDto>()).Username);
         Assert.Equal(ErrorCodes.Unauthorized, await app.Anonymous().GetAsync("/api/auth/me", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized));
     }
 
@@ -68,7 +68,7 @@ public sealed class AuthTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
     public async Task Me_ForgedCookie_IsUnauthorized()
     {
         var client = app.Anonymous();
-        client.DefaultRequestHeaders.Add("Cookie", "fs_session=CfDJ8forged");
+        client.DefaultRequestHeaders.Add("Cookie", "sf_session=CfDJ8forged");
 
         await client.GetAsync("/api/auth/me", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
     }
@@ -81,14 +81,14 @@ public sealed class AuthTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
         using var response = await admin.Client.PostAsync("/api/auth/logout", null, TestContext.Current.CancellationToken);
 
         await response.ExpectAsync(HttpStatusCode.NoContent);
-        Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("fs_session=;", StringComparison.Ordinal));
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("sf_session=;", StringComparison.Ordinal));
     }
 
     [Fact]
     public async Task Logout_WithCookieButWithoutCsrfHeader_IsForbidden()
     {
         var admin = await app.AdminAsync();
-        admin.Client.DefaultRequestHeaders.Remove("X-FlowStudio");
+        admin.Client.DefaultRequestHeaders.Remove("X-StudioFlow");
 
         Assert.Equal(ErrorCodes.Forbidden, await admin.Client.PostAsync("/api/auth/logout", null, TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Forbidden));
     }
@@ -99,7 +99,7 @@ public sealed class ProductionModeTests(ProductionModeApp app) : IClassFixture<P
     [Fact]
     public async Task Login_ProductionEnvironment_CookieIsSecure()
     {
-        using var response = await app.Anonymous().PostJsonAsync("/api/auth/login", new LoginRequest(FlowStudioApp.AdminUser, FlowStudioApp.AdminPassword));
+        using var response = await app.Anonymous().PostJsonAsync("/api/auth/login", new LoginRequest(StudioFlowApp.AdminUser, StudioFlowApp.AdminPassword));
 
         await response.ExpectAsync(HttpStatusCode.OK);
         Assert.Contains("secure", response.Headers.GetValues("Set-Cookie").Single().ToLowerInvariant(), StringComparison.Ordinal);
@@ -109,7 +109,7 @@ public sealed class ProductionModeTests(ProductionModeApp app) : IClassFixture<P
     public async Task OpenApi_ProductionEnvironment_IsNotServed() => await app.Anonymous().GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NotFound);
 }
 
-public sealed class SecurityTests(FlowStudioApp app) : IClassFixture<FlowStudioApp>
+public sealed class SecurityTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
     public static TheoryData<string, string> AdminRoutes => new()
     {
@@ -141,7 +141,7 @@ public sealed class SecurityTests(FlowStudioApp app) : IClassFixture<FlowStudioA
         client.DefaultRequestHeaders.Add("Cookie", admin.Cookie);
 
         Assert.Equal(ErrorCodes.Forbidden, await client.PostJsonAsync("/api/productions", new CreateProductionRequest("CSRF")).ExpectProblemAsync(HttpStatusCode.Forbidden));
-        client.DefaultRequestHeaders.Add("X-FlowStudio", "0");
+        client.DefaultRequestHeaders.Add("X-StudioFlow", "0");
         await client.PostJsonAsync("/api/productions", new CreateProductionRequest("CSRF")).ExpectProblemAsync(HttpStatusCode.Forbidden);
         Assert.DoesNotContain(await admin.Client.GetAsync("/api/productions", TestContext.Current.CancellationToken).ExpectAsync<List<ProductionSummaryDto>>(), p => p.Name == "CSRF");
         await client.GetAsync("/api/productions", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
@@ -248,7 +248,7 @@ public sealed class SecurityTests(FlowStudioApp app) : IClassFixture<FlowStudioA
         var info = await admin.Client.GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectAsync<SystemInfoDto>();
         var anonymous = await app.Anonymous().GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
 
-        Assert.Equal((1920, 1080, FlowStudioApp.PublicBaseUrl), (info.CanvasWidth, info.CanvasHeight, info.PublicBaseUrl));
+        Assert.Equal((1920, 1080, StudioFlowApp.PublicBaseUrl), (info.CanvasWidth, info.CanvasHeight, info.PublicBaseUrl));
         Assert.False(string.IsNullOrWhiteSpace(info.Version));
         Assert.Equal(ErrorCodes.Unauthorized, anonymous);
     }

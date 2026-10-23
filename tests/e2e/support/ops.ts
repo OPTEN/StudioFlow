@@ -40,7 +40,7 @@ export async function realDocker(): Promise<string> {
 export interface SandboxOptions {
   /**
    * Which docker compose project the scripts see:
-   * - `stack` (default): the running stack of this process (project `fs-e2e`, `fs-e2e-N` with E2E_STACK=N), with the
+   * - `stack` (default): the running stack of this process (project `sf-e2e`, `sf-e2e-N` with E2E_STACK=N), with the
    *   same files and env file the harness uses;
    * - `hash`: a separate project `<project>-ops` on the base compose file only (setup.sh builds the API image and runs
    *   `hash-password` in it; it has its own subnet, so it collides neither with the running stack nor with the OPS
@@ -63,7 +63,7 @@ export class OpsSandbox {
   ) {}
 
   static create(name: string, options: SandboxOptions = {}): OpsSandbox {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), `fs-ops-${name}-`));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), `sf-ops-${name}-`));
     const sandbox = new OpsSandbox(root, { mode: 'stack', ...options });
     for (const script of SCRIPTS) {
       const target = path.join(root, script);
@@ -90,7 +90,7 @@ export class OpsSandbox {
     } else if (this.options.mode === 'hash') {
       env['COMPOSE_PROJECT_NAME'] = OPS_HASH_PROJECT;
       env['COMPOSE_FILE'] = fwd(COMPOSE_FILES.base);
-      env['FLOWSTUDIO_SUBNET'] = OPS_HASH_SUBNET;
+      env['STUDIOFLOW_SUBNET'] = OPS_HASH_SUBNET;
     }
     if (this.shimDir) env['PATH'] = `${this.shimDir}${path.delimiter}${env['PATH'] ?? env['Path'] ?? ''}`;
     // The scripts ask a terminal when a decision is open; the tests never have one.
@@ -162,7 +162,7 @@ export async function bashLine(sandbox: OpsSandbox, script: string, options: Exe
 export function cleanComposeEnv(drop: string[] = []): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of Object.keys(env)) {
-    if (key.startsWith('COMPOSE_') || key.startsWith('FLOWSTUDIO_') || key.startsWith('ADMIN__') || key.startsWith('E2E_') || drop.includes(key)) delete env[key];
+    if (key.startsWith('COMPOSE_') || key.startsWith('STUDIOFLOW_') || key.startsWith('ADMIN__') || key.startsWith('E2E_') || drop.includes(key)) delete env[key];
   }
   for (const key of ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'POSTGRES_PASSWORD', ...drop]) delete env[key];
   return env;

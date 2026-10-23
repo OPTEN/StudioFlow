@@ -39,7 +39,7 @@
     [disabled]="!switcher.canStepDuration(-1)"
     (click)="step(-1)"
   >
-    <svg fsIcon="minus" [size]="14"></svg>
+    <svg sfIcon="minus" [size]="14"></svg>
   </button>
   <span class="c-duration__value">{{ switcher.durationLabel() }}</span>
   <button
@@ -49,7 +49,7 @@
     [disabled]="!switcher.canStepDuration(1)"
     (click)="step(1)"
   >
-    <svg fsIcon="plus" [size]="14"></svg>
+    <svg sfIcon="plus" [size]="14"></svg>
   </button>
 </div>
 @if (switcher.studioMode()) {

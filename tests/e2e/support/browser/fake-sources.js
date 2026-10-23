@@ -2,22 +2,22 @@
  * Fake camera and screen sources with known content (UI test fixtures, support/ui/init.ts), injected with
  * context.addInitScript AFTER init-script.js and latency-codec.js. None of this ships in the product.
  *
- * - getUserMedia({video}) returns a canvas stream when window.__fsFake.config.camera is set ("stamp camera"): a
+ * - getUserMedia({video}) returns a canvas stream when window.__sfFake.config.camera is set ("stamp camera"): a
  *   moving picture with the latency stamp (latency-codec.js) in the top bar, so the real sender app publishes frames
  *   whose capture time the output page can decode (?latency=1).
- * - getDisplayMedia() returns a canvas stream when window.__fsFake.config.screen is set: a flat colour per screen (the
+ * - getDisplayMedia() returns a canvas stream when window.__sfFake.config.screen is set: a flat colour per screen (the
  *   n-th call uses colors[n % colors.length]), a large label and the same stamp bar, so a test can tell the screens
  *   apart by their pixels and measure their latency.
  * - audio-only requests and everything not configured go to the next wrapper (init-script.js, then the browser).
  *
  * The stamp is drawn on the 640 x 360 grid of the codec and scaled to the canvas, so any canvas size decodes.
- * Counters: window.__fsMedia.userMediaCalls / displayCalls (init-script.js) keep counting here as well.
+ * Counters: window.__sfMedia.userMediaCalls / displayCalls (init-script.js) keep counting here as well.
  */
 (function () {
-  if (window.__fsFake) return;
+  if (window.__sfFake) return;
   const devices = navigator.mediaDevices;
-  const media = (window.__fsMedia = window.__fsMedia || { userMediaCalls: [], displayCalls: 0 });
-  const fake = (window.__fsFake = {
+  const media = (window.__sfMedia = window.__sfMedia || { userMediaCalls: [], displayCalls: 0 });
+  const fake = (window.__sfFake = {
     /** { screen: {width,height,fps,colors,labelPrefix,stamp}|null, camera: {width,height,fps,label,stamp}|null } */
     config: { screen: null, camera: null },
     /** Every stream made so far: { kind, index, track, stop(), frames() }. */

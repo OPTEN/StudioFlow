@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
-namespace Opten.FlowStudio.Infrastructure.Persistence;
+namespace Opten.StudioFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// Thrown at once, without touching the network, while <see cref="DatabaseCircuit"/> knows that PostgreSQL is not

@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>Live state of the output consumer (chip «Output an Proxy» in the header).</summary>
 /// <param name="State">None, connected or stale.</param>

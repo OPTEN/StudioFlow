@@ -1,4 +1,4 @@
-namespace Opten.FlowStudio.Core.Contracts;
+namespace Opten.StudioFlow.Core.Contracts;
 
 /// <summary>An uploaded image or video.</summary>
 /// <param name="Id">Asset id, e.g. <c>ast_…</c>; also the source reference.</param>
