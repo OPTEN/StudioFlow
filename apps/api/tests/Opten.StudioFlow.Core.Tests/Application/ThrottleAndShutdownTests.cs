@@ -156,7 +156,7 @@ public sealed class ThrottleAndShutdownTests : IDisposable
         Assert.Equal(auditBefore, harness.Data.Audit.Count);
         Assert.Equal(eventsBefore, harness.Events.Count);
         Assert.Empty(harness.Events.OfType<IncidentUpsertedEvent>());
-        Assert.DoesNotContain(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text.Contains("verbindet neu", StringComparison.Ordinal));
+        Assert.DoesNotContain(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text.Contains("reconnecting", StringComparison.Ordinal));
         Assert.Equal(SourceStatus.Ok, harness.Source(device.SourceIdOf(device.Slots[0])).Status);
     }
 
@@ -168,7 +168,7 @@ public sealed class ThrottleAndShutdownTests : IDisposable
         await harness.Devices.DisconnectedAsync(identity, "c1", CancellationToken.None);
 
         Assert.Equal(SourceStatus.Reconnecting, harness.Source(device.SourceIdOf(device.Slots[0])).Status);
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 verbindet neu");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 reconnecting");
     }
 
     [Fact]

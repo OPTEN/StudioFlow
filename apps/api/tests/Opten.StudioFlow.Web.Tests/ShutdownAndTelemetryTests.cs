@@ -87,7 +87,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
         var again = await second.AdminAsync();
         var restarted = await again.Client.GetAsync($"/api/productions/{productionId}/snapshot", cancellation).ExpectAsync<ProductionSnapshot>();
 
-        Assert.DoesNotContain(restarted.RecentLog, l => l.Text.Contains("verbindet neu", StringComparison.Ordinal));
+        Assert.DoesNotContain(restarted.RecentLog, l => l.Text.Contains("reconnecting", StringComparison.Ordinal));
         Assert.Empty(restarted.Incidents);
         Assert.Equal(SourceStatus.Offline, restarted.Sources.Single(s => s.Id == sourceId).Status);
     }

@@ -29,7 +29,7 @@ public sealed class PinnedBehaviourTests : IDisposable
         var incidents = harness.Events.OfType<IncidentUpsertedEvent>().Select(e => e.Incident).ToList();
         Assert.Equal([IncidentKind.Reconnecting, IncidentKind.Reconnecting], incidents.Select(i => i.Kind));
         Assert.NotNull(incidents[^1].EndedAt);
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 verbindet neu");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 reconnecting");
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public sealed class PinnedBehaviourTests : IDisposable
         Assert.Equal(SourceStatus.Offline, harness.Source(Camera(old)).Status);
         var incident = Assert.Single(harness.Events.OfType<IncidentUpsertedEvent>()).Incident;
         Assert.Equal((Camera(gone), IncidentKind.Reconnecting, harness.Runtimes.StartedAt), (incident.SourceId, incident.Kind, incident.StartedAt));
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 verbindet neu");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 reconnecting");
         Assert.Equal(DeviceConnection.Reconnecting, harness.Events.OfType<DeviceUpsertedEvent>().Last(d => d.Device.Id == gone.Id).Device.Connection);
     }
 
@@ -208,7 +208,7 @@ public sealed class PinnedBehaviourTests : IDisposable
 
         Assert.Equal(SourceStatus.Ok, harness.Source(Camera(device)).Status);
         Assert.NotNull(harness.Events.OfType<IncidentUpsertedEvent>().Last().Incident.EndedAt);
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 wieder da, war 25 s weg");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 is back, was gone for 25 s");
     }
 
     [Fact]

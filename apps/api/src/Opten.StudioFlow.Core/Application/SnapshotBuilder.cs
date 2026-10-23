@@ -7,7 +7,7 @@ namespace Opten.StudioFlow.Core.Application;
 /// <summary>Builds the full Regie and output snapshots inside the production lock, so their revision is exact.</summary>
 public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioFlowOptions options)
 {
-    /// <summary>Entries of «Letzte Ereignisse» in the snapshot.</summary>
+    /// <summary>Entries of "Recent events" in the snapshot.</summary>
     public const int RecentLogSize = 20;
 
     /// <summary>The Regie snapshot.</summary>
@@ -32,7 +32,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             [.. invites.OrderBy(i => i.CreatedAt).Select(i => Dtos.Invite(i, options.BaseUrl))],
             [.. runtime.Sources.Values.Where(h => h.Incident is not null && sourceIds.Contains(h.SourceId)).Select(h => h.Incident!).OrderBy(i => i.StartedAt)],
             runtime.Output.Current(context.Now),
-            [.. log.Select(e => (e.At, Text: LogTexts.For(e))).Where(e => e.Text is not null).Take(RecentLogSize).Select(e => new LogEntryDto(e.At, e.Text!))],
+            [.. log.Select(e => (e.At, Described: LogTexts.Describe(e))).Where(e => e.Described is not null).Take(RecentLogSize).Select(e => new LogEntryDto(e.At, e.Described!.Value.Code, e.Described.Value.Params, e.Described.Value.Text))],
             runtime.StudioConnections.Count);
     }
 

@@ -3794,22 +3794,63 @@
         },
         "description": "LiveKit connection data for a client. The token carries exactly the rights of the role."
       },
+      "LogCode": {
+        "enum": [
+          "sceneLive",
+          "sceneCreated",
+          "sceneDeleted",
+          "broadcastStarted",
+          "broadcastEnded",
+          "devicePaired",
+          "deviceBlocked",
+          "deviceUnblocked",
+          "deviceRemoved",
+          "pairingDenied",
+          "inviteLinkCreated",
+          "inviteLinkRevoked",
+          "outputLinkRegenerated",
+          "outputAccessChanged",
+          "assetUploaded",
+          "assetDeleted",
+          "sourceReconnecting",
+          "cameraEnded",
+          "screenEnded",
+          "sourceLost",
+          "sourceRecovered"
+        ],
+        "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\r\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
+      },
       "LogEntryDto": {
         "required": [
           "at",
+          "code",
+          "params",
           "text"
         ],
         "type": "object",
         "properties": {
           "at": {
             "type": "string",
+            "description": "Time of the event.",
             "format": "date-time"
           },
+          "code": {
+            "description": "What happened. Clients show their own text for the code, in the language of the user.",
+            "$ref": "#/components/schemas/LogCode"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Values for the text of the code (scene, device or slot names), keyed in camelCase; the keys per code are listed at the codes."
+          },
           "text": {
-            "type": "string"
+            "type": "string",
+            "description": "English text for clients that do not know the code; the same words as the English client text."
           }
         },
-        "description": "A human-readable entry for «Letzte Ereignisse» (backed by the audit log)."
+        "description": "An entry of \"Recent events\", derived from the audit log."
       },
       "LoginRequest": {
         "required": [
@@ -5412,7 +5453,7 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Main line, e.g. «Gleich geht's los»."
+            "description": "Main line, e.g. \"Starting soon\"."
           },
           "subtitle": {
             "type": [

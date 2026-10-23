@@ -29,7 +29,7 @@ public sealed class StudioHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
         Assert.Equal(changes.Revision + 1, first.Revision);
         Assert.Equal(changes.Revision + 2, second.Revision);
         Assert.IsType<ProductionChangedEvent>(first);
-        Assert.Equal("Sendung gestartet", Assert.IsType<LogAppendedEvent>(second).Entry.Text);
+        Assert.Equal("Broadcast started", Assert.IsType<LogAppendedEvent>(second).Entry.Text);
     }
 
     [Fact]
@@ -258,7 +258,7 @@ public sealed class DeviceHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
         await events.NextAsync(e => e is SourceUpsertedEvent { Source.Status: SourceStatus.Ok } s && s.Source.Id == sourceId);
         await first.DisposeAsync();
         var incident = (IncidentUpsertedEvent)await events.NextAsync(e => e is IncidentUpsertedEvent i && i.Incident.SourceId == sourceId);
-        await events.NextAsync(e => e is LogAppendedEvent { Entry.Text: "K1 verbindet neu" });
+        await events.NextAsync(e => e is LogAppendedEvent { Entry.Text: "K1 reconnecting" });
 
         await using var second = Device(credentials);
         await second.StartAsync(TestContext.Current.CancellationToken);

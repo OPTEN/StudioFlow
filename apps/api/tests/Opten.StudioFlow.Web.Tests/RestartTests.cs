@@ -52,7 +52,7 @@ public sealed class RestartTests(PostgresFixture postgres)
         Assert.Equal(BroadcastState.Live, flagged.Production.Broadcast);
         var incident = Assert.Single(flagged.Incidents);
         Assert.Equal((sourceId, IncidentKind.Reconnecting, (DateTimeOffset?)null), (incident.SourceId, incident.Kind, incident.EndedAt));
-        Assert.Contains(flagged.RecentLog, l => l.Text == "K1 verbindet neu");
+        Assert.Contains(flagged.RecentLog, l => l.Text == "K1 reconnecting");
     }
 
     private static async Task<ProductionSnapshot> WaitForAsync(AdminSession admin, string productionId, Func<ProductionSnapshot, bool> condition)

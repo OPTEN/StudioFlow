@@ -382,7 +382,7 @@ public sealed class OutputViewTests
         new PairingRequestRemovedEvent(1, "prq_a", PairingRequestStatus.Denied),
         new InviteRemovedEvent(1, "inv_a"),
         new IncidentRemovedEvent(1, "inc_a"),
-        new LogAppendedEvent(1, new LogEntryDto(Build.T0, "x")),
+        new LogAppendedEvent(1, new LogEntryDto(Build.T0, LogCode.BroadcastStarted, new Dictionary<string, string>(), "x")),
         new OutputStatusChangedEvent(1, new OutputStatusDto(OutputState.None, 0, [], null, null, null)),
     };
 

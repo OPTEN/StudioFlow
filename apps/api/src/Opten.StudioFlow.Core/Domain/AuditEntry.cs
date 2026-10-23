@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Opten.StudioFlow.Core.Domain;
 
-/// <summary>Actions of the audit log (spec 4.9) plus the source status changes that feed «Letzte Ereignisse» (spec 4.5).</summary>
+/// <summary>Actions of the audit log (spec 4.9) plus the source status changes that feed "Recent events" (spec 4.5).</summary>
 public static class AuditActions
 {
     /// <summary>Admin signed in.</summary>
@@ -160,10 +160,14 @@ public sealed class AuditEntry
     /// <summary>Detail value or an empty string.</summary>
     public string Detail(string key) => Details.TryGetValue(key, out var value) ? value : string.Empty;
 
-    /// <summary>Outage duration text for recovery entries: «9 s» below a minute, «3 min» above.</summary>
+    /// <summary>Outage duration in whole seconds for recovery entries, at least 1; 1 when the value is missing.</summary>
+    internal static int DowntimeSeconds(string secondsText) =>
+        int.TryParse(secondsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? Math.Max(1, s) : 1;
+
+    /// <summary>Outage duration text for recovery entries: "9 s" below a minute, "3 min" above.</summary>
     internal static string FormatDowntime(string secondsText)
     {
-        var seconds = int.TryParse(secondsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? Math.Max(1, s) : 1;
+        var seconds = DowntimeSeconds(secondsText);
         return seconds < 60
             ? $"{seconds.ToString(CultureInfo.InvariantCulture)} s"
             : $"{Math.Round(seconds / 60d).ToString(CultureInfo.InvariantCulture)} min";
