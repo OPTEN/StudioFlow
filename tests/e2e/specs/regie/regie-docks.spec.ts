@@ -174,7 +174,7 @@ test.describe('REGIE docks', () => {
         expect(widths).toEqual([1, 1, 1]);
         // Nothing is stored before the first change.
         const layout = await stored(page);
-        expect(layout === null || layout.v === 1).toBe(true);
+        expect(layout === null || layout['v'] === 1).toBe(true);
       }
       expect(regie.problems.pageErrors).toEqual([]);
     },

@@ -255,10 +255,11 @@ public sealed class DeviceHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
         await first.StartAsync(TestContext.Current.CancellationToken);
         await first.InvokeAsync<DeviceSessionDto>(HubMethods.Hello, new DeviceHelloDto("tab", "x", "1"), TestContext.Current.CancellationToken);
         await first.InvokeAsync(HubMethods.Report, ServiceReport(SlotState.Live), TestContext.Current.CancellationToken);
-        await events.NextAsync(e => e is SourceUpsertedEvent { Source.Status: SourceStatus.Ok } s && s.Source.Id == sourceId);
+        var live = (SourceUpsertedEvent)await events.NextAsync(e => e is SourceUpsertedEvent { Source.Status: SourceStatus.Ok } s && s.Source.Id == sourceId);
         await first.DisposeAsync();
         var incident = (IncidentUpsertedEvent)await events.NextAsync(e => e is IncidentUpsertedEvent i && i.Incident.SourceId == sourceId);
-        await events.NextAsync(e => e is LogAppendedEvent { Entry.Text: "K1 verbindet neu" });
+        // The code depends on the phones that other tests of this class paired in the same production (K1, K2, ...).
+        await events.NextAsync(e => e is LogAppendedEvent l && l.Entry.Text == $"{live.Source.Code} verbindet neu");
 
         await using var second = Device(credentials);
         await second.StartAsync(TestContext.Current.CancellationToken);

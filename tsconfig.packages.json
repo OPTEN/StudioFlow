@@ -5,5 +5,11 @@
     "types": ["vitest/globals", "node"],
     "noEmit": true
   },
-  "include": ["packages/*/src/**/*.ts", "apps/output/src/**/*.ts", "apps/output/vite.config.ts", "vitest.config.ts", "tests/e2e/**/*.ts"]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/output/src/**/*.ts",
+    "apps/output/vite.config.ts",
+    "vitest.config.ts",
+    "tests/e2e/**/*.ts"
+  ]
 }

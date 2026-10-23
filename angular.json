@@ -50,16 +50,12 @@
                 "input": "apps/studio/public"
               }
             ],
-            "styles": [
-              "apps/studio/src/styles.scss"
-            ],
+            "styles": ["apps/studio/src/styles.scss"],
             "outputPath": {
               "base": "dist/studio"
             },
             "stylePreprocessorOptions": {
-              "includePaths": [
-                "apps/studio/src/styles"
-              ]
+              "includePaths": ["apps/studio/src/styles"]
             }
           },
           "configurations": {
@@ -163,16 +159,12 @@
                 "input": "apps/sender/public"
               }
             ],
-            "styles": [
-              "apps/sender/src/styles.scss"
-            ],
+            "styles": ["apps/sender/src/styles.scss"],
             "outputPath": {
               "base": "dist/sender"
             },
             "stylePreprocessorOptions": {
-              "includePaths": [
-                "apps/sender/src/styles"
-              ]
+              "includePaths": ["apps/sender/src/styles"]
             },
             "baseHref": "/join/"
           },

@@ -28,7 +28,10 @@ export default defineConfig({
           name: 'model',
           globals: true,
           environment: 'node',
-          include: ['packages/scene-model/src/**/*.spec.ts', 'packages/realtime-client/src/**/*.spec.ts'],
+          include: [
+            'packages/scene-model/src/**/*.spec.ts',
+            'packages/realtime-client/src/**/*.spec.ts',
+          ],
         },
       },
       {
