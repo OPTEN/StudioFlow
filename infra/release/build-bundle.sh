@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Assembles the files of a GitHub release (docs/releasing.md) from the working tree. Runs in the release workflow after
+# release-please tagged the release; nothing is uploaded here.
+#
+# Usage: infra/release/build-bundle.sh X.Y.Z OUTPUT_DIR
+#
+# Writes OUTPUT_DIR/assets/ - exactly the files that are attached to the release:
+#   studioflow-X.Y.Z.tar.gz            the install folder: docker-compose.yml (the release file, pinned to X.Y.Z),
+#                                      .env.example, setup/update/backup/restore scripts, runbook, QUICKSTART.md, VERSION
+#   docker-compose.yml, env.example    the same two files on their own (GitHub drops the leading dot of .env.example)
+#   QUICKSTART.md                      one page: install, update, roll back
+#   studioflow-prototype-X.Y.Z.zip     the clickable Regie prototype (open prototype/regie.html in a browser)
+#   SHA256SUMS                         checksums of all of the above
+set -euo pipefail
+
+usage() {
+	sed -n '2,/^set /p' "$0" | sed '$d;s/^# \{0,1\}//' >&2
+	exit 2
+}
+
+[ "$#" -eq 2 ] || usage
+version="$1"
+out="$2"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+	echo "Error: '$version' is not a version (X.Y.Z)." >&2
+	exit 2
+}
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$root"
+
+# The files of this commit must carry the version that is released (release-please puts it there).
+declared="$(sed -n 's/^  "version": "\([^"]*\)",$/\1/p' package.json | head -n 1)"
+[ "$declared" = "$version" ] || {
+	echo "Error: package.json says version '$declared', not '$version'. Build the bundle from the release commit." >&2
+	exit 1
+}
+grep -q "STUDIOFLOW_IMAGE_TAG:-$version}" docker-compose.release.yml || {
+	echo "Error: docker-compose.release.yml does not default to the images of version $version." >&2
+	exit 1
+}
+
+name="studioflow-$version"
+stage="$out/stage/$name"
+assets="$out/assets"
+rm -rf "$out"
+mkdir -p "$stage/infra/scripts" "$stage/docs" "$assets"
+
+# Docker Compose reads docker-compose.yml by default, so the release file is called that in the bundle.
+install -m 0644 docker-compose.release.yml "$stage/docker-compose.yml"
+install -m 0644 docker-compose.override.example.yml .env.example "$stage/"
+install -m 0755 setup.sh update.sh backup.sh restore.sh "$stage/"
+install -m 0644 setup.ps1 update.ps1 backup.ps1 restore.ps1 "$stage/"
+install -m 0755 infra/scripts/common.sh "$stage/infra/scripts/"
+install -m 0644 infra/scripts/StudioFlow.psm1 "$stage/infra/scripts/"
+install -m 0644 docs/runbook.md "$stage/docs/"
+sed "s/@VERSION@/$version/g" infra/release/QUICKSTART.md >"$stage/QUICKSTART.md"
+printf '%s\n' "$version" >"$stage/VERSION"
+
+# Reproducible archive: fixed order, owner and time (the time of the commit), no timestamp in the gzip header.
+epoch="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}"
+tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$epoch" -cf - -C "$out/stage" "$name" |
+	gzip -9n >"$assets/$name.tar.gz"
+
+install -m 0644 "$stage/docker-compose.yml" "$stage/QUICKSTART.md" "$assets/"
+install -m 0644 .env.example "$assets/env.example"
+
+# The prototype keeps its fonts next to regie.html, so it works offline from the unpacked folder.
+(cd "$root" && zip -qr -X "$assets/studioflow-prototype-$version.zip" prototype)
+
+(cd "$assets" && sha256sum -- * >SHA256SUMS)
+rm -rf "$out/stage"
+
+echo "Release files for $version in $assets:"
+(cd "$assets" && ls -l)
