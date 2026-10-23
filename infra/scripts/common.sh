@@ -14,9 +14,9 @@ readonly SF_WAIT_TIMEOUT_SECONDS=600
 
 sf_info() { printf '%s\n' "$*"; }
 sf_step() { printf '\n==> %s\n' "$*"; }
-sf_warn() { printf 'Warnung: %s\n' "$*" >&2; }
+sf_warn() { printf 'Warning: %s\n' "$*" >&2; }
 sf_die() {
-	printf 'Fehler: %s\n' "$*" >&2
+	printf 'Error: %s\n' "$*" >&2
 	exit 1
 }
 
@@ -30,13 +30,13 @@ sf_host_path() {
 }
 
 sf_require_docker() {
-	command -v docker >/dev/null 2>&1 || sf_die "docker wurde nicht gefunden. Docker installieren (Linux: Docker Engine, Windows/macOS: Docker Desktop)."
-	docker compose version >/dev/null 2>&1 || sf_die "Docker Compose v2 fehlt («docker compose version» schlägt fehl)."
-	docker info >/dev/null 2>&1 || sf_die "Docker läuft nicht oder dieser Benutzer darf es nicht verwenden (Linux: Gruppe «docker»)."
+	command -v docker >/dev/null 2>&1 || sf_die "docker was not found. Install Docker (Linux: Docker Engine, Windows/macOS: Docker Desktop)."
+	docker compose version >/dev/null 2>&1 || sf_die "Docker Compose v2 is missing ('docker compose version' fails)."
+	docker info >/dev/null 2>&1 || sf_die "Docker is not running, or this user is not allowed to use it (Linux: group 'docker')."
 }
 
 sf_require_env_file() {
-	[ -f "$SF_ROOT/.env" ] || sf_die ".env fehlt in $SF_ROOT. Zuerst ./setup.sh ausführen."
+	[ -f "$SF_ROOT/.env" ] || sf_die ".env is missing in $SF_ROOT. Run ./setup.sh first."
 }
 
 # docker compose, always from the repository root (picks up .env and docker-compose.override.yml).
@@ -58,18 +58,18 @@ sf_quiet() {
 	fi
 }
 
-# Yes/no question on the terminal. $1 = question, $2 = default (j|n). Without a terminal the default applies.
+# Yes/no question on the terminal. $1 = question, $2 = default (y|n). Without a terminal the default applies.
 sf_confirm() {
-	local question="$1" default="${2:-n}" answer hint="[j/N]"
-	[ "$default" = j ] && hint="[J/n]"
+	local question="$1" default="${2:-n}" answer hint="[y/N]"
+	[ "$default" = y ] && hint="[Y/n]"
 	if [ ! -r /dev/tty ] || ! { : </dev/tty; } 2>/dev/null; then
-		[ "$default" = j ]
+		[ "$default" = y ]
 		return
 	fi
 	printf '%s %s ' "$question" "$hint" >/dev/tty
 	IFS= read -r answer </dev/tty || answer=""
 	case "${answer:-$default}" in
-		j | J | ja | Ja | JA | y | Y | yes) return 0 ;;
+		y | Y | yes | Yes | YES) return 0 ;;
 		*) return 1 ;;
 	esac
 }
@@ -104,25 +104,26 @@ sf_broadcast_status() {
 	esac
 }
 
-# Refuses to continue while a broadcast may be on air. $1 = action (German noun), $2 = force (true|false).
+# Refuses to continue while a broadcast may be on air. $1 = action (a noun phrase such as "The update"),
+# $2 = force (true|false).
 sf_guard_broadcast() {
 	local action="$1" force="$2" status
 	status="$(sf_broadcast_status)"
 	case "$status" in
-		idle) sf_info "Sendestatus: keine Sendung live." ;;
-		stopped) sf_info "Sendestatus: Stack läuft nicht, keine Sendung live." ;;
+		idle) sf_info "Broadcast status: no broadcast is live." ;;
+		stopped) sf_info "Broadcast status: the stack is not running, no broadcast is live." ;;
 		live)
 			if [ "$force" = true ]; then
-				sf_warn "Eine Sendung ist LIVE. ${action} wird wegen --force trotzdem ausgeführt – das Bild beim Proxy bricht ab."
+				sf_warn "A broadcast is LIVE. ${action} will run anyway because of --force - the picture at the proxy will drop out."
 			else
-				sf_die "Eine Sendung ist LIVE. ${action} ist während einer Sendung gesperrt. Zuerst «Sendung beenden» in der Regie (oder --force, wenn es wirklich sein muss)."
+				sf_die "A broadcast is LIVE. ${action} is blocked during a broadcast. First click 'End broadcast' in the Regie (or use --force if you really must)."
 			fi
 			;;
 		*)
 			if [ "$force" = true ]; then
-				sf_warn "Sendestatus unbekannt (API antwortet nicht). ${action} wird wegen --force trotzdem ausgeführt."
+				sf_warn "Broadcast status unknown (the API does not answer). ${action} will run anyway because of --force."
 			else
-				sf_die "Sendestatus unbekannt: die API läuft nicht oder antwortet nicht. Prüfen mit «docker compose ps» und «docker compose logs api»; mit --force trotzdem fortfahren."
+				sf_die "Broadcast status unknown: the API is not running or does not answer. Check with 'docker compose ps' and 'docker compose logs api'; use --force to continue anyway."
 			fi
 			;;
 	esac
@@ -132,7 +133,7 @@ sf_guard_broadcast() {
 sf_up_and_wait() {
 	if ! sf_compose up -d --wait --wait-timeout "$SF_WAIT_TIMEOUT_SECONDS" "$@"; then
 		sf_compose ps >&2 || true
-		sf_die "Nicht alle Dienste sind gesund. Logs: docker compose logs --tail 100 <dienst>"
+		sf_die "Not all services are healthy. Logs: docker compose logs --tail 100 <service>"
 	fi
 }
 

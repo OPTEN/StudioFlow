@@ -1,19 +1,19 @@
-﻿<#
+<#
 .SYNOPSIS
-    StudioFlow sichern: Datenbank (pg_dump) und die Volumes media, keys und caddy_data.
+    Back up StudioFlow: database (pg_dump) and the volumes media, keys and caddy_data.
 
 .DESCRIPTION
-    Gleiches Verhalten wie backup.sh. Ergebnis: <basis>/YYYY-MM-DD_HHMM[_label]/ mit database.dump, media.tar.gz,
-    keys.tar.gz, caddy_data.tar.gz, backup-info.txt und SHA256SUMS. Die .env ist nicht dabei (Secrets): sie gehört
-    in den Passwort-Tresor. Die Sicherung enthält private Schlüssel (Login, Zertifikate) – Ordner geschützt
-    aufbewahren. Der Stack muss laufen (mindestens postgres); eine laufende Sendung wird nicht gestört.
+    Same behaviour as backup.sh. Result: <base>/YYYY-MM-DD_HHMM[_label]/ with database.dump, media.tar.gz,
+    keys.tar.gz, caddy_data.tar.gz, backup-info.txt and SHA256SUMS. The .env is not included (secrets): keep it
+    in the password vault. The backup contains private keys (login, certificates) - store the folder protected.
+    The stack must be running (at least postgres); a running broadcast is not disturbed.
 
 .PARAMETER Dir
-    Basisordner der Sicherungen (Standard: ./backups).
+    Base folder of the backups (default: ./backups).
 .PARAMETER Keep
-    Nur die neusten N Sicherungen im Basisordner behalten, ältere löschen.
+    Keep only the newest N backups in the base folder, delete older ones.
 .PARAMETER Label
-    Zusatz zum Ordnernamen, z. B. vor-update (Buchstaben, Ziffern, -).
+    Suffix for the folder name, e.g. pre-update (letters, digits, -).
 
 .EXAMPLE
     ./backup.ps1
@@ -44,19 +44,19 @@ try
     if ($UnknownArguments)
     {
         if ($UnknownArguments | Where-Object { $_ -in @('--help', '-help', '/?') }) { $Help = $true }
-        else { throw "Unbekannte Option: $($UnknownArguments -join ' ') (siehe Get-Help ./backup.ps1 -Full)." }
+        else { throw "Unknown option: $($UnknownArguments -join ' ') (see Get-Help ./backup.ps1 -Full)." }
     }
     if ($Help)
     {
         Get-Help $PSCommandPath -Full
         exit 0
     }
-    if ($PSBoundParameters.ContainsKey('Keep') -and $Keep -lt 1) { throw '-Keep erwartet eine Zahl ab 1.' }
-    if ($Label -and $Label -notmatch '^[A-Za-z0-9-]{1,40}$') { throw '-Label erlaubt nur Buchstaben, Ziffern und - (max. 40).' }
+    if ($PSBoundParameters.ContainsKey('Keep') -and $Keep -lt 1) { throw '-Keep expects a number of 1 or more.' }
+    if ($Label -and $Label -notmatch '^[A-Za-z0-9-]{1,40}$') { throw '-Label allows only letters, digits and - (max. 40).' }
 
     Assert-SfDocker
     Assert-SfEnvFile
-    if (-not (Test-SfServiceRunning 'postgres')) { throw 'PostgreSQL läuft nicht. Zuerst den Stack starten: docker compose up -d' }
+    if (-not (Test-SfServiceRunning 'postgres')) { throw 'PostgreSQL is not running. Start the stack first: docker compose up -d' }
 
     # --- target folder (private: it holds login keys, certificates and the CA key) -------------------------------
 
@@ -73,15 +73,15 @@ try
     New-Item -ItemType Directory -Path $target | Out-Null
     Protect-SfPath -Path $target -Directory
 
-    Write-SfStep "Sicherung nach $target"
+    Write-SfStep "Backing up to $target"
 
     # --- database ---------------------------------------------------------------------------------------------------
 
-    Write-SfInfo 'Datenbank (pg_dump) …'
+    Write-SfInfo 'Database (pg_dump) ...'
     Invoke-SfCompose -Arguments @('exec', '-T', 'postgres', 'pg_dump', '-U', 'studioflow', '-d', 'studioflow', '-Fc', '-f', '/tmp/studioflow-backup.dump') `
-        -FailMessage 'pg_dump ist fehlgeschlagen.'
+        -FailMessage 'pg_dump failed.'
     Invoke-SfCompose -Arguments @('cp', 'postgres:/tmp/studioflow-backup.dump', (Join-Path $target $DbDumpName)) -Quiet `
-        -FailMessage 'Die Datenbanksicherung konnte nicht kopiert werden.'
+        -FailMessage 'The database dump could not be copied.'
     $postgresVersion = (Get-SfComposeOutput -Arguments @('exec', '-T', 'postgres', 'psql', '-U', 'studioflow', '-d', 'studioflow', '-tAc', 'SHOW server_version')).Lines |
         Where-Object { $_ } | Select-Object -First 1
     $postgresId = (Get-SfComposeOutput -Arguments @('ps', '-q', 'postgres')).Lines | Select-Object -First 1
@@ -92,11 +92,11 @@ try
     $toolbox = Start-SfToolbox
     foreach ($volume in $BackupVolumes)
     {
-        Write-SfInfo "Volume $volume …"
+        Write-SfInfo "Volume $volume ..."
         Invoke-SfNative -FilePath 'docker' -ArgumentList @('exec', $toolbox, 'tar', '-czf', "/tmp/$volume.tar.gz", '-C', "/volumes/$volume", '.') `
-            -FailMessage "Das Archiv für $volume konnte nicht erstellt werden."
+            -FailMessage "The archive for $volume could not be created."
         Invoke-SfNative -FilePath 'docker' -ArgumentList @('cp', "${toolbox}:/tmp/$volume.tar.gz", (Join-Path $target "$volume.tar.gz")) -Quiet `
-            -FailMessage "Das Archiv für $volume konnte nicht kopiert werden."
+            -FailMessage "The archive for $volume could not be copied."
     }
 
     # --- description and checksums ----------------------------------------------------------------------------------
@@ -105,13 +105,13 @@ try
     $git = if (Get-Command git -ErrorAction SilentlyContinue) { & git -C (Get-SfRoot) rev-parse --short HEAD 2> $null } else { $null }
     if ($LASTEXITCODE -ne 0) { $git = $null }
     $info = @(
-        'StudioFlow-Sicherung'
-        "erstellt:  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"
-        "rechner:   $([Environment]::MachineName)"
-        "projekt:   $(if ($project) { $project } else { 'unbekannt' })"
-        "git:       $(if ($git) { $git } else { 'unbekannt' })"
-        "postgres:  $(if ($postgresVersion) { $postgresVersion } else { 'unbekannt' })"
-        "inhalt:    $DbDumpName $($archives -join ' ') "
+        'StudioFlow backup'
+        "created:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"
+        "host:      $([Environment]::MachineName)"
+        "project:   $(if ($project) { $project } else { 'unknown' })"
+        "git:       $(if ($git) { $git } else { 'unknown' })"
+        "postgres:  $(if ($postgresVersion) { $postgresVersion } else { 'unknown' })"
+        "contents:  $DbDumpName $($archives -join ' ') "
     )
     $utf8 = [Text.UTF8Encoding]::new($false)
     [IO.File]::WriteAllText((Join-Path $target $BackupInfoName), ($info -join "`n") + "`n", $utf8)
@@ -136,18 +136,18 @@ try
         {
             if ($backups[$i].FullName -eq $target) { continue }
             Remove-Item -LiteralPath $backups[$i].FullName -Recurse -Force
-            Write-SfInfo "Alte Sicherung entfernt: $($backups[$i].Name)"
+            Write-SfInfo "Old backup removed: $($backups[$i].Name)"
         }
     }
 
     $bytes = (Get-ChildItem -LiteralPath $target -File | Measure-Object Length -Sum).Sum
     $size = if ($bytes -ge 1GB) { '{0:N1} GB' -f ($bytes / 1GB) } elseif ($bytes -ge 1MB) { '{0:N1} MB' -f ($bytes / 1MB) } else { '{0:N0} KB' -f [math]::Ceiling($bytes / 1KB) }
-    Write-SfStep "Sicherung fertig: $target ($size)"
-    Write-SfInfo "Wiederherstellen mit: ./restore.ps1 `"$target`""
+    Write-SfStep "Backup complete: $target ($size)"
+    Write-SfInfo "Restore with: ./restore.ps1 `"$target`""
 }
 catch
 {
-    Write-Host "Fehler: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 finally
@@ -157,6 +157,6 @@ finally
     if ($target -and -not $completed -and (Test-Path -LiteralPath $target))
     {
         Remove-Item -LiteralPath $target -Recurse -Force
-        Write-SfWarn 'Die unvollständige Sicherung wurde entfernt.'
+        Write-SfWarn 'The incomplete backup was removed.'
     }
 }
