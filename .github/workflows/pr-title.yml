@@ -1,0 +1,47 @@
+# The title of a pull request must follow Conventional Commits (docs/releasing.md): "feat: ...", "fix(api): ...",
+# "feat!: ..." for a breaking change. The squash merge makes the title the commit message on main, and release-please
+# derives the next version and the release notes from those messages.
+#
+# pull_request_target runs this file as it is on main, so a pull request cannot loosen the rule it is judged by. That is
+# safe here: the job checks out nothing and only reads the title. For the check to block a merge, the owner makes the job
+# "Conventional Commits title" a required check of main (repository setting).
+
+name: PR title
+
+on:
+  pull_request_target:
+    # synchronize: a check must exist for every new head commit, or a required check stays pending after a push.
+    types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  conventional-commits:
+    name: Conventional Commits title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          # feat: minor version, fix and perf: patch version, "!" or "BREAKING CHANGE": breaking (before 1.0: minor).
+          # The others appear in no release and need no new version.
+          types: |
+            feat
+            fix
+            perf
+            revert
+            docs
+            test
+            refactor
+            build
+            ci
+            chore
+            style
