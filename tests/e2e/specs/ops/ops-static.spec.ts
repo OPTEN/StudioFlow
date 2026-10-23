@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, TEST_ADMIN, imageNameOf, parseEnvFile, stackConfig } from '../../support/env';
 import { expect, knownBug, test } from '../../support/fixtures';
 import { detectLanIPv4 } from '../../support/network-info';
-import { OPS_HASH_PROJECT, OpsSandbox, cleanComposeEnv, composeConfig } from '../../support/ops';
+import { OPS_HASH_PROJECT, OpsSandbox, bashPath, cleanComposeEnv, composeConfig } from '../../support/ops';
 import { containerName, docker } from '../../support/stack';
 import { exec } from '../../support/shell';
 import { t } from '../../support/tags';
@@ -16,6 +17,16 @@ import { t } from '../../support/tags';
  */
 
 const read = (relative: string): string => fs.readFileSync(path.join(REPO_ROOT, relative), 'utf8');
+const bashPathOf = bashPath;
+
+/** PowerShell 7 if there is one, else Windows PowerShell; undefined when neither starts. */
+async function powerShell(): Promise<string | undefined> {
+  for (const candidate of ['pwsh', 'powershell']) {
+    const probe = await exec(candidate, ['-NoProfile', '-Command', 'exit 0']).catch(() => undefined);
+    if (probe?.code === 0) return candidate;
+  }
+  return undefined;
+}
 const SERVICES = ['caddy', 'api', 'livekit', 'postgres'] as const;
 const TLS_MODES = ['internal', 'acme', 'custom', 'dns-cloudflare'];
 
@@ -30,6 +41,9 @@ interface ConfigService {
   ports?: Array<{ target: number; published?: string; protocol?: string; host_ip?: string }>;
   profiles?: string[];
   environment?: Record<string, string>;
+  cap_add?: string[];
+  read_only?: boolean;
+  volumes?: Array<{ type: string; source?: string; target: string; read_only?: boolean }>;
 }
 
 async function configOf(profiles: string[] = []): Promise<Record<string, ConfigService>> {
@@ -64,8 +78,9 @@ function envExampleKeys(): Map<string, string> {
 test.describe('OPS compose file', () => {
   test('E2E-OPS-01 [static] images are pinned; every service restarts, is health-checked, hardened and ordered', t.p1, async () => {
     const services = await configOf();
-    expect(services['livekit']!.image, 'LiveKit image').toMatch(/^livekit\/livekit-server:v\d+\.\d+\.\d+$/);
-    expect(services['postgres']!.image, 'PostgreSQL image').toMatch(/^postgres:17\.\d+-alpine$/);
+    // Renovate pins the images by digest (tag@sha256:...), so a digest is allowed behind the tag.
+    expect(services['livekit']!.image, 'LiveKit image').toMatch(/^livekit\/livekit-server:v\d+\.\d+\.\d+(@sha256:[0-9a-f]{64})?$/);
+    expect(services['postgres']!.image, 'PostgreSQL image').toMatch(/^postgres:17\.\d+-alpine(@sha256:[0-9a-f]{64})?$/);
     for (const service of SERVICES) {
       const entry = services[service]!;
       expect(entry.restart, `${service} restart policy`).toBe('unless-stopped');
@@ -87,7 +102,7 @@ test.describe('OPS compose file', () => {
     const { all } = composeVariables();
     const missing = [...all].filter((name) => !documented.has(name));
     expect(missing, 'variables read by docker-compose.yml but not documented in .env.example').toEqual([]);
-    for (const name of ['ADMIN__PASSWORD', 'ADMIN__PASSWORDHASH', 'LIVEKIT_API_SECRET', 'POSTGRES_PASSWORD', 'CF_API_TOKEN', 'INFOMANIAK_API_TOKEN', 'HETZNER_API_TOKEN', 'DESEC_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'GANDI_BEARER_TOKEN', 'OVH_APPLICATION_SECRET', 'OVH_CONSUMER_KEY']) {
+    for (const name of ['ADMIN__PASSWORD', 'ADMIN__PASSWORDHASH', 'LIVEKIT_API_SECRET', 'POSTGRES_PASSWORD', 'BACKUP_RCLONE_CONFIG', 'CF_API_TOKEN', 'INFOMANIAK_API_TOKEN', 'HETZNER_API_TOKEN', 'DESEC_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'GANDI_BEARER_TOKEN', 'OVH_APPLICATION_SECRET', 'OVH_CONSUMER_KEY']) {
       expect(documented.get(name), `${name} has no value in .env.example`).toBe('');
     }
     expect(read('.env.example'), 'no placeholder secret').not.toMatch(/changeme|devkey|password123/i);
@@ -112,6 +127,119 @@ test.describe('OPS compose file', () => {
       }
     });
   }
+});
+
+test.describe('OPS backup service (static)', () => {
+  test('E2E-OPS-20 [static] the backup service is opt-in (profile backup), hardened, publishes nothing and reads the volumes read-only', t.p1, async () => {
+    expect((await configOf())['backup'], 'not part of the default stack').toBeUndefined();
+    const services = await configOf(['backup']);
+    const backup = services['backup']!;
+    expect(backup.restart).toBe('unless-stopped');
+    expect(backup.security_opt ?? []).toContain('no-new-privileges:true');
+    expect(backup.cap_drop ?? []).toContain('ALL');
+    expect(backup.cap_add, 'the only capability: read access to the Caddy volume').toEqual(['DAC_READ_SEARCH']);
+    expect(backup.read_only, 'read-only root file system').toBe(true);
+    expect(backup.healthcheck?.test, 'healthcheck').toBeTruthy();
+    expect(backup.depends_on?.['postgres']?.condition).toBe('service_healthy');
+    expect(backup.ports ?? [], 'publishes nothing').toEqual([]);
+    const mount = (service: ConfigService, source: string) => service.volumes?.find((volume) => volume.source === source);
+    for (const volume of ['media', 'keys', 'caddy_data']) expect(mount(backup, volume)?.read_only, `${volume} is mounted read-only`).toBe(true);
+    for (const volume of ['backups', 'backup_status']) expect(mount(backup, volume)?.read_only ?? false, `${volume} is writable`).toBe(false);
+    expect(mount(backup, 'backups'), 'backups volume').toBeTruthy();
+    // The tools match the server: the image is built from the PostgreSQL image of the stack.
+    const build = backup.build as { args?: Record<string, string> };
+    expect(build.args?.['POSTGRES_IMAGE']).toBe(services['postgres']!.image);
+    // The API sees the status file only, read-only; never the backups themselves.
+    const api = services['api']!;
+    expect(mount(api, 'backup_status')?.read_only, 'API: status volume read-only').toBe(true);
+    expect(mount(api, 'backups'), 'API: no access to the backups').toBeUndefined();
+    expect(api.environment?.['BACKUP__STATUSFILE']).toBe('/data/backup-status/backup-status.json');
+  });
+
+  const SHELL_FILES = ['backup.sh', 'restore.sh', 'update.sh', 'setup.sh', 'infra/scripts/common.sh', 'infra/scripts/backup-core.sh', 'infra/backup/entrypoint.sh', 'infra/backup/backup-job.sh', 'infra/backup/status.sh', 'infra/backup/healthcheck.sh'];
+  const ASCII_FILES = [...SHELL_FILES, 'backup.ps1', 'restore.ps1', 'update.ps1', 'setup.ps1', 'infra/scripts/StudioFlow.psm1', 'infra/backup/Dockerfile', '.env.example', 'docker-compose.yml', '.github/renovate.json5'];
+
+  test('E2E-OPS-20 [static] scripts and configuration are ASCII only, the shell scripts have valid syntax and are executable by the image', t.p1, async () => {
+    for (const file of ASCII_FILES) {
+      const bad = [...read(file)].filter((character) => character.charCodeAt(0) > 126);
+      expect(bad, `${file}: non-ASCII characters (docs/architecture/i18n-design.md D9)`).toEqual([]);
+    }
+    for (const file of SHELL_FILES) {
+      const result = await exec(bashPathOf(), ['-n', file], { cwd: REPO_ROOT });
+      expect(result.code, `${file}: ${result.output}`).toBe(0);
+      expect(read(file), `${file}: LF line endings`).not.toContain('\r');
+    }
+  });
+
+  test('E2E-OPS-20 [static] the PowerShell scripts parse', t.p2, async () => {
+    const shell = await powerShell();
+    test.skip(!shell, 'no PowerShell on this machine');
+    const files = ['backup.ps1', 'restore.ps1', 'update.ps1', 'setup.ps1', 'infra/scripts/StudioFlow.psm1'];
+    const script = `$bad = 0; foreach ($f in @('${files.join("','")}')) { $e = $null; $t = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) $f), [ref]$t, [ref]$e); foreach ($x in $e) { Write-Output ($f + ': ' + $x.Message + ' (line ' + $x.Extent.StartLineNumber + ')'); $bad++ } }; exit $bad`;
+    const result = await exec(shell!, ['-NoProfile', '-NonInteractive', '-Command', script], { cwd: REPO_ROOT });
+    expect(result.code, result.output).toBe(0);
+  });
+});
+
+/** Runs a bash script that sources the shared backup code (no Docker involved). */
+async function bashScript(script: string) {
+  return exec(bashPathOf(), ['-s'], { cwd: REPO_ROOT, input: `set -euo pipefail\n. infra/scripts/common.sh\n. infra/scripts/backup-core.sh\n${script}\n`, timeoutMs: 60_000 });
+}
+
+test.describe('OPS backup logic (unit)', () => {
+  const dates = (last: string, days: number) => Array.from({ length: days }, (_, index) => new Date(Date.parse(`${last}T00:00:00Z`) - index * 86_400_000).toISOString().slice(0, 10));
+
+  test('E2E-OPS-21 [unit] retention keeps the newest backup of the last N days and N weeks and nothing else', t.p1, async () => {
+    // 30 daily backups at 03:00 up to Friday 2026-10-23, plus a second one on the last day and a foreign name.
+    const names = [...dates('2026-10-23', 30).map((day) => `${day}_0300_auto`), '2026-10-23_1510_auto', 'meine-notizen'];
+    const result = await bashScript(`printf '%s\\n' ${names.map((name) => `'${name}'`).join(' ')} | sf_backup_expired 7 4`);
+    expect(result.code, result.output).toBe(0);
+    const expired = new Set(result.stdout.split('\n').filter(Boolean));
+    const kept = names.filter((name) => !expired.has(name) && name !== 'meine-notizen');
+    expect(kept.sort(), 'last 7 days (newest of each) plus the newest of the 3 weeks before: Sundays 11 and 4 October').toEqual(
+      ['2026-10-23_1510_auto', '2026-10-22_0300_auto', '2026-10-21_0300_auto', '2026-10-20_0300_auto', '2026-10-19_0300_auto', '2026-10-18_0300_auto', '2026-10-17_0300_auto', '2026-10-11_0300_auto', '2026-10-04_0300_auto'].sort(),
+    );
+    expect(expired.has('2026-10-23_0300_auto'), 'the older backup of a day is expired').toBe(true);
+    expect(expired.has('meine-notizen'), 'a name that is not a backup is never listed').toBe(false);
+  });
+
+  test('E2E-OPS-21 [unit] retention counts days and weeks that have a backup, so a pause does not shorten the history', t.p1, async () => {
+    const names = ['2026-10-23_0300_auto', '2026-10-01_0300_auto', '2026-09-20_0300_auto', '2026-08-01_0300_auto'];
+    const result = await bashScript(`printf '%s\\n' ${names.map((name) => `'${name}'`).join(' ')} | sf_backup_expired 2 1`);
+    expect(result.stdout.split('\n').filter(Boolean).sort()).toEqual(['2026-08-01_0300_auto', '2026-09-20_0300_auto']);
+    const empty = await bashScript(`printf '' | sf_backup_expired 7 4`);
+    expect(empty.code).toBe(0);
+    expect(empty.stdout).toBe('');
+  });
+
+  test('E2E-OPS-22 [unit] the checksum check accepts an intact backup and names the first problem otherwise', t.p0, async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-sums-'));
+    try {
+      const folder = dir.replace(/\\/g, '/');
+      const script = `
+dir='${folder}'
+printf 'dump' >"$dir/database.dump"; printf 'tar' >"$dir/keys.tar.gz"; printf 'info' >"$dir/backup-info.txt"
+sf_backup_write_checksums "$dir" database.dump keys.tar.gz backup-info.txt
+echo "intact: $(sf_backup_check_checksums "$dir" && echo ok)"
+printf 'x' >>"$dir/keys.tar.gz"
+echo "tampered: $(sf_backup_check_checksums "$dir" || true)"
+printf 'tar' >"$dir/keys.tar.gz"; rm "$dir/backup-info.txt"
+echo "missing: $(sf_backup_check_checksums "$dir" || true)"
+printf 'info' >"$dir/backup-info.txt"; printf '%s  ../escape\\n' "$(printf 'x' | sha256sum | cut -d' ' -f1)" >>"$dir/SHA256SUMS"
+echo "escape: $(sf_backup_check_checksums "$dir" || true)"
+first="$(sf_backup_unique_dir "$dir" 2026-10-23_0300)"; mkdir "$first"
+echo "unique: $(basename "$(sf_backup_unique_dir "$dir" 2026-10-23_0300)")"`;
+      const result = await bashScript(script);
+      expect(result.code, result.output).toBe(0);
+      expect(result.stdout).toContain('intact: ok');
+      expect(result.stdout).toContain('tampered: Checksum mismatch: keys.tar.gz (the backup is damaged)');
+      expect(result.stdout).toContain('missing: File listed in SHA256SUMS is missing: backup-info.txt');
+      expect(result.stdout).toContain('escape: Invalid entry in SHA256SUMS: ../escape');
+      expect(result.stdout).toContain('unique: 2026-10-23_0300-2');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 test.describe('OPS setup.sh', () => {

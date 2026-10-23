@@ -376,10 +376,10 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `DEV` Devices, viewports, accessibility | 0 | 0 | 22 | 22 | 7 | 12 | 3 |
 | `DOCK` Dock layout | 6 | 0 | 11 | 17 | 6 | 6 | 5 |
 | `MEDIA` Media assets | 3 | 12 | 10 | 25 | 10 | 10 | 5 |
-| `OPS` Operations | 0 | 0 | 19 | 19 | 7 | 9 | 3 |
+| `OPS` Operations | 2 | 0 | 27 | 29 | 13 | 13 | 3 |
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
-| **Total** | **87** | **91** | **231** | **409** | **171** | **179** | **59** |
+| **Total** | **89** | **91** | **239** | **419** | **177** | **183** | **59** |
 <!--/SUMMARY-->
 
 Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration)
@@ -1941,7 +1941,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-01** · P1 · pw — Compose file and `.env.example` consistency
 - Steps: `docker compose config --format json` with a generated `.env`; extract all `${VAR}` references; compare with `.env.example`.
-- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
+- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged; a digest behind the tag is allowed, Renovate adds it); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
 
 **E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
 - Steps: run `printf '%s' "$PW" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --admin-password-stdin --env-file <dir>/.env` twice into two directories, once with `--generate-password`, once with `--plain-password`, once without `--node-ip` (auto-detection); invalid inputs (invalid IP, `--tls-mode foo`, password shorter than 12 characters; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
@@ -1960,7 +1960,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-06** · P0 · pw — Restart policy and volumes
 - Steps: crash each service (`kill -TERM 1` inside the container, `kill -QUIT 1` for PostgreSQL; since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04]); `docker compose down` then `up -d`; `down -v`.
-- Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial) and PostgreSQL data persist; `down -v` removes them; volume names `caddy_data`, `caddy_config`, `media`, `keys`, `pgdata`.
+- Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial) and PostgreSQL data persist; `down -v` removes them; volume names `caddy_data`, `caddy_config`, `media`, `keys`, `pgdata` (plus `backups` and `backup_status` with the profile `backup`).
 
 **E2E-OPS-07** · P0 · pw — Backup
 - Steps: seed data (scenes, 2 devices, image + video asset); run `./backup.sh` while the stack is running and the Regie is used; run it twice within a minute; run `./backup.sh --label vor-test`; run it three times with `--keep 2`; run it with the stack stopped; kill it half way.
@@ -2013,6 +2013,50 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 **E2E-OPS-19** · P2 · pw — Time zone and clock
 - Steps: compare `date` in containers with the host; Regie clock vs `ServerTime`.
 - Expect: containers UTC; API timestamps ISO-8601 with offset; Regie clock shows browser local time in 24 h.
+
+Automatic backups (issue 16, runbook section 7.2 to 7.4). The service is the compose profile `backup`; the specs start it per test on fresh volumes and remove it afterwards (`ops-backup-auto.disruptive.spec.ts`), the static and unit specs are in `ops-static.spec.ts`.
+
+**E2E-OPS-20** · P1 · pw — The backup service in the compose file; scripts and configuration files
+- Steps: `docker compose config` without and with the profile `backup`; read the shell, PowerShell, compose, `.env.example` and Renovate files.
+- Expect: the service is not part of the default stack; with the profile it has `restart: unless-stopped`, a healthcheck, `no-new-privileges`, `cap_drop: ALL` with `cap_add` `DAC_READ_SEARCH` only, a read-only root file system, publishes nothing, depends on a healthy postgres, mounts `media`, `keys` and `caddy_data` read-only and is built from the PostgreSQL image of the stack (`POSTGRES_IMAGE`); the API mounts `backup_status` read-only and never `backups`; all scripts and configuration are ASCII only (D9), the shell scripts pass `bash -n` and have LF line endings, the PowerShell scripts parse; image pins may carry a digest (Renovate).
+
+**E2E-OPS-21** · P1 · pw (no stack) — Retention by days and weeks
+- Steps: `sf_backup_expired 7 4` over 30 daily backups, a second backup on the last day and a foreign name; `2 1` over backups with gaps; empty input.
+- Expect: the newest backup of each of the last 7 days and of the last 4 ISO weeks stays (here: 23 to 17 October, 11 and 4 October), the older backup of a day and everything else is listed for deletion; days and weeks without a backup are not counted; a name that is not a backup is never listed.
+
+**E2E-OPS-22** · P0 · pw (no stack) — Checksum check and folder names
+- Steps: `sf_backup_write_checksums` and `sf_backup_check_checksums` on an intact folder, with a changed file, a missing file and an entry that leaves the folder; `sf_backup_unique_dir` twice within a minute.
+- Expect: the intact folder passes; the first problem is named (`Checksum mismatch: keys.tar.gz`, `File listed in SHA256SUMS is missing: ...`, `Invalid entry in SHA256SUMS: ../escape`); the second folder of a minute gets `-2`.
+
+**E2E-OPS-23** · P0 · pw — Schedule creates a backup, status and readiness
+- Steps: `BACKUP_SCHEDULE='* * * * *'`; wait for the first backup; read the folder, the status file and `GET /health/ready`; copy the folder out and run `restore.sh --verify`.
+- Expect: a folder `..._auto` with `database.dump`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (no `media.tar.gz`); the log reports the verification of the dump; `lastSuccess` and `lastAttempt.ok` in the status file; `/health/ready` is 200 with `Degraded` and the hint that no off-site copy is configured (a warning, no outage); `--verify` exits 0, prints the table count and the newest migration and leaves no `studioflow_verify` database.
+
+**E2E-OPS-24** · P0 · pw — `restore.sh --verify` detects damage
+- Steps: a flipped byte in `database.dump`; a changed `keys.tar.gz`; a truncated dump with a rewritten checksum; a folder without `SHA256SUMS`.
+- Expect: exit 1 with `Checksum mismatch: database.dump`, `Checksum mismatch: keys.tar.gz`, `The dump could not be loaded` and `SHA256SUMS is missing`; no throwaway database is left; nothing is stopped.
+
+**E2E-OPS-25** · P1 · pw — Retention in the service
+- Steps: `BACKUP_KEEP_DAILY=2`, `BACKUP_KEEP_WEEKLY=1`; six old folders with `SHA256SUMS`, an unfinished `_auto` folder and a foreign folder; run the job.
+- Expect: the new backup and the newest old one remain; the other old folders and the unfinished folder are removed; the foreign folder stays.
+
+**E2E-OPS-26** · P0 · pw — No backup during a broadcast
+- Steps: start the broadcast of a production, run the job, wait; end the broadcast.
+- Expect: while live no folder is created and the status file says `postponed` with `postponedSince`; after the end the backup runs, exit 0, the state is `idle`.
+
+**E2E-OPS-27** · P0 · pw — A failed run is visible
+- Steps: run the job with a wrong database password, then correctly.
+- Expect: exit 1 `pg_dump failed.`, no partial folder, `lastAttempt.ok` false with the message, no `lastSuccess`; `/health/ready` names the failure; the next successful run clears it.
+
+**E2E-OPS-28** · P1 · pw — Off-site copy with age; refusal of unsafe settings
+- Steps: an rclone remote of type `local` and a generated age key; upload an image; run the job twice; decrypt with the private key outside the stack; start the service with a remote and no key, and with an invalid schedule.
+- Expect: only `.age` files and `SHA256SUMS` at the target, one dated folder (the older one pruned), the media file once and not again on the second run; the decrypted files pass `restore.sh --verify` and the image equals the upload; `/health/ready` is plain `Healthy`; the service stops with `BACKUP_RCLONE_REMOTE is set without BACKUP_AGE_RECIPIENT` and `BACKUP_SCHEDULE is not a valid cron expression`.
+
+**E2E-OPS-29** · P0 · pw — Restore from an automatic backup
+- Steps: seed scenes and an image, run the job, copy the folder and `media/` out, change the scenes and delete the image, `restore.sh <folder> --yes --no-safety-backup`.
+- Expect: `Volume media from the incremental copy`; scenes as before; the image is back, readable by the API and byte-identical.
+
+API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when automatic backups are off or everything is recent, and Degraded (never an exception) for a missing, unreadable or empty status file, a failed last run, a last backup or off-site copy older than `Backup:WarnAfterHours`, a missing off-site target and no backup after the grace period; `/health/ready` prints `Healthy` alone or the status followed by one line per failing check.
 
 ### 2.12 SYNC – Realtime protocol and state model
 
