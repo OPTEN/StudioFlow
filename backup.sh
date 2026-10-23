@@ -101,6 +101,8 @@ sf_quiet sf_compose cp postgres:/tmp/studioflow-backup.dump "$host_target/$SF_DB
 	sf_die "The database dump could not be copied."
 postgres_version="$(sf_compose exec -T postgres psql -U studioflow -d studioflow -tAc 'SHOW server_version' 2>/dev/null | tr -d '\r' || true)"
 project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$(sf_compose ps -q postgres)" 2>/dev/null || true)"
+# Which release the data belongs to: a rollback after an update needs the backup of the version it goes back to.
+version="$(sf_running_version)"
 
 # --- volumes --------------------------------------------------------------------------------------------------------
 
@@ -120,6 +122,7 @@ done
 	echo "created:   $(date '+%Y-%m-%d %H:%M:%S %z')"
 	echo "host:      $(hostname 2>/dev/null || echo unknown)"
 	echo "project:   ${project:-unknown}"
+	echo "version:   ${version:-unknown}"
 	echo "git:       $(sf_git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 	echo "postgres:  ${postgres_version:-unknown}"
 	echo "contents:  $SF_DB_DUMP $(archives | tr '\n' ' ')"

@@ -86,6 +86,8 @@ try
         Where-Object { $_ } | Select-Object -First 1
     $postgresId = (Get-SfComposeOutput -Arguments @('ps', '-q', 'postgres')).Lines | Select-Object -First 1
     $project = if ($postgresId) { & docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' $postgresId 2> $null } else { $null }
+    # Which release the data belongs to: a rollback after an update needs the backup of the version it goes back to.
+    $version = Get-SfRunningVersion
 
     # --- volumes ----------------------------------------------------------------------------------------------------
 
@@ -109,6 +111,7 @@ try
         "created:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')"
         "host:      $([Environment]::MachineName)"
         "project:   $(if ($project) { $project } else { 'unknown' })"
+        "version:   $(if ($version) { $version } else { 'unknown' })"
         "git:       $(if ($git) { $git } else { 'unknown' })"
         "postgres:  $(if ($postgresVersion) { $postgresVersion } else { 'unknown' })"
         "contents:  $DbDumpName $($archives -join ' ') "

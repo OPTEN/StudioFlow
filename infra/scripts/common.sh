@@ -129,6 +129,54 @@ sf_guard_broadcast() {
 	esac
 }
 
+# --- ready-made images (docker-compose.release.yml, docs/releasing.md) ----------------------------------------------
+
+# True when the Compose file pulls ready-made images (an installation from a release), false when it builds the images
+# from the source (a Git checkout with docker-compose.yml) or cannot be read.
+sf_uses_images() {
+	local config
+	config="$(sf_compose config --no-interpolate 2>/dev/null)" || return 1
+	! printf '%s\n' "$config" | grep -q '^    build:'
+}
+
+# Image reference of the API for the given tag (default: the tag that is configured), e.g. ghcr.io/opten/studioflow-api:0.4.2.
+sf_api_image() {
+	local images
+	if [ -n "${1:-}" ]; then
+		images="$(STUDIOFLOW_IMAGE_TAG="$1" sf_compose config --images 2>/dev/null)" || true
+	else
+		images="$(sf_compose config --images 2>/dev/null)" || true
+	fi
+	printf '%s\n' "$images" | grep -m 1 'studioflow-api' || true
+}
+
+# Value of a label of a local image or container; empty if there is none.
+sf_label() {
+	docker inspect --format "{{ index .Config.Labels \"$2\" }}" "$1" 2>/dev/null || true
+}
+
+# Version of the API that runs now, as it reports itself (0.4.2+1a2b3c4); empty if the API container does not exist or
+# comes from a build without a version label.
+sf_running_version() {
+	local id
+	id="$(sf_compose ps -q api 2>/dev/null | head -n 1)"
+	[ -z "$id" ] || sf_label "$id" org.opencontainers.image.version
+}
+
+# Sets KEY=VALUE in .env: replaces the line or appends it. The file stays private (mode 600).
+sf_env_set() {
+	local key="$1" value="$2" file="$SF_ROOT/.env" tmp
+	tmp="$(umask 077 && mktemp "$SF_ROOT/.env.update.XXXXXX")"
+	awk -v key="$key" -v line="$key=$value" '
+		{
+			name = $0; sub(/\r$/, "", name); sub(/=.*/, "", name); gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+			if (name == key) { if (!done) print line; done = 1; next }
+			print
+		}
+		END { if (!done) print line }' "$file" >"$tmp"
+	mv -f "$tmp" "$file"
+}
+
 # Starts the stack (or the given services) and waits until every healthcheck passes.
 sf_up_and_wait() {
 	if ! sf_compose up -d --wait --wait-timeout "$SF_WAIT_TIMEOUT_SECONDS" "$@"; then
