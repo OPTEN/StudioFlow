@@ -61,7 +61,7 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
     }
 
     .c-station-thumb__dim {
-      background: rgba(5, 7, 10, 0.5);
+      background: color-mix(in srgb, var(--well) 50%, transparent);
       inset: 0;
       position: absolute;
     }

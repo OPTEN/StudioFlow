@@ -95,10 +95,10 @@
 // fade only shows while there is more to scroll (DESIGN.md "Scroll edge").
 .c-dock-frame__body {
   background:
-    linear-gradient(var(--panel), rgba(21, 26, 34, 0)) top / 100% 18px no-repeat local,
-    linear-gradient(rgba(21, 26, 34, 0), var(--panel)) bottom / 100% 18px no-repeat local,
-    linear-gradient(rgba(1, 4, 9, 0.65), rgba(1, 4, 9, 0)) top / 100% 10px no-repeat scroll,
-    linear-gradient(rgba(1, 4, 9, 0), rgba(1, 4, 9, 0.65)) bottom / 100% 10px no-repeat scroll;
+    linear-gradient(var(--panel), transparent) top / 100% 18px no-repeat local,
+    linear-gradient(transparent, var(--panel)) bottom / 100% 18px no-repeat local,
+    linear-gradient(var(--scroll-edge), transparent) top / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, var(--scroll-edge)) bottom / 100% 10px no-repeat scroll;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;

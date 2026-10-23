@@ -1,46 +1,104 @@
 // Design tokens of the Regie (DESIGN.md, .impeccable/design.json).
 //
-// Every token exists twice:
-// - as a Sass variable with `!default` for compile-time use (mixins, calculations);
-// - as a CSS custom property on `:root` for runtime use in every component stylesheet (`var(--panel)`).
-//   The custom property names are identical to the prototype (prototype/regie.html), so prototype CSS ports 1:1.
+// Colours are CSS custom properties in three groups, so no component stylesheet ever branches on the theme:
+// - the theme maps (`$theme-dark`, `$theme-light`) hold every colour that changes with the appearance. Dark is the
+//   default on `:root`; `:root[data-theme='light']` overrides all of them. `data-theme` is always the resolved theme
+//   ('dark' or 'light'), set before the first paint by public/theme-init.js and kept by ThemeService.
+// - `$picture` holds the picture surfaces (monitors, thumbnails, previews). They stay dark in both themes, together
+//   with the ink, tally and guide colours that sit on them (`--pic-*`); the renderer's canvas colours are unchanged.
+// - everything else (fonts, radii, motion, layout) does not depend on the theme.
+//
+// Every non-colour token exists twice: as a Sass variable with `!default` for compile-time use (mixins, calculations)
+// and as a CSS custom property on `:root` for runtime use (`var(--radius-md)`). The custom property names are
+// identical to the prototype (prototype/regie.html), so prototype CSS ports 1:1.
 //
 // This file emits no CSS by itself. `styles.scss` includes `custom-properties` exactly once; component stylesheets
 // may `@use 'tokens'` for the Sass variables without duplicating the `:root` block.
 
-// Colours: neutral graphite ladder
-$color-ground: #0d1117 !default;
-$color-panel: #151a22 !default;
-$color-raised: #1b212b !default;
-$color-raised-2: #232a36 !default;
-$color-seam: #262c36 !default;
-$color-seam-strong: #353d4a !default;
-$color-well: #05070a !default;
-$color-text: #e6edf3 !default;
-$color-text-2: #b4bdc8 !default;
-$color-muted: #8b949e !default;
+// Colours: dark console (default). Neutral graphite ladder, then the state hues (each has exactly one meaning, see
+// DESIGN.md "The State-Only Colour Rule"), then text on fills, washes and floating layers.
+$theme-dark: (
+  'ground': #0d1117,
+  'panel': #151a22,
+  'raised': #1b212b,
+  'raised-2': #232a36,
+  'float': #1b212b,
+  'seam': #262c36,
+  'seam-strong': #353d4a,
+  'btn-hover-border': #445064,
+  'text': #e6edf3,
+  'text-2': #b4bdc8,
+  'muted': #8b949e,
+  'blue': #79c0ff,
+  'blue-fill': #1f6feb,
+  'blue-fill-hover': #1a5fd0,
+  'green': #56d364,
+  'green-hover': #6fe07c,
+  'red': #f85149,
+  'red-flash': #ff8a80,
+  'amber': #e3b341,
+  'violet': #c678dd,
+  'on-fill': #ffffff,
+  'on-state': #0d1117,
+  'red-wash': rgba(248, 81, 73, 0.1),
+  'amber-wash': rgba(227, 179, 65, 0.1),
+  'green-wash': rgba(86, 211, 100, 0.08),
+  'blue-wash': rgba(121, 192, 255, 0.08),
+  'scroll-edge': rgba(1, 4, 9, 0.65),
+  'shadow-pop': (
+    0 4px 10px rgba(1, 4, 9, 0.5),
+  ),
+) !default;
 
-// Colours: state hues (each has exactly one meaning, see DESIGN.md "The State-Only Colour Rule")
-$color-blue: #79c0ff !default;
-$color-blue-fill: #1f6feb !default;
-$color-blue-fill-hover: #1a5fd0 !default;
-$color-green: #56d364 !default;
-$color-green-hover: #6fe07c !default;
-$color-red: #f85149 !default;
-$color-red-flash: #ff8a80 !default;
-$color-amber: #e3b341 !default;
-$color-violet: #c678dd !default;
+// Colours: light console. The same names; state hues are darkened for text and lamps on a light surface (WCAG AA,
+// checked by tools/lib/studio-theme-contrast.spec.ts). Action Blue and its hover stay, white text passes on them.
+$theme-light: (
+  'ground': #ffffff,
+  'panel': #f3f5f8,
+  'raised': #e9edf2,
+  'raised-2': #dfe4eb,
+  'float': #ffffff,
+  'seam': #d8dde4,
+  'seam-strong': #818b99,
+  'btn-hover-border': #6b7684,
+  'text': #17202b,
+  'text-2': #3a4552,
+  'muted': #566170,
+  'blue': #0a5cc7,
+  'blue-fill': #1f6feb,
+  'blue-fill-hover': #1a5fd0,
+  'green': #16722e,
+  'green-hover': #115c25,
+  'red': #c4202b,
+  'red-flash': #ff5a52,
+  'amber': #8a5800,
+  'violet': #7a3fd0,
+  'on-fill': #ffffff,
+  'on-state': #ffffff,
+  'red-wash': rgba(196, 32, 43, 0.09),
+  'amber-wash': rgba(190, 120, 0, 0.13),
+  'green-wash': rgba(22, 114, 46, 0.08),
+  'blue-wash': rgba(10, 92, 199, 0.07),
+  'scroll-edge': rgba(31, 41, 55, 0.14),
+  'shadow-pop': (
+    0 4px 12px rgba(31, 41, 55, 0.2),
+  ),
+) !default;
 
-// Colours: layout-template previews, text on fills, washes
-$color-slot: #3a4352 !default;
-$color-slot-strong: #5a6578 !default;
-$color-on-fill: #ffffff !default;
-$color-on-state: #0d1117 !default;
-$color-red-wash: rgba(248, 81, 73, 0.1) !default;
-$color-amber-wash: rgba(227, 179, 65, 0.1) !default;
-$color-green-wash: rgba(86, 211, 100, 0.08) !default;
-$color-blue-wash: rgba(121, 192, 255, 0.08) !default;
-$color-btn-hover-border: #445064 !default;
+// Colours: picture surfaces and what sits on them. The same in both themes (DESIGN.md "Picture areas stay dark").
+$picture: (
+  'well': #05070a,
+  'slot': #3a4352,
+  'slot-strong': #5a6578,
+  'pic-ink': #0d1117,
+  'pic-text': #e6edf3,
+  'pic-text-2': #b4bdc8,
+  'pic-muted': #8b949e,
+  'pic-blue': #79c0ff,
+  'pic-red': #f85149,
+  'pic-amber': #e3b341,
+  'pic-scrim': rgba(13, 17, 23, 0.9),
+) !default;
 
 // Typography
 $font-ui: 'Sofia Sans Semi Condensed', 'Arial Narrow', system-ui, sans-serif !default;
@@ -80,10 +138,9 @@ $space-lg: 12px !default;
 $space-gutter: 16px !default;
 $space-stage: 20px !default;
 
-// Elevation (only floating layers have shadows)
-$shadow-pop: 0 4px 10px rgba(1, 4, 9, 0.5) !default;
-$shadow-selected: inset 0 -2px 0 $color-blue !default;
-$shadow-splitter: 0 0 0 1px $color-blue !default;
+// Elevation (only floating layers have shadows; the popover shadow is part of the theme maps)
+$shadow-selected: inset 0 -2px 0 var(--blue) !default;
+$shadow-splitter: 0 0 0 1px var(--blue) !default;
 
 // Motion
 $ease: cubic-bezier(0.2, 0.8, 0.2, 1) !default;
@@ -108,37 +165,18 @@ $layout-bottom-min: 150px !default;
 $layout-stage-min: 160px !default;
 $layout-splitter-hit: 9px !default;
 
+/// Emits the entries of a colour map as CSS custom properties.
+@mixin map-properties($tokens) {
+  @each $name, $value in $tokens {
+    --#{$name}: #{$value};
+  }
+}
+
 /// Emits every token as a CSS custom property. Include once, on `:root` (styles.scss).
 @mixin custom-properties {
   color-scheme: dark;
-  --ground: #{$color-ground};
-  --panel: #{$color-panel};
-  --raised: #{$color-raised};
-  --raised-2: #{$color-raised-2};
-  --seam: #{$color-seam};
-  --seam-strong: #{$color-seam-strong};
-  --well: #{$color-well};
-  --text: #{$color-text};
-  --text-2: #{$color-text-2};
-  --muted: #{$color-muted};
-  --blue: #{$color-blue};
-  --blue-fill: #{$color-blue-fill};
-  --blue-fill-hover: #{$color-blue-fill-hover};
-  --green: #{$color-green};
-  --green-hover: #{$color-green-hover};
-  --red: #{$color-red};
-  --red-flash: #{$color-red-flash};
-  --amber: #{$color-amber};
-  --violet: #{$color-violet};
-  --slot: #{$color-slot};
-  --slot-strong: #{$color-slot-strong};
-  --on-fill: #{$color-on-fill};
-  --on-state: #{$color-on-state};
-  --red-wash: #{$color-red-wash};
-  --amber-wash: #{$color-amber-wash};
-  --green-wash: #{$color-green-wash};
-  --blue-wash: #{$color-blue-wash};
-  --btn-hover-border: #{$color-btn-hover-border};
+  @include map-properties($theme-dark);
+  @include map-properties($picture);
   --font-ui: #{$font-ui};
   --font-mono: #{$font-mono};
   --radius-screen: #{$radius-screen};
@@ -146,7 +184,6 @@ $layout-splitter-hit: 9px !default;
   --radius-md: #{$radius-md};
   --radius-lg: #{$radius-lg};
   --radius-switch: #{$radius-switch};
-  --shadow-pop: #{$shadow-pop};
   --shadow-selected: #{$shadow-selected};
   --shadow-splitter: #{$shadow-splitter};
   --ease: #{$ease};
@@ -167,4 +204,9 @@ $layout-splitter-hit: 9px !default;
   // Content gutter left/right: 16 px or the safe-area inset if larger.
   --gl: max(#{$space-gutter}, env(safe-area-inset-left, 0px));
   --gr: max(#{$space-gutter}, env(safe-area-inset-right, 0px));
+
+  &[data-theme='light'] {
+    color-scheme: light;
+    @include map-properties($theme-light);
+  }
 }

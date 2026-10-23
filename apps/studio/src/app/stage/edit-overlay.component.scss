@@ -28,12 +28,16 @@
 
 :host(:hover)::after,
 :host(.is-dragging)::after {
-  border-color: rgba(139, 148, 158, 0.4);
+  border-color: color-mix(in srgb, var(--pic-muted) 40%, transparent);
 }
 
 // 1 px dot raster while an element is dragged (pitch: 40 canvas px, set as --grid by the component).
 :host(.is-dragging) {
-  background-image: radial-gradient(circle, rgba(139, 148, 158, 0.55) 1px, transparent 1.4px);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pic-muted) 55%, transparent) 1px,
+    transparent 1.4px
+  );
   background-size: var(--grid, 20px) var(--grid, 20px);
 }
 
@@ -52,11 +56,11 @@
   touch-action: none;
 
   &:hover {
-    border-color: rgba(121, 192, 255, 0.55);
+    border-color: color-mix(in srgb, var(--pic-blue) 55%, transparent);
   }
 
   &.is-sel {
-    border-color: var(--blue);
+    border-color: var(--pic-blue);
   }
 
   &.is-locked {
@@ -65,18 +69,18 @@
 
   // Down source: dashed like the renderer's alert outline (amber reconnecting, red otherwise).
   &.is-alert {
-    border: 1px dashed var(--amber);
+    border: 1px dashed var(--pic-amber);
   }
 
   &.is-alert.is-bad {
-    border-color: var(--red);
+    border-color: var(--pic-red);
   }
 }
 
 .c-edit-box__label {
-  background: var(--blue);
+  background: var(--pic-blue);
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-  color: var(--on-state);
+  color: var(--pic-ink);
   display: none;
   font: 600 10.5px / 1 var(--font-mono);
   left: -1px;
@@ -94,8 +98,8 @@
 
 // Corner handles: 11 px squares on the corners; a wider invisible hit area on touch screens.
 .c-edit-box__handle {
-  background: var(--ground);
-  border: 1.5px solid var(--blue);
+  background: var(--pic-ink);
+  border: 1.5px solid var(--pic-blue);
   border-radius: 2px;
   height: 11px;
   position: absolute;
@@ -184,7 +188,7 @@
 }
 
 .c-edit-overlay__guide {
-  background: var(--blue);
+  background: var(--pic-blue);
   pointer-events: none;
   position: absolute;
 }

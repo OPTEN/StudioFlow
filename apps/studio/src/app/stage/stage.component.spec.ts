@@ -234,8 +234,8 @@ describe('StageComponent', () => {
     await render();
     expect(animations).toHaveLength(1);
     expect(animations[0]).toEqual([
-      { outlineWidth: '6px', outlineColor: '#ff8a80' },
-      { outlineWidth: '2px', outlineColor: '#f85149' },
+      { outlineWidth: '6px', outlineColor: 'var(--red-flash)' },
+      { outlineWidth: '2px', outlineColor: 'var(--red)' },
     ]);
     expect(text(monitor('program')?.querySelector('.c-monitor__name') ?? null)).toBe(
       'Presentation',

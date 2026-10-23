@@ -32,7 +32,7 @@ body {
 }
 
 ::selection {
-  background: rgba(121, 192, 255, 0.3);
+  background: color-mix(in srgb, var(--blue) 30%, transparent);
   color: var(--text);
 }
 

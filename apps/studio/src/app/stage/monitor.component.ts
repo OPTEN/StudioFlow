@@ -23,8 +23,8 @@ export type MonitorKind = 'preview' | 'program';
 
 /** Program flash (DESIGN.md "Monitors"): 6 px light red settling to the 2 px tally outline in 500 ms. */
 const FLASH_KEYFRAMES: Keyframe[] = [
-  { outlineWidth: '6px', outlineColor: '#ff8a80' },
-  { outlineWidth: '2px', outlineColor: '#f85149' },
+  { outlineWidth: '6px', outlineColor: 'var(--red-flash)' },
+  { outlineWidth: '2px', outlineColor: 'var(--red)' },
 ];
 const FLASH_MS = 500;
 
