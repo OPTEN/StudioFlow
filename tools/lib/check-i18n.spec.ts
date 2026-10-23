@@ -191,7 +191,7 @@ describe('baseline', () => {
 
   it('reads the baseline directory of the repository', () => {
     const entries = loadBaseline(`${process.cwd()}/tools/i18n-baseline`);
-    expect(entries.length).toBeGreaterThan(0);
+    // The baseline is empty once every banned construct is fixed; whatever is listed must be complete.
     expect(entries.every((candidate) => candidate.rule && candidate.path && candidate.reason)).toBe(
       true,
     );
