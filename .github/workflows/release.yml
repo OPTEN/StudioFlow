@@ -52,7 +52,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_repository.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -80,7 +80,7 @@ jobs:
 
   images:
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -175,7 +175,7 @@ jobs:
   # here is what a server pulls.
   smoke:
     needs: [plan, images]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -196,18 +196,28 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Cache the Playwright browser
+      # Same cache as ci.yml (restore and save as separate steps, so that a red job still saves the browser).
+      - name: Restore the Playwright browser
         id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium and its system libraries
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Save the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install the system libraries of Chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
+      # E2E-NET-00 needs sch_netem, ifb and act_mirred in the kernel of the runner; without them the netem tests are skipped.
+      - name: Load the network emulation modules
+        run: tests/e2e/load-netem-modules.sh
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -236,7 +246,7 @@ jobs:
   # Critical vulnerabilities with a fix block the release (job release), not the :main image.
   scan:
     needs: [plan, images]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -266,7 +276,7 @@ jobs:
   # :main is the latest verified build of the main branch. A slower run of an older commit must not move it back.
   main-tag:
     needs: [plan, images, smoke]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -296,7 +306,7 @@ jobs:
   # release and publishes it on GitHub (release notes from the Conventional Commits, CHANGELOG.md).
   release-please:
     needs: [images, smoke]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -332,7 +342,7 @@ jobs:
   release:
     needs: [plan, images, smoke, scan, release-please]
     if: needs.release-please.outputs.tag != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: write # attach the files to the GitHub release

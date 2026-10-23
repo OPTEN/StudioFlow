@@ -1,8 +1,10 @@
 # Build and tests of every pull request and of main (docs/testing.md, section 6.1).
 #
-# All jobs run in parallel; e2e-smoke starts from the images that build-images built. A red job blocks the merge once
-# branch protection for main requires them (repository setting of the owner: pull request required, all six jobs green;
-# the audit job is a report and is not required).
+# All jobs run in parallel (the three image builds are one job each); e2e-smoke starts from the images that
+# build-images built. A red job blocks the merge once branch protection for main requires them (repository setting of
+# the owner: pull request required, lint-typecheck, unit-web, api, contracts, the three build-images jobs and e2e-smoke
+# green; the audit job is a report and is not required). Timing budget and layout: docs/testing.md, section 6.1.
+# Runners are pinned to ubuntu-24.04: ubuntu-latest is moving to a newer image, and a CI run must not change with it.
 # The nightly full run is .github/workflows/e2e-full.yml.
 #
 # Every action is pinned by commit SHA (supply chain); the comment names the release.
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   lint-typecheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,7 +58,7 @@ jobs:
         run: node infra/release/check.mjs
 
   unit-web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,7 +78,7 @@ jobs:
         run: npm run test:sender
 
   api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -97,7 +99,7 @@ jobs:
         run: npm run test:api -- --no-build
 
   contracts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,7 +130,7 @@ jobs:
   # checks, the job stays green, and the findings appear as warnings and in the job summary. Renovate opens the pull
   # requests that fix them (security updates at once, .github/renovate.json5).
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -159,46 +161,61 @@ jobs:
           fi
           { echo '### dotnet list package --vulnerable'; echo '```'; cat "$RUNNER_TEMP/nuget-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-  # Builds the two images of docker-compose.yml that have a build section. The Caddy build fails on a broken Caddyfile
-  # (it runs `caddy validate` for every TLS mode) and builds the three frontends. Docker layers come from the GitHub
-  # Actions cache; the images go to e2e-smoke as an artifact, so the stack under test is the image that was validated here.
+  # Builds the three images of docker-compose.yml that have a build section, one job each and in parallel (the slowest
+  # one, not the sum, decides). The Caddy build fails on a broken Caddyfile (it runs `caddy validate` for every TLS
+  # mode) and builds the three frontends; the backup build fails on a broken Dockerfile or a package that has left the
+  # Alpine repository. Docker layers come from the GitHub Actions cache (one scope per image, shared with release.yml).
+  # The api and caddy images go to e2e-smoke as artifacts, so the stack under test is the image that was validated here;
+  # the backup image is not part of the smoke stack and is only built.
   build-images:
-    runs-on: ubuntu-latest
+    name: build-images (${{ matrix.image }})
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: apps/api
+            file: apps/api/Dockerfile
+            handover: true
+          - image: caddy
+            context: .
+            file: infra/caddy/Dockerfile
+            handover: true
+          - image: backup
+            context: .
+            file: infra/backup/Dockerfile
+            handover: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build the API image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: apps/api
-          tags: studioflow-api
-          outputs: type=docker,dest=${{ runner.temp }}/api.tar
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,scope=api,mode=max
-      - name: Build the Caddy image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: infra/caddy/Dockerfile
-          tags: studioflow-caddy
-          outputs: type=docker,dest=${{ runner.temp }}/caddy.tar
-          cache-from: type=gha,scope=caddy
-          cache-to: type=gha,scope=caddy,mode=max
-      # The backup service (profile "backup") is not part of the smoke stack. Building it here catches a broken Dockerfile or
-      # a package that has left the Alpine repository. The PostgreSQL image is the pin of docker-compose.yml.
-      - name: Build the backup image
+      # The backup image is built on the PostgreSQL image of docker-compose.yml, so that pg_dump matches the server.
+      - name: Read the PostgreSQL pin
+        id: pin
+        if: matrix.image == 'backup'
         run: |
-          postgres_image="$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)"
-          docker build --file infra/backup/Dockerfile --build-arg "POSTGRES_IMAGE=${postgres_image}" --tag studioflow-backup .
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          echo "postgres_image=$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)" >> "$GITHUB_OUTPUT"
+      - name: Build the image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          name: images
-          path: |
-            ${{ runner.temp }}/api.tar
-            ${{ runner.temp }}/caddy.tar
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          tags: studioflow-${{ matrix.image }}
+          build-args: ${{ matrix.image == 'backup' && format('POSTGRES_IMAGE={0}', steps.pin.outputs.postgres_image) || '' }}
+          # e2e-smoke checks the label after docker load: the image under test is the one this run built.
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+          outputs: ${{ matrix.handover && format('type=docker,dest={0}/{1}.tar', runner.temp, matrix.image) || 'type=cacheonly' }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+      - name: Hand the image to e2e-smoke
+        if: matrix.handover
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-${{ matrix.image }}
+          path: ${{ runner.temp }}/${{ matrix.image }}.tar
           retention-days: 1
           if-no-files-found: error
 
@@ -206,8 +223,8 @@ jobs:
   # writes the env file), API, LiveKit and PostgreSQL, started with tests/e2e/stack.sh as numbered stack 1.
   e2e-smoke:
     needs: build-images
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       E2E_STACK: 1
       # Use the images from build-images instead of building them again.
@@ -221,29 +238,51 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Cache the Playwright browser
+      # Restore and save are separate steps: the save of actions/cache runs in a post step that a red job skips, and the
+      # smoke job is red now and then; the next run would download Chromium again.
+      - name: Restore the Playwright browser
         id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium and its system libraries
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Save the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install the system libraries of Chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
+      # The log prints "digest-mismatch: error" under the inputs of this step. That is the default of the action, not an
+      # error: it compares the SHA-256 of the download with the one recorded at the upload and fails the step on a
+      # difference. Spelled out so that the check stays on whatever the default becomes.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: images
+          pattern: image-*
+          merge-multiple: true
           path: ${{ runner.temp }}/images
-      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is sf-e2e-1.
-      - name: Load the images
+          digest-mismatch: error
+      # Compose names the image of a service <project>-<service>; the E2E project of stack 1 is sf-e2e-1. An image counts
+      # only if it was built from the commit of this run (revision label set by build-images).
+      - name: Load and verify the images
         run: |
-          docker load --input "$RUNNER_TEMP/images/api.tar"
-          docker load --input "$RUNNER_TEMP/images/caddy.tar"
-          docker tag studioflow-api "sf-e2e-${E2E_STACK}-api"
-          docker tag studioflow-caddy "sf-e2e-${E2E_STACK}-caddy"
+          for image in api caddy; do
+            docker load --input "$RUNNER_TEMP/images/$image.tar"
+            revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "studioflow-$image")"
+            if [ "$revision" != "$GITHUB_SHA" ]; then
+              echo "::error title=Wrong image::studioflow-$image was built from '$revision', not from $GITHUB_SHA."
+              exit 1
+            fi
+            docker tag "studioflow-$image" "sf-e2e-${E2E_STACK}-$image"
+          done
+      # E2E-NET-00 needs sch_netem, ifb and act_mirred in the kernel of the runner; without them the netem tests are skipped.
+      - name: Load the network emulation modules
+        run: tests/e2e/load-netem-modules.sh
       - name: Start the stack
         run: tests/e2e/stack.sh up "$E2E_STACK"
       - name: Run the smoke tests

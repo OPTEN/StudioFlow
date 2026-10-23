@@ -81,7 +81,7 @@ fixed addresses, published ports, public URL and volumes.
 ## CI
 
 GitHub Actions runs the harness as numbered stack 1 (`docs/testing.md` 6.1). `ci.yml` (every pull request and push to
-`main`) loads the images that its `build-images` job built, sets `E2E_NO_BUILD=1`, starts the stack with
+`main`) loads (and checks the revision label of) the images that its `build-images` jobs built, sets `E2E_NO_BUILD=1`, starts the stack with
 `tests/e2e/stack.sh up 1` and runs `E2E_REUSE_STACK=1 tests/e2e/stack.sh test 1 --project=smoke`; `e2e-full.yml`
 (nightly on working days, and on demand) lets the harness build the images and runs every project except `soak`.
 `CI` is set, so Playwright retries a failed test once and refuses `test.only`. A failed run uploads `tests/e2e/.output`

@@ -706,8 +706,8 @@ nothing is changed on a running server (apply them with section 8). The rules ar
    "Configure Renovate" pull request first; the configuration is already in the repository, merge or close it.
 2. Settings › Code security: enable the **dependency graph** and **Dependabot alerts** (not Dependabot version updates).
    Renovate reads the alerts and opens security fixes immediately; without them it still checks the OSV database.
-3. Settings › Branches › protection for `main`: require the six CI jobs (`lint-typecheck`, `unit-web`, `api`, `contracts`,
-   `build-images`, `e2e-smoke`) and allow auto-merge (Settings › General). Automerge below only merges when these are green;
+3. Settings › Branches › protection for `main`: require the CI jobs (`lint-typecheck`, `unit-web`, `api`, `contracts`,
+   `build-images (api)`, `build-images (caddy)`, `build-images (backup)`, `e2e-smoke`) and allow auto-merge (Settings › General). Automerge below only merges when these are green;
    the job `audit` is a report and not required.
 
 **What arrives, and when**
