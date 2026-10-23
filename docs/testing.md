@@ -373,13 +373,13 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `SRC` Sources, stations, incidents | 9 | 7 | 22 | 38 | 18 | 16 | 4 |
 | `OUT` Output page | 12 | 0 | 25 | 37 | 16 | 17 | 4 |
 | `NET` Resilience and network | 4 | 6 | 27 | 37 | 13 | 16 | 8 |
-| `DEV` Devices, viewports, accessibility | 0 | 0 | 22 | 22 | 7 | 12 | 3 |
+| `DEV` Devices, viewports, accessibility | 0 | 0 | 23 | 23 | 7 | 13 | 3 |
 | `DOCK` Dock layout | 6 | 0 | 11 | 17 | 6 | 6 | 5 |
 | `MEDIA` Media assets | 3 | 12 | 10 | 25 | 10 | 10 | 5 |
 | `OPS` Operations | 2 | 0 | 27 | 29 | 13 | 13 | 3 |
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
-| **Total** | **89** | **91** | **239** | **419** | **177** | **183** | **59** |
+| **Total** | **89** | **91** | **240** | **420** | **177** | **184** | **59** |
 <!--/SUMMARY-->
 
 Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration)
@@ -1762,6 +1762,10 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 **E2E-DEV-22** · P2 · pw — Forced colours and zoom
 - Steps: `forcedColors: 'active'`; viewport 640×360 (≙ 200 % zoom at 1280×720).
 - Expect: states remain distinguishable by text (not colour alone: «verbindet neu», «Teilen beendet», lamps have labels in the row text); 640 px falls into the ≤ 900 px layout without horizontal scroll.
+
+**E2E-DEV-23** · P1 · pw — Light mode (Dark | Light | System)
+- Steps: system set to light, fresh context; choose Light, System and Dark in the settings popover; reload; second tab; `emulateMedia` flips under System; abort the application bundle and reload; store an unknown value; login page and `/monitoring`; busy console with a reconnecting station in each theme; axe on login, Regie (with the settings popover) and `/monitoring`.
+- Expect: no stored value means Dark even though the system prefers light; a choice applies at once, is stored in `studioflow.theme` and is kept after a reload; the head script `theme-init.js` alone sets `<html data-theme>` (no flash); an unknown value means Dark; another tab follows through the storage event; System follows the system setting live; login page and `/monitoring` follow the choice; 0 critical/serious axe violations (colour contrast included) in both themes; monitor screens, scene thumbnails and station thumbnails stay near black in the light theme; the incident row keeps its lamp with halo and a wash that differs from the panel. Contrast ratios of the tokens are checked by `tools/lib/studio-theme-contrast.spec.ts`; the theme service, the preference and the settings control by Angular unit tests.
 
 ### 2.9 DOCK – Dock layout and persistence
 

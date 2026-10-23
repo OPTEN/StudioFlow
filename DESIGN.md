@@ -27,6 +27,39 @@ colors:
   amber-wash: "rgba(227, 179, 65, .1)"
   green-wash: "rgba(86, 211, 100, .08)"
   blue-wash: "rgba(121, 192, 255, .08)"
+  float: "#1b212b"
+  pic-ink: "#0d1117"
+  pic-text: "#e6edf3"
+  pic-text-2: "#b4bdc8"
+  pic-muted: "#8b949e"
+  pic-blue: "#79c0ff"
+  pic-red: "#f85149"
+  pic-amber: "#e3b341"
+  pic-scrim: "rgba(13, 17, 23, .9)"
+colors-light:
+  ground: "#ffffff"
+  panel: "#f3f5f8"
+  raised: "#e9edf2"
+  raised-2: "#dfe4eb"
+  float: "#ffffff"
+  seam: "#d8dde4"
+  seam-strong: "#818b99"
+  text: "#17202b"
+  text-2: "#3a4552"
+  muted: "#566170"
+  blue: "#0a5cc7"
+  blue-fill: "#1f6feb"
+  blue-fill-hover: "#1a5fd0"
+  green: "#16722e"
+  red: "#c4202b"
+  amber: "#8a5800"
+  violet: "#7a3fd0"
+  on-fill: "#ffffff"
+  on-state: "#ffffff"
+  red-wash: "rgba(196, 32, 43, .09)"
+  amber-wash: "rgba(190, 120, 0, .13)"
+  green-wash: "rgba(22, 114, 46, .08)"
+  blue-wash: "rgba(10, 92, 199, .07)"
 typography:
   brand:
     fontFamily: "Sofia Sans Semi Condensed, Arial Narrow, system-ui, sans-serif"
@@ -270,7 +303,7 @@ The system explicitly rejects two things. One is OBS's clutter of equal-ranking 
 
 ## Colors
 
-A dark graphite neutral ladder with five syntax-palette state hues. No colour is decorative.
+A dark graphite neutral ladder with five syntax-palette state hues. No colour is decorative. The values on this page and in the frontmatter `colors` are the dark theme; the light theme is described under "Themes".
 
 ### Primary
 - **Signal Blue** (blue): selection outlines, focus rings, the active hairline while resizing, dock insertion lines, drop strips, the selected-segment underline and the text of outline primary buttons.
@@ -299,6 +332,26 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 **The State-Only Colour Rule.** A saturated hue appears only when it carries one of its five meanings. Never use red, green, amber, blue or violet as decoration, and never give a hue a second meaning.
 
 **The Wash Rule.** A state tints a whole row or message entry with its wash (8–10% alpha) and colours its icon, lamp or label. It never fills an entire region with solid colour.
+
+### Themes
+
+The Regie has two appearances. **Dark** is the console described on this page and the default. **Light** is the same console for bright rooms and daylight. A setting in the settings popover chooses **Dark**, **Light** or **System** (follows the operating system live) and applies per browser (`localStorage['studioflow.theme']`, absent means Dark). The Regie, `/monitoring` and the login page follow it; the sender and the output page do not. Switching is a pure display setting and is allowed during a broadcast. "Reset layout" does not reset it.
+
+**Mechanism.** Every colour is a semantic CSS custom property (`--panel`, `--red`, ...). `:root` carries the dark values; `:root[data-theme='light']` overrides all of them. `data-theme` is always the resolved theme, set before the first paint by `theme-init.js` and kept by `ThemeService`. Components use only the tokens and never branch on the theme. The Sass source is `$theme-dark` and `$theme-light` in `styles/_tokens.scss`.
+
+**The light ladder.** Same tonal logic, mirrored: depth still comes from steps, not from shadows.
+- Ground `#ffffff` (inputs, link box), Panel `#f3f5f8` (the console surface), Raised `#e9edf2` and Raised Higher `#dfe4eb` (hover, active, chips, toast), Float `#ffffff` (popovers; in dark theme Float equals Raised).
+- Seam `#d8dde4` for hairlines. Strong Seam `#818b99` for control borders, which meets 3:1 on Panel and Ground.
+- Text `#17202b`, Secondary Text `#3a4552`, Muted `#566170`.
+- On State is white in the light theme, because green and red fills are dark there.
+
+**The light state hues.** The same five meanings, darkened so text and lamps pass on a light surface. Blue `#0a5cc7`, Green `#16722e`, Red `#c4202b`, Amber `#8a5800`, Violet `#7a3fd0`. Action Blue (`#1f6feb`, hover `#1a5fd0`) is unchanged and carries white text. The washes keep the Wash Rule and are tuned for light: red 9%, amber 13%, green 8%, blue 7% alpha of the light hues. An incident stands out in light exactly as in dark: the lamp, the wash and the dashed outline appear, flash once and stay.
+
+**Contrast.** Text and state text meet 4.5:1 on every surface and on their own wash. Lamps, tally outlines, focus rings and control borders meet 3:1. `tools/lib/studio-theme-contrast.spec.ts` reads the compiled tokens and checks these pairs in both themes, so a changed value that breaks them fails the unit tests.
+
+**Picture areas stay dark.** Monitors, scene thumbnails, station and source previews, layout-template previews and the well stay near black in the light theme as well. A video picture on a white background looks flat and too dark, and broadcast tools do the same. The picture tokens (`--well`, `--slot`, `--slot-strong`, and `--pic-ink`, `--pic-text`, `--pic-text-2`, `--pic-muted`, `--pic-blue`, `--pic-red`, `--pic-amber`, `--pic-scrim`) are one set for both themes. Everything drawn on a picture (the edit box and its handles, snapping guides, the live note, thumbnail keycaps, the "Preview off" note) uses these `--pic-*` tokens and never the themed ones, so selection blue and alert dashes keep their dark-theme brightness. The renderer's canvas colours (`packages/scene-renderer/src/palette.ts`) are unchanged. The tally outline around a picture sits on the console surface and uses the themed red or green.
+
+**The One-Appearance Rule.** A new colour is added as a token in both theme maps, or as a picture token. Never put a literal colour in a component stylesheet.
 
 ## Typography
 
@@ -352,8 +405,8 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 The console is flat. Depth comes from tonal steps (well, ground, panel, raised, raised-2) and from hairlines, not from shadows. A shadow appears only on layers that float above the surface: popovers, the toast and the dock-drag ghost. Scrollable docks show a soft inner fade at the top and bottom edges to indicate overflow.
 
 ### Shadow Vocabulary
-- **Pop** (`box-shadow: 0 4px 10px rgba(1, 4, 9, .5)`): popovers (Output, Docks and layout, Stations), the toast and the dragged dock ghost.
-- **Scroll edge** (background `linear-gradient(rgba(1, 4, 9, .65), transparent)` at 10px, masked by panel at 18px): top and bottom of scrolling dock bodies, shown only while there is more to scroll.
+- **Pop** (`box-shadow: 0 4px 10px rgba(1, 4, 9, .5)`; light theme `0 4px 12px rgba(31, 41, 55, .2)`): popovers (Output, Docks and layout, Stations), the toast and the dragged dock ghost.
+- **Scroll edge** (background `linear-gradient(rgba(1, 4, 9, .65), transparent)` at 10px, masked by panel at 18px; light theme `rgba(31, 41, 55, .14)`): top and bottom of scrolling dock bodies, shown only while there is more to scroll.
 - **Selected underline** (`box-shadow: inset 0 -2px 0 #79c0ff`): the active segment or tab.
 - **Active hairline glow** (`box-shadow: 0 0 0 1px #79c0ff`): a splitter being hovered, focused or dragged becomes a 3px blue line.
 
@@ -419,7 +472,7 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 - **Recovered:** a returning station keeps a green-wash entry and a "Seen" button until someone confirms it.
 
 ### Popovers, menus and toast
-- **Popovers:** Raised, strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
+- **Popovers:** Float (Raised in the dark theme), strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
 - **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("‘Lea presents’ is live"; German: "«Lea präsentiert» ist live") and dock moves, with an optional undo action.
 
 ### Header
@@ -437,6 +490,8 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 - **Do** set measurements, time codes, slot codes and pairing codes in JetBrains Mono with tabular numerals.
 - **Do** self-host Sofia Sans Semi Condensed and JetBrains Mono in the product build.
 - **Do** label sample imagery and names as synthetic wherever placeholder content appears.
+- **Do** keep picture areas dark in the light theme and draw everything on a picture with the `--pic-*` tokens.
+- **Do** add every new colour as a token in both theme maps (or as a picture token), and check it with the contrast test.
 
 ### Don't:
 - **Don't** box regions as cards with gaps between them, and don't frame the app with an outer border.
@@ -445,3 +500,5 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 - **Don't** use a saturated hue decoratively, including for branding, section accents or illustrations.
 - **Don't** use the uppercase label style as an eyebrow or kicker above a heading.
 - **Don't** load fonts or assets from an external CDN in the product.
+- **Don't** write a literal colour value in a component stylesheet or branch on the theme in a component.
+- **Don't** invert or lighten a picture area, or the QR code, to match the light theme.
