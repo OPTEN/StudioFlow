@@ -1,7 +1,7 @@
 @use 'mixins' as *;
 @use 'tokens' as *;
 
-// Segmented control built from native radio buttons (Front | Rück, 720p | 1080p, Handy | Laptop).
+// Segmented control built from native radio buttons (Front | Back, 720p | 1080p, Phone | Laptop).
 .c-segmented {
   border: 0;
   margin: 0;

@@ -21,8 +21,8 @@ export const PAGE_RELOAD = new InjectionToken<() => void>('studioflow.pageReload
 
 /**
  * Service worker updates (PWA app shell). A ready version is activated and the page reloaded as soon as nothing is
- * live: not in program or preview and no screen share that a reload would end. While live, the banner «Neue Version
- * bereit – nach der Sendung neu laden» is shown instead and the reload follows once the station is quiet again.
+ * live: not in program or preview and no screen share that a reload would end. While live, the banner “Neue Version
+ * bereit – nach der Sendung neu laden” is shown instead and the reload follows once the station is quiet again.
  */
 @Injectable({ providedIn: 'root' })
 export class AppUpdateService {
@@ -68,7 +68,7 @@ export class AppUpdateService {
     });
   }
 
-  /** Activates the waiting version and reloads (also the banner's «Jetzt neu laden»). */
+  /** Activates the waiting version and reloads (also the banner's “Reload now”). */
   async reloadNow(): Promise<void> {
     if (this.reloading) {
       return;

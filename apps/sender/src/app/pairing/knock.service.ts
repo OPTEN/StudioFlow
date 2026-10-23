@@ -68,7 +68,7 @@ export class KnockService {
   );
   /** Polls are failing; the next attempt is scheduled. */
   readonly connectionTrouble = signal(false);
-  /** Error of the last request attempt (German), e.g. rate limited. */
+  /** Error of the last request attempt, e.g. rate limited. */
   readonly error = signal<ApiError | null>(null);
   /** Name and kind of the last knock, to prefill a new request after a denial or expiry. */
   readonly lastRequest = signal<{ readonly name: string; readonly kind: DeviceKind } | null>(null);
@@ -150,7 +150,7 @@ export class KnockService {
     }
   }
 
-  /** Withdraws the knock («Abbrechen»); the server call is best effort. */
+  /** Withdraws the knock (“Cancel”); the server call is best effort. */
   async cancel(): Promise<void> {
     const knock = this.knock();
     this.stopPolling();

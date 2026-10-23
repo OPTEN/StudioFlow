@@ -106,25 +106,25 @@ describe('StationComponent', () => {
       candidate.textContent?.trim().includes(text),
     );
     if (match === undefined) {
-      throw new Error(`no button «${text}»`);
+      throw new Error(`no button “${text}”`);
     }
     return match;
   }
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('phone: name, slot code and «Verbunden»', async () => {
+  it('phone: name, slot code and “Connected”', async () => {
     const element = await render(phoneSelf());
 
-    expect(query(element, '.c-phone__name')?.textContent?.trim()).toBe('Handy Bühne');
+    expect(query(element, '.c-phone__name')?.textContent?.trim()).toBe('Phone stage left');
     expect(query(element, '.c-phone__top .c-code')?.textContent?.trim()).toBe('K3');
     const connection = query(element, '[data-testid=connection-state]');
     expect(connection?.dataset['state']).toBe('connected');
-    expect(connection?.textContent).toContain('Verbunden');
+    expect(connection?.textContent).toContain('Connected');
     expect(query(element, '[data-testid=tally]')?.dataset['tally']).toBe('off');
   });
 
-  it('renders the tally: red «LIVE» in the program, green «Als Nächstes» in the preview', async () => {
+  it('renders the tally: red “LIVE” in the program, green “Up next” in the preview', async () => {
     const element = await render(phoneSelf());
 
     hub.emit('tally', { overall: 'program', slots: { camera: 'program' } });
@@ -133,20 +133,20 @@ describe('StationComponent', () => {
     expect(tally?.dataset['tally']).toBe('program');
     expect(tally?.classList).toContain('is-program');
     expect(tally?.textContent?.trim()).toBe('LIVE');
-    expect(element.textContent).toContain('Live: Dieses Gerät ist jetzt im Program.');
+    expect(element.textContent).toContain('Live: this device is now on Program.');
 
     hub.emit('tally', { overall: 'preview', slots: { camera: 'preview' } });
     fixture.detectChanges();
     tally = query(element, '[data-testid=tally]');
     expect(tally?.dataset['tally']).toBe('preview');
-    expect(tally?.textContent?.trim()).toBe('Als Nächstes');
+    expect(tally?.textContent?.trim()).toBe('Up next');
 
     hub.emit('tally', { overall: 'off', slots: { camera: 'off' } });
     fixture.detectChanges();
     expect(query(element, '[data-testid=tally]')?.textContent?.trim()).toBe('');
   });
 
-  it('shows a Regie message as a banner with «OK»', async () => {
+  it('shows a Regie message as a banner with “OK”', async () => {
     const element = await render(phoneSelf());
 
     hub.emit('command', {
@@ -167,27 +167,27 @@ describe('StationComponent', () => {
     expect(query(element, '[data-testid=message-banner]')).toBeNull();
   });
 
-  it('blocked: «Dieses Gerät ist gesperrt»', async () => {
+  it('blocked: “This device is blocked”', async () => {
     const element = await render(phoneSelf());
-    getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'gesperrt'));
+    getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'blocked'));
 
     hub.emit('self', { ...self, state: 'blocked' });
     fixture.detectChanges();
 
-    expect(query(element, 'h1')?.textContent).toContain('Dieses Gerät ist gesperrt');
+    expect(query(element, 'h1')?.textContent).toContain('This device is blocked');
     expect(query(element, '[data-testid=connection-state]')?.dataset['state']).toBe('blocked');
     expect(media.session.calls).toContain('stop');
   });
 
-  it('replaced: «In einem anderen Tab geöffnet» and «Hier weitermachen» takes over', async () => {
+  it('replaced: “Opened in another tab” and “Continue here” takes over', async () => {
     const element = await render(phoneSelf());
 
     hub.emit('sessionReplaced');
     fixture.detectChanges();
-    expect(query(element, 'h1')?.textContent).toContain('In einem anderen Tab geöffnet');
+    expect(query(element, 'h1')?.textContent).toContain('Opened in another tab');
     expect(query(element, '[data-testid=connection-state]')?.dataset['state']).toBe('replaced');
 
-    button(element, 'Hier weitermachen').click();
+    button(element, 'Continue here').click();
     expect(hub.calls).toContain('restart');
     hub.connect();
     await settle();
@@ -201,40 +201,40 @@ describe('StationComponent', () => {
     fixture.detectChanges();
     expect(query(element, '[data-testid=slot-camera]')?.dataset['state']).toBe('live');
 
-    button(element, 'Kamera stoppen').click();
+    button(element, 'Stop camera').click();
     fixture.detectChanges();
     expect(media.publisher.calls).toContain('unpublish:camera');
     expect(query(element, '[data-testid=slot-camera]')?.dataset['state']).toBe('idle');
 
-    button(element, 'Kamera starten').click();
+    button(element, 'Start camera').click();
     expect(media.publisher.calls.filter((call) => call.startsWith('publishCamera'))).toHaveLength(
       2,
     );
   });
 
-  it('phone: a denied camera shows the steps and «Erneut versuchen»', async () => {
+  it('phone: a denied camera shows the steps and “Try again”', async () => {
     const element = await render(phoneSelf());
 
     media.publisher.emitSlot(
       'camera',
       'failed',
-      'Kein Zugriff auf die Kamera. Bitte den Zugriff im Browser erlauben.',
+      'media.slot.failure.permission-denied',
       'permission-denied',
     );
     fixture.detectChanges();
 
-    expect(element.textContent).toContain('Kein Zugriff auf die Kamera');
+    expect(element.textContent).toContain('No access to the camera');
     expect(element.querySelectorAll('.c-phone__steps li').length).toBeGreaterThan(1);
-    button(element, 'Erneut versuchen').click();
+    button(element, 'Try again').click();
     expect(media.publisher.calls.filter((call) => call.startsWith('publishCamera'))).toHaveLength(
       2,
     );
   });
 
-  it('phone: «Dunkel» blacks out the picture and keeps the thin tally frame', async () => {
+  it('phone: “Dark” blacks out the picture and keeps the thin tally frame', async () => {
     const element = await render(phoneSelf());
 
-    button(element, 'Dunkel').click();
+    button(element, 'Dark').click();
     fixture.detectChanges();
 
     expect(query(element, '.c-phone')?.classList).toContain('is-dark');
@@ -242,36 +242,36 @@ describe('StationComponent', () => {
     expect(query(element, '[data-testid=tally]')?.classList).toContain('c-tally--thin');
   });
 
-  it('laptop: «Bildschirm teilen» calls the publisher synchronously in the click', async () => {
+  it('laptop: “Share screen” calls the publisher synchronously in the click', async () => {
     const element = await render(laptopSelf(), undefined, true);
     const row = query(element, '[data-testid=slot-screen-1]');
     expect(row?.dataset['state']).toBe('idle');
     expect(row?.textContent).toContain('S2');
 
-    button(element, 'Bildschirm teilen').click();
+    button(element, 'Share screen').click();
 
     expect(media.publisher.calls).toContain('publishScreen:screen-1');
   });
 
-  it('laptop: an ended share and a reshare request offer a large «Erneut teilen»', async () => {
+  it('laptop: an ended share and a reshare request offer a large “Share again”', async () => {
     const element = await render(laptopSelf(), undefined, true);
-    media.publisher.emitSlot('screen-1', 'ended', 'Freigabe beendet');
+    media.publisher.emitSlot('screen-1', 'ended', 'media.slot.shareEnded');
     hub.emit('command', { id: 'cmd_9', kind: 'reshare', slot: 'screen-1', text: null, at: '' });
     fixture.detectChanges();
 
-    expect(element.textContent).toContain('Die Regie bittet dich, den Bildschirm erneut zu teilen');
+    expect(element.textContent).toContain('The control room asks you to share the screen again');
     expect(query(element, '[data-testid=slot-screen-1]')?.dataset['state']).toBe('ended');
 
-    button(element, 'Erneut teilen').click();
+    button(element, 'Share again').click();
     expect(media.publisher.calls).toContain('publishScreen:screen-1');
   });
 
-  it('laptop: greets with «Gekoppelt» right after pairing', async () => {
+  it('laptop: greets with “Paired” right after pairing', async () => {
     const notices = new NoticeService();
     notices.justPaired.set(true);
     const element = await renderWithNotices(notices);
 
-    expect(query(element, 'h1')?.textContent?.trim()).toBe('Gekoppelt');
+    expect(query(element, 'h1')?.textContent?.trim()).toBe('Paired');
   });
 
   it('removed by the Regie: back to the pairing form', async () => {

@@ -8,6 +8,8 @@ import {
   type OnInit,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { t } from '@studioflow/i18n';
+import type { ApiError } from '../core/api-error';
 import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';
 import { DEVICE_ENVIRONMENT, detectDeviceKind } from '../core/device-environment';
@@ -20,7 +22,7 @@ type RedeemState = 'redeeming' | 'already' | 'expired' | 'failed';
 
 /**
  * `/join/i/:token`: redeems a QR code (phones) or invite link (laptops) right away, without a name – the server
- * names the device («Handy 3»), the Regie can rename it. On success the token leaves the address bar (replaceUrl).
+ * names the device (“Phone 3”), the Regie can rename it. On success the token leaves the address bar (replaceUrl).
  */
 @Component({
   selector: 'sf-redeem',
@@ -40,7 +42,9 @@ export class RedeemComponent implements OnInit {
   private readonly environment = inject(DEVICE_ENVIRONMENT);
 
   protected readonly state = signal<RedeemState>('redeeming');
-  protected readonly errorMessage = signal<string | null>(null);
+  protected readonly t = t;
+  /** The failure of the last attempt; its text is read when it is shown, so it follows the language. */
+  protected readonly error = signal<ApiError | null>(null);
   protected readonly busy = signal(false);
   protected readonly isPhone = computed(() => detectDeviceKind(this.environment) === 'phone');
 
@@ -52,14 +56,14 @@ export class RedeemComponent implements OnInit {
     void this.redeem();
   }
 
-  /** Redeems (again); used by «Erneut versuchen». */
+  /** Redeems (again); used by “Try again”. */
   protected async redeem(): Promise<void> {
     if (this.busy()) {
       return;
     }
     this.busy.set(true);
     this.state.set('redeeming');
-    this.errorMessage.set(null);
+    this.error.set(null);
     const outcome = await this.redeemer.redeem(
       this.token(),
       detectDeviceKind(this.environment),
@@ -74,12 +78,12 @@ export class RedeemComponent implements OnInit {
         this.state.set('expired');
         return;
       default:
-        this.errorMessage.set(outcome.error.userMessage);
+        this.error.set(outcome.error);
         this.state.set('failed');
     }
   }
 
-  /** «Neu koppeln» on an already paired browser: the old device removes itself (best effort), then redeem. */
+  /** “Pair again” on an already paired browser: the old device removes itself (best effort), then redeem. */
   protected async repair(): Promise<void> {
     this.busy.set(true);
     await this.api.unpair().catch(() => undefined);

@@ -78,7 +78,7 @@ describe('StartComponent (pairing form)', () => {
     const element = await render({ isPhone: () => true, platform: () => 'Android · Chrome' });
 
     expect(checkedKind(element)).toBe('phone');
-    expect(nameInput(element).value).toBe('Handy Android');
+    expect(nameInput(element).value).toBe('Phone Android');
   });
 
   it('knocks and opens the waiting screen', async () => {
@@ -100,7 +100,7 @@ describe('StartComponent (pairing form)', () => {
       kind: 'laptop',
       platform: 'Windows · Edge',
     });
-    expect(navigate).toHaveBeenCalledWith(['/warten']);
+    expect(navigate).toHaveBeenCalledWith(['/waiting']);
   });
 
   it('requires a name', async () => {
@@ -120,10 +120,10 @@ describe('StartComponent (pairing form)', () => {
 
   it('shows the notice of a removed device', async () => {
     const notices = new NoticeService();
-    notices.pairingNotice.set('Die Regie hat dieses Gerät entfernt.');
+    notices.pairingNotice.set('sender.notices.deviceRemoved');
     const element = await render({}, notices);
 
-    expect(element.textContent).toContain('Die Regie hat dieses Gerät entfernt.');
+    expect(element.textContent).toContain('The control room has removed this device.');
   });
 });
 
@@ -138,9 +138,9 @@ describe('device kind and default name', () => {
 
   it.each([
     ['phone', 'iPhone · Safari', 'iPhone'],
-    ['phone', 'Android · Chrome', 'Handy Android'],
+    ['phone', 'Android · Chrome', 'Phone Android'],
     ['laptop', 'macOS · Chrome', 'Laptop macOS'],
-    ['laptop', 'Unbekannte Plattform', 'Laptop'],
+    ['laptop', 'Unknown platform', 'Laptop'],
   ] as const)('suggests a name for %s on %s', (kind, platform, name) => {
     expect(defaultDeviceName(kind, platform)).toBe(name);
   });

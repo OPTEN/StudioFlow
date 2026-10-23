@@ -94,7 +94,7 @@ export class StartComponent {
     }
     const accepted = await this.knock.request(name, this.form.controls.kind.value, this.platform);
     if (accepted) {
-      await this.router.navigate(['/warten']);
+      await this.router.navigate(['/waiting']);
     }
   }
 }

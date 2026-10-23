@@ -7,6 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import { DEVICE_ENVIRONMENT } from '../core/device-environment';
 import type { Facing, Resolution } from '../core/sender-settings.service';
 import { IconComponent } from '../shared/icon.component';
@@ -19,8 +20,8 @@ import { DeviceSessionService } from './device-session.service';
 const WAKE_MS = 10_000;
 
 /**
- * Phone as a fixed camera (plan «Handy als Kamera»): full-screen preview (mirrored only for the front camera), name and
- * slot code, connection line, and the controls start/stop, Front/Rück, 720p/1080p, «Dunkel» and «Technik-Check».
+ * Phone as a fixed camera (plan “Phone as a camera”): full-screen preview (mirrored only for the front camera), name and
+ * slot code, connection line, and the controls start/stop, Front/Back, 720p/1080p, “Dark” and “Tech check”.
  */
 @Component({
   selector: 'sf-phone-station',
@@ -33,9 +34,10 @@ export class PhoneStationComponent {
   protected readonly session = inject(DeviceSessionService);
   private readonly environment = inject(DEVICE_ENVIRONMENT);
 
-  /** «Technik-Check» was pressed. */
+  /** “Technik-Check” was pressed. */
   readonly openTechCheck = output<void>();
 
+  protected readonly t = t;
   protected readonly camera = this.session.camera;
   protected readonly facing = this.session.facing;
   protected readonly resolution = computed(() => this.session.settings().resolution);
@@ -56,7 +58,7 @@ export class PhoneStationComponent {
     this.cameraState() === 'failed'
       ? describeCameraProblem(
           this.camera()?.failure,
-          this.camera()?.message,
+          this.camera()?.messageKey,
           this.environment.userAgent(),
         )
       : null,

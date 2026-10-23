@@ -5,35 +5,27 @@
     <main class="c-station-state">
       <sf-icon class="c-station-state__icon is-bad" name="lock" />
       <h1 class="c-station-state__title" data-route-focus tabindex="-1">
-        Dieses Gerät ist gesperrt
+        {{ t('sender.station.blocked.title') }}
       </h1>
-      <p class="c-station-state__text">
-        Die Regie hat dieses Gerät gesperrt. Kamera und Bildschirm sind aus. Sobald die Regie es
-        wieder freigibt, geht es hier von selbst weiter.
-      </p>
+      <p class="c-station-state__text">{{ t('sender.station.blocked.text') }}</p>
       <sf-connection-status [view]="session.connection()" />
-      <p class="c-station-state__hint">
-        StudioFlow prüft alle 15 Sekunden, ob das Gerät wieder freigegeben ist.
-      </p>
+      <p class="c-station-state__hint">{{ t('sender.station.blocked.hint') }}</p>
     </main>
   }
   @case ('replaced') {
     <main class="c-station-state">
       <sf-icon class="c-station-state__icon" name="tabs" />
       <h1 class="c-station-state__title" data-route-focus tabindex="-1">
-        In einem anderen Tab geöffnet
+        {{ t('sender.station.replaced.title') }}
       </h1>
-      <p class="c-station-state__text">
-        Diese Station läuft jetzt in einem anderen Tab oder Fenster. Dieser Tab bleibt aus, damit
-        sich die beiden nicht gegenseitig trennen.
-      </p>
+      <p class="c-station-state__text">{{ t('sender.station.replaced.text') }}</p>
       <sf-connection-status [view]="session.connection()" />
       <button
         class="c-button c-button--fill c-button--large"
         type="button"
         (click)="session.takeOver()"
       >
-        Hier weitermachen
+        {{ t('sender.station.replaced.takeOver') }}
       </button>
     </main>
   }
@@ -51,7 +43,9 @@
             <span class="c-pulse__dot"></span><span class="c-pulse__dot"></span
             ><span class="c-pulse__dot"></span>
           </span>
-          <h1 class="c-station-state__title" data-route-focus tabindex="-1">Station startet</h1>
+          <h1 class="c-station-state__title" data-route-focus tabindex="-1">
+            {{ t('sender.station.starting') }}
+          </h1>
           <sf-connection-status
             [view]="session.connection()"
             [since]="session.degradedSince()"
@@ -72,8 +66,11 @@
     <div class="c-notice c-notice--ok c-station__banner" role="status">
       <sf-icon class="c-notice__icon" name="check" />
       <p class="c-notice__text">
-        Gekoppelt{{ cameraCode() ? ' als ' + cameraCode() : '' }}. Die Kamera startet, die Regie
-        sieht das Bild jetzt.
+        @if (cameraCode(); as code) {
+          {{ t('sender.station.banner.pairedAs', { code }) }}
+        } @else {
+          {{ t('sender.station.banner.paired') }}
+        }
       </p>
     </div>
   }
@@ -81,23 +78,22 @@
   @if (session.connection() === 'offline') {
     <div class="c-notice c-notice--warn c-station__banner" role="status">
       <sf-icon class="c-notice__icon" name="wifiOff" />
-      <p class="c-notice__text">
-        Offline: keine Netzwerkverbindung. StudioFlow verbindet sich von selbst neu, sobald das Netz
-        zurück ist.
-      </p>
+      <p class="c-notice__text">{{ t('sender.station.banner.offline') }}</p>
     </div>
   } @else if (unreachable()) {
     <div class="c-notice c-notice--warn c-station__banner" role="status">
       <sf-icon class="c-notice__icon" name="refresh" />
-      <p class="c-notice__text">Der Server ist nicht erreichbar. StudioFlow versucht es weiter.</p>
+      <p class="c-notice__text">{{ t('sender.station.banner.unreachable') }}</p>
     </div>
   }
 
   @if (showUpdate()) {
     <div class="c-notice c-station__banner c-station__update" role="status">
       <sf-icon class="c-notice__icon" name="refresh" />
-      <p class="c-notice__text">Neue Version bereit – nach der Sendung neu laden</p>
-      <button class="c-button" type="button" (click)="updates.reloadNow()">Jetzt neu laden</button>
+      <p class="c-notice__text">{{ t('sender.station.banner.update') }}</p>
+      <button class="c-button" type="button" (click)="updates.reloadNow()">
+        {{ t('sender.station.banner.reload') }}
+      </button>
     </div>
   }
 </div>

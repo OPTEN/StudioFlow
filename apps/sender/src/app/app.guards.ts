@@ -10,7 +10,7 @@ export const startGuard: CanActivateFn = () => {
     return router.createUrlTree(['/station']);
   }
   if (inject(KnockService).hasPending()) {
-    return router.createUrlTree(['/warten']);
+    return router.createUrlTree(['/waiting']);
   }
   return true;
 };
@@ -19,7 +19,7 @@ export const startGuard: CanActivateFn = () => {
 export const stationGuard: CanActivateFn = () =>
   inject(CredentialsService).paired() ? true : inject(Router).createUrlTree(['/']);
 
-/** `/join/warten` needs a knock of this tab (pending, or just answered so the result can be shown). */
+/** `/join/waiting` needs a knock of this tab (pending, or just answered so the result can be shown). */
 export const waitingGuard: CanActivateFn = () => {
   const router = inject(Router);
   if (inject(CredentialsService).paired()) {

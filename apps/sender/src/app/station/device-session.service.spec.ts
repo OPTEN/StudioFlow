@@ -22,6 +22,7 @@ import { DEVICE_ENVIRONMENT, type DeviceEnvironment } from '../core/device-envir
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
 import { TEST_HOOKS_FLAG } from '../core/test-hooks';
+import { actionErrorText } from './slot-errors';
 import {
   BLOCKED_RETRY_MS,
   DeviceSessionService,
@@ -30,17 +31,15 @@ import {
   REPORT_INTERVAL_MS,
   REPORT_STALE_MS,
 } from './device-session.service';
-import { SLOT_ERROR_MESSAGES } from './slot-errors';
 import {
   DEVICE_HUB_FACTORY,
   SENDER_MEDIA_FACTORY,
   TECH_CHECK_RUNNER,
   WAKE_LOCK_FACTORY,
 } from './station-ports';
-import { resetLocaleForTests } from '@studioflow/i18n';
 
-// Not converted yet: asserts German texts, so it runs in de-CH. Remove with the conversion of this file.
-beforeEach(() => resetLocaleForTests('de-CH'));
+/** The check as the report carries it: the problems stay on the device. */
+const { problems: _problems, ...TECH_CHECK_WIRE } = TECH_CHECK_OK;
 
 const CREDENTIALS = {
   deviceId: 'dev_phone0001',
@@ -232,14 +231,14 @@ describe('DeviceSessionService', () => {
       charging: true,
       network: 'wifi',
       rttMs: 14,
-      techCheck: TECH_CHECK_OK,
+      techCheck: TECH_CHECK_WIRE,
     });
 
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
     expect(hub.reports()).toHaveLength(2);
   });
 
-  it('reports a camera stopped on purpose as ended («Kamera beendet»), not paused', async () => {
+  it('reports a camera stopped on purpose as ended (“camera stopped”), not paused', async () => {
     const service = setup();
     await online(service);
     service.stopCamera();
@@ -273,7 +272,7 @@ describe('DeviceSessionService', () => {
   it('blocked: hub refused → /me 403 → stops media, retries every 15 s and continues when unblocked', async () => {
     const service = setup();
     await online(service);
-    api.getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'gesperrt'));
+    api.getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'blocked'));
 
     hub.setState('unauthorized');
     await settle();
@@ -304,7 +303,7 @@ describe('DeviceSessionService', () => {
   it('a final self with state blocked blocks at once and ends the hub', async () => {
     const service = setup();
     await online(service);
-    api.getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'gesperrt'));
+    api.getSelfTimed.mockRejectedValue(new ApiError(403, 'device_blocked', 'blocked'));
 
     hub.emit('self', { ...self, state: 'blocked' });
 
@@ -315,13 +314,13 @@ describe('DeviceSessionService', () => {
 
   it('a Hello refused with device_blocked blocks the station', async () => {
     const service = setup();
-    hub.responder = () => Promise.reject(new Error('device_blocked: Das Gerät ist gesperrt.'));
+    hub.responder = () => Promise.reject(new Error('device_blocked: The device is blocked.'));
     await online(service);
 
     expect(service.phase()).toBe('blocked');
   });
 
-  it('sessionReplaced shows «In einem anderen Tab geöffnet» and never reconnects by itself', async () => {
+  it('sessionReplaced shows “Opened in another tab” and never reconnects by itself', async () => {
     const service = setup();
     await online(service);
 
@@ -335,7 +334,7 @@ describe('DeviceSessionService', () => {
     expect(hub.calls.filter((call) => call === 'restart')).toEqual([]);
   });
 
-  it('«Hier weitermachen» says Hello again with a new session id and takes over (GAP-21)', async () => {
+  it('“Continue here” says Hello again with a new session id and takes over (GAP-21)', async () => {
     const service = setup();
     await online(service);
     const replacedSession = service.sessionId;
@@ -375,7 +374,7 @@ describe('DeviceSessionService', () => {
 
     expect(service.phase()).toBe('removed');
     expect(TestBed.inject(CredentialsService).credentials()).toBeNull();
-    expect(TestBed.inject(NoticeService).pairingNotice()).toContain('entfernt');
+    expect(TestBed.inject(NoticeService).pairingNotice()).toBe('sender.notices.deviceRemoved');
     expect(hub.calls).toContain('stop');
   });
 
@@ -411,14 +410,14 @@ describe('DeviceSessionService', () => {
     expect(service.message()).toBeNull();
   });
 
-  it('«OK» dismisses a Regie message', async () => {
+  it('“OK” dismisses a Regie message', async () => {
     const service = setup();
     await online(service);
     hub.emit('command', {
       id: 'cmd_2',
       kind: 'message',
       slot: null,
-      text: 'Bitte lächeln',
+      text: 'Please smile',
       at: '',
     });
 
@@ -438,10 +437,10 @@ describe('DeviceSessionService', () => {
     expect(media.publisher.calls).toContain('switchCamera');
   });
 
-  it('a reshare request marks an ended screen; «Erneut teilen» shares it again', async () => {
+  it('a reshare request marks an ended screen; “Share again” shares it again', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);
-    media.publisher.emitSlot('screen-1', 'ended', 'Freigabe beendet');
+    media.publisher.emitSlot('screen-1', 'ended', 'media.slot.shareEnded');
 
     hub.emit('command', { id: 'cmd_4', kind: 'reshare', slot: 'screen-1', text: null, at: '' });
 
@@ -467,7 +466,7 @@ describe('DeviceSessionService', () => {
     expect(service.screens()[0].reshareRequested).toBe(false);
   });
 
-  it('«Teilen beenden» keeps the slot and reports it ended', async () => {
+  it('“Stop sharing” keeps the slot and reports it ended', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);
     media.publisher.emitSlot('screen-1', 'live');
@@ -496,7 +495,7 @@ describe('DeviceSessionService', () => {
     ]);
   });
 
-  it('«+ weiteren Bildschirm» opens the share dialog synchronously and allocates the predicted slot', async () => {
+  it('“+ Another screen” opens the share dialog synchronously and allocates the predicted slot', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);
     media.publisher.emitSlot('screen-1', 'live');
@@ -525,14 +524,14 @@ describe('DeviceSessionService', () => {
 
     service.addScreen();
     await settle();
-    media.publisher.emitSlot('screen-2', 'idle', 'Freigabe abgebrochen', 'cancelled');
+    media.publisher.emitSlot('screen-2', 'idle', 'media.slot.failure.cancelled', 'cancelled');
     await settle();
 
     expect(api.releaseSlot).toHaveBeenCalledWith('screen-2');
     expect(service.screens().map((slot) => slot.slot)).toEqual(['screen-1']);
   });
 
-  it('«Entfernen» unpublishes and removes the slot on the server', async () => {
+  it('“Remove” unpublishes and removes the slot on the server', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);
 
@@ -543,12 +542,10 @@ describe('DeviceSessionService', () => {
     expect(service.screens()).toEqual([]);
   });
 
-  it('«Entfernen» of a slot that is already gone on the server (404) still removes it', async () => {
+  it('“Remove” of a slot that is already gone on the server (404) still removes it', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);
-    api.releaseSlot.mockRejectedValue(
-      new ApiError(404, 'not_found', 'Der Slot wurde nicht gefunden.'),
-    );
+    api.releaseSlot.mockRejectedValue(new ApiError(404, 'not_found', 'The slot was not found.'));
 
     await service.removeSlot('screen-1');
 
@@ -577,7 +574,7 @@ describe('DeviceSessionService', () => {
       techCheck: { deviceId: CREDENTIALS.deviceId, result: TECH_CHECK_OK },
     });
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
-    expect(lastReport().techCheck).toEqual(TECH_CHECK_OK);
+    expect(lastReport().techCheck).toEqual(TECH_CHECK_WIRE);
   });
 
   it('does not run the automatic tech check again when a result is stored', async () => {
@@ -592,7 +589,7 @@ describe('DeviceSessionService', () => {
     expect(service.techCheck()).toEqual(TECH_CHECK_OK);
   });
 
-  it('shows «Verbindet neu» with the outage start while the hub reconnects', async () => {
+  it('shows “Reconnecting” with the outage start while the hub reconnects', async () => {
     const service = setup();
     await online(service);
 
@@ -734,7 +731,7 @@ describe('DeviceSessionService', () => {
       if (method === 'Hello' && refusals-- > 0) {
         return Promise.reject(
           new Error(
-            "An unexpected error occurred invoking 'Hello' on the server. HubException: service_unavailable: Die Datenbank ist gerade nicht erreichbar.",
+            "An unexpected error occurred invoking 'Hello' on the server. HubException: service_unavailable: The database is not reachable right now.",
           ),
         );
       }
@@ -755,7 +752,7 @@ describe('DeviceSessionService', () => {
   it('a short database outage (503) on /me keeps the station calm', async () => {
     const service = setup();
     api.getSelfTimed.mockRejectedValue(
-      new ApiError(503, 'service_unavailable', 'Der Server ist gerade nicht erreichbar.'),
+      new ApiError(503, 'service_unavailable', 'The server is not reachable right now.'),
     );
     service.start();
     await settle();
@@ -769,15 +766,15 @@ describe('DeviceSessionService', () => {
   });
 
   it.each([
-    [400, 'validation_failed', SLOT_ERROR_MESSAGES.phoneScreen],
-    [409, 'limit_reached', SLOT_ERROR_MESSAGES.screenLimit],
+    [400, 'validation_failed', 'A phone cannot share a screen. Please pair a laptop for that.'],
+    [409, 'limit_reached', 'At most 9 screens are possible per device.'],
     [
       503,
       'service_unavailable',
-      'Der Server ist gerade nicht erreichbar. Bitte gleich noch einmal versuchen.',
+      'The server is not reachable right now. Please try again in a moment.',
     ],
   ] as const)(
-    'a refused screen allocation (%s %s) shows a clear German message',
+    'a refused screen allocation (%s %s) shows a clear message',
     async (status, code, message) => {
       const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
       await online(service);
@@ -789,7 +786,7 @@ describe('DeviceSessionService', () => {
       service.addScreen();
       await settle();
 
-      expect(service.actionError()).toBe(message);
+      expect(actionErrorText(service.actionError()!)).toBe(message);
       expect(media.publisher.calls).toContain('unpublish:screen-2');
       expect(service.screens().map((slot) => slot.slot)).toEqual(['screen-1']);
     },
@@ -802,7 +799,7 @@ describe('DeviceSessionService', () => {
 
     await service.addCamera();
 
-    expect(service.actionError()).toBe(SLOT_ERROR_MESSAGES.cameraLimit);
+    expect(actionErrorText(service.actionError()!)).toBe('This device already has a camera.');
   });
 
   it('releasing a phone camera (409 conflict) keeps the slot and explains why', async () => {
@@ -812,7 +809,9 @@ describe('DeviceSessionService', () => {
 
     await service.removeSlot('camera');
 
-    expect(service.actionError()).toBe(SLOT_ERROR_MESSAGES.phoneCamera);
+    expect(actionErrorText(service.actionError()!)).toBe(
+      'The camera of a phone cannot be removed. The control room can remove the whole device.',
+    );
     expect(service.camera()).not.toBeNull();
   });
 
@@ -820,11 +819,16 @@ describe('DeviceSessionService', () => {
     const service = setup();
     await online(service);
 
-    media.publisher.emitSlot('camera', 'failed', 'Kein Zugriff', 'permission-denied');
+    media.publisher.emitSlot(
+      'camera',
+      'failed',
+      'media.slot.failure.permission-denied',
+      'permission-denied',
+    );
 
     expect(service.camera()).toMatchObject({
       state: 'failed',
-      message: 'Kein Zugriff',
+      messageKey: 'media.slot.failure.permission-denied',
       failure: 'permission-denied',
     });
   });

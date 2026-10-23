@@ -5,12 +5,13 @@
     @switch (phase()) {
       @case ('denied') {
         <section class="c-pairing__inner" data-testid="pairing-denied">
-          <h1 class="c-pairing__title" data-route-focus tabindex="-1">Anfrage abgelehnt</h1>
+          <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+            {{ t('sender.pairing.waiting.deniedTitle') }}
+          </h1>
           <div class="c-notice c-notice--bad" role="alert">
             <sf-icon class="c-notice__icon" name="alert" />
             <p class="c-notice__text">
-              Die Regie hat die Anfrage von «{{ name() }}» abgelehnt. Frag in der Regie nach und
-              versuche es noch einmal.
+              {{ t('sender.pairing.waiting.deniedText', { name: name() }) }}
             </p>
           </div>
           <button
@@ -18,47 +19,49 @@
             type="button"
             (click)="again()"
           >
-            Neue Anfrage
+            {{ t('sender.pairing.waiting.again') }}
           </button>
         </section>
       }
       @case ('expired') {
         <section class="c-pairing__inner" data-testid="pairing-expired">
-          <h1 class="c-pairing__title" data-route-focus tabindex="-1">Anfrage abgelaufen</h1>
+          <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+            {{ t('sender.pairing.waiting.expiredTitle') }}
+          </h1>
           <div class="c-notice c-notice--warn" role="alert">
             <sf-icon class="c-notice__icon" name="alert" />
-            <p class="c-notice__text">
-              Die Regie hat die Anfrage nicht rechtzeitig freigegeben. Eine neue Anfrage bekommt
-              einen neuen Prüfcode.
-            </p>
+            <p class="c-notice__text">{{ t('sender.pairing.waiting.expiredText') }}</p>
           </div>
           <button
             class="c-button c-button--fill c-button--large c-button--block"
             type="button"
             (click)="again()"
           >
-            Neue Anfrage
+            {{ t('sender.pairing.waiting.again') }}
           </button>
         </section>
       }
       @case ('approved') {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">Gekoppelt</h1>
-        <p class="c-pairing__lead" role="status">Die Station startet …</p>
+        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+          {{ t('sender.pairing.waiting.approvedTitle') }}
+        </h1>
+        <p class="c-pairing__lead" role="status">{{ t('sender.pairing.waiting.approvedLead') }}</p>
       }
       @default {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">Wartet auf Freigabe</h1>
+        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+          {{ t('sender.pairing.waiting.title') }}
+        </h1>
 
         <div class="c-waiting__code-block">
           <p class="c-waiting__code" data-testid="check-code" aria-describedby="check-code-caption">
             {{ code() }}
           </p>
-          <p class="c-waiting__caption" id="check-code-caption">Prüfcode für die Regie</p>
+          <p class="c-waiting__caption" id="check-code-caption">
+            {{ t('sender.pairing.waiting.codeCaption') }}
+          </p>
         </div>
 
-        <p class="c-pairing__lead">
-          Die Regie sieht «{{ name() }}» mit diesem Code. Stimmt er auf beiden Bildschirmen überein,
-          gibt sie das Gerät frei.
-        </p>
+        <p class="c-pairing__lead">{{ t('sender.pairing.waiting.lead', { name: name() }) }}</p>
 
         <div class="c-waiting__status">
           <span class="c-pulse" aria-hidden="true"
@@ -67,22 +70,20 @@
           ></span>
           <span role="status" aria-live="polite">
             @if (trouble()) {
-              Keine Verbindung zum Server – neuer Versuch läuft …
+              {{ t('sender.pairing.waiting.statusTrouble') }}
             } @else {
-              Wartet auf die Regie …
+              {{ t('sender.pairing.waiting.statusWaiting') }}
             }
           </span>
         </div>
 
         @if (remaining(); as left) {
-          <p class="c-waiting__expiry">
-            Gilt noch <span class="u-mono">{{ left }}</span> min.
-          </p>
+          <p class="c-waiting__expiry">{{ t('sender.pairing.waiting.expiry', { time: left }) }}</p>
         }
 
         <div class="c-pairing__actions">
           <button class="c-button c-button--block" type="button" (click)="cancel()">
-            Abbrechen
+            {{ t('common.cancel') }}
           </button>
         </div>
       }

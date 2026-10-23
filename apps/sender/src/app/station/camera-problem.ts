@@ -1,9 +1,10 @@
-import type { SlotFailure } from '@studioflow/media-client/device';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
+import type { SlotFailure, SlotMessageKey } from '@studioflow/media-client/device';
 
 /** What went wrong with the camera, derived from the publisher's failure code. */
 export type CameraProblemKind = 'denied' | 'busy' | 'missing' | 'lost' | 'publish' | 'other';
 
-/** A camera problem as shown on the station. */
+/** A camera problem as shown on the station, in the active language. */
 export interface CameraProblem {
   readonly kind: CameraProblemKind;
   readonly title: string;
@@ -62,96 +63,91 @@ export function permissionPlatform(userAgent: string): PermissionPlatform {
   return 'other';
 }
 
-const PERMISSION_STEPS: Readonly<Record<PermissionPlatform, readonly string[]>> = {
+const PERMISSION_STEP_KEYS = {
   ios: [
-    'In Safari links in der Adressleiste auf «aA» tippen, dann «Website-Einstellungen».',
-    'Bei «Kamera» die Option «Erlauben» wählen.',
-    'Die Seite neu laden. Hilft das nicht: Einstellungen › Apps › Safari › Kamera › «Erlauben».',
+    'sender.camera.problem.iosStep1',
+    'sender.camera.problem.iosStep2',
+    'sender.camera.problem.iosStep3',
   ],
   'android-chrome': [
-    'Links neben der Adresse auf das Symbol mit den Reglern tippen, dann «Berechtigungen».',
-    'Die Kamera auf «Zulassen» stellen.',
-    'Die Seite neu laden.',
+    'sender.camera.problem.androidChromeStep1',
+    'sender.camera.problem.androidChromeStep2',
+    'sender.camera.problem.androidChromeStep3',
   ],
   'android-other': [
-    'In den Website-Einstellungen des Browsers die Kamera für diese Seite erlauben.',
-    'Prüfen, ob der Browser in den Android-Einstellungen die Kamera verwenden darf.',
-    'Die Seite neu laden.',
+    'sender.camera.problem.androidOtherStep1',
+    'sender.camera.problem.androidOtherStep2',
+    'sender.camera.problem.androidOtherStep3',
   ],
   'macos-safari': [
-    'Im Menü «Safari» die «Einstellungen für diese Website» öffnen.',
-    'Bei «Kamera» die Option «Erlauben» wählen.',
-    'Die Seite neu laden. In den Systemeinstellungen › Datenschutz › Kamera muss Safari erlaubt sein.',
+    'sender.camera.problem.macosSafariStep1',
+    'sender.camera.problem.macosSafariStep2',
+    'sender.camera.problem.macosSafariStep3',
   ],
   firefox: [
-    'In der Adressleiste auf das durchgestrichene Kamera-Symbol klicken.',
-    'Die Sperre für die Kamera aufheben.',
-    'Die Seite neu laden.',
+    'sender.camera.problem.firefoxStep1',
+    'sender.camera.problem.firefoxStep2',
+    'sender.camera.problem.firefoxStep3',
   ],
   'desktop-chromium': [
-    'Links neben der Adresse auf das Symbol mit den Reglern klicken.',
-    'Die Kamera auf «Zulassen» stellen.',
-    'Die Seite neu laden. Unter Windows und macOS muss der Browser die Kamera in den Systemeinstellungen verwenden dürfen.',
+    'sender.camera.problem.desktopChromiumStep1',
+    'sender.camera.problem.desktopChromiumStep2',
+    'sender.camera.problem.desktopChromiumStep3',
   ],
-  other: [
-    'In den Einstellungen des Browsers die Kamera für diese Seite erlauben.',
-    'Die Seite neu laden.',
-  ],
-};
+  other: ['sender.camera.problem.otherStep1', 'sender.camera.problem.otherStep2'],
+} as const satisfies Readonly<Record<PermissionPlatform, readonly PlainMessageKey[]>>;
 
 /**
- * The problem with German title and steps for the station.
+ * The problem with title and steps for the station, in the active language. Call it where the text is shown (a
+ * `computed` or the template), so it follows a language switch.
  *
  * @param failure failure code of the slot
- * @param message German message of the slot, the title when the failure has no specific explanation
+ * @param messageKey message of the slot, the title when the failure has no specific explanation
  */
 export function describeCameraProblem(
   failure: SlotFailure | null | undefined,
-  message: string | null | undefined,
+  messageKey: SlotMessageKey | null | undefined,
   userAgent: string,
 ): CameraProblem {
   const kind = classifyCameraFailure(failure);
   const platform = permissionPlatform(userAgent);
   const touch = platform === 'ios' || platform.startsWith('android');
-  const retry = `Dann auf «Erneut versuchen» ${touch ? 'tippen' : 'klicken'}.`;
+  const retry = t(touch ? 'sender.camera.problem.retryTap' : 'sender.camera.problem.retryClick');
   switch (kind) {
     case 'denied':
       return {
         kind,
-        title: 'Kein Zugriff auf die Kamera',
-        steps: PERMISSION_STEPS[platform],
+        title: t('sender.camera.problem.deniedTitle'),
+        steps: PERMISSION_STEP_KEYS[platform].map((key) => t(key)),
       };
     case 'busy':
       return {
         kind,
-        title: 'Kamera wird von einer anderen App verwendet',
-        steps: [
-          'Die andere App schliessen, zum Beispiel Kamera, Teams, Zoom oder einen anderen Browser-Tab.',
-          retry,
-        ],
+        title: t('sender.camera.problem.busyTitle'),
+        steps: [t('sender.camera.problem.busyStep1'), retry],
       };
     case 'missing':
       return {
         kind,
-        title: 'Keine Kamera gefunden',
-        steps: ['Prüfen, ob eine Kamera angeschlossen und eingeschaltet ist.', retry],
+        title: t('sender.camera.problem.missingTitle'),
+        steps: [t('sender.camera.problem.missingStep1'), retry],
       };
     case 'lost':
       return {
         kind,
-        title: 'Die Kamera liefert kein Bild mehr',
-        steps: ['Vielleicht hat ein Anruf oder eine andere App die Kamera übernommen.', retry],
+        title: t('sender.camera.problem.lostTitle'),
+        steps: [t('sender.camera.problem.lostStep1'), retry],
       };
     case 'publish':
       return {
         kind,
-        title: 'Das Bild konnte nicht gesendet werden',
-        steps: ['Das WLAN prüfen.', retry],
+        title: t('sender.camera.problem.publishTitle'),
+        steps: [t('sender.camera.problem.publishStep1'), retry],
       };
     default:
       return {
         kind,
-        title: message ?? 'Die Kamera konnte nicht gestartet werden',
+        title: messageKey ? t(messageKey) : t('sender.camera.problem.otherTitle'),
         steps: [retry],
       };
   }

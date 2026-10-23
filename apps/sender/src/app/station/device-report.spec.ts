@@ -36,7 +36,7 @@ describe('buildDeviceReport', () => {
       charging: false,
       network: 'wifi',
       rttMs: 12,
-      techCheck: TECH_CHECK_OK,
+      techCheck: { ...TECH_CHECK_OK, problems: undefined },
     });
   });
 

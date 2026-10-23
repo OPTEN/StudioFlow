@@ -1,4 +1,5 @@
 import { InjectionToken } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import type { DeviceKind } from '@studioflow/scene-model';
 import {
   battery,
@@ -12,7 +13,7 @@ import {
 export interface DeviceEnvironment {
   /** The raw user agent (permission instructions per platform). */
   userAgent(): string;
-  /** Short platform text for the Regie («iPhone · Safari»). */
+  /** Short platform text for the Regie (“iPhone · Safari”). */
   platform(): string;
   /** True for phone user agents. */
   isPhone(): boolean;
@@ -20,7 +21,7 @@ export interface DeviceEnvironment {
   canShareScreen(): boolean;
   /** Battery level and charging state where exposed. */
   battery(): Promise<{ readonly pct: number; readonly charging: boolean } | null>;
-  /** Network type («wifi», «4g») where exposed. */
+  /** Network type (“wifi”, “4g”) where exposed. */
   networkType(): string | null;
   /** Vibrates briefly where allowed (phones). */
   vibrate(pattern: number | number[]): void;
@@ -61,13 +62,15 @@ export function detectDeviceKind(environment: DeviceEnvironment): DeviceKind {
   return environment.isPhone() || !environment.canShareScreen() ? 'phone' : 'laptop';
 }
 
-/** Suggested device name from the platform («Laptop Windows», «iPhone», «Handy Android»), at most 60 characters. */
+/** Suggested device name from the platform (“Laptop Windows”, “iPhone”, “Phone Android”), at most 60 characters. */
 export function defaultDeviceName(kind: DeviceKind, platform: string): string {
   const os = platform.split(' · ')[0]?.trim() ?? '';
-  const known = os !== '' && os !== 'Unbekannte Plattform';
+  const known = os !== '' && os !== t('media.device.unknownPlatform');
   if (known && (os === 'iPhone' || os === 'iPad')) {
     return os;
   }
-  const stem = kind === 'phone' ? 'Handy' : 'Laptop';
+  const stem = t(
+    kind === 'phone' ? 'sender.core.deviceName.phone' : 'sender.core.deviceName.laptop',
+  );
   return (known ? `${stem} ${os}` : stem).slice(0, 60);
 }

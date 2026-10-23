@@ -185,12 +185,7 @@ describe('KnockService', () => {
 
   it('shows the rate-limit message and stays on the form', async () => {
     api.createPairingRequest.mockRejectedValue(
-      new ApiError(
-        429,
-        'rate_limited',
-        'Zu viele Versuche. Bitte in 2 Minuten noch einmal versuchen.',
-        120,
-      ),
+      new ApiError(429, 'rate_limited', 'Too many attempts. Please try again in 2 minutes.', 120),
     );
     const knock = create();
 

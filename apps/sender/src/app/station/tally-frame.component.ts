@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { t } from '@studioflow/i18n';
 import type { TallyState } from '@studioflow/scene-model';
 
 /**
- * Tally around the whole viewport (plan «Tally auf dem Gerät»): red frame and «LIVE» while in the program, green
- * frame and «Als Nächstes» while in the preview, nothing otherwise. Screen readers get the state as text.
+ * Tally around the whole viewport (plan “Tally on the device”): red frame and “LIVE” while in the program, green
+ * frame and “Up next” while in the preview, nothing otherwise. Screen readers get the state as text.
  */
 @Component({
   selector: 'sf-tally-frame',
@@ -23,7 +24,7 @@ export class TallyFrameComponent {
       case 'program':
         return 'LIVE';
       case 'preview':
-        return 'Als Nächstes';
+        return t('sender.station.tally.preview');
       default:
         return null;
     }
@@ -33,11 +34,11 @@ export class TallyFrameComponent {
   protected readonly spoken = computed(() => {
     switch (this.state()) {
       case 'program':
-        return 'Live: Dieses Gerät ist jetzt im Program.';
+        return t('sender.station.tally.spokenProgram');
       case 'preview':
-        return 'Als Nächstes: Dieses Gerät ist in der Preview.';
+        return t('sender.station.tally.spokenPreview');
       default:
-        return 'Nicht auf Sendung.';
+        return t('sender.station.tally.spokenOff');
     }
   });
 }

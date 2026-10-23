@@ -101,7 +101,7 @@ describe('AppUpdateService', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it('«Jetzt neu laden» reloads at once', async () => {
+  it('“Reload now” reloads at once', async () => {
     const { service, live } = create();
     live.onAir.set(true);
     versionReady();

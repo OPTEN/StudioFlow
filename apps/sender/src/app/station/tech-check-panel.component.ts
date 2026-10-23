@@ -8,6 +8,8 @@ import {
   input,
   output,
 } from '@angular/core';
+import { t } from '@studioflow/i18n';
+import { techProblemText, type TechCheckResult } from '@studioflow/media-client/device';
 import {
   formatHm,
   formatKbpsAsMbit,
@@ -15,21 +17,14 @@ import {
   type TechCheckLevel,
 } from '@studioflow/scene-model';
 import { IconComponent } from '../shared/icon.component';
+import { LanguageSelectComponent } from '../shared/language-select.component';
 
 /** One lamp of the check. */
 interface CheckRow {
   readonly key: 'camera' | 'network' | 'bandwidth';
-  readonly label: string;
   readonly level: TechCheckLevel;
   readonly value: string | null;
 }
-
-const LEVEL_WORDS: Readonly<Record<TechCheckLevel, string>> = {
-  ok: 'gut',
-  warn: 'eingeschränkt',
-  bad: 'ungenügend',
-  unknown: 'nicht geprüft',
-};
 
 const LEVEL_LAMPS: Readonly<Record<TechCheckLevel, string>> = {
   ok: 'c-lamp',
@@ -40,28 +35,32 @@ const LEVEL_LAMPS: Readonly<Record<TechCheckLevel, string>> = {
 
 /** Overall verdict of a check. */
 export function techCheckSummary(result: TechCheckDto | null): string {
-  switch (result?.overall) {
-    case 'ok':
-      return 'Alles bereit für die Sendung.';
-    case 'warn':
-      return 'Es geht, aber mit Einschränkungen.';
-    case 'bad':
-      return 'So gibt es Probleme in der Sendung.';
-    default:
-      return 'Noch nicht geprüft.';
-  }
+  return t(`sender.techcheck.summary.${result?.overall ?? 'unknown'}`);
 }
 
-/** «Technik-Check»: camera, network and upload as lamps, with the German note and «Erneut prüfen». */
+/**
+ * The problems of a check in the language of the reader. A check stored by an older version has no problems, only the
+ * `note` (then in the language it was written in).
+ */
+export function techCheckNote(result: TechCheckResult | null): string | null {
+  if (result === null) {
+    return null;
+  }
+  return result.problems.length > 0
+    ? result.problems.map((problem) => techProblemText(problem)).join(' ')
+    : result.note;
+}
+
+/** “Tech check”: camera, network and upload as lamps, with the problems and “Check again”. */
 @Component({
   selector: 'sf-tech-check-panel',
-  imports: [IconComponent],
+  imports: [IconComponent, LanguageSelectComponent],
   templateUrl: './tech-check-panel.component.html',
   styleUrl: './tech-check-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TechCheckPanelComponent {
-  readonly result = input<TechCheckDto | null>(null);
+  readonly result = input<TechCheckResult | null>(null);
   readonly running = input(false);
   /** The device has a camera slot (else the camera lamp is left out). */
   readonly withCamera = input(true);
@@ -70,7 +69,9 @@ export class TechCheckPanelComponent {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  protected readonly t = t;
   protected readonly summary = computed(() => techCheckSummary(this.result()));
+  protected readonly note = computed(() => techCheckNote(this.result()));
   protected readonly checkedAt = computed(() => {
     const at = this.result()?.at;
     return at === undefined ? null : formatHm(new Date(at));
@@ -81,13 +82,11 @@ export class TechCheckPanelComponent {
     const rows: CheckRow[] = [
       {
         key: 'network',
-        label: 'Netzwerk',
         level: result?.network ?? 'unknown',
         value: result?.rttMs === null || result === null ? null : `${result.rttMs} ms`,
       },
       {
         key: 'bandwidth',
-        label: 'Upload',
         level: result?.bandwidth ?? 'unknown',
         value:
           result?.uploadKbps === null || result === null
@@ -96,14 +95,10 @@ export class TechCheckPanelComponent {
       },
     ];
     return this.withCamera()
-      ? [
-          { key: 'camera', label: 'Kamera', level: result?.camera ?? 'unknown', value: null },
-          ...rows,
-        ]
+      ? [{ key: 'camera', level: result?.camera ?? 'unknown', value: null }, ...rows]
       : rows;
   });
 
-  protected readonly levelWord = (level: TechCheckLevel): string => LEVEL_WORDS[level];
   protected readonly lampClass = (level: TechCheckLevel): string => LEVEL_LAMPS[level];
 
   constructor() {

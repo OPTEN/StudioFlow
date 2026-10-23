@@ -4,9 +4,10 @@ import {
   ScreenWakeLock,
   runTechCheck,
   type TechCheckOptions,
+  type TechCheckResult,
 } from '@studioflow/media-client/device';
 import { ResilientHub, type ResilientHubOptions } from '@studioflow/realtime-client';
-import type { LiveKitTokenDto, TechCheckDto } from '@studioflow/scene-model';
+import type { LiveKitTokenDto } from '@studioflow/scene-model';
 
 /**
  * Seams between the station and the shared packages. The real implementations are the package classes; unit tests
@@ -67,7 +68,7 @@ export type SenderMediaFactory = (tokenProvider: () => Promise<LiveKitTokenDto>)
 export type StationWakeLock = Pick<ScreenWakeLock, 'enable' | 'disable' | 'dispose' | 'active'>;
 
 /** Runs the technical check (`runTechCheck` from `@studioflow/media-client`). */
-export type TechCheckRunner = (options: TechCheckOptions) => Promise<TechCheckDto>;
+export type TechCheckRunner = (options: TechCheckOptions) => Promise<TechCheckResult>;
 
 /** Factory of the device hub. */
 export const DEVICE_HUB_FACTORY = new InjectionToken<DeviceHubFactory>(

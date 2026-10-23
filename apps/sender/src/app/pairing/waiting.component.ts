@@ -8,14 +8,15 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { t } from '@studioflow/i18n';
 import { formatCheckCode, formatDuration } from '@studioflow/scene-model';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
 import { IconComponent } from '../shared/icon.component';
 import { KnockService } from './knock.service';
 
 /**
- * `/join/warten`: the check code «47 12» while the Regie decides (plan step 2). Polls through {@link KnockService},
- * survives reloads, shows a denial or expiry with «Neue Anfrage», and opens the station once approved.
+ * `/join/waiting`: the check code “47 12” while the Regie decides (plan step 2). Polls through {@link KnockService},
+ * survives reloads, shows a denial or expiry with “New request”, and opens the station once approved.
  */
 @Component({
   selector: 'sf-waiting',
@@ -26,6 +27,7 @@ import { KnockService } from './knock.service';
 })
 export class WaitingComponent {
   private readonly router = inject(Router);
+  protected readonly t = t;
   protected readonly knock = inject(KnockService);
 
   protected readonly phase = this.knock.phase;
@@ -40,7 +42,7 @@ export class WaitingComponent {
 
   private readonly now = signal(Date.now());
 
-  /** «Gilt noch 09:41» until the request expires. */
+  /** “Valid for another 09:41 min.” until the request expires. */
   protected readonly remaining = computed(() => {
     const expiresAt = Date.parse(this.knock.knock()?.expiresAt ?? '');
     if (Number.isNaN(expiresAt)) {

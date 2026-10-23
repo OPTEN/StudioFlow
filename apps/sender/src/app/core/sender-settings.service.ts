@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import type { TechCheckResult, TechProblem } from '@studioflow/media-client/device';
 import type { DeviceKind, TechCheckDto } from '@studioflow/scene-model';
 import { LOCAL_STORAGE, STORAGE_KEYS } from './browser-storage';
 
@@ -13,14 +14,14 @@ export interface SenderSettings {
   /** Camera direction; null until the device kind is known (phones default to the back camera). */
   readonly facing: Facing | null;
   readonly resolution: Resolution;
-  /** «Dunkel»: black screen with a thin tally frame. */
+  /** “Dark”: black screen with a thin tally frame. */
   readonly dark: boolean;
   /** The camera was running when the page was left: start it again after a reload. */
   readonly cameraOn: boolean;
-  /** Screen slots that were shared when the page was left (they need a new click, see «Erneut teilen»). */
+  /** Screen slots that were shared when the page was left (they need a new click, see “Share again”). */
   readonly sharedScreens: readonly string[];
   /** Last technical check of this device, reported after reloads too. */
-  readonly techCheck: { readonly deviceId: string; readonly result: TechCheckDto } | null;
+  readonly techCheck: { readonly deviceId: string; readonly result: TechCheckResult } | null;
 }
 
 /** Defaults of a fresh browser. */
@@ -36,6 +37,35 @@ export const DEFAULT_SETTINGS: SenderSettings = {
 const SCREEN_SLOT = /^screen-[1-9]$/;
 const LEVELS = new Set(['unknown', 'ok', 'warn', 'bad']);
 
+/** Prefix of the messages a tech check stores (`media.techcheck.*`). */
+const TECH_PROBLEM_PREFIX = 'media.techcheck.';
+
+/**
+ * The problems of a stored check. A check stored by an older version has none (its `note` is shown instead), and so
+ * does an entry that is not a message of the tech check.
+ */
+function parseProblems(value: unknown): readonly TechProblem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const problems: TechProblem[] = [];
+  for (const entry of value as unknown[]) {
+    const { key, params } = (entry ?? {}) as { key?: unknown; params?: unknown };
+    if (typeof key !== 'string' || !key.startsWith(TECH_PROBLEM_PREFIX)) {
+      return [];
+    }
+    const values = typeof params === 'object' && params !== null ? Object.entries(params) : [];
+    if (values.some(([, item]) => typeof item !== 'string' && typeof item !== 'number')) {
+      return [];
+    }
+    problems.push({
+      key,
+      ...(values.length > 0 ? { params: Object.fromEntries(values) } : {}),
+    } as TechProblem);
+  }
+  return problems;
+}
+
 function parseTechCheck(value: unknown): SenderSettings['techCheck'] {
   if (typeof value !== 'object' || value === null) {
     return null;
@@ -49,7 +79,13 @@ function parseTechCheck(value: unknown): SenderSettings['techCheck'] {
     (level) => typeof level === 'string' && LEVELS.has(level),
   );
   return levelsValid && typeof check.at === 'string'
-    ? { deviceId, result: result as TechCheckDto }
+    ? {
+        deviceId,
+        result: {
+          ...(result as TechCheckDto),
+          problems: parseProblems((result as { problems?: unknown }).problems),
+        },
+      }
     : null;
 }
 
@@ -104,7 +140,7 @@ export class SenderSettingsService {
   }
 
   /** Last technical check of the given device, if stored. */
-  techCheckFor(deviceId: string): TechCheckDto | null {
+  techCheckFor(deviceId: string): TechCheckResult | null {
     const stored = this.settings().techCheck;
     return stored !== null && stored.deviceId === deviceId ? stored.result : null;
   }

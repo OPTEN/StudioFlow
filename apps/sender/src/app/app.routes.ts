@@ -22,7 +22,7 @@ export const routes: Routes = [
     loadComponent: () => import('./pairing/redeem.component').then((m) => m.RedeemComponent),
   },
   {
-    path: 'warten',
+    path: 'waiting',
     title: TITLE,
     canActivate: [waitingGuard],
     loadComponent: () => import('./pairing/waiting.component').then((m) => m.WaitingComponent),

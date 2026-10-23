@@ -5,22 +5,31 @@
     @switch (state()) {
       @case ('expired') {
         <section class="c-pairing__inner" data-testid="pairing-expired">
-          <h1 class="c-pairing__title" data-route-focus tabindex="-1">Einladung abgelaufen</h1>
+          <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+            {{ t('sender.pairing.redeem.expiredTitle') }}
+          </h1>
           <div class="c-notice c-notice--warn" role="alert">
             <sf-icon class="c-notice__icon" name="alert" />
             <p class="c-notice__text">
-              Dieser {{ isPhone() ? 'QR-Code' : 'Link' }} ist abgelaufen oder wurde schon verwendet.
-              Bitte in der Regie einen neuen erzeugen lassen.
+              {{
+                isPhone()
+                  ? t('sender.pairing.redeem.expiredQr')
+                  : t('sender.pairing.redeem.expiredLink')
+              }}
             </p>
           </div>
-          <a class="c-button c-button--block" routerLink="/" replaceUrl>Mit Prüfcode koppeln</a>
+          <a class="c-button c-button--block" routerLink="/" replaceUrl>{{
+            t('sender.pairing.redeem.pairWithCode')
+          }}</a>
         </section>
       }
       @case ('failed') {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">Koppeln hat nicht geklappt</h1>
+        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+          {{ t('sender.pairing.redeem.failedTitle') }}
+        </h1>
         <div class="c-notice c-notice--bad" role="alert">
           <sf-icon class="c-notice__icon" name="alert" />
-          <p class="c-notice__text">{{ errorMessage() }}</p>
+          <p class="c-notice__text">{{ error()?.userMessage }}</p>
         </div>
         <div class="c-pairing__actions">
           <button
@@ -29,24 +38,25 @@
             [disabled]="busy()"
             (click)="redeem()"
           >
-            Erneut versuchen
+            {{ t('sender.pairing.redeem.retry') }}
           </button>
-          <a class="c-button c-button--block" routerLink="/" replaceUrl>Mit Prüfcode koppeln</a>
+          <a class="c-button c-button--block" routerLink="/" replaceUrl>{{
+            t('sender.pairing.redeem.pairWithCode')
+          }}</a>
         </div>
       }
       @case ('already') {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">Schon gekoppelt</h1>
-        <p class="c-pairing__lead">
-          Dieses Gerät ist bereits mit der Regie gekoppelt. Mit der neuen Einladung wird es als neue
-          Station gekoppelt.
-        </p>
+        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+          {{ t('sender.pairing.redeem.alreadyTitle') }}
+        </h1>
+        <p class="c-pairing__lead">{{ t('sender.pairing.redeem.alreadyText') }}</p>
         <div class="c-pairing__actions">
           <button
             class="c-button c-button--fill c-button--large c-button--block"
             type="button"
             (click)="toStation()"
           >
-            Zur Station
+            {{ t('sender.pairing.redeem.alreadyStation') }}
           </button>
           <button
             class="c-button c-button--block"
@@ -54,20 +64,20 @@
             [disabled]="busy()"
             (click)="repair()"
           >
-            Neu koppeln
+            {{ t('sender.pairing.redeem.alreadyAgain') }}
           </button>
         </div>
       }
       @default {
-        <h1 class="c-pairing__title" data-route-focus tabindex="-1">Wird gekoppelt …</h1>
+        <h1 class="c-pairing__title" data-route-focus tabindex="-1">
+          {{ t('sender.pairing.redeem.pairingTitle') }}
+        </h1>
         <div class="c-redeem__status">
           <span class="c-pulse" aria-hidden="true"
             ><span class="c-pulse__dot"></span><span class="c-pulse__dot"></span
             ><span class="c-pulse__dot"></span
           ></span>
-          <p role="status" aria-live="polite">
-            Einen Moment, das Gerät meldet sich bei der Regie an.
-          </p>
+          <p role="status" aria-live="polite">{{ t('sender.pairing.redeem.pairingStatus') }}</p>
         </div>
       }
     }

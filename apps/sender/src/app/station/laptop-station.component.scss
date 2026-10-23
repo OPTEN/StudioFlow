@@ -9,7 +9,7 @@
   min-height: 100dvh;
 }
 
-// Header bar on panel graphite with a seam underline (DESIGN «Header»).
+// Header bar on panel graphite with a seam underline (DESIGN “Header”).
 .c-laptop__bar {
   align-items: center;
   background: var(--panel);
@@ -22,7 +22,7 @@
     max(#{$SPACE_GUTTER}, var(--safe-left));
 }
 
-// Narrow screens: brand and «Technik-Check» on the first row, the connection line below.
+// Narrow screens: brand and “Technik-Check” on the first row, the connection line below.
 .c-laptop__connection {
   flex: 1 0 100%;
   order: 3;
@@ -218,7 +218,7 @@
   }
 }
 
-// Risky action apart from the others (DESIGN «Danger»).
+// Risky action apart from the others (DESIGN “Danger”).
 .c-slot__remove {
   margin-left: auto;
 }
