@@ -1,5 +1,10 @@
 {
   "/api": { "target": "http://localhost:5298", "secure": false, "changeOrigin": false },
-  "/hubs": { "target": "http://localhost:5298", "secure": false, "ws": true, "changeOrigin": false },
+  "/hubs": {
+    "target": "http://localhost:5298",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": false
+  },
   "/rtc": { "target": "http://localhost:7880", "secure": false, "ws": true, "changeOrigin": true }
 }

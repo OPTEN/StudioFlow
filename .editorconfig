@@ -44,6 +44,21 @@ dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
 dotnet_style_null_propagation = true:warning
 dotnet_style_coalesce_expression = true:warning
 dotnet_style_readonly_field = true:warning
+# Private constants and static readonly fields are PascalCase (the .NET convention, used throughout the code);
+# the more specific rules win over private_fields_camel_case below, which keeps instance fields camelCase.
+dotnet_naming_rule.private_constants_pascal_case.symbols = private_constants
+dotnet_naming_rule.private_constants_pascal_case.style = pascal_case_style
+dotnet_naming_rule.private_constants_pascal_case.severity = warning
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+dotnet_naming_rule.private_static_readonly_pascal_case.symbols = private_static_readonly_fields
+dotnet_naming_rule.private_static_readonly_pascal_case.style = pascal_case_style
+dotnet_naming_rule.private_static_readonly_pascal_case.severity = warning
+dotnet_naming_symbols.private_static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_readonly_fields.required_modifiers = static, readonly
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 dotnet_naming_rule.private_fields_camel_case.symbols = private_fields
 dotnet_naming_rule.private_fields_camel_case.style = camel_case_style
 dotnet_naming_rule.private_fields_camel_case.severity = warning

@@ -186,7 +186,7 @@ test.describe('REGIE editing: templates', () => {
             'aria-pressed',
             'true',
           );
-          const grid = SLOTS.grid!;
+          const grid = SLOTS['grid']!;
           await expect
             .poll(
               async () =>
