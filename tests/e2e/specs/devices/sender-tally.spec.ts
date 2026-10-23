@@ -9,8 +9,8 @@ import { t } from '../../support/tags';
 
 /**
  * Tally on the sender (docs/testing.md 2.4 E2E-SWITCH-11, the device side; the Regie side of switching is another
- * engineer's area): a red frame and «LIVE» while the source is in the program, a green frame and «Als Nächstes» in the
- * preview (Studio-Modus), nothing otherwise and nothing during standby and after the end.
+ * engineer's area): a red frame and “LIVE” while the source is in the program, a green frame and “Up next” in the
+ * preview (Studio Mode), nothing otherwise and nothing during standby and after the end.
  */
 
 const RED = 'rgb(248, 81, 73)';
@@ -61,13 +61,13 @@ async function appearance(page: Page) {
 
 test.describe('Tally on the sender', () => {
   test(
-    'E2E-SWITCH-11 [tally on the sender] red «LIVE» in the program, green «Als Nächstes» in the preview, nothing otherwise and nothing in standby or after the end; a take flips both within T-TALLY',
+    'E2E-SWITCH-11 [tally on the sender] red “LIVE” in the program, green “Up next” in the preview, nothing otherwise and nothing in standby or after the end; a take flips both within T-TALLY',
     t.smoke,
     async ({ regie, openPhone, openLaptop, pairContext, api, production }, testInfo) => {
       test.setTimeout(300_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
-      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Handy Zwei', { profile: 'pixel7' });
-      const k3 = await livePhone({ openPhone }, pairContext, regie, 'Handy Drei', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
+      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Phone Two', { profile: 'pixel7' });
+      const k3 = await livePhone({ openPhone }, pairContext, regie, 'Phone Three', { profile: 'pixel7' });
       const lap = await liveLaptop({ openLaptop }, pairContext, regie, 'Laptop Lea');
       await lap.laptop.addCamera();
       await lap.laptop.waitForSlot('camera', 'live', 30_000);
@@ -93,25 +93,25 @@ test.describe('Tally on the sender', () => {
       expect(await k3.phone.tally(), 'K3 is in no scene').toBe('off');
 
       const one = (await appearance(k1.phone.page))!;
-      expect(one.badge, 'K1 «LIVE»').toBe('LIVE');
+      expect(one.badge, 'K1 “LIVE”').toBe('LIVE');
       expect(one.shadow, 'K1 red frame').toContain(RED);
       expect(one.covers, 'the frame covers the whole viewport').toBe(true);
       expect(one.pointerEvents, 'the frame never takes input').toBe('none');
-      expect(one.spoken).toBe('Live: Dieses Gerät ist jetzt im Program.');
+      expect(one.spoken).toBe('Live: this device is now on Program.');
       const two = (await appearance(k2.phone.page))!;
-      expect(two.badge, 'K2 «Als Nächstes»').toBe('Als Nächstes');
+      expect(two.badge, 'K2 “Up next”').toBe('Up next');
       expect(two.shadow, 'K2 green frame').toContain(GREEN);
-      expect(two.spoken).toBe('Als Nächstes: Dieses Gerät ist in der Preview.');
+      expect(two.spoken).toBe('Up next: this device is in Preview.');
       const three = (await appearance(k3.phone.page))!;
       expect(three.badge, 'K3 neutral').toBeNull();
       expect(three.shadow).toBe('none');
-      expect(three.spoken).toBe('Nicht auf Sendung.');
+      expect(three.spoken).toBe('Not live.');
       const laptop = (await appearance(lap.laptop.page))!;
       expect(laptop.tally, 'the laptop shows the strongest of its slots').toBe('program');
       expect(laptop.shadow).toContain(RED);
       expect(laptop.compact, 'a narrower frame on the laptop page').toBe(true);
       await expect(lap.laptop.slot('screen-1').locator('.c-tag--program')).toHaveText('LIVE');
-      await expect(lap.laptop.slot('camera').locator('.c-tag--preview')).toHaveText('Als Nächstes');
+      await expect(lap.laptop.slot('camera').locator('.c-tag--preview')).toHaveText('Up next');
 
       // Takes: K1 and K2 flip together, within T-TALLY. Ten takes (back to the start), 20 samples.
       await recordTally(k1.phone.page);

@@ -38,33 +38,33 @@ async function runScenario(regie: RegiePage, pairContext: PairContext, onCleanup
     const body = request.postDataJSON() as { transition?: { kind?: string; durationMs?: number } } | null;
     if (body?.transition) transitionPosts.push(body.transition);
   });
-  // fade 1 s: Blende (default) and three steps up (0,3 -> 0,5 -> 0,8 -> 1 s)
-  await regie.transitionOption('Blende').click();
-  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'Blende länger' }).click();
-  await expect(page.getByRole('group', { name: 'Dauer der Blende' })).toContainText(/^\s*[−-]?\s*1(,0)? s\s*\+?\s*$/);
+  // fade 1 s: Fade (default) and three steps up (0.3 -> 0.5 -> 0.8 -> 1 s)
+  await regie.transitionOption('Fade').click();
+  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'Longer fade' }).click();
+  await expect(page.getByRole('group', { name: 'Fade duration' })).toContainText(/^\s*[−-]?\s*1(\.0)? s\s*\+?\s*$/);
   await clearMotion(page);
 
-  // a scene switch (Studio-Modus off): the renderer fades the Program monitor, the thumbnails and the flash follow
+  // a scene switch (Studio Mode off): the renderer fades the Program monitor, the thumbnails and the flash follow
   await regie.clickScene(scene);
   await expect(regie.scene(scene)).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(() => page.getByRole('img', { name: new RegExp(`^Program-Monitor: ${scene}`) }).count(), { message: 'the Program monitor shows the new scene' }).toBe(1);
+  await expect.poll(() => page.getByRole('img', { name: new RegExp(`^Program monitor: ${scene}`) }).count(), { message: 'the Program monitor shows the new scene' }).toBe(1);
   // a station detail opens (grid-row reveal), a popover, the mode switch, a dock move
   await page.locator('.c-st__row').first().click();
-  await page.getByRole('button', { name: 'Docks und Layout' }).click();
+  await page.getByRole('button', { name: 'Docks and layout' }).click();
   await page.keyboard.press('Escape');
   await regie.setStudioMode(true);
-  await page.getByRole('button', { name: 'Dock Stationen verschieben, mit Pfeiltasten' }).focus();
+  await page.getByRole('button', { name: 'Move dock Stations with the arrow keys' }).focus();
   await page.keyboard.press('ArrowLeft');
-  await expect(regie.toast().first()).toContainText('Stationen ist');
+  await expect(regie.toast().first()).toContainText('Stations is');
   // a new outage: a phone that was live stops reporting its camera (reconnecting)
-  const phone = await pairPhone(pairContext, { name: `Handy Puls ${label}` });
+  const phone = await pairPhone(pairContext, { name: `Phone Pulse ${label}` });
   const hub = DeviceHub.connect(pairContext.stack.anonymousBase, phone.credentials, { headers: pairContext.stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {}, reconnect: true });
   onCleanup(() => hub.stop());
   await hub.open();
   await hub.reportLive(['camera']);
-  await expect(regie.station(`Handy Puls ${label}`)).toBeVisible();
+  await expect(regie.station(`Phone Pulse ${label}`)).toBeVisible();
   await hub.report({ rtc: 'connected', slots: [{ slot: 'camera', state: 'paused', width: 1280, height: 720, fps: 30, bitrateKbps: 2500, packetLossPct: 0, codec: 'h264' }] });
-  await expect(page.getByRole('region', { name: 'Meldungen' })).toContainText(`Handy Puls ${label}`);
+  await expect(page.getByRole('region', { name: 'Messages' })).toContainText(`Phone Pulse ${label}`);
   // give the 1.2 s pulse and the 1 s station flash time to show up in the recorder
   await page.waitForTimeout(1500);
   return { transitionPosts };
@@ -79,10 +79,10 @@ test.describe('Reduced motion', () => {
 
     // --- control: no-preference shows that the recorder sees the fade and the flash
     const normal = await openRegieWithMotion(browser, api.cookie, 'no-preference', onCleanup);
-    await expect(normal.station('Handy Eingang')).toBeVisible();
+    await expect(normal.station('Phone Entrance')).toBeVisible();
     await settle(normal.page);
     expect(await normal.page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'the control context does not ask for reduced motion').toBe(false);
-    const control = await runScenario(normal, pairContext, onCleanup, 'normal', 'Präsentation');
+    const control = await runScenario(normal, pairContext, onCleanup, 'normal', 'Presentation');
     const controlMotion = moving((await readMotion(normal.page)).entries);
     await test.info().attach('motion-no-preference.json', { body: JSON.stringify(controlMotion, null, 2), contentType: 'application/json' });
     expect(control.transitionPosts.at(-1), 'the request carries the fade').toMatchObject({ kind: 'fade', durationMs: 1000 });
@@ -92,7 +92,7 @@ test.describe('Reduced motion', () => {
 
     // --- reduced motion
     const reduced = await openRegieWithMotion(browser, api.cookie, 'reduce', onCleanup);
-    await expect(reduced.station('Handy Eingang')).toBeVisible();
+    await expect(reduced.station('Phone Entrance')).toBeVisible();
     await settle(reduced.page);
     expect(await reduced.page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'reduced motion is on').toBe(true);
     const run = await runScenario(reduced, pairContext, onCleanup, 'reduced', 'Interview');
@@ -104,7 +104,7 @@ test.describe('Reduced motion', () => {
     // the monitors cut: the Program monitor holds exactly one scene layer and shows the new scene
     expect(await reduced.page.locator('sf-monitor[kind=program] .sf-r-layer').count(), 'the Program monitor holds one scene layer (no outgoing layer)').toBe(1);
     // the stepper keeps its value
-    await expect(reduced.page.getByRole('group', { name: 'Dauer der Blende' })).toContainText(/1(,0)? s/);
+    await expect(reduced.page.getByRole('group', { name: 'Fade duration' })).toContainText(/1(\.0)? s/);
     expect(reduced.problems.pageErrors).toEqual([]);
   });
 
@@ -114,16 +114,16 @@ test.describe('Reduced motion', () => {
     await seedBusyConsole(pairContext, onCleanup, { incident: null });
 
     const normal = await openRegieWithMotion(browser, api.cookie, 'no-preference', onCleanup);
-    await expect(normal.station('Handy Eingang')).toBeVisible();
+    await expect(normal.station('Phone Entrance')).toBeVisible();
     await settle(normal.page);
-    await runScenario(normal, pairContext, onCleanup, 'normal', 'Präsentation');
+    await runScenario(normal, pairContext, onCleanup, 'normal', 'Presentation');
     const controlMotion = moving((await readMotion(normal.page)).entries);
     expect(controlMotion.filter((entry) => entry.kind === 'css-animation').length, 'control: the lamp pulse / station flash are CSS animations').toBeGreaterThan(0);
     expect(controlMotion.filter((entry) => entry.kind === 'css-transition').length, 'control: states and reveals are CSS transitions').toBeGreaterThan(0);
     await normal.page.context().close();
 
     const reduced = await openRegieWithMotion(browser, api.cookie, 'reduce', onCleanup);
-    await expect(reduced.station('Handy Eingang')).toBeVisible();
+    await expect(reduced.station('Phone Entrance')).toBeVisible();
     await settle(reduced.page);
     const tokens = await reduced.page.evaluate(() => { const root = getComputedStyle(document.documentElement); return { state: root.getPropertyValue('--dur-state').trim(), pulse: root.getPropertyValue('--dur-lamp-pulse').trim(), flash: root.getPropertyValue('--dur-station-flash').trim() }; });
     test.info().annotations.push({ type: 'tokens', description: JSON.stringify(tokens) });
@@ -141,10 +141,10 @@ test.describe('Reduced motion', () => {
     const behaviours: Record<string, string[]> = {};
     for (const motion of ['reduce', 'no-preference'] as const) {
       const regie = await openRegieWithMotion(browser, api.cookie, motion, onCleanup);
-      await expect(regie.station('Handy Eingang')).toBeVisible();
+      await expect(regie.station('Phone Entrance')).toBeVisible();
       await settle(regie.page);
       await clearMotion(regie.page);
-      await regie.page.getByRole('button', { name: /bei den Stationen zeigen/ }).first().click();
+      await regie.page.getByRole('button', { name: /Show \S+ in Stations/ }).first().click();
       await expect(regie.page.locator('.c-st__row[aria-expanded=true]').first(), 'the station is opened').toBeVisible();
       await expect.poll(async () => (await readMotion(regie.page)).scrolls.length, { message: 'the dock scrolled the row into view' }).toBeGreaterThan(0);
       behaviours[motion] = (await readMotion(regie.page)).scrolls.map((entry) => entry.options);
@@ -194,9 +194,9 @@ test.describe('Reduced motion', () => {
       onCleanup(() => context.close());
       const page = await context.newPage();
       await page.goto('/join/');
-      await page.getByLabel('Name des Geräts').fill(`Laptop Bewegung ${motion}`);
-      await page.getByRole('radio', { name: 'Laptop (Bildschirm)' }).check();
-      await page.getByRole('button', { name: 'Weiter' }).click();
+      await page.getByLabel('Device name').fill(`Laptop Motion ${motion}`);
+      await page.getByRole('radio', { name: 'Laptop (screen)' }).check();
+      await page.getByRole('button', { name: 'Continue' }).click();
       await expect(page.getByTestId('check-code')).toBeVisible();
       result[motion] = await page.evaluate(() => {
         const button = document.querySelector('.c-button') as HTMLElement;

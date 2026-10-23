@@ -7,4 +7,6 @@ export const TEXT_DE = {
     /** The only slate the output page translates by itself; the standby and end slates come from the production. */
     denied: 'Kein Zugang',
   },
+  /** The sign-in error of the Regie (regie.login.error.invalid). */
+  loginFailed: 'Benutzername oder Passwort ist falsch.',
 } as const;

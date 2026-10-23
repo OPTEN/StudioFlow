@@ -59,7 +59,7 @@ export async function livePhone(
   return { phone, device, code: device.codes['camera']!, sourceId: device.sourceId('camera'), row };
 }
 
-/** A laptop paired through the API; `share` starts «Bildschirm teilen» for screen-1 (the fake screen) and waits until it is live. */
+/** A laptop paired through the API; `share` starts “Share screen” for screen-1 (the fake screen) and waits until it is live. */
 export async function liveLaptop(
   fns: Pick<OpenFns, 'openLaptop'>,
   pairContext: PairContext,
@@ -105,7 +105,7 @@ export async function putInScene(
   return item;
 }
 
-/** Studio-Modus on with the given scene as preview (the Regie switch and the API preview). */
+/** Studio Mode on with the given scene as preview (the Regie switch and the API preview). */
 export async function studioPreview(regie: RegiePage, api: AdminApi, production: Production, sceneIndex: number): Promise<void> {
   await regie.setStudioMode(true);
   const response = await api.setPreview(production.id, { sceneId: production.sceneIds[sceneIndex]! });

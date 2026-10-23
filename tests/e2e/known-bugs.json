@@ -19,22 +19,22 @@
       "severity": "low",
       "area": "PAIR",
       "title": "An unknown enum text (kind: tablet) is a 400 without the errors object naming the field",
-      "resolution": "2026-10-22: body binding errors (unknown enum text, wrong JSON type, broken JSON) throw in every environment and become 400 validation_failed with errors naming the camelCase field path (kind, items[0].fit; body for the body as a whole), message «Ungültiger Wert.», no serializer or .NET type text. Tests: RequestContractTests.*Enum*, *WrongTypeOrBrokenJson*, DatabaseResilienceUnitTests.FieldOf_*."
+      "resolution": "2026-10-22: body binding errors (unknown enum text, wrong JSON type, broken JSON) throw in every environment and become 400 validation_failed with errors naming the camelCase field path (kind, items[0].fit; body for the body as a whole), message “Invalid value.”, no serializer or .NET type text. Tests: RequestContractTests.*Enum*, *WrongTypeOrBrokenJson*, DatabaseResilienceUnitTests.FieldOf_*."
     },
     "BUG-09": { "status": "fixed", "severity": "medium", "area": "PAIR", "title": "The device kind comes from the request body, not from the invite kind (GAP-19)" },
     "BUG-10": {
       "status": "fixed",
       "severity": "low",
       "area": "PAIR",
-      "title": "Log texts of block/unblock/remove contain the device name («K1 Handy 1 gesperrt»); prototype and plan had «K1 gesperrt»",
-      "resolution": "2026-10-22: intended deviation, not a bug. The product keeps «{codes} {device name} gesperrt|entsperrt|entfernt» (more informative for multi-slot devices: «S1 S2 Laptop Mia gesperrt»); the Regie toasts stay code-only («K1 gesperrt und getrennt», «K1 entsperrt»). docs/testing.md (INT-PAIR-12, 2.5 strings, E2E-SRC-10, 7.2) now pins the product text.",
-      "expected": "INT-PAIR-12 [stack, log texts] must assert «K1 Handy 1 gesperrt» and «K1 Handy 1 entsperrt» (harness change pending)."
+      "title": "Log texts of block/unblock/remove contain the device name (“K1 Phone 1 blocked”); prototype and plan had “K1 blocked”",
+      "resolution": "2026-10-22: intended deviation, not a bug. The product keeps “{codes} {device name} blocked|unblocked|removed” (more informative for multi-slot devices: “S1 S2 Laptop Mia blocked”); the Regie toasts stay code-only (“K1 blocked and disconnected”, “K1 unblocked”). docs/testing.md (INT-PAIR-12, 2.5 strings, E2E-SRC-10, 7.2) now pins the product text.",
+      "expected": "INT-PAIR-12 [stack, log texts] must assert “K1 Phone 1 blocked” and “K1 Phone 1 unblocked” (harness change pending)."
     },
     "BUG-11": { "status": "fixed", "severity": "medium", "area": "PAIR", "title": "Pending knock requests survive the activation of another production (GAP-36)" },
     "BUG-12": { "status": "fixed", "severity": "medium", "area": "MEDIA", "title": "Image dimension limit is 65535, not the pinned 16384; a 60000 x 60000 header is accepted (GAP-13)" },
     "BUG-13": { "status": "fixed", "severity": "low", "area": "MEDIA", "title": "Asset content without any credential answers 403 instead of 401 (GAP-13)" },
     "BUG-14": { "status": "fixed", "severity": "low", "area": "MEDIA", "title": "Asset content has no ETag; If-Range with a non-matching validator still answers 206" },
-    "BUG-15": { "status": "fixed", "severity": "medium", "area": "MEDIA", "title": "File name sanitiser keeps U+202E and dot-only names; fallback name differs from the pinned «Medium» (UNIT-MEDIA-01)" },
+    "BUG-15": { "status": "fixed", "severity": "medium", "area": "MEDIA", "title": "File name sanitiser keeps U+202E and dot-only names; fallback name differs from the pinned “Media” (UNIT-MEDIA-01)" },
     "BUG-16": {
       "status": "fixed",
       "severity": "low",
@@ -60,7 +60,7 @@
       "status": "fixed",
       "severity": "low",
       "area": "SRC",
-      "title": "A graceful API shutdown (docker restart / compose restart / update) writes a «K1 verbindet neu» log entry for every source in Program or Preview although the restart is no outage of the source",
+      "title": "A graceful API shutdown (docker restart / compose restart / update) writes a “K1 reconnecting” log entry for every source in Program or Preview although the restart is no outage of the source",
       "resolution": "2026-10-22: while the host stops (ApplicationStopping) device, Regie and output hub disconnects are not evaluated and nothing is written (no log entry, no incident, no event); the maintenance loops end at once. After the restart the restart watch of spec 12 (GAP-08 b) flags a source on air whose device does not return within 15 s. Tests: ThrottleAndShutdownTests.DisconnectedAsync_* (Core), ShutdownAndTelemetryTests.StopApplication_* (Web)."
     },
     "BUG-21": {

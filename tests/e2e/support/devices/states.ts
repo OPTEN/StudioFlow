@@ -22,9 +22,9 @@ export interface SenderStateEnv {
 export type Visit = (label: string, page: Page) => Promise<void>;
 
 /** A 60-character device name (the maximum): long names must wrap or ellipsize. */
-export const LONG_NAME = 'Handy Buehne links neben dem Mischpult im zweiten Stock 4711'.slice(0, 60);
+export const LONG_NAME = 'Phone stage left next to the mixing desk on the second floor 4711'.slice(0, 60);
 /** A 140-character Regie message (the maximum). */
-export const LONG_MESSAGE = 'In 10 Sekunden gehen wir live: bitte die Kamera ruhig halten, nach links schauen, kurz lächeln und auf das Zeichen der Regie warten, danke!'.slice(0, 140);
+export const LONG_MESSAGE = 'We go live in 10 seconds: please hold the camera steady, look to the left, smile briefly and wait for the signal from the control room, thank you very much!'.slice(0, 140);
 
 /** Waits until the page shows something other than the empty shell (Angular has rendered a heading or the station). */
 export async function settled(page: Page): Promise<void> {
@@ -40,7 +40,7 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   const phone = await env.openPhone({ profile: 'pixel7', ...options });
   const page = phone.page;
   await phone.gotoStart();
-  await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
   await settled(page);
   await visit('form', page);
 
@@ -50,7 +50,7 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await visit('redeem-expired', page);
 
   await phone.gotoStart();
-  await expect(page.getByLabel('Name des Geräts')).toBeVisible();
+  await expect(page.getByLabel('Device name')).toBeVisible();
   await phone.submitPairingForm(LONG_NAME, 'phone');
   await phone.checkCode();
   await settled(page);
@@ -58,9 +58,9 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
     await visit('waiting', page);
   } finally {
     // The request is cancelled even when a check failed: pending requests count towards the cap of 20 for ten minutes.
-    await page.getByRole('button', { name: 'Abbrechen' }).click().catch(() => undefined);
+    await page.getByRole('button', { name: 'Cancel' }).click().catch(() => undefined);
   }
-  await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
 
   // Paired through the API: the station with a live camera.
   const device = await pairPhone(env.pairContext, { name: LONG_NAME });
@@ -76,12 +76,12 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await visit('banner', page);
   await phone.messageBanner().getByRole('button', { name: 'OK' }).click();
 
-  await page.getByRole('button', { name: 'Technik-Check', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Technik-Check' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tech check', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Tech check' })).toBeVisible();
   await settled(page);
   await visit('tech-check', page);
-  await page.getByRole('button', { name: 'Technik-Check schliessen' }).click();
-  await expect(page.getByRole('dialog', { name: 'Technik-Check' })).toBeHidden();
+  await page.getByRole('button', { name: 'Close tech check' }).click();
+  await expect(page.getByRole('dialog', { name: 'Tech check' })).toBeHidden();
 
   await phone.darkToggle().click();
   await expect(page.locator('.c-phone__dark')).toBeVisible();
@@ -90,7 +90,7 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await phone.darkToggle().click();
   await expect(page.locator('.c-phone__dark')).toBeHidden();
 
-  // A second tab takes the session over: this tab is «In einem anderen Tab geöffnet».
+  // A second tab takes the session over: this tab is “Opened in another tab”.
   const second = await PhoneSender.inContext(phone.context, options.profile ?? 'pixel7');
   await second.gotoStart();
   await second.waitConnected();
@@ -100,8 +100,8 @@ export async function visitPhoneStates(env: SenderStateEnv, visit: Visit, option
   await second.page.close();
 
   await env.api.blockDevice(env.production.id, device.id);
-  await page.getByRole('button', { name: 'Hier weitermachen' }).click();
-  await expect(page.getByRole('heading', { name: 'Dieses Gerät ist gesperrt' })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Continue here' }).click();
+  await expect(page.getByRole('heading', { name: 'This device is blocked' })).toBeVisible({ timeout: 30_000 });
   await settled(page);
   await visit('blocked', page);
   return phone;
@@ -115,7 +115,7 @@ export async function visitLaptopStates(env: SenderStateEnv, visit: Visit, optio
   const laptop = await env.openLaptop(options);
   const page = laptop.page;
   await laptop.gotoStart();
-  await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
   await settled(page);
   await visit('form', page);
 
@@ -153,10 +153,10 @@ export async function visitLaptopStates(env: SenderStateEnv, visit: Visit, optio
   await settled(page);
   await visit('station-nine-screens', page);
 
-  await page.getByRole('button', { name: 'Technik-Check', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Technik-Check' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tech check', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Tech check' })).toBeVisible();
   await settled(page);
   await visit('station-tech-check', page);
-  await page.getByRole('button', { name: 'Technik-Check schliessen' }).click();
+  await page.getByRole('button', { name: 'Close tech check' }).click();
   return laptop;
 }

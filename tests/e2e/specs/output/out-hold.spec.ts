@@ -1,3 +1,4 @@
+import { TEXT } from '../../support/text';
 import { makePng } from '../../support/media-samples';
 import { expect, test } from '../../support/ui/fixtures';
 import { colorsClose } from '../../support/ui/pixels';
@@ -10,8 +11,8 @@ import type { ProbeFrame, ProbeItem } from '../../support/output/probe';
 import { t } from '../../support/tags';
 
 /**
- * Hold frame, held state, fallback and recovery on the output (docs/testing.md E2E-OUT-06, E2E-OUT-07; spec 8.3: «Standbild
- * 3 s, dann abgedunkelt»). The output derives the state purely from the LiveKit track of the source; the specs make the
+ * Hold frame, held state, fallback and recovery on the output (docs/testing.md E2E-OUT-06, E2E-OUT-07; spec 8.3: “Freeze frame
+ * 3 s, then dim”). The output derives the state purely from the LiveKit track of the source; the specs make the
  * source go away by closing or stopping the real sender and read the state from the DOM (probe: hold frame canvas shown =
  * `hold`, `.sf-r-held` shown = `held`, `.sf-r-fallback` shown = `fallback`).
  */
@@ -23,10 +24,10 @@ interface Placed {
 }
 
 const PLAN: Placed[] = [
-  { name: 'K1 breit', holdMs: 3000, rect: { x: 0, y: 0, w: 1360, h: 765 } },
-  { name: 'K2 schmal', holdMs: 3000, rect: { x: 1420, y: 0, w: 300, h: 169 } },
-  { name: 'K3 halten', holdMs: null, rect: { x: 0, y: 790, w: 480, h: 270 } },
-  { name: 'K4 zehn', holdMs: 10_000, rect: { x: 520, y: 790, w: 480, h: 270 } },
+  { name: 'K1 wide', holdMs: 3000, rect: { x: 0, y: 0, w: 1360, h: 765 } },
+  { name: 'K2 narrow', holdMs: 3000, rect: { x: 1420, y: 0, w: 300, h: 169 } },
+  { name: 'K3 hold', holdMs: null, rect: { x: 0, y: 790, w: 480, h: 270 } },
+  { name: 'K4 ten', holdMs: 10_000, rect: { x: 520, y: 790, w: 480, h: 270 } },
 ];
 
 function stateAt(frame: ProbeFrame, id: string): ProbeItem | undefined {
@@ -106,12 +107,12 @@ test.describe('OUT hold frame', () => {
 
       // T-HOLD: hold -> held within the hold time (hard +-300 ms).
       const byName = new Map(rows.map((row) => [row.name, row]));
-      for (const [name, expected] of [['K1 breit', 3000], ['K2 schmal', 3000], ['K4 zehn', 10_000]] as const) {
+      for (const [name, expected] of [['K1 wide', 3000], ['K2 narrow', 3000], ['K4 ten', 10_000]] as const) {
         const row = byName.get(name)!;
         expect(row.measured, `${name}: held reached`).not.toBeNull();
         expect(Math.abs(row.measured! - expected), `T-HOLD ${name}: ${Math.round(row.measured!)} ms for ${expected} ms (hard +-300)`).toBeLessThanOrEqual(300);
       }
-      expect(byName.get('K3 halten')!.heldAt, 'holdMs null never escalates').toBeUndefined();
+      expect(byName.get('K3 hold')!.heldAt, 'holdMs null never escalates').toBeUndefined();
 
       // The held look: blur 2.5 % of the item width, scrim rgba(13,17,23,.72), message only on items >= 320 px wide.
       const look = await (await output.frame()).evaluate((ids) => {
@@ -136,7 +137,7 @@ test.describe('OUT hold frame', () => {
       for (const id of [items4[0]!, items4[1]!, items4[3]!]) {
         expect(look[id]!.scrim.replace(/\s/g, ''), 'scrim colour').toBe('rgba(13,17,23,0.72)');
         expect(look[id]!.heldDisplay).toBe('flex');
-        expect(look[id]!.text).toBe('Bild kommt gleich zurück');
+        expect(look[id]!.text).toBe(TEXT.slate.held);
       }
       expect(look[items4[0]!]!.textDisplay, 'K1 (1360 px) shows the message').not.toBe('none');
       expect(look[items4[1]!]!.textDisplay, 'K2 (300 px) shows no message').toBe('none');
@@ -193,9 +194,9 @@ test.describe('OUT hold frame', () => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const scene = production.sceneIds[0]!;
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
-      const uploaded = await api.uploadAsset(production.id, { fileName: 'Pause-Slate.png', contentType: 'image/png', data: makePng(1920, 1080, [230, 120, 20]) });
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
+      const uploaded = await api.uploadAsset(production.id, { fileName: 'Break-Slate.png', contentType: 'image/png', data: makePng(1920, 1080, [230, 120, 20]) });
       expect(uploaded.status, uploaded.raw.text().slice(0, 200)).toBe(201);
       const asset = uploaded.body;
       // K1 fills the left two thirds; its fallback is the image. K2 is shown at the right as a small picture.

@@ -22,7 +22,7 @@ const secret = (value: string) => new TextEncoder().encode(value);
 
 test.describe('LK tokens', () => {
   test('INT-LK-01 [stack] token endpoints issue role-specific HS256 tokens with the documented claims', t.p0, async ({ config, api, production, pairContext, stack }) => {
-    const phone = await pairPhone(pairContext, { name: 'Token Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Token Phone' });
     const device = await phone.api.getDeviceLiveKitToken();
     const studio = await api.getStudioLiveKitToken(production.id);
     const output = await production.output().getOutputLiveKitToken();
@@ -149,7 +149,7 @@ test.describe('LK grants and publisher', () => {
   test('INT-SRC-01 [stack] a real publisher makes the source ok through the webhook path; leaving and rejoining opens and recovers an incident; media-only loss is noticed quickly', t.smoke, async ({ context, config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(120_000);
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Live Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Live Phone' });
     const id = phone.sourceId();
     const device = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
     onCleanup(() => device.stop());
@@ -210,10 +210,10 @@ test.describe('LK grants and publisher', () => {
     await studio.waitForEvent('logAppended', (event) => /^K1 wieder da, war \d+ s weg$/.test(event.entry.text), { from: leaveFrom });
   });
 
-  test('INT-SRC-01 [stack, media-only loss] a device report «media reconnecting» marks a published source reconnecting within seconds (spec 12, GAP-08 a)', t.p1, async ({ context, config, api, production, pairContext, stack, onCleanup }) => {
+  test('INT-SRC-01 [stack, media-only loss] a device report “media reconnecting” marks a published source reconnecting within seconds (spec 12, GAP-08 a)', t.p1, async ({ context, config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(120_000);
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Medien Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Media Phone' });
     const id = phone.sourceId();
     const device = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
     onCleanup(() => device.stop());
@@ -238,7 +238,7 @@ test.describe('LK grants and publisher', () => {
 
   test('E2E-SRC-10 [api, LiveKit] blocking removes the publisher from the room within T-BLOCK and a rejoin with the old token is kicked again', t.p0, async ({ context, config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(120_000);
-    const phone = await pairPhone(pairContext, { name: 'Sperr Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Block Phone' });
     const token = (await phone.api.getDeviceLiveKitToken()).body;
     const sender = await LiveKitPage.open(context, 'sender');
     onCleanup(() => sender.close());
@@ -277,7 +277,7 @@ test.describe('LK grants and publisher', () => {
 
   test('E2E-AUTH-24 [LiveKit] rotating the output key removes every output_{slug}_* participant from the room and no other', t.smoke, async ({ context, api, production, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
-    const phone = await pairPhone(pairContext, { name: 'Bleibt' });
+    const phone = await pairPhone(pairContext, { name: 'Stays' });
     const senderToken = (await phone.api.getDeviceLiveKitToken()).body;
     const sender = await LiveKitPage.open(context, 'sender');
     onCleanup(() => sender.close());

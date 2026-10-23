@@ -24,7 +24,7 @@ const FADE = (durationMs: number) => ({ kind: 'fade' as const, durationMs });
 
 /** A laptop with two fake screens (S1 red, S2 green) and the scenes A = S1 and B = S2, both full canvas. */
 async function screenScenes(deps: WorldDeps) {
-  const screens = await addScreens(deps, 'Laptop Farben', 2);
+  const screens = await addScreens(deps, 'Laptop Colours', 2);
   const [a, b, c] = deps.production.sceneIds as [string, string, string];
   const itemA = await placeItem(deps.api, deps.production, a, screens.sources[0]!, FULL);
   const itemB = await placeItem(deps.api, deps.production, b, screens.sources[1]!, FULL);
@@ -305,7 +305,7 @@ test.describe('OUT transitions', () => {
       await probe.takeEvents();
 
       // The slate texts come from the production (API): title and subtitle change live.
-      const custom = { title: 'Pause bis 14:00', subtitle: 'Wir sind gleich zurück', backgroundAssetId: null };
+      const custom = { title: 'Break until 14:00', subtitle: 'We will be right back', backgroundAssetId: null };
       expect((await api.updateProduction(production.id, { standbySlate: custom })).status).toBe(200);
       await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(custom.title);
       expect((await slate())!.subtitle).toBe(custom.subtitle);
@@ -372,7 +372,7 @@ test.describe('OUT transitions', () => {
       const { probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 15_000 }).toBe(production.name);
       await probe.takeEvents();
-      const renamed = `${production.name} neu`;
+      const renamed = `${production.name} new`;
       expect((await api.updateProduction(production.id, { name: renamed })).status).toBe(200);
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 5000, message: 'subtitle follows the production name' }).toBe(renamed);
       expect((await probe.takeEvents()).filter((event) => event.type === 'slate+'), 'updated in place, no new slate').toEqual([]);
@@ -385,8 +385,8 @@ test.describe('OUT transitions', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -454,8 +454,8 @@ test.describe('OUT transitions', () => {
       outBug('OUT-01', 'a cut to a scene whose camera is not in the program shows 1-5 frames without picture (dark scene ground)');
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -519,8 +519,8 @@ test.describe('OUT transitions', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);

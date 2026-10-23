@@ -17,7 +17,6 @@ export const TEXT = {
     reconnecting: (code: string) => `${code} reconnecting`,
     paired: (code: string, name: string) => `${code} ${name} paired`,
   },
-  loginFailed: 'Username or password is incorrect.',
   /** "12 34": the check code that both screens show while a device waits for approval. */
   checkCodeFormat: /^\d{2} \d{2}$/,
 } as const;

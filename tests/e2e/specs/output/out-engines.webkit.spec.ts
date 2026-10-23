@@ -10,13 +10,13 @@ import { t } from '../../support/tags';
 /**
  * E2E-OUT-17 in WebKit (Safari's engine). WebKit on Windows has no usable WebRTC (research 2026-10-22), so no camera or
  * screen can be shown; what the output must still do without a media server is rendered here: the slates, an image asset
- * served with the output key, «Kein Zugang», and the letterboxing. The pages are opened under https://127.0.0.1 (WebKit
+ * served with the output key, “No access”, and the letterboxing. The pages are opened under https://127.0.0.1 (WebKit
  * resolves localhost to ::1, where Docker Desktop never answers; the stack serves 127.0.0.1 as an extra host).
  */
 
 test.describe('OUT other engines (WebKit, no WebRTC)', () => {
   test(
-    'E2E-OUT-17 [webkit] without WebRTC the output still shows the slates, an image item and «Kein Zugang», letterboxes and does not scroll',
+    'E2E-OUT-17 [webkit] without WebRTC the output still shows the slates, an image item and “No access”, letterboxes and does not scroll',
     t.p1,
     async ({ browser, api, production, config, browserName, onCleanup }, testInfo) => {
       test.setTimeout(120_000);
@@ -26,7 +26,7 @@ test.describe('OUT other engines (WebKit, no WebRTC)', () => {
       onCleanup(() => context.close());
       await installInitScript(context);
       await installProbe(context);
-      const uploaded = await api.uploadAsset(production.id, { fileName: 'Bild.png', contentType: 'image/png', data: makePng(640, 360, [30, 120, 220]) });
+      const uploaded = await api.uploadAsset(production.id, { fileName: 'Image.png', contentType: 'image/png', data: makePng(640, 360, [30, 120, 220]) });
       expect(uploaded.status, uploaded.raw.text().slice(0, 200)).toBe(201);
       await placeItem(api, production, production.sceneIds[0]!, uploaded.body.id, { x: 0, y: 0, w: 1920, h: 1080, fit: 'cover', radius: 0 });
 

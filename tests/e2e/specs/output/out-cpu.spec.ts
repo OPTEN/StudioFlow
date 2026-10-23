@@ -36,7 +36,7 @@ test.describe('OUT under CPU load', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const cameras = [await addCamera(deps, 'Kamera Eins'), await addCamera(deps, 'Kamera Zwei')];
+      const cameras = [await addCamera(deps, 'Camera One'), await addCamera(deps, 'Camera Two')];
       const scene = production.sceneIds[0]!;
       await placeItem(api, production, scene, cameras[0]!.source, { x: 0, y: 270, w: 960, h: 540, fit: 'cover', radius: 0 });
       await placeItem(api, production, scene, cameras[1]!.source, { x: 960, y: 270, w: 960, h: 540, fit: 'cover', radius: 0 });

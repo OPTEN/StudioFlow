@@ -24,7 +24,7 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
+      const camera = await addCamera(deps, 'Camera One');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const { output } = await openProbedOutput({ browser, onCleanup }, production, { debug: true }, { viewport: { width: 1280, height: 720 } });
@@ -46,13 +46,13 @@ test.describe('OUT media and reports', () => {
         .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, hub, livekit, latency, source)', timeout: 15_000 })
         .toBeGreaterThanOrEqual(7);
       const lines = await output.debugLines();
-      expect(lines[0], 'production and scene').toBe(`${production.name} · Szene «${sceneName}»`);
-      expect(lines[1], 'revision and broadcast').toMatch(/^Revision \d+ · Sendung live$/);
-      expect(lines[2], 'canvas of the production').toBe('Leinwand 1920 × 1080 · 16:9 · 1080p');
-      expect(lines[3], 'hub and sync state').toBe('Hub verbunden · Sync aktuell');
-      expect(lines[4], 'LiveKit state').toBe('LiveKit verbunden');
-      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latenz ≈ \d+ ms · Renderer \d+ fps$/);
-      expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Kamera Eins · \\d+×\\d+ · \\d+ fps · [\\d,]+ Mbit/s · Verlust [\\d,]+ % · Puffer \\d+ ms$`));
+      expect(lines[0], 'production and scene').toBe(`${production.name} · Scene “${sceneName}”`);
+      expect(lines[1], 'revision and broadcast').toMatch(/^Revision d+ · Broadcast live$/);
+      expect(lines[2], 'canvas of the production').toBe('Canvas 1920 × 1080 · 16:9 · 1080p');
+      expect(lines[3], 'hub and sync state').toBe('Hub connected · Sync up to date');
+      expect(lines[4], 'LiveKit state').toBe('LiveKit connected');
+      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ d+ ms · Renderer d+ fps$/);
+      expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms$`));
 
       // Values match the video element and the API (the picture size may still grow through simulcast layers).
       await expect
@@ -88,8 +88,8 @@ test.describe('OUT media and reports', () => {
       const other = production.sceneIds[1]!;
       await switchProgram(api, production, other);
       const otherName = (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === other)!.name;
-      await expect.poll(async () => (await output.debugLines())[0], { timeout: 4000 }).toBe(`${production.name} · Szene «${otherName}»`);
-      expect((await output.debugLines()).some((line) => line.startsWith('Keine Kamera- oder Screen-Quelle')), 'an empty scene says so').toBe(true);
+      await expect.poll(async () => (await output.debugLines())[0], { timeout: 4000 }).toBe(`${production.name} · Scene “${otherName}”`);
+      expect((await output.debugLines()).some((line) => line.startsWith('No camera or screen source')), 'an empty scene says so').toBe(true);
 
       // Without the parameter there is no overlay.
       const plain = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
@@ -105,7 +105,7 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, onCleanup }) => {
       test.setTimeout(180_000);
       const samples = await generateSamples();
-      const image = await api.uploadAsset(production.id, { fileName: 'Foto.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
+      const image = await api.uploadAsset(production.id, { fileName: 'Photo.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
       const video = await api.uploadAsset(production.id, { fileName: 'Clip.mp4', contentType: 'video/mp4', data: samples.clipMp4 });
       expect(image.status, image.raw.text().slice(0, 200)).toBe(201);
       expect(video.status, video.raw.text().slice(0, 200)).toBe(201);
@@ -196,7 +196,7 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, config, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
+      const camera = await addCamera(deps, 'Camera One');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const studio = StudioHub.connect(config.baseURL, api.cookie);
@@ -249,9 +249,9 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       const [a, b, c] = production.sceneIds as [string, string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, a, screens.sources[0]!, { x: 40, y: 40, w: 320, h: 180, radius: 0 });
@@ -288,8 +288,8 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -312,8 +312,8 @@ test.describe('OUT media and reports', () => {
       outBug('OUT-03', 'the output preloads the sources of the preview scene at the lowest layer (320x180), spec 7 asks for the highest ("preview scene items -> HIGH")');
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -344,8 +344,8 @@ test.describe('OUT media and reports', () => {
       outBug('OUT-04', 'the output subscribes to every published track (autoSubscribe), also to sources that are in no scene');
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const camera = await addCamera(deps, 'Camera One');
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const { output } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
@@ -368,7 +368,7 @@ test.describe('OUT media and reports', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 2);
+      const screens = await addScreens(deps, 'Laptop Colours', 2);
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, screens.sources[0]!, FULL);
       await placeItem(api, production, b, screens.sources[1]!, FULL);
@@ -410,7 +410,7 @@ test.describe('OUT media and reports', () => {
     async ({ regie, api, browser, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
+      const camera = await addCamera(deps, 'Camera One');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const chip = regie.page.getByRole('button', { name: /^Output/ });
@@ -419,11 +419,11 @@ test.describe('OUT media and reports', () => {
       await expect(lamp, 'no output: grey lamp').toHaveClass(/is-idle/);
       await chip.click();
       const popover = regie.page.getByRole('dialog', { name: 'Output' });
-      await expect(popover.locator('dd').first()).toHaveText('nicht verbunden');
-      // The link is masked; «Kopieren» puts the full URL with the real key into the clipboard.
+      await expect(popover.locator('dd').first()).toHaveText('not connected');
+      // The link is masked; “Copy” puts the full URL with the real key into the clipboard.
       await expect(popover.locator('.c-linkbox__text')).toContainText('?k=');
       expect(await popover.locator('.c-linkbox__text').innerText(), 'the key is masked').not.toContain(production.outputKey);
-      await popover.getByRole('button', { name: 'Kopieren' }).click();
+      await popover.getByRole('button', { name: 'Copy' }).click();
       await expect.poll(() => regie.page.evaluate(() => navigator.clipboard.readText()), { timeout: 5000 }).toContain(production.outputKey);
       expect(await regie.page.evaluate(() => navigator.clipboard.readText())).toBe(production.outputUrl);
 
@@ -432,22 +432,22 @@ test.describe('OUT media and reports', () => {
       const connectedAfter = Date.now();
       await expect(lamp, 'connected: green lamp (no idle/warn class)').not.toHaveClass(/is-idle|is-warn/, { timeout: 8000 });
       await expect(chip, 'the chip shows the latency in ms').toHaveText(/\d+ ms/, { timeout: 8000 });
-      await expect(popover.locator('dd').first()).toHaveText('verbunden, 1 Abnehmer', { timeout: 8000 });
+      await expect(popover.locator('dd').first()).toHaveText('connected, 1 consumer', { timeout: 8000 });
       await recordMeasurement(test.info(), 'out-15-chip', { connectedMs: Date.now() - connectedAfter }, `output opened -> chip connected after ${Date.now() - connectedAfter} ms`);
       expect(Date.now() - connectedAfter, 'chip within 5 s').toBeLessThanOrEqual(5000 + 3000);
       await expect(popover.locator('dd').nth(1), 'the address of the consumer').not.toHaveText('–');
       await expect(popover.locator('dd').nth(2)).toHaveText('1920 × 1080 · 16:9 · 30 fps');
-      await expect(popover.locator('dd').nth(3)).toContainText('gemessen');
+      await expect(popover.locator('dd').nth(3)).toContainText('measured');
 
       const second = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 640, height: 360 } });
       await second.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
-      await expect(popover.locator('dd').first()).toHaveText('verbunden, 2 Abnehmer', { timeout: 8000 });
+      await expect(popover.locator('dd').first()).toHaveText('connected, 2 consumers', { timeout: 8000 });
       await second.context.close();
-      await expect(popover.locator('dd').first()).toHaveText('verbunden, 1 Abnehmer', { timeout: 10_000 });
+      await expect(popover.locator('dd').first()).toHaveText('connected, 1 consumer', { timeout: 10_000 });
 
       // A page whose main thread is blocked for 10 s stops reporting AND stops answering the hub's keep-alive: the API
-      // drops the connection after its 5 s client timeout (before Output:StaleAfter of 6 s could make it «stale»), so
-      // the Regie sees «nicht verbunden» after ~5 s; the page reconnects as soon as it runs again.
+      // drops the connection after its 5 s client timeout (before Output:StaleAfter of 6 s could make it “stale”), so
+      // the Regie sees “not connected” after ~5 s; the page reconnects as soon as it runs again.
       const blocked = Date.now();
       void first.output.page.evaluate(() => { const end = Date.now() + 10_000; while (Date.now() < end) { /* block */ } });
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 12_000, intervals: [250], message: 'no longer connected while the page is blocked' }).not.toBe('connected');
@@ -464,16 +464,16 @@ test.describe('OUT media and reports', () => {
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 12_000, intervals: [250], message: 'none after closing' }).toBe('none');
       expect(Date.now() - closed, 'none within 8 s').toBeLessThanOrEqual(8500);
       await expect(lamp).toHaveClass(/is-idle/, { timeout: 5000 });
-      await expect(popover.locator('dd').first()).toHaveText('nicht verbunden');
+      await expect(popover.locator('dd').first()).toHaveText('not connected');
 
-      // «stale» is a hub connection without a fresh rendering report (here a client that connects and stays silent):
+      // “stale” is a hub connection without a fresh rendering report (here a client that connects and stays silent):
       // after 6 s the chip warns and the popover says so.
       const silent = OutputHub.connect(stackConfig().baseURL, production.outputKey);
       onCleanup(() => silent.stop());
       await silent.open();
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 12_000, intervals: [250], message: 'stale without reports' }).toBe('stale');
       await expect(lamp, 'warning lamp').toHaveClass(/is-warn/, { timeout: 5000 });
-      await expect(popover.locator('dd').first()).toHaveText('verbunden, kein aktuelles Bild');
+      await expect(popover.locator('dd').first()).toHaveText('connected, no current picture');
       await silent.report({ rendering: true });
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 8000, intervals: [250] }).toBe('connected');
     },

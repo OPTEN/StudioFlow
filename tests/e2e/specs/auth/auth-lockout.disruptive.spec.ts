@@ -36,7 +36,7 @@ test.describe('AUTH lockout', () => {
     const retryAfter = Number(fifth.headers['retry-after']);
     expect(retryAfter, 'Retry-After in seconds').toBeGreaterThanOrEqual(LIMITS.loginLockoutSeconds - 2);
     expect(retryAfter).toBeLessThanOrEqual(LIMITS.loginLockoutSeconds);
-    expect(fifth.json().detail, 'German message with the remaining minutes').toMatch(/\d+ Minuten/);
+    expect(fifth.json().detail, 'English message with the remaining minutes').toMatch(/\d+ minutes?/);
 
     // Even the right password is refused during the lock, and no cookie is issued.
     const correct = await login(config.admin.password, attacker);

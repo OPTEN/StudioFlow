@@ -77,13 +77,13 @@ interface Seed {
 /** A production with 5 scenes, 2 paired phones, an image and a video asset, a rotated output key and an ended broadcast. */
 async function seedWorld(api: AdminApi, production: Production, pairContext: PairContext): Promise<Seed> {
   const samples = await generateSamples();
-  await production.seed(['Begrüssung', 'Präsentation', 'Pause', 'Interview', 'Abmoderation']);
-  const devices = [await pairPhone(pairContext, { name: 'Handy Eins' }), await pairPhone(pairContext, { name: 'Handy Zwei' })];
+  await production.seed(['Welcome', 'Presentation', 'Break', 'Interview', 'Wrap-up']);
+  const devices = [await pairPhone(pairContext, { name: 'Phone One' }), await pairPhone(pairContext, { name: 'Phone Two' })];
   await api.addSceneItem(production.id, production.sceneIds[0]!, { source: devices[0]!.sourceId() });
   await api.addSceneItem(production.id, production.sceneIds[1]!, { source: devices[1]!.sourceId() });
   const assets: Seed['assets'] = [];
   for (const file of [
-    { fileName: 'bild.jpg', contentType: 'image/jpeg', data: samples.photoJpg },
+    { fileName: 'image.jpg', contentType: 'image/jpeg', data: samples.photoJpg },
     { fileName: 'clip.mp4', contentType: 'video/mp4', data: samples.clipMp4 },
   ]) {
     const uploaded = await api.uploadAsset(production.id, file);
@@ -191,7 +191,7 @@ test.describe('OPS backup', () => {
     const second = await runBackup();
     expect(second.code, second.output.slice(-800)).toBe(0);
     const secondName = path.basename(newest());
-    // «YYYY-MM-DD_HHMM» is the first backup of a minute, «…-2», «…-3» the following ones (earlier tests of the same
+    // “YYYY-MM-DD_HHMM” is the first backup of a minute, “…-2”, “…-3” the following ones (earlier tests of the same
     // minute may already have taken the first numbers).
     const parse = (name: string) => {
       const match = /^(\d{4}-\d{2}-\d{2}_\d{4})(?:-(\d+))?$/.exec(name)!;
@@ -201,12 +201,12 @@ test.describe('OPS backup', () => {
     const b = parse(secondName);
     if (a.minute === b.minute) expect(b.number, `suffix of a second backup within the minute (${firstName} -> ${secondName})`).toBe(a.number + 1);
     else expect(b.minute > a.minute, 'minute rolled over between the runs').toBe(true);
-    const labelled = await runBackup(['--label', 'vor-test']);
+    const labelled = await runBackup(['--label', 'pre-test']);
     expect(labelled.code, labelled.output.slice(-800)).toBe(0);
-    expect(path.basename(newest())).toMatch(/^\d{4}-\d{2}-\d{2}_\d{4}_vor-test(-\d+)?$/);
-    for (const bad of ['mit leerzeichen', 'a/b', 'x'.repeat(41)]) {
+    expect(path.basename(newest())).toMatch(/^\d{4}-\d{2}-\d{2}_\d{4}_pre-test(-\d+)?$/);
+    for (const bad of ['with spaces', 'a/b', 'x'.repeat(41)]) {
       const refused = await runBackup(['--label', bad]);
-      expect(refused.code, `label «${bad}»`).toBe(1);
+      expect(refused.code, `label “${bad}”`).toBe(1);
       expect(refused.stderr).toMatch(/Error: --label/);
     }
     expect((await runBackup(['--keep', '0'])).code, '--keep needs a number from 1').toBe(1);
@@ -221,14 +221,14 @@ test.describe('OPS backup', () => {
     }
     expect(backupFolders(dir), 'two folders remain').toHaveLength(2);
     // A folder that is not a backup of this script is never touched.
-    fs.mkdirSync(path.join(dir, 'meine-notizen'));
+    fs.mkdirSync(path.join(dir, 'my-notes'));
     const again = await box.run('backup.sh', ['--dir', dir, '--keep', '1']);
     expect(again.code, again.output.slice(-800)).toBe(0);
     expect(backupFolders(dir)).toHaveLength(1);
-    expect(fs.existsSync(path.join(dir, 'meine-notizen')), 'foreign folder kept').toBe(true);
+    expect(fs.existsSync(path.join(dir, 'my-notes')), 'foreign folder kept').toBe(true);
   });
 
-  test('E2E-OPS-07 [backup.sh] with PostgreSQL stopped the script refuses with «PostgreSQL läuft nicht» and leaves nothing behind', t.disruptive('@p1'), async () => {
+  test('E2E-OPS-07 [backup.sh] with PostgreSQL stopped the script refuses with “PostgreSQL is not running” and leaves nothing behind', t.disruptive('@p1'), async () => {
     test.setTimeout(300_000);
     const before = backupFolders().length;
     await dockerCtl.stop('postgres');
@@ -270,7 +270,7 @@ test.describe('OPS restore', () => {
     const folder = newest();
 
     // Change everything the backup holds.
-    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Verändert' });
+    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Changed' });
     await api.deleteDevice(production.id, seed.devices[1]!.id);
     await api.deleteAsset(production.id, seed.assets[1]!.id);
     await api.resetBroadcast(production.id);
@@ -286,12 +286,12 @@ test.describe('OPS restore', () => {
     await ensureHealthy();
 
     const safety = backupFolders().filter((name) => !foldersBefore.includes(name));
-    expect(safety.some((name) => name.includes('_pre-restore')), `a «pre-restore» safety backup of the current state exists (new folders: ${safety.join(', ')})`).toBe(true);
+    expect(safety.some((name) => name.includes('_pre-restore')), `a “pre-restore” safety backup of the current state exists (new folders: ${safety.join(', ')})`).toBe(true);
     await expectRestored(seed, api);
     // The mutated state is gone: the device and the asset are back, the old key is valid again, the rotated one is not.
     const snapshot = (await api.getSnapshot(production.id)).body;
     expect(snapshot.devices.map((device) => device.id).sort()).toEqual(seed.devices.map((device) => device.id).sort());
-    expect(snapshot.scenes[0]!.name).toBe('Begrüssung');
+    expect(snapshot.scenes[0]!.name).toBe('Welcome');
     const rotatedKey = new URL(rotated).searchParams.get('k')!;
     expect((await new OutputApi(config.baseURL, production.slug, rotatedKey).getOutputSnapshot()).status, 'the key from after the backup is rejected').toBe(403);
   });
@@ -394,11 +394,11 @@ test.describe('OPS restore', () => {
     const none = await box.run('restore.sh', ['--yes']);
     expect(none.code).toBe(1);
     expect(none.stderr).toMatch(/Error: Backup folder missing/);
-    const missing = await box.run('restore.sh', [box.path('gibt-es-nicht'), '--yes']);
+    const missing = await box.run('restore.sh', [box.path('does-not-exist'), '--yes']);
     expect(missing.code).toBe(1);
     expect(missing.stderr).toMatch(/Error: Folder not found/);
-    fs.mkdirSync(box.path('leer'));
-    const empty = await box.run('restore.sh', [box.path('leer'), '--yes']);
+    fs.mkdirSync(box.path('empty'));
+    const empty = await box.run('restore.sh', [box.path('empty'), '--yes']);
     expect(empty.code).toBe(1);
     expect(empty.stderr).toMatch(/Error: SHA256SUMS is missing/);
     const unknown = await box.run('restore.sh', ['--bogus']);

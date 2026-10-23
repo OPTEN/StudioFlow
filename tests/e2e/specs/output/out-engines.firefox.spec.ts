@@ -41,8 +41,8 @@ test.describe('OUT other engines (Firefox)', () => {
           return laptop;
         },
       };
-      const camera = await addCamera(deps, 'Kamera Fuchs');
-      const screens = await addScreens(deps, 'Laptop Fuchs', 1);
+      const camera = await addCamera(deps, 'Camera Fox');
+      const screens = await addScreens(deps, 'Laptop Fox', 1);
       const scene = production.sceneIds[0]!;
       const cameraItem = await placeItem(api, production, scene, camera.source, { x: 0, y: 0, w: 1280, h: 720, fit: 'cover', radius: 0, holdMs: 1500 });
       await placeItem(api, production, scene, screens.sources[0]!, { x: 1300, y: 0, w: 600, h: 338, fit: 'contain', radius: 0 });

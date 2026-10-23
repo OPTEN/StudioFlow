@@ -38,7 +38,7 @@ test.describe('PAIR', () => {
     expect(redeemed.body.productionId).toBe(production.id);
 
     // The Regie learns about the new station within T-PAIR, in a fixed order with consecutive revisions.
-    await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('gekoppelt'), { timeoutMs: THRESHOLD.pairHardMs });
+    await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('paired'), { timeoutMs: THRESHOLD.pairHardMs });
     expect(Date.now() - redeemStarted, 'redeem -> station visible (T-PAIR)').toBeLessThanOrEqual(THRESHOLD.pairHardMs + 500);
     const events = hub.events();
     expectConsecutive(events, revision);
@@ -49,14 +49,14 @@ test.describe('PAIR', () => {
     expect(device.id).toBe(redeemed.body.deviceId);
     expect(device.pairingMethod).toBe('qr');
     expect(device.kind).toBe('phone');
-    expect(device.name).toBe('Handy 1');
+    expect(device.name).toBe('Phone 1');
     const source = hub.eventsOfType('sourceUpserted')[0]!.source;
-    expect(source).toMatchObject({ code: 'K1', kind: 'camera', slot: 'camera', deviceId: device.id, status: 'offline', label: 'Handy 1' });
+    expect(source).toMatchObject({ code: 'K1', kind: 'camera', slot: 'camera', deviceId: device.id, status: 'offline', label: 'Phone 1' });
     expect(hub.eventsOfType('inviteRemoved')[0]!.inviteId).toBe(invite.id);
     const next = hub.eventsOfType('inviteUpserted')[0]!.invite;
     expect(next.kind, 'a fresh phone invite replaces the used one').toBe('phoneQr');
     expect(next.id).not.toBe(invite.id);
-    expect(hub.eventsOfType('logAppended')[0]!.entry.text).toBe(TEXT.log.paired('K1', 'Handy 1'));
+    expect(hub.eventsOfType('logAppended')[0]!.entry.text).toBe(TEXT.log.paired('K1', 'Phone 1'));
 
     // The sender recognises itself (GET /api/device/me) and sees its slot.
     const me = await new (await import('../../support/api')).DeviceApi(stack.anonymousBase, redeemed.body).getDeviceSelf();
@@ -75,7 +75,7 @@ test.describe('PAIR', () => {
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
     await publicApi.redeemInvite(inviteToken(invite.url), { clientId: 'client-order', kind: 'phone', platform: 'Pixel 7 · Chrome' });
-    await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('gekoppelt'));
+    await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('paired'));
     expect(hub.events().map((event) => event.type), describeEvents(hub)).toEqual(['inviteRemoved', 'deviceUpserted', 'sourceUpserted', 'logAppended', 'inviteUpserted']);
   });
 
@@ -118,7 +118,7 @@ test.describe('PAIR', () => {
       const next = await publicApi.getPairingRequestStatus(knock.body.requestId, knock.body.pollToken);
       expect(next.body, 'identical credentials on every poll').toEqual(first.body);
     }
-    const log = await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('gekoppelt'));
+    const log = await hub.waitForEvent('logAppended', (event) => event.entry.text.includes('paired'));
     expect(log.entry.text).toBe(TEXT.log.paired('S1', 'Laptop Anna'));
   });
 
@@ -131,7 +131,7 @@ test.describe('PAIR', () => {
     expect(denied.status).toBe(204);
     const removed = await hub.waitForEvent('pairingRequestRemoved', (event) => event.requestId === knock.body.requestId);
     expect(removed.outcome).toBe('denied');
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.startsWith('Anfrage von'))).entry.text).toBe('Anfrage von Laptop Anna abgelehnt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.startsWith('Request from'))).entry.text).toBe('Request from Laptop Anna denied');
     const poll = await publicApi.getPairingRequestStatus(knock.body.requestId, knock.body.pollToken);
     expect(poll.body).toEqual({ status: 'denied', credentials: null });
     const snapshot = await production.snapshot();
@@ -167,7 +167,7 @@ test.describe('PAIR', () => {
     const snapshot = await production.snapshot();
     expect(snapshot.devices).toHaveLength(1);
     expect(snapshot.pairingRequests).toHaveLength(8);
-    // Names do not have to be unique: the device is called «Laptop».
+    // Names do not have to be unique: the device is called “Laptop”.
     expect(approved.body.name).toBe('Laptop');
   });
 
@@ -182,7 +182,7 @@ test.describe('PAIR', () => {
     expect([404, 410], 'the loser is told that the card is gone').toContain(results.find((result) => result.status !== 200)!.status);
     const snapshot = await production.snapshot();
     expect(snapshot.devices, 'exactly one device').toHaveLength(1);
-    expect(snapshot.recentLog.filter((entry) => entry.text.includes('gekoppelt')), 'one «gekoppelt» log entry').toHaveLength(1);
+    expect(snapshot.recentLog.filter((entry) => entry.text.includes('paired')), 'one “paired” log entry').toHaveLength(1);
     const poll = await publicApi.getPairingRequestStatus(knock.body.requestId, knock.body.pollToken);
     expect(poll.body.status).toBe('approved');
     expect(poll.body.credentials!.deviceId).toBe(snapshot.devices[0]!.id);
@@ -223,7 +223,7 @@ test.describe('PAIR', () => {
     const second = await publicApi.redeemInvite(token, { clientId: 'client-b', kind: 'laptop', platform: 'x' });
     expectProblem(second, 410, ERROR.pairingExpired);
     const texts = (await production.snapshot()).recentLog.map((entry) => entry.text);
-    expect(texts).toContain('Einladungslink erstellt');
+    expect(texts).toContain('Invite link created');
   });
 
   test('E2E-PAIR-11 [api] revoking an invite link: gone from the Regie, redeem answers 410, log entries', t.p1, async ({ config, api, production, stack, onCleanup }) => {
@@ -235,7 +235,7 @@ test.describe('PAIR', () => {
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
     expectProblem(await publicApi.redeemInvite(inviteToken(created.url), { clientId: 'client-a', kind: 'laptop', platform: 'x' }), 410, ERROR.pairingExpired);
     const texts = (await production.snapshot()).recentLog.map((entry) => entry.text);
-    expect(texts).toEqual(expect.arrayContaining(['Einladungslink erstellt', 'Einladungslink widerrufen']));
+    expect(texts).toEqual(expect.arrayContaining(['Invite link created', 'Invite link revoked']));
     expectProblem(await api.revokeInvite(production.id, 'inv_doesnotexist0000'), 404, ERROR.notFound);
   });
 
@@ -258,15 +258,15 @@ test.describe('PAIR', () => {
   });
 
   test('E2E-PAIR-13 [api] re-recognition: stored credentials identify the device again, also after it was blocked and unblocked', t.smoke, async ({ api, production, pairContext }) => {
-    const phone = await pairPhone(pairContext, { name: 'Handy Stefan' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Stefan' });
     const me = await phone.api.getDeviceSelf();
     expect(me.status).toBe(200);
-    expect(me.body).toMatchObject({ id: phone.id, name: 'Handy Stefan', kind: 'phone', state: 'active', productionId: production.id });
+    expect(me.body).toMatchObject({ id: phone.id, name: 'Phone Stefan', kind: 'phone', state: 'active', productionId: production.id });
     expect(me.body.slots[0]!.code).toBe('K1');
     // Reload = same credentials, same code, no second station.
     expect((await phone.api.getDeviceSelf()).body.slots[0]!.code).toBe('K1');
     expect((await production.snapshot()).devices).toHaveLength(1);
-    // Unpairing (the sender's own «entfernen») invalidates the credentials.
+    // Unpairing (the sender's own “Remove”) invalidates the credentials.
     expect((await phone.api.unpairDevice()).status).toBe(204);
     expectProblem(await phone.api.getDeviceSelf(), 401, ERROR.unauthorized);
     expect((await production.snapshot()).devices).toHaveLength(0);
@@ -289,7 +289,7 @@ test.describe('PAIR', () => {
     expect((await new DeviceApi(stack.anonymousBase, retry.body).getDeviceSelf()).status).toBe(200);
     const snapshot = await production.snapshot();
     expect(snapshot.devices, 'exactly one device').toHaveLength(1);
-    expect(snapshot.recentLog.filter((entry) => entry.text.includes('gekoppelt')), 'one pairing log entry').toHaveLength(1);
+    expect(snapshot.recentLog.filter((entry) => entry.text.includes('paired')), 'one pairing log entry').toHaveLength(1);
     // Another client cannot take the invite any more.
     expectProblem(await publicApi.redeemInvite(token, { ...body, clientId: 'someone-else' }), 410, ERROR.pairingExpired);
   });
@@ -299,7 +299,7 @@ test.describe('PAIR', () => {
     const b = await openStudio(config.baseURL, api, production, onCleanup);
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
     const started = Date.now();
-    const knock = await publicApi.createPairingRequest({ name: 'Laptop Zwei', kind: 'laptop', platform: 'Windows · Edge' });
+    const knock = await publicApi.createPairingRequest({ name: 'Laptop Two', kind: 'laptop', platform: 'Windows · Edge' });
     production.pendingRequests.push({ requestId: knock.body.requestId, pollToken: knock.body.pollToken });
     for (const operator of [a, b]) await operator.hub.waitForEvent('pairingRequestUpserted', (event) => event.request.id === knock.body.requestId, { timeoutMs: 1000 });
     expect(Date.now() - started).toBeLessThan(1500);
@@ -307,7 +307,7 @@ test.describe('PAIR', () => {
     await api.approvePairingRequest(production.id, knock.body.requestId);
     for (const operator of [a, b]) {
       await operator.hub.waitForEvent('pairingRequestRemoved', (event) => event.requestId === knock.body.requestId, { timeoutMs: 1000 });
-      await operator.hub.waitForEvent('deviceUpserted', (event) => event.device.name === 'Laptop Zwei', { timeoutMs: 1000 });
+      await operator.hub.waitForEvent('deviceUpserted', (event) => event.device.name === 'Laptop Two', { timeoutMs: 1000 });
     }
     expect(Date.now() - approvedAt).toBeLessThan(1500);
     expect(a.hub.presence(), 'both operators are counted').toBe(2);
@@ -318,7 +318,7 @@ test.describe('PAIR', () => {
     const lastRevision = a.revision;
     await a.hub.stop();
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
-    const knock = await publicApi.createPairingRequest({ name: 'Laptop Spaet', kind: 'laptop', platform: 'Windows · Edge' });
+    const knock = await publicApi.createPairingRequest({ name: 'Laptop Late', kind: 'laptop', platform: 'Windows · Edge' });
     production.pendingRequests.push({ requestId: knock.body.requestId, pollToken: knock.body.pollToken });
     const again = await openStudio(config.baseURL, api, production, onCleanup, { sinceRevision: lastRevision });
     // Reconnect with the last revision: the server answers with the missed events (delta), not a snapshot.
@@ -330,7 +330,7 @@ test.describe('PAIR', () => {
   });
 
   test('E2E-PAIR-20 [http] short URL entry points serve the sender shell, /j/* redirects', t.p1, async ({ config }) => {
-    for (const route of ['/join/', '/join/warten', '/join/station', '/join/i/abc', '/join/some/unknown/deep/link']) {
+    for (const route of ['/join/', '/join/waiting', '/join/station', '/join/i/abc', '/join/some/unknown/deep/link']) {
       const response = await send({ method: 'GET', url: `${config.baseURL}${route}` });
       expect(response.status, route).toBe(200);
       expect(response.headers['content-type'], route).toMatch(/html/);
@@ -444,20 +444,20 @@ test.describe('PAIR', () => {
   test('UNIT-PAIR-06 [stack] default device names count up, given names are trimmed', t.p2, async ({ api, production, pairContext }) => {
     const names: string[] = [];
     for (let index = 0; index < 3; index++) names.push((await pairPhone(pairContext)).name);
-    expect(names).toEqual(['Handy 1', 'Handy 2', 'Handy 3']);
+    expect(names).toEqual(['Phone 1', 'Phone 2', 'Phone 3']);
     const laptops = [(await pairLaptopByLink(pairContext)).name, (await pairLaptopByLink(pairContext)).name];
     expect(laptops).toEqual(['Laptop 1', 'Laptop 2']);
-    // «Handy 2» is removed: the lowest free number is used again.
-    const handy2 = (await production.snapshot()).devices.find((device) => device.name === 'Handy 2')!;
-    expect((await api.deleteDevice(production.id, handy2.id)).status).toBe(204);
-    expect((await pairPhone(pairContext)).name).toBe('Handy 2');
+    // “Phone 2” is removed: the lowest free number is used again.
+    const phone2 = (await production.snapshot()).devices.find((device) => device.name === 'Phone 2')!;
+    expect((await api.deleteDevice(production.id, phone2.id)).status).toBe(204);
+    expect((await pairPhone(pairContext)).name).toBe('Phone 2');
     expect((await pairPhone(pairContext, { name: '  Anna  ' })).name).toBe('Anna');
     expect((await pairPhone(pairContext, { name: 'n'.repeat(60) })).name).toHaveLength(60);
   });
 
   test('INT-PAIR-12 [stack] block, unblock and delete a connected device (events, hub, LiveKit token)', t.p0, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy 1' });
+    const phone = await pairPhone(pairContext, { name: 'Phone 1' });
     const scene = production.sceneIds[0]!;
     await api.addSceneItem(production.id, scene, { source: phone.sourceId('camera') });
     const device = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
@@ -477,7 +477,7 @@ test.describe('PAIR', () => {
     expect(device.selfMessages().at(-1)?.state).toBe('blocked');
     await hub.waitForEvent('deviceUpserted', (event) => event.device.id === phone.id && event.device.state === 'blocked', { from });
     expect((await hub.waitForEvent('sourceUpserted', (event) => event.source.deviceId === phone.id && event.source.status === 'blocked', { from })).source.code).toBe('K1');
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('gesperrt'), { from })).entry.text).toMatch(/^K1\b.*gesperrt$/);
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith(' blocked'), { from })).entry.text).toMatch(/^K1\b.*blocked$/);
     expectProblem(await phone.api.getDeviceLiveKitToken(), 403, ERROR.deviceBlocked);
     // Blocking twice is a no-op.
     expect((await api.blockDevice(production.id, phone.id)).status).toBe(200);
@@ -486,7 +486,7 @@ test.describe('PAIR', () => {
     expect(unblocked.body.state).toBe('active');
     const source = (await hub.waitForEvent('sourceUpserted', (event) => event.source.deviceId === phone.id && event.source.status !== 'blocked', { from })).source;
     expect(source.status, 'unblock leads to offline, never to an incident').toBe('offline');
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('entsperrt'), { from })).entry.text).toMatch(/^K1\b.*entsperrt$/);
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('unblocked'), { from })).entry.text).toMatch(/^K1\b.*unblocked$/);
     expect((await production.snapshot()).incidents).toHaveLength(0);
     // The device may connect again.
     const again = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
@@ -497,7 +497,7 @@ test.describe('PAIR', () => {
     expect((await api.deleteDevice(production.id, phone.id)).status).toBe(204);
     await hub.waitForEvent('deviceRemoved', (event) => event.deviceId === phone.id, { from });
     await hub.waitForEvent('sourceRemoved', (event) => event.sourceId === phone.sourceId('camera'), { from });
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('entfernt'), { from })).entry.text).toContain('entfernt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('removed'), { from })).entry.text).toContain('removed');
     const snapshot = await production.snapshot();
     expect(snapshot.devices).toHaveLength(0);
     expect(snapshot.scenes.find((entry) => entry.id === scene)!.items.map((item) => item.source), 'scene keeps the dangling item').toEqual([phone.sourceId('camera')]);
@@ -505,18 +505,18 @@ test.describe('PAIR', () => {
     expectProblem(await phone.api.getDeviceSelf(), 401, ERROR.unauthorized);
   });
 
-  test('INT-PAIR-12 [stack, log texts] block and unblock log «K1 Handy 1 gesperrt» / «K1 Handy 1 entsperrt» (codes and device name, BUG-10 resolved as an intended deviation)', t.p2, async ({ config, api, production, pairContext, onCleanup }) => {
+  test('INT-PAIR-12 [stack, log texts] block and unblock log “K1 Phone 1 blocked” / “K1 Phone 1 unblocked” (codes and device name, BUG-10 resolved as an intended deviation)', t.p2, async ({ config, api, production, pairContext, onCleanup }) => {
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy 1' });
+    const phone = await pairPhone(pairContext, { name: 'Phone 1' });
     await api.blockDevice(production.id, phone.id);
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('gesperrt'))).entry.text).toBe('K1 Handy 1 gesperrt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith(' blocked'))).entry.text).toBe('K1 Phone 1 blocked');
     await api.unblockDevice(production.id, phone.id);
-    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('entsperrt'))).entry.text).toBe('K1 Handy 1 entsperrt');
+    expect((await hub.waitForEvent('logAppended', (event) => event.entry.text.endsWith('unblocked'))).entry.text).toBe('K1 Phone 1 unblocked');
   });
 
   test('INT-PAIR-13 [stack] renaming a device updates device, source label and the connected sender', t.p2, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy 1' });
+    const phone = await pairPhone(pairContext, { name: 'Phone 1' });
     const device = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
     onCleanup(() => device.stop());
     await device.open();

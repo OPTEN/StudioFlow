@@ -35,7 +35,7 @@ import type { Production } from '../../support/production';
 
 /**
  * SWITCH in the Regie UI (docs/testing.md 2.4: E2E-SWITCH-01 ... 08, 12 ... 20): direct switching, cut and fade, the fade
- * guard, Studio-Modus, Take, number keys, latency to the output, the broadcast lifecycle with slates, presence rules,
+ * guard, Studio Mode, Take, number keys, latency to the output, the broadcast lifecycle with slates, presence rules,
  * rapid clicks, reduced motion. Each scene holds one flat-colour image over the whole canvas (A red, B green, C blue), so
  * the output's pixels tell the scenes apart. Tally on devices, black-frame analysis and the simulcast layer (E2E-SWITCH-09
  * ... 11) need live media and belong to the sender/output specs.
@@ -43,10 +43,10 @@ import type { Production } from '../../support/production';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-const FADE_STEPS = ['0,2 s', '0,3 s', '0,5 s', '0,8 s', '1 s', '1,5 s', '2 s'];
+const FADE_STEPS = ['0.2 s', '0.3 s', '0.5 s', '0.8 s', '1 s', '1.5 s', '2 s'];
 const duration = (page: import('@playwright/test').Page) => page.locator('.c-duration__value');
 
-/** Three scenes (Szene A red, B green, C blue, each full canvas); returns their ids. */
+/** Three scenes (Scene A red, B green, C blue, each full canvas); returns their ids. */
 async function seedColoured(
   api: AdminApi,
   production: Production,
@@ -55,7 +55,7 @@ async function seedColoured(
   const colors = [COLOR.red, COLOR.green, COLOR.blue];
   const ids = production.sceneIds as [string, string, string];
   for (let index = 0; index < 3; index++) {
-    const asset = await uploadSolid(api, production, `Farbe${index + 1}`, colors[index]!);
+    const asset = await uploadSolid(api, production, `Color${index + 1}`, colors[index]!);
     await replaceItems(api, production, ids[index]!, [
       item(`itm_full${'abc'[index]}`, asset.id, { x: 0, y: 0, w: 1920, h: 1080 }),
     ]);
@@ -83,19 +83,19 @@ test.describe('REGIE switching', () => {
       await installSceneProbe(output.page);
       await installPointerProbe(page);
       await installAnimationHook(page);
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       const posts = programPosts(page);
 
       await watchScene(output.page, b);
-      await regie.clickScene('Szene B');
-      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Szene B');
-      await expect(toastOf(page)).toContainText('«Szene B» ist live');
-      await expect(regie.statusLine()).toContainText('Szene «Szene B» ist live');
-      const row = regie.scene('Szene B');
+      await regie.clickScene('Scene B');
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene B');
+      await expect(toastOf(page)).toContainText('“Scene B” is live');
+      await expect(regie.statusLine()).toContainText('Scene “Scene B” is live');
+      const row = regie.scene('Scene B');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
-      await expect(row).toHaveAccessibleName(/, live im Program$/);
+      await expect(row).toHaveAccessibleName(/, live on Program$/);
       await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('PGM');
-      await expect(regie.scene('Szene A')).toHaveAttribute('aria-pressed', 'false');
+      await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'false');
       expect(await programId(api, production)).toBe(b);
       await expect
         .poll(() => sceneHit(output.page), {
@@ -122,7 +122,7 @@ test.describe('REGIE switching', () => {
       const toastBefore = await toastOf(page)
         .innerText()
         .catch(() => '');
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await page.waitForTimeout(500);
       expect(posts, 'one switch request only').toHaveLength(1);
       expect(posts[0]!.body).toEqual({ sceneId: b, transition: { kind: 'cut', durationMs: 0 } });
@@ -148,18 +148,18 @@ test.describe('REGIE switching', () => {
       await installAnimationHook(output.page);
       await installAnimationHook(page);
 
-      // Schnitt: no opacity animation, only the new scene is there.
-      await regie.transitionOption('Schnitt').click();
-      await regie.clickScene('Szene B');
+      // Cut: no opacity animation, only the new scene is there.
+      await regie.transitionOption('Cut').click();
+      await regie.clickScene('Scene B');
       await expect
         .poll(async () => (await outputLayers(output.page)).map((layer) => layer.sceneId))
         .toEqual([b]);
       expect(await opacityFades(output.page), 'a cut starts no fade').toHaveLength(0);
 
-      // Blende 0,3 s: exactly one opacity animation of 300 ms on the new layer; the old layer goes when it ends.
-      await regie.transitionOption('Blende').click();
-      await expect(duration(page)).toHaveText('0,3 s');
-      await regie.clickScene('Szene C');
+      // Fade 0.3 s: exactly one opacity animation of 300 ms on the new layer; the old layer goes when it ends.
+      await regie.transitionOption('Fade').click();
+      await expect(duration(page)).toHaveText('0.3 s');
+      await regie.clickScene('Scene C');
       await expect.poll(async () => (await opacityFades(output.page, c)).length).toBe(1);
       await expect
         .poll(async () => (await opacityFades(output.page, c))[0]?.endedAt, {
@@ -187,8 +187,8 @@ test.describe('REGIE switching', () => {
       });
       expect((await opacityFades(page, c)).length, 'the Program monitor fades as well').toBe(1);
 
-      // The output uses the transition of the event: the Regie says Schnitt, a request with a 500 ms fade arrives (other client).
-      await regie.transitionOption('Schnitt').click();
+      // The output uses the transition of the event: the Regie says Cut, a request with a 500 ms fade arrives (other client).
+      await regie.transitionOption('Cut').click();
       await expect
         .poll(
           async () =>
@@ -213,14 +213,14 @@ test.describe('REGIE switching', () => {
   );
 
   test(
-    'E2E-SWITCH-03 [regie] the fade duration stepper walks 0,2 ... 2 s, is disabled at the ends and under Schnitt, persists and goes into the request',
+    'E2E-SWITCH-03 [regie] the fade duration stepper walks 0.2 ... 2 s, is disabled at the ends and under Cut, persists and goes into the request',
     t.p1,
     async ({ regie, api, production }) => {
       await seedColoured(api, production);
       const page = regie.page;
-      const longer = page.getByRole('button', { name: 'Blende länger' });
-      const shorter = page.getByRole('button', { name: 'Blende kürzer' });
-      await expect(duration(page)).toHaveText('0,3 s');
+      const longer = page.getByRole('button', { name: 'Longer fade' });
+      const shorter = page.getByRole('button', { name: 'Shorter fade' });
+      await expect(duration(page)).toHaveText('0.3 s');
       for (const step of FADE_STEPS.slice(2)) {
         await longer.click();
         await expect(duration(page)).toHaveText(step);
@@ -230,34 +230,34 @@ test.describe('REGIE switching', () => {
         await shorter.click();
         await expect(duration(page)).toHaveText(step);
       }
-      await expect(shorter, 'minus is disabled at 0,2 s').toBeDisabled();
+      await expect(shorter, 'minus is disabled at 0.2 s').toBeDisabled();
       expect(
         await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.transition')!)),
       ).toEqual({ kind: 'fade', durationMs: 200 });
 
-      // Under Schnitt both buttons are disabled and the value is muted; the choice persists.
-      await regie.transitionOption('Schnitt').click();
+      // Under Cut both buttons are disabled and the value is muted; the choice persists.
+      await regie.transitionOption('Cut').click();
       await expect(longer).toBeDisabled();
       await expect(shorter).toBeDisabled();
       await expect(page.locator('.c-duration')).toHaveClass(/is-off/);
-      await expect(regie.transitionOption('Schnitt')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.transitionOption('Cut')).toHaveAttribute('aria-pressed', 'true');
       expect(
         await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.transition')!)),
       ).toEqual({ kind: 'cut', durationMs: 200 });
       await page.reload();
       await regie.waitReady();
-      await expect(regie.transitionOption('Schnitt')).toHaveAttribute('aria-pressed', 'true');
-      await expect(duration(page)).toHaveText('0,2 s');
+      await expect(regie.transitionOption('Cut')).toHaveAttribute('aria-pressed', 'true');
+      await expect(duration(page)).toHaveText('0.2 s');
 
-      // The request carries the matching duration: Blende 0,8 s, then Schnitt.
-      await regie.transitionOption('Blende').click();
+      // The request carries the matching duration: Fade 0.8 s, then Cut.
+      await regie.transitionOption('Fade').click();
       await longer.click();
       await longer.click();
-      await expect(duration(page)).toHaveText('0,5 s');
+      await expect(duration(page)).toHaveText('0.5 s');
       await longer.click();
-      await expect(duration(page)).toHaveText('0,8 s');
+      await expect(duration(page)).toHaveText('0.8 s');
       const posts = programPosts(page);
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await expect.poll(() => posts.length).toBe(1);
       expect(posts[0]!.body).toEqual({
         sceneId: production.sceneIds[1],
@@ -284,20 +284,20 @@ test.describe('REGIE switching', () => {
       await trackToasts(pageB);
 
       // 2 s fade.
-      const longer = pageA.getByRole('button', { name: 'Blende länger' });
+      const longer = pageA.getByRole('button', { name: 'Longer fade' });
       for (let step = 0; step < 5; step++) await longer.click();
       await expect(duration(pageA)).toHaveText('2 s');
       const postsA = programPosts(pageA);
       const postsB = programPosts(pageB);
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       const startedAt = Date.now();
       await expect.poll(() => programId(api, production)).toBe(b);
-      // A clicks Szene C and presses 3 during the fade; B clicks Szene C 500 ms after A's switch.
+      // A clicks Scene C and presses 3 during the fade; B clicks Scene C 500 ms after A's switch.
       await pageA.waitForTimeout(300);
-      await regie.scene('Szene C').click();
+      await regie.scene('Scene C').click();
       await pageA.keyboard.press('3');
       await pageB.waitForTimeout(Math.max(0, 500 - (Date.now() - startedAt)));
-      await operatorB.scene('Szene C').click();
+      await operatorB.scene('Scene C').click();
       // And a client that has no UI guard (REST) is refused by the server.
       const refused = await api.switchProgram(production.id, {
         sceneId: c,
@@ -310,10 +310,10 @@ test.describe('REGIE switching', () => {
         'A sent one request: the second click and the key are ignored by the UI',
       ).toHaveLength(1);
       expect(postsB, 'B knows the fade is running and sends nothing').toHaveLength(0);
-      await expect(operatorB.scene('Szene B')).toHaveAttribute('aria-pressed', 'true');
+      await expect(operatorB.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
       for (const log of [await toastLog(pageA), await toastLog(pageB)])
         expect(
-          log.filter((text) => !/ist live$/.test(text)),
+          log.filter((text) => !/is live$/.test(text)),
           'no error toast',
         ).toEqual([]);
 
@@ -335,18 +335,18 @@ test.describe('REGIE switching', () => {
         .toEqual([`${b}:1`]);
       for (const regieView of [pageA, pageB])
         await expect(monitorOf(regieView, 'program').locator('.c-monitor__name')).toHaveText(
-          'Szene B',
+          'Scene B',
         );
       expect(await programId(api, production)).toBe(b);
 
       // A switch after the fade works.
-      await regie.clickScene('Szene C');
+      await regie.clickScene('Scene C');
       await expect.poll(() => programId(api, production)).toBe(c);
       await expect
         .poll(async () => (await opacityFades(output.page, c))[0]?.endedAt, { timeout: 6000 })
         .not.toBeNull();
 
-      // Studio-Modus: Take is disabled while the fade runs, a second Take does nothing, Take works again afterwards.
+      // Studio Mode: Take is disabled while the fade runs, a second Take does nothing, Take works again afterwards.
       await regie.setStudioMode(true);
       await expect.poll(() => previewId(api, production)).toBe(a);
       const takes = recordRequests(
@@ -366,12 +366,12 @@ test.describe('REGIE switching', () => {
   );
 
   test(
-    'E2E-SWITCH-05 [regie] Studio-Modus: toast, Preview and Take appear without moving docks or the control column; a click changes the preview only; off clears the preview; persisted',
+    'E2E-SWITCH-05 [regie] Studio Mode: toast, Preview and Take appear without moving docks or the control column; a click changes the preview only; off clears the preview; persisted',
     t.smoke,
     async ({ regie, api, production }) => {
       const [a, b, c] = await seedColoured(api, production);
       const page = regie.page;
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       const boxes = async () => ({
         column: await page.locator('sf-control-column').boundingBox(),
         scenes: await page.locator('sf-dock-slot[data-dock="scenes"]').boundingBox(),
@@ -380,23 +380,23 @@ test.describe('REGIE switching', () => {
         st: await page.locator('sf-dock-slot[data-dock="st"]').boundingBox(),
       });
       const hint = page.locator('.c-control-column__hint');
-      await expect(hint).toHaveText('Klick auf eine Szene schaltet sie direkt live.');
-      await expect(page.getByText('Preview aus', { exact: true })).toBeVisible();
+      await expect(hint).toHaveText('Click a scene to switch it live directly.');
+      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
       await expect(monitorOf(page, 'program').locator('.c-monitor__live-edit')).toBeVisible();
       const before = await boxes();
 
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio-Modus an: Preview und Take');
+      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
       await expect(monitorOf(page, 'preview')).toBeVisible();
       await expect(regie.take()).toBeVisible();
-      await expect(regie.take()).toContainText('Leerschlag');
-      await expect(page.getByText('Preview aus', { exact: true })).toHaveCount(0);
+      await expect(regie.take()).toContainText('Space');
+      await expect(page.getByText('Preview off', { exact: true })).toHaveCount(0);
       await expect(
         monitorOf(page, 'program').locator('.c-monitor__live-edit'),
-        '«Änderungen gehen sofort live» is hidden',
+        '“Changes go live immediately” is hidden',
       ).toHaveCount(0);
       await expect(hint).toHaveText(
-        'Klick auf eine Szene lädt sie in die Preview. Take schaltet live.',
+        'Click a scene to load it into Preview. Take switches it live.',
       );
       const after = await boxes();
       expect(after.scenes, 'docks do not move').toEqual(before.scenes);
@@ -409,17 +409,17 @@ test.describe('REGIE switching', () => {
       ).toEqual({ x: before.column!.x, y: before.column!.y, width: before.column!.width });
       // The preview defaults to the scene after the program.
       await expect.poll(() => previewId(api, production)).toBe(b);
-      await expect(regie.scene('Szene B')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Szene B')).toHaveAccessibleName(/, in der Preview$/);
+      await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.scene('Scene B')).toHaveAccessibleName(/, in Preview$/);
       await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('PVW');
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('1');
 
       // A click only changes the preview: program and output stay.
-      await regie.clickScene('Szene C');
+      await regie.clickScene('Scene C');
       await expect.poll(() => previewId(api, production)).toBe(c);
       expect(await programId(api, production)).toBe(a);
-      await expect(monitorOf(page, 'preview').locator('.c-monitor__name')).toHaveText('Szene C');
-      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Szene A');
+      await expect(monitorOf(page, 'preview').locator('.c-monitor__name')).toHaveText('Scene C');
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene A');
 
       // Reloaded with the mode on it stays on.
       await page.reload();
@@ -427,16 +427,16 @@ test.describe('REGIE switching', () => {
       await expect(regie.studioModeSwitch()).toBeChecked();
       await expect(regie.take()).toBeVisible();
 
-      // Off: toast, «Preview aus», the preview is cleared (only operator).
+      // Off: toast, “Preview off”, the preview is cleared (only operator).
       await regie.setStudioMode(false);
-      await expect(toastOf(page)).toContainText('Studio-Modus aus: Szenen schalten direkt live');
-      await expect(page.getByText('Preview aus', { exact: true })).toBeVisible();
+      await expect(toastOf(page)).toContainText('Studio Mode off: scenes switch live directly');
+      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
       await expect.poll(() => previewId(api, production)).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('0');
       await expect(regie.take()).toHaveCount(0);
 
       // The preview wraps around after the last scene.
-      await regie.clickScene('Szene C');
+      await regie.clickScene('Scene C');
       await expect.poll(() => programId(api, production)).toBe(c);
       await regie.setStudioMode(true);
       await expect.poll(() => previewId(api, production)).toBe(a);
@@ -450,9 +450,9 @@ test.describe('REGIE switching', () => {
     async ({ regie, api, production }) => {
       const [a, b, c] = await seedColoured(api, production);
       const page = regie.page;
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await regie.setStudioMode(true);
-      await regie.clickScene('Szene C');
+      await regie.clickScene('Scene C');
       await expect.poll(() => previewId(api, production)).toBe(c);
       const takes = recordRequests(
         page,
@@ -464,18 +464,18 @@ test.describe('REGIE switching', () => {
       await page.keyboard.press('Space');
       await expect.poll(() => programId(api, production)).toBe(c);
       expect(await previewId(api, production), 'the preview is now the old program').toBe(a);
-      await expect(toastOf(page)).toContainText('«Szene C» ist live');
-      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Szene C');
-      await expect(monitorOf(page, 'preview').locator('.c-monitor__name')).toHaveText('Szene A');
+      await expect(toastOf(page)).toContainText('“Scene C” is live');
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene C');
+      await expect(monitorOf(page, 'preview').locator('.c-monitor__name')).toHaveText('Scene A');
 
-      // Space on a focused button activates that button (Schnitt / Blende), not Take.
-      await regie.transitionOption('Blende').focus();
+      // Space on a focused button activates that button (Cut / Fade), not Take.
+      await regie.transitionOption('Fade').focus();
       await page.keyboard.press('Space');
-      await expect(regie.transitionOption('Blende')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.transitionOption('Fade')).toHaveAttribute('aria-pressed', 'true');
       await page.waitForTimeout(300);
       expect(await programId(api, production), 'Space on a button does not take').toBe(c);
       expect(takes).toHaveLength(1);
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
 
       // The button; then a second Take swaps back.
       await regie.take().click();
@@ -483,7 +483,7 @@ test.describe('REGIE switching', () => {
       expect(takes).toHaveLength(2);
 
       // Preview = program: Take is disabled, the API refuses with 409 conflict.
-      await regie.clickScene('Szene A');
+      await regie.clickScene('Scene A');
       await expect.poll(() => previewId(api, production)).toBe(a);
       await expect(regie.take()).toBeDisabled();
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -496,12 +496,12 @@ test.describe('REGIE switching', () => {
       await expect(regie.take()).toHaveAttribute('aria-keyshortcuts', 'Space');
 
       // During a fade Take is disabled.
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await expect.poll(() => previewId(api, production)).toBe(b);
-      await regie.transitionOption('Blende').click();
-      const longer = page.getByRole('button', { name: 'Blende länger' });
+      await regie.transitionOption('Fade').click();
+      const longer = page.getByRole('button', { name: 'Longer fade' });
       for (let step = 0; step < 4; step++) await longer.click();
-      await expect(duration(page)).toHaveText('1,5 s');
+      await expect(duration(page)).toHaveText('1.5 s');
       await regie.take().click();
       await expect(regie.take()).toBeDisabled();
       await expect(regie.take()).toBeEnabled({ timeout: 4000 });
@@ -517,7 +517,7 @@ test.describe('REGIE switching', () => {
       await seedColoured(api, production);
       for (let index = 4; index <= 12; index++) {
         const created = await api.createScene(production.id, {
-          name: `Szene ${index}`,
+          name: `Scene ${index}`,
           cloneFromSceneId: null,
         });
         expect(created.status).toBe(201);
@@ -525,10 +525,10 @@ test.describe('REGIE switching', () => {
       const ids = (await api.getSnapshot(production.id)).body.scenes.map((scene) => scene.id);
       expect(ids).toHaveLength(12);
       const page = regie.page;
-      await regie.transitionOption('Schnitt').click();
-      await expect(regie.scene('Szene 12')).toBeVisible();
+      await regie.transitionOption('Cut').click();
+      await expect(regie.scene('Scene 12')).toBeVisible();
       await expect(page.locator('.c-scene .c-keycap')).toHaveCount(9);
-      await expect(regie.scene('Szene 10')).not.toHaveAttribute('aria-keyshortcuts', /.+/);
+      await expect(regie.scene('Scene 10')).not.toHaveAttribute('aria-keyshortcuts', /.+/);
       const posts = recordRequests(page, (path, method) => method === 'POST' || method === 'PUT');
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       const programIs = (index: number) =>
@@ -550,19 +550,19 @@ test.describe('REGIE switching', () => {
       await name.focus();
       await page.keyboard.press('2');
       await page.waitForTimeout(300);
-      await expect(name).toHaveValue('Szene A2');
+      await expect(name).toHaveValue('Scene A2');
       expect(await programId(api, production)).toBe(ids[0]);
       await page.keyboard.press('Escape');
       await name.blur();
-      await expect(name).toHaveValue('Szene A');
+      await expect(name).toHaveValue('Scene A');
 
-      // Studio-Modus on: the key sets the preview.
+      // Studio Mode on: the key sets the preview.
       await regie.setStudioMode(true);
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await page.keyboard.press('7');
       await expect.poll(() => previewId(api, production)).toBe(ids[6]);
       expect(await programId(api, production), 'the program stays').toBe(ids[0]);
-      await expect(regie.scene('Szene 7')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.scene('Scene 7')).toHaveAttribute('aria-pressed', 'true');
       // The keys 1-9 beyond the scene count and scenes 10-12 have no key: nothing to press for them.
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -580,12 +580,12 @@ test.describe('REGIE switching', () => {
       await output.stage();
       await installSceneProbe(output.page);
       await installPointerProbe(page);
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       const samples: number[] = [];
       for (let index = 0; index < 30; index++) {
         const target = index % 2 === 0 ? b : a;
         await watchScene(output.page, target);
-        await regie.clickScene(index % 2 === 0 ? 'Szene B' : 'Szene A');
+        await regie.clickScene(index % 2 === 0 ? 'Scene B' : 'Scene A');
         await expect.poll(() => sceneHit(output.page), { timeout: 5000 }).not.toBeNull();
         samples.push((await sceneHit(output.page))! - (await lastPointerDown(page))!);
         await page.waitForTimeout(1500);
@@ -614,9 +614,9 @@ test.describe('REGIE tally', () => {
       test.setTimeout(120_000);
       const [a, b] = await seedColoured(api, production);
       const page = regie.page;
-      const k1 = await pairPhone(pairContext, { name: 'Handy Eins' });
-      const k2 = await pairPhone(pairContext, { name: 'Handy Zwei' });
-      const k3 = await pairPhone(pairContext, { name: 'Handy Drei' });
+      const k1 = await pairPhone(pairContext, { name: 'Phone One' });
+      const k2 = await pairPhone(pairContext, { name: 'Phone Two' });
+      const k3 = await pairPhone(pairContext, { name: 'Phone Three' });
       const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Lea' });
       const camera = await laptop.api.allocateSlot({ kind: 'camera' });
       expect(camera.status, camera.raw.text()).toBe(200);
@@ -651,13 +651,13 @@ test.describe('REGIE tally', () => {
 
       // Standby: everybody is off, although K1 and S1 are in the program scene.
       expect(states(), 'standby').toEqual(['off', 'off', 'off', 'off']);
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await regie.setStudioMode(true);
       await expect.poll(() => previewId(api, production)).toBe(b);
       expect(states(), 'a preview in standby is off as well').toEqual(['off', 'off', 'off', 'off']);
 
       // Start: K1 program (red), K2 preview (green), K3 off, the laptop is program with S1 on air and its camera in the preview.
-      await page.getByRole('button', { name: 'Sendung starten' }).click();
+      await page.getByRole('button', { name: 'Start broadcast' }).click();
       await expect
         .poll(states, { message: 'after the start', timeout: 3000 })
         .toEqual(['program', 'preview', 'off', 'program']);
@@ -697,24 +697,24 @@ test.describe('REGIE tally', () => {
       // Hiding an element: after an even number of takes A is on air and B is in the preview, which is the scene the Regie edits.
       expect(await programId(api, production)).toBe(a);
       expect(await previewId(api, production)).toBe(b);
-      await page.getByRole('button', { name: 'Ausblenden: Handy Zwei' }).click();
+      await page.getByRole('button', { name: 'Hide: Phone Two' }).click();
       await expect
         .poll(() => two.overall(), { message: 'a hidden element gives no tally', timeout: 3000 })
         .toBe('off');
-      await page.getByRole('button', { name: 'Einblenden: Handy Zwei' }).click();
+      await page.getByRole('button', { name: 'Show: Phone Two' }).click();
       await expect.poll(() => two.overall(), { timeout: 3000 }).toBe('preview');
 
       // Ending the broadcast: off for everybody, also K1 and S1 in the program scene; starting again brings the tally back.
-      await page.getByRole('button', { name: 'Sendung beenden' }).click();
+      await page.getByRole('button', { name: 'End broadcast' }).click();
       await page
-        .getByRole('dialog', { name: 'Sendung beenden' })
-        .getByRole('group', { name: 'Sendung beenden' })
-        .getByRole('button', { name: 'Sendung beenden' })
+        .getByRole('dialog', { name: 'End broadcast' })
+        .getByRole('group', { name: 'End broadcast' })
+        .getByRole('button', { name: 'End broadcast' })
         .click();
       await expect
         .poll(states, { message: 'ended', timeout: 3000 })
         .toEqual(['off', 'off', 'off', 'off']);
-      await page.getByRole('button', { name: 'Sendung starten' }).click();
+      await page.getByRole('button', { name: 'Start broadcast' }).click();
       await expect
         .poll(states, { message: 'after the next start', timeout: 3000 })
         .toEqual(['program', 'preview', 'off', 'program']);
@@ -727,7 +727,7 @@ test.describe('REGIE broadcast and slates', () => {
   const state = (page: import('@playwright/test').Page) => page.locator('.c-live b');
 
   test(
-    'E2E-SWITCH-12 [regie] broadcast lifecycle: BEREIT -> LIVE with a running clock -> confirmed end -> BEENDET -> start again from 00:00:00 -> back to BEREIT; the output shows the slates; the other operator follows',
+    'E2E-SWITCH-12 [regie] broadcast lifecycle: READY -> LIVE with a running clock -> confirmed end -> ENDED -> start again from 00:00:00 -> back to READY; the output shows the slates; the other operator follows',
     t.smoke,
     async ({ regie, openRegie, openOutput, api, production }) => {
       test.setTimeout(120_000);
@@ -739,8 +739,8 @@ test.describe('REGIE broadcast and slates', () => {
       const slate = () => output.slateText();
 
       // Before the start: standby slate with the production name as subtitle.
-      await expect(state(page)).toHaveText('BEREIT');
-      await expect(state(operatorB.page)).toHaveText('BEREIT');
+      await expect(state(page)).toHaveText('READY');
+      await expect(state(operatorB.page)).toHaveText('READY');
       await expect.poll(slate, { message: 'standby slate' }).toContain(TEXT.slate.standby);
       expect(await slate()).toContain(production.name);
       await expect
@@ -750,7 +750,7 @@ test.describe('REGIE broadcast and slates', () => {
         .toBe(1);
 
       // Start.
-      await page.getByRole('button', { name: 'Sendung starten' }).click();
+      await page.getByRole('button', { name: 'Start broadcast' }).click();
       await expect(state(page)).toHaveText('LIVE');
       await expect(state(operatorB.page), 'operator B sees LIVE within 1 s').toHaveText('LIVE', {
         timeout: 1000,
@@ -777,42 +777,42 @@ test.describe('REGIE broadcast and slates', () => {
         .not.toContain(TEXT.slate.standby);
       expect((await api.getSnapshot(production.id)).body.production.broadcast).toBe('live');
 
-      // End needs a confirmation: «Abbrechen» changes nothing, «Sendung beenden» ends.
-      await page.getByRole('button', { name: 'Sendung beenden' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Sendung beenden' });
+      // End needs a confirmation: “Cancel” changes nothing, “End broadcast” ends.
+      await page.getByRole('button', { name: 'End broadcast' }).click();
+      const dialog = page.getByRole('dialog', { name: 'End broadcast' });
       await expect(dialog).toContainText(
-        'Die Sendung wird beendet. Der Output zeigt danach «Danke fürs Zuschauen».',
+        'The broadcast will end. The output then shows “Thanks for watching”.',
       );
-      await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
       await expect(dialog).toBeHidden();
       await expect(state(page)).toHaveText('LIVE');
-      await page.getByRole('button', { name: 'Sendung beenden' }).click();
+      await page.getByRole('button', { name: 'End broadcast' }).click();
       await dialog
-        .getByRole('group', { name: 'Sendung beenden' })
-        .getByRole('button', { name: 'Sendung beenden' })
+        .getByRole('group', { name: 'End broadcast' })
+        .getByRole('button', { name: 'End broadcast' })
         .click();
-      await expect(state(page)).toHaveText('BEENDET');
-      await expect(state(operatorB.page)).toHaveText('BEENDET', { timeout: 1000 });
+      await expect(state(page)).toHaveText('ENDED');
+      await expect(state(operatorB.page)).toHaveText('ENDED', { timeout: 1000 });
       await expect.poll(slate, { message: 'end slate' }).toContain(TEXT.slate.end);
-      await expect(page.getByRole('button', { name: 'Zurück auf Bereit' })).toBeVisible();
-      await expect(regie.statusLine()).toContainText('Sendung beendet');
+      await expect(page.getByRole('button', { name: 'Back to Ready' })).toBeVisible();
+      await expect(regie.statusLine()).toContainText('Broadcast ended');
 
       // Start again: the runtime restarts at 00:00:00.
-      await page.getByRole('button', { name: 'Sendung starten' }).click();
+      await page.getByRole('button', { name: 'Start broadcast' }).click();
       await expect(state(page)).toHaveText('LIVE');
       await expect(clock).toHaveText(/^00:00:0[0-2]$/);
       await expect.poll(slate).not.toContain(TEXT.slate.end);
 
-      // Reset (from ended): end again, then «Zurück auf Bereit».
-      await page.getByRole('button', { name: 'Sendung beenden' }).click();
+      // Reset (from ended): end again, then “Back to Ready”.
+      await page.getByRole('button', { name: 'End broadcast' }).click();
       await dialog
-        .getByRole('group', { name: 'Sendung beenden' })
-        .getByRole('button', { name: 'Sendung beenden' })
+        .getByRole('group', { name: 'End broadcast' })
+        .getByRole('button', { name: 'End broadcast' })
         .click();
-      await expect(state(page)).toHaveText('BEENDET');
-      await page.getByRole('button', { name: 'Zurück auf Bereit' }).click();
-      await expect(state(page)).toHaveText('BEREIT');
-      await expect(state(operatorB.page)).toHaveText('BEREIT', { timeout: 1000 });
+      await expect(state(page)).toHaveText('ENDED');
+      await page.getByRole('button', { name: 'Back to Ready' }).click();
+      await expect(state(page)).toHaveText('READY');
+      await expect(state(operatorB.page)).toHaveText('READY', { timeout: 1000 });
       await expect.poll(slate, { message: 'standby slate again' }).toContain(TEXT.slate.standby);
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -826,9 +826,9 @@ test.describe('REGIE broadcast and slates', () => {
       const page = regie.page;
       const output = await openOutput(production);
       await output.stage();
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await expect.poll(() => output.slateText()).toContain(TEXT.slate.standby);
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await expect.poll(() => programId(api, production)).toBe(b);
       await expect.poll(async () => (await output.sceneIds()).includes(b)).toBe(true);
       for (let sample = 0; sample < 8; sample++) {
@@ -844,7 +844,7 @@ test.describe('REGIE broadcast and slates', () => {
         await page.waitForTimeout(150);
       }
       expect(await output.slateText()).toContain(TEXT.slate.standby);
-      await page.getByRole('button', { name: 'Sendung starten' }).click();
+      await page.getByRole('button', { name: 'Start broadcast' }).click();
       await expect
         .poll(
           async () => {
@@ -855,7 +855,7 @@ test.describe('REGIE broadcast and slates', () => {
               30,
             );
           },
-          { message: 'after the start the output shows Szene B', timeout: 8000 },
+          { message: 'after the start the output shows Scene B', timeout: 8000 },
         )
         .toBeGreaterThan(0.9);
     },
@@ -867,28 +867,28 @@ test.describe('REGIE broadcast and slates', () => {
     async ({ regie, openOutput, api, production }) => {
       await seedColoured(api, production);
       const page = regie.page;
-      const image = await uploadSolid(api, production, 'Hintergrund', COLOR.violet);
+      const image = await uploadSolid(api, production, 'Background', COLOR.violet);
       const output = await openOutput(production);
       await output.stage();
-      await page.getByRole('button', { name: /^Produktion .*, Menü$/ }).click();
-      await page.getByRole('button', { name: 'Slates bearbeiten' }).click();
+      await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      await page.getByRole('button', { name: 'Edit slates' }).click();
       const form = page.locator('.c-prod__form');
-      await expect(form).toContainText('Vor der Sendung');
-      await form.getByLabel('Titel', { exact: true }).first().fill('Gleich gehts los, Hallo');
-      await form.getByLabel('Untertitel', { exact: true }).first().fill('mit Lea und Jonas');
+      await expect(form).toContainText('Before the broadcast');
+      await form.getByLabel('Title', { exact: true }).first().fill('Starting soon, hello');
+      await form.getByLabel('Subtitle', { exact: true }).first().fill('with Lea and Jonas');
       await form
-        .getByLabel('Hintergrund')
+        .getByLabel('Background')
         .first()
         .selectOption({ label: `${image.code} · ${image.name}` });
-      await form.getByLabel('Titel', { exact: true }).nth(1).fill('Bis zum nächsten Mal');
-      await form.getByRole('button', { name: 'Speichern' }).click();
+      await form.getByLabel('Title', { exact: true }).nth(1).fill('See you next time');
+      await form.getByRole('button', { name: 'Save' }).click();
       await expect
         .poll(() => output.slateText(), {
           message: 'the output shows the new texts',
           timeout: 8000,
         })
-        .toContain('Gleich gehts los, Hallo');
-      expect(await output.slateText()).toContain('mit Lea und Jonas');
+        .toContain('Starting soon, hello');
+      expect(await output.slateText()).toContain('with Lea and Jonas');
       await expect
         .poll(
           async () => {
@@ -906,7 +906,7 @@ test.describe('REGIE broadcast and slates', () => {
       expect(refused.status).toBe(409);
       expect(refused.body.code).toBe('asset_in_use');
       expect((await api.getSnapshot(production.id)).body.production.standbySlate.title).toBe(
-        'Gleich gehts los, Hallo',
+        'Starting soon, hello',
       );
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -915,30 +915,30 @@ test.describe('REGIE broadcast and slates', () => {
 
 test.describe('REGIE two operators and rapid input', () => {
   test(
-    'E2E-SWITCH-14 [regie] Studio-Modus and presence: a direct switch of B does not change the preview of A; B turning the mode off keeps the preview while A is there; alone, turning it off clears it',
+    'E2E-SWITCH-14 [regie] Studio Mode and presence: a direct switch of B does not change the preview of A; B turning the mode off keeps the preview while A is there; alone, turning it off clears it',
     t.p1,
     async ({ regie, openRegie, api, production }) => {
       const [, b] = await seedColoured(api, production);
       const pageA = regie.page;
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await regie.setStudioMode(true);
       await expect.poll(() => previewId(api, production)).toBe(b);
       const operatorB = await openRegie();
-      await operatorB.transitionOption('Schnitt').click();
-      await expect(pageA.locator('.c-header__presence-label')).toHaveText('2 in der Regie');
+      await operatorB.transitionOption('Cut').click();
+      await expect(pageA.locator('.c-header__presence-label')).toHaveText('2 in the control room');
       await expect(operatorB.page.locator('.c-header__presence-label')).toHaveText(
-        '2 in der Regie',
+        '2 in the control room',
       );
       const putsB = recordRequests(
         operatorB.page,
         (path, method) => method === 'PUT' && /\/preview$/.test(path),
       );
 
-      // B (Studio-Modus off) switches the program: A's preview stays, A's Program monitor follows quickly.
+      // B (Studio Mode off) switches the program: A's preview stays, A's Program monitor follows quickly.
       const clicked = Date.now();
-      await operatorB.scene('Szene C').click();
+      await operatorB.scene('Scene C').click();
       // docs/testing.md: ≤ 500 ms after B's switch; the harness allows 3 s (parallel stacks load the machine) and records the time.
-      await expect(monitorOf(pageA, 'program').locator('.c-monitor__name')).toHaveText('Szene C', {
+      await expect(monitorOf(pageA, 'program').locator('.c-monitor__name')).toHaveText('Scene C', {
         timeout: 3000,
       });
       test.info().annotations.push({
@@ -949,9 +949,9 @@ test.describe('REGIE two operators and rapid input', () => {
         await previewId(api, production),
         "B's direct switch does not change A's preview",
       ).toBe(b);
-      await expect(monitorOf(pageA, 'preview').locator('.c-monitor__name')).toHaveText('Szene B');
+      await expect(monitorOf(pageA, 'preview').locator('.c-monitor__name')).toHaveText('Scene B');
 
-      // B toggles Studio-Modus on and off while A is connected: no PUT preview that clears it.
+      // B toggles Studio Mode on and off while A is connected: no PUT preview that clears it.
       await operatorB.setStudioMode(true);
       await operatorB.setStudioMode(false);
       await pageA.waitForTimeout(400);
@@ -963,7 +963,7 @@ test.describe('REGIE two operators and rapid input', () => {
 
       // B leaves: presence drops; A alone turns the mode off and the preview is cleared.
       await operatorB.page.context().close();
-      await expect(pageA.locator('.c-header__presence-label')).toHaveText('1 in der Regie', {
+      await expect(pageA.locator('.c-header__presence-label')).toHaveText('1 in the control room', {
         timeout: 10_000,
       });
       await regie.setStudioMode(false);
@@ -982,12 +982,12 @@ test.describe('REGIE two operators and rapid input', () => {
       await output.stage();
       await installAnimationHook(output.page);
       await installAnimationHook(page);
-      const longer = page.getByRole('button', { name: 'Blende länger' });
+      const longer = page.getByRole('button', { name: 'Longer fade' });
       for (let step = 0; step < 4; step++) await longer.click();
-      await expect(duration(page)).toHaveText('1,5 s');
-      await page.getByRole('button', { name: 'Blende kürzer' }).click();
+      await expect(duration(page)).toHaveText('1.5 s');
+      await page.getByRole('button', { name: 'Shorter fade' }).click();
       await expect(duration(page)).toHaveText('1 s');
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await expect
         .poll(
           async () =>
@@ -1028,7 +1028,7 @@ test.describe('REGIE two operators and rapid input', () => {
       await output.stage();
       await trackToasts(pageA);
       await trackToasts(pageB);
-      // Fade 0,3 s is the default.
+      // Fade 0.3 s is the default.
       const postsA = programPosts(pageA);
       const postsB = programPosts(pageB);
       const click = async (operator: typeof regie, scenes: string[]) => {
@@ -1037,8 +1037,8 @@ test.describe('REGIE two operators and rapid input', () => {
       };
       const started = Date.now();
       await Promise.all([
-        click(regie, ['Szene B', 'Szene C']),
-        click(operatorB, ['Szene C', 'Szene A']),
+        click(regie, ['Scene B', 'Scene C']),
+        click(operatorB, ['Scene C', 'Scene A']),
       ]);
       const burstMs = Date.now() - started;
       await expect
@@ -1054,13 +1054,13 @@ test.describe('REGIE two operators and rapid input', () => {
       expect(accepted.length).toBeGreaterThanOrEqual(1);
       expect(
         accepted.length,
-        'successful switches within the burst (one per 0,3 s fade)',
+        'successful switches within the burst (one per 0.3 s fade)',
       ).toBeLessThanOrEqual(Math.ceil(burstMs / 300) + 1);
       const lastAccepted = accepted.at(-1)!.body as { sceneId: string };
       await expect
         .poll(() => programId(api, production), { timeout: 8000 })
         .toBe(lastAccepted.sceneId);
-      const name = { [a]: 'Szene A', [b]: 'Szene B', [c]: 'Szene C' }[lastAccepted.sceneId]!;
+      const name = { [a]: 'Scene A', [b]: 'Scene B', [c]: 'Scene C' }[lastAccepted.sceneId]!;
       for (const view of [pageA, pageB]) {
         await expect(monitorOf(view, 'program').locator('.c-monitor__name')).toHaveText(name);
       }
@@ -1073,13 +1073,13 @@ test.describe('REGIE two operators and rapid input', () => {
         .toEqual([`${lastAccepted.sceneId}:1`]);
       for (const log of [await toastLog(pageA), await toastLog(pageB)])
         expect(
-          log.filter((text) => !/ist live$|nicht|Szene/.test(text) || /Fehler|konnte/.test(text)),
+          log.filter((text) => !/is live$|not|Scene/.test(text) || /error|could not/.test(text)),
           'no error toast',
         ).toEqual([]);
       for (const log of [await toastLog(pageA), await toastLog(pageB)])
-        expect(log.every((text) => /ist live$/.test(text))).toBe(true);
+        expect(log.every((text) => /is live$/.test(text))).toBe(true);
       // Nothing stays stuck: a click later works.
-      const next = lastAccepted.sceneId === a ? 'Szene B' : 'Szene A';
+      const next = lastAccepted.sceneId === a ? 'Scene B' : 'Scene A';
       await regie.scene(next).click();
       await expect(regie.scene(next)).toHaveAttribute('aria-pressed', 'true');
       expect(regie.problems.pageErrors).toEqual([]);
@@ -1095,8 +1095,8 @@ test.describe('REGIE two operators and rapid input', () => {
       const page = regie.page;
       await api.updateScene(production.id, b, { background: { color: '#102030', assetId: null } });
       await replaceItems(api, production, b, []);
-      const blocked = await pairPhone(pairContext, { name: 'Handy Gesperrt' });
-      const gone = await pairLaptopByLink(pairContext, { name: 'Laptop Weg' });
+      const blocked = await pairPhone(pairContext, { name: 'Phone Blocked' });
+      const gone = await pairLaptopByLink(pairContext, { name: 'Laptop Gone' });
       await replaceItems(api, production, c, [
         item('itm_blocked1', blocked.sourceId(), { x: 100, y: 100, w: 600, h: 338 }),
         item('itm_gone0001', gone.sourceId(), { x: 800, y: 300, w: 600, h: 338 }),
@@ -1106,11 +1106,11 @@ test.describe('REGIE two operators and rapid input', () => {
       await api.startBroadcast(production.id);
       const output = await openOutput(production);
       await output.stage();
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await regie.waitForConvergence(production.id);
 
-      await regie.clickScene('Szene B');
-      await expect(toastOf(page)).toContainText('«Szene B» ist live');
+      await regie.clickScene('Scene B');
+      await expect(toastOf(page)).toContainText('“Scene B” is live');
       await expect
         .poll(
           async () => {
@@ -1126,8 +1126,8 @@ test.describe('REGIE two operators and rapid input', () => {
         .toBeGreaterThan(0.95);
       await expect.poll(async () => (await renderedItems(output.page, '#output')).length).toBe(0);
 
-      await regie.clickScene('Szene C');
-      await expect(toastOf(page)).toContainText('«Szene C» ist live');
+      await regie.clickScene('Scene C');
+      await expect(toastOf(page)).toContainText('“Scene C” is live');
       await expect.poll(() => programId(api, production)).toBe(c);
       await expect.poll(async () => (await renderedItems(output.page, '#output')).length).toBe(2);
       await expect.poll(async () => (await renderedItems(page, 'program')).length).toBe(2);
@@ -1142,7 +1142,7 @@ test.describe('REGIE two operators and rapid input', () => {
     async ({ regie, api, production }) => {
       const [a, b] = await seedColoured(api, production);
       const page = regie.page;
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       await regie.setStudioMode(true);
       await expect.poll(() => previewId(api, production)).toBe(b);
       const takes = recordRequests(
@@ -1163,7 +1163,7 @@ test.describe('REGIE two operators and rapid input', () => {
       await page.keyboard.press('Space');
       await expect.poll(() => programId(api, production)).toBe(a);
       expect(takes).toHaveLength(2);
-      await expect(page.locator('.c-take__hint')).toHaveText('Leerschlag');
+      await expect(page.locator('.c-take__hint')).toHaveText('Space');
     },
   );
 });
@@ -1182,12 +1182,12 @@ test.describe('REGIE reduced motion', () => {
       await output.stage();
       await installAnimationHook(output.page);
       await installAnimationHook(page);
-      const longer = page.getByRole('button', { name: 'Blende länger' });
+      const longer = page.getByRole('button', { name: 'Longer fade' });
       for (let step = 0; step < 4; step++) await longer.click();
-      await page.getByRole('button', { name: 'Blende kürzer' }).click();
+      await page.getByRole('button', { name: 'Shorter fade' }).click();
       await expect(duration(page), 'the stepper keeps its value').toHaveText('1 s');
       const posts = programPosts(page);
-      await regie.clickScene('Szene B');
+      await regie.clickScene('Scene B');
       await expect.poll(() => posts.length).toBe(1);
       expect(posts[0]!.body, 'the request still sends the fade').toEqual({
         sceneId: b,
@@ -1196,7 +1196,7 @@ test.describe('REGIE reduced motion', () => {
       // The output (a default context, motion allowed) plays the 1 s fade.
       await expect.poll(async () => (await opacityFades(output.page, b)).length).toBe(1);
       expect((await opacityFades(output.page, b))[0]!.duration).toBe(1000);
-      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Szene B');
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene B');
       await page.waitForTimeout(1500);
       expect(await opacityFades(page), 'the Regie monitor cuts: no opacity animation').toHaveLength(
         0,

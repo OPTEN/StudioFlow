@@ -134,7 +134,7 @@ test.describe('NET canary', () => {
 
   test('E2E-NET-00 [lk-pause/netem/disconnect] pause, 200 ms netem and network disconnect of LiveKit act on real media', t.smoke, async ({ context, api, production, pairContext }) => {
     test.setTimeout(240_000);
-    const phone = await pairPhone(pairContext, { name: 'Canary Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Canary Phone' });
     const senderToken = (await phone.api.getDeviceLiveKitToken()).body;
     const sender = await LiveKitPage.open(context, 'sender');
     const viewer = await LiveKitPage.open(context, 'viewer');
@@ -193,7 +193,7 @@ test.describe('NET canary', () => {
   test('E2E-NET-00 [net.cut] cutting a publisher page stops its media at the subscriber and the publisher recovers after restore', t.smoke, async ({ context, api, production, pairContext }) => {
     test.setTimeout(120_000);
     await installInitScript(context);
-    const phone = await pairPhone(pairContext, { name: 'Cut Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Cut Phone' });
     const token = (await phone.api.getDeviceLiveKitToken()).body;
     const sender = await LiveKitPage.open(context, 'sender');
     const other = await context.browser()!.newContext({ ignoreHTTPSErrors: true });

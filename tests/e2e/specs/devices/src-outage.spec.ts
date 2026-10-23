@@ -14,7 +14,7 @@ import { t } from '../../support/tags';
 
 /**
  * SRC (Regie side of phone and laptop senders), docs/testing.md 2.5: the picture of a live phone, an outage in the six
- * places, the recovery that stays until «Gesehen», shared between operators, the returning source.
+ * places, the recovery that stays until “Seen”, shared between operators, the returning source.
  *
  * Phone outage method (documented once for the whole folder): `net.cut(context)` = `context.setOffline(true)` plus closing
  * every WebSocket (device hub, LiveKit signalling) and RTCPeerConnection of that phone's browser context. It is the
@@ -34,29 +34,29 @@ test.describe('SRC outage, phone', () => {
     t.smoke,
     async ({ regie, openPhone, pairContext, api, production }, testInfo) => {
       test.setTimeout(120_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Bühne', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone Stage', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       expect(k1.code).toBe('K1');
 
       const row = await openStation(regie, k1.device.id);
       await expect(row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
-      // Line 2: «2,8 Mbit/s 31 ms» once the first telemetry is there.
+      // Line 2: “2.8 Mbit/s 31 ms” once the first telemetry is there.
       const line = row.locator('.c-st__l2');
-      await expect(line, 'metrics line «<n,n> Mbit/s <n> ms»').toHaveText(/^\s*\d+,\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
+      await expect(line, 'metrics line “<n.n> Mbit/s <n> ms”').toHaveText(/^\s*\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
 
       const details = row.locator('.c-st__kv');
-      await expect(details).toContainText('Gerät');
+      await expect(details).toContainText('Device');
       await expect(details, 'platform text of the Pixel 7 profile (Chrome reduces the user agent: no model)').toContainText(/(Android|Pixel 7) · Chrome/);
-      await expect(details).toContainText('Auflösung');
+      await expect(details).toContainText('Resolution');
       await expect(details, 'published resolution').toContainText(/720p/, { timeout: 15_000 });
-      await expect(details).toContainText(/Gekoppelt\s*heute \d\d:\d\d/);
-      await expect(details).toContainText(/Verlust\s*\d+,\d %/, { timeout: 15_000 });
+      await expect(details).toContainText(/Paired\s*today \d\d:\d\d/);
+      await expect(details).toContainText(/Packet loss\s*\d+\.\d%/, { timeout: 15_000 });
       const hasBattery = await k1.phone.page.evaluate(() => typeof (navigator as unknown as { getBattery?: unknown }).getBattery === 'function');
-      if (hasBattery) await expect(details, 'Akku row where the Battery API exists').toContainText(/Akku\s*\d+ %/, { timeout: 15_000 });
+      if (hasBattery) await expect(details, 'Battery row where the Battery API exists').toContainText(/Battery\s*\d+%/, { timeout: 15_000 });
 
-      // Docs: «Alle N Stationen ok» (regex ^Alle \d+ Stationen ok$). The product writes «1 Station ok» for one station.
+      // Docs: “All N stations ok” (regex ^All \d+ stations ok$). The product writes “1 station ok” for one station.
       const chip = (await readPlaces(regie.page)).header;
-      expect(chip.text, 'health chip').toMatch(/^(Alle \d+ Stationen ok|1 Station ok)$/);
+      expect(chip.text, 'health chip').toMatch(/^(All \d+ stations ok|1 station ok)$/);
       expect(chip.lamp, 'green lamp').toBe('');
 
       // Values change within 3 s (telemetry every 2 s).
@@ -77,8 +77,8 @@ test.describe('SRC outage, phone', () => {
     t.smoke,
     async ({ regie, openPhone, openLaptop, openOutput, pairContext, api, production }, testInfo) => {
       test.setTimeout(240_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
-      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Handy Zwei', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
+      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Phone Two', { profile: 'pixel7' });
       const s1 = await liveLaptop({ openLaptop }, pairContext, regie, 'Laptop Lea');
       expect([k1.code, k2.code, s1.code]).toEqual(['K1', 'K2', 'S1']);
       // K1 in the program scene (A) and in the preview scene (B); K2 and S1 in scene C.
@@ -90,12 +90,12 @@ test.describe('SRC outage, phone', () => {
       await api.startBroadcast(production.id);
       const output = await openOutput(production);
       await output.waitForPlayingVideos(1);
-      // «hold 3 s»: every station has reported at least once (metrics line), so nothing is still «verbindet …».
+      // “hold 3 s”: every station has reported at least once (metrics line), so nothing is still “connecting…”.
       for (const code of ['K1', 'K2', 'S1']) {
         await expect.poll(async () => (await readPlaces(regie.page)).stations.find((row) => row.codes.includes(code))?.line ?? '', { message: `${code} shows its metrics`, timeout: 20_000 }).toMatch(/Mbit\/s/);
       }
       await sleep(3000);
-      expect((await readPlaces(regie.page)).header.text).toBe('Alle 3 Stationen ok');
+      expect((await readPlaces(regie.page)).header.text).toBe('All 3 stations ok');
 
       const startedAt = Date.now();
       await net.cut(k1.phone.context);
@@ -106,16 +106,16 @@ test.describe('SRC outage, phone', () => {
 
       // The timer counts; K2 and S1 are untouched.
       const strip = outage.places.strip.find((entry) => entry.code === 'K1')!;
-      expect(strip.name).toContain('Handy Eins');
-      expect(strip.place, 'where it is on air').toBe('im Program');
+      expect(strip.name).toContain('Phone One');
+      expect(strip.place, 'where it is on air').toBe('on Program');
       const timerA = strip.timer;
       await expect.poll(async () => (await readPlaces(regie.page)).strip.find((entry) => entry.code === 'K1')?.timer, { message: 'the timer counts', timeout: 5_000 }).not.toBe(timerA);
       for (const other of ['K2', 'S1']) {
         const station = (await readPlaces(regie.page)).stations.find((row) => row.codes.includes(other))!;
         expect(station.tone, `${other} stays calm`).toBe('');
-        expect(station.line).not.toContain('verbindet neu');
+        expect(station.line).not.toContain('reconnecting');
       }
-      expect(await logTexts(api, production), 'log entry').toContain('K1 verbindet neu');
+      expect(await logTexts(api, production), 'log entry').toContain('K1 reconnecting');
 
       // The output keeps K1's item on the stage with its last frame (OUT-06 owns the hold timings; the output page has no
       // data-state attribute, so this only checks that the item and its video element stay).
@@ -125,39 +125,39 @@ test.describe('SRC outage, phone', () => {
   );
 
   test(
-    'E2E-SRC-03 [ui] the recovery stays until «Gesehen»: still there after 30 s, then a calm strip with the last events',
+    'E2E-SRC-03 [ui] the recovery stays until “Seen”: still there after 30 s, then a calm strip with the last events',
     t.smoke,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(240_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.line ?? '', { timeout: 20_000 }).toMatch(/Mbit\/s/);
 
       await net.cut(k1.phone.context);
       await waitForOutage(regie, 'K1', 'reconnecting');
-      await sleep(9000); // «goOnline() after 9 s»
+      await sleep(9000); // “goOnline() after 9 s”
       await net.restore(k1.phone.context);
       const back = await waitForRecovered(regie, 'K1', { timeoutMs: 40_000 });
-      expect(back.seconds, '«war N s weg» is a number').not.toBeNull();
+      expect(back.seconds, '“was gone for N s” is a number').not.toBeNull();
 
       const row = regie.page.locator(`.c-st[data-device="${k1.device.id}"]`);
-      await expect(row.locator('.c-st__ack')).toContainText('Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.');
+      await expect(row.locator('.c-st__ack')).toContainText('The station is back. Confirm to dismiss the message.');
       const chip = (await readPlaces(regie.page)).header;
-      expect(chip.text, 'recovered entries are no faults').toMatch(/^(Alle \d+ Stationen ok|1 Station ok)$/);
+      expect(chip.text, 'recovered entries are no faults').toMatch(/^(All \d+ stations ok|1 station ok)$/);
       expect(chip.lamp).toBe('');
 
-      // Nobody pressed «Gesehen»: the entry is still there after 30 s.
+      // Nobody pressed “Seen”: the entry is still there after 30 s.
       await sleep(30_000);
       expect(checkRecovered(await readPlaces(regie.page), 'K1').ok, 'still recovered after 30 s').toBe(true);
 
       const logBefore = await logTexts(api, production);
-      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Gesehen' }).click();
-      await expect(regie.page.locator('sf-status-line .c-status__ok')).toHaveText(/Keine offenen Meldungen/);
-      await expect(regie.page.locator('sf-status-line .c-status__label')).toHaveText('Letzte Ereignisse');
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Seen' }).click();
+      await expect(regie.page.locator('sf-status-line .c-status__ok')).toHaveText(/No open messages/);
+      await expect(regie.page.locator('sf-status-line .c-status__label')).toHaveText('Recent events');
       const entries = (await regie.page.locator('sf-status-line .c-status__entry').allTextContents()).map((entry) => entry.replace(/\s+/g, ' ').trim());
       expect(entries.length).toBeLessThanOrEqual(4);
-      expect(entries[0], 'newest first').toMatch(/^\d\d:\d\d\s*K1 wieder da, war \d+ s weg$/);
-      expect(entries.some((entry) => /^\d\d:\d\d\s*K1 verbindet neu$/.test(entry)), 'the outage is in the last events').toBe(true);
+      expect(entries[0], 'newest first').toMatch(/^\d\d:\d\d\s*K1 is back, was gone for \d+ s$/);
+      expect(entries.some((entry) => /^\d\d:\d\d\s*K1 reconnecting$/.test(entry)), 'the outage is in the last events').toBe(true);
       expect(await logTexts(api, production), 'an acknowledgement writes no log entry').toEqual(logBefore);
     },
   );
@@ -168,7 +168,7 @@ test.describe('SRC outage, phone', () => {
     async ({ regie, openPhone, pairContext, api, production }, testInfo) => {
       knownDevBug('DEV-02', 'the media reconnect waits for an escalated SDK backoff although the network is back: 7-9 s');
       test.setTimeout(180_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await expectVideoPlaying(regie.page.locator('.c-monitor--program video').first(), { minFps: 8, timeout: 30_000 });
       await net.cut(k1.phone.context);
@@ -180,7 +180,7 @@ test.describe('SRC outage, phone', () => {
       let framesMs = -1;
       let okMs = -1;
       let okSince = -1;
-      // «ok» counts when it holds for 1 s: the false recovery of DEV-01 flashes for a few milliseconds and is replaced by a new outage.
+      // “ok” counts when it holds for 1 s: the false recovery of DEV-01 flashes for a few milliseconds and is replaced by a new outage.
       for (let attempt = 0; attempt < 400 && (framesMs < 0 || okMs < 0); attempt++) {
         if (framesMs < 0 && (await programFrames(regie.page)) > baseline + 3) framesMs = Date.now() - restoredAt;
         if (checkRecovered(await readPlaces(regie.page), 'K1').ok) {
@@ -189,21 +189,21 @@ test.describe('SRC outage, phone', () => {
         } else okSince = -1;
         await sleep(100);
       }
-      testInfo.annotations.push({ type: 'measurement', description: `T-RECOVER-SHORT (outage 9 s, network back -> frames advancing in the Program monitor ${framesMs} ms, -> ok + «wieder da» ${okMs} ms)` });
+      testInfo.annotations.push({ type: 'measurement', description: `T-RECOVER-SHORT (outage 9 s, network back -> frames advancing in the Program monitor ${framesMs} ms, -> ok + “back” ${okMs} ms)` });
       await testInfo.attach('recover-short.json', { body: JSON.stringify({ outageSeconds: 9, framesMs, okMs }, null, 2), contentType: 'application/json' });
       expect(framesMs, 'frames advancing again').toBeGreaterThan(-1);
       expect(framesMs, 'T-RECOVER-SHORT hard limit: network back -> frames advancing 3 s').toBeLessThanOrEqual(3000);
-      expect(okMs, '«ok» after the frames, hard limit 1 s').toBeLessThanOrEqual(framesMs + 1000);
+      expect(okMs, '“ok” after the frames, hard limit 1 s').toBeLessThanOrEqual(framesMs + 1000);
     },
   );
 
   test(
-    'E2E-SRC-03 [ui, no false recovery] one outage is one incident: a single «verbindet neu», a single «wieder da» with the real length (DEV-01)',
+    'E2E-SRC-03 [ui, no false recovery] one outage is one incident: a single “reconnecting”, a single “back” with the real length (DEV-01)',
     t.p0,
     async ({ regie, openPhone, pairContext, api, production, config, onCleanup }, testInfo) => {
-      knownDevBug('DEV-01', 'the first report after the hub reconnect flips the slot ok -> reconnecting: a bogus «wieder da» and a second incident');
+      knownDevBug('DEV-01', 'the first report after the hub reconnect flips the slot ok -> reconnecting: a bogus “back” and a second incident');
       test.setTimeout(180_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
       await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.line ?? '', { timeout: 20_000 }).toMatch(/Mbit\/s/);
@@ -224,23 +224,23 @@ test.describe('SRC outage, phone', () => {
         .filter((event) => event.type === 'sourceUpserted' && (event as unknown as { source: { code: string } }).source.code === 'K1')
         .map((event) => `${event.revision} ${(event as unknown as { source: { status: string } }).source.status}`);
       await testInfo.attach('hub-events.txt', { body: [`log: ${JSON.stringify(log.slice(0, 8))}`, `K1 source events: ${sourceEvents.join(', ')}`].join('\n'), contentType: 'text/plain' });
-      expect(log.filter((text) => text === 'K1 verbindet neu'), 'one outage, one «verbindet neu»').toHaveLength(1);
-      const recovered = log.filter((text) => /^K1 wieder da, war \d+ s weg$/.test(text));
-      expect(recovered, 'one outage, one «wieder da»').toHaveLength(1);
-      const seconds = Number(/war (\d+) s/.exec(recovered[0]!)![1]);
+      expect(log.filter((text) => text === 'K1 reconnecting'), 'one outage, one “reconnecting”').toHaveLength(1);
+      const recovered = log.filter((text) => /^K1 is back, was gone for \d+ s$/.test(text));
+      expect(recovered, 'one outage, one “back”').toHaveLength(1);
+      const seconds = Number(/was gone for (\d+) s/.exec(recovered[0]!)![1]);
       const real = (backAt - cutAt) / 1000;
-      expect(seconds, `«war N s weg» is the length of the outage (about ${Math.round(real)} s)`).toBeGreaterThanOrEqual(Math.floor(real) - 4);
+      expect(seconds, `“was gone for N s” is the length of the outage (about ${Math.round(real)} s)`).toBeGreaterThanOrEqual(Math.floor(real) - 4);
       expect(sourceEvents.filter((entry) => entry.endsWith('ok')).length, 'the slot is ok again exactly once after the cut').toBe(1);
     },
   );
 
   test(
-    'E2E-SRC-04 [ui] «Gesehen» is shared between two operators; a simultaneous click of the second one is answered 404 without an error toast',
+    'E2E-SRC-04 [ui] “Seen” is shared between two operators; a simultaneous click of the second one is answered 404 without an error toast',
     t.p0,
     async ({ regie, openRegie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
       const other = await openRegie();
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.line ?? '', { timeout: 20_000 }).toMatch(/Mbit\/s/);
       await net.cut(k1.phone.context);
@@ -259,7 +259,7 @@ test.describe('SRC outage, phone', () => {
       // Both operators hold the button of the same entry; the clicks are fired in the same instant by the page itself (a
       // Playwright click waits for actionability and would miss the button once the first acknowledgement removed it).
       const arm = (page: typeof regie.page) => page.evaluate(() => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('sf-status-line .c-status__inc.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Gesehen');
+        const button = [...document.querySelectorAll<HTMLButtonElement>('sf-status-line .c-status__inc.is-ok button')].find((candidate) => candidate.textContent?.trim() === 'Seen');
         (window as unknown as { __ack?: HTMLButtonElement }).__ack = button;
         return Boolean(button);
       });
@@ -267,12 +267,12 @@ test.describe('SRC outage, phone', () => {
       const fire = (page: typeof regie.page) => page.evaluate(() => (window as unknown as { __ack: HTMLButtonElement }).__ack.click());
       await Promise.all([fire(regie.page), fire(other.page)]);
       for (const page of [regie.page, other.page]) {
-        await expect(page.locator('sf-status-line .c-status__ok'), 'entry gone in both within 1 s').toHaveText(/Keine offenen Meldungen/, { timeout: 1500 });
+        await expect(page.locator('sf-status-line .c-status__ok'), 'entry gone in both within 1 s').toHaveText(/No open messages/, { timeout: 1500 });
       }
       await expect.poll(() => acks.length, { message: 'both operators sent an acknowledgement', timeout: 5000 }).toBe(2);
       expect(acks.map((ack) => ack.status).sort(), 'one wins (204), the other is told it is gone (404)').toEqual([204, 404]);
       for (const regiePage of [regie, other]) {
-        await expect(regiePage.toast().filter({ hasText: /Fehler|nicht geklappt|Unbekannt/i }), 'no error toast').toHaveCount(0);
+        await expect(regiePage.toast().filter({ hasText: /error|did not work|unknown/i }), 'no error toast').toHaveCount(0);
       }
     },
   );
@@ -282,7 +282,7 @@ test.describe('SRC outage, phone', () => {
     t.p1,
     async ({ browser, regie, openPhone, pairContext, api, production, onCleanup }) => {
       test.setTimeout(180_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
 
       // A second Regie whose page clock runs 5 minutes ahead (it keeps ticking).
@@ -324,8 +324,8 @@ test.describe('SRC outage, phone', () => {
     t.p0,
     async ({ regie, openPhone, openOutput, pairContext, api, production }) => {
       test.setTimeout(240_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
-      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Handy Zwei', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
+      const k2 = await livePhone({ openPhone }, pairContext, regie, 'Phone Two', { profile: 'pixel7' });
       const rect: Rect = { x: 240, y: 135, w: 960, h: 540, fit: 'cover' };
       const itemK1 = await putInScene(api, production, 0, k1.sourceId, rect);
       const itemK2 = await putInScene(api, production, 0, k2.sourceId, { x: 960, y: 405, w: 800, h: 450, fit: 'cover' });
@@ -353,9 +353,9 @@ test.describe('SRC outage, phone', () => {
       expect(sceneAfter.items, 'the scene items (id, source, rectangle, order) are unchanged').toEqual(sceneBefore.items);
       expect(sceneAfter.items.map((item) => item.id)).toEqual([itemK1.id, itemK2.id]);
       const placesAfter = await readPlaces(regie.page);
-      expect(placesAfter.sources.map((row) => row.code), 'Quellen dock: no duplicate row').toEqual(rowsBefore);
+      expect(placesAfter.sources.map((row) => row.code), 'Sources dock: no duplicate row').toEqual(rowsBefore);
       expect(placesAfter.stations.length, 'no duplicate station').toBe(stationsBefore);
-      expect(placesAfter.stations.find((row) => row.name === 'Handy Eins')!.codes, 'code K1 unchanged').toEqual(['K1']);
+      expect(placesAfter.stations.find((row) => row.name === 'Phone One')!.codes, 'code K1 unchanged').toEqual(['K1']);
       expect((await production.snapshot()).sources.filter((source) => source.deviceId === k1.device.id)).toHaveLength(1);
       const boxAfter = (await output.items()).map((item) => ({ ...item.box }));
       expect(boxAfter.length).toBe(boxBefore.length);
@@ -370,7 +370,7 @@ test.describe('SRC outage, phone', () => {
     t.p1,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7' });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await putInScene(api, production, 1, k1.sourceId, FULL);
       await studioPreview(regie, api, production, 1);
@@ -398,7 +398,7 @@ test.describe('SRC outage, phone', () => {
         expect(outline, `${name}: dashed outline`).toBe('dashed');
       }
       // After the item's hold time (3 s default, counted from the moment LiveKit drops the track at the Regie, which is
-      // later than the API's «verbindet neu») the monitor shows the blurred, dimmed picture (and the sentence on a wide item).
+      // later than the API's “reconnecting”) the monitor shows the blurred, dimmed picture (and the sentence on a wide item).
       const lostAt = Date.now();
       await expect
         .poll(() => monitors[0]!.evaluate((element) => Boolean(element.querySelector('.sf-r-held') && getComputedStyle(element.querySelector('.sf-r-held')!).display !== 'none')), { message: 'dimmed after the hold time', timeout: 60_000, intervals: [250] })
@@ -407,7 +407,7 @@ test.describe('SRC outage, phone', () => {
       const [r0, g0, b0] = holding[0]!;
       const [r1, g1, b1] = await brightness(screens[0]!);
       expect(luma(r1, g1, b1), 'the dimmed picture is darker than the held one').toBeLessThan(luma(r0, g0, b0) * 0.8);
-      expect(await monitors[0]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-held-text') as HTMLElement).display), 'a full-canvas item is wide enough for «Bild kommt gleich zurück»').not.toBe('none');
+      expect(await monitors[0]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-held-text') as HTMLElement).display), 'a full-canvas item is wide enough for “Picture returns shortly”').not.toBe('none');
     },
   );
 });

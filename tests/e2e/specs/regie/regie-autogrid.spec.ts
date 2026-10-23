@@ -12,13 +12,13 @@ import {
 } from '../../support/regie/kit';
 
 /**
- * E2E-SCENE-06: Auto-Grid reflow when a camera drops (docs/testing.md 2.3). Four phones publish a camera into an Auto-Grid scene
+ * E2E-SCENE-06: Auto grid reflow when a camera drops (docs/testing.md 2.3). Four phones publish a camera into an Auto grid scene
  * that is on air; one of them goes away. After its hold time the other three fill a 2 + 1 grid, when it is back the grid
  * has four tiles again, and the pictures of the three others never restart (same `<video>` elements, frames keep coming).
  * The output page and the Regie's Program monitor are read through their DOM (the renderer's `.sf-r-item` rectangles in
  * canvas pixels).
  *
- * Two ways for the camera to go away: the sender stops it («Kamera stoppen», the track is unpublished at once: the reflow
+ * Two ways for the camera to go away: the sender stops it (“Stop camera”, the track is unpublished at once: the reflow
  * follows the 3 s hold time), and a cut network (`net.cut`: the browser closes its sockets and peers without a goodbye, so the
  * output only learns about it when LiveKit gives up on the participant - measured 24 s to more than 40 s here).
  */
@@ -42,7 +42,7 @@ type Way = 'stop' | 'cut';
 test.describe('REGIE auto-grid', () => {
   for (const way of ['stop', 'cut'] as Way[]) {
     test(
-      `E2E-SCENE-06 [regie, ${way === 'stop' ? 'camera stopped' : 'network cut'}] Auto-Grid reflow: a camera that drops leaves a 2 + 1 grid after its hold time and returns to its place; the other pictures keep playing`,
+      `E2E-SCENE-06 [regie, ${way === 'stop' ? 'camera stopped' : 'network cut'}] Auto grid reflow: a camera that drops leaves a 2 + 1 grid after its hold time and returns to its place; the other pictures keep playing`,
       way === 'stop' ? t.p1 : t.p2,
       async ({ regie, openPhone, openOutput, api, production, pairContext }) => {
         test.setTimeout(way === 'stop' ? 180_000 : 300_000);
@@ -58,7 +58,7 @@ test.describe('REGIE auto-grid', () => {
           const phone = await openPhone({
             camera: { width: 640, height: 360, fps: 15, stamp: false },
           });
-          devices.push(await pairViaApi(pairContext, phone, { name: `Handy ${index}` }));
+          devices.push(await pairViaApi(pairContext, phone, { name: `Phone ${index}` }));
           await phone.waitForCamera('live');
           phones.push(phone);
         }
@@ -66,15 +66,15 @@ test.describe('REGIE auto-grid', () => {
           await api.addSceneItem(production.id, sceneA, { source: device.sourceId() });
         await regie.waitForConvergence(production.id);
 
-        // The Auto-Grid template through the inspector, the scene on air, the output open.
-        await inspector(page).getByRole('button', { name: 'Auto-Grid', exact: true }).click();
-        await expectToast(page, 'Vorlage «Auto-Grid» angewendet');
+        // The Auto grid template through the inspector, the scene on air, the output open.
+        await inspector(page).getByRole('button', { name: 'Auto grid', exact: true }).click();
+        await expectToast(page, 'Template “Auto grid” applied');
         await expectScene(
           api,
           production,
           sceneA,
           (scene) => scene.layoutMode === 'autoGrid',
-          'the scene is in Auto-Grid mode',
+          'the scene is in Auto grid mode',
         );
         expect((await api.startBroadcast(production.id)).status).toBe(200);
         const output = await openOutput(production);

@@ -11,7 +11,7 @@ import { regieBug } from '../../support/regie/bugs';
 /**
  * DOCK in the Regie UI (docs/testing.md 2.9: E2E-DOCK-01 ... 10, 2.8 E2E-DEV-14): default arrangement, dragging docks with
  * the drop strips and the insertion line, splitters by pointer and keyboard, hide/show, reset, corrupted storage, the
- * pairing dock, Studio-Modus layout stability, per-browser persistence, side zones. The layout lives in
+ * pairing dock, Studio Mode layout stability, per-browser persistence, side zones. The layout lives in
  * `localStorage['studioflow.layout']` (version 1).
  */
 
@@ -19,10 +19,10 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 type DockId = 'scenes' | 'src' | 'insp' | 'st';
 const TITLES: Record<DockId, string> = {
-  scenes: 'Szenen',
-  src: 'Quellen',
-  insp: 'Eigenschaften',
-  st: 'Stationen',
+  scenes: 'Scenes',
+  src: 'Sources',
+  insp: 'Properties',
+  st: 'Stations',
 };
 const DEFAULT_WEIGHTS = { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, pair: 2.2 };
 const DEFAULT_LAYOUT = {
@@ -135,7 +135,7 @@ const zoneBox = (page: Page, zone: string) =>
 
 test.describe('REGIE docks', () => {
   test(
-    'E2E-DOCK-01 [regie] default arrangement: Szenen | Quellen | Eigenschaften | Stationen at the bottom, side zones empty, height clamp(240 px, 42 dvh, 420 px), 1 px seams',
+    'E2E-DOCK-01 [regie] default arrangement: Scenes | Sources | Properties | Stations at the bottom, side zones empty, height clamp(240 px, 42 dvh, 420 px), 1 px seams',
     t.p0,
     async ({ regie }) => {
       const page = regie.page;
@@ -181,7 +181,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-02 [regie] drag docks to the right, the left and back between two docks: ghost, drop strips, 3 px insertion line, toast with «Layout zurücksetzen», side widths, storage; under 5 px, Escape and pointercancel do nothing',
+    'E2E-DOCK-02 [regie] drag docks to the right, the left and back between two docks: ghost, drop strips, 3 px insertion line, toast with “Reset layout”, side widths, storage; under 5 px, Escape and pointercancel do nothing',
     t.smoke,
     async ({ regie }) => {
       const page = regie.page;
@@ -196,12 +196,12 @@ test.describe('REGIE docks', () => {
       await expect(toast).toHaveCount(0);
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st']);
 
-      // Stationen to the right edge: both empty zones show a dashed strip, the ghost follows the pointer.
+      // Stations to the right edge: both empty zones show a dashed strip, the ghost follows the pointer.
       let drag = await startDockDrag(page, 'st');
       await expect(page.locator('.c-dock-ghost')).toBeVisible();
-      await expect(page.locator('.c-dock-ghost')).toContainText('Stationen');
-      await expect(page.locator('[data-strip="right"]')).toHaveText('Rechts andocken');
-      await expect(page.locator('[data-strip="left"]')).toHaveText('Links andocken');
+      await expect(page.locator('.c-dock-ghost')).toContainText('Stations');
+      await expect(page.locator('[data-strip="right"]')).toHaveText('Dock on the right');
+      await expect(page.locator('[data-strip="left"]')).toHaveText('Dock on the left');
       await expect(
         page.locator('[data-strip="bottom"]'),
         'the bottom zone holds docks: no strip, an insertion line instead',
@@ -213,8 +213,8 @@ test.describe('REGIE docks', () => {
       await drag.gesture.to(await center(page.locator('[data-strip="right"]')), 8);
       await expect(page.locator('[data-strip="right"]')).toHaveClass(/is-hot/);
       await drag.gesture.end();
-      await expect(toast).toContainText('Stationen ist rechts angedockt');
-      await expect(toast.getByRole('button', { name: 'Layout zurücksetzen' })).toBeVisible();
+      await expect(toast).toContainText('Stations is docked on the right');
+      await expect(toast.getByRole('button', { name: 'Reset layout' })).toBeVisible();
       await expectZone(page, 'st', 'right');
       expect(Math.round((await zoneBox(page, 'right'))!.width), 'a new right zone is 340 px').toBe(
         340,
@@ -225,18 +225,18 @@ test.describe('REGIE docks', () => {
         zones: { left: [], bottom: ['scenes', 'src', 'insp'], right: ['st'] },
       });
 
-      // Then to the left edge (the right zone holds only Stationen, so it counts as empty again): 320 px.
+      // Then to the left edge (the right zone holds only Stations, so it counts as empty again): 320 px.
       drag = await startDockDrag(page, 'st');
       await drag.gesture.to(await center(page.locator('[data-strip="left"]')), 8);
       await expect(page.locator('[data-strip="left"]')).toHaveClass(/is-hot/);
       await drag.gesture.end();
-      await expect(toast).toContainText('Stationen ist links angedockt');
+      await expect(toast).toContainText('Stations is docked on the left');
       await expectZone(page, 'st', 'left');
       expect(Math.round((await zoneBox(page, 'left'))!.width), 'a new left zone is 320 px').toBe(
         320,
       );
 
-      // Back to the bottom, between Szenen and Quellen: a 3 px blue insertion line shows the target.
+      // Back to the bottom, between Scenes and Sources: a 3 px blue insertion line shows the target.
       drag = await startDockDrag(page, 'st');
       const scenes = (await dock(page, 'scenes').boundingBox())!;
       await drag.gesture.to(
@@ -251,7 +251,7 @@ test.describe('REGIE docks', () => {
         BLUE,
       );
       await drag.gesture.end();
-      await expect(toast).toContainText('Stationen ist unten angedockt');
+      await expect(toast).toContainText('Stations is docked at the bottom');
       await expectOrder(page, 'bottom', ['scenes', 'st', 'src', 'insp']);
       layout = await stored(page);
       expect(layout).toMatchObject({
@@ -316,7 +316,7 @@ test.describe('REGIE docks', () => {
       };
 
       // The seam above the bottom zone: +-100 px, then far beyond the limits (>= 150 px for the zone, >= 160 px for the stage).
-      const bottomSeam = 'Höhe der Docks unten';
+      const bottomSeam = 'Height of the docks at the bottom';
       const height = async () => (await zoneBox(page, 'bottom'))!.height;
       const base = await height();
       await dragSeparator(bottomSeam, 0, 80);
@@ -341,7 +341,7 @@ test.describe('REGIE docks', () => {
       expect((await stored(page))!['bottomH']).toBeNull();
 
       // The vertical seam of a side zone (left: 320 px by default; minimum 220 px).
-      const leftSeam = 'Breite der Docks links';
+      const leftSeam = 'Width of the docks on the left';
       const width = async () => Math.round((await zoneBox(page, 'left'))!.width);
       expect(await width()).toBe(320);
       await dragSeparator(leftSeam, 80, 0);
@@ -358,7 +358,7 @@ test.describe('REGIE docks', () => {
       await expectClose(width, 320, 1, 'left zone back to 320 px');
 
       // The seam between two docks of the bottom zone: weights change, the sum stays.
-      const between = 'Grösse von Szenen und Quellen';
+      const between = 'Size of Scenes and Sources';
       const widths = async () => [
         (await dock(page, 'scenes').boundingBox())!.width,
         (await dock(page, 'src').boundingBox())!.width,
@@ -388,21 +388,21 @@ test.describe('REGIE docks', () => {
         )
         .toBeLessThan(0.05);
 
-      // Preview | Program (Studio-Modus): the split follows within 0.3 ... 0.7.
+      // Preview | Program (Studio Mode): the split follows within 0.3 ... 0.7.
       await regie.setStudioMode(true);
       const monitors = async () => [
         (await page.locator('sf-monitor.c-monitor--preview').boundingBox())!.width,
         (await page.locator('sf-monitor.c-monitor--program').boundingBox())!.width,
       ];
       const [p0] = await monitors();
-      await dragSeparator('Grösse von Preview und Program', 40, 0);
+      await dragSeparator('Size of Preview and Program', 40, 0);
       const [p1] = await monitors();
       expect(p1, 'the Preview grew').toBeGreaterThan(p0 + 15);
-      await dragSeparator('Grösse von Preview und Program', 3000, 0);
+      await dragSeparator('Size of Preview and Program', 3000, 0);
       expect((await stored(page))!['split'], 'the split is capped at 0.7').toBeLessThanOrEqual(0.7);
-      await dragSeparator('Grösse von Preview und Program', -3000, 0);
+      await dragSeparator('Size of Preview and Program', -3000, 0);
       expect((await stored(page))!['split'], 'and at 0.3').toBeGreaterThanOrEqual(0.3);
-      await sep(page, 'Grösse von Preview und Program').dblclick();
+      await sep(page, 'Size of Preview and Program').dblclick();
       expect((await stored(page))!['split']).toBe(0.5);
       await expect
         .poll(async () => Math.abs((await monitors())[0] - p0), {
@@ -418,7 +418,7 @@ test.describe('REGIE docks', () => {
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
-      const seam = sep(page, 'Höhe der Docks unten');
+      const seam = sep(page, 'Height of the docks at the bottom');
       const shadow = () => seam.evaluate((element) => getComputedStyle(element).boxShadow);
       expect(await shadow()).toBe('none');
       await seam.hover();
@@ -429,7 +429,7 @@ test.describe('REGIE docks', () => {
       await expect.poll(shadow, { message: 'focus: blue ring' }).toContain(BLUE);
       expect(await seam.evaluate((element) => getComputedStyle(element).cursor)).toBe('row-resize');
       expect(
-        await sep(page, 'Grösse von Szenen und Quellen').evaluate(
+        await sep(page, 'Size of Scenes and Sources').evaluate(
           (element) => getComputedStyle(element).cursor,
         ),
       ).toBe('col-resize');
@@ -443,20 +443,20 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-04 [regie] «Docks und Layout»: hide and show each dock, hide all, restore; hidden docks leave the DOM, the others reflow, the state persists',
+    'E2E-DOCK-04 [regie] “Docks and layout”: hide and show each dock, hide all, restore; hidden docks leave the DOM, the others reflow, the state persists',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
       const open = async () => {
-        await page.getByRole('button', { name: 'Docks und Layout' }).click();
-        return page.getByRole('dialog', { name: 'Docks und Layout' });
+        await page.getByRole('button', { name: 'Docks and layout' }).click();
+        return page.getByRole('dialog', { name: 'Docks and layout' });
       };
       const popover = await open();
       for (const id of ['scenes', 'src', 'insp', 'st'] as const)
         await expect(popover.getByRole('checkbox', { name: TITLES[id] })).toBeChecked();
       const before = await dock(page, 'scenes').boundingBox();
 
-      await popover.getByRole('checkbox', { name: 'Quellen' }).uncheck();
+      await popover.getByRole('checkbox', { name: 'Sources' }).uncheck();
       await expect(
         dock(page, 'src'),
         'the hidden dock is gone from the DOM and the tab order',
@@ -467,7 +467,7 @@ test.describe('REGIE docks', () => {
         'the others reflow and grow',
       ).toBeGreaterThan(before!.width + 20);
       expect((await stored(page))!['hidden']).toEqual(['src']);
-      await expect(popover.getByRole('checkbox', { name: 'Quellen' })).not.toBeChecked();
+      await expect(popover.getByRole('checkbox', { name: 'Sources' })).not.toBeChecked();
 
       for (const id of ['scenes', 'insp', 'st'] as const)
         await popover.getByRole('checkbox', { name: TITLES[id] }).uncheck();
@@ -494,7 +494,7 @@ test.describe('REGIE docks', () => {
       await page.keyboard.press('Escape');
       await expect(popover).toBeHidden();
       // A reload keeps what was hidden.
-      await (await open()).getByRole('checkbox', { name: 'Stationen' }).uncheck();
+      await (await open()).getByRole('checkbox', { name: 'Stations' }).uncheck();
       await page.reload();
       await regie.waitReady();
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp']);
@@ -503,7 +503,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-05 [regie] reset: «Layout zurücksetzen» in the popover and the toast action restore zones, sizes, weights and hidden docks',
+    'E2E-DOCK-05 [regie] reset: “Reset layout” in the popover and the toast action restore zones, sizes, weights and hidden docks',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
@@ -518,23 +518,23 @@ test.describe('REGIE docks', () => {
         weights: { ...DEFAULT_WEIGHTS, insp: 3 },
       });
       await expectZone(page, 'scenes', 'left');
-      await page.getByRole('button', { name: 'Docks und Layout' }).click();
-      await page.getByRole('button', { name: 'Layout zurücksetzen' }).click();
-      await expect(toastOf(page)).toContainText('Layout zurückgesetzt');
+      await page.getByRole('button', { name: 'Docks and layout' }).click();
+      await page.getByRole('button', { name: 'Reset layout' }).click();
+      await expect(toastOf(page)).toContainText('Layout reset');
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st']);
       expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
       await page.keyboard.press('Escape');
 
       // Rearrange by keyboard, then use the toast action.
       const grip = page.getByRole('button', {
-        name: 'Dock Stationen verschieben, mit Pfeiltasten',
+        name: 'Move dock Stations with the arrow keys',
       });
       await grip.focus();
       await page.keyboard.press('ArrowRight');
-      await expect(toastOf(page)).toContainText('Stationen ist rechts angedockt');
+      await expect(toastOf(page)).toContainText('Stations is docked on the right');
       await expectZone(page, 'st', 'right');
-      await toastOf(page).getByRole('button', { name: 'Layout zurücksetzen' }).click();
-      await expect(toastOf(page)).toContainText('Layout zurückgesetzt');
+      await toastOf(page).getByRole('button', { name: 'Reset layout' }).click();
+      await expect(toastOf(page)).toContainText('Layout reset');
       await expectZone(page, 'st', 'bottom');
       expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
     },
@@ -635,13 +635,13 @@ test.describe('REGIE docks', () => {
       await page.goto('/');
       await view.waitReady();
       await page.evaluate(() => localStorage.setItem('studioflow.layout', '{broken')); // survived the load unchanged
-      await page.getByRole('button', { name: 'Docks und Layout' }).click();
-      await page.getByRole('checkbox', { name: 'Stationen' }).uncheck();
+      await page.getByRole('button', { name: 'Docks and layout' }).click();
+      await page.getByRole('checkbox', { name: 'Stations' }).uncheck();
       const fixed = await stored(page);
       expect(fixed).toMatchObject({ v: 1, hidden: ['st'] });
       await page.close();
 
-      // Studio-Modus and transition: invalid values mean off and Blende 0,3 s.
+      // Studio Mode and transition: invalid values mean off and Fade 0.3 s.
       for (const studio of ['yes', '2', '']) {
         const next = await context.newPage();
         await next.addInitScript(
@@ -666,10 +666,10 @@ test.describe('REGIE docks', () => {
         await next.goto('/');
         await nextView.waitReady();
         await expect(
-          nextView.transitionOption('Blende'),
-          `transition ${transition} means Blende`,
+          nextView.transitionOption('Fade'),
+          `transition ${transition} means Fade`,
         ).toHaveAttribute('aria-pressed', 'true');
-        await expect(next.locator('.c-duration__value')).toHaveText('0,3 s');
+        await expect(next.locator('.c-duration__value')).toHaveText('0.3 s');
         await next.close();
       }
 
@@ -687,15 +687,15 @@ test.describe('REGIE docks', () => {
       await blocked.goto('/');
       await blockedView.waitReady();
       await expectOrder(blocked, 'bottom', ['scenes', 'src', 'insp', 'st']);
-      await blocked.getByRole('button', { name: 'Docks und Layout' }).click();
-      await blocked.getByRole('checkbox', { name: 'Stationen' }).uncheck();
+      await blocked.getByRole('button', { name: 'Docks and layout' }).click();
+      await blocked.getByRole('checkbox', { name: 'Stations' }).uncheck();
       await expectOrder(blocked, 'bottom', ['scenes', 'src', 'insp'], 'the layout works in memory');
       expect(blockedView.problems.pageErrors).toEqual([]);
     },
   );
 
   test(
-    'E2E-DOCK-07 [regie] the pairing dock takes the place of Quellen and Eigenschaften; closing (X button, Escape) restores them and the focus; knock cards move with it',
+    'E2E-DOCK-07 [regie] the pairing dock takes the place of Sources and Properties; closing (X button, Escape) restores them and the focus; knock cards move with it',
     t.p1,
     async ({ regie, production }) => {
       const page = regie.page;
@@ -710,10 +710,10 @@ test.describe('REGIE docks', () => {
         pollToken: knock.body.pollToken,
       });
       const card = (scope: Locator) =>
-        scope.getByRole('group', { name: 'Kopplungsanfrage' }).filter({ hasText: 'Laptop Dock' });
+        scope.getByRole('group', { name: 'Pairing request' }).filter({ hasText: 'Laptop Dock' });
       await expect(
         card(stationsDock(page)),
-        'the knock card shows in Stationen while the pairing dock is closed',
+        'the knock card shows in Stations while the pairing dock is closed',
       ).toBeVisible({ timeout: 5000 });
 
       const trigger = regie.pairButton();
@@ -723,7 +723,7 @@ test.describe('REGIE docks', () => {
         page,
         'bottom',
         ['scenes', 'pair', 'st'],
-        'Gerät koppeln sits where Quellen was',
+        'Pair device sits where Sources was',
       );
       await expect(dock(page, 'src')).toHaveCount(0);
       await expect(dock(page, 'insp')).toHaveCount(0);
@@ -731,9 +731,9 @@ test.describe('REGIE docks', () => {
         card(regie.pairingDock()),
         'the knock card is in the pairing dock side column',
       ).toBeVisible();
-      await expect(card(stationsDock(page)), 'and no longer in Stationen').toHaveCount(0);
+      await expect(card(stationsDock(page)), 'and no longer in Stations').toHaveCount(0);
 
-      // X button: the docks return, the focus goes back to «Gerät koppeln».
+      // X button: the docks return, the focus goes back to “Pair device”.
       await regie.closePairing();
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st']);
       await expect(trigger).toBeFocused();
@@ -746,7 +746,7 @@ test.describe('REGIE docks', () => {
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st']);
       await expect(trigger).toBeFocused();
 
-      // A custom layout: Quellen and Eigenschaften on the right, Eigenschaften first: the dock takes the first of them.
+      // A custom layout: Sources and Properties on the right, Properties first: the dock takes the first of them.
       await seedLayout(regie, {
         ...DEFAULT_LAYOUT,
         zones: { left: [], bottom: ['scenes', 'st'], right: ['insp', 'src'] },
@@ -765,7 +765,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-08 [regie] Studio-Modus with a custom layout: docks and control column keep their boxes, the mode survives a reload and is per browser',
+    'E2E-DOCK-08 [regie] Studio Mode with a custom layout: docks and control column keep their boxes, the mode survives a reload and is per browser',
     t.p1,
     async ({ regie, openRegie }) => {
       const page = regie.page;
@@ -827,8 +827,8 @@ test.describe('REGIE docks', () => {
       await expectZone(second.page, 'scenes', 'bottom', 'the other browser has its own layout');
 
       // Logout (production menu) and login again through the form: the layout is still there.
-      await first.page.getByRole('button', { name: /^Produktion .*, Menü$/ }).click();
-      await first.page.getByRole('button', { name: 'Abmelden' }).click();
+      await first.page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      await first.page.getByRole('button', { name: 'Sign out' }).click();
       await expect(first.page).toHaveURL(/\/login/);
       await first.loginViaUi();
       await first.waitReady();
@@ -875,7 +875,7 @@ test.describe('REGIE docks', () => {
       });
       await expect(page.locator('.c-workspace__zone--bottom')).toHaveClass(/is-empty/);
       await expect(
-        page.getByRole('separator', { name: 'Höhe der Docks unten' }),
+        page.getByRole('separator', { name: 'Height of the docks at the bottom' }),
         'no seam for an empty bottom zone',
       ).toHaveCount(0);
       await expectOrder(page, 'right', ['scenes', 'src', 'insp', 'st']);
@@ -885,16 +885,16 @@ test.describe('REGIE docks', () => {
         ...DEFAULT_LAYOUT,
         zones: { left: ['scenes', 'src'], bottom: [], right: ['insp', 'st'] },
       });
-      await expect(page.getByRole('separator', { name: 'Breite der Docks links' })).toBeVisible();
-      await expect(page.getByRole('separator', { name: 'Breite der Docks rechts' })).toBeVisible();
+      await expect(page.getByRole('separator', { name: 'Width of the docks on the left' })).toBeVisible();
+      await expect(page.getByRole('separator', { name: 'Width of the docks on the right' })).toBeVisible();
       await checkFits('left and right');
       // The docks of the bottom zone hidden through the popover.
       await seedLayout(regie, DEFAULT_LAYOUT);
-      await page.getByRole('button', { name: 'Docks und Layout' }).click();
+      await page.getByRole('button', { name: 'Docks and layout' }).click();
       for (const id of ['scenes', 'src', 'insp', 'st'] as const)
         await page.getByRole('checkbox', { name: TITLES[id] }).uncheck();
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('separator', { name: 'Höhe der Docks unten' })).toHaveCount(0);
+      await expect(page.getByRole('separator', { name: 'Height of the docks at the bottom' })).toHaveCount(0);
       await checkFits('bottom docks hidden');
     },
   );
@@ -905,7 +905,7 @@ test.describe('REGIE docks', () => {
     async ({ regie, api, production }) => {
       await production.seed([...SCENES]);
       for (let index = 4; index <= 20; index++)
-        await api.createScene(production.id, { name: `Szene ${index}`, cloneFromSceneId: null });
+        await api.createScene(production.id, { name: `Scene ${index}`, cloneFromSceneId: null });
       const page = regie.page;
       await page.reload();
       await regie.waitReady();
@@ -962,26 +962,26 @@ test.describe('REGIE docks', () => {
 
 test.describe('REGIE docks by keyboard', () => {
   test(
-    'E2E-DEV-14 [regie] a dock moves with the arrow keys on its grip (left > bottom > right and back, no wrap) with toast and «Layout zurücksetzen»; focus stays; splitters move 16 px (Shift 64 px) and reset on Enter',
+    'E2E-DEV-14 [regie] a dock moves with the arrow keys on its grip (left > bottom > right and back, no wrap) with toast and “Reset layout”; focus stays; splitters move 16 px (Shift 64 px) and reset on Enter',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
       const grip = (id: DockId) =>
-        page.getByRole('button', { name: `Dock ${TITLES[id]} verschieben, mit Pfeiltasten` });
+        page.getByRole('button', { name: `Move dock ${TITLES[id]} with the arrow keys` });
       const toast = toastOf(page);
       await grip('scenes').focus();
 
-      // Szenen is first at the bottom: ArrowRight walks through the bottom zone, then into the right zone.
+      // Scenes is first at the bottom: ArrowRight walks through the bottom zone, then into the right zone.
       await page.keyboard.press('ArrowRight');
-      await expect(toast).toContainText('Szenen ist unten angedockt');
-      await expect(toast.getByRole('button', { name: 'Layout zurücksetzen' })).toBeVisible();
+      await expect(toast).toContainText('Scenes is docked at the bottom');
+      await expect(toast.getByRole('button', { name: 'Reset layout' })).toBeVisible();
       await expectOrder(page, 'bottom', ['src', 'scenes', 'insp', 'st']);
       await expect(grip('scenes'), 'the focus stays on the grip').toBeFocused();
       await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await expectOrder(page, 'bottom', ['src', 'insp', 'st', 'scenes']);
       await page.keyboard.press('ArrowRight');
-      await expect(toast).toContainText('Szenen ist rechts angedockt');
+      await expect(toast).toContainText('Scenes is docked on the right');
       await expectZone(page, 'scenes', 'right');
       await expect(grip('scenes')).toBeFocused();
       await page.keyboard.press('ArrowRight');
@@ -994,19 +994,19 @@ test.describe('REGIE docks by keyboard', () => {
       });
       // And back: ArrowLeft returns to the bottom zone, on past its start into the left zone.
       await page.keyboard.press('ArrowLeft');
-      await expect(toast).toContainText('Szenen ist unten angedockt');
+      await expect(toast).toContainText('Scenes is docked at the bottom');
       await expectOrder(page, 'bottom', ['src', 'insp', 'st', 'scenes']);
       for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowLeft');
-      await expect(toast).toContainText('Szenen ist links angedockt');
+      await expect(toast).toContainText('Scenes is docked on the left');
       await expectZone(page, 'scenes', 'left');
       await page.keyboard.press('ArrowLeft');
       await page.keyboard.press('ArrowUp');
       await expectZone(page, 'scenes', 'left', 'no move beyond the left end');
-      await toast.getByRole('button', { name: 'Layout zurücksetzen' }).click();
+      await toast.getByRole('button', { name: 'Reset layout' }).click();
       expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
 
       // Splitters: 16 px per arrow, 64 px with Shift, Enter resets; orientation and names as pinned.
-      const bottomSeam = sep(page, 'Höhe der Docks unten');
+      const bottomSeam = sep(page, 'Height of the docks at the bottom');
       await expect(bottomSeam).toHaveAttribute('aria-orientation', 'horizontal');
       const height = async () => (await zoneBox(page, 'bottom'))!.height;
       const h0 = await height();
@@ -1023,8 +1023,8 @@ test.describe('REGIE docks by keyboard', () => {
       await bottomSeam.press('ArrowLeft'); // not an arrow of this axis
       await expectClose(height, h0, 1, 'height');
 
-      // The seam between two docks (Quellen | Eigenschaften, in the middle of the zone): 16 px per arrow, 64 px with Shift.
-      const between = sep(page, 'Grösse von Quellen und Eigenschaften');
+      // The seam between two docks (Sources | Properties, in the middle of the zone): 16 px per arrow, 64 px with Shift.
+      const between = sep(page, 'Size of Sources and Properties');
       await expect(between).toHaveAttribute('aria-orientation', 'vertical');
       const seamX = async () => {
         const box = (await between.boundingBox())!;
@@ -1039,9 +1039,9 @@ test.describe('REGIE docks by keyboard', () => {
       await page.keyboard.press('Enter');
       await expectClose(seamX, x0, 1, 'Enter resets the seam');
 
-      // Preview / Program (Studio-Modus on) and a side zone.
+      // Preview / Program (Studio Mode on) and a side zone.
       await regie.setStudioMode(true);
-      const monitorSeam = sep(page, 'Grösse von Preview und Program');
+      const monitorSeam = sep(page, 'Size of Preview and Program');
       await expect(monitorSeam).toHaveAttribute('aria-orientation', 'vertical');
       const previewWidth = async () =>
         (await page.locator('sf-monitor.c-monitor--preview').boundingBox())!.width;
@@ -1055,8 +1055,8 @@ test.describe('REGIE docks by keyboard', () => {
 
       await grip('st').focus();
       await page.keyboard.press('ArrowRight');
-      await expect(toast).toContainText('Stationen ist rechts angedockt');
-      const rightSeam = sep(page, 'Breite der Docks rechts');
+      await expect(toast).toContainText('Stations is docked on the right');
+      const rightSeam = sep(page, 'Width of the docks on the right');
       await expect(rightSeam).toHaveAttribute('aria-orientation', 'vertical');
       const rightWidth = async () => Math.round((await zoneBox(page, 'right'))!.width);
       expect(await rightWidth()).toBe(340);
@@ -1084,8 +1084,8 @@ test.describe('REGIE docks: edge seams', () => {
       );
       const page = regie.page;
       for (const name of [
-        'Grösse von Szenen und Quellen',
-        'Grösse von Eigenschaften und Stationen',
+        'Size of Scenes and Sources',
+        'Size of Properties and Stations',
       ]) {
         const seam = sep(page, name);
         const seamX = async () => {

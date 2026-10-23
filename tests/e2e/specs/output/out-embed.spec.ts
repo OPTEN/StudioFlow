@@ -42,7 +42,7 @@ test.describe('OUT embedding', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
+      const camera = await addCamera(deps, 'Camera One');
       const item = await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
 
@@ -166,7 +166,7 @@ test.describe('OUT embedding', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       const scene = production.sceneIds[0]!;
       // A 16:9 screen in a 600 x 600 item with contain fit (bars above and below), on a scene with a background colour.
       await api.updateScene(production.id, scene, { background: { color: '#102030', assetId: null } });
@@ -224,7 +224,7 @@ test.describe('OUT embedding', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       await placeItem(api, production, production.sceneIds[0]!, screens.sources[0]!, FULL);
       await goLive(api, production);
       const { output: embedded } = await openProbedOutput({ browser, onCleanup }, production, {}, { embed: { size: { width: 960, height: 540 }, title: 'Webinar Q4 live' } });
@@ -321,7 +321,7 @@ test.describe('OUT embedding', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
+      const camera = await addCamera(deps, 'Camera One');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const { output } = await openProbedOutput({ browser, onCleanup }, production, {}, { embed: { size: { width: 1280, height: 720 } } });
@@ -345,7 +345,7 @@ test.describe('OUT embedding', () => {
       expect(facts.userMedia, 'no getUserMedia call (the init script counts them)').toBe(0);
       expect(facts.display, 'no getDisplayMedia call').toBe(0);
       expect(facts.buttons).toBe(0);
-      expect(facts.text, 'no «Ton an» button or text').not.toMatch(/Ton/);
+      expect(facts.text, 'no “Sound on” button or text').not.toMatch(/sound|unmute/i);
       expect(await audioFlowing(frame), 'no audio RTP stream receives packets').toBe(0);
       expect([...output.problems.consoleErrors, ...output.problems.cspViolations].filter((text) => /autoplay|play\(\)|NotAllowed/i.test(text)), 'no autoplay-policy warning').toEqual([]);
     },

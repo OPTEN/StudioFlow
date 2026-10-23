@@ -42,20 +42,20 @@ test.describe('REGIE scenes', () => {
       await production.seed([...SCENES]);
       const [sceneA] = production.sceneIds;
       const page = regie.page;
-      await expect(regie.scene('Szene A')).toBeVisible();
-      await expect(inspectorTitle(page)).toHaveText('Szene');
+      await expect(regie.scene('Scene A')).toBeVisible();
+      await expect(inspectorTitle(page)).toHaveText('Scene');
 
       const name = page.locator('#sf-insp-name');
-      await expect(name).toHaveValue('Szene A');
-      await name.fill('Moderation');
+      await expect(name).toHaveValue('Scene A');
+      await name.fill('Hosting');
       await name.blur();
       // Within 1 s: row, Program monitor header, thumbnail label and API.
-      await expect(regie.scene('Moderation')).toBeVisible({ timeout: 1500 });
+      await expect(regie.scene('Hosting')).toBeVisible({ timeout: 1500 });
       await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText(
-        'Moderation',
+        'Hosting',
         { timeout: 1500 },
       );
-      await expect(scenesDock(page).locator('.sf-r-stage[aria-label="Moderation"]')).toHaveCount(
+      await expect(scenesDock(page).locator('.sf-r-stage[aria-label="Hosting"]')).toHaveCount(
         1,
         { timeout: 1500 },
       );
@@ -63,15 +63,15 @@ test.describe('REGIE scenes', () => {
         api,
         production,
         sceneA!,
-        (scene) => scene.name === 'Moderation',
+        (scene) => scene.name === 'Hosting',
         'the API has the new name',
         1500,
       );
-      await expect(inspectorSub(page)).toHaveText('Moderation');
+      await expect(inspectorSub(page)).toHaveText('Hosting');
 
       await page.reload();
       await regie.waitReady();
-      await expect(regie.scene('Moderation')).toBeVisible();
+      await expect(regie.scene('Hosting')).toBeVisible();
 
       // Invalid names are never sent: empty and whitespace only.
       const requests = recordRequests(
@@ -83,8 +83,8 @@ test.describe('REGIE scenes', () => {
         await name.blur();
         await expect(
           name,
-          `the field shows the current name again after «${bad.slice(0, 10)}»`,
-        ).toHaveValue('Moderation');
+          `the field shows the current name again after “${bad.slice(0, 10)}”`,
+        ).toHaveValue('Hosting');
       }
       expect(requests, 'no request for an invalid name').toHaveLength(0);
       // 81 characters: the field has maxlength 80, so the text is cut (never 81 saved), typed or pasted.
@@ -102,35 +102,35 @@ test.describe('REGIE scenes', () => {
       );
       expect((await getScene(api, production, sceneA!)).name).toBe('y'.repeat(80));
 
-      // The row menu «Umbenennen» (F2) edits the name in place: Enter saves, Escape cancels.
-      await page.getByRole('button', { name: /^Aktionen für Szene y+/ }).click();
-      await page.getByRole('menuitem', { name: /Umbenennen/ }).click();
-      const inline = page.getByRole('textbox', { name: 'Name der Szene' });
+      // The row menu “Rename” (F2) edits the name in place: Enter saves, Escape cancels.
+      await page.getByRole('button', { name: /^Actions for scene y+/ }).click();
+      await page.getByRole('menuitem', { name: /Rename/ }).click();
+      const inline = page.getByRole('textbox', { name: 'Scene name' });
       await expect(inline).toBeFocused();
-      await inline.fill('Gespräch');
+      await inline.fill('Conversation');
       await inline.press('Enter');
-      await expect(regie.scene('Gespräch')).toBeVisible();
-      await regie.scene('Gespräch').focus();
+      await expect(regie.scene('Conversation')).toBeVisible();
+      await regie.scene('Conversation').focus();
       await page.keyboard.press('F2');
       await expect(inline).toBeFocused();
-      await inline.fill('Verworfen');
+      await inline.fill('Discarded');
       await inline.press('Escape');
-      await expect(regie.scene('Gespräch')).toBeVisible();
-      expect((await getScene(api, production, sceneA!)).name).toBe('Gespräch');
+      await expect(regie.scene('Conversation')).toBeVisible();
+      expect((await getScene(api, production, sceneA!)).name).toBe('Conversation');
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
 
   test(
-    'E2E-SCENE-02 [regie] «+ Szene» appends «Neue Szene N» and opens its name; «Duplizieren» copies items with new ids; the second operator sees both; at 99 scenes the controls are disabled',
+    'E2E-SCENE-02 [regie] “+ Scene” appends “New scene N” and opens its name; “Duplicate” copies items with new ids; the second operator sees both; at 99 scenes the controls are disabled',
     t.p1,
     async ({ regie, openRegie, api, production }) => {
       await production.seed([...SCENES]);
       const page = regie.page;
       const m = await Promise.all([
-        uploadSolid(api, production, 'Rot', COLOR.red),
-        uploadSolid(api, production, 'Gruen', COLOR.green),
-        uploadSolid(api, production, 'Blau', COLOR.blue),
+        uploadSolid(api, production, 'Red', COLOR.red),
+        uploadSolid(api, production, 'Green', COLOR.green),
+        uploadSolid(api, production, 'Blue', COLOR.blue),
       ]);
       const sceneA = production.sceneIds[0]!;
       await addItems(
@@ -141,41 +141,41 @@ test.describe('REGIE scenes', () => {
         { x: 100, y: 100, w: 500, h: 281, radius: 6 },
       );
       const operatorB = await openRegie();
-      await expect(operatorB.scene('Szene A')).toBeVisible();
+      await expect(operatorB.scene('Scene A')).toBeVisible();
 
       // Create: appended with a default name, its name field is open and selected.
-      await page.getByRole('button', { name: 'Szene hinzufügen' }).click();
-      await expect(toastOf(page)).toContainText('Szene «Neue Szene 4» erstellt');
-      const inline = page.getByRole('textbox', { name: 'Name der Szene' });
+      await page.getByRole('button', { name: 'Add scene' }).click();
+      await expect(toastOf(page)).toContainText('Scene “New scene 4” created');
+      const inline = page.getByRole('textbox', { name: 'Scene name' });
       await expect(inline).toBeFocused();
-      await expect(inline).toHaveValue('Neue Szene 4');
-      await inline.fill('Gäste');
+      await expect(inline).toHaveValue('New scene 4');
+      await inline.fill('Guests');
       await inline.press('Enter');
-      await expect(regie.scene('Gäste')).toBeVisible();
+      await expect(regie.scene('Guests')).toBeVisible();
       await expect(
-        operatorB.scene('Gäste'),
+        operatorB.scene('Guests'),
         'the other operator sees the new scene within 1 s',
       ).toBeVisible({ timeout: 1500 });
       expect(await sceneNames(api, production.id)).toEqual([
-        'Szene A',
-        'Szene B',
-        'Szene C',
-        'Gäste',
+        'Scene A',
+        'Scene B',
+        'Scene C',
+        'Guests',
       ]);
 
-      // Duplicate «Szene A» (three items): «Szene A (Kopie)», same items, new item ids, appended at the end.
-      await page.getByRole('button', { name: 'Aktionen für Szene Szene A' }).click();
-      await page.getByRole('menuitem', { name: 'Duplizieren' }).click();
-      await expect(toastOf(page)).toContainText('Szene «Szene A (Kopie)» erstellt');
-      await expect(regie.scene('Szene A (Kopie)')).toBeVisible();
-      await expect(operatorB.scene('Szene A (Kopie)')).toBeVisible({ timeout: 1500 });
+      // Duplicate “Scene A” (three items): “Scene A (copy)”, same items, new item ids, appended at the end.
+      await page.getByRole('button', { name: 'Actions for scene Scene A' }).click();
+      await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+      await expect(toastOf(page)).toContainText('Scene “Scene A (copy)” created');
+      await expect(regie.scene('Scene A (copy)')).toBeVisible();
+      await expect(operatorB.scene('Scene A (copy)')).toBeVisible({ timeout: 1500 });
       const scenes = (await api.getSnapshot(production.id)).body.scenes;
       expect(scenes.map((scene) => scene.name)).toEqual([
-        'Szene A',
-        'Szene B',
-        'Szene C',
-        'Gäste',
-        'Szene A (Kopie)',
+        'Scene A',
+        'Scene B',
+        'Scene C',
+        'Guests',
+        'Scene A (copy)',
       ]);
       const [original, , , , copy] = scenes;
       expect(copy!.items.map((entry) => ({ ...entry, id: '' }))).toEqual(
@@ -200,24 +200,24 @@ test.describe('REGIE scenes', () => {
       const missing = LIMITS.scenes - scenes.length;
       for (let index = 0; index < missing; index++) {
         const created = await api.createScene(production.id, {
-          name: `Fuell ${index + 1}`,
+          name: `Filler ${index + 1}`,
           cloneFromSceneId: null,
         });
         expect(created.status, created.raw.text()).toBe(201);
       }
-      // The Regie follows the 94 new scenes live: «+ Szene» is already disabled, and stays so after a reload.
-      await expect(page.getByRole('button', { name: 'Szene hinzufügen' })).toBeDisabled();
+      // The Regie follows the 94 new scenes live: “+ Scene” is already disabled, and stays so after a reload.
+      await expect(page.getByRole('button', { name: 'Add scene' })).toBeDisabled();
       await page.reload();
       await regie.waitReady();
-      await expect(page.getByRole('button', { name: 'Szene hinzufügen' })).toBeDisabled();
-      await expect(page.getByRole('button', { name: 'Szene hinzufügen' })).toHaveAttribute(
+      await expect(page.getByRole('button', { name: 'Add scene' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Add scene' })).toHaveAttribute(
         'title',
-        'Höchstens 99 Szenen',
+        'At most 99 scenes',
       );
-      await page.getByRole('button', { name: 'Aktionen für Szene Szene A', exact: true }).click();
-      await expect(page.getByRole('menuitem', { name: 'Duplizieren' })).toBeDisabled();
+      await page.getByRole('button', { name: 'Actions for scene Scene A', exact: true }).click();
+      await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeDisabled();
       await page.keyboard.press('Escape');
-      const over = await api.createScene(production.id, { name: 'Nr 100', cloneFromSceneId: null });
+      const over = await api.createScene(production.id, { name: 'No 100', cloneFromSceneId: null });
       expect(over.status).toBe(409);
       expect(over.body.code).toBe('limit_reached');
       expect(regie.problems.pageErrors).toEqual([]);
@@ -225,84 +225,84 @@ test.describe('REGIE scenes', () => {
   );
 
   test(
-    'E2E-SCENE-03 [regie] delete a scene in Studio-Modus: confirmation, «Abbrechen» keeps it, keys re-map; the live scene cannot be deleted',
+    'E2E-SCENE-03 [regie] delete a scene in Studio Mode: confirmation, “Cancel” keeps it, keys re-map; the live scene cannot be deleted',
     t.smoke,
     async ({ regie, openRegie, api, production }) => {
       await production.seed([...SCENES]);
       const [sceneA, sceneB, sceneC] = production.sceneIds as [string, string, string];
       const page = regie.page;
       const operatorB = await openRegie();
-      await expect(operatorB.scene('Szene B')).toBeVisible();
+      await expect(operatorB.scene('Scene B')).toBeVisible();
 
-      // The inspector edits the preview scene in Studio-Modus: «Szene B» (the scene after the program).
+      // The inspector edits the preview scene in Studio Mode: “Scene B” (the scene after the program).
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio-Modus an: Preview und Take');
-      await expect(inspectorSub(page)).toHaveText('Szene B');
-      await inspector(page).getByRole('button', { name: 'Szene löschen' }).click();
-      const confirm = inspector(page).getByRole('group', { name: 'Szene löschen' });
+      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
+      await expect(inspectorSub(page)).toHaveText('Scene B');
+      await inspector(page).getByRole('button', { name: 'Delete scene' }).click();
+      const confirm = inspector(page).getByRole('group', { name: 'Delete scene' });
       await expect(confirm).toContainText(
-        '«Szene B» wird gelöscht. Das lässt sich nicht rückgängig machen.',
+        '“Scene B” will be deleted. This cannot be undone.',
       );
-      await confirm.getByRole('button', { name: 'Abbrechen' }).click();
+      await confirm.getByRole('button', { name: 'Cancel' }).click();
       await expect(confirm).toBeHidden();
-      expect(await sceneNames(api, production.id), '«Abbrechen» keeps the scene').toEqual([
-        'Szene A',
-        'Szene B',
-        'Szene C',
+      expect(await sceneNames(api, production.id), '“Cancel” keeps the scene').toEqual([
+        'Scene A',
+        'Scene B',
+        'Scene C',
       ]);
 
-      await inspector(page).getByRole('button', { name: 'Szene löschen' }).click();
+      await inspector(page).getByRole('button', { name: 'Delete scene' }).click();
       await inspector(page)
-        .getByRole('group', { name: 'Szene löschen' })
-        .getByRole('button', { name: 'Szene löschen' })
+        .getByRole('group', { name: 'Delete scene' })
+        .getByRole('button', { name: 'Delete scene' })
         .click();
-      await expect(toastOf(page)).toContainText('Szene «Szene B» gelöscht');
-      await expect(regie.scene('Szene B')).toHaveCount(0);
-      await expect(operatorB.scene('Szene B'), 'gone for the other operator').toHaveCount(0, {
+      await expect(toastOf(page)).toContainText('Scene “Scene B” deleted');
+      await expect(regie.scene('Scene B')).toHaveCount(0);
+      await expect(operatorB.scene('Scene B'), 'gone for the other operator').toHaveCount(0, {
         timeout: 1500,
       });
-      expect(await sceneNames(api, production.id)).toEqual(['Szene A', 'Szene C']);
-      await expect(regie.statusLine()).toContainText('Szene «Szene B» gelöscht');
+      expect(await sceneNames(api, production.id)).toEqual(['Scene A', 'Scene C']);
+      await expect(regie.statusLine()).toContainText('Scene “Scene B” deleted');
       // The preview moved to the neighbour before the delete (prototype), so it never points at a vanished scene.
       const snapshot = (await api.getSnapshot(production.id)).body;
       expect(snapshot.production.previewSceneId).toBe(sceneC);
       expect(snapshot.production.programSceneId).toBe(sceneA);
-      // Keys 1-9 follow the new order: in Studio-Modus they set the preview.
+      // Keys 1-9 follow the new order: in Studio Mode they set the preview.
       await page.keyboard.press('1');
-      await expect(regie.scene('Szene A')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('2');
-      await expect(regie.scene('Szene C')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Szene C')).toHaveAccessibleName(/^Szene C, in der Preview$/);
+      await expect(regie.scene('Scene C')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.scene('Scene C')).toHaveAccessibleName(/^Scene C, in Preview$/);
       expect(sceneB).toBeTruthy();
 
-      // The live scene: Studio-Modus on with preview = program (locked): hint, disabled button; REST says 409.
-      await regie.clickScene('Szene A');
-      await expect(inspector(page).getByRole('button', { name: 'Szene löschen' })).toBeDisabled();
-      await expect(inspector(page)).toContainText('Die Live-Szene lässt sich nicht löschen.');
-      await expect(inspector(page)).not.toContainText('Andere Szenen im Studio-Modus bearbeiten');
-      // Studio-Modus off: the inspector shows the program scene, the hint says how to edit another one.
+      // The live scene: Studio Mode on with preview = program (locked): hint, disabled button; REST says 409.
+      await regie.clickScene('Scene A');
+      await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
+      await expect(inspector(page)).toContainText('The live scene cannot be deleted.');
+      await expect(inspector(page)).not.toContainText('Edit other scenes in Studio Mode');
+      // Studio Mode off: the inspector shows the program scene, the hint says how to edit another one.
       await regie.setStudioMode(false);
-      await expect(inspector(page).getByRole('button', { name: 'Szene löschen' })).toBeDisabled();
+      await expect(inspector(page).getByRole('button', { name: 'Delete scene' })).toBeDisabled();
       await expect(inspector(page)).toContainText(
-        'Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.',
+        'The live scene cannot be deleted. Edit other scenes in Studio Mode.',
       );
       const refused = await api.deleteScene(production.id, sceneA);
       expect(refused.status).toBe(409);
       expect(refused.body.code).toBe('scene_is_live');
-      expect(await sceneNames(api, production.id)).toEqual(['Szene A', 'Szene C']);
+      expect(await sceneNames(api, production.id)).toEqual(['Scene A', 'Scene C']);
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
 
   test(
-    'E2E-SCENE-04 [regie] «+ Quelle»: only sources that are not in the scene and not blocked; defaults 1240/680 600x338 radius 12, selected, toast; empty menu text; empty scene text',
+    'E2E-SCENE-04 [regie] “+ Source”: only sources that are not in the scene and not blocked; defaults 1240/680 600x338 radius 12, selected, toast; empty menu text; empty scene text',
     t.smoke,
     async ({ regie, api, production, pairContext }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const phone = await pairPhone(pairContext, { name: 'Handy Eins' });
-      const blockedPhone = await pairPhone(pairContext, { name: 'Handy Gesperrt' });
+      const phone = await pairPhone(pairContext, { name: 'Phone One' });
+      const blockedPhone = await pairPhone(pairContext, { name: 'Phone Blocked' });
       const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Lea' });
       const image = await uploadSolid(api, production, 'Logo', COLOR.violet);
       expect((await api.blockDevice(production.id, blockedPhone.id)).status).toBe(200);
@@ -311,17 +311,17 @@ test.describe('REGIE scenes', () => {
       expect(blockedPhone.codes['camera']).toBe('K2');
       expect(laptop.codes['screen-1']).toBe('S1');
 
-      await expect(sourcesDock(page)).toContainText('Diese Szene ist leer.');
+      await expect(sourcesDock(page)).toContainText('This scene is empty.');
       await expect(sourcesDock(page)).toContainText(
-        'Füge eine Quelle hinzu oder wende eine Vorlage an.',
+        'Add a source or apply a template.',
       );
 
       const add = async (code: string) => {
         await sourcesDock(page)
-          .getByRole('button', { name: /^Quelle$/ })
+          .getByRole('button', { name: /^Source$/ })
           .click();
-        const menu = page.getByRole('menu', { name: 'Quelle hinzufügen' });
-        await expect(menu).toContainText('Zu «Szene A» hinzufügen');
+        const menu = page.getByRole('menu', { name: 'Add source' });
+        await expect(menu).toContainText('Add to “Scene A”');
         return menu;
       };
       const menu = await add('K1');
@@ -331,9 +331,9 @@ test.describe('REGIE scenes', () => {
         codes,
         'only sources that are not in the scene and not blocked (K2 is blocked), cameras, screens, media',
       ).toEqual(['K1', 'S1', 'M1']);
-      expect(menu.getByRole('group', { name: 'Kameras' })).toBeVisible();
+      expect(menu.getByRole('group', { name: 'Cameras' })).toBeVisible();
       await menu.getByRole('menuitem', { name: /K1/ }).click();
-      await expect(toastOf(page)).toContainText('K1 in «Szene A» eingefügt');
+      await expect(toastOf(page)).toContainText('K1 added to “Scene A”');
       let scene = await expectScene(
         api,
         production,
@@ -355,18 +355,18 @@ test.describe('REGIE scenes', () => {
       });
       expect(scene.items[0]!.crop).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
       expect(scene.items[0]!.onLost).toEqual({ holdMs: 3000, fallbackSource: null });
-      // The new element is selected: Quellen row pressed, inspector «Element» with «K1 · Handy Eins».
-      await expect(sourceRow(page, 'K1 Handy Eins')).toHaveAttribute('aria-pressed', 'true');
-      await expect(inspectorTitle(page)).toHaveText('Element');
-      await expect(inspectorSub(page)).toHaveText('K1 · Handy Eins');
+      // The new element is selected: Sources row pressed, inspector “Item” with “K1 · Phone One”.
+      await expect(sourceRow(page, 'K1 Phone One')).toHaveAttribute('aria-pressed', 'true');
+      await expect(inspectorTitle(page)).toHaveText('Item');
+      await expect(inspectorSub(page)).toHaveText('K1 · Phone One');
 
-      // The menu no longer lists K1; the screen gets «contain».
+      // The menu no longer lists K1; the screen gets “contain”.
       const menu2 = await add('S1');
       expect(
         (await menu2.getByRole('menuitem').allTextContents()).some((text) => /K1/.test(text)),
       ).toBe(false);
       await menu2.getByRole('menuitem', { name: /S1/ }).click();
-      await expect(toastOf(page)).toContainText('S1 in «Szene A» eingefügt');
+      await expect(toastOf(page)).toContainText('S1 added to “Scene A”');
       scene = await expectScene(
         api,
         production,
@@ -386,7 +386,7 @@ test.describe('REGIE scenes', () => {
 
       const menu3 = await add('M1');
       await menu3.getByRole('menuitem', { name: /M1/ }).click();
-      await expect(toastOf(page)).toContainText('M1 in «Szene A» eingefügt');
+      await expect(toastOf(page)).toContainText('M1 added to “Scene A”');
       scene = await expectScene(
         api,
         production,
@@ -406,10 +406,10 @@ test.describe('REGIE scenes', () => {
 
       // Everything is in: the empty-menu text (K2 stays out because it is blocked).
       await sourcesDock(page)
-        .getByRole('button', { name: /^Quelle$/ })
+        .getByRole('button', { name: /^Source$/ })
         .click();
-      const full = page.getByRole('menu', { name: 'Quelle hinzufügen' });
-      await expect(full).toContainText('Alle Quellen sind schon in dieser Szene.');
+      const full = page.getByRole('menu', { name: 'Add source' });
+      await expect(full).toContainText('All sources are already in this scene.');
       await expect(full.getByRole('menuitem', { name: /K2/ })).toHaveCount(0);
       await page.keyboard.press('Escape');
       await expect(full).toBeHidden();
@@ -424,8 +424,8 @@ test.describe('REGIE scenes', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const first = await uploadSolid(api, production, 'Eins', COLOR.red);
-      const second = await uploadSolid(api, production, 'Zwei', COLOR.green);
+      const first = await uploadSolid(api, production, 'One', COLOR.red);
+      const second = await uploadSolid(api, production, 'Two', COLOR.green);
       await addItems(api, production, sceneA, Array(LIMITS.itemsPerScene).fill(first.id), {
         x: 0,
         y: 0,
@@ -440,10 +440,10 @@ test.describe('REGIE scenes', () => {
       await expect(sourcesDock(page).locator('.c-dock-frame__count')).toHaveText('32');
 
       await sourcesDock(page)
-        .getByRole('button', { name: /^Quelle$/ })
+        .getByRole('button', { name: /^Source$/ })
         .click();
       await page.getByRole('menuitem', { name: /M2/ }).click();
-      await expect(toastOf(page)).toContainText(/höchstens 32 Elemente/);
+      await expect(toastOf(page)).toContainText(/at most 32 items/);
       expect((await getScene(api, production, sceneA)).items, 'no 33rd element').toHaveLength(32);
 
       // Partly outside the canvas is allowed (the stage clips it): the element is rendered and no error occurs.
@@ -482,60 +482,60 @@ test.describe('REGIE scenes', () => {
       const rows = (target: typeof page) =>
         target.locator('.c-scenes-dock__list .c-scene .c-scene__name').allTextContents();
 
-      // Via the menu: «Szene C» up, twice.
-      await page.getByRole('button', { name: 'Aktionen für Szene Szene C' }).click();
-      await expect(page.getByRole('menuitem', { name: /Nach unten/ })).toBeDisabled();
-      await page.getByRole('menuitem', { name: /Nach oben/ }).click();
-      await expect.poll(order).toEqual(['Szene A', 'Szene C', 'Szene B']);
-      await page.getByRole('button', { name: 'Aktionen für Szene Szene C' }).click();
-      await page.getByRole('menuitem', { name: /Nach oben/ }).click();
-      await expect.poll(order).toEqual(['Szene C', 'Szene A', 'Szene B']);
+      // Via the menu: “Scene C” up, twice.
+      await page.getByRole('button', { name: 'Actions for scene Scene C' }).click();
+      await expect(page.getByRole('menuitem', { name: /Move down/ })).toBeDisabled();
+      await page.getByRole('menuitem', { name: /Move up/ }).click();
+      await expect.poll(order).toEqual(['Scene A', 'Scene C', 'Scene B']);
+      await page.getByRole('button', { name: 'Actions for scene Scene C' }).click();
+      await page.getByRole('menuitem', { name: /Move up/ }).click();
+      await expect.poll(order).toEqual(['Scene C', 'Scene A', 'Scene B']);
       await expect
         .poll(() => rows(operatorB.page), {
           message: "the other operator's list reorders",
           timeout: 3000,
         })
-        .toEqual(['Szene C', 'Szene A', 'Szene B']);
+        .toEqual(['Scene C', 'Scene A', 'Scene B']);
       const snapshot = (await api.getSnapshot(production.id)).body;
       expect(snapshot.scenes.map((scene) => scene.sortOrder)).toEqual([0, 1, 2]);
       expect(snapshot.scenes.map((scene) => scene.id)).toEqual([sceneC, sceneA, sceneB]);
 
       // Alt+ArrowDown on the focused row moves it down; Alt+ArrowUp back.
-      await regie.scene('Szene C').focus();
+      await regie.scene('Scene C').focus();
       await page.keyboard.press('Alt+ArrowDown');
-      await expect.poll(order).toEqual(['Szene A', 'Szene C', 'Szene B']);
-      await expect(regie.scene('Szene C'), 'the row keeps the focus after it moved').toBeFocused();
+      await expect.poll(order).toEqual(['Scene A', 'Scene C', 'Scene B']);
+      await expect(regie.scene('Scene C'), 'the row keeps the focus after it moved').toBeFocused();
       await page.keyboard.press('Alt+ArrowUp');
-      await expect.poll(order).toEqual(['Szene C', 'Szene A', 'Szene B']);
+      await expect.poll(order).toEqual(['Scene C', 'Scene A', 'Scene B']);
       await page.keyboard.press('Alt+ArrowUp');
       expect(await order(), 'the first scene cannot move up').toEqual([
-        'Szene C',
-        'Szene A',
-        'Szene B',
+        'Scene C',
+        'Scene A',
+        'Scene B',
       ]);
 
       // Key 1 now selects the new first scene (direct mode: it goes live); a reload keeps the order.
       await page.locator('body').click({ position: { x: 5, y: 5 } });
       await page.keyboard.press('1');
-      await expect(regie.scene('Szene C')).toHaveAttribute('aria-pressed', 'true');
+      await expect(regie.scene('Scene C')).toHaveAttribute('aria-pressed', 'true');
       await expect
         .poll(async () => (await api.getSnapshot(production.id)).body.production.programSceneId)
         .toBe(sceneC);
       await page.reload();
       await regie.waitReady();
-      expect(await rows(page)).toEqual(['Szene C', 'Szene A', 'Szene B']);
+      expect(await rows(page)).toEqual(['Scene C', 'Scene A', 'Scene B']);
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
 
   test(
-    'E2E-SCENE-22 [regie] missing source: the element stays as a dark placeholder with «Quelle fehlt» in the Regie, without text on the output; the row is selectable and removable',
+    'E2E-SCENE-22 [regie] missing source: the element stays as a dark placeholder with “Source missing” in the Regie, without text on the output; the row is selectable and removable',
     t.p1,
     async ({ regie, openOutput, api, production, pairContext }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const phone = await pairPhone(pairContext, { name: 'Handy Eins' });
+      const phone = await pairPhone(pairContext, { name: 'Phone One' });
       const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Lea' });
       const scene = await addItems(api, production, sceneA, [laptop.sourceId(), phone.sourceId()], {
         x: 100,
@@ -552,12 +552,12 @@ test.describe('REGIE scenes', () => {
       expect((await api.deleteDevice(production.id, laptop.id)).status).toBe(204);
       await regie.waitForConvergence(production.id);
 
-      // Program monitor: the item is still drawn, as the dark placeholder (#121821) with the label «Quelle fehlt».
+      // Program monitor: the item is still drawn, as the dark placeholder (#121821) with the label “Source missing”.
       await expect.poll(async () => (await renderedItems(page, 'program')).length).toBe(2);
       const monitorItem = monitorOf(page, 'program').locator(
         `.sf-r-item[data-item-id="${laptopItem!.id}"]`,
       );
-      await expect(monitorItem).toContainText('Quelle fehlt');
+      await expect(monitorItem).toContainText('Source missing');
       expect(
         await monitorItem.evaluate((element) => getComputedStyle(element).backgroundColor),
       ).toBe('rgb(18, 24, 33)');
@@ -565,7 +565,7 @@ test.describe('REGIE scenes', () => {
         monitorOf(page, 'program').locator(
           `.c-edit-box[data-item-id="${laptopItem!.id}"] .c-edit-box__label`,
         ),
-      ).toContainText('Quelle fehlt');
+      ).toContainText('Source missing');
       // The thumbnail of the scene row draws it as well.
       expect(
         (await renderedItems(page, '.c-scenes-dock__list > sf-scene-row:nth-child(1)')).some(
@@ -585,20 +585,20 @@ test.describe('REGIE scenes', () => {
       const outputItem = (await renderedItems(output.page, '#output')).find(
         (entry) => entry.id === laptopItem!.id,
       )!;
-      expect(outputItem.text, 'the output shows no «Quelle fehlt»').toBe('');
+      expect(outputItem.text, 'the output shows no “Source missing”').toBe('');
       expect(
         await output.page
           .locator(`.sf-r-item[data-item-id="${laptopItem!.id}"]`)
           .evaluate((element) => getComputedStyle(element).backgroundColor),
       ).toBe('rgb(18, 24, 33)');
 
-      // The Quellen row is selectable and removable.
-      const row = sourcesDock(page).getByRole('button', { name: 'Auswählen: – Quelle fehlt' });
+      // The Sources row is selectable and removable.
+      const row = sourcesDock(page).getByRole('button', { name: 'Select: – Source missing' });
       await row.click();
       await expect(row).toHaveAttribute('aria-pressed', 'true');
-      await expect(inspectorSub(page)).toHaveText('Quelle fehlt');
-      await inspector(page).getByRole('button', { name: 'Aus Szene entfernen' }).click();
-      await expect(toastOf(page)).toContainText('aus «Szene A» entfernt');
+      await expect(inspectorSub(page)).toHaveText('Source missing');
+      await inspector(page).getByRole('button', { name: 'Remove from scene' }).click();
+      await expect(toastOf(page)).toContainText('removed from “Scene A”');
       await expectScene(
         api,
         production,
@@ -620,7 +620,7 @@ test.describe('REGIE scenes', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const image = await uploadSolid(api, production, 'Hintergrund', COLOR.violet);
+      const image = await uploadSolid(api, production, 'Background', COLOR.violet);
       await api.startBroadcast(production.id);
       const output = await openOutput(production);
       await output.stage();
@@ -634,7 +634,7 @@ test.describe('REGIE scenes', () => {
         );
       };
 
-      await inspector(page).getByLabel('Hintergrundfarbe').fill('#102030');
+      await inspector(page).getByLabel('Background colour').fill('#102030');
       await expectScene(
         api,
         production,
@@ -646,8 +646,8 @@ test.describe('REGIE scenes', () => {
         .poll(() => share('#102030'), { message: 'the output shows the colour', timeout: 8000 })
         .toBeGreaterThan(0.95);
       await inspector(page)
-        .getByLabel('Hintergrundbild')
-        .selectOption({ label: `${image.code} · Hintergrund` });
+        .getByLabel('Background image')
+        .selectOption({ label: `${image.code} · Background` });
       await expectScene(
         api,
         production,
@@ -658,7 +658,7 @@ test.describe('REGIE scenes', () => {
       await expect
         .poll(() => share('#9650c8'), { message: 'the image covers the colour', timeout: 8000 })
         .toBeGreaterThan(0.9);
-      await inspector(page).getByLabel('Hintergrundbild').selectOption({ label: 'Kein Bild' });
+      await inspector(page).getByLabel('Background image').selectOption({ label: 'No image' });
       await expectScene(
         api,
         production,
@@ -683,13 +683,13 @@ test.describe('REGIE scenes', () => {
   );
 
   test(
-    'E2E-SCENE-23 [regie] thumbnails follow an edit within 1 s; the inspector says «Element» + source while one is selected and «Szene» + name otherwise',
+    'E2E-SCENE-23 [regie] thumbnails follow an edit within 1 s; the inspector says “Item” + source while one is selected and “Scene” + name otherwise',
     t.p2,
     async ({ regie, api, production, pairContext }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const phone = await pairPhone(pairContext, { name: 'Handy Eins' });
+      const phone = await pairPhone(pairContext, { name: 'Phone One' });
       const scene = await addItems(api, production, sceneA, [phone.sourceId()], {
         x: 100,
         y: 100,
@@ -705,11 +705,11 @@ test.describe('REGIE scenes', () => {
         )
         .toBe(100);
 
-      await expect(inspectorTitle(page)).toHaveText('Szene');
-      await expect(inspectorSub(page)).toHaveText('Szene A');
-      await sourceRow(page, 'K1 Handy Eins').click();
-      await expect(inspectorTitle(page)).toHaveText('Element');
-      await expect(inspectorSub(page)).toHaveText('K1 · Handy Eins');
+      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorSub(page)).toHaveText('Scene A');
+      await sourceRow(page, 'K1 Phone One').click();
+      await expect(inspectorTitle(page)).toHaveText('Item');
+      await expect(inspectorSub(page)).toHaveText('K1 · Phone One');
 
       const moved = Date.now();
       expect(
@@ -734,7 +734,7 @@ test.describe('REGIE scenes', () => {
           description: `thumbnail followed an edit after ${Date.now() - moved} ms (incl. the REST call)`,
         });
       await page.keyboard.press('Escape');
-      await expect(inspectorTitle(page)).toHaveText('Szene');
+      await expect(inspectorTitle(page)).toHaveText('Scene');
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );

@@ -1,4 +1,6 @@
 import type { Page } from '@playwright/test';
+import { findGerman } from '../../support/a11y/english';
+import { collectTexts } from '../../support/a11y/german';
 import { expectNoOverflow, readOverflow, readTargets, smallTargets } from '../../support/devices/layout';
 import { visitLaptopStates, visitPhoneStates, type SenderStateEnv } from '../../support/devices/states';
 import { sleep } from '../../support/shell';
@@ -10,7 +12,7 @@ import { t } from '../../support/tags';
 
 /**
  * DEV, the sender parts that look at every state in a different mode (docs/testing.md 2.8): the viewport matrix, axe, reduced
- * motion, the German text audit, forced colours and zoom. The states come from support/devices/states.ts (the same screens
+ * motion, the English text audit, forced colours and zoom. The states come from support/devices/states.ts (the same screens
  * as in dev-sender.spec.ts).
  */
 
@@ -46,7 +48,7 @@ test.describe('DEV sender, modes', () => {
           const small = smallTargets(await readTargets(page));
           rows.push(`${kind} ${label} @ ${size.name}: overflow ${overflow.document}, small targets ${small.length}`);
           expect(overflow.document, `${kind} ${label} @ ${size.name}: horizontal scroll (${overflow.outside.join(' | ')})`).toBeLessThanOrEqual(0);
-          expect(small.map((target) => `${target.tag} «${target.label}» ${target.width}x${target.height}`), `${kind} ${label} @ ${size.name}: targets under 44 px`).toEqual([]);
+          expect(small.map((target) => `${target.tag} “${target.label}” ${target.width}x${target.height}`), `${kind} ${label} @ ${size.name}: targets under 44 px`).toEqual([]);
         }
         await page.setViewportSize({ width: 412, height: 915 });
       };
@@ -73,7 +75,7 @@ test.describe('DEV sender, modes', () => {
   );
 
   test(
-    'E2E-DEV-15 [ui, sender, dark mode] the text of the dark screen (slot code and «Tippen zum Bedienen») meets the contrast of WCAG AA (DEV-05)',
+    'E2E-DEV-15 [ui, sender, dark mode] the text of the dark screen (slot code and “Tap for controls”) meets the contrast of WCAG AA (DEV-05)',
     t.p1,
     async ({ openPhone, openLaptop, api, production, pairContext }, testInfo) => {
       knownDevBug('DEV-05', 'dark mode: the slot code and the hint are dim grey on black, below 4.5:1');
@@ -113,7 +115,7 @@ test.describe('DEV sender, modes', () => {
         );
       const normal = await openPhone({ profile: 'pixel7' });
       await normal.gotoStart();
-      await expect(normal.page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
+      await expect(normal.page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
       expect((await animated(normal.page)).length, 'the normal mode has transitions (buttons), so the reduced check is meaningful').toBeGreaterThan(0);
 
       const run = async (label: string, page: Page) => {
@@ -125,43 +127,18 @@ test.describe('DEV sender, modes', () => {
   );
 
   test(
-    'E2E-DEV-17 [ui, sender] German text audit of the sender: no «ß», names in « », decimal commas, no English UI words, lang de-CH',
+    'E2E-DEV-17 [ui, sender] English text audit of the sender: no German in any state, lang en',
     t.p1,
-    async ({ openPhone, openLaptop, api, production, pairContext }, testInfo) => {
+    async ({ openPhone, openLaptop, api, production, pairContext }) => {
       test.setTimeout(300_000);
-      // «Station» is a German word as well; the plan's list of English words includes it by mistake. The rest is as pinned.
-      const english = /\b(Loading|Error|Save|Cancel|Delete|Connect|Connected|Settings|Scenes?|Sources?|Stations)\b/;
-      const texts = new Map<string, string>();
-      const collect = async (label: string, page: Page) => {
-        const found = await page.evaluate(() => {
-          const out: string[] = [];
-          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            const parent = node.parentElement;
-            const text = node.textContent?.replace(/\s+/g, ' ').trim();
-            if (text && parent && !parent.closest('script, style, noscript')) out.push(text);
-          }
-          for (const element of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
-            for (const attribute of ['aria-label', 'title', 'placeholder']) {
-              const value = element.getAttribute(attribute);
-              if (value) out.push(value);
-            }
-          }
-          return { text: out.join('\n'), lang: document.documentElement.getAttribute('lang') };
-        });
-        expect(found.lang, `${label}: lang`).toBe('de-CH');
-        texts.set(label, found.text);
+      const german: string[] = [];
+      const audit = async (label: string, page: Page) => {
+        expect(await page.evaluate(() => document.documentElement.lang), `${label}: lang`).toBe('en');
+        for (const finding of await findGerman(await collectTexts(page))) german.push(`[${label}] ${finding}`);
       };
-      await visitPhoneStates(env({ api, production, pairContext, openPhone, openLaptop }), (label, page) => collect(`phone ${label}`, page), { profile: 'pixel7' });
-      await visitLaptopStates(env({ api, production, pairContext, openPhone, openLaptop }), (label, page) => collect(`laptop ${label}`, page), { profile: 'desktop' });
-      await testInfo.attach('sender-texts.txt', { body: [...texts].map(([label, text]) => `=== ${label}\n${text}`).join('\n'), contentType: 'text/plain' });
-      for (const [label, text] of texts) {
-        expect(text.includes('ß'), `${label}: «ß»`).toBe(false);
-        expect(text.match(/"[^"\n]{1,60}"/g) ?? [], `${label}: straight quotes around words (use « »)`).toEqual([]);
-        expect(text.match(/\d\.\d+\s?(Mbit|s\b|ms|%)/g) ?? [], `${label}: decimal point instead of a comma`).toEqual([]);
-        expect(text.match(english) ?? [], `${label}: English UI words`).toEqual([]);
-        expect(text.match(/\b\d{1,2}:\d\d(:\d\d)?\s?(AM|PM|am|pm)\b/g) ?? [], `${label}: 12 hour clock`).toEqual([]);
-      }
+      await visitPhoneStates(env({ api, production, pairContext, openPhone, openLaptop }), (label, page) => audit(`phone ${label}`, page), { profile: 'pixel7' });
+      await visitLaptopStates(env({ api, production, pairContext, openPhone, openLaptop }), (label, page) => audit(`laptop ${label}`, page), { profile: 'desktop' });
+      expect(german, 'German text in the English sender').toEqual([]);
     },
   );
 
@@ -193,10 +170,10 @@ test.describe('DEV sender, modes', () => {
         await page.emulateMedia({ forcedColors: 'none' });
       };
       await visitPhoneStates(env({ api, production, pairContext, openPhone, openLaptop }), check, { profile: 'pixel7' });
-      expect(words.get('replaced')).toContain('In einem anderen Tab geöffnet');
-      expect(words.get('blocked')).toContain('Gesperrt');
+      expect(words.get('replaced')).toContain('Opened in another tab');
+      expect(words.get('blocked')).toContain('Blocked');
       await visitLaptopStates(env({ api, production, pairContext, openPhone, openLaptop }), (label, page) => check(`laptop ${label}`, page), { profile: 'desktop' });
-      expect(words.get('laptop station-live')).toContain('Verbunden');
+      expect(words.get('laptop station-live')).toContain('Connected');
     },
   );
 });

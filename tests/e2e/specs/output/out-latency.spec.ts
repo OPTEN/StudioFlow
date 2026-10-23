@@ -26,7 +26,7 @@ test.describe('OUT latency', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Latenz', { camera: { width: 1280, height: 720, fps: 30 } });
+      const camera = await addCamera(deps, 'Camera Latency', { camera: { width: 1280, height: 720, fps: 30 } });
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
       const frames: { sent: HubMessage[]; received: HubMessage[] } = { sent: [], received: [] };
@@ -82,7 +82,7 @@ test.describe('OUT latency', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(600_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Latenz', 1);
+      const screens = await addScreens(deps, 'Laptop Latency', 1);
       await placeItem(api, production, production.sceneIds[0]!, screens.sources[0]!, FULL);
       await goLive(api, production);
       const { output } = await openProbedOutput({ browser, onCleanup }, production, { latency: true }, { viewport: { width: 1920, height: 1080 } });
@@ -111,7 +111,7 @@ test.describe('OUT latency', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Latenz', { camera: { width: 1280, height: 720, fps: 30 } });
+      const camera = await addCamera(deps, 'Camera Latency', { camera: { width: 1280, height: 720, fps: 30 } });
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, camera.source, FULL);
       await placeItem(api, production, b, camera.source, { x: 160, y: 90, w: 1600, h: 900, fit: 'cover', radius: 24 });

@@ -47,7 +47,7 @@ async function liveWorld(
   const { deps, browser, onCleanup } = fx;
   const count = options.cameras ?? 2;
   const cameras: Camera[] = [];
-  for (let index = 0; index < count; index++) cameras.push(await addCamera(deps, `Kamera ${index + 1}`));
+  for (let index = 0; index < count; index++) cameras.push(await addCamera(deps, `Camera ${index + 1}`));
   const [sceneA, sceneB] = deps.production.sceneIds as [string, string];
   const width = Math.floor(1920 / count);
   const itemIds: string[] = [];
@@ -212,7 +212,7 @@ test.describe('OUT resilience', () => {
       expect(connectedMs, 'the output reports again within T-RESTART-API (hard 15 s)').toBeLessThanOrEqual(THRESHOLD.restartApiClientsHardMs);
       expect(reportsAfter, 'reports resumed').toBeGreaterThan(0);
       expect(Math.max(...timed), 'T-SWITCH after the restart (hard 300 ms)').toBeLessThanOrEqual(300);
-      expect(lines.find((line) => line.startsWith('Hub')), 'overlay: hub connected').toBe('Hub verbunden · Sync aktuell');
+      expect(lines.find((line) => line.startsWith('Hub')), 'overlay: hub connected').toBe('Hub connected · Sync up to date');
       expect((await api.getSnapshot(production.id)).body.incidents.filter((incident) => incident.endedAt === null), 'no open incident').toEqual([]);
     },
   );
@@ -261,7 +261,7 @@ test.describe('OUT resilience', () => {
       expect(resumedAll - healthy, 'T-RESTART-LK: LiveKit healthy -> output and senders playing again (hard 10 s)').toBeLessThanOrEqual(THRESHOLD.restartLiveKitHardMs);
       // The Regie's view: the sources recovered, nothing stays open.
       await expect
-        .poll(async () => openIncidents((await api.getSnapshot(production.id)).body), { timeout: 30_000, intervals: [500], message: 'incidents end («wieder da»)' })
+        .poll(async () => openIncidents((await api.getSnapshot(production.id)).body), { timeout: 30_000, intervals: [500], message: 'incidents end (“back”)' })
         .toBe(0);
     },
   );
@@ -499,7 +499,7 @@ test.describe('OUT netem on LiveKit', () => {
         const deps = { api, production, pairContext, openPhone, openLaptop };
         const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
         if (scenario.profile.rate) {
-          // «a camera and a screen on air»: the screen is part of the load that has to fit through 1 Mbit/s.
+          // “a camera and a screen on air”: the screen is part of the load that has to fit through 1 Mbit/s.
           const screens = await addScreens(deps, 'Laptop Netem', 1);
           await placeItem(api, production, world.sceneA, screens.sources[0]!, { x: 1280, y: 0, w: 640, h: 360, fit: 'contain', radius: 0 });
           await sleep(3000);
@@ -561,7 +561,7 @@ test.describe('OUT netem on LiveKit', () => {
 
 test.describe('OUT freeze budget and sender loss report', () => {
   test(
-    'E2E-NET-04 [freeze budget and sender report] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows) and the sender reports an uplink loss between 2 and 9 % (Regie «Verlust»)',
+    'E2E-NET-04 [freeze budget and sender report] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows) and the sender reports an uplink loss between 2 and 9 % (Regie “Packet loss”)',
     t.disruptive('@p1'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       outBug('OUT-05', 'the sender reports the loss net of NACK retransmissions (0.1-0.3 % with 5 % loss on the link), the plan expects the link loss');
@@ -582,7 +582,7 @@ test.describe('OUT freeze budget and sender loss report', () => {
       expect(m.freezeSecondsPerMin, 'T-FREEZE: total freeze below 2 s per minute (hard, median of six windows)').toBeLessThanOrEqual(2);
       expect(m.fps, 'output fps >= 24 (median of six windows)').toBeGreaterThanOrEqual(24);
       expect(result.uplinkLossPct, 'the sender reports its uplink loss').not.toBeNull();
-      expect(result.uplinkLossPct!, 'uplink loss reported by the sender (Regie «Verlust») between 2 and 9 %').toBeGreaterThanOrEqual(2);
+      expect(result.uplinkLossPct!, 'uplink loss reported by the sender (Regie “Packet loss”) between 2 and 9 %').toBeGreaterThanOrEqual(2);
       expect(result.uplinkLossPct!).toBeLessThanOrEqual(9);
     },
   );

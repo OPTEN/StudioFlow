@@ -42,6 +42,11 @@ export interface UiOptions {
   uiInit: UiInitOptions;
 }
 
+/** The context options of a fixture: the locale of the project (`use.locale`) unless the test sets its own. */
+function withLocale(locale: string | undefined, options: NewUiContextOptions = {}): NewUiContextOptions {
+  return { ...options, context: { ...(locale ? { locale } : {}), ...options.context } };
+}
+
 export const test = base.extend<UiFixtures & UiOptions>({
   uiInit: [{}, { option: true }],
 
@@ -57,43 +62,43 @@ export const test = base.extend<UiFixtures & UiOptions>({
     await use(regie);
   },
 
-  openRegie: async ({ browser, api, production, onCleanup }, use) => {
+  openRegie: async ({ browser, api, production, onCleanup, locale }, use) => {
     void production;
     await use(async (options = {}) => {
-      const context = await newUiContext(browser, options.contextOptions);
+      const context = await newUiContext(browser, withLocale(locale, options.contextOptions));
       onCleanup(() => context.close());
       return RegiePage.open(context, { login: options.login ?? 'api', cookie: api.cookie });
     });
   },
 
-  openPhone: async ({ browser, onCleanup }, use) => {
+  openPhone: async ({ browser, onCleanup, locale }, use) => {
     await use(async (options = {}) => {
-      const phone = await PhoneSender.open(browser, options);
+      const phone = await PhoneSender.open(browser, withLocale(locale, options));
       onCleanup(() => phone.close());
       return phone;
     });
   },
 
-  openLaptop: async ({ browser, onCleanup }, use) => {
+  openLaptop: async ({ browser, onCleanup, locale }, use) => {
     await use(async (options = {}) => {
-      const laptop = await LaptopSender.open(browser, options);
+      const laptop = await LaptopSender.open(browser, withLocale(locale, options));
       onCleanup(() => laptop.close());
       return laptop;
     });
   },
 
-  openOutput: async ({ browser, onCleanup }, use) => {
+  openOutput: async ({ browser, onCleanup, locale }, use) => {
     await use(async (target, flags = {}, options = {}) => {
-      const context = await newUiContext(browser, options.context);
+      const context = await newUiContext(browser, withLocale(locale, options.context));
       onCleanup(() => context.close());
       return OutputPage.open(context, target, flags);
     });
   },
 
-  embedOutput: async ({ browser, onCleanup }, use) => {
+  embedOutput: async ({ browser, onCleanup, locale }, use) => {
     await use(async (target, options = {}) => {
       const { context: contextOptions, ...embed } = options;
-      const context = await newUiContext(browser, contextOptions);
+      const context = await newUiContext(browser, withLocale(locale, contextOptions));
       onCleanup(() => context.close());
       return OutputPage.embed(context, target, embed);
     });

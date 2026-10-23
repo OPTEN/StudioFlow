@@ -9,14 +9,14 @@ import { SenderSim } from '../sim';
  * its slots live every second), elements in the first two scenes, and optionally one incident.
  */
 
-export const SEED_SCENES = ['Begrüssung', 'Präsentation', 'Pause', 'Interview', 'Podium', 'Rückblick', 'Abspann'] as const;
+export const SEED_SCENES = ['Welcome', 'Presentation', 'Break', 'Interview', 'Panel', 'Recap', 'Credits'] as const;
 
 export interface SeedOptions {
   /** Scene names (default {@link SEED_SCENES}, seven). */
   scenes?: readonly string[];
   /** Number of stations, 0-5 (phones K1-K3 first, then laptops S1, S2). */
   stations?: number;
-  /** The incident: the third phone's camera «verbindet neu» (paused) or the second laptop's screen «Teilen beendet» (ended). */
+  /** The incident: the third phone's camera “reconnecting” (paused) or the second laptop's screen “sharing stopped” (ended). */
   incident?: 'reconnecting' | 'ended' | null;
   /** Put elements (the sources of the first stations) into the first two scenes (default true). */
   items?: boolean;
@@ -38,7 +38,7 @@ export interface SeededConsole {
   incident: Station | null;
 }
 
-const NAMES = ['Handy Bühne', 'Handy Saal', 'Handy Eingang', 'Laptop Mia', 'Laptop Ben'];
+const NAMES = ['Phone Stage', 'Phone Hall', 'Phone Entrance', 'Laptop Mia', 'Laptop Ben'];
 
 function headersFor(stack: PairContext['stack']): Record<string, string> {
   return stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {};

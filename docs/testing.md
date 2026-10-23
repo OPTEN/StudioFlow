@@ -1576,7 +1576,6 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 **E2E-OUT-15** · P1 · pw — Output status in the Regie
 - Steps: no output → open one → open a second → block the first page's main thread for 10 s (`page.evaluate` busy loop) → resume → close both.
 - Expect: chip “Output to proxy” lamp grey/“not connected” → green with mono latency (e.g. “148 ms”) within 5 s; popover “connected, 1 consumer” → “2 consumers”, lists both IPs, “1920 × 1080 · 16:9 · 30 fps”, “Latency <n> ms measured”; blocked page → state `stale` after ≤ 8 s then `connected` again; closing → `none` within 8 s; link box shows the URL masked (`?k=••••••`) and “Copy” puts the full URL with the real key into the clipboard.
->>>>>>> 5d1f56d (docs: convert the test plan to the English UI texts)
 
 **E2E-OUT-16** · P1 · pw — Embedding as the proxy would
 - Steps: `embedHost` page at the allowed origin with `<iframe src=… title="Webinar Q4 live" allow="autoplay; fullscreen" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0">`; request fullscreen on the iframe.

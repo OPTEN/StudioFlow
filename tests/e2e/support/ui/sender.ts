@@ -72,16 +72,16 @@ export abstract class SenderPage {
 
   // --- pairing form and waiting screen -----------------------------------------------------------------------------
 
-  /** Fills the pairing form (`/join/`): device name and kind, then «Weiter». */
+  /** Fills the pairing form (`/join/`): device name and kind, then “Continue”. */
   async submitPairingForm(name: string, kind: 'phone' | 'laptop' = this.kind): Promise<void> {
-    await this.page.getByLabel('Name des Geräts').fill(name);
+    await this.page.getByLabel('Device name').fill(name);
     await this.page
-      .getByRole('radio', { name: kind === 'phone' ? 'Handy (Kamera)' : 'Laptop (Bildschirm)' })
+      .getByRole('radio', { name: kind === 'phone' ? 'Phone (camera)' : 'Laptop (screen)' })
       .check();
-    await this.page.getByRole('button', { name: 'Weiter' }).click();
+    await this.page.getByRole('button', { name: 'Continue' }).click();
   }
 
-  /** The check code shown while the Regie has not answered, e.g. «47 12». */
+  /** The check code shown while the Regie has not answered, e.g. “47 12”. */
   async checkCode(): Promise<string> {
     const code = this.page.getByTestId('check-code');
     await expect(code).toBeVisible();
@@ -90,7 +90,7 @@ export abstract class SenderPage {
 
   /** Checks the kind the form selected on its own (`phone` for mobile profiles, `laptop` for desktop). */
   async defaultKind(): Promise<'phone' | 'laptop'> {
-    const phone = this.page.getByRole('radio', { name: 'Handy (Kamera)' });
+    const phone = this.page.getByRole('radio', { name: 'Phone (camera)' });
     await expect(phone).toBeVisible();
     return (await phone.isChecked()) ? 'phone' : 'laptop';
   }
@@ -107,7 +107,7 @@ export abstract class SenderPage {
     return (await element.getAttribute('data-state')) as SenderConnection | null;
   }
 
-  /** Waits for the station route and the «Verbunden» line. */
+  /** Waits for the station route and the “Connected” line. */
   async waitConnected(timeout = 30_000): Promise<void> {
     await this.page.waitForURL(/\/join\/station/, { timeout });
     await expect(this.connectionState().first(), 'sender hub connected').toHaveAttribute(
@@ -257,7 +257,7 @@ export abstract class SenderPage {
     );
   }
 
-  /** What the browser's «Stop sharing» does to the n-th fake screen (default: the last one). */
+  /** What the browser's “Stop sharing” does to the n-th fake screen (default: the last one). */
   async browserStopsSharing(index?: number): Promise<boolean> {
     return this.page.evaluate(
       (i) =>
@@ -295,17 +295,17 @@ export class PhoneSender extends SenderPage {
     await this.waitForSlot('camera', state, timeout);
   }
 
-  /** The preview of the own camera (`<video aria-label="Vorschau der Kamera">`). */
+  /** The preview of the own camera (`<video aria-label="Camera preview">`). */
   preview(): Locator {
-    return this.page.getByLabel('Vorschau der Kamera');
+    return this.page.getByLabel('Camera preview');
   }
 
   startButton(): Locator {
-    return this.page.getByRole('button', { name: 'Kamera starten' });
+    return this.page.getByRole('button', { name: 'Start camera' });
   }
 
   stopButton(): Locator {
-    return this.page.getByRole('button', { name: 'Kamera stoppen' });
+    return this.page.getByRole('button', { name: 'Stop camera' });
   }
 
   async startCamera(): Promise<void> {
@@ -317,11 +317,11 @@ export class PhoneSender extends SenderPage {
   }
 
   darkToggle(): Locator {
-    return this.page.getByRole('button', { name: 'Dunkel' });
+    return this.page.getByRole('button', { name: 'Dark' });
   }
 
   async facing(): Promise<'user' | 'environment'> {
-    return (await this.page.getByRole('radio', { name: 'Rück' }).isChecked())
+    return (await this.page.getByRole('radio', { name: 'Back' }).isChecked())
       ? 'environment'
       : 'user';
   }
@@ -348,38 +348,38 @@ export class LaptopSender extends SenderPage {
     return new LaptopSender(context, await context.newPage(), profile, stackConfig(), false);
   }
 
-  /** «Bildschirm teilen» of the first slot, or «+ weiteren Bildschirm» for a further one: a user gesture, then the (fake) capture. */
+  /** “Share screen” of the first slot, or “+ Another screen” for a further one: a user gesture, then the (fake) capture. */
   async shareScreen(): Promise<void> {
-    const first = this.page.getByRole('button', { name: 'Bildschirm teilen', exact: true });
+    const first = this.page.getByRole('button', { name: 'Share screen', exact: true });
     if (await first.count()) await first.first().click();
-    else await this.page.getByRole('button', { name: '+ weiteren Bildschirm' }).click();
+    else await this.page.getByRole('button', { name: '+ Another screen' }).click();
   }
 
   async addScreen(): Promise<void> {
-    await this.page.getByRole('button', { name: '+ weiteren Bildschirm' }).click();
+    await this.page.getByRole('button', { name: '+ Another screen' }).click();
   }
 
-  /** «Teilen beenden» of a screen slot (`screen-1`, ...). */
+  /** “Stop sharing” of a screen slot (`screen-1`, ...). */
   async endShare(slot = 'screen-1'): Promise<void> {
-    await this.slot(slot).getByRole('button', { name: 'Teilen beenden' }).click();
+    await this.slot(slot).getByRole('button', { name: 'Stop sharing' }).click();
   }
 
-  /** «Erneut teilen» of an ended slot (also the large banner button when the Regie asks). */
+  /** “Share again” of an ended slot (also the large banner button when the Regie asks). */
   async reshare(slot = 'screen-1'): Promise<void> {
-    await this.slot(slot).getByRole('button', { name: 'Erneut teilen' }).click();
+    await this.slot(slot).getByRole('button', { name: 'Share again' }).click();
   }
 
   async removeSlot(slot: string): Promise<void> {
-    await this.slot(slot).getByRole('button', { name: 'Entfernen' }).click();
+    await this.slot(slot).getByRole('button', { name: 'Remove' }).click();
   }
 
   async addCamera(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Kamera hinzufügen' }).click();
+    await this.page.getByRole('button', { name: 'Add camera' }).click();
   }
 
   /** The banner shown when the Regie asked to share again. */
   reshareBanner(): Locator {
-    return this.page.getByText('Die Regie bittet dich, den Bildschirm erneut zu teilen');
+    return this.page.getByText('The control room asks you to share the screen again');
   }
 }
 

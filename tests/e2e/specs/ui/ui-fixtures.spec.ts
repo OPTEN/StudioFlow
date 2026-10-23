@@ -131,29 +131,29 @@ test.describe('UI fixtures', () => {
         fake.filter((source) => source.kind === 'screen' && source.live && source.frames > 0),
       ).toHaveLength(1);
 
-      // The browser's «Stop sharing»: the slot ends, the sender offers «Erneut teilen», nothing re-shares by itself.
+      // The browser's “Stop sharing”: the slot ends, the sender offers “Share again”, nothing re-shares by itself.
       expect(await laptop.browserStopsSharing()).toBe(true);
       await laptop.waitForSlot('screen-1', 'ended');
       await expect(
-        laptop.slot('screen-1').getByRole('button', { name: 'Erneut teilen' }),
+        laptop.slot('screen-1').getByRole('button', { name: 'Share again' }),
       ).toBeVisible();
       expect((await laptop.mediaCalls()).display, 'no automatic re-share').toBe(1);
     },
   );
 
   test(
-    'H-UI-11 [pairing, deny] «Ablehnen» on the knock card shows the denial on the laptop and no station appears',
+    'H-UI-11 [pairing, deny] “Deny” on the knock card shows the denial on the laptop and no station appears',
     tags,
     async ({ regie, openLaptop }) => {
       const laptop = await openLaptop();
       await laptop.gotoStart();
-      await laptop.submitPairingForm('Laptop Nein', 'laptop');
+      await laptop.submitPairingForm('Laptop No', 'laptop');
       const code = await laptop.checkCode();
       await regie.openPairing('laptop');
-      expect(await regie.knockCheckCode('Laptop Nein')).toBe(code);
-      await regie.denyKnock('Laptop Nein');
+      expect(await regie.knockCheckCode('Laptop No')).toBe(code);
+      await regie.denyKnock('Laptop No');
       await expect(laptop.page.getByTestId('pairing-denied')).toBeVisible();
-      await expect(regie.station('Laptop Nein')).toHaveCount(0);
+      await expect(regie.station('Laptop No')).toHaveCount(0);
     },
   );
 
@@ -258,9 +258,9 @@ test.describe('UI fixtures', () => {
       const phone = await openPhone({ profile: 'desktop', camera: 'stamp' });
       // A webcam sender on the desktop profile: the pairing form asks for the kind explicitly.
       await phone.gotoStart();
-      await phone.submitPairingForm('Stempel-Kamera', 'phone');
+      await phone.submitPairingForm('Stamp camera', 'phone');
       await regie.openPairing('laptop');
-      await regie.approveKnock('Stempel-Kamera');
+      await regie.approveKnock('Stamp camera');
       await phone.waitConnected();
       const stored = await phone.waitForStoredDevice();
       await phone.waitForCamera('live');
@@ -331,9 +331,9 @@ test.describe('UI fixtures', () => {
     async ({ openPhone, openLaptop, pairContext }) => {
       test.setTimeout(120_000);
       const phone = await openPhone();
-      const handy = await pairViaApi(pairContext, phone, { name: 'Handy API' });
+      const phoneDevice = await pairViaApi(pairContext, phone, { name: 'Phone API' });
       await phone.waitForCamera('live');
-      expect((await phone.storedDevice())!.deviceId).toBe(handy.id);
+      expect((await phone.storedDevice())!.deviceId).toBe(phoneDevice.id);
       expect(phone.page.url()).toContain('/join/station');
 
       const laptop = await openLaptop();
@@ -406,7 +406,7 @@ test.describe('UI fixtures', () => {
       const config = stackConfig();
       const stranger = {
         username: `nobody-${Date.now().toString(36)}`,
-        password: 'falsches-Passwort-123',
+        password: 'wrong-password-123',
       };
       const a = await newUiContext(browser);
       const b = await newUiContext(browser);
@@ -421,8 +421,8 @@ test.describe('UI fixtures', () => {
         'wrong credentials are 401 until the fifth failure, which itself starts the lock',
       ).toHaveLength(LIMITS.loginFailuresPerIp - 1);
       expect(statuses.at(-1), 'the fifth failure of one address answers 429').toBe(429);
-      await expect(locked.loginError()).toContainText(/Zu viele Fehlversuche/);
-      await expect(locked.page.getByRole('button', { name: 'Anmelden' })).toBeDisabled();
+      await expect(locked.loginError()).toContainText(/Too many failed attempts/);
+      await expect(locked.page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
 
       // The second context has another address: the admin logs in through the form without trouble.
       const other = new RegiePage(await b.newPage(), config);
@@ -475,16 +475,16 @@ test.describe('UI fixtures', () => {
           route.fulfill({
             status: 200,
             contentType: 'text/html',
-            body: `<!doctype html><html lang="de-CH"><head><meta charset="utf-8"><title>Axe</title></head><body>${body}</body></html>`,
+            body: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Axe</title></head><body>${body}</body></html>`,
           }),
         );
       await serve(
         '/__e2e/axe-bad',
-        '<main><h1>Seite</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><button></button></main>',
+        '<main><h1>Page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><button></button></main>',
       );
       await serve(
         '/__e2e/axe-clean',
-        '<main><h1>Seite</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Punkt"><button>Weiter</button></main>',
+        '<main><h1>Page</h1><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Dot"><button>Continue</button></main>',
       );
 
       await page.goto(`${config.baseURL}/__e2e/axe-bad`);
@@ -510,7 +510,7 @@ test.describe('UI fixtures', () => {
 
       // The product's own login page: informational (attached), the E2E-A11Y specs assert on it.
       await page.goto('/login');
-      await page.getByLabel('Benutzername').waitFor();
+      await page.getByLabel('Username').waitFor();
       const login = await runAxe(page);
       await test.info().attach('axe-login.json', {
         body: JSON.stringify(login, null, 2),

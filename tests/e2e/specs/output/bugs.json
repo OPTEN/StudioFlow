@@ -8,7 +8,7 @@
       "title": "A cut to a scene whose camera is not in the program shows 1-5 frames (16-95 ms) of the empty scene ground (rgb 13,17,23) before the picture: the new <video> has no decoded frame when its layer appears",
       "test": "E2E-SWITCH-09 [output, cut, no dark frame] (specs/output/out-transitions.spec.ts); E2E-SWITCH-09 [output, cut, picture within N ms] guards the timing and the LOW-layer floor",
       "steps": "1. Two phones K1, K2 publish a camera; scene A = K1 full canvas, scene B = K2 full canvas; start the broadcast; open /o/{slug}?k={key} (1280x720). 2. POST /api/productions/{id}/program {sceneId: B, transition: cut}, then back to A, 50 times, 800 ms apart. 3. Record every animation frame (requestAnimationFrame: layers, item state, video.readyState/videoWidth, luminance of the picture) and a CDP screencast of the page.",
-      "expected": "E2E-SWITCH-09 / plan section 2 «Vorladen fürs Umschalten»: in every frame after a switch the item rectangle has a mean luminance >= 20; at switch time the target <video> already has readyState >= 2 and videoWidth > 0 (preloaded).",
+      "expected": "E2E-SWITCH-09 / plan section 2 “Preload for switching”: in every frame after a switch the item rectangle has a mean luminance >= 20; at switch time the target <video> already has readyState >= 2 and videoWidth > 0 (preloaded).",
       "actual": "The new SceneLayer is built with a brand-new <video> (ItemView -> MediaView -> provider.attach). Until the first frame is decoded the item is transparent over the scene ground #0d1117 (luma 16.5). 50 cuts: 47 of 50 cuts had at least one dark frame in the screencast (rgb 13,17,23 in the item rectangle), 1 animation frame without picture in the median, 4 at p95, 5 at most; the first picture appears 28 ms (p50), 67 ms (p95), 94 ms (max) after the layer; the new video has readyState 0 at insertion in most cuts. Fades are not affected (the new layer starts at opacity 0 over the old picture).",
       "evidence": "tests/e2e/.output/sf-e2e-3/results/out-switch-09-dark-frames.json (per cut: animation frames without picture, readyState and width at insertion; screencast frames below luma 20) and out-switch-09-cut.json (timing p50/p95/max, frames without picture)",
       "fix": "Keep a decoding <video> per source of the other scenes in the DOM (hidden, not display:none) and move it into the new layer like MediaPool already does for sources that two scenes share, or insert the new layer only after requestVideoFrameCallback / loadeddata of its videos (with a timeout of about 100 ms); fades can stay as they are."
@@ -19,11 +19,11 @@
       "area": "OUT",
       "title": "Renaming a production does not change the subtitle of the standby slate (it is a copy of the name taken when the production was created)",
       "test": "E2E-OUT-11 [output, rename] (specs/output/out-transitions.spec.ts)",
-      "steps": "1. Create a production \"Webinar Q4\" (standby slate subtitle = \"Webinar Q4\"), open the output (standby). 2. PATCH /api/productions/{id} {name: \"Webinar Q4 neu\"}.",
-      "expected": "docs/testing.md E2E-OUT-11: «renamed production updates the subtitle live»; spec 4.2: standbySlate subtitle = production name.",
-      "actual": "Production.Update(...) only copies the name; StandbySlate keeps the subtitle of the creation (Production.Create sets new SlateDto(\"Gleich geht's los\", validName, null)). The output keeps showing the old name for ever; only an explicit PATCH of standbySlate changes it.",
-      "evidence": "raw failure with E2E_BUG_REPORT=1: «subtitle follows the production name», received the old name after 5 s",
-      "fix": "Either derive the default subtitle from the current name while the slate subtitle was never edited (store null/«use the name»), or update the subtitle in Production.Update when it still equals the old name."
+      "steps": "1. Create a production \"Webinar Q4\" (standby slate subtitle = \"Webinar Q4\"), open the output (standby). 2. PATCH /api/productions/{id} {name: \"Webinar Q4 new\"}.",
+      "expected": "docs/testing.md E2E-OUT-11: “renamed production updates the subtitle live”; spec 4.2: standbySlate subtitle = production name.",
+      "actual": "Production.Update(...) only copies the name; StandbySlate keeps the subtitle of the creation (Production.Create sets new SlateDto(\"Starting soon\", validName, null)). The output keeps showing the old name for ever; only an explicit PATCH of standbySlate changes it.",
+      "evidence": "raw failure with E2E_BUG_REPORT=1: “subtitle follows the production name”, received the old name after 5 s",
+      "fix": "Either derive the default subtitle from the current name while the slate subtitle was never edited (store null/“use the name”), or update the subtitle in Production.Update when it still equals the old name."
     },
     "OUT-03": {
       "status": "open",
@@ -32,9 +32,9 @@
       "title": "The output preloads the sources of the preview scene at the lowest simulcast layer (320x180), not at the highest as spec 7 and E2E-SWITCH-10 require; after a cut the first picture is always 320 px wide",
       "test": "E2E-SWITCH-10 [output, preview at the highest layer] (specs/output/out-media.spec.ts)",
       "steps": "1. K1 in scene A (program), K2 in scene B only; broadcast live, output open. 2. PUT /api/productions/{id}/preview {sceneId: B}. 3. Read the inbound-rtp frameWidth of K2 on the output's peer connection for 3 s.",
-      "expected": "Spec 7: «preview scene items -> HIGH (preload before a take)»; E2E-SWITCH-10: that camera arrives at the highest layer (>= 1280 px) within 3 s of selecting the preview.",
+      "expected": "Spec 7: “preview scene items -> HIGH (preload before a take)”; E2E-SWITCH-10: that camera arrives at the highest layer (>= 1280 px) within 3 s of selecting the preview.",
       "actual": "ProgramView.preloadScenesFor puts the preview scene first, but SceneRenderer.preloadRequests asks for SMALL_PICTURE (320x180) for every preloaded scene, so K2 stays at 320x180. Consequence for the audience: after a take or cut the new camera is shown at 320 px (scaled up to the item) in 50 of 50 cuts and reaches 1280 px only 100-200 ms later.",
-      "evidence": "raw failure with E2E_BUG_REPORT=1: «K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview», received 320; tests/e2e/.output/sf-e2e-3/results/out-switch-09-cut.json (fullResolution: time to >= 1280 px after the layer appears, firstWidth 320 in all cuts)",
+      "evidence": "raw failure with E2E_BUG_REPORT=1: “K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview”, received 320; tests/e2e/.output/sf-e2e-3/results/out-switch-09-cut.json (fullResolution: time to >= 1280 px after the layer appears, firstWidth 320 in all cuts)",
       "fix": "Pass the desired size of the item (or the highest layer) for the sources of the preview scene in the renderer's preload requests; keep LOW for the other scenes."
     },
     "OUT-04": {
@@ -53,13 +53,13 @@
       "status": "open",
       "severity": "low",
       "area": "NET",
-      "title": "The uplink loss a sender reports (Regie «Verlust») is net of retransmissions: 0.1-0.3 % with 5 % and 20 % packet loss on the link, the plan expects 2-9 %",
+      "title": "The uplink loss a sender reports (Regie “Packet loss”) is net of retransmissions: 0.1-0.3 % with 5 % and 20 % packet loss on the link, the plan expects 2-9 %",
       "test": "E2E-NET-04 [freeze budget and sender report] (specs/output/out-resilience.disruptive.spec.ts)",
       "steps": "netem loss 5 % on LiveKit (both directions) for 6 windows of 25 s with one camera on air; read GET /api/productions/{id}/telemetry after the windows.",
-      "expected": "E2E-NET-04: Regie station «Verlust» (uplink, reported by the sender) between 2 and 9 %.",
+      "expected": "E2E-NET-04: Regie station “Packet loss” (uplink, reported by the sender) between 2 and 9 %.",
       "actual": "slotTelemetry/summarizeSenderStats uses the cumulative packetsLost of the remote-inbound report over packetsSent; NACK retransmissions that arrive later reduce the cumulative count, so the figure stays near 0.3 % although 5 % of the packets were lost on the link (downlink inbound-rtp on the output: 3.5 % over the same window). The Regie hardly warns about a bad uplink.",
       "evidence": "tests/e2e/.output/sf-e2e-3/results/out-net-04-freeze-budget.json (uplinkLossPct 0-0.3 % vs. lossPct 4.7-5.1 % seen downlink in the same windows) and out-e2e-net-04.json",
-      "fix": "Report loss per interval from the RTCP fraction lost (before retransmission), or document the metric as «Verlust nach Wiederholung» and adjust the plan."
+      "fix": "Report loss per interval from the RTCP fraction lost (before retransmission), or document the metric as “loss after retransmission” and adjust the plan."
     },
     "OUT-06": {
       "status": "open",
@@ -89,28 +89,28 @@
       "status": "open",
       "severity": "info",
       "area": "OUT",
-      "title": "docs/testing.md 1.7 / GAP-24 pin hooks and a debug overlay format the output page does not have: no data-state, data-source, data-slate, slate-title/-subtitle or debug-overlay test ids; the overlay is <pre class=\"c-debug\"> with German lines",
+      "title": "docs/testing.md 1.7 / GAP-24 pin hooks and a debug overlay format the output page does not have: no data-state, data-source, data-slate, slate-title/-subtitle or debug-overlay test ids; the overlay is <pre class=\"c-debug\"> with English lines",
       "steps": "Open /o/{slug}?k={key}&debug=1 and read the DOM.",
       "expected": "[data-item-id][data-source][data-state=live|hold|held|fallback|missing|connecting], [data-slate=...], [data-testid=slate-title], [data-testid=debug-overlay] with lines `scene`, `revision`, `hub`, `livekit`, `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`.",
-      "actual": "Only data-item-id and data-scene-id exist. The specs derive the item state from the computed styles the renderer toggles (hold-frame canvas shown = hold, .sf-r-held shown = held, .sf-r-fallback shown = fallback; support/output/browser/output-probe.js) and read the overlay as it is: «<Produktion> · Szene «Name»», «Revision n · Sendung live», «Hub verbunden · Sync aktuell», «LiveKit verbunden», «Latenz ≈ n ms · Renderer n fps», «K1 Name · 1280×720 · 30 fps · 1,7 Mbit/s · Verlust 0,0 % · Puffer 31 ms». Update the plan or add the attributes."
+      "actual": "Only data-item-id and data-scene-id exist. The specs derive the item state from the computed styles the renderer toggles (hold-frame canvas shown = hold, .sf-r-held shown = held, .sf-r-fallback shown = fallback; support/output/browser/output-probe.js) and read the overlay as it is: “<Production> · Scene “Name””, “Revision n · Broadcast live”, “Hub connected · Sync up to date”, “LiveKit connected”, “Latency ≈ n ms · Renderer n fps”, “K1 Name · 1280×720 · 30 fps · 1.7 Mbit/s · Loss 0.0% · Buffer 31 ms”. Update the plan or add the attributes."
     },
     "OUT-08": {
       "status": "open",
       "severity": "info",
       "area": "OUT",
-      "title": "The output reports the animation frame rate of the page (about 60 fps) as OutputReport.fps and the popover says «1920 × 1080 · 30 fps»; E2E-OUT-20 expects 20-31",
+      "title": "The output reports the animation frame rate of the page (about 60 fps) as OutputReport.fps and the popover says “1920 × 1080 · 30 fps”; E2E-OUT-20 expects 20-31",
       "steps": "Observe the Report invocations of the output hub for 12 s.",
       "expected": "E2E-OUT-20: fps between 20 and 31 (the 30 fps of the program).",
-      "actual": "FpsMeter counts requestAnimationFrame callbacks, so the report is 60 on a 60 Hz display regardless of the content. The spec asserts 20..144. Whether «fps» should mean the page's frame rate or the program's is open; the number says nothing about dropped video frames (use the decoded frame rate)."
+      "actual": "FpsMeter counts requestAnimationFrame callbacks, so the report is 60 on a 60 Hz display regardless of the content. The spec asserts 20..144. Whether “fps” should mean the page's frame rate or the program's is open; the number says nothing about dropped video frames (use the decoded frame rate)."
     },
     "OUT-09": {
       "status": "open",
       "severity": "info",
       "area": "OUT",
-      "title": "E2E-OUT-15 expects a main-thread-blocked output page to turn «stale»; the API drops its hub connection after 5 s, so the Regie shows «nicht verbunden» (state none) after about 3.5-5.3 s and the page reconnects at once when it runs again",
+      "title": "E2E-OUT-15 expects a main-thread-blocked output page to turn “stale”; the API drops its hub connection after 5 s, so the Regie shows “not connected” (state none) after about 3.5-5.3 s and the page reconnects at once when it runs again",
       "steps": "Block the main thread of the output page for 10 s (busy loop) while watching GET /snapshot outputStatus.",
       "expected": "E2E-OUT-15: state stale after <= 8 s, connected again afterwards.",
-      "actual": "States: connected -> none/0 consumers (+3.5 to +5.3 s, SignalR client timeout 5 s < Output:StaleAfter 6 s) -> connected (about 0.2 s after the block ended). «stale» is only reachable by a connected hub client that stops reporting (asserted with a silent Node hub client: lamp warning, «verbunden, kein aktuelles Bild»)."
+      "actual": "States: connected -> none/0 consumers (+3.5 to +5.3 s, SignalR client timeout 5 s < Output:StaleAfter 6 s) -> connected (about 0.2 s after the block ended). “stale” is only reachable by a connected hub client that stops reporting (asserted with a silent Node hub client: lamp warning, “connected, no current picture”)."
     },
     "OUT-10": {
       "status": "open",

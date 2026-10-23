@@ -8,6 +8,7 @@ import { generateSamples, makeEbml, makeFtyp, makePng, makePngHeaderOnly, padTo,
 import { compose } from '../../support/stack';
 import { stackConfig } from '../../support/env';
 import { t } from '../../support/tags';
+import { TEXT } from '../../support/text';
 
 /**
  * MEDIA - uploads, spoofing, limits, content access, ranges and the in-use protection against the real stack
@@ -60,8 +61,8 @@ test.describe('MEDIA', () => {
       expect(upserted.asset.code).toBe(asset.code);
       const source = await hub.waitForEvent('sourceUpserted', (event) => event.source.id === asset.id);
       expect(source.source).toMatchObject({ kind: asset.kind, status: 'ok', assetId: asset.id });
-      const log = await hub.waitForEvent('logAppended', (event) => event.entry.text.includes(asset.code) && event.entry.text.includes('hochgeladen'));
-      expect(log.entry.text).toBe(`${asset.code} «${asset.name}» hochgeladen`);
+      const log = await hub.waitForEvent('logAppended', (event) => event.entry.text.includes(asset.code) && event.entry.text.includes('uploaded'));
+      expect(log.entry.text).toBe(`${asset.code} “${asset.name}” uploaded`);
       // The content is byte-identical.
       const content = await api.getAssetContent(production.id, asset.id);
       expect(content.status).toBe(200);
@@ -81,7 +82,7 @@ test.describe('MEDIA', () => {
     for (const spoof of samples.spoofs) {
       const response = await api.uploadAsset(production.id, { fileName: spoof.fileName, contentType: spoof.contentType, data: spoof.buffer });
       expectProblem(response, 415, ERROR.unsupportedMedia);
-      expect(response.body.detail ?? '', `${spoof.name}: German reason`).toBeTruthy();
+      expect(response.body.detail ?? '', `${spoof.name}: English reason`).toBeTruthy();
     }
     expect(await mediaFiles(), 'nothing stored').toEqual(filesBefore);
     expect((await api.listAssets(production.id)).body).toHaveLength(0);
@@ -180,8 +181,8 @@ test.describe('MEDIA', () => {
     expectProblem(await api.renameAsset(production.id, asset.id, '   '), 400, ERROR.validationFailed);
   });
 
-  test('INT-MEDIA-05 [stack, display names] bidi overrides and dot-only names are cleaned, the fallback name is «Medium» (UNIT-MEDIA-01)', t.p1, async ({ api, production }) => {
-    knownBug('BUG-15', 'the file name sanitiser keeps U+202E (bidi override) and returns "..", "." for dot-only names; blank names become «Bild» instead of the pinned fallback «Medium»');
+  test('INT-MEDIA-05 [stack, display names] bidi overrides and dot-only names are cleaned, the fallback name is “Media” (UNIT-MEDIA-01)', t.p1, async ({ api, production }) => {
+    knownBug('BUG-15', 'the file name sanitiser keeps U+202E (bidi override) and returns "..", "." for dot-only names; blank names become “Image” instead of the pinned fallback “Media”');
     const upload = async (fileName: string) => (await api.uploadAsset(production.id, { fileName, contentType: 'image/png', data: samples.tinyPng })).body.name;
     const bidi = await upload('\u202egnp.exe');
     expect(bidi, 'no bidi override character').not.toMatch(/[\u202a-\u202e\u2066-\u2069]/);
@@ -189,7 +190,7 @@ test.describe('MEDIA', () => {
       const name = await upload(dots);
       expect(name, `dot-only name ${dots}`).not.toMatch(/^\.+$/);
     }
-    expect(await upload('   '), 'blank names fall back to «Medium»').toBe('Medium');
+    expect(await upload('   '), 'blank names fall back to “Media”').toBe('Media');
     const first = (await api.listAssets(production.id)).body[0]!.id;
     const bidiRename = await api.renameAsset(production.id, first, '\u202eevil');
     expect(bidiRename.body.name, 'rename uses the same rules').not.toMatch(/[\u202a-\u202e\u2066-\u2069]/);
@@ -332,7 +333,7 @@ test.describe('MEDIA', () => {
     expect((await api.updateScene(production.id, scene, { background: { color: '#102030', assetId: asBackground.id } })).status).toBe(200);
     expectProblem(await api.deleteAsset(production.id, asBackground.id), 409, ERROR.assetInUse);
     // 3. slate background
-    expect((await api.updateProduction(production.id, { standbySlate: { title: "Gleich geht's los", subtitle: production.name, backgroundAssetId: asSlate.id } })).status).toBe(200);
+    expect((await api.updateProduction(production.id, { standbySlate: { title: TEXT.slate.standby, subtitle: production.name, backgroundAssetId: asSlate.id } })).status).toBe(200);
     expectProblem(await api.deleteAsset(production.id, asSlate.id), 409, ERROR.assetInUse);
     // 4. fallback source of an item
     const item = added.body.items.find((entry) => entry.id === itemId)!;
@@ -343,7 +344,7 @@ test.describe('MEDIA', () => {
 
     // Remove the references, then every asset can go (204, file removed, events, code freed).
     expect((await api.updateScene(production.id, scene, { background: { color: '#102030', assetId: null } })).status).toBe(200);
-    expect((await api.updateProduction(production.id, { standbySlate: { title: "Gleich geht's los", subtitle: production.name, backgroundAssetId: null } })).status).toBe(200);
+    expect((await api.updateProduction(production.id, { standbySlate: { title: TEXT.slate.standby, subtitle: production.name, backgroundAssetId: null } })).status).toBe(200);
     expect((await api.removeSceneItem(production.id, scene, itemId)).status).toBe(200);
     const from = hub.received.length;
     for (const asset of [asItem, asBackground, asSlate, asFallback]) {

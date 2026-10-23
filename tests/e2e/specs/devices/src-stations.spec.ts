@@ -7,7 +7,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * Stationen dock with many stations at once: the order (SRC-15) and the accessible names (SRC-16). Eight stations in eight
+ * Stations dock with many stations at once: the order (SRC-15) and the accessible names (SRC-16). Eight stations in eight
  * states would need eight browsers, so the stations are device hub stand-ins (support/devices/fake-station.ts): Hello and a
  * report per second, which is all the status rules of the API look at. The Regie is a real browser.
  */
@@ -21,9 +21,9 @@ test.describe('SRC stations', () => {
     async ({ regie, api, production, pairContext, onCleanup }) => {
       test.setTimeout(180_000);
       // Pairing order decides the codes: the laptop first (S1), then the phones K1 ... K7.
-      const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Rot' });
+      const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Red' });
       const phones = [] as Awaited<ReturnType<typeof pairPhone>>[];
-      for (let index = 1; index <= 7; index++) phones.push(await pairPhone(pairContext, { name: `Handy ${index}` }));
+      for (let index = 1; index <= 7; index++) phones.push(await pairPhone(pairContext, { name: `Phone ${index}` }));
       expect(laptop.codes['screen-1']).toBe('S1');
       expect(phones.map((phone) => phone.codes['camera'])).toEqual(['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7']);
 
@@ -36,10 +36,10 @@ test.describe('SRC stations', () => {
       };
       await station('S1', laptop, { 'screen-1': 'live' });
       for (const index of [1, 2, 3, 5, 6, 7]) await station(`K${index}`, phones[index - 1]!, { camera: 'live' });
-      // K4 is online but has never been live: «verbindet …».
+      // K4 is online but has never been live: “connecting…”.
       await station('K4', phones[3]!, {});
 
-      // Scenes: K5 in the program scene, K6 in the preview scene (Studio-Modus), K2 also in the program scene (SRC-16).
+      // Scenes: K5 in the program scene, K6 in the preview scene (Studio Mode), K2 also in the program scene (SRC-16).
       await putInScene(api, production, 0, phones[4]!.sourceId('camera'), LEFT);
       await putInScene(api, production, 0, phones[1]!.sourceId('camera'), RIGHT);
       await putInScene(api, production, 1, phones[5]!.sourceId('camera'), FULL);
@@ -64,30 +64,30 @@ test.describe('SRC stations', () => {
       // The order follows the states live: K1 loses its connection and moves up behind the red one, ahead of K2 (by code).
       await stations.get('K1')!.disconnect();
       await expect.poll(() => order(regie), { message: 'K1 moved to the amber group', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7']);
-      // K4 goes live: it leaves the «connecting» rank and falls back to the rest.
+      // K4 goes live: it leaves the “connecting” rank and falls back to the rest.
       await stations.get('K4')!.set('camera', 'live');
       await expect.poll(() => order(regie), { message: 'K4 is live now', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K5', 'K6', 'K4', 'K7']);
-      // «Gesehen» on K3 removes the recovered rank.
-      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Gesehen' }).click();
-      await expect.poll(() => order(regie), { message: 'K3 after «Gesehen»', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
+      // “Seen” on K3 removes the recovered rank.
+      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Seen' }).click();
+      await expect.poll(() => order(regie), { message: 'K3 after “Seen”', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
     },
   );
 
   test(
-    'E2E-SRC-16 [ui] accessible name of a station row: «<code> <name>, im Program, verbindet neu», aria-expanded toggles',
+    'E2E-SRC-16 [ui] accessible name of a station row: “<code> <name>, on Program, reconnecting”, aria-expanded toggles',
     t.p2,
     async ({ regie, api, production, pairContext, onCleanup }) => {
       test.setTimeout(120_000);
-      const phone = await pairPhone(pairContext, { name: 'Handy Bühne rechts' });
+      const phone = await pairPhone(pairContext, { name: 'Phone stage right' });
       const fake = await new FakeStation(phone.credentials).connect({ camera: 'live' });
       onCleanup(() => fake.stop());
       await putInScene(api, production, 0, phone.sourceId('camera'), FULL);
       const row = regie.page.locator(`.c-st[data-device="${phone.id}"]`);
       await expect(row).toBeVisible();
       const toggle = row.locator('.c-st__row');
-      await expect(toggle).toHaveAccessibleName('K1 Handy Bühne rechts, im Program');
+      await expect(toggle).toHaveAccessibleName('K1 Phone stage right, on Program');
       await fake.disconnect();
-      await expect(toggle, 'name while reconnecting').toHaveAccessibleName('K1 Handy Bühne rechts, im Program, verbindet neu', { timeout: 20_000 });
+      await expect(toggle, 'name while reconnecting').toHaveAccessibleName('K1 Phone stage right, on Program, reconnecting', { timeout: 20_000 });
       expect(await toggle.getAttribute('aria-expanded')).toBe('false');
       await toggle.click();
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');

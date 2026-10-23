@@ -22,7 +22,7 @@ import { t } from '../../support/tags';
 const tags = t.with('@p0', '@a11y', '@csp');
 const VIEWPORT = { width: 1440, height: 900 };
 
-/** Responses with a 4xx status that are part of a normal session (the browser logs them as «Failed to load resource»). */
+/** Responses with a 4xx status that are part of a normal session (the browser logs them as “Failed to load resource”). */
 const EXPECTED_STATUSES = [
   { status: 401, pathPattern: /^\/api\/auth\/me$/ },
   { status: 401, pathPattern: /^\/api\/auth\/login$/ },
@@ -74,23 +74,23 @@ test.describe('CSP and external hosts', () => {
     const page = await context.newPage();
     const regie = new RegiePage(page, config);
     await page.goto('/login');
-    await expect(page.getByLabel('Benutzername')).toBeVisible();
+    await expect(page.getByLabel('Username')).toBeVisible();
     expect(await loadedFonts(page), 'the UI font of the login page is loaded').toContain('Sofia Sans Semi Condensed');
-    expect(await regie.submitLoginForm({ username: 'nobody', password: 'falsches-Passwort-123' })).toBe(401);
+    expect(await regie.submitLoginForm({ username: 'nobody', password: 'wrong-password-123' })).toBe(401);
     await regie.loginViaUi();
     await regie.waitReady();
-    await expect(regie.station('Handy Eingang')).toBeVisible();
+    await expect(regie.station('Phone Entrance')).toBeVisible();
 
     // the Regie in its states
     const fonts = await loadedFonts(page);
     expect(fonts, 'Sofia Sans Semi Condensed and JetBrains Mono are loaded in the Regie').toEqual(expect.arrayContaining(['Sofia Sans Semi Condensed', 'JetBrains Mono']));
-    await regie.transitionOption('Schnitt').click(); // a fade ignores a second switch while it runs
-    await regie.clickScene('Pause');
-    await expect(regie.scene('Pause')).toHaveAttribute('aria-pressed', 'true');
-    await regie.clickScene('Begrüssung');
-    await expect(regie.scene('Begrüssung')).toHaveAttribute('aria-pressed', 'true');
+    await regie.transitionOption('Cut').click(); // a fade ignores a second switch while it runs
+    await regie.clickScene('Break');
+    await expect(regie.scene('Break')).toHaveAttribute('aria-pressed', 'true');
+    await regie.clickScene('Welcome');
+    await expect(regie.scene('Welcome')).toHaveAttribute('aria-pressed', 'true');
     await regie.setStudioMode(true);
-    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Docks und Layout' }), page.getByRole('button', { name: /^Produktion .*, Menü$/ }), page.getByRole('button', { name: 'Quelle', exact: true })]) {
+    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Docks and layout' }), page.getByRole('button', { name: /^Production .*, menu$/ }), page.getByRole('button', { name: 'Source', exact: true })]) {
       await trigger.click();
       await expect(page.locator('.c-pop').first()).toBeVisible();
       await page.keyboard.press('Escape');
@@ -100,11 +100,11 @@ test.describe('CSP and external hosts', () => {
     await regie.openPairing('link');
     await regie.closePairing();
     await page.locator('.c-st__row').first().click();
-    await page.getByRole('button', { name: /Auswählen: / }).first().click();
-    await page.getByRole('button', { name: 'Sendung starten' }).click();
-    await expect(page.getByRole('button', { name: 'Sendung beenden' }).first()).toBeVisible();
+    await page.getByRole('button', { name: /Select: / }).first().click();
+    await page.getByRole('button', { name: 'Start broadcast' }).click();
+    await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect(page.getByText('BEENDET')).toBeVisible();
+    await expect(page.getByText('ENDED')).toBeVisible();
     await page.goto('/monitoring');
     await expect(page.getByRole('table')).toBeVisible();
     // every font request went to the stack
@@ -135,21 +135,21 @@ test.describe('CSP and external hosts', () => {
     const phoneWatch = await watchContext(phoneContext);
     const phone = await PhoneSender.inContext(phoneContext, 'pixel7');
     await phone.gotoStart();
-    await phone.page.getByLabel('Name des Geräts').fill('');
-    await phone.page.getByRole('button', { name: 'Weiter' }).click();
+    await phone.page.getByLabel('Device name').fill('');
+    await phone.page.getByRole('button', { name: 'Continue' }).click();
     await expect(phone.page.locator('#device-name-error')).toBeVisible();
-    await phone.submitPairingForm('Handy Sweep', 'phone');
+    await phone.submitPairingForm('Phone Sweep', 'phone');
     await phone.checkCode();
     await regie.openPairing('laptop');
-    await regie.denyKnock('Handy Sweep');
+    await regie.denyKnock('Phone Sweep');
     await expect(phone.page.getByTestId('pairing-denied')).toBeVisible();
     const paired = await newUiContext(browser, { profile: 'pixel7' });
     onCleanup(() => paired.close());
     const pairedWatch = await watchContext(paired);
     const station = await PhoneSender.inContext(paired, 'pixel7');
-    const device = await pairViaApi(pairContext, station, { name: 'Handy Sweep 2' });
+    const device = await pairViaApi(pairContext, station, { name: 'Phone Sweep 2' });
     await station.waitForCamera('live');
-    expect((await api.sendDeviceCommand(production.id, device.id, { kind: 'message', text: 'Alles gut, weiter so.' })).status).toBeLessThan(300);
+    expect((await api.sendDeviceCommand(production.id, device.id, { kind: 'message', text: 'All good, keep going.' })).status).toBeLessThan(300);
     await expect(station.messageBanner()).toBeVisible();
     await phone.page.goto('/join/manifest.webmanifest');
     await verify('sender-phone', phoneWatch, origin);
@@ -175,11 +175,11 @@ test.describe('CSP and external hosts', () => {
     for (const request of fontRequests) expect(new URL(request.url).origin).toBe(origin);
     await verify('output', watch, origin);
 
-    // a wrong key: the 403 is shown as the «Kein Zugang» slate; the page logs the refusal itself (console.error of its hub logger)
+    // a wrong key: the 403 is shown as the “No access” slate; the page logs the refusal itself (console.error of its hub logger)
     const deniedContext = await newUiContext(browser, { context: { viewport: { width: 1280, height: 720 } } });
     onCleanup(() => deniedContext.close());
     const deniedWatch = await watchContext(deniedContext);
-    const denied = await OutputPage.open(deniedContext, { slug: production.slug, outputKey: 'falscher-schluessel' });
+    const denied = await OutputPage.open(deniedContext, { slug: production.slug, outputKey: 'wrong-key' });
     await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.denied);
     const allowed = [{ status: 403, pathPattern: /^\/(api|hubs)\/output/ }];
     const refusal = unexpectedConsole(deniedWatch, allowed).filter((entry) => !/^\[StudioFlow Output\] hub: /.test(entry.text));
