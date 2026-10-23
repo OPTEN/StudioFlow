@@ -4,7 +4,7 @@ import type { DesiredSize } from '@studioflow/scene-renderer';
 const MAX_DIMENSION = 7680;
 
 /**
- * Validates a consumer's size request: non-finite, zero or negative values mean «not needed» (null); fractions are
+ * Validates a consumer's size request: non-finite, zero or negative values mean “not needed” (null); fractions are
  * rounded up to whole pixels and huge values clamped.
  */
 export function normalizeDesiredSize(size: DesiredSize | null): DesiredSize | null {

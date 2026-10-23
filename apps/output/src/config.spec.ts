@@ -49,7 +49,7 @@ describe('pathSegment', () => {
     ['/o/webinar', 'webinar'],
     ['/o/webinar/', 'webinar'],
     ['/o/q4-2026', 'q4-2026'],
-    ['/o/_uhr', '_uhr'],
+    ['/o/_clock', '_clock'],
     ['/o/%61bc', 'abc'],
   ])('reads %s as %s', (pathname, expected) => {
     expect(pathSegment(pathname, BASE)).toBe(expected);
@@ -79,8 +79,8 @@ describe('parseRoute', () => {
   });
 
   it('recognises the measurement clock without key', () => {
-    expect(parseRoute(at('/o/_uhr'), BASE)).toEqual({ kind: 'clock' });
-    expect(parseRoute(at('/o/_uhr/?debug=1'), BASE)).toEqual({ kind: 'clock' });
+    expect(parseRoute(at('/o/_clock'), BASE)).toEqual({ kind: 'clock' });
+    expect(parseRoute(at('/o/_clock/?debug=1'), BASE)).toEqual({ kind: 'clock' });
   });
 
   it.each([
@@ -125,7 +125,7 @@ describe('parseRoute', () => {
     expect(route).toMatchObject({ kind: 'output', key: other, keyFromUrl: true });
   });
 
-  it('keeps the flags of an invalid link (transparent background for «Kein Zugang»)', () => {
+  it('keeps the flags of an invalid link (transparent background for “No access”)', () => {
     expect(parseRoute(at('/o/Bad?bg=transparent'), BASE)).toMatchObject({
       kind: 'invalid',
       flags: { background: 'transparent' },
@@ -201,7 +201,7 @@ describe('resolveRoute', () => {
   });
 
   it('does not touch the URL of an invalid link or the clock', () => {
-    for (const url of ['/o/Bad?k=x', '/o/_uhr']) {
+    for (const url of ['/o/Bad?k=x', '/o/_clock']) {
       const { win, replaced } = fakeWindow(url);
       resolveRoute(win, BASE);
       expect(replaced).toEqual([]);

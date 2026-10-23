@@ -10,7 +10,7 @@ import { PALETTE, UI_FONT } from './palette';
 const SLATE_FADE_MS = 300;
 
 /**
- * Full-stage slate («Gleich geht's los», «Danke fürs Zuschauen») above all scene layers. Showing and hiding fade over
+ * Full-stage slate (“Starting soon”, “Thanks for watching”) above all scene layers. Showing and hiding fade over
  * {@link SLATE_FADE_MS}; reversing mid-way continues from the current opacity, so there is never a jump.
  */
 export class SlateView {

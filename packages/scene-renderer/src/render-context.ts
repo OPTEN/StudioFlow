@@ -22,7 +22,7 @@ export interface RenderContext extends MediaHost {
   availability(sourceId: string): SourceAvailability;
   /** Monitor status of a source; undefined when unknown or without `statusOf`. */
   statusOf(sourceId: string): MonitorSourceStatus | undefined;
-  /** False when `statusOf` exists and does not know the source (deleted → «Quelle fehlt»). */
+  /** False when `statusOf` exists and does not know the source (deleted → “Source missing”). */
   isKnown(sourceId: string): boolean;
   /** Slot code of a source for monitor labels. */
   codeOf(sourceId: string): string | undefined;
@@ -79,7 +79,7 @@ export function createRenderContext(
         () => provider.availability(sourceId),
         PENDING,
       );
-      // Anything that is not an object is treated as «nothing received yet»; sourceState() checks the fields.
+      // Anything that is not an object is treated as “nothing received yet”; sourceState() checks the fields.
       return availability !== null && typeof availability === 'object'
         ? (availability as SourceAvailability)
         : PENDING;

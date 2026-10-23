@@ -10,13 +10,13 @@ export const PALETTE = {
   heldScrim: 'rgba(13, 17, 23, 0.72)',
   /** Text on dark grounds (hold message). */
   text: '#e6edf3',
-  /** Secondary text («Quelle fehlt»). */
+  /** Secondary text (“Source missing”). */
   muted: '#8b949e',
   /** Slate ground and text on amber/red fills. */
   ground: '#0d1117',
   /** Slate text. */
   slateText: '#ffffff',
-  /** «verbindet neu». */
+  /** “reconnecting”. */
   amber: '#e3b341',
   /** Every other outage. */
   red: '#f85149',

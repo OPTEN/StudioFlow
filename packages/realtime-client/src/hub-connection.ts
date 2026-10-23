@@ -28,15 +28,15 @@ export interface HubConnectionOptions {
 }
 
 /**
- * Matches SignalR's error texts for an HTTP 401/403 from the negotiate request («Unauthorized: Status code '401'»,
- * wrapped in «Failed to complete negotiation with the server: …»). Only negotiate surfaces the status, which is why
+ * Matches SignalR's error texts for an HTTP 401/403 from the negotiate request (“Unauthorized: Status code '401'”,
+ * wrapped in “Failed to complete negotiation with the server: …”). Only negotiate surfaces the status, which is why
  * the connection never uses `skipNegotiation`.
  */
 const UNAUTHORIZED_PATTERN = /Status code '(401|403)'/;
 
 /**
- * True when an error means «not allowed» (expired session, blocked device, rotated output key) rather than «not
- * reachable». Such errors must stop every retry loop.
+ * True when an error means “not allowed” (expired session, blocked device, rotated output key) rather than “not
+ * reachable”. Such errors must stop every retry loop.
  */
 export function isUnauthorizedError(error: unknown): boolean {
   if (typeof error === 'string') {
@@ -57,7 +57,7 @@ export function isUnauthorizedError(error: unknown): boolean {
 
 /**
  * Automatic reconnect policy: retries forever with the shared backoff (0, 300, 600, 1200 … 5000 ms + jitter) and gives
- * up only for authorization failures, so `onclose` fires and the caller can show «Gesperrt» / «Kein Zugang».
+ * up only for authorization failures, so `onclose` fires and the caller can show “Blocked” / “No access”.
  * The default SignalR policy gives up after about 42 s, which a live production must never do.
  */
 export const hubRetryPolicy: IRetryPolicy = {

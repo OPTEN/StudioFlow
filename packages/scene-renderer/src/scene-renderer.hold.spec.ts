@@ -178,7 +178,7 @@ describe('scene renderer: hold frame', () => {
     expect(mounted.errors).toEqual([]);
   });
 
-  it('darkens after holdMs: blur, scrim and «Bild kommt gleich zurück»', async () => {
+  it('darkens after holdMs: blur, scrim and “Picture returns shortly”', async () => {
     fakeCanvas2d();
     mounted = mount();
     showCamera({ w: 640, h: 360 });
@@ -188,7 +188,7 @@ describe('scene renderer: hold frame', () => {
     expect(held()?.style.display).toBe('none');
     await vi.advanceTimersByTimeAsync(1);
     expect(held()?.style.display).toBe('flex');
-    expect(held()?.textContent).toBe('Bild kommt gleich zurück');
+    expect(held()?.textContent).toBe('Picture returns shortly');
     expect(held()?.style.background).toBe('rgba(13, 17, 23, 0.72)');
     expect(mounted.part('itm_a', '.sf-r-held-text')?.style.display).toBe('inline');
     expect(box()?.style.filter).toBe('blur(16px)');

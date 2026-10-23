@@ -62,7 +62,7 @@ describe('StatusReporter', () => {
     reporter.stop();
   });
 
-  it('sends nothing while disabled («Kein Zugang») but keeps the housekeeping tick', async () => {
+  it('sends nothing while disabled (“No access”) but keeps the housekeeping tick', async () => {
     const { reporter, viaHub, viaRest, onTick, flags } = setup({ enabled: false });
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS * 10);
     expect(viaHub).not.toHaveBeenCalled();

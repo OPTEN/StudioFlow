@@ -86,7 +86,7 @@ export class FakeRenderer implements SceneRenderer {
     this.element.remove();
   }
 
-  /** Calls since the last {@link reset}, as compact strings: `show scn_a`, `slate Kein Zugang`, `preload scn_b,scn_c`. */
+  /** Calls since the last {@link reset}, as compact strings: `show scn_a`, `slate No access`, `preload scn_b,scn_c`. */
   summary(): string[] {
     return this.calls.map((call) => {
       switch (call.method) {

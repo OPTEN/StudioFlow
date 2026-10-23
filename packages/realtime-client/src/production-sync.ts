@@ -225,7 +225,7 @@ export class ProductionSync<TChanges extends ProductionChangesDto | OutputChange
   }
 
   /**
-   * Forces a full snapshot (manual «Neu laden»). Resolves once a snapshot requested after this call was applied
+   * Forces a full snapshot (manual “Reload”). Resolves once a snapshot requested after this call was applied
    * (waiting for the connection if necessary), rejects if the sync is stopped first.
    */
   resync(): Promise<void> {

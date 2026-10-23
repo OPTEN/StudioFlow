@@ -278,7 +278,7 @@ describe('scene renderer: transitions', () => {
 describe('scene renderer: slates', () => {
   let mounted: Mounted;
   let animations: FakeAnimation[];
-  const standby = { title: 'Gleich geht’s los', subtitle: 'Webinar Q4', backgroundAssetId: null };
+  const standby = { title: 'Starting soon', subtitle: 'Webinar Q4', backgroundAssetId: null };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -299,7 +299,7 @@ describe('scene renderer: slates', () => {
     mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
     mounted.renderer.showSlate(standby);
     const element = slate();
-    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Gleich geht’s los');
+    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Starting soon');
     expect(element?.querySelector('.sf-r-slate-subtitle')?.textContent).toBe('Webinar Q4');
     expect(element?.style.backgroundColor).toBe('#0d1117');
     expect(element?.style.color).toBe('#ffffff');
@@ -331,13 +331,13 @@ describe('scene renderer: slates', () => {
     mounted.renderer.showSlate(standby);
     const element = slate();
     mounted.renderer.showSlate({
-      title: 'Danke fürs Zuschauen',
+      title: 'Thanks for watching',
       subtitle: null,
       backgroundAssetId: null,
     });
     expect(slate()).toBe(element);
     expect(animations).toHaveLength(1);
-    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Danke fürs Zuschauen');
+    expect(element?.querySelector('.sf-r-slate-title')?.textContent).toBe('Thanks for watching');
     expect(element?.querySelector<HTMLElement>('.sf-r-slate-subtitle')?.style.display).toBe('none');
   });
 

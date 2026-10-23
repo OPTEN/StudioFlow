@@ -50,8 +50,8 @@ describe('platformLabel', () => {
     [UA.linuxFirefox, 'Linux · Firefox'],
     [UA.chromeOs, 'ChromeOS · Chrome'],
     [UA.inAppIos, 'iPhone'],
-    ['curl/8.0', 'Unbekannte Plattform'],
-    ['', 'Unbekannte Plattform'],
+    ['curl/8.0', 'Unknown platform'],
+    ['', 'Unknown platform'],
   ])('%s → %s', (userAgent, label) => {
     expect(platformLabel(userAgent)).toBe(label);
   });

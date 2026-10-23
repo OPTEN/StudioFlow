@@ -25,7 +25,7 @@ const kindOf = (sourceId: string): SourceKind | undefined => KINDS[sourceId];
 
 /**
  * The renderer paints in item order (`z-index` = index, first = back) and `applyLayoutTemplate` orders the items by
- * slot, so a template with overlapping slots (Bild-in-Bild) shows the small picture on top of the full one.
+ * slot, so a template with overlapping slots (Picture in picture) shows the small picture on top of the full one.
  */
 describe('scene renderer: layout templates and z-order', () => {
   let mounted: Mounted;
@@ -47,7 +47,7 @@ describe('scene renderer: layout templates and z-order', () => {
     );
   }
 
-  it('Bild-in-Bild after adding the camera first: the small camera is painted above the full screen', () => {
+  it('Picture in picture after adding the camera first: the small camera is painted above the full screen', () => {
     mounted = mount();
     showTemplate([sceneItem('itm_k1', CAMERA), sceneItem('itm_s1', SCREEN)]);
     const [full, corner] = layoutTemplate('pip').slots ?? [];
@@ -71,14 +71,14 @@ describe('scene renderer: layout templates and z-order', () => {
     expect(mounted.item('itm_s1')?.style.width).toBe('1920px');
   });
 
-  it('Bild-in-Bild after adding the screen first: the order stays and the camera is still in front', () => {
+  it('Picture in picture after adding the screen first: the order stays and the camera is still in front', () => {
     mounted = mount();
     showTemplate([sceneItem('itm_s1', SCREEN), sceneItem('itm_k1', CAMERA)]);
     expect(zIndex('itm_s1')).toBe(0);
     expect(zIndex('itm_k1')).toBe(1);
   });
 
-  it('Bild-in-Bild with two cameras: the front camera takes the corner', () => {
+  it('Picture in picture with two cameras: the front camera takes the corner', () => {
     mounted = mount();
     showTemplate([sceneItem('itm_k2', CAMERA_2), sceneItem('itm_k1', CAMERA)]);
     expect(mounted.renderer.effectiveRects().get('itm_k2')?.w).toBe(1920);

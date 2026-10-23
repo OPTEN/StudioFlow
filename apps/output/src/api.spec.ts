@@ -30,7 +30,7 @@ describe('output API', () => {
   });
 
   it.each([401, 403, 404])(
-    'maps HTTP %d to «Kein Zugang» with status 403 for MediaSession',
+    'maps HTTP %d to “No access” with status 403 for MediaSession',
     async (status) => {
       const api = createOutputApi({
         slug: 'webinar',

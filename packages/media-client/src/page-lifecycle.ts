@@ -1,8 +1,8 @@
 /**
  * Page lifecycle signals relevant for reconnecting media:
- * - «wake» moments where an immediate retry is worthwhile: the wake signals shared with the hubs (`pageWakeSignals`
+ * - “wake” moments where an immediate retry is worthwhile: the wake signals shared with the hubs (`pageWakeSignals`
  *   of `@studioflow/realtime-client`: `online`, the document becoming visible, `pageshow` and `resume`);
- * - «suspended» phases where no connect attempt should start: between `pagehide`/`freeze` and the next wake signal.
+ * - “suspended” phases where no connect attempt should start: between `pagehide`/`freeze` and the next wake signal.
  *   livekit-client itself disconnects on `pagehide` and `freeze` (CLIENT_INITIATED), so a retry during that phase
  *   would only open a socket that the browser is about to freeze.
  *

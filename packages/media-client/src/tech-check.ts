@@ -1,9 +1,11 @@
 /**
  * Technical check of a sender (spec 8.4): camera picture, network round trip to the API and upload bandwidth, each
  * rated as a traffic light and summarized in a {@link TechCheckDto}. Every step has a timeout and the check never
- * throws: a failing step is rated `bad` and explained in the German note.
+ * throws: a failing step is rated `bad` and explained by a problem message. The problems are kept as messages, so the
+ * sender shows them in the language of the reader; the wire `note` is an English summary of the same problems.
  */
-import type { TechCheckDto, TechCheckLevel } from '@studioflow/scene-model';
+import { msg, tFor, tm, type Locale, type MessageKey, type Msg } from '@studioflow/i18n';
+import { formatRate, type TechCheckDto, type TechCheckLevel } from '@studioflow/scene-model';
 import { systemClock, TimeoutError, withTimeout, type Clock } from './clock';
 
 /** Inputs of {@link runTechCheck}. */
@@ -38,10 +40,38 @@ export const TECH_CHECK = {
   cameraOkFps: 24,
 } as const;
 
+/**
+ * What a step found wrong, as a message of the `media.techcheck.*` catalogue with the raw numbers as parameters
+ * (`rate` is formatted when the message is shown, see {@link techProblemText}).
+ */
+export type TechProblem = Msg;
+
+/** The result of {@link runTechCheck}: the wire DTO plus the problems as messages (the sender strips them again). */
+export interface TechCheckResult extends TechCheckDto {
+  readonly problems: readonly TechProblem[];
+}
+
 interface StepResult {
   readonly level: TechCheckLevel;
   readonly value: number | null;
-  readonly problem: string | null;
+  readonly problem: TechProblem | null;
+}
+
+type UntypedTranslate = (key: MessageKey, params?: TechProblem['params']) => string;
+
+/**
+ * The text of a problem. Without `locale` it is in the active language, with decimals in its format ("2,8 Mbit/s");
+ * `'en'` gives the English text of the wire `note`, which never depends on the language of the page.
+ */
+export function techProblemText(problem: TechProblem, locale?: Locale): string {
+  const { key, params } = problem;
+  if (locale !== undefined) {
+    return (tFor(locale) as unknown as UntypedTranslate)(key, params);
+  }
+  const rate = params?.['rate'];
+  return tm(
+    typeof rate === 'number' ? { key, params: { ...params, rate: formatRate(rate) } } : problem,
+  );
 }
 
 const RANK: Readonly<Record<TechCheckLevel, number>> = { unknown: 0, ok: 1, warn: 2, bad: 3 };
@@ -54,18 +84,13 @@ export function worstLevel(levels: readonly TechCheckLevel[]): TechCheckLevel {
   );
 }
 
-/** de-CH decimal with comma («2,4»). */
-function decimal(value: number, digits: number): string {
-  return value.toFixed(digits).replace('.', ',');
-}
-
 /** Rates the camera from its track settings: ≥ 720p and ≥ 24 fps ok, ≥ 360p warn, below bad, no track unknown. */
 export function rateCamera(track: MediaStreamTrack | null | undefined): StepResult {
   if (track === null || track === undefined) {
     return { level: 'unknown', value: null, problem: null };
   }
   if (track.readyState === 'ended') {
-    return { level: 'bad', value: null, problem: 'Kamera: liefert kein Bild.' };
+    return { level: 'bad', value: null, problem: msg('media.techcheck.camera.noPicture') };
   }
   let settings: MediaTrackSettings;
   try {
@@ -83,11 +108,12 @@ export function rateCamera(track: MediaStreamTrack | null | undefined): StepResu
   if (shortSide >= TECH_CHECK.cameraOkHeight && fpsOk) {
     return { level: 'ok', value: shortSide, problem: null };
   }
-  const detail = `${width} × ${height}${fpsKnown ? ` bei ${Math.round(frameRate)} fps` : ''}`;
   return {
     level: shortSide >= TECH_CHECK.cameraWarnHeight ? 'warn' : 'bad',
     value: shortSide,
-    problem: `Kamera: nur ${detail}.`,
+    problem: fpsKnown
+      ? msg('media.techcheck.camera.lowResFps', { width, height, fps: Math.round(frameRate) })
+      : msg('media.techcheck.camera.lowRes', { width, height }),
   };
 }
 
@@ -109,21 +135,29 @@ export async function measureNetwork(
   }
   const lost = TECH_CHECK.pingCount - samples.length;
   if (samples.length < TECH_CHECK.minPingAnswers) {
-    return { level: 'bad', value: null, problem: 'Netzwerk: Server nicht zuverlässig erreichbar.' };
+    return { level: 'bad', value: null, problem: msg('media.techcheck.network.unreachable') };
   }
   const rtt = Math.round(median(samples));
   const latencyLevel: TechCheckLevel =
     rtt <= TECH_CHECK.rttOkMs ? 'ok' : rtt <= TECH_CHECK.rttWarnMs ? 'warn' : 'bad';
   const level = lost > 0 ? worstLevel([latencyLevel, 'warn']) : latencyLevel;
-  const problems = [
-    latencyLevel === 'ok' ? null : `hohe Latenz (${rtt} ms)`,
-    lost > 0 ? `${lost} von ${TECH_CHECK.pingCount} Messungen ohne Antwort` : null,
-  ].filter((problem): problem is string => problem !== null);
-  return {
-    level,
-    value: rtt,
-    problem: problems.length === 0 ? null : `Netzwerk: ${problems.join(', ')}.`,
-  };
+  const total = TECH_CHECK.pingCount;
+  return { level, value: rtt, problem: networkProblem(latencyLevel !== 'ok', rtt, lost, total) };
+}
+
+function networkProblem(
+  slow: boolean,
+  rtt: number,
+  lost: number,
+  total: number,
+): TechProblem | null {
+  if (slow && lost > 0) {
+    return msg('media.techcheck.network.latencyAndLoss', { rtt, lost, total });
+  }
+  if (slow) {
+    return msg('media.techcheck.network.latency', { rtt });
+  }
+  return lost > 0 ? msg('media.techcheck.network.loss', { lost, total }) : null;
 }
 
 /**
@@ -152,19 +186,22 @@ export async function measureUpload(
     return {
       level: kbps >= TECH_CHECK.uploadWarnKbps ? 'warn' : 'bad',
       value: kbps,
-      problem: `Upload: nur ${decimal(kbps / 1000, 1)} Mbit/s (empfohlen ab ${TECH_CHECK.uploadOkKbps / 1000} Mbit/s).`,
+      problem: msg('media.techcheck.upload.slow', {
+        rate: Math.round(kbps / 100) / 10,
+        recommended: TECH_CHECK.uploadOkKbps / 1000,
+      }),
     };
   } catch (error) {
     const problem =
       error instanceof TimeoutError
-        ? `Upload: Zeitüberschreitung (über ${TECH_CHECK.uploadTimeoutMs / 1000} s).`
-        : 'Upload: Test fehlgeschlagen.';
+        ? msg('media.techcheck.upload.timeout', { seconds: TECH_CHECK.uploadTimeoutMs / 1000 })
+        : msg('media.techcheck.upload.failed');
     return { level: 'bad', value: null, problem };
   }
 }
 
 /** Runs camera, network and bandwidth checks one after another and never rejects. */
-export async function runTechCheck(options: TechCheckOptions): Promise<TechCheckDto> {
+export async function runTechCheck(options: TechCheckOptions): Promise<TechCheckResult> {
   const clock = options.clock ?? systemClock;
   const camera = rateCamera(options.getUserMediaTrack);
   const network = await measureNetwork(options.ping, clock);
@@ -176,7 +213,7 @@ export async function runTechCheck(options: TechCheckOptions): Promise<TechCheck
   );
   const problems = [camera, network, bandwidth]
     .map((step) => step.problem)
-    .filter((problem): problem is string => problem !== null);
+    .filter((problem): problem is TechProblem => problem !== null);
   return {
     overall: worstLevel([camera.level, network.level, bandwidth.level]),
     camera: camera.level,
@@ -185,7 +222,8 @@ export async function runTechCheck(options: TechCheckOptions): Promise<TechCheck
     uploadKbps: bandwidth.value,
     rttMs: network.value,
     at: new Date().toISOString(),
-    note: problems.length === 0 ? null : problems.join(' '),
+    note: problems.length === 0 ? null : problems.map((p) => techProblemText(p, 'en')).join(' '),
+    problems,
   };
 }
 

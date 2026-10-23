@@ -3,7 +3,7 @@ import type { SlateDto } from '@studioflow/scene-model';
 
 /**
  * Texts the output page shows by itself (DESIGN.md, spec 9.3). Everything else on the page comes from the
- * production: the standby and end slates, and the renderer's hold message «Picture returns shortly».
+ * production: the standby and end slates, and the renderer's hold message “Picture returns shortly”.
  *
  * They are functions, not constants: the language is only known once the page has started (`?lang=`, then the browser
  * language), so the text is looked up when it is shown.

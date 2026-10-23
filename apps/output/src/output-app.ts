@@ -156,7 +156,7 @@ function roundOrNull(value: number | null | undefined, digits = 0): number | nul
 
 /**
  * Composition of the output page (spec 9.3): output hub + `ProductionSync` → {@link ProgramView} → scene renderer;
- * LiveKit (lazy, after the first frame) → source provider; «Kein Zugang» with slow retries; status reports; the
+ * LiveKit (lazy, after the first frame) → source provider; “No access” with slow retries; status reports; the
  * optional debug overlay and latency probe.
  */
 export function startOutputApp(
@@ -216,7 +216,7 @@ export function startOutputApp(
   const loadMedia = deps.loadMedia ?? loadOutputMedia;
 
   // LiveKit removed the participant (key regenerated, spec 4.8) or deleted the room: rejoin soon instead of showing
-  // «Kein Zugang» – a refused link then fails at the token endpoint (unauthorized), a spurious removal heals itself
+  // “No access” – a refused link then fails at the token endpoint (unauthorized), a spurious removal heals itself
   // with the hold frames on screen. A removal that repeats within a minute waits the full access retry interval.
   let removalRestart: ReturnType<typeof setTimeout> | null = null;
   let lastRemovalAt = Number.NEGATIVE_INFINITY;
@@ -284,7 +284,7 @@ export function startOutputApp(
     return mediaLoading;
   };
 
-  // «Kein Zugang» after access returns: render once the state is fresh again (no flash of an outdated program).
+  // “No access” after access returns: render once the state is fresh again (no flash of an outdated program).
   let pendingAllow = false;
   let allowTimer: ReturnType<typeof setTimeout> | null = null;
   const finishAllow = (): void => {
@@ -556,7 +556,7 @@ export function startOutputApp(
 }
 
 /**
- * A link that cannot work (malformed slug, missing or malformed key): «Kein Zugang», no network access at all.
+ * A link that cannot work (malformed slug, missing or malformed key): “No access”, no network access at all.
  * Nothing can change without a new link, so there is nothing to retry.
  */
 export function startInvalidLinkPage(

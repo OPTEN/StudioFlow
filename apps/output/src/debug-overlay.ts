@@ -1,3 +1,4 @@
+import { t } from '@studioflow/i18n';
 import {
   formatDecimal,
   formatKbpsAsMbit,
@@ -41,47 +42,6 @@ export interface DebugInfo {
   readonly sources: readonly DebugSource[];
 }
 
-const HUB_WORDS: Record<HubState, string> = {
-  idle: 'bereit',
-  connecting: 'verbindet …',
-  connected: 'verbunden',
-  reconnecting: 'verbindet neu',
-  unauthorized: 'kein Zugang',
-  stopped: 'gestoppt',
-};
-
-const SYNC_WORDS: Record<SyncStatus, string> = {
-  connecting: 'verbindet …',
-  syncing: 'gleicht ab',
-  live: 'aktuell',
-  offline: 'offline, letzter Stand',
-  unauthorized: 'kein Zugang',
-};
-
-const MEDIA_WORDS: Record<MediaSessionState, string> = {
-  idle: 'bereit',
-  connecting: 'verbindet …',
-  connected: 'verbunden',
-  reconnecting: 'verbindet neu',
-  waiting: 'wartet auf neuen Versuch',
-  stopped: 'gestoppt',
-  replaced: 'ersetzt',
-  removed: 'entfernt',
-  unauthorized: 'kein Zugang',
-};
-
-const BROADCAST_WORDS: Record<BroadcastState, string> = {
-  standby: 'bereit',
-  live: 'live',
-  ended: 'beendet',
-};
-
-const AVAILABILITY_WORDS: Record<DebugSource['availability'], string> = {
-  live: 'live',
-  lost: 'Standbild',
-  pending: 'kein Bild',
-};
-
 function ms(value: number | null | undefined): string {
   return value === null || value === undefined || !Number.isFinite(value)
     ? MISSING_VALUE
@@ -89,10 +49,12 @@ function ms(value: number | null | undefined): string {
 }
 
 function sourceLine(source: DebugSource): string {
-  const name = [source.code, source.label].filter(Boolean).join(' ') || 'Quelle';
+  const name =
+    [source.code, source.label].filter(Boolean).join(' ') || t('output.debug.sourceFallback');
+  const availability = t(`output.debug.availability.${source.availability}`);
   const stats = source.stats;
   if (!stats) {
-    return `${name} · ${AVAILABILITY_WORDS[source.availability]}`;
+    return `${name} · ${availability}`;
   }
   const size =
     stats.width && stats.height
@@ -104,25 +66,40 @@ function sourceLine(source: DebugSource): string {
     size,
     `${fps} fps`,
     `${formatKbpsAsMbit(stats.bitrateKbps)} Mbit/s`,
-    `Verlust ${formatPercent(stats.packetLossPct, 1)}`,
-    `Puffer ${ms(stats.jitterBufferDelayMs)}`,
-    ...(source.availability === 'live' ? [] : [AVAILABILITY_WORDS[source.availability]]),
+    t('output.debug.loss', { value: formatPercent(stats.packetLossPct, 1) }),
+    t('output.debug.buffer', { value: ms(stats.jitterBufferDelayMs) }),
+    ...(source.availability === 'live' ? [] : [availability]),
   ].join(' · ');
 }
 
 /** The panel text, one entry per line. */
 export function formatDebugLines(info: DebugInfo): string[] {
-  const scene = info.sceneName === null ? 'keine Szene' : `Szene «${info.sceneName}»`;
-  const broadcast = info.broadcast === null ? MISSING_VALUE : BROADCAST_WORDS[info.broadcast];
+  const scene =
+    info.sceneName === null
+      ? t('output.debug.sceneNone')
+      : t('output.debug.scene', { name: info.sceneName });
+  const broadcast =
+    info.broadcast === null ? MISSING_VALUE : t(`output.debug.broadcast.${info.broadcast}`);
   const lines = [
-    `${info.productionName ?? 'Produktion unbekannt'} · ${scene}`,
-    `Revision ${info.revision ?? MISSING_VALUE} · Sendung ${broadcast}`,
-    `Hub ${HUB_WORDS[info.hubState]} · Sync ${SYNC_WORDS[info.syncStatus]}`,
-    `LiveKit ${info.mediaState === null ? 'lädt …' : MEDIA_WORDS[info.mediaState]}`,
-    `Latenz ≈ ${ms(info.latencyMs)} · Renderer ${formatDecimal(info.rendererFps, 0)} fps`,
+    `${info.productionName ?? t('output.debug.productionUnknown')} · ${scene}`,
+    t('output.debug.revision', { revision: info.revision ?? MISSING_VALUE, state: broadcast }),
+    t('output.debug.connections', {
+      hub: t(`output.debug.hub.${info.hubState}`),
+      sync: t(`output.debug.sync.${info.syncStatus}`),
+    }),
+    t('output.debug.livekit', {
+      state:
+        info.mediaState === null
+          ? t('output.debug.livekitLoading')
+          : t(`output.debug.media.${info.mediaState}`),
+    }),
+    t('output.debug.latency', {
+      latency: ms(info.latencyMs),
+      fps: formatDecimal(info.rendererFps, 0),
+    }),
   ];
   if (info.sources.length === 0) {
-    lines.push('Keine Kamera- oder Screen-Quelle im Bild');
+    lines.push(t('output.debug.noSources'));
   }
   for (const source of info.sources) {
     lines.push(sourceLine(source));

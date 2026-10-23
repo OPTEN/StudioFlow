@@ -1,9 +1,10 @@
+import { t } from '@studioflow/i18n';
 import { MONO_FONT_PROBE, UI_FONT_PROBE, whenFontsReady } from './fonts';
 import { clockHint } from './slates';
 
 /**
- * `/o/_uhr`: running clock for glass-to-glass measurements (plan phase 0: «Glass-to-Glass messen, indem wir eine
- * laufende Uhr filmen»). A camera that is live in StudioFlow films this screen; a photo that shows this clock and the
+ * `/o/_clock`: running clock for glass-to-glass measurements (plan phase 0: measure the latency by filming a running
+ * clock). A camera that is live in StudioFlow films this screen; a photo that shows this clock and the
  * output side by side shows the latency as the difference. No key, no API, no LiveKit. The digits are redrawn on
  * every animation frame (that is the point of this page) in tabular JetBrains Mono, so nothing moves sideways.
  */
@@ -12,7 +13,7 @@ function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');
 }
 
-/** Local time «HH:MM:SS.mmm» (24 h). */
+/** Local time “HH:MM:SS.mmm” (24 h). */
 export function formatClockMs(date: Date): string {
   if (Number.isNaN(date.getTime())) {
     return '--:--:--.---';
@@ -26,8 +27,8 @@ export function formatClockMs(date: Date): string {
 /** Renders the clock into `root` and starts it; returns the function that stops it. */
 export function startClockPage(doc: Document, root: HTMLElement): () => void {
   const view = doc.defaultView;
-  doc.title = 'StudioFlow Uhr';
-  root.setAttribute('aria-label', 'Messuhr');
+  doc.title = t('output.clock.title');
+  root.setAttribute('aria-label', t('output.clock.label'));
   const clock = doc.createElement('div');
   clock.className = 'c-clock';
   const time = doc.createElement('div');

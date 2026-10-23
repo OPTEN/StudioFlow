@@ -27,7 +27,7 @@ describe('scene renderer: stage and items', () => {
       expect(stage.style.height).toBe('1080px');
       expect(stage.style.transform).toBe('translate(0px, 0px) scale(0.5)');
       expect(stage.getAttribute('role')).toBe('img');
-      expect(stage.getAttribute('aria-label')).toBe('Szene');
+      expect(stage.getAttribute('aria-label')).toBe('Scene');
     });
 
     it('letterboxes a 4:3 container and re-fits on resize', () => {
@@ -301,7 +301,7 @@ describe('scene renderer: stage and items', () => {
       expect(mounted.part('itm_m', 'img')).toBeNull();
     });
 
-    it('labels missing sources «Quelle fehlt» on monitors, including device sources the production does not know', () => {
+    it('labels missing sources “Source missing” on monitors, including device sources the production does not know', () => {
       mounted = mount({ mode: 'monitor', statusOf: (id) => (id === CAMERA ? 'ok' : undefined) });
       mounted.renderer.show(
         scene('scn_a', [
@@ -314,7 +314,7 @@ describe('scene renderer: stage and items', () => {
       for (const id of ['itm_del', 'itm_m']) {
         const label = mounted.part(id, '.sf-r-missing');
         expect(label?.style.display).toBe('flex');
-        expect(label?.textContent).toBe('Quelle fehlt');
+        expect(label?.textContent).toBe('Source missing');
         expect(mounted.item(id)?.style.backgroundColor).toBe('#121821');
       }
     });

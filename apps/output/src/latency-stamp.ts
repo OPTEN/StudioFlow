@@ -1,5 +1,5 @@
 /**
- * Latency stamp codec for automated glass-to-glass measurements (test research, section 4 «Glass-to-glass latency»).
+ * Latency stamp codec for automated glass-to-glass measurements (test research, section 4 “Glass-to-glass latency”).
  *
  * A test publisher draws the current time as a 32-bit millisecond stamp into the top bar of a 640 × 360 picture:
  * block 0 black and block 1 white as references, then 32 data bits MSB first, then one even-parity bit; each block is

@@ -1,3 +1,4 @@
+import { t } from '@studioflow/i18n';
 import { formatDuration, statusWord, type SourceKind } from '@studioflow/scene-model';
 
 import { PALETTE } from './palette';
@@ -17,7 +18,7 @@ export type AlertStatus = Extract<
 export interface AlertPresentation {
   /** Outline and label fill colour. */
   readonly color: string;
-  /** Label text, e.g. «K2 · Standbild 00:12». */
+  /** Label text, e.g. “K2 · Freeze frame 00:12”. */
   readonly text: string;
   /** True when the text contains a running timer (needs a refresh every second). */
   readonly timed: boolean;
@@ -42,9 +43,11 @@ function alertWord(
   switch (status) {
     case 'reconnecting':
       // The same timer as everywhere in the Regie: mm:ss, from one hour on h:mm:ss.
-      return narrow ? formatDuration(elapsedMs) : `Standbild ${formatDuration(elapsedMs)}`;
+      return narrow
+        ? formatDuration(elapsedMs)
+        : t('renderer.alertFrozen', { time: formatDuration(elapsedMs) });
     case 'ended':
-      return narrow ? 'beendet' : statusWord(status, kind);
+      return narrow ? t('renderer.alertEnded') : statusWord(status, kind);
     case 'blocked':
     case 'lost':
       return statusWord(status);
@@ -54,10 +57,10 @@ function alertWord(
 /**
  * Presentation of an alert, or null when the status is not an outage.
  *
- * @param code slot code («K2»); omitted from the label when unknown
- * @param elapsedMs time since the source went down (timer of «reconnecting»)
+ * @param code slot code (“K2”); omitted from the label when unknown
+ * @param elapsedMs time since the source went down (timer of “reconnecting”)
  * @param screenWidth item width in screen pixels (short variants below {@link NARROW_ALERT_SCREEN_PX})
- * @param kind kind of the source: an ended camera reads «Kamera beendet», an ended screen «Teilen beendet»
+ * @param kind kind of the source: an ended camera reads “camera stopped”, an ended screen “sharing stopped”
  */
 export function alertPresentation(
   status: MonitorSourceStatus | undefined,

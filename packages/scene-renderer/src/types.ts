@@ -63,7 +63,7 @@ export interface CanvasRect {
 
 /**
  * Where a renderer runs. `output` is the broadcast picture (no text except slates and hold messages), `monitor` the
- * Regie preview/program monitors (alert outlines, labels, «Quelle fehlt»), `thumbnail` the small scene previews.
+ * Regie preview/program monitors (alert outlines, labels, “Source missing”), `thumbnail` the small scene previews.
  */
 export type RendererMode = 'output' | 'monitor' | 'thumbnail';
 
@@ -81,16 +81,16 @@ export interface SceneRendererOptions {
   readonly background?: 'black' | 'transparent';
   /**
    * Source health for monitor alerts (Regie). Returning undefined for a device source means the production does not
-   * know it (deleted): the item renders as «Quelle fehlt». Without this option every device source counts as known.
+   * know it (deleted): the item renders as “Source missing”. Without this option every device source counts as known.
    */
   readonly statusOf?: (sourceId: string) => MonitorSourceStatus | undefined;
-  /** Slot code for monitor labels («K2 · Standbild 00:12»). */
+  /** Slot code for monitor labels (“K2 · Freeze frame 00:12”). */
   readonly codeOf?: (sourceId: string) => string | undefined;
   /** Turns fades into cuts (prefers-reduced-motion or an explicit setting). */
   readonly reducedMotion?: boolean;
   /** Kind of an asset; unknown assets render as images. */
   readonly assetKindOf?: (assetId: string) => AssetMediaKind | undefined;
-  /** Accessible name of the stage (`role="img"`). Default «Szene». */
+  /** Accessible name of the stage (`role="img"`). Default “Scene” in the active language. */
   readonly label?: string;
   /**
    * Receives errors thrown by the provider or the callbacks above. The renderer never lets them escape into event

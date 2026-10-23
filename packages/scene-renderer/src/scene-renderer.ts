@@ -1,3 +1,4 @@
+import { onLocaleChange, t } from '@studioflow/i18n';
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
 import type { SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
 
@@ -17,11 +18,9 @@ import { StatusClock } from './status-clock';
 import { DeadlineTimer, now, Ticker } from './timers';
 import type { CanvasRect, RendererStats, SceneRenderer, SceneRendererOptions } from './types';
 
-/** Default accessible name of the stage. */
-const DEFAULT_STAGE_LABEL = 'Szene';
 /** Longest fade the renderer plays (the API allows up to 2 s; anything longer is clamped). */
 const MAX_FADE_MS = 10_000;
-/** Refresh of running alert timers («Standbild 00:12»). */
+/** Refresh of running alert timers (“Freeze frame 00:12”). */
 const ALERT_TICK_MS = 1000;
 /** Refresh of the rolling hold frames: the frame shown after a loss is at most this old. */
 const HOLD_FRAME_REFRESH_MS = 1000;
@@ -84,6 +83,9 @@ class DomSceneRenderer implements SceneRenderer {
   );
   private readonly unsubscribeProvider: () => void;
   private readonly stopObservingSize: () => void;
+  private readonly stopObservingLocale: () => void;
+  /** The accessible name given in the options; null: the default name, which follows the language. */
+  private readonly customLabel: string | null;
   private current: SceneLayer | null = null;
   private outgoing: SceneLayer | null = null;
   /** The layer a cut is replacing, only while the new layer takes over (hold frame donors). */
@@ -128,7 +130,8 @@ class DomSceneRenderer implements SceneRenderer {
       contain: 'strict',
     });
     this.element.setAttribute('role', 'img');
-    this.element.setAttribute('aria-label', options.label?.trim() || DEFAULT_STAGE_LABEL);
+    this.customLabel = options.label?.trim() || null;
+    this.updateStageLabel();
     // Scenes and slates are separate stacking contexts, the slate always on top.
     this.scenesEl = createElement(doc, 'div', 'sf-r-scenes', { ...FILL, 'z-index': '0' });
     const slateHost = createElement(doc, 'div', 'sf-r-slates', { ...FILL, 'z-index': '1' });
@@ -146,6 +149,8 @@ class DomSceneRenderer implements SceneRenderer {
       () => undefined,
     );
     this.stopObservingSize = this.observeSize();
+    // The texts of the monitor are looked up in every render pass; a language switch only has to ask for one.
+    this.stopObservingLocale = onLocaleChange(() => this.requestRender());
     this.resize();
   }
 
@@ -237,6 +242,7 @@ class DomSceneRenderer implements SceneRenderer {
     this.finishFade();
     this.ctx.guard(this.unsubscribeProvider);
     this.stopObservingSize();
+    this.stopObservingLocale();
     this.expiryTimer.clear();
     this.alertTicker.setActive(false);
     this.holdFrameTicker.setActive(false);
@@ -299,6 +305,9 @@ class DomSceneRenderer implements SceneRenderer {
   }
 
   private renderAll(): void {
+    if (this.customLabel === null) {
+      this.updateStageLabel();
+    }
     const frame = this.frame();
     const layers = this.layers();
     this.statusClock.beginPass();
@@ -313,6 +322,17 @@ class DomSceneRenderer implements SceneRenderer {
     this.expiryTimer.set(expiries.length > 0 ? Math.min(...expiries) : null);
     this.alertTicker.setActive(layers.some((layer) => layer.hasTimedAlert));
     this.holdFrameTicker.setActive(layers.some((layer) => layer.keepsHoldFrames));
+  }
+
+  /**
+   * Accessible name of the stage: the one from the options (the owner may change it afterwards, so it is only written
+   * once), else “Scene” in the active language.
+   */
+  private updateStageLabel(): void {
+    const label = this.customLabel ?? t('renderer.stageLabel');
+    if (this.element.getAttribute('aria-label') !== label) {
+      this.element.setAttribute('aria-label', label);
+    }
   }
 
   /** Keeps the hold frames fresh; skipped while the page is hidden (nothing is painted then anyway). */

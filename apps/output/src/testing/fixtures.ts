@@ -38,8 +38,8 @@ export function production(overrides: Partial<ProductionDto> = {}): ProductionDt
     previewSceneId: null,
     lastTransition: CUT,
     lastSwitchAt: null,
-    standbySlate: { title: "Gleich geht's los", subtitle: 'Webinar', backgroundAssetId: null },
-    endSlate: { title: 'Danke fürs Zuschauen', subtitle: null, backgroundAssetId: null },
+    standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
+    endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     ...overrides,
   };
 }
@@ -77,7 +77,7 @@ export function scene(
 ): SceneDto {
   return {
     id,
-    name: `Szene ${id.slice(4).toUpperCase()}`,
+    name: `Scene ${id.slice(4).toUpperCase()}`,
     sortOrder,
     version: 1,
     layoutMode: 'free',

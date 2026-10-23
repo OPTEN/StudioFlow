@@ -115,7 +115,7 @@ const DEFAULT_CONNECT_TIMEOUT_MS = 45_000;
 
 /**
  * Keeps one LiveKit room connected for a role. Never runs two connect attempts at once; every async continuation is
- * tied to a «run» and becomes a no-op once `stop()`/`restart()`/a terminal reason ended that run.
+ * tied to a “run” and becomes a no-op once `stop()`/`restart()`/a terminal reason ended that run.
  */
 export class MediaSession implements SessionStateSource {
   readonly role: MediaRole;
@@ -185,7 +185,7 @@ export class MediaSession implements SessionStateSource {
     }
   }
 
-  /** Ends the current run (if any) and starts a fresh one, e.g. «Hier weitermachen» after `replaced`. */
+  /** Ends the current run (if any) and starts a fresh one, e.g. “Continue here” after `replaced`. */
   restart(): void {
     this.#endRun();
     this.#beginRun();
