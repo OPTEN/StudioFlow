@@ -306,34 +306,80 @@ public sealed class OnAirStateTests
 
 public sealed class LogTextsTests
 {
-    private static string? Text(string action, params (string Key, string Value)[] details) =>
-        LogTexts.For(AuditEntry.Create("prd_x", Build.T0, AuditActors.System, action, details.ToDictionary(d => d.Key, d => d.Value, StringComparer.Ordinal)));
+    private static AuditEntry Entry(string action, params (string Key, string Value)[] details) =>
+        AuditEntry.Create("prd_x", Build.T0, AuditActors.System, action, details.ToDictionary(d => d.Key, d => d.Value, StringComparer.Ordinal));
+
+    private static string? Text(string action, params (string Key, string Value)[] details) => LogTexts.For(Entry(action, details));
+
+    private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Describe(string action, params (string Key, string Value)[] details) =>
+        LogTexts.Describe(Entry(action, details)) ?? throw new InvalidOperationException($"{action} has no log entry");
 
     [Fact]
     public void For_SourceEvents_UseTheRegieWording()
     {
-        Assert.Equal("K2 verbindet neu", Text(AuditActions.SourceReconnecting, (AuditDetails.Code, "K2")));
-        Assert.Equal("K2 wieder da, war 9 s weg", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "9")));
-        Assert.Equal("K2 wieder da, war 1 s weg", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "0")));
-        Assert.Equal("K2 wieder da, war 3 min weg", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "170")));
-        Assert.Equal("S1 Teilen beendet", Text(AuditActions.SourceEnded, (AuditDetails.Code, "S1"), (AuditDetails.Kind, "Screen")));
-        Assert.Equal("K1 Kamera beendet", Text(AuditActions.SourceEnded, (AuditDetails.Code, "K1"), (AuditDetails.Kind, "Camera")));
-        Assert.Equal("K1 kein Bild", Text(AuditActions.SourceLost, (AuditDetails.Code, "K1")));
+        Assert.Equal("K2 reconnecting", Text(AuditActions.SourceReconnecting, (AuditDetails.Code, "K2")));
+        Assert.Equal("K2 is back, was gone for 9 s", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "9")));
+        Assert.Equal("K2 is back, was gone for 1 s", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "0")));
+        Assert.Equal("K2 is back, was gone for 3 min", Text(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "170")));
+        Assert.Equal("S1 sharing stopped", Text(AuditActions.SourceEnded, (AuditDetails.Code, "S1"), (AuditDetails.Kind, "Screen")));
+        Assert.Equal("K1 camera stopped", Text(AuditActions.SourceEnded, (AuditDetails.Code, "K1"), (AuditDetails.Kind, "Camera")));
+        Assert.Equal("K1 no picture", Text(AuditActions.SourceLost, (AuditDetails.Code, "K1")));
     }
 
     [Fact]
-    public void For_ProductionEvents_HaveGermanTexts()
+    public void For_ProductionEvents_HaveEnglishTexts()
     {
-        Assert.Equal("Szene «Pause» ist live", Text(AuditActions.SceneLive, (AuditDetails.Scene, "Pause")));
-        Assert.Equal("Sendung gestartet", Text(AuditActions.BroadcastStarted));
-        Assert.Equal("Sendung beendet", Text(AuditActions.BroadcastEnded));
-        Assert.Equal("S3 Laptop Mia gekoppelt", Text(AuditActions.DevicePaired, (AuditDetails.Codes, "S3"), (AuditDetails.Device, "Laptop Mia")));
-        Assert.Equal("Laptop Mia entfernt", Text(AuditActions.DeviceRemoved, (AuditDetails.Codes, ""), (AuditDetails.Device, "Laptop Mia")));
-        Assert.Equal("K2 Handy 2 gesperrt", Text(AuditActions.DeviceBlocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Handy 2")));
-        Assert.Equal("Anfrage von Lea abgelehnt", Text(AuditActions.PairingDenied, (AuditDetails.Name, "Lea")));
-        Assert.Equal("Einladungslink erstellt", Text(AuditActions.InviteCreated, (AuditDetails.Kind, "LaptopLink")));
-        Assert.Equal("Output-Link neu erzeugt", Text(AuditActions.OutputKeyRegenerated));
-        Assert.Equal("M1 «Pause» hochgeladen", Text(AuditActions.AssetUploaded, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")));
+        Assert.Equal("Scene “Pause” is live", Text(AuditActions.SceneLive, (AuditDetails.Scene, "Pause")));
+        Assert.Equal("Scene “Pause” created", Text(AuditActions.SceneCreated, (AuditDetails.Scene, "Pause")));
+        Assert.Equal("Scene “Pause” deleted", Text(AuditActions.SceneDeleted, (AuditDetails.Scene, "Pause")));
+        Assert.Equal("Broadcast started", Text(AuditActions.BroadcastStarted));
+        Assert.Equal("Broadcast ended", Text(AuditActions.BroadcastEnded));
+        Assert.Equal("S3 Laptop Mia paired", Text(AuditActions.DevicePaired, (AuditDetails.Codes, "S3"), (AuditDetails.Device, "Laptop Mia")));
+        Assert.Equal("Laptop Mia removed", Text(AuditActions.DeviceRemoved, (AuditDetails.Codes, ""), (AuditDetails.Device, "Laptop Mia")));
+        Assert.Equal("K2 Handy 2 blocked", Text(AuditActions.DeviceBlocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Handy 2")));
+        Assert.Equal("K2 Handy 2 unblocked", Text(AuditActions.DeviceUnblocked, (AuditDetails.Codes, "K2"), (AuditDetails.Device, "Handy 2")));
+        Assert.Equal("Request from Lea denied", Text(AuditActions.PairingDenied, (AuditDetails.Name, "Lea")));
+        Assert.Equal("Invite link created", Text(AuditActions.InviteCreated, (AuditDetails.Kind, "LaptopLink")));
+        Assert.Equal("Invite link revoked", Text(AuditActions.InviteRevoked, (AuditDetails.Kind, "LaptopLink")));
+        Assert.Equal("Output link regenerated", Text(AuditActions.OutputKeyRegenerated));
+        Assert.Equal("Output access changed", Text(AuditActions.OutputAccessChanged));
+        Assert.Equal("M1 “Pause” uploaded", Text(AuditActions.AssetUploaded, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")));
+        Assert.Equal("M1 “Pause” deleted", Text(AuditActions.AssetDeleted, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")));
+    }
+
+    [Fact]
+    public void Describe_GivesTheCodeAndTheParametersForTheClientText()
+    {
+        var live = Describe(AuditActions.SceneLive, (AuditDetails.Scene, "Pause"));
+        Assert.Equal(LogCode.SceneLive, live.Code);
+        Assert.Equal(new Dictionary<string, string> { ["scene"] = "Pause" }, live.Params);
+
+        var paired = Describe(AuditActions.DevicePaired, (AuditDetails.Codes, "S1, S2"), (AuditDetails.Device, "Laptop Mia"));
+        Assert.Equal(LogCode.DevicePaired, paired.Code);
+        Assert.Equal(new Dictionary<string, string> { ["subject"] = "S1, S2 Laptop Mia" }, paired.Params);
+
+        var nameOnly = Describe(AuditActions.DeviceRemoved, (AuditDetails.Codes, ""), (AuditDetails.Device, "Laptop Mia"));
+        Assert.Equal(new Dictionary<string, string> { ["subject"] = "Laptop Mia" }, nameOnly.Params);
+
+        Assert.Equal(new Dictionary<string, string> { ["name"] = "Lea" }, Describe(AuditActions.PairingDenied, (AuditDetails.Name, "Lea")).Params);
+        Assert.Equal(
+            new Dictionary<string, string> { ["code"] = "M1", ["name"] = "Pause" },
+            Describe(AuditActions.AssetUploaded, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")).Params);
+        Assert.Empty(Describe(AuditActions.BroadcastStarted).Params);
+    }
+
+    [Fact]
+    public void Describe_SplitsEndedSourcesByKindAndReportsTheDowntimeInSeconds()
+    {
+        Assert.Equal(LogCode.CameraEnded, Describe(AuditActions.SourceEnded, (AuditDetails.Code, "K1"), (AuditDetails.Kind, "Camera")).Code);
+        Assert.Equal(LogCode.ScreenEnded, Describe(AuditActions.SourceEnded, (AuditDetails.Code, "S1"), (AuditDetails.Kind, "Screen")).Code);
+        Assert.Equal(LogCode.ScreenEnded, Describe(AuditActions.SourceEnded, (AuditDetails.Code, "S1")).Code);
+
+        var recovered = Describe(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "170"));
+        Assert.Equal(LogCode.SourceRecovered, recovered.Code);
+        Assert.Equal(new Dictionary<string, string> { ["code"] = "K2", ["downSeconds"] = "170" }, recovered.Params);
+        Assert.Equal("1", Describe(AuditActions.SourceRecovered, (AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "0")).Params["downSeconds"]);
+        Assert.Equal("1", Describe(AuditActions.SourceRecovered, (AuditDetails.Code, "K2")).Params["downSeconds"]);
     }
 
     [Fact]
@@ -343,6 +389,7 @@ public sealed class LogTextsTests
         Assert.Null(Text(AuditActions.InviteCreated, (AuditDetails.Kind, "PhoneQr")));
         Assert.Null(Text(AuditActions.InviteRevoked, (AuditDetails.Kind, "PhoneQr")));
         Assert.Null(Text("unknown.action"));
+        Assert.Null(LogTexts.Describe(Entry(AuditActions.LoginSucceeded)));
     }
 
     [Fact]
@@ -353,5 +400,23 @@ public sealed class LogTextsTests
             var hasText = Text(action, (AuditDetails.Kind, "LaptopLink")) is not null;
             Assert.Equal(hasText, LogTexts.Actions.Contains(action));
         }
+    }
+
+    [Fact]
+    public void EveryLogCode_IsProducedByAnAction()
+    {
+        var produced = new HashSet<LogCode>();
+        foreach (var action in LogTexts.Actions)
+        {
+            foreach (var kind in new[] { "LaptopLink", "Camera", "Screen" })
+            {
+                if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind))) is { } described)
+                {
+                    produced.Add(described.Code);
+                }
+            }
+        }
+
+        Assert.Equal(Enum.GetValues<LogCode>().OrderBy(c => c), produced.OrderBy(c => c));
     }
 }

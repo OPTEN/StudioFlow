@@ -35,7 +35,7 @@ public sealed record ProductionDto(
 public sealed record ProductionSummaryDto(string Id, string Name, string Slug, bool IsActive, DateTimeOffset CreatedAt);
 
 /// <summary>A full-screen slate on the output.</summary>
-/// <param name="Title">Main line, e.g. «Gleich geht's los».</param>
+/// <param name="Title">Main line, e.g. "Starting soon".</param>
 /// <param name="Subtitle">Optional second line.</param>
 /// <param name="BackgroundAssetId">Optional image asset behind the text.</param>
 public sealed record SlateDto(string Title, string? Subtitle, string? BackgroundAssetId);
@@ -45,8 +45,12 @@ public sealed record SlateDto(string Title, string? Subtitle, string? Background
 /// <param name="DurationMs">Fade duration; one of 200, 300, 500, 800, 1000, 1500, 2000. Ignored (0) for a cut.</param>
 public sealed record TransitionDto(TransitionKind Kind, int DurationMs);
 
-/// <summary>A human-readable entry for «Letzte Ereignisse» (backed by the audit log).</summary>
-public sealed record LogEntryDto(DateTimeOffset At, string Text);
+/// <summary>An entry of "Recent events", derived from the audit log.</summary>
+/// <param name="At">Time of the event.</param>
+/// <param name="Code">What happened. Clients show their own text for the code, in the language of the user.</param>
+/// <param name="Params">Values for the text of the code (scene, device or slot names), keyed in camelCase; the keys per code are listed at the codes.</param>
+/// <param name="Text">English text for clients that do not know the code; the same words as the English client text.</param>
+public sealed record LogEntryDto(DateTimeOffset At, LogCode Code, IReadOnlyDictionary<string, string> Params, string Text);
 
 /// <summary>Complete production state for the Regie. Sent on subscribe and after a resync.</summary>
 /// <param name="Revision">Monotonic revision; every <see cref="ProductionEvent"/> carries the next one.</param>

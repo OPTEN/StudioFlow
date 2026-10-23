@@ -195,7 +195,7 @@ public sealed class DeviceApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
         Assert.DoesNotContain(snapshot.Devices, d => d.Id == phone.DeviceId || d.Id == laptop.DeviceId);
         Assert.DoesNotContain(snapshot.Sources, s => s.DeviceId == phone.DeviceId);
-        Assert.Contains(snapshot.RecentLog, l => l.Text.EndsWith("entfernt", StringComparison.Ordinal));
+        Assert.Contains(snapshot.RecentLog, l => l.Text.EndsWith("removed", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -138,7 +138,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
 
         Assert.Null(snapshot.Production.PreviewSceneId);
         Assert.Equal([0, 1], snapshot.Scenes.Select(s => s.SortOrder));
-        Assert.Contains(snapshot.RecentLog, l => l.Text == "Szene «Präsentation» gelöscht");
+        Assert.Contains(snapshot.RecentLog, l => l is { Code: LogCode.SceneDeleted } && l.Params["scene"] == "Präsentation");
     }
 
     [Fact]

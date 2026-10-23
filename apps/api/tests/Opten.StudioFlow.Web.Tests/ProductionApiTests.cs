@@ -153,11 +153,11 @@ public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<Studio
 
         Assert.Null(delta.Snapshot);
         Assert.Contains(delta.Events!, e => e is ProductionChangedEvent { Production.Broadcast: BroadcastState.Live });
-        Assert.Contains(delta.Events!, e => e is LogAppendedEvent { Entry.Text: "Sendung gestartet" });
+        Assert.Contains(delta.Events!, e => e is LogAppendedEvent { Entry.Text: "Broadcast started" });
         Assert.Equal(Enumerable.Range(1, delta.Events!.Count).Select(i => snapshot.Revision + i), delta.Events.Select(e => e.Revision));
         Assert.Empty(none.Events!);
         Assert.NotNull(full.Snapshot);
-        Assert.Contains(full.Snapshot.RecentLog, l => l.Text == "Sendung gestartet");
+        Assert.Contains(full.Snapshot.RecentLog, l => l.Text == "Broadcast started");
         await admin.Client.GetAsync($"/api/productions/{production.Id}/changes", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.BadRequest);
     }
 

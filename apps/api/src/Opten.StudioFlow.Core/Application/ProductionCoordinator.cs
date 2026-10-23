@@ -71,14 +71,14 @@ public sealed class MutationContext
         events.Add(new StagedEvent(factory, HiddenFromOutput: true));
     }
 
-    /// <summary>Writes an audit entry in the same transaction and emits its log text, if it has one.</summary>
+    /// <summary>Writes an audit entry in the same transaction and emits its log entry, if it has one.</summary>
     public void Audit(string actor, string action, IReadOnlyDictionary<string, string>? details = null)
     {
         var entry = AuditEntry.Create(ProductionId, Now, actor, action, details);
         Data.Audit.Add(entry);
-        if (LogTexts.For(entry) is { } text)
+        if (LogTexts.Describe(entry) is var (code, parameters, text))
         {
-            var log = new LogEntryDto(Now, text);
+            var log = new LogEntryDto(Now, code, parameters, text);
             Emit(revision => new LogAppendedEvent(revision, log));
         }
     }

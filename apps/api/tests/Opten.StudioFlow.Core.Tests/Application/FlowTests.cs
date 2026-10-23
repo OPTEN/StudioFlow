@@ -108,7 +108,7 @@ public sealed class SwitchingFlowTests : IDisposable
         var switched = Assert.Single(harness.Events.OfType<ProgramSwitchedEvent>());
         Assert.Equal(Scenes[2].Id, switched.ProgramSceneId);
         Assert.Equal(Scenes[0].Id, switched.PreviousProgramSceneId);
-        Assert.Equal("Szene «Pause» ist live", Assert.Single(harness.Events.OfType<LogAppendedEvent>()).Entry.Text);
+        Assert.Equal("Scene “Pause” is live", Assert.Single(harness.Events.OfType<LogAppendedEvent>()).Entry.Text);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class SwitchingFlowTests : IDisposable
         await harness.Productions.ResetBroadcastAsync(harness.Production.Id, CancellationToken.None);
 
         Assert.Equal([BroadcastState.Live, BroadcastState.Ended, BroadcastState.Standby], harness.Events.OfType<ProductionChangedEvent>().Select(e => e.Production.Broadcast));
-        Assert.Equal(["Sendung gestartet", "Sendung beendet"], harness.Events.OfType<LogAppendedEvent>().Select(e => e.Entry.Text));
+        Assert.Equal(["Broadcast started", "Broadcast ended"], harness.Events.OfType<LogAppendedEvent>().Select(e => e.Entry.Text));
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(SourceStatus.Offline, harness.Source($"{device.Id}/camera").Status);
         Assert.Equal(2, harness.Events.OfType<InviteUpsertedEvent>().Count());
         Assert.Single(harness.Events.OfType<InviteRemovedEvent>());
-        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 Handy 1 gekoppelt");
+        Assert.Contains(harness.Events.OfType<LogAppendedEvent>(), l => l.Entry.Text == "K1 Handy 1 paired");
     }
 
     [Fact]
@@ -216,8 +216,8 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(incidents[0].Id, incidents[1].Id);
         Assert.NotNull(incidents[1].EndedAt);
         var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).ToList();
-        Assert.Contains("K1 verbindet neu", logs);
-        Assert.Contains("K1 wieder da, war 9 s weg", logs);
+        Assert.Contains("K1 reconnecting", logs);
+        Assert.Contains("K1 is back, was gone for 9 s", logs);
         Assert.Contains(harness.Events.OfType<DeviceUpsertedEvent>(), e => e.Device.Connection == DeviceConnection.Reconnecting);
 
         await harness.Productions.AcknowledgeIncidentAsync(harness.Production.Id, incidents[0].Id, CancellationToken.None);
@@ -280,7 +280,7 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(SourceStatus.Reconnecting, harness.Source($"{device.Id}/camera").Status);
         Assert.Equal(SourceStatus.Ok, harness.Source($"{device.Id}/screen-1").Status);
         Assert.Equal($"{device.Id}/camera", harness.Events.OfType<IncidentUpsertedEvent>().Single().Incident.SourceId);
-        Assert.Contains("K1 verbindet neu", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+        Assert.Contains("K1 reconnecting", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
     }
 
     [Fact]
@@ -306,8 +306,8 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal([IncidentKind.Reconnecting, IncidentKind.Reconnecting, IncidentKind.Reconnecting, IncidentKind.Ended], incidents.Select(i => i.Kind));
         Assert.NotNull(incidents[1].EndedAt);
         Assert.Equal(incidents[2].Id, incidents[3].Id);
-        var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).Where(t => !t.EndsWith(" gekoppelt", StringComparison.Ordinal));
-        Assert.Equal(["K1 verbindet neu", "K1 wieder da, war 5 s weg", "K1 verbindet neu", "K1 Kamera beendet"], logs);
+        var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).Where(t => !t.EndsWith(" paired", StringComparison.Ordinal));
+        Assert.Equal(["K1 reconnecting", "K1 is back, was gone for 5 s", "K1 reconnecting", "K1 camera stopped"], logs);
     }
 
     [Fact]
@@ -324,8 +324,8 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Equal(SourceStatus.Ended, harness.Source($"{device.Id}/camera").Status);
         Assert.All(harness.Events.OfType<IncidentUpsertedEvent>(), e => Assert.Equal(IncidentKind.Ended, e.Incident.Kind));
         var logs = harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text).ToList();
-        Assert.Contains("S1 Teilen beendet", logs);
-        Assert.Contains("K1 Kamera beendet", logs);
+        Assert.Contains("S1 sharing stopped", logs);
+        Assert.Contains("K1 camera stopped", logs);
     }
 
     [Fact]
@@ -337,7 +337,7 @@ public sealed class DeviceFlowTests : IDisposable
 
         Assert.Equal(SourceStatus.Lost, harness.Source($"{device.Id}/camera").Status);
         Assert.Equal(IncidentKind.Lost, harness.Events.OfType<IncidentUpsertedEvent>().Single().Incident.Kind);
-        Assert.Contains("K1 kein Bild", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+        Assert.Contains("K1 no picture", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public sealed class DeviceFlowTests : IDisposable
         Assert.Contains(device.Id, harness.Rooms.Removed);
         Assert.Equal(SourceStatus.Blocked, harness.Source($"{device.Id}/camera").Status);
         Assert.Single(harness.Events.OfType<IncidentRemovedEvent>());
-        Assert.Contains("K1 Handy 1 gesperrt", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+        Assert.Contains("K1 Handy 1 blocked", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.IssueTokenAsync(identity, CancellationToken.None));
         await Assert.ThrowsAsync<StudioFlowException>(() => harness.Devices.HelloAsync(identity, "c3", new DeviceHelloDto("tab-1", "iPhone", "1.0"), CancellationToken.None));
     }
@@ -636,7 +636,7 @@ public sealed class PairingFlowTests : IDisposable
 
         Assert.Equal(PairingRequestStatus.Denied, harness.Pairing.Poll(knock.RequestId, knock.PollToken).Status);
         Assert.Single(harness.Events.OfType<PairingRequestRemovedEvent>());
-        Assert.Contains("Anfrage von Mia abgelehnt", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
+        Assert.Contains("Request from Mia denied", harness.Events.OfType<LogAppendedEvent>().Select(l => l.Entry.Text));
     }
 
     [Fact]

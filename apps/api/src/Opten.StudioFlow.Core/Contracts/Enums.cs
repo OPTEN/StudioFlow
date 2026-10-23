@@ -270,3 +270,73 @@ public enum PairingRequestStatus
     /// <summary>Expired or unknown.</summary>
     Expired,
 }
+
+/// <summary>
+/// What an entry of "Recent events" reports. Clients show their own text for the code and fill in the params of the
+/// entry; the English text of the entry is the fallback for clients that do not know the code yet.
+/// </summary>
+public enum LogCode
+{
+    /// <summary>A scene went on air. Params: <c>scene</c>.</summary>
+    SceneLive,
+
+    /// <summary>A scene was created. Params: <c>scene</c>.</summary>
+    SceneCreated,
+
+    /// <summary>A scene was deleted. Params: <c>scene</c>.</summary>
+    SceneDeleted,
+
+    /// <summary>The broadcast started.</summary>
+    BroadcastStarted,
+
+    /// <summary>The broadcast ended.</summary>
+    BroadcastEnded,
+
+    /// <summary>A device was paired. Params: <c>subject</c> (slot codes and device name).</summary>
+    DevicePaired,
+
+    /// <summary>A device was blocked. Params: <c>subject</c>.</summary>
+    DeviceBlocked,
+
+    /// <summary>A device was unblocked. Params: <c>subject</c>.</summary>
+    DeviceUnblocked,
+
+    /// <summary>A device was removed. Params: <c>subject</c>.</summary>
+    DeviceRemoved,
+
+    /// <summary>A pairing request was denied. Params: <c>name</c> (the requested device name).</summary>
+    PairingDenied,
+
+    /// <summary>A laptop invite link was created.</summary>
+    InviteLinkCreated,
+
+    /// <summary>A laptop invite link was revoked.</summary>
+    InviteLinkRevoked,
+
+    /// <summary>The output link was regenerated.</summary>
+    OutputLinkRegenerated,
+
+    /// <summary>The output access rules (IP restriction) changed.</summary>
+    OutputAccessChanged,
+
+    /// <summary>A media file was uploaded. Params: <c>code</c> (slot code), <c>name</c>.</summary>
+    AssetUploaded,
+
+    /// <summary>A media file was deleted. Params: <c>code</c>, <c>name</c>.</summary>
+    AssetDeleted,
+
+    /// <summary>A live source is reconnecting. Params: <c>code</c>.</summary>
+    SourceReconnecting,
+
+    /// <summary>The sender stopped a camera on purpose. Params: <c>code</c>.</summary>
+    CameraEnded,
+
+    /// <summary>The sender stopped a screen share. Params: <c>code</c>.</summary>
+    ScreenEnded,
+
+    /// <summary>A live camera lost its picture. Params: <c>code</c>.</summary>
+    SourceLost,
+
+    /// <summary>A source is back after an outage. Params: <c>code</c>, <c>downSeconds</c>.</summary>
+    SourceRecovered,
+}
