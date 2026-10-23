@@ -1310,6 +1310,84 @@
         }
       }
     },
+    "/api/productions/{productionId}/scenes/{sceneId}/items/order": {
+      "put": {
+        "tags": [
+          "Scenes"
+        ],
+        "operationId": "reorderSceneItems",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderSceneItemsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/devices/{deviceId}": {
       "patch": {
         "tags": [
@@ -5192,6 +5270,22 @@
           }
         },
         "description": "Renames a device."
+      },
+      "ReorderSceneItemsRequest": {
+        "required": [
+          "itemIds"
+        ],
+        "type": "object",
+        "properties": {
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every item id of the scene exactly once; a list that does not match the current items is a 409 `conflict`."
+          }
+        },
+        "description": "New z-order of a scene: the ids of all its items, back to front. Only the order changes, never an item."
       },
       "ReorderScenesRequest": {
         "required": [

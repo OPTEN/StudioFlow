@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR.Client;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Web.Tests.Support;
 
@@ -155,6 +156,135 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     }
 
     [Fact]
+    public async Task ReorderItems_Permutation_ReordersAndKeepsEveryItemUntouched()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        var before = await AddItemsAsync(admin, production, sceneId, camera, 3);
+        var ids = before.Items.Select(i => i.Id).ToList();
+
+        var after = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest([ids[2], ids[0], ids[1]])).ExpectAsync<SceneDto>();
+        var unchanged = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest([ids[2], ids[0], ids[1]])).ExpectAsync<SceneDto>();
+        var stored = (await admin.Client.GetAsync($"/api/productions/{production}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>()).Scenes.Single(s => s.Id == sceneId);
+
+        Assert.Equal([ids[2], ids[0], ids[1]], after.Items.Select(i => i.Id));
+        Assert.Equal(before.Version + 1, after.Version);
+        Assert.Equal(after.Version, unchanged.Version);
+        Assert.Equal(after.Items, stored.Items);
+        Assert.Equal(before.Items.OrderBy(i => i.Id), after.Items.OrderBy(i => i.Id));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("extra")]
+    [InlineData("unknown")]
+    [InlineData("duplicate")]
+    public async Task ReorderItems_ListDoesNotMatchTheItems_IsConflictAndNothingChanges(string kind)
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        var before = await AddItemsAsync(admin, production, sceneId, camera, 3);
+        var ids = before.Items.Select(i => i.Id).ToList();
+        IReadOnlyList<string> request = kind switch
+        {
+            "missing" => [ids[1], ids[0]],
+            "extra" => [ids[2], ids[1], ids[0], "itm_extra0001"],
+            "unknown" => [ids[2], ids[1], "itm_unknown001"],
+            _ => [ids[2], ids[2], ids[0]],
+        };
+
+        var code = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest(request)).ExpectProblemAsync(HttpStatusCode.Conflict);
+        var stored = (await admin.Client.GetAsync($"/api/productions/{production}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>()).Scenes.Single(s => s.Id == sceneId);
+
+        Assert.Equal(ErrorCodes.Conflict, code);
+        Assert.Equal(before.Items, stored.Items);
+        Assert.Equal(before.Version, stored.Version);
+    }
+
+    [Fact]
+    public async Task ReorderItems_MissingBodyListOrUnknownScene_IsRejected()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        await AddItemsAsync(admin, production, sceneId, camera, 1);
+
+        Assert.Equal(ErrorCodes.ValidationFailed, await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest(null!)).ExpectProblemAsync(HttpStatusCode.BadRequest));
+        Assert.Equal(ErrorCodes.NotFound, await admin.Client.PutJsonAsync(OrderUrl(production, "scn_unknown"), new ReorderSceneItemsRequest([])).ExpectProblemAsync(HttpStatusCode.NotFound));
+    }
+
+    [Fact]
+    public async Task ReorderItems_SingleItemAndEmptyScene_AreAcceptedWithoutAChange()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        var empty = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest([])).ExpectAsync<SceneDto>();
+        var single = await AddItemsAsync(admin, production, sceneId, camera, 1);
+
+        var again = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest([single.Items[0].Id])).ExpectAsync<SceneDto>();
+
+        Assert.Empty(empty.Items);
+        Assert.Equal(single.Version, again.Version);
+    }
+
+    [Fact]
+    public async Task ReorderItems_ConcurrentGeometryEditOfAnotherSession_IsNotOverwritten()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        var before = await AddItemsAsync(admin, production, sceneId, camera, 2);
+        var ids = before.Items.Select(i => i.Id).ToList();
+
+        // Another Regie session moves the first item after this session read the scene, then this session reorders.
+        await admin.Client.PutJsonAsync($"{Scenes(production)}/{sceneId}/items/{ids[0]}", before.Items[0] with { X = 777, Hidden = true }).ExpectAsync<SceneDto>();
+        var after = await admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest([ids[1], ids[0]])).ExpectAsync<SceneDto>();
+
+        Assert.Equal([ids[1], ids[0]], after.Items.Select(i => i.Id));
+        Assert.Equal((777, true), (after.Items[1].X, after.Items[1].Hidden));
+    }
+
+    [Fact]
+    public async Task ReorderItems_ParallelRequests_AreSerializedAndTheLastOneWins()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var sceneId = await FirstSceneAsync(admin, production);
+        var ids = (await AddItemsAsync(admin, production, sceneId, camera, 3)).Items.Select(i => i.Id).ToList();
+        List<string>[] orders = [[ids[2], ids[1], ids[0]], [ids[1], ids[2], ids[0]], [ids[0], ids[2], ids[1]]];
+
+        var results = await Task.WhenAll(orders.Select(order => admin.Client.PutJsonAsync(OrderUrl(production, sceneId), new ReorderSceneItemsRequest(order)).ExpectAsync<SceneDto>()));
+        var stored = (await admin.Client.GetAsync($"/api/productions/{production}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>()).Scenes.Single(s => s.Id == sceneId);
+
+        Assert.Equal(3, results.Select(r => r.Version).Distinct().Count());
+        Assert.Equal(results.Max(r => r.Version), stored.Version);
+        Assert.Equal(results.Single(r => r.Version == stored.Version).Items.Select(i => i.Id), stored.Items.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task ReorderItems_ProgramScene_IsLiveAtOnceOnTheOutputAndForOtherRegieTabs()
+    {
+        var (admin, production, camera) = await SetupAsync();
+        var snapshot = await admin.Client.GetAsync($"/api/productions/{production}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
+        var programId = snapshot.Production.ProgramSceneId!;
+        var ids = (await AddItemsAsync(admin, production, programId, camera, 3)).Items.Select(i => i.Id).ToList();
+        var settings = await admin.Client.GetAsync($"/api/productions/{production}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
+        await using var otherTab = app.Hub(HubMethods.StudioHubPath, o => o.Headers["Cookie"] = admin.Cookie);
+        await using var output = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..]));
+        var tabEvents = HubProbe.On<ProductionEvent>(otherTab, HubMethods.Event);
+        var outputEvents = HubProbe.On<ProductionEvent>(output, HubMethods.Event);
+        await otherTab.StartAsync(TestContext.Current.CancellationToken);
+        await otherTab.InvokeAsync<ProductionChangesDto>(HubMethods.Subscribe, production, null, TestContext.Current.CancellationToken);
+        await output.StartAsync(TestContext.Current.CancellationToken);
+        await output.InvokeAsync<OutputChangesDto>(HubMethods.SubscribeOutput, null, TestContext.Current.CancellationToken);
+        string[] reordered = [ids[2], ids[0], ids[1]];
+
+        await admin.Client.PutJsonAsync(OrderUrl(production, programId), new ReorderSceneItemsRequest(reordered)).ExpectAsync(HttpStatusCode.OK);
+        var seenByTab = await tabEvents.NextAsync(e => e is SceneUpsertedEvent s && s.Scene.Id == programId);
+        var seenByOutput = await outputEvents.NextAsync(e => e is SceneUpsertedEvent s && s.Scene.Id == programId);
+
+        Assert.Equal(reordered, ((SceneUpsertedEvent)seenByTab).Scene.Items.Select(i => i.Id));
+        Assert.Equal(reordered, ((SceneUpsertedEvent)seenByOutput).Scene.Items.Select(i => i.Id));
+    }
+
+    [Fact]
     public async Task Update_NameLayoutAndBackground_AreValidated()
     {
         var (admin, production, _) = await SetupAsync();
@@ -185,6 +315,19 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     }
 
     private static string Scenes(string productionId) => $"/api/productions/{productionId}/scenes";
+
+    private static string OrderUrl(string productionId, string sceneId) => $"{Scenes(productionId)}/{sceneId}/items/order";
+
+    private static async Task<SceneDto> AddItemsAsync(AdminSession admin, string productionId, string sceneId, string source, int count)
+    {
+        SceneDto scene = null!;
+        for (var i = 0; i < count; i++)
+        {
+            scene = await admin.Client.PostJsonAsync($"{Scenes(productionId)}/{sceneId}/items", new AddSceneItemRequest(source, i * 10, i * 10, 640, 360, ItemFit.Cover, 0)).ExpectAsync<SceneDto>();
+        }
+
+        return scene;
+    }
 
     private static SceneItemDto Item(string source, string id) => new(id, source, 100, 100, 640, 360, ItemFit.Cover, new CropDto(0, 0, 0, 0), 12, false, 0, false, false, null, new LostBehaviorDto(3000, null));
 

@@ -217,6 +217,33 @@ public sealed class Scene
         Version++;
     }
 
+    /// <summary>
+    /// Applies a new z-order without touching any item: the ids must be exactly the current item ids, otherwise the
+    /// caller worked on an outdated list (409). Returns false when the order is unchanged.
+    /// </summary>
+    public bool ReorderItems(IReadOnlyList<string>? itemIds)
+    {
+        if (itemIds is null)
+        {
+            throw StudioFlowException.Invalid("itemIds", "The item ids are missing.");
+        }
+
+        var byId = Items.ToDictionary(i => i.Id, StringComparer.Ordinal);
+        if (itemIds.Count != byId.Count || itemIds.Distinct(StringComparer.Ordinal).Count() != byId.Count || !itemIds.All(byId.ContainsKey))
+        {
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The order must contain exactly the items of the scene.");
+        }
+
+        if (Items.Select(i => i.Id).SequenceEqual(itemIds, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        Items = [.. itemIds.Select(id => byId[id])];
+        Version++;
+        return true;
+    }
+
     /// <summary>True when an item, the fallback of an item or the background uses the asset.</summary>
     public bool UsesAsset(string assetId) =>
         string.Equals(Background.AssetId, assetId, StringComparison.Ordinal)

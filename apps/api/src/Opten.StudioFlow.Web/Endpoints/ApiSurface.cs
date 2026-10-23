@@ -101,6 +101,8 @@ internal static class ApiSurface
             .WithName("updateSceneItem").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapDelete("/{sceneId}/items/{itemId}", SceneEndpoints.RemoveItemAsync)
             .WithName("removeSceneItem").Produces<SceneDto>().ProducesProblem(404);
+        g.MapPut("/{sceneId}/items/order", SceneEndpoints.ReorderItemsAsync)
+            .WithName("reorderSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
         g.MapPut("/{sceneId}/items", SceneEndpoints.ReplaceItemsAsync)
             .WithName("replaceSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
     }

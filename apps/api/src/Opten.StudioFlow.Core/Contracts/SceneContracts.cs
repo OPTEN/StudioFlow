@@ -89,6 +89,10 @@ public sealed record AddSceneItemRequest(
     ItemFit? Fit,
     int? Radius);
 
+/// <summary>New z-order of a scene: the ids of all its items, back to front. Only the order changes, never an item.</summary>
+/// <param name="ItemIds">Every item id of the scene exactly once; a list that does not match the current items is a 409 <c>conflict</c>.</param>
+public sealed record ReorderSceneItemsRequest(IReadOnlyList<string> ItemIds);
+
 /// <summary>Replaces all items of a scene (templates, undo/redo, reordering).</summary>
 /// <param name="Items">Complete new item list, back to front.</param>
 /// <param name="LayoutMode">Optional new layout mode (the Auto-Grid template sets <see cref="SceneLayoutMode.AutoGrid"/>).</param>

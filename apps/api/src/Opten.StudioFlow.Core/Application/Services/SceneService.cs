@@ -109,6 +109,13 @@ public sealed class SceneService(ProductionCoordinator coordinator)
             },
             cancellationToken);
 
+    /// <summary>Applies a new z-order of the items; a list that does not match the current items is a conflict.</summary>
+    public Task<SceneDto> ReorderItemsAsync(string productionId, string sceneId, ReorderSceneItemsRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return MutateAsync(productionId, sceneId, (scene, _) => scene.ReorderItems(request.ItemIds), cancellationToken);
+    }
+
     /// <summary>Replaces all items (templates, undo/redo).</summary>
     public Task<SceneDto> ReplaceItemsAsync(string productionId, string sceneId, ReplaceSceneItemsRequest request, CancellationToken cancellationToken)
     {

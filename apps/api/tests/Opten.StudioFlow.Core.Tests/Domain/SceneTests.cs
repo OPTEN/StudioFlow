@@ -259,6 +259,82 @@ public sealed class SceneTests
     }
 
     [Fact]
+    public void ReorderItems_NewOrder_ReordersWithoutChangingItemsAndIncrementsVersion()
+    {
+        var a = Scene.AddItem(Build.Add(Camera), catalog);
+        var b = Scene.AddItem(Build.Add(Screen), catalog);
+        var c = Scene.AddItem(Build.Add(image.Id), catalog);
+        var version = Scene.Version;
+
+        Assert.True(Scene.ReorderItems([c.Id, a.Id, b.Id]));
+
+        Assert.Equal([c, a, b], Scene.Items);
+        Assert.Equal(version + 1, Scene.Version);
+    }
+
+    [Fact]
+    public void ReorderItems_SameOrderOrSingleItemOrEmptyScene_ChangesNothing()
+    {
+        Assert.False(Scene.ReorderItems([]));
+        var a = Scene.AddItem(Build.Add(Camera), catalog);
+        var b = Scene.AddItem(Build.Add(Screen), catalog);
+        var version = Scene.Version;
+
+        Assert.False(Scene.ReorderItems([a.Id, b.Id]));
+        Scene.RemoveItem(b.Id);
+        Assert.False(Scene.ReorderItems([a.Id]));
+
+        Assert.Equal(version + 1, Scene.Version);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("extra")]
+    [InlineData("unknown")]
+    [InlineData("duplicate")]
+    [InlineData("empty")]
+    public void ReorderItems_ListDoesNotMatchTheItems_IsConflictAndChangesNothing(string kind)
+    {
+        var a = Scene.AddItem(Build.Add(Camera), catalog);
+        var b = Scene.AddItem(Build.Add(Screen), catalog);
+        var version = Scene.Version;
+        IReadOnlyList<string> ids = kind switch
+        {
+            "missing" => [b.Id],
+            "extra" => [b.Id, a.Id, "itm_extra0001"],
+            "unknown" => [b.Id, "itm_unknown001"],
+            "duplicate" => [b.Id, b.Id],
+            _ => [],
+        };
+
+        var error = Assert.Throws<StudioFlowException>(() => Scene.ReorderItems(ids));
+
+        Assert.Equal((ErrorKind.Conflict, ErrorCodes.Conflict), (error.Kind, error.Code));
+        Assert.Equal([a, b], Scene.Items);
+        Assert.Equal(version, Scene.Version);
+    }
+
+    [Fact]
+    public void ReorderItems_MissingList_IsValidationError()
+    {
+        var error = Assert.Throws<StudioFlowException>(() => Scene.ReorderItems(null));
+
+        Assert.True(error.Errors!.ContainsKey("itemIds"));
+    }
+
+    [Fact]
+    public void ReorderItems_HiddenAndLockedItems_AreReorderedToo()
+    {
+        var a = Scene.AddItem(Build.Add(Camera), catalog) with { Hidden = true };
+        var b = Scene.AddItem(Build.Add(Screen), catalog) with { Locked = true };
+        Scene.ReplaceItems([a, b], null, catalog);
+
+        Assert.True(Scene.ReorderItems([b.Id, a.Id]));
+
+        Assert.Equal([b, a], Scene.Items);
+    }
+
+    [Fact]
     public void Update_NoChange_DoesNotIncrementVersion()
     {
         var version = Scene.Version;
