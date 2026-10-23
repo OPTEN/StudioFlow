@@ -38,6 +38,14 @@ const STATUSES: MonitorSourceStatus[] = [
   'connecting',
 ];
 
+/**
+ * One seed runs 1500 operations with about ten DOM assertions each: 2 to 3 s alone, but over 5 s (the
+ * default timeout) when the other test files of the run compete for the CPU, as on a CI runner. The
+ * limit is generous on purpose: it only has to catch a loop that never ends, the invariants themselves
+ * are asserted in every step.
+ */
+const SEED_TIMEOUT_MS = 30_000;
+
 describe('scene renderer: randomised stress', () => {
   let mounted: Mounted;
 
@@ -170,5 +178,6 @@ describe('scene renderer: randomised stress', () => {
       expect(vi.getTimerCount()).toBe(0);
       expect(container.childElementCount).toBe(0);
     },
+    SEED_TIMEOUT_MS,
   );
 });
