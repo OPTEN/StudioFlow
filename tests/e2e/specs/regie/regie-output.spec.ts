@@ -47,7 +47,7 @@ test.describe('REGIE output popover', () => {
       const pop = await openPopover(page);
       await expect(kv(pop, 'Zustand')).toHaveText('nicht verbunden');
       await expect(kv(pop, 'Abnehmer')).toHaveText('–');
-      await expect(kv(pop, 'Format')).toHaveText('1920 × 1080 · 30 fps');
+      await expect(kv(pop, 'Format')).toHaveText('1920 × 1080 · 16:9 · 30 fps');
       await expect(kv(pop, 'Latenz')).toContainText('noch nicht gemessen');
       await expect(chip(page).locator('.c-lamp')).toHaveClass(/is-idle/);
 
