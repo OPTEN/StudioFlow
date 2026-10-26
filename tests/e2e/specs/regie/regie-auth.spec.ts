@@ -258,8 +258,8 @@ test.describe('REGIE login and session', () => {
         await expect(page.locator('sf-monitoring-page')).toHaveCount(0);
       }
       expect(
-        requests.map((entry) => entry.path).filter((path) => !path.startsWith('/api/auth/me')),
-        'nothing but the session check was requested',
+        requests.map((entry) => entry.path).filter((path) => !['/api/auth/me', '/api/auth/setup'].some((allowed) => path.startsWith(allowed))),
+        'nothing but the session check and the setup status was requested',
       ).toEqual([]);
       expect(requests.length).toBeGreaterThan(0);
 

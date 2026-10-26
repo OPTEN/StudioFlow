@@ -31,7 +31,6 @@ and waits for all four healthchecks. Teardown removes containers and volumes. Lo
 | `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-4) alone also selects numbered stack N |
 | `E2E_HTTPS_PORT`, `E2E_HTTP_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
 | `E2E_RTC_TCP_PORT`, `E2E_RTC_UDP_PORT` | LiveKit media ports (passed on as `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT`; host and container port are the same number) |
-| `E2E_OPS_SUBNET` | subnet of the scratch stack of the OPS specs (default `172.31.251.0/24`, per numbered stack `172.31.21N.0/24`) |
 | `E2E_BASE_URL` | origin the Playwright `baseURL` points at, if it is not `https://localhost[:E2E_HTTPS_PORT]` |
 | `E2E_BASH` | bash that runs `setup.sh`/`backup.sh`/`restore.sh`/`update.sh` (default: Git Bash on Windows) |
 

@@ -42,16 +42,10 @@ export interface SandboxOptions {
    * Which docker compose project the scripts see:
    * - `stack` (default): the running stack of this process (project `sf-e2e`, `sf-e2e-N` with E2E_STACK=N), with the
    *   same files and env file the harness uses;
-   * - `hash`: a separate project `<project>-ops` on the base compose file only (setup.sh builds the API image and runs
-   *   `hash-password` in it; it has its own subnet, so it collides neither with the running stack nor with the OPS
-   *   scratch stack of another numbered stack);
    * - `none`: no compose environment.
    */
-  mode?: 'stack' | 'hash' | 'none';
+  mode?: 'stack' | 'none';
 }
-
-export const OPS_HASH_PROJECT = `${PROJECT}-ops`;
-export const OPS_HASH_SUBNET = SETTINGS.opsSubnet;
 
 export class OpsSandbox {
   readonly bash = bashPath();
@@ -87,10 +81,6 @@ export class OpsSandbox {
       env['COMPOSE_PATH_SEPARATOR'] = '|';
       env['COMPOSE_FILE'] = [COMPOSE_FILES.base, COMPOSE_FILES.e2e].map(fwd).join('|');
       env['COMPOSE_ENV_FILES'] = fwd(ENV_FILE);
-    } else if (this.options.mode === 'hash') {
-      env['COMPOSE_PROJECT_NAME'] = OPS_HASH_PROJECT;
-      env['COMPOSE_FILE'] = fwd(COMPOSE_FILES.base);
-      env['STUDIOFLOW_SUBNET'] = OPS_HASH_SUBNET;
     }
     if (this.shimDir) env['PATH'] = `${this.shimDir}${path.delimiter}${env['PATH'] ?? env['Path'] ?? ''}`;
     // The scripts ask a terminal when a decision is open; the tests never have one.
