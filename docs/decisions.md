@@ -45,6 +45,14 @@ decision deliberately: update this file and the code together.
 3. One format per production.
 4. Default for new productions: 16:9 · 1080p.
 
+Implementation notes (2026-10-26): the resolution is named after the short side and the list is 720p and 1080p for every
+format (16:9 1280×720 / 1920×1080, 9:16 720×1280 / 1080×1920, 1:1 720×720 / 1080×1080, 4:3 960×720 / 1440×1080). Item
+bounds stay absolute (they cover every canvas). A change of format scales and centres the existing elements instead of
+re-applying templates, because a scene does not remember its template; it is refused with 409 `broadcast_live` while the
+broadcast is live and asks first in the Regie when scenes have elements. The publish resolution of phones does not depend
+on the format: the output asks the sources for the size of an element on screen. 4:5 and the 1440p/4K resolutions of the
+issue text are not offered (decision 1 fixes the list).
+
 ## #9 Virtual camera
 
 1. Stage 1 only (OBS as the bridge: guide, ready-made OBS scene collection). Stage 2 only with a concrete reason.

@@ -6,7 +6,7 @@ StudioFlow is a web-based Regie (control room) modelled on OBS, made for webinar
 
 - Phones and laptops send camera and screen directly from the browser.
 - The Regie composes scenes from them.
-- A 16:9 output runs as an iframe at the proxy, which distributes the picture to about 30 people.
+- An output (16:9 by default) runs as an iframe at the proxy, which distributes the picture to about 30 people.
 - Everything runs in one Docker Compose stack on your own server.
 
 As of 22 October 2026: the plan and the clickable Regie prototype are done. There is no product code yet.

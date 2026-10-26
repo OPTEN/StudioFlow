@@ -15,11 +15,11 @@ Angular (standalone, signals, OnPush) for the Regie (control room) and the sende
 - **Regie operator (primary):** one person, at most two at the same time, internal to OPTEN. Works on site during a webinar on a 14–16 inch laptop in normal room light, builds scenes beforehand and switches between them during the broadcast.
 - **Speakers:** share one or more screens from their own laptop through the sender page in the browser.
 - **Camera phones:** permanently mounted smartphones that act as cameras through the sender PWA and run unattended once set up.
-- **Output consumer:** a proxy opens the output page (16:9, as an iframe) and distributes the picture to about 30 people.
+- **Output consumer:** a proxy opens the output page (16:9 by default, as an iframe) and distributes the picture to about 30 people.
 
 ## Product Purpose
 
-StudioFlow is a web-based control room modelled on OBS, for webinars. Browser clients send camera and screen with the lowest possible latency, the Regie composes scenes from them (layout templates plus free moving, scaling and cropping), and a fixed 16:9 output delivers the program as a web page.
+StudioFlow is a web-based control room modelled on OBS, for webinars. Browser clients send camera and screen with the lowest possible latency, the Regie composes scenes from them (layout templates plus free moving, scaling and cropping), and an output in the format of the production (16:9 by default) delivers the program as a web page.
 
 Success means: setup is quick, switching is safe, and no source failure goes unnoticed.
 
@@ -38,7 +38,7 @@ Everything runs in the browser and on your own server: phones and laptops become
 ## Capabilities and Constraints
 
 - Sources: camera, screen (several per laptop), image, video; later text, overlays and web pages.
-- Output: fixed canvas of 1920 × 1080, always 16:9, embeddable as an iframe, without controls.
+- Output: one canvas per production from a fixed list (16:9, 9:16, 1:1, 4:3 at 720p or 1080p), 16:9 at 1080p (1920 × 1080) by default, embeddable as an iframe, without controls.
 - Latency target on site: about 0.15 s glass to glass (estimate, not yet measured).
 - Login: one admin account from appsettings or `.env`, no SSO.
 - Stability: automatic reconnect without limit; sources return to their place in the scene through device ID and slot.

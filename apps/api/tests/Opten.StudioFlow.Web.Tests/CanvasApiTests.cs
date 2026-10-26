@@ -289,7 +289,8 @@ public sealed class CanvasApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         var admin = await app.AdminAsync();
         var production = await CreateAsync(admin);
         var settings = await admin.Client.GetAsync($"/api/productions/{production.Id}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        var key = settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+        var url = settings.Links[0].Url;
+        var key = url[(url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
         await using var hub = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(key));
         var events = HubProbe.On<ProductionEvent>(hub, HubMethods.Event);
         await hub.StartAsync(TestContext.Current.CancellationToken);

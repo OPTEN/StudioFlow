@@ -321,7 +321,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 
 ### Neutral
 - **Ground** (ground): the field behind inputs and the link box. It is also the base colour for overlay scrims on monitors.
-- **Well** (well): the near-black behind monitor canvases, thumbnails and layout previews, so the 16:9 picture reads as a hole in the console.
+- **Well** (well): the near-black behind monitor canvases, thumbnails and layout previews, so the picture, whatever its shape (16:9 by default), reads as a hole in the console.
 - **Panel Graphite** (panel): the console surface for the header, message strip, stage and docks.
 - **Raised** (raised) and **Raised Higher** (raised-2): hover and active rows, popovers, the toast, slot-code chips and pressed buttons.
 - **Seam** (seam): every region hairline and divider between rows inside a dock.
@@ -391,7 +391,7 @@ The Regie has two appearances. **Dark** is the console described on this page an
 **Stage.** On the left are the monitors and on the right is a fixed control column (172px) with the Studio Mode switch, Transition (Cut | Fade), the duration stepper and, in Studio Mode, Take. The column and the docks never move when the mode toggles.
 - Studio Mode off (default): a single Program monitor, right-aligned against the control column. The vacated Preview area shows a quiet muted note ("Preview off"). The Program header carries "Changes go live immediately" in red. A scene click or key 1–9 goes live directly.
 - Studio Mode on: Preview and Program side by side with a 20px resizable split between them. Take (Space) switches Preview to Program.
-- Monitors are always 16:9. They are sized from the stage's container width and height so they never overflow.
+- Monitors have the shape of the production's canvas: 16:9 by default, narrow for 9:16, square for 1:1, 4:3. They are sized from the stage's container width and height so they never overflow. A portrait monitor takes its width from the stage height ((height − 56px) × 9/16, so about 360px wide on a 14" laptop), stays right-aligned against the control column and leaves the free space beside it empty; Preview and Program stand side by side as always. In the stacked layouts (1180px or less) no monitor is taller than 720px, and a narrow one is centred. The docks, the control column and the Stations dock do not change with the format. No token is new: every shape draws on the Well.
 
 **Docks.** The default arrangement is Scenes | Sources | Properties | Stations along the bottom (height clamp(240px, 42dvh, 420px), at least 150px). Side zones start at 320px wide (220px min, 42% max). Docks move between the bottom, left and right zones by dragging their header grip, or with arrow keys on the grip. A blue insertion line shows the target, and dashed blue drop strips (92px wide at the sides, 72px tall at the bottom) appear at empty edges. Every hairline between docks and zones is a resize handle with a widened 9px hit area. It turns blue on hover or focus, a double-click or Enter resets it, and arrow keys move it in 16px steps (64px with Shift). "Docks and layout" in the header shows or hides each dock and resets the layout. The layout and the Studio Mode state persist per browser. The pairing dock (Pair device) temporarily takes the place of Sources and Properties.
 
@@ -450,7 +450,7 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 
 ### Monitors
 - **Header:** a tally dot with the uppercase label (PREVIEW green, PROGRAM red), the scene name in Title, and muted meta on the right (element count, or "1920 × 1080 · 30 fps" in mono).
-- **Screen:** a 16:9 Well with a 2px tally outline. When a scene goes live, the Program outline flashes once (6px, light red, settling to 2px in 500ms).
+- **Screen:** a Well in the shape of the canvas (16:9 by default) with a 2px tally outline. When a scene goes live, the Program outline flashes once (6px, light red, settling to 2px in 500ms).
 - **Editing:** the selected element gets a 1px blue box, a blue mono label tab and four 11px square corner handles. Blue 1px guides show snapping.
 
 ### Inputs / Fields
@@ -463,7 +463,7 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 ### Docks
 - **Header:** 40px tall on Panel with a seam underline. It holds a drag grip (60% opacity, full on hover), the uppercase Label title, a mono count and right-aligned actions.
 - **Body:** scrolls with scroll-edge fades.
-- **Rows:** rows in Scenes and Sources are 4px-rounded, transparent at rest and Raised on hover or when current. Scene rows carry a 64px 16:9 thumbnail with a mono keycap number (1–9) and a tally outline (red PGM, green PVW). Station rows are divided by seam hairlines and expand with a 200ms grid-row reveal.
+- **Rows:** rows in Scenes and Sources are 4px-rounded, transparent at rest and Raised on hover or when current. Scene rows carry a 36px high thumbnail (27px on short laptops) in the shape of the canvas, so 64px wide for 16:9 and 20px for 9:16, with a mono keycap number (1–9) and a tally outline (red PGM, green PVW). Station rows are divided by seam hairlines and expand with a 200ms grid-row reveal.
 - **Reorderable rows:** the rows of Scenes and Sources can be dragged. Each row has a 16px grip handle in a column of its own (muted, Raised-2 text on hover, invisible at rest on a mouse, 70% opacity on touch screens where there is no hover, and a blue focus outline). A held row floats on Raised Higher with the Pop shadow (the drag ghost rule) and follows the pointer; the rows it passes slide aside in the state-transition time, and a 2px Signal Blue line marks the insertion point. Under reduced motion they jump instead of sliding. The list scrolls by itself within 36px of its edge. Mouse and pen drag from anywhere on the row after 4px, a finger from the handle at once or from the row after a 350ms press and hold. Escape or a drop away from the list puts the row back. In an Auto grid scene the Sources hint says that the order is the position in the grid.
 
 ### Texts and lower thirds
@@ -488,6 +488,7 @@ Texts are part of the picture, not of the console, so the **production** chooses
 ### Popovers, menus and toast
 - **Popovers:** Float (Raised in the dark theme), strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
 - **Output popover:** below the summary (state, consumers, format, latency) the links are a list of 44px rows, one per output link: a lamp (green connected, amber no current picture, Muted not connected), "Name · state" and, for a link that is not connected, its last-seen time in Muted. The selected row sits on Raised Higher with a Control Edge border and `aria-current`. The selected link opens below a strong-seam separator: name with "Rename", the masked link box, the IP restriction, "Use as camera …" and two quiet red buttons "Regenerate link" and "Revoke link" that open the dashed red confirmation. "Use as camera …" unfolds a numbered list of five steps, notes in Muted and a filled "Download OBS scene collection" button. The popover scrolls inside the viewport (`max-height`) and is 440px wide, full width minus 24px below 480px. It uses only existing tokens, so both themes work.
+- **Format and resolution:** the production menu has "Format and resolution…" and the new-production form carries the same picker: two segmented controls (Format: 16:9 | 9:16 | 1:1 | 4:3, Target resolution: 720p | 1080p), a muted line with the name of the format and one with the size of the choice, and the muted note that the proxy captures the picture at its own window size. Save stays off until the choice differs. Another format asks first when scenes have elements (the dashed red confirmation names how many scenes are fitted); a resolution change is saved without a question; while the broadcast is live the picker is disabled and a red status line says why. Template previews in Properties take the shape of the canvas (taller tiles for 9:16), the safe-area guide of the edit overlay follows its margins.
 - **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("‘Lea presents’ is live"; German: "«Lea präsentiert» ist live") and dock moves, with an optional undo action.
 
 ### Audit log page

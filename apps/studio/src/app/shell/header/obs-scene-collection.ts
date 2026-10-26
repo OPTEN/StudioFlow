@@ -1,4 +1,4 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
+import type { CanvasSize } from '@studioflow/scene-model';
 
 /**
  * The OBS scene collection of an output link (issue #9, spec 9.1): one scene with one browser source that shows the
@@ -18,14 +18,6 @@ const OBS_API_VERSION = 31 << 24;
 /** Names in OBS: the scene, and the browser source in it (scenes and inputs share one namespace, so they differ). */
 const SCENE_NAME = 'StudioFlow';
 const SOURCE_NAME = 'StudioFlow output';
-
-/**
- * Size of the browser source and of the canvas OBS needs for the virtual camera. One place: the format of the
- * production (#8) replaces the stage constants here.
- */
-export function obsCanvasSize(): { readonly width: number; readonly height: number } {
-  return { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-}
 
 /** Where a browser source of the OBS default shows nothing but the page: transparent body, no margins, no scrollbars. */
 const OBS_DEFAULT_CSS =
@@ -64,8 +56,7 @@ function source(
 }
 
 /** The scene item that puts the browser source on the canvas, full size at the top left corner. */
-function sceneItem(): Record<string, unknown> {
-  const { width, height } = obsCanvasSize();
+function sceneItem({ width, height }: CanvasSize): Record<string, unknown> {
   return {
     align: 5,
     blend_method: 'default',
@@ -95,12 +86,12 @@ function sceneItem(): Record<string, unknown> {
 }
 
 /**
- * The scene collection for an output link, as the text of the JSON file. The browser source uses the canvas size, 30
- * fps, "Control audio via OBS" (the page's audio goes to the OBS mixer, for #7), keeps running while hidden and is not
+ * The scene collection for an output link, as the text of the JSON file. The browser source has the size of the canvas
+ * of the production (its format and resolution, so a 9:16 production is a portrait virtual camera), 30 fps, "Control audio via OBS" (the page's audio goes to the OBS mixer, for #7), keeps running while hidden and is not
  * refreshed when the scene becomes active, so the virtual camera never restarts the page.
  */
-export function obsSceneCollection(linkName: string, linkUrl: string): string {
-  const { width, height } = obsCanvasSize();
+export function obsSceneCollection(linkName: string, linkUrl: string, canvas: CanvasSize): string {
+  const { width, height } = canvas;
   const collection = {
     current_program_scene: SCENE_NAME,
     current_scene: SCENE_NAME,
@@ -117,7 +108,12 @@ export function obsSceneCollection(linkName: string, linkUrl: string): string {
     scaling_off_y: 0.0,
     scene_order: [{ name: SCENE_NAME }],
     sources: [
-      source('scene', SCENE_NAME, { custom_size: false, id_counter: 1, items: [sceneItem()] }, 0),
+      source(
+        'scene',
+        SCENE_NAME,
+        { custom_size: false, id_counter: 1, items: [sceneItem(canvas)] },
+        0,
+      ),
       source(
         'browser_source',
         SOURCE_NAME,
