@@ -41,7 +41,7 @@ public sealed class ShutdownAndTelemetryTests(PostgresFixture postgres)
             var snapshot = await admin.Client.GetAsync($"/api/productions/{productionId}/snapshot", cancellation).ExpectAsync<ProductionSnapshot>();
             await admin.Client.PostJsonAsync($"/api/productions/{productionId}/scenes/{snapshot.Production.ProgramSceneId}/items", new AddSceneItemRequest(sourceId, null, null, null, null, null, null)).ExpectAsync(HttpStatusCode.OK);
             var settings = await admin.Client.GetAsync($"/api/productions/{productionId}/output", cancellation).ExpectAsync<OutputSettingsDto>();
-            var key = settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+            var key = settings.Links[0].Key();
 
             await using var device = WebSocketHub(app, HubMethods.DeviceHubPath, $"{credentials.DeviceId}.{credentials.DeviceSecret}");
             await using var studio = KeepAlive(app.Hub(HubMethods.StudioHubPath, o => o.Headers["Cookie"] = admin.Cookie));

@@ -59,8 +59,9 @@ public sealed class OptionsTests
     public void OutputTracker_ConfiguredStaleAfter_IsApplied()
     {
         var tracker = new OutputTracker(new OutputMonitorOptions { StaleAfter = TimeSpan.FromSeconds(2) });
-        tracker.Connect("c1", "10.0.0.5");
-        tracker.Report(new OutputReport(true, 50, 30, null), Build.T0);
+        tracker.SetLinks([("olk_a", "Proxy")]);
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 50, 30, null), Build.T0);
 
         Assert.Equal(OutputState.Connected, tracker.Current(Build.T0.AddSeconds(2)).State);
         Assert.Equal(OutputState.Stale, tracker.Current(Build.T0.AddSeconds(3)).State);

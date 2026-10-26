@@ -20,6 +20,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
         var invites = await context.Data.Invites.ListOpenAsync(production.Id, context.Now, cancellationToken);
         var log = await context.Data.Audit.ListRecentAsync(production.Id, LogTexts.RecentActions, RecentLogSize * 3, cancellationToken);
         var sourceIds = catalog.All.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        await context.EnsureOutputLinksAsync(cancellationToken);
         return new ProductionSnapshot(
             runtime.Revision,
             context.Now,

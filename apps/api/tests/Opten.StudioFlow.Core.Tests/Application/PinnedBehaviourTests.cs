@@ -118,7 +118,7 @@ public sealed class PinnedBehaviourTests : IDisposable
     public async Task Changes_NegativeRevision_IsValidationFailed(long since)
     {
         var studio = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Productions.GetChangesAsync(harness.Production.Id, since, CancellationToken.None));
-        var access = new OutputKeyInfo(harness.Production.Id, harness.Production.Slug, harness.Production.OutputKey, []);
+        var access = new OutputLinkAccess(harness.Production.Id, harness.Production.Slug, harness.Link.Id, harness.Link.Name, harness.Link.Key, []);
         var output = await Assert.ThrowsAsync<StudioFlowException>(() => harness.Outputs.GetChangesAsync(access, since, CancellationToken.None));
 
         Assert.Equal(ErrorCodes.ValidationFailed, studio.Code);
@@ -129,7 +129,7 @@ public sealed class PinnedBehaviourTests : IDisposable
     public async Task OutputChanges_CurrentOrBufferedOrUnknownRevision_AreEmptyDeltaOrSnapshot()
     {
         await harness.Productions.UpdateAsync(harness.Production.Id, new UpdateProductionRequest("New", null, null), CancellationToken.None);
-        var access = new OutputKeyInfo(harness.Production.Id, harness.Production.Slug, harness.Production.OutputKey, []);
+        var access = new OutputLinkAccess(harness.Production.Id, harness.Production.Slug, harness.Link.Id, harness.Link.Name, harness.Link.Key, []);
         var current = harness.Runtime.Revision;
 
         var same = await harness.Outputs.GetChangesAsync(access, current, CancellationToken.None);

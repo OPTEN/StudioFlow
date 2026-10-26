@@ -1,13 +1,17 @@
 namespace Opten.StudioFlow.Core.Contracts;
 
-/// <summary>Live state of the output consumer (chip “Output to proxy” in the header).</summary>
+/// <summary>Live state of one output link (a consumer such as the proxy or the Teams camera).</summary>
+/// <param name="LinkId">Link id.</param>
+/// <param name="Name">Link name.</param>
 /// <param name="State">None, connected or stale.</param>
-/// <param name="Consumers">Number of connected output pages.</param>
-/// <param name="Addresses">Remote IP addresses of the output pages.</param>
+/// <param name="Consumers">Number of connected output pages of the link.</param>
+/// <param name="Addresses">Remote IP addresses of the output pages of the link.</param>
 /// <param name="LatencyMs">Estimated receive latency reported by the output page.</param>
 /// <param name="Fps">Rendered frames per second of the program.</param>
 /// <param name="LastReportAt">Last report time.</param>
-public sealed record OutputStatusDto(
+public sealed record OutputLinkStatusDto(
+    string LinkId,
+    string Name,
     OutputState State,
     int Consumers,
     IReadOnlyList<string> Addresses,
@@ -15,18 +19,58 @@ public sealed record OutputStatusDto(
     double? Fps,
     DateTimeOffset? LastReportAt);
 
-/// <summary>Output settings for the Regie.</summary>
-/// <param name="Url">Absolute output URL including the secret key.</param>
+/// <summary>
+/// Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own.
+/// </summary>
+/// <param name="State">Connected when any link is connected, else stale when any link is stale, else none.</param>
+/// <param name="Consumers">Number of connected output pages of all links.</param>
+/// <param name="Addresses">Remote IP addresses of the output pages of all links.</param>
+/// <param name="LatencyMs">Estimated receive latency reported by the output page that reported last.</param>
+/// <param name="Fps">Rendered frames per second of the program, from the same report.</param>
+/// <param name="LastReportAt">Last report time of any link.</param>
+/// <param name="Links">Every output link of the production, ordered by name.</param>
+public sealed record OutputStatusDto(
+    OutputState State,
+    int Consumers,
+    IReadOnlyList<string> Addresses,
+    int? LatencyMs,
+    double? Fps,
+    DateTimeOffset? LastReportAt,
+    IReadOnlyList<OutputLinkStatusDto> Links);
+
+/// <summary>An output link for the Regie.</summary>
+/// <param name="Id">Link id.</param>
+/// <param name="Name">Link name, unique per production.</param>
+/// <param name="Url">Absolute output URL including the secret key of the link.</param>
 /// <param name="KeyCreatedAt">When the current key was created.</param>
-/// <param name="AllowedIps">IP addresses or CIDR ranges allowed to open the output; empty allows every address.</param>
-/// <param name="FrameAncestors">Domains allowed to embed the output (from configuration, read-only).</param>
-public sealed record OutputSettingsDto(
+/// <param name="LastSeenAt">When a page of the link last connected or disconnected; null while it was never used.</param>
+/// <param name="AllowedIps">IP addresses or CIDR ranges allowed to open the link; empty allows every address.</param>
+public sealed record OutputLinkDto(
+    string Id,
+    string Name,
     string Url,
     DateTimeOffset KeyCreatedAt,
-    IReadOnlyList<string> AllowedIps,
+    DateTimeOffset? LastSeenAt,
+    IReadOnlyList<string> AllowedIps);
+
+/// <summary>Output settings for the Regie.</summary>
+/// <param name="Links">The output links, oldest first.</param>
+/// <param name="MaxLinks">Maximum number of links per production.</param>
+/// <param name="FrameAncestors">Domains allowed to embed the output (from configuration, read-only).</param>
+public sealed record OutputSettingsDto(
+    IReadOnlyList<OutputLinkDto> Links,
+    int MaxLinks,
     IReadOnlyList<string> FrameAncestors);
 
-/// <summary>Sets the IP restriction of the output.</summary>
+/// <summary>Creates a named output link.</summary>
+/// <param name="Name">1–40 characters, unique per production (ignoring case).</param>
+public sealed record CreateOutputLinkRequest(string Name);
+
+/// <summary>Renames an output link.</summary>
+/// <param name="Name">1–40 characters, unique per production (ignoring case).</param>
+public sealed record RenameOutputLinkRequest(string Name);
+
+/// <summary>Sets the IP restriction of an output link.</summary>
 public sealed record UpdateOutputAccessRequest(IReadOnlyList<string> AllowedIps);
 
 /// <summary>Production state for the output page. Contains no device, pairing or incident data.</summary>

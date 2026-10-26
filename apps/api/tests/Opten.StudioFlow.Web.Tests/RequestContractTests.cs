@@ -151,7 +151,7 @@ public sealed class RequestContractTests(StudioFlowApp app) : IClassFixture<Stud
     private static async Task<string> OutputKeyAsync(AdminSession admin)
     {
         var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        return settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+        return settings.Links[0].Key();
     }
 
     private static Task<AssetDto> UploadAsync(AdminSession admin, byte[] bytes, string fileName)

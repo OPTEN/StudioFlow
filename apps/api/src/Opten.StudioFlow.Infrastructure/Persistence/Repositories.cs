@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Opten.StudioFlow.Core.Application.Ports;
 using Opten.StudioFlow.Core.Contracts;
@@ -23,21 +24,38 @@ internal sealed class ProductionRepository(StudioFlowDbContext db) : IProduction
     public Task<string?> GetNameAsync(string productionId, CancellationToken cancellationToken) =>
         db.Productions.Where(p => p.Id == productionId).Select(p => p.Name).FirstOrDefaultAsync(cancellationToken);
 
-    public Task<OutputKeyInfo?> GetOutputKeyAsync(string productionId, CancellationToken cancellationToken) =>
-        db.Productions.Where(p => p.Id == productionId).Select(p => new OutputKeyInfo(p.Id, p.Slug, p.OutputKey, p.AllowedIps)).FirstOrDefaultAsync(cancellationToken);
-
-    public Task<OutputKeyInfo?> GetOutputKeyBySlugAsync(string slug, CancellationToken cancellationToken) =>
-        db.Productions.Where(p => p.TenantId == Production.DefaultTenant && p.Slug == slug)
-            .Select(p => new OutputKeyInfo(p.Id, p.Slug, p.OutputKey, p.AllowedIps))
-            .FirstOrDefaultAsync(cancellationToken);
-
-    public async Task<IReadOnlyList<OutputKeyInfo>> ListOutputKeysAsync(CancellationToken cancellationToken) =>
-        await db.Productions.Select(p => new OutputKeyInfo(p.Id, p.Slug, p.OutputKey, p.AllowedIps)).ToListAsync(cancellationToken);
-
     public Task<bool> AnyLiveAsync(CancellationToken cancellationToken) =>
         db.Productions.AnyAsync(p => p.Broadcast == BroadcastState.Live, cancellationToken);
 
     public void Add(Production production) => db.Productions.Add(production);
+}
+
+/// <summary>EF Core implementation of <see cref="IOutputLinkRepository"/>.</summary>
+internal sealed class OutputLinkRepository(StudioFlowDbContext db) : IOutputLinkRepository
+{
+    public Task<OutputLink?> GetAsync(string productionId, string linkId, CancellationToken cancellationToken) =>
+        db.OutputLinks.FirstOrDefaultAsync(l => l.Id == linkId && l.ProductionId == productionId, cancellationToken);
+
+    public async Task<IReadOnlyList<OutputLink>> ListAsync(string productionId, CancellationToken cancellationToken) =>
+        await db.OutputLinks.Where(l => l.ProductionId == productionId).OrderBy(l => l.CreatedAt).ThenBy(l => l.Id).ToListAsync(cancellationToken);
+
+    public Task<IReadOnlyList<OutputLinkAccess>> ListAccessAsync(string productionId, CancellationToken cancellationToken) =>
+        AccessAsync(p => p.Id == productionId, cancellationToken);
+
+    public Task<IReadOnlyList<OutputLinkAccess>> ListAccessBySlugAsync(string slug, CancellationToken cancellationToken) =>
+        AccessAsync(p => p.Slug == slug, cancellationToken);
+
+    public Task<IReadOnlyList<OutputLinkAccess>> ListAllAccessAsync(CancellationToken cancellationToken) =>
+        AccessAsync(_ => true, cancellationToken);
+
+    public void Add(OutputLink link) => db.OutputLinks.Add(link);
+
+    public void Remove(OutputLink link) => db.OutputLinks.Remove(link);
+
+    private async Task<IReadOnlyList<OutputLinkAccess>> AccessAsync(Expression<Func<Production, bool>> production, CancellationToken cancellationToken) =>
+        await db.OutputLinks.AsNoTracking()
+            .Join(db.Productions.Where(p => p.TenantId == Production.DefaultTenant).Where(production), l => l.ProductionId, p => p.Id, (l, p) => new OutputLinkAccess(p.Id, p.Slug, l.Id, l.Name, l.Key, l.AllowedIps))
+            .ToListAsync(cancellationToken);
 }
 
 /// <summary>EF Core implementation of <see cref="IDeviceRepository"/>.</summary>
@@ -156,6 +174,7 @@ internal sealed class UnitOfWork : IUnitOfWork
         Devices = new DeviceRepository(db);
         Assets = new AssetRepository(db);
         Invites = new InviteRepository(db);
+        OutputLinks = new OutputLinkRepository(db);
         Audit = new AuditRepository(db);
         SourceActivity = new SourceActivityRepository(db);
     }
@@ -169,6 +188,8 @@ internal sealed class UnitOfWork : IUnitOfWork
     public IAssetRepository Assets { get; }
 
     public IInviteRepository Invites { get; }
+
+    public IOutputLinkRepository OutputLinks { get; }
 
     public IAuditRepository Audit { get; }
 

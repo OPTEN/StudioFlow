@@ -175,7 +175,7 @@ public sealed class ThrottleAndShutdownTests : IDisposable
     public async Task DisconnectedAsync_StudioAndOutputWhileHostStopping_PublishNothing()
     {
         await harness.Studio.SubscribeAsync("studio-1", harness.Production.Id, null, CancellationToken.None);
-        await harness.Outputs.ConnectedAsync(harness.Production.Id, "output-1", "10.0.0.5", CancellationToken.None);
+        await harness.Outputs.ConnectedAsync(harness.Production.Id, harness.Link.Id, "output-1", "10.0.0.5", CancellationToken.None);
         var presence = harness.Publisher.Presence.Count;
         var events = harness.Events.Count;
 

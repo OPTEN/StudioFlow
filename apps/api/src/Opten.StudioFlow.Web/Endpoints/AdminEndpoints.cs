@@ -285,11 +285,26 @@ internal static class OutputEndpoints
     public static async Task<IResult> GetSettingsAsync(string productionId, OutputService outputs, CancellationToken cancellationToken) =>
         TypedResults.Ok(await outputs.GetSettingsAsync(productionId, cancellationToken));
 
-    public static async Task<IResult> UpdateAccessAsync(string productionId, [FromBody] UpdateOutputAccessRequest body, OutputService outputs, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await outputs.UpdateAccessAsync(productionId, body, cancellationToken));
+    public static async Task<IResult> CreateLinkAsync(string productionId, [FromBody] CreateOutputLinkRequest body, OutputService outputs, CancellationToken cancellationToken)
+    {
+        var link = await outputs.CreateLinkAsync(productionId, body, cancellationToken);
+        return TypedResults.Created((string?)null, link);
+    }
 
-    public static async Task<IResult> RegenerateKeyAsync(string productionId, OutputService outputs, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await outputs.RegenerateKeyAsync(productionId, cancellationToken));
+    public static async Task<IResult> RenameLinkAsync(string productionId, string linkId, [FromBody] RenameOutputLinkRequest body, OutputService outputs, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await outputs.RenameLinkAsync(productionId, linkId, body, cancellationToken));
+
+    public static async Task<IResult> UpdateAccessAsync(string productionId, string linkId, [FromBody] UpdateOutputAccessRequest body, OutputService outputs, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await outputs.UpdateAccessAsync(productionId, linkId, body, cancellationToken));
+
+    public static async Task<IResult> RegenerateKeyAsync(string productionId, string linkId, OutputService outputs, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await outputs.RegenerateKeyAsync(productionId, linkId, cancellationToken));
+
+    public static async Task<IResult> RevokeLinkAsync(string productionId, string linkId, OutputService outputs, CancellationToken cancellationToken)
+    {
+        await outputs.RevokeLinkAsync(productionId, linkId, cancellationToken);
+        return TypedResults.NoContent();
+    }
 
     // The key header is optional for the binder: a missing key must give the same 403 as a wrong one, not a 400 (GAP-06).
     public static async Task<IResult> GetSnapshotAsync(string slug, [FromHeader(Name = OutputKeyHeader)] string? key, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
@@ -313,7 +328,7 @@ internal static class OutputEndpoints
     public static async Task<IResult> ReportAsync(string slug, [FromHeader(Name = OutputKeyHeader)] string? key, [FromBody] OutputReport body, OutputService outputs, HttpContext context, CancellationToken cancellationToken)
     {
         var access = await outputs.AuthorizeAsync(slug, key, context.Connection.RemoteIpAddress, cancellationToken);
-        await outputs.ReportAsync(access.ProductionId, body, cancellationToken);
+        await outputs.ReportAsync(access.ProductionId, access.LinkId, body, cancellationToken);
         return TypedResults.NoContent();
     }
 }

@@ -345,10 +345,19 @@ public enum LogCode
     /// <summary>A laptop invite link was revoked.</summary>
     InviteLinkRevoked,
 
-    /// <summary>The output link was regenerated.</summary>
+    /// <summary>An output link was created. Params: <c>name</c>.</summary>
+    OutputLinkCreated,
+
+    /// <summary>An output link was renamed (to the name in <c>name</c>).</summary>
+    OutputLinkRenamed,
+
+    /// <summary>An output link was revoked. Params: <c>name</c>.</summary>
+    OutputLinkRevoked,
+
+    /// <summary>The key of an output link was regenerated. Params: <c>name</c>.</summary>
     OutputLinkRegenerated,
 
-    /// <summary>The output access rules (IP restriction) changed.</summary>
+    /// <summary>The access rules (IP restriction) of an output link changed. Params: <c>name</c>.</summary>
     OutputAccessChanged,
 
     /// <summary>A media file was uploaded. Params: <c>code</c> (slot code), <c>name</c>.</summary>

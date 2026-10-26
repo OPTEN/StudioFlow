@@ -71,14 +71,103 @@ public sealed class OutputTrackerTests
 {
     private readonly OutputTracker tracker = new(new OutputMonitorOptions());
 
+    public OutputTrackerTests() => tracker.SetLinks([("olk_a", "Proxy"), ("olk_b", "Teams camera")]);
+
     [Fact]
     public void Current_NoPage_IsNone() => Assert.Equal(OutputState.None, tracker.Current(Build.T0).State);
 
     [Fact]
+    public void Current_Links_AreListedByNameEvenWithoutPages()
+    {
+        var status = tracker.Current(Build.T0);
+
+        Assert.Equal(["Proxy", "Teams camera"], status.Links.Select(l => l.Name));
+        Assert.All(status.Links, l => Assert.Equal(OutputState.None, l.State));
+    }
+
+    [Fact]
+    public void Current_TwoLinks_AreTrackedSeparatelyAndSummarised()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Connect("c2", "olk_b", "10.0.0.6");
+        tracker.Report("olk_a", new OutputReport(true, 100, 50, null), Build.T0);
+        tracker.Report("olk_b", new OutputReport(false, 300, 20, null), Build.T0.AddSeconds(1));
+
+        var status = tracker.Current(Build.T0.AddSeconds(2));
+
+        Assert.Equal(OutputState.Connected, status.State);
+        Assert.Equal([OutputState.Connected, OutputState.Stale], status.Links.Select(l => l.State));
+        Assert.Equal(["10.0.0.5", "10.0.0.6"], status.Addresses);
+        Assert.Equal(2, status.Consumers);
+        Assert.Equal((300, 20d), (status.LatencyMs, status.Fps));
+        Assert.Equal(Build.T0.AddSeconds(1), status.LastReportAt);
+    }
+
+    [Fact]
+    public void Current_OnlyStaleLinks_SummariseAsStale()
+    {
+        tracker.Connect("c1", "olk_b", "10.0.0.6");
+
+        Assert.Equal(OutputState.Stale, tracker.Current(Build.T0).State);
+    }
+
+    [Fact]
+    public void Disconnect_OnePage_LeavesTheOtherLinkConnected()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Connect("c2", "olk_b", "10.0.0.6");
+
+        Assert.True(tracker.Disconnect("c1"));
+        Assert.False(tracker.Disconnect("c1"));
+
+        Assert.Equal(["c2"], tracker.ConnectionIds);
+        Assert.Equal(["c2"], tracker.ConnectionIdsOf("olk_b"));
+        Assert.Empty(tracker.ConnectionIdsOf("olk_a"));
+        Assert.Equal("olk_b", tracker.LinkOf("c2"));
+        Assert.Equal("10.0.0.6", tracker.AddressOf("c2"));
+        Assert.Null(tracker.AddressOf("c1"));
+    }
+
+    [Fact]
+    public void SetLinks_RevokedLink_ForgetsItsPagesAndRenamesTheOthers()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Connect("c2", "olk_b", "10.0.0.6");
+
+        tracker.SetLinks([("olk_b", "Camera")]);
+
+        Assert.Equal(["c2"], tracker.ConnectionIds);
+        Assert.Equal(["Camera"], tracker.Current(Build.T0).Links.Select(l => l.Name));
+        Assert.Null(tracker.LinkOf("c1"));
+    }
+
+    [Fact]
+    public void TakeChange_RenamedOrAddedLink_Publishes()
+    {
+        Assert.NotNull(tracker.TakeChange(Build.T0));
+        Assert.Null(tracker.TakeChange(Build.T0));
+
+        tracker.SetLinks([("olk_a", "Proxy"), ("olk_b", "Camera")]);
+
+        Assert.Equal(["Camera", "Proxy"], tracker.TakeChange(Build.T0)!.Links.Select(l => l.Name));
+    }
+
+    [Fact]
+    public void TakeChange_OneLinkChangesItsState_PublishesWithBothLinks()
+    {
+        tracker.TakeChange(Build.T0);
+
+        tracker.Connect("c1", "olk_b", "10.0.0.6");
+
+        var change = tracker.TakeChange(Build.T0)!;
+        Assert.Equal([OutputState.None, OutputState.Stale], change.Links.Select(l => l.State));
+    }
+
+    [Fact]
     public void Current_ConnectedWithoutRenderingReport_IsStale()
     {
-        tracker.Connect("c1", "10.0.0.5");
-        tracker.Report(new OutputReport(false, null, null, null), Build.T0);
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(false, null, null, null), Build.T0);
 
         Assert.Equal(OutputState.Stale, tracker.Current(Build.T0).State);
     }
@@ -86,9 +175,9 @@ public sealed class OutputTrackerTests
     [Fact]
     public void Current_FreshRenderingReport_IsConnectedForSixSeconds()
     {
-        tracker.Connect("c1", "10.0.0.5");
-        tracker.Connect("c2", "10.0.0.5");
-        tracker.Report(new OutputReport(true, 120, 50, "scn_a"), Build.T0);
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Connect("c2", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 120, 50, "scn_a"), Build.T0);
 
         var status = tracker.Current(Build.T0.AddSeconds(6));
 
@@ -102,7 +191,7 @@ public sealed class OutputTrackerTests
     [Fact]
     public void Report_ImplausibleMetrics_AreDropped()
     {
-        tracker.Report(new OutputReport(true, -5, 5000, null), Build.T0);
+        tracker.Report("olk_a", new OutputReport(true, -5, 5000, null), Build.T0);
 
         Assert.Null(tracker.Current(Build.T0).LatencyMs);
         Assert.Null(tracker.Current(Build.T0).Fps);
@@ -111,7 +200,7 @@ public sealed class OutputTrackerTests
     [Fact]
     public void TakeChange_StateChange_PublishesImmediately()
     {
-        tracker.Connect("c1", "10.0.0.5");
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
 
         Assert.Equal(OutputState.Stale, tracker.TakeChange(Build.T0)!.State);
         Assert.Null(tracker.TakeChange(Build.T0));
@@ -122,24 +211,24 @@ public sealed class OutputTrackerTests
     [Fact]
     public void TakeChange_SmallMetricChange_IsThrottledToFiveSeconds()
     {
-        tracker.Connect("c1", "10.0.0.5");
-        tracker.Report(new OutputReport(true, 100, 50, null), Build.T0);
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 50, null), Build.T0);
         Assert.NotNull(tracker.TakeChange(Build.T0));
 
-        tracker.Report(new OutputReport(true, 110, 50, null), Build.T0.AddSeconds(2));
+        tracker.Report("olk_a", new OutputReport(true, 110, 50, null), Build.T0.AddSeconds(2));
         Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(2)));
-        tracker.Report(new OutputReport(true, 112, 50, null), Build.T0.AddSeconds(5));
+        tracker.Report("olk_a", new OutputReport(true, 112, 50, null), Build.T0.AddSeconds(5));
         Assert.Equal(112, tracker.TakeChange(Build.T0.AddSeconds(5))!.LatencyMs);
     }
 
     [Fact]
     public void TakeChange_LargeMetricChange_PublishesImmediately()
     {
-        tracker.Connect("c1", "10.0.0.5");
-        tracker.Report(new OutputReport(true, 100, 50, null), Build.T0);
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 50, null), Build.T0);
         tracker.TakeChange(Build.T0);
 
-        tracker.Report(new OutputReport(true, 100, 30, null), Build.T0.AddSeconds(1));
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null), Build.T0.AddSeconds(1));
 
         Assert.Equal(30, tracker.TakeChange(Build.T0.AddSeconds(1))!.Fps);
     }
@@ -383,7 +472,7 @@ public sealed class OutputViewTests
         new InviteRemovedEvent(1, "inv_a"),
         new IncidentRemovedEvent(1, "inc_a"),
         new LogAppendedEvent(1, new LogEntryDto(Build.T0, LogCode.BroadcastStarted, new Dictionary<string, string>(), "x")),
-        new OutputStatusChangedEvent(1, new OutputStatusDto(OutputState.None, 0, [], null, null, null)),
+        new OutputStatusChangedEvent(1, new OutputStatusDto(OutputState.None, 0, [], null, null, null, [])),
     };
 
     [Theory]

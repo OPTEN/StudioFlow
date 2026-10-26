@@ -2,12 +2,34 @@ using Opten.StudioFlow.Core.Domain;
 
 namespace Opten.StudioFlow.Core.Application.Ports;
 
-/// <summary>Output access data of a production (key lookup without loading the aggregate).</summary>
+/// <summary>Access data of one output link (key lookup without loading the production).</summary>
 /// <param name="ProductionId">Production id.</param>
-/// <param name="Slug">Output slug.</param>
-/// <param name="OutputKey">Current output key.</param>
-/// <param name="AllowedIps">IP restriction.</param>
-public sealed record OutputKeyInfo(string ProductionId, string Slug, string OutputKey, IReadOnlyList<string> AllowedIps);
+/// <param name="Slug">Output slug of the production.</param>
+/// <param name="LinkId">Link id.</param>
+/// <param name="LinkName">Link name.</param>
+/// <param name="Key">Current key of the link.</param>
+/// <param name="AllowedIps">IP restriction of the link.</param>
+public sealed record OutputLinkAccess(string ProductionId, string Slug, string LinkId, string LinkName, string Key, IReadOnlyList<string> AllowedIps)
+{
+    /// <summary>
+    /// The link whose key equals <paramref name="key"/>, or null. Every key is compared, so the time does not depend on
+    /// which link matches (or whether one does).
+    /// </summary>
+    public static OutputLinkAccess? Find(IEnumerable<OutputLinkAccess> links, string? key)
+    {
+        ArgumentNullException.ThrowIfNull(links);
+        OutputLinkAccess? match = null;
+        foreach (var link in links)
+        {
+            if (Secrets.FixedTimeEquals(key, link.Key))
+            {
+                match = link;
+            }
+        }
+
+        return match;
+    }
+}
 
 /// <summary>Persistence of productions with their scenes.</summary>
 public interface IProductionRepository
@@ -27,20 +49,36 @@ public interface IProductionRepository
     /// <summary>Name of a production, if it exists.</summary>
     Task<string?> GetNameAsync(string productionId, CancellationToken cancellationToken);
 
-    /// <summary>Output access data by production id.</summary>
-    Task<OutputKeyInfo?> GetOutputKeyAsync(string productionId, CancellationToken cancellationToken);
-
-    /// <summary>Output access data by slug.</summary>
-    Task<OutputKeyInfo?> GetOutputKeyBySlugAsync(string slug, CancellationToken cancellationToken);
-
-    /// <summary>Output access data of every production (for hub connections that only carry the key).</summary>
-    Task<IReadOnlyList<OutputKeyInfo>> ListOutputKeysAsync(CancellationToken cancellationToken);
-
     /// <summary>True when any production is live.</summary>
     Task<bool> AnyLiveAsync(CancellationToken cancellationToken);
 
     /// <summary>Adds a new production.</summary>
     void Add(Production production);
+}
+
+/// <summary>Persistence of output links.</summary>
+public interface IOutputLinkRepository
+{
+    /// <summary>Loads a link of a production (tracked).</summary>
+    Task<OutputLink?> GetAsync(string productionId, string linkId, CancellationToken cancellationToken);
+
+    /// <summary>All links of a production ordered by creation time.</summary>
+    Task<IReadOnlyList<OutputLink>> ListAsync(string productionId, CancellationToken cancellationToken);
+
+    /// <summary>Access data of the links of a production.</summary>
+    Task<IReadOnlyList<OutputLinkAccess>> ListAccessAsync(string productionId, CancellationToken cancellationToken);
+
+    /// <summary>Access data of the links of the production with the given slug.</summary>
+    Task<IReadOnlyList<OutputLinkAccess>> ListAccessBySlugAsync(string slug, CancellationToken cancellationToken);
+
+    /// <summary>Access data of every link (for hub connections that only carry the key).</summary>
+    Task<IReadOnlyList<OutputLinkAccess>> ListAllAccessAsync(CancellationToken cancellationToken);
+
+    /// <summary>Adds a link.</summary>
+    void Add(OutputLink link);
+
+    /// <summary>Deletes a link.</summary>
+    void Remove(OutputLink link);
 }
 
 /// <summary>Persistence of devices.</summary>
@@ -207,6 +245,9 @@ public interface IUnitOfWork : IAsyncDisposable
 
     /// <summary>Invites.</summary>
     IInviteRepository Invites { get; }
+
+    /// <summary>Output links.</summary>
+    IOutputLinkRepository OutputLinks { get; }
 
     /// <summary>Audit log.</summary>
     IAuditRepository Audit { get; }

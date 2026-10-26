@@ -32,6 +32,9 @@ internal static class StudioFlowClaims
     /// <summary>Production of a device or output connection.</summary>
     public const string ProductionId = "studioflow:production";
 
+    /// <summary>Output link of an output connection.</summary>
+    public const string OutputLinkId = "studioflow:output-link";
+
     /// <summary>The device is blocked.</summary>
     public const string Blocked = "studioflow:blocked";
 

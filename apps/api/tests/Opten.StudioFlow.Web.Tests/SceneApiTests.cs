@@ -267,7 +267,7 @@ public sealed class SceneApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var ids = (await AddItemsAsync(admin, production, programId, camera, 3)).Items.Select(i => i.Id).ToList();
         var settings = await admin.Client.GetAsync($"/api/productions/{production}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
         await using var otherTab = app.Hub(HubMethods.StudioHubPath, o => o.Headers["Cookie"] = admin.Cookie);
-        await using var output = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..]));
+        await using var output = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(settings.Links[0].Key()));
         var tabEvents = HubProbe.On<ProductionEvent>(otherTab, HubMethods.Event);
         var outputEvents = HubProbe.On<ProductionEvent>(output, HubMethods.Event);
         await otherTab.StartAsync(TestContext.Current.CancellationToken);

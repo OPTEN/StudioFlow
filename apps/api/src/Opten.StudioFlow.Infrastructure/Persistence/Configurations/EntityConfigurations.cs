@@ -32,11 +32,8 @@ internal sealed class ProductionConfiguration : IEntityTypeConfiguration<Product
         builder.Property(p => p.EndSlate).AsJson().IsRequired();
         builder.Property(p => p.TextTheme).AsJson().IsRequired();
         builder.Property(p => p.TextSources).AsJson().IsRequired();
-        builder.Property(p => p.OutputKey).HasMaxLength(Columns.Secret).IsRequired();
-        builder.Property(p => p.AllowedIps).AsJson().IsRequired();
         builder.HasIndex(p => new { p.TenantId, p.Slug }).IsUnique();
         builder.HasIndex(p => p.TenantId).IsUnique().HasFilter("is_active");
-        builder.HasIndex(p => p.OutputKey).IsUnique();
         builder.HasMany(p => p.Scenes).WithOne().HasForeignKey(s => s.ProductionId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(p => p.Scenes).HasField("scenes").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(p => p.OrderedScenes);
@@ -121,6 +118,24 @@ internal sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
         builder.HasIndex(i => new { i.ProductionId, i.ExpiresAt });
         builder.Ignore(i => i.PairingMethod);
         builder.Ignore(i => i.DeviceKind);
+    }
+}
+
+/// <summary>Table <c>output_links</c>.</summary>
+internal sealed class OutputLinkConfiguration : IEntityTypeConfiguration<OutputLink>
+{
+    public void Configure(EntityTypeBuilder<OutputLink> builder)
+    {
+        builder.ToTable("output_links");
+        builder.HasKey(l => l.Id);
+        builder.Property(l => l.Id).HasMaxLength(Columns.Id).ValueGeneratedNever();
+        builder.Property(l => l.ProductionId).HasMaxLength(Columns.Id).IsRequired();
+        builder.Property(l => l.Name).HasMaxLength(Columns.Name).IsRequired();
+        builder.Property(l => l.Key).HasMaxLength(Columns.Secret).IsRequired();
+        builder.Property(l => l.AllowedIps).AsJson().IsRequired();
+        builder.HasOne<Production>().WithMany().HasForeignKey(l => l.ProductionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(l => l.ProductionId);
+        builder.HasIndex(l => l.Key).IsUnique();
     }
 }
 

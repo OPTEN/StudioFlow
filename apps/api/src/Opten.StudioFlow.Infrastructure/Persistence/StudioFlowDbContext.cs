@@ -26,6 +26,9 @@ public sealed class StudioFlowDbContext(DbContextOptions<StudioFlowDbContext> op
     /// <summary>Invites.</summary>
     public DbSet<Invite> Invites => Set<Invite>();
 
+    /// <summary>Output links.</summary>
+    public DbSet<OutputLink> OutputLinks => Set<OutputLink>();
+
     /// <summary>Audit log.</summary>
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
