@@ -791,7 +791,8 @@ lists every link with its state) with popover (summary: state, consumers, IPs, f
 each as “Proxy · connected” or “not connected” with its last-seen time; adding a link by name; for the selected link:
 rename, link copy (masked), IP restriction editor, “Use as camera …” with the download of an OBS scene collection (9.4),
 “Regenerate link” and “Revoke link” with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
-language and appearance (Dark | Light | System) settings, presence, clock, logout.
+language and appearance (Dark | Light | System) settings and, below them, the version the server runs (`0.1.0+1a2b3c4`,
+loaded once from `GET /api/system/info` by `SystemInfoService`; no row while the request is open or failed), presence, clock, logout.
 Everything in the prototype menu “Prototype” is replaced by real events (no demo data).
 State: one `ProductionStore` service wrapping `ProductionSync` in signals; commands go through `StudioApi` (typed
 HttpClient). Undo/redo (Ctrl+Z / Ctrl+Shift+Z, 60 steps) per scene via `ReplaceSceneItems`. Keyboard as prototype
@@ -864,7 +865,7 @@ and key, subscribe via output hub (`ProductionSync`), get a LiveKit token, start
 program switches play the event's transition; preview scene and all other scenes are preloaded at LOW/HIGH as in 7.
 Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate “No access” («Kein Zugang») (no retry loop faster
 than 30 s). `debug=1` shows a mono overlay (scene, revision, connection states, per source resolution/fps/bitrate,
-estimated latency). Reports `OutputReport` every 2 s (the report belongs to the link whose key opened the page).
+estimated latency, and the build version `StudioFlow 0.1.0+1a2b3c4` as the last line). Reports `OutputReport` every 2 s (the report belongs to the link whose key opened the page).
 The stage has the canvas of the production (format and resolution): the program view hands it to the renderer before it
 shows a scene, so a `productionCanvasChanged` event resizes the open page at once and the rescaled scenes of the same
 revision are drawn on the new stage; `?debug=1` shows it ("Canvas 1080 × 1920 · 9:16 · 1080p"). The picture size that
@@ -942,7 +943,11 @@ Images and versions (issue #18, process in `docs/releasing.md`):
   `apps/api/Directory.Build.props` (`<Version>`) and the default tag in `docker-compose.release.yml`;
   `infra/release/check.mjs` fails CI when they differ. `GET /api/system/info` returns `version` as `0.4.2+1a2b3c4`
   (version plus the commit the image was built from; the Docker build argument `STUDIOFLOW_REVISION` becomes the
-  `SourceRevisionId`).
+  `SourceRevisionId`). The Regie shows it in the settings popover (from that endpoint). The output page is served
+  without a session, so it carries its version in the bundle: Vite defines `__STUDIOFLOW_VERSION__` from the `version` in
+  `package.json` plus the same build argument (`apps/output/src/build-info.ts`; the `web` image build passes it to
+  `npm run build:output`), and the `?debug=1` overlay prints `StudioFlow 0.4.2+1a2b3c4` as its last line (just the
+  version when the build does not know its commit).
 - Published images (GHCR, `linux/amd64`): `ghcr.io/opten/studioflow-web` (the `caddy` service: Caddy, Caddyfile,
   frontends), `ghcr.io/opten/studioflow-api` and `ghcr.io/opten/studioflow-backup` (the `backup` service, profile `backup`). Tags `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`,
   `latest`. OCI labels, SBOM, provenance and a keyless cosign signature on every image.

@@ -143,6 +143,12 @@ Implementation details fixed with the work on #13 (spec 4.4, 8.3, 9.1):
 3. Registry: GHCR.
 4. Images are published only under the new name (after #3).
 5. amd64 only; arm64 can be added to the build matrix later.
+6. Where the version is shown: the Regie prints the version the **server** runs (`GET /api/system/info`) in the last row
+   of the settings popover; the output page, which has no session, carries a build-time version
+   (`package.json` plus the Docker build argument `STUDIOFLOW_REVISION`, `0.1.0+1a2b3c4`) and prints it as the **last**
+   line of the `?debug=1` overlay, so that the lines above keep their positions. A build without a commit shows just the
+   version. CI and the release workflow pass the commit to the `api` and `web` images alike (the same arguments, so the
+   layer cache of CI serves the release build); the plain `docker compose build` of development passes none.
 
 ## #19 Drag and drop
 

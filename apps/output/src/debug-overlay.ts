@@ -16,7 +16,7 @@ import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
 /**
  * `?debug=1`: a small mono panel top left with what a technician needs at the proxy: production and scene, revision,
  * connection states, per visible source resolution / fps / bitrate / packet loss / jitter-buffer delay, the estimated
- * latency and the renderer frame rate. Updated every second; `position: fixed` and `pointer-events: none`, so the
+ * latency and the renderer frame rate, and the version of the build in the last line. Updated every second; `position: fixed` and `pointer-events: none`, so the
  * stage never moves. Loaded lazily, only with the flag.
  */
 
@@ -46,6 +46,8 @@ export interface DebugInfo {
   readonly latencyMs: number | null;
   readonly rendererFps: number;
   readonly sources: readonly DebugSource[];
+  /** The build of this page: `0.1.0+1a2b3c4` (src/build-info.ts). */
+  readonly version: string;
 }
 
 function ms(value: number | null | undefined): string {
@@ -117,6 +119,8 @@ export function formatDebugLines(info: DebugInfo): string[] {
   for (const source of info.sources) {
     lines.push(sourceLine(source));
   }
+  // Last, so that the lines above keep their place whatever the number of sources.
+  lines.push(t('output.debug.version', { version: info.version }));
   return lines;
 }
 

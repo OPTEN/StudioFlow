@@ -102,7 +102,7 @@ jobs:
             context: .
             file: infra/caddy/Dockerfile
             cache: caddy
-            build-args: ''
+            build-args: STUDIOFLOW_REVISION=${{ github.event.workflow_run.head_sha }}
           # Scheduled backups (profile "backup", runbook section 7) on the PostgreSQL image of the stack.
           - image: backup
             description: StudioFlow backup service (scheduled pg_dump and volume copies)

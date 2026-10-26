@@ -8,4 +8,5 @@ export const regieSettings: Translation<typeof en> = {
   'regie.settings.theme.dark': 'Dunkel',
   'regie.settings.theme.light': 'Hell',
   'regie.settings.theme.system': 'System',
+  'regie.settings.version.label': 'Version',
 };

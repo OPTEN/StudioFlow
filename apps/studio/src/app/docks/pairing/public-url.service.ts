@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { StudioApiService } from '../../core/api/studio-api.service';
+import { Injectable, computed, inject } from '@angular/core';
+import { SystemInfoService } from '../../core/api/system-info.service';
 
 /** "studioflow.opten.ch/join" for "https://studioflow.opten.ch/join/" (what people type; shown large). */
 export function displayUrl(url: string): string {
@@ -14,10 +14,12 @@ export function displayUrl(url: string): string {
  */
 @Injectable({ providedIn: 'root' })
 export class PublicUrlService {
-  private readonly api = inject(StudioApiService);
+  private readonly system = inject(SystemInfoService);
   private readonly document = inject(DOCUMENT);
-  private readonly base = signal<string | null>(null);
-  private loading = false;
+  private readonly base = computed(() => {
+    const url = this.system.info()?.publicBaseUrl?.trim();
+    return url ? url.replace(/\/+$/, '') : null;
+  });
 
   /** "https://studioflow.opten.ch" (no trailing slash). */
   readonly baseUrl = computed(
@@ -28,21 +30,6 @@ export class PublicUrlService {
 
   /** Loads the base URL once; failures keep the fallback (no toast, the fallback works on site). */
   ensureLoaded(): void {
-    if (this.base() !== null || this.loading) {
-      return;
-    }
-    this.loading = true;
-    this.api
-      .getSystemInfo()
-      .then((info) => {
-        const url = info.publicBaseUrl?.trim();
-        if (url) {
-          this.base.set(url.replace(/\/+$/, ''));
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        this.loading = false;
-      });
+    this.system.ensureLoaded();
   }
 }

@@ -1,7 +1,18 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import { formatBuildVersion } from './src/build-info';
 
 const fromRoot = (path: string): string => fileURLToPath(new URL(`../../${path}`, import.meta.url));
+
+/**
+ * The version of this build for the `?debug=1` overlay (src/build-info.ts): the `version` of the repository plus the
+ * commit the image is built from (Docker build argument `STUDIOFLOW_REVISION`, as for the API), `0.1.0+1a2b3c4`.
+ */
+const buildVersion = formatBuildVersion(
+  (JSON.parse(readFileSync(fromRoot('package.json'), 'utf8')) as { version: string }).version,
+  process.env['STUDIOFLOW_REVISION'],
+);
 
 /**
  * Output page: framework-free, served by Caddy under /o/ (one index.html for every /o/{slug}).
@@ -13,6 +24,7 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: '/o/',
   publicDir: 'public',
+  define: { __STUDIOFLOW_VERSION__: JSON.stringify(buildVersion) },
   resolve: {
     alias: {
       // Only the framework-free entry: the output bundle must never pull in Angular (@studioflow/i18n/angular).

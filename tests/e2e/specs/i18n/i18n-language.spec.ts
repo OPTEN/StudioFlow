@@ -91,6 +91,7 @@ test.describe('I18N language in English', () => {
 
     await page.getByRole('button', { name: 'Open settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.locator('.c-version__value'), 'the version the server runs').toHaveText(/^\d+\.\d+\.\d+(\+[0-9a-f]{7})?$/);
     await settings.getByLabel('Interface language').selectOption('de-CH');
 
     await expect(page.getByRole('region', { name: 'Szenen', exact: true })).toBeVisible();

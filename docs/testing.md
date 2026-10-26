@@ -1533,7 +1533,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-05** · P1 · pw — `debug=1` overlay
 - Steps: open with `&debug=1`.
-- Expect: `[data-testid=debug-overlay]` in a mono font with lines `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24].
+- Expect: `[data-testid=debug-overlay]` in a mono font with lines `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps`, `latency <n> ms`; updates at least every 1 s; `pointer-events: none`; absent without the parameter; values match the `<video>` elements (`videoWidth`/`videoHeight`) and the API state [GAP-24]; the last line is the build, `StudioFlow 0.1.0+1a2b3c4` (the commit is missing in a local build).
 
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
@@ -2442,7 +2442,7 @@ The language of the product is the setting `localStorage['studioflow.locale']` (
 
 **E2E-I18N-04** · P1 · pw (`i18n`) — Regie: the language switch changes the open Regie live
 - Pre: logged-in Regie in `en-US`; a marker on `window` and `history.length` are noted.
-- Steps: “Open settings” → popover “Settings” → select “Interface language” = `de-CH`; then switch back to `en` in the German popover.
+- Steps: “Open settings” → popover “Settings” (its last row shows the version the server runs, `0.1.0+1a2b3c4`, from `GET /api/system/info`) → select “Interface language” = `de-CH`; then switch back to `en` in the German popover.
 <!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
 - Expect: the region “Scenes” becomes the German region (“Szenen”) and the popover and its button get their German names (“Einstellungen”) at once, no English region name is left; `<html lang>` and `studioflow.locale` follow; the `window` marker survives and `history.length` is unchanged (no reload); after the switch back everything is English; no page errors.
 
