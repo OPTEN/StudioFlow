@@ -21,6 +21,12 @@ describe('SwitcherService', () => {
   let switcher: SwitcherService;
   let toasts: ToastService;
 
+  // The keyboard shortcuts read `document.activeElement`, and Space is left alone on a button or link. Specs that
+  // share the document can leave the focus on one, so every test starts with the focus on the page.
+  beforeEach(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+
   async function setup(
     options: { studio?: boolean; preview?: string | null; operators?: number } = {},
   ): Promise<void> {
@@ -42,7 +48,13 @@ describe('SwitcherService', () => {
     await harness.settle();
   }
 
-  afterEach(() => harness?.http.verify());
+  afterEach(() => {
+    vi.useRealTimers();
+    harness?.http.verify();
+  });
+
+  /** Resolves once the switching request that a key started is answered, instead of guessing how many ticks it takes. */
+  const untilIdle = (): Promise<void> => vi.waitFor(() => expect(switcher.busy()).toBe(false));
 
   it('switches the program directly without Studio-Modus, with the transition', async () => {
     await setup();
@@ -172,6 +184,8 @@ describe('SwitcherService', () => {
   });
 
   it('blocks switching while a fade of the last program switch runs', async () => {
+    // The clock stands still, so the fade neither ends early on a slow machine nor needs a real wait.
+    vi.useFakeTimers();
     await setup();
     harness.emitEvent({
       type: 'programSwitched',
@@ -185,7 +199,9 @@ describe('SwitcherService', () => {
     expect(switcher.transitionRunning()).toBe(true);
     await switcher.chooseScene('scn_c');
     harness.http.expectNone(`${BASE}/program`);
-    await new Promise((resolve) => setTimeout(resolve, 260));
+    vi.advanceTimersByTime(199);
+    expect(switcher.transitionRunning()).toBe(true);
+    vi.advanceTimersByTime(1);
     expect(switcher.transitionRunning()).toBe(false);
   });
 
@@ -222,10 +238,10 @@ describe('SwitcherService', () => {
     const keyboard = TestBed.inject(KeyboardService);
     keyboard.handle(new KeyboardEvent('keydown', { key: '3', cancelable: true }));
     harness.http.expectOne(`${BASE}/preview`).flush(productionFixture());
-    await flushMicrotasks();
+    await untilIdle();
     keyboard.handle(new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true }));
     harness.http.expectOne(`${BASE}/take`).flush(productionFixture());
-    await flushMicrotasks();
+    await untilIdle();
     off();
     keyboard.handle(new KeyboardEvent('keydown', { key: '1', cancelable: true }));
     harness.http.expectNone(`${BASE}/preview`);
