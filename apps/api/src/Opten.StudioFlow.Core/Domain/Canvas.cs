@@ -37,6 +37,20 @@ public static class Canvases
         };
     }
 
+    /// <summary>The canvas as text for the audit log, "1080 × 1920 (9:16)".</summary>
+    public static string Describe(CanvasFormat format, CanvasResolution resolution)
+    {
+        var size = SizeOf(format, resolution);
+        var ratio = format switch
+        {
+            CanvasFormat.Widescreen => "16:9",
+            CanvasFormat.Portrait => "9:16",
+            CanvasFormat.Square => "1:1",
+            _ => "4:3",
+        };
+        return $"{size.Width} × {size.Height} ({ratio})";
+    }
+
     /// <summary>The canvas as the wire contract.</summary>
     public static CanvasDto Dto(CanvasFormat format, CanvasResolution resolution)
     {

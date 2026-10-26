@@ -35,6 +35,7 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.outputLinkRevoked': 'Output-Link «{name}» widerrufen',
   'regie.log.pairingDenied': 'Anfrage von {name} abgelehnt',
   'regie.log.passwordChanged': 'Passwort geändert',
+  'regie.log.canvasChanged': 'Ausgabe von {from} auf {to} geändert',
   'regie.log.productionActivated': 'Produktion «{name}» aktiviert',
   'regie.log.productionCreated': 'Produktion «{name}» erstellt',
   'regie.log.productionRenamed': 'Produktion «{from}» umbenannt in «{name}»',

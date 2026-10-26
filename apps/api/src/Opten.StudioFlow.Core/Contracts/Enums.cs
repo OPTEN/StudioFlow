@@ -446,6 +446,9 @@ public enum LogCode
     /// <summary>A production was renamed. Params: <c>from</c> (old name), <c>name</c> (new name).</summary>
     ProductionRenamed,
 
+    /// <summary>The format or resolution of the output changed. Params: <c>from</c>, <c>to</c> (size and ratio, e.g. "1080 × 1920 (9:16)").</summary>
+    CanvasChanged,
+
     /// <summary>A production became the active one. Params: <c>name</c>.</summary>
     ProductionActivated,
 

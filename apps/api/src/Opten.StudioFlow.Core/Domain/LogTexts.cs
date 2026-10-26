@@ -36,6 +36,7 @@ public static class LogTexts
         public const string Username = "username";
         public const string Lens = "lens";
         public const string From = "from";
+        public const string To = "to";
         public const string Format = "format";
         public const string Rows = "rows";
         public const string Days = "days";
@@ -102,6 +103,7 @@ public static class LogTexts
             AuditActions.Logout => With(LogCode.LoggedOut, $"“{username}” signed out", (Param.Username, username)),
             AuditActions.ProductionCreated => With(LogCode.ProductionCreated, $"Production “{name}” created", (Param.Name, name)),
             AuditActions.ProductionRenamed => With(LogCode.ProductionRenamed, $"Production “{entry.Detail(AuditDetails.From)}” renamed to “{name}”", (Param.From, entry.Detail(AuditDetails.From)), (Param.Name, name)),
+            AuditActions.CanvasChanged => With(LogCode.CanvasChanged, $"Output changed from {entry.Detail(AuditDetails.From)} to {entry.Detail(AuditDetails.To)}", (Param.From, entry.Detail(AuditDetails.From)), (Param.To, entry.Detail(AuditDetails.To))),
             AuditActions.ProductionActivated => With(LogCode.ProductionActivated, $"Production “{name}” activated", (Param.Name, name)),
             AuditActions.BroadcastReset => With(LogCode.BroadcastReset, "Broadcast reset"),
             AuditActions.SlateChanged when string.Equals(entry.Detail(AuditDetails.Slate), AuditSlates.End, StringComparison.Ordinal) => With(LogCode.EndSlateChanged, "Slate after the broadcast changed"),

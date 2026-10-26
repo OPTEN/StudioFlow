@@ -271,7 +271,9 @@ describe('scene renderer: canvas of the production', () => {
       } as const;
       mounted = mount({ canvas: PORTRAIT, textOf: () => text });
       mounted.renderer.show(
-        scene('scn_a', [sceneItem('itm_t', 'txt_aaaaaaaaaaaaaaaa', { x: 45, y: 1774, w: 540, h: 101 })]),
+        scene('scn_a', [
+          sceneItem('itm_t', 'txt_aaaaaaaaaaaaaaaa', { x: 45, y: 1774, w: 540, h: 101 }),
+        ]),
       );
 
       const line1 = mounted.part('itm_t', '.sf-r-text-line1');

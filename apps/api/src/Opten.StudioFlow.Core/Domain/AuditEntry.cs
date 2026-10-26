@@ -190,7 +190,7 @@ public static class AuditDetails
     /// <summary>How a scene went on air, see <see cref="AuditVia"/>.</summary>
     public const string Via = "via";
 
-    /// <summary>The previous name of a renamed production, or the canvas before a change (e.g. <c>Widescreen 1920x1080</c>).</summary>
+    /// <summary>The previous name of a renamed production, or the canvas before a change (e.g. <c>1920 × 1080 (16:9)</c>).</summary>
     public const string From = "from";
 
     /// <summary>The canvas after a change.</summary>

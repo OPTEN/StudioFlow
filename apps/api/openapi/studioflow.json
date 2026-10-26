@@ -5476,6 +5476,7 @@
           "loggedOut",
           "productionCreated",
           "productionRenamed",
+          "canvasChanged",
           "productionActivated",
           "broadcastReset",
           "standbySlateChanged",
