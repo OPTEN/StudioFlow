@@ -1,6 +1,6 @@
 import { resetLocaleForTests } from '@studioflow/i18n';
 import type { CameraControlDto, CameraStateDto } from '@studioflow/scene-model';
-import { remoteCameraNotice } from './remote-camera-notice';
+import { remoteCameraNotice, remoteCameraNoticeText } from './remote-camera-notice';
 
 const NOTHING: CameraControlDto = {
   v: 1,
