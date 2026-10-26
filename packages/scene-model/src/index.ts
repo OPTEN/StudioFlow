@@ -3,6 +3,7 @@
  */
 export * from './contracts';
 export * from './constants';
+export * from './canvas';
 export * from './source-ref';
 export * from './layout-templates';
 export * from './geometry';

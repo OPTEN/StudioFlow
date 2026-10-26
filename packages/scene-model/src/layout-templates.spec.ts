@@ -1,11 +1,11 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from './constants';
+import { DEFAULT_CANVAS as CANVAS } from './canvas';
 import type { SceneItemDto, SourceKind } from './contracts';
 import { rectIntersects, rectOf } from './geometry';
 import {
-  LAYOUT_TEMPLATES,
   applyLayoutTemplate,
   autoGridSlots,
   layoutTemplate,
+  layoutTemplates,
   type LayoutTemplateId,
 } from './layout-templates';
 import { itemFixture } from './testing/fixtures';
@@ -24,7 +24,7 @@ function slotRect(
   templateId: LayoutTemplateId,
   index: number,
 ): { x: number; y: number; w: number; h: number } {
-  const slot = layoutTemplate(templateId).slots?.[index];
+  const slot = layoutTemplate(templateId, CANVAS).slots?.[index];
   if (!slot) {
     throw new Error(`no slot ${index} in ${templateId}`);
   }
@@ -40,9 +40,9 @@ function byId(items: readonly SceneItemDto[], id: string): SceneItemDto {
   return item;
 }
 
-describe('LAYOUT_TEMPLATES', () => {
+describe('layoutTemplates', () => {
   it('has the eight templates of the plan in order', () => {
-    expect(LAYOUT_TEMPLATES.map((template) => template.name)).toEqual([
+    expect(layoutTemplates(CANVAS).map((template) => template.name)).toEqual([
       'Full screen',
       'Side by side',
       'Picture in picture',
@@ -55,28 +55,30 @@ describe('LAYOUT_TEMPLATES', () => {
   });
 
   it('keeps every slot on the canvas', () => {
-    for (const template of LAYOUT_TEMPLATES) {
+    for (const template of layoutTemplates(CANVAS)) {
       for (const [x, y, w, h] of template.slots ?? []) {
         expect(x).toBeGreaterThanOrEqual(0);
         expect(y).toBeGreaterThanOrEqual(0);
-        expect(x + w).toBeLessThanOrEqual(CANVAS_WIDTH);
-        expect(y + h).toBeLessThanOrEqual(CANVAS_HEIGHT);
+        expect(x + w).toBeLessThanOrEqual(CANVAS.width);
+        expect(y + h).toBeLessThanOrEqual(CANVAS.height);
       }
     }
   });
 
   it('uses the prototype slot rectangles', () => {
-    expect(layoutTemplate('pip').slots).toEqual([
+    expect(layoutTemplate('pip', CANVAS).slots).toEqual([
       [0, 0, 1920, 1080],
       [1400, 772, 480, 270],
     ]);
-    expect(layoutTemplate('grid3').slots).toHaveLength(9);
-    expect(layoutTemplate('grid3').slots?.[4]).toEqual([674, 378, 572, 322]);
-    expect(layoutTemplate('auto').slots).toBeNull();
+    expect(layoutTemplate('grid3', CANVAS).slots).toHaveLength(9);
+    expect(layoutTemplate('grid3', CANVAS).slots?.[4]).toEqual([674, 378, 572, 322]);
+    expect(layoutTemplate('auto', CANVAS).slots).toBeNull();
   });
 
   it('throws for an unknown id', () => {
-    expect(() => layoutTemplate('nope' as LayoutTemplateId)).toThrow(/Unknown layout template/);
+    expect(() => layoutTemplate('nope' as LayoutTemplateId, CANVAS)).toThrow(
+      /Unknown layout template/,
+    );
   });
 });
 
@@ -91,20 +93,20 @@ describe('autoGridSlots', () => {
     [9, 9],
     [12, 9],
   ])('%s sources → %s slots', (count, slots) => {
-    expect(autoGridSlots(count)).toHaveLength(slots);
+    expect(autoGridSlots(count, CANVAS)).toHaveLength(slots);
   });
 
   it('reuses the template slots and centres the third slot of three', () => {
-    expect(autoGridSlots(1)).toEqual(layoutTemplate('full').slots);
-    expect(autoGridSlots(2)).toEqual(layoutTemplate('two').slots);
-    expect(autoGridSlots(3)[2]).toEqual([525, 550, 871, 490]);
-    expect(autoGridSlots(4)).toEqual(layoutTemplate('grid').slots);
-    expect(autoGridSlots(7)).toEqual(layoutTemplate('grid3').slots);
+    expect(autoGridSlots(1, CANVAS)).toEqual(layoutTemplate('full', CANVAS).slots);
+    expect(autoGridSlots(2, CANVAS)).toEqual(layoutTemplate('two', CANVAS).slots);
+    expect(autoGridSlots(3, CANVAS)[2]).toEqual([525, 550, 871, 490]);
+    expect(autoGridSlots(4, CANVAS)).toEqual(layoutTemplate('grid', CANVAS).slots);
+    expect(autoGridSlots(7, CANVAS)).toEqual(layoutTemplate('grid3', CANVAS).slots);
   });
 
   it('never returns overlapping slots', () => {
     for (let count = 0; count <= 12; count += 1) {
-      const slots = autoGridSlots(count).map(([x, y, w, h]) => ({ x, y, w, h }));
+      const slots = autoGridSlots(count, CANVAS).map(([x, y, w, h]) => ({ x, y, w, h }));
       for (let i = 0; i < slots.length; i += 1) {
         for (let j = i + 1; j < slots.length; j += 1) {
           expect(rectIntersects(slots[i], slots[j])).toBe(false);
@@ -121,7 +123,7 @@ describe('applyLayoutTemplate', () => {
       itemFixture('m', 'image'),
       itemFixture('s', 'screen1'),
     ];
-    const { items: placed, layoutMode } = applyLayoutTemplate(items, 'col', kindOf);
+    const { items: placed, layoutMode } = applyLayoutTemplate(items, 'col', kindOf, CANVAS);
     expect(layoutMode).toBe('free');
     expect(rectOf(byId(placed, 's'))).toEqual(slotRect('col', 0));
     expect(rectOf(byId(placed, 'm'))).toEqual(slotRect('col', 1));
@@ -130,14 +132,14 @@ describe('applyLayoutTemplate', () => {
 
   it('keeps the scene order within one kind', () => {
     const items = [itemFixture('c2', 'cam2'), itemFixture('c1', 'cam1')];
-    const placed = applyLayoutTemplate(items, 'two', kindOf).items;
+    const placed = applyLayoutTemplate(items, 'two', kindOf, CANVAS).items;
     expect(rectOf(byId(placed, 'c2'))).toEqual(slotRect('two', 0));
     expect(rectOf(byId(placed, 'c1'))).toEqual(slotRect('two', 1));
   });
 
   it('puts unknown (deleted) sources last', () => {
     const items = [itemFixture('x', 'gone'), itemFixture('c', 'cam1')];
-    const placed = applyLayoutTemplate(items, 'two', kindOf).items;
+    const placed = applyLayoutTemplate(items, 'two', kindOf, CANVAS).items;
     expect(rectOf(byId(placed, 'c'))).toEqual(slotRect('two', 0));
     expect(rectOf(byId(placed, 'x'))).toEqual(slotRect('two', 1));
   });
@@ -148,7 +150,7 @@ describe('applyLayoutTemplate', () => {
       itemFixture('s2', 'screen2', { fit: 'contain' }),
       itemFixture('c', 'cam1', { fit: 'contain' }),
     ];
-    const placed = applyLayoutTemplate(items, 'onetwo', kindOf).items;
+    const placed = applyLayoutTemplate(items, 'onetwo', kindOf, CANVAS).items;
     expect(byId(placed, 's').fit).toBe('contain');
     expect(byId(placed, 's2').fit).toBe('cover');
     expect(byId(placed, 'c').fit).toBe('cover');
@@ -159,6 +161,7 @@ describe('applyLayoutTemplate', () => {
       [itemFixture('s', 'screen1', { fit: 'contain' })],
       templateId,
       kindOf,
+      CANVAS,
     ).items;
     expect(byId(placed, 's').fit).toBe('cover');
   });
@@ -168,7 +171,7 @@ describe('applyLayoutTemplate', () => {
       itemFixture('s', 'screen1', { radius: 50 }),
       itemFixture('c', 'cam1', { radius: 0 }),
     ];
-    const placed = applyLayoutTemplate(items, 'pip', kindOf).items;
+    const placed = applyLayoutTemplate(items, 'pip', kindOf, CANVAS).items;
     expect(byId(placed, 's').radius).toBe(0);
     expect(byId(placed, 'c').radius).toBe(12);
   });
@@ -176,7 +179,7 @@ describe('applyLayoutTemplate', () => {
   it('leaves hidden items untouched and does not give them a slot', () => {
     const hidden = itemFixture('h', 'screen1', { hidden: true, x: 7, y: 8, w: 99, h: 98 });
     const items = [hidden, itemFixture('c', 'cam1')];
-    const placed = applyLayoutTemplate(items, 'full', kindOf).items;
+    const placed = applyLayoutTemplate(items, 'full', kindOf, CANVAS).items;
     expect(byId(placed, 'h')).toEqual(hidden);
     expect(rectOf(byId(placed, 'c'))).toEqual(slotRect('full', 0));
   });
@@ -189,7 +192,7 @@ describe('applyLayoutTemplate', () => {
     ];
     const kinds = (id: string): SourceKind | undefined => (id === 'txt1' ? 'text' : kindOf(id));
 
-    const { items: result } = applyLayoutTemplate(items, 'two', kinds);
+    const { items: result } = applyLayoutTemplate(items, 'two', kinds, CANVAS);
 
     expect(result.map((item) => item.id)).toEqual(['img', 'cam', 'txt']);
     expect(rectOf(byId(result, 'img'))).toEqual(slotRect('two', 0));
@@ -206,7 +209,12 @@ describe('applyLayoutTemplate', () => {
       fit: 'contain',
       radius: 3,
     });
-    const placed = applyLayoutTemplate([itemFixture('c1', 'cam1'), extra], 'full', kindOf).items;
+    const placed = applyLayoutTemplate(
+      [itemFixture('c1', 'cam1'), extra],
+      'full',
+      kindOf,
+      CANVAS,
+    ).items;
     expect(byId(placed, 'c2')).toEqual(extra);
   });
 
@@ -217,7 +225,7 @@ describe('applyLayoutTemplate', () => {
       locked: true,
       onLost: { holdMs: null, fallbackSource: 'image' },
     });
-    const placed = byId(applyLayoutTemplate([item], 'full', kindOf).items, 'c');
+    const placed = byId(applyLayoutTemplate([item], 'full', kindOf, CANVAS).items, 'c');
     expect(placed).toMatchObject({
       crop: item.crop,
       mirror: true,
@@ -228,20 +236,23 @@ describe('applyLayoutTemplate', () => {
 
   it('Auto-Grid only switches the layout mode', () => {
     const items = [itemFixture('c', 'cam1', { x: 1, y: 2 })];
-    const { items: placed, layoutMode } = applyLayoutTemplate(items, 'auto', kindOf);
+    const { items: placed, layoutMode } = applyLayoutTemplate(items, 'auto', kindOf, CANVAS);
     expect(layoutMode).toBe('autoGrid');
     expect(placed).toEqual(items);
     expect(placed[0]).not.toBe(items[0]);
   });
 
   it('handles an empty scene', () => {
-    expect(applyLayoutTemplate([], 'grid', kindOf)).toEqual({ items: [], layoutMode: 'free' });
+    expect(applyLayoutTemplate([], 'grid', kindOf, CANVAS)).toEqual({
+      items: [],
+      layoutMode: 'free',
+    });
   });
 
   it('does not mutate the input items', () => {
     const items = [itemFixture('c', 'cam1')];
     const copy = structuredClone(items);
-    applyLayoutTemplate(items, 'grid3', kindOf);
+    applyLayoutTemplate(items, 'grid3', kindOf, CANVAS);
     expect(items).toEqual(copy);
   });
 });
@@ -252,7 +263,7 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
   }
 
   function apply(items: readonly SceneItemDto[], templateId: LayoutTemplateId): SceneItemDto[] {
-    return applyLayoutTemplate(items, templateId, kindOf).items;
+    return applyLayoutTemplate(items, templateId, kindOf, CANVAS).items;
   }
 
   it('Bild-in-Bild, camera before screen: the screen goes to the back, the small camera in front', () => {
@@ -356,17 +367,17 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
 
   it('Auto-Grid keeps the item order (its slots never overlap)', () => {
     const items = [itemFixture('c', 'cam1'), itemFixture('s', 'screen1')];
-    expect(ids(applyLayoutTemplate(items, 'auto', kindOf).items)).toEqual(['c', 's']);
+    expect(ids(applyLayoutTemplate(items, 'auto', kindOf, CANVAS).items)).toEqual(['c', 's']);
   });
 
-  const SLOT_TEMPLATES = LAYOUT_TEMPLATES.filter((template) => template.slots !== null).map(
-    (template) => [template.name, template.id] as const,
-  );
+  const SLOT_TEMPLATES = layoutTemplates(CANVAS)
+    .filter((template) => template.slots !== null)
+    .map((template) => [template.name, template.id] as const);
 
   it.each(SLOT_TEMPLATES)(
     '%s: slot i is layer i, later slots in front, items without a slot in front of all slots',
     (_name, templateId) => {
-      const slotCount = layoutTemplate(templateId).slots?.length ?? 0;
+      const slotCount = layoutTemplate(templateId, CANVAS).slots?.length ?? 0;
       // Worst case for the old behaviour: a hidden item at the very back, cameras and media behind a screen at the
       // front, and one item more than there are slots.
       const count = slotCount + 1;
@@ -378,7 +389,7 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
       const items = [itemFixture('hid', 'screen:hidden', { hidden: true }), ...visible];
       const kindOfMixed = (source: string): SourceKind | undefined =>
         source.split(':')[0] as SourceKind;
-      const result = applyLayoutTemplate(items, templateId, kindOfMixed).items;
+      const result = applyLayoutTemplate(items, templateId, kindOfMixed, CANVAS).items;
 
       const rank: Readonly<Record<SourceKind, number>> = {
         screen: 0,
@@ -416,7 +427,7 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
   );
 
   it('Bild-in-Bild is the only template with overlapping slots', () => {
-    const overlapping = LAYOUT_TEMPLATES.filter((template) => {
+    const overlapping = layoutTemplates(CANVAS).filter((template) => {
       const slots = (template.slots ?? []).map(([x, y, w, h]) => ({ x, y, w, h }));
       return slots.some((a, i) => slots.some((b, j) => j > i && rectIntersects(a, b)));
     });

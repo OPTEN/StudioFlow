@@ -1,3 +1,4 @@
+import { DEFAULT_CANVAS as CANVAS } from './canvas';
 import { ITEM_BOUNDS, NEW_ITEM_RECT } from './constants';
 import {
   clampItem,
@@ -251,7 +252,7 @@ describe('validateItem', () => {
 
 describe('newItem', () => {
   it('uses the server defaults with contain for screens', () => {
-    expect(newItem('dev_l/screen-1', 'screen', 'itm_x')).toEqual({
+    expect(newItem('dev_l/screen-1', 'screen', 'itm_x', CANVAS)).toEqual({
       id: 'itm_x',
       source: 'dev_l/screen-1',
       x: 1240,
@@ -277,7 +278,7 @@ describe('newItem', () => {
   ] as const)(
     'places a %s hidden, without corners, in the rectangle of its style',
     (style, rect) => {
-      const item = newItem('txt_abcd1234', 'text', 'itm_t', style);
+      const item = newItem('txt_abcd1234', 'text', 'itm_t', CANVAS, style);
 
       expect(item).toMatchObject({ ...rect, radius: 0, hidden: true });
       expect(validateItem(item)).toEqual([]);
@@ -285,16 +286,16 @@ describe('newItem', () => {
   );
 
   it('starts a text without a style as a lower third', () => {
-    expect(newItem('txt_abcd1234', 'text', 'itm_t')).toMatchObject({ x: 80, y: 820 });
+    expect(newItem('txt_abcd1234', 'text', 'itm_t', CANVAS)).toMatchObject({ x: 80, y: 820 });
   });
 
   it.each(['camera', 'image', 'video', undefined] as const)('uses cover for %s', (kind) => {
-    expect(newItem('src', kind, 'itm_y').fit).toBe('cover');
+    expect(newItem('src', kind, 'itm_y', CANVAS).fit).toBe('cover');
   });
 
   it('passes validation and does not share nested objects between items', () => {
-    const a = newItem('src', 'camera', 'itm_a');
-    const b = newItem('src', 'camera', 'itm_b');
+    const a = newItem('src', 'camera', 'itm_a', CANVAS);
+    const b = newItem('src', 'camera', 'itm_b', CANVAS);
     expect(validateItem(a)).toEqual([]);
     expect(a.crop).not.toBe(b.crop);
     expect(a.onLost).not.toBe(b.onLost);
@@ -349,25 +350,25 @@ describe('rect helpers', () => {
   });
 
   it('moves a rectangle onto the canvas and shrinks oversized ones', () => {
-    expect(clampRectToCanvas({ x: -50, y: 1000, w: 200, h: 200 })).toEqual({
+    expect(clampRectToCanvas({ x: -50, y: 1000, w: 200, h: 200 }, CANVAS)).toEqual({
       x: 0,
       y: 880,
       w: 200,
       h: 200,
     });
-    expect(clampRectToCanvas({ x: 1800, y: -5, w: 300, h: 100 })).toEqual({
+    expect(clampRectToCanvas({ x: 1800, y: -5, w: 300, h: 100 }, CANVAS)).toEqual({
       x: 1620,
       y: 0,
       w: 300,
       h: 100,
     });
-    expect(clampRectToCanvas({ x: 100, y: 100, w: 4000, h: 3000 })).toEqual({
+    expect(clampRectToCanvas({ x: 100, y: 100, w: 4000, h: 3000 }, CANVAS)).toEqual({
       x: 0,
       y: 0,
       w: 1920,
       h: 1080,
     });
-    expect(clampRectToCanvas({ x: 500, y: 500, w: -10, h: 20 })).toEqual({
+    expect(clampRectToCanvas({ x: 500, y: 500, w: -10, h: 20 }, CANVAS)).toEqual({
       x: 500,
       y: 500,
       w: 0,

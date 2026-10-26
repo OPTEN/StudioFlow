@@ -2,6 +2,7 @@
  * Wire objects for the output page specs. Test-only (never imported by application code).
  */
 import {
+  canvasDto,
   stateFromOutputSnapshot,
   type AssetDto,
   type OutputChangesDto,
@@ -41,6 +42,7 @@ export function production(overrides: Partial<ProductionDto> = {}): ProductionDt
     standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
     endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     textTheme: { accent: '#1f6feb', background: '#0d1117', foreground: '#ffffff' },
+    canvas: canvasDto('widescreen', 'p1080'),
     ...overrides,
   };
 }

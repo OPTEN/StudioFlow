@@ -28,6 +28,10 @@ export type {
   CameraRangeDto,
   CameraSettingsDto,
   CameraStateDto,
+  CanvasDto,
+  CanvasFormat,
+  CanvasResolution,
+  ChangeCanvasRequest,
   ChangePasswordRequest,
   CreateInviteRequest,
   CreatePairingRequest,
@@ -121,6 +125,7 @@ export type {
 
 /** Event subtypes under their short names (the generator prefixes them with `ProductionEvent`). */
 export type ProductionChangedEvent = Api.ProductionEventProductionChangedEvent;
+export type ProductionCanvasChangedEvent = Api.ProductionEventProductionCanvasChangedEvent;
 export type ProgramSwitchedEvent = Api.ProductionEventProgramSwitchedEvent;
 export type SceneUpsertedEvent = Api.ProductionEventSceneUpsertedEvent;
 export type SceneRemovedEvent = Api.ProductionEventSceneRemovedEvent;
@@ -175,6 +180,7 @@ export const HUB = {
 export const ERROR_CODES = {
   validationFailed: 'validation_failed',
   notFound: 'not_found',
+  broadcastLive: 'broadcast_live',
   transitionRunning: 'transition_running',
   sceneIsLive: 'scene_is_live',
   assetInUse: 'asset_in_use',

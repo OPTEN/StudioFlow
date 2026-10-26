@@ -29,12 +29,14 @@ export const modelScene: Translation<typeof en> = {
   'model.scene.templateInfo.two': 'Interview, Gespräch',
   'model.scene.templateName.auto': 'Auto-Grid',
   'model.scene.templateName.col': 'Screen + Kamera-Spalte',
+  'model.scene.templateName.colRow': 'Screen + Kamera-Reihe',
   'model.scene.templateName.full': 'Vollbild',
   'model.scene.templateName.grid': '2 × 2',
   'model.scene.templateName.grid3': '3 × 3',
   'model.scene.templateName.onetwo': 'Eins plus zwei',
   'model.scene.templateName.pip': 'Bild-in-Bild',
   'model.scene.templateName.two': 'Nebeneinander',
+  'model.scene.templateName.twoStacked': 'Untereinander',
 
   'model.scene.validation.borderColor': 'Die Rahmenfarbe muss eine Hex-Farbe wie #e3b341 sein.',
   'model.scene.validation.cropAxisHorizontal':

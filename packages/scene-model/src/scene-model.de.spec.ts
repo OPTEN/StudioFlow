@@ -1,7 +1,8 @@
 import { resetLocaleForTests } from '@studioflow/i18n';
 import { HOLD_OPTIONS } from './constants';
 import { validateItem } from './geometry';
-import { LAYOUT_TEMPLATES } from './layout-templates';
+import { layoutTemplates } from './layout-templates';
+import { DEFAULT_CANVAS } from './canvas';
 import { stateFromSnapshot } from './production-state';
 import { healthSummary, incidentPlaceWord, sourceLabel } from './selectors';
 import { deviceFixture, incidentFixture, itemFixture, snapshotFixture } from './testing/fixtures';
@@ -10,7 +11,7 @@ describe('scene model in German (Switzerland)', () => {
   beforeEach(() => resetLocaleForTests('de-CH'));
 
   it('names the layout templates and their use', () => {
-    expect(LAYOUT_TEMPLATES.map((template) => template.name)).toEqual([
+    expect(layoutTemplates(DEFAULT_CANVAS).map((template) => template.name)).toEqual([
       'Vollbild',
       'Nebeneinander',
       'Bild-in-Bild',
@@ -20,8 +21,10 @@ describe('scene model in German (Switzerland)', () => {
       '3 × 3',
       'Auto-Grid',
     ]);
-    expect(LAYOUT_TEMPLATES[1]?.description).toBe('Interview, Gespräch');
-    expect(LAYOUT_TEMPLATES[7]?.description).toBe('ordnet sich nach aktiven Kameras');
+    expect(layoutTemplates(DEFAULT_CANVAS)[1]?.description).toBe('Interview, Gespräch');
+    expect(layoutTemplates(DEFAULT_CANVAS)[7]?.description).toBe(
+      'ordnet sich nach aktiven Kameras',
+    );
   });
 
   it('labels the "On failure" options', () => {
@@ -34,10 +37,10 @@ describe('scene model in German (Switzerland)', () => {
 
   it('switches template names and hold labels with the locale, without a reload', () => {
     resetLocaleForTests('en');
-    expect(LAYOUT_TEMPLATES[0]?.name).toBe('Full screen');
+    expect(layoutTemplates(DEFAULT_CANVAS)[0]?.name).toBe('Full screen');
     expect(HOLD_OPTIONS[2]?.label).toBe('Hold freeze frame');
     resetLocaleForTests('de-CH');
-    expect(LAYOUT_TEMPLATES[0]?.name).toBe('Vollbild');
+    expect(layoutTemplates(DEFAULT_CANVAS)[0]?.name).toBe('Vollbild');
     expect(HOLD_OPTIONS[2]?.label).toBe('Standbild halten');
   });
 

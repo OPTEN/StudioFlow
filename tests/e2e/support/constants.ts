@@ -11,6 +11,7 @@ export const ERROR = {
   notFound: 'not_found',
   conflict: 'conflict',
   transitionRunning: 'transition_running',
+  broadcastLive: 'broadcast_live',
   sceneIsLive: 'scene_is_live',
   assetInUse: 'asset_in_use',
   limitReached: 'limit_reached',
