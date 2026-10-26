@@ -452,7 +452,8 @@ public sealed class LogTextsTests
             (AuditActions.SlateChanged, [(AuditDetails.Slate, AuditSlates.End)], LogCode.EndSlateChanged, "Slate after the broadcast changed", new()),
             (AuditActions.IncidentAcknowledged, [(AuditDetails.Code, "K2")], LogCode.IncidentAcknowledged, "K2 message marked as seen", new() { ["code"] = "K2" }),
             (AuditActions.DeviceRenamed, [(AuditDetails.Codes, "K2"), (AuditDetails.Device, "Phone 2"), (AuditDetails.Name, "Stage left")], LogCode.DeviceRenamed, "K2 Phone 2 renamed to “Stage left”", new() { ["subject"] = "K2 Phone 2", ["name"] = "Stage left" }),
-            (AuditActions.AuditExported, [(AuditDetails.Format, "csv"), (AuditDetails.Rows, "42")], LogCode.AuditExported, "Audit log exported as csv, 42 rows", new() { ["format"] = "csv", ["rows"] = "42" }),
+            (AuditActions.CameraLensSwitched, [(AuditDetails.Codes, "K1"), (AuditDetails.Device, "Phone 1"), (AuditDetails.Lens, "UltraWide")], LogCode.CameraLensSwitched, "K1 Phone 1 switched to the wide-angle lens", new() { ["subject"] = "K1 Phone 1", ["lens"] = "ultraWide" }),
+            (AuditActions.AuditExported,[(AuditDetails.Format, "csv"), (AuditDetails.Rows, "42")], LogCode.AuditExported, "Audit log exported as csv, 42 rows", new() { ["format"] = "csv", ["rows"] = "42" }),
             (AuditActions.AuditRetention, [(AuditDetails.Days, "365"), (AuditDetails.Deleted, "142"), (AuditDetails.Anonymised, "7")], LogCode.AuditRetention, "Audit retention (365 days): entries deleted 142, IP addresses removed 7", new() { ["days"] = "365", ["deleted"] = "142", ["anonymised"] = "7" }),
         };
 

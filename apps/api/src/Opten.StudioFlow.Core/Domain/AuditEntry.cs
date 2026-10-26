@@ -47,6 +47,9 @@ public static class AuditActions
     /// <summary>A device was renamed.</summary>
     public const string DeviceRenamed = "device.renamed";
 
+    /// <summary>The Regie switched the lens of a phone camera.</summary>
+    public const string CameraLensSwitched = "device.camera.lens";
+
     /// <summary>The audit log was exported.</summary>
     public const string AuditExported = "audit.exported";
 
@@ -177,6 +180,9 @@ public static class AuditDetails
 
     /// <summary>The previous name of a renamed production.</summary>
     public const string From = "from";
+
+    /// <summary>Kind of the lens a phone camera switched to (<c>Front</c>, <c>UltraWide</c>, <c>Standard</c>, <c>Tele</c>, <c>Other</c>).</summary>
+    public const string Lens = "lens";
 
     /// <summary>Which slate changed, see <see cref="AuditSlates"/>.</summary>
     public const string Slate = "slate";

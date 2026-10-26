@@ -429,6 +429,9 @@ public enum LogCode
     /// <summary>A device was renamed. Params: <c>subject</c> (slot codes and old name), <c>name</c> (new name).</summary>
     DeviceRenamed,
 
+    /// <summary>The lens of a phone camera was switched. Params: <c>subject</c>, <c>lens</c> (<see cref="CameraLensKind"/>, camelCase).</summary>
+    CameraLensSwitched,
+
     /// <summary>The audit log was exported. Params: <c>format</c>, <c>rows</c>.</summary>
     AuditExported,
 

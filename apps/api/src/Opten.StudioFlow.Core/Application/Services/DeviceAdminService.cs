@@ -135,6 +135,7 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
         }
 
         var camera = CameraControlRules.Prepare(request.Camera, live?.Camera?.Capabilities);
+        AuditLensSwitch(context, device, camera.LensId, live?.Camera);
         var accepted = new DeviceCommandDto(EntityIds.New(EntityIds.Command), request.Kind, DeviceSlots.Camera, null, context.Now, camera);
         if (live?.ConnectionId is { } connectionId && live.OfferCameraCommand(camera, context.Now, options.CameraCommandInterval) is { } due)
         {
@@ -142,6 +143,20 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
         }
 
         return accepted;
+    }
+
+    /// <summary>Only a change of the lens is worth an entry; the sliders (zoom, focus, brightness) and the light send no lens.</summary>
+    private static void AuditLensSwitch(MutationContext context, Device device, string? lensId, CameraStateDto? state)
+    {
+        if (lensId is null || string.Equals(lensId, state?.Settings.LensId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var kind = state?.Capabilities.Lenses.FirstOrDefault(l => string.Equals(l.Id, lensId, StringComparison.Ordinal))?.Kind ?? CameraLensKind.Other;
+        var details = MutationContextExtensions.DeviceDetails(device);
+        details[AuditDetails.Lens] = kind.ToString();
+        context.Audit(AuditActors.Admin, AuditActions.CameraLensSwitched, details);
     }
 
     private static DeviceCommandDto CreateCommand(Device device, DeviceCommandRequest request, DateTimeOffset now)

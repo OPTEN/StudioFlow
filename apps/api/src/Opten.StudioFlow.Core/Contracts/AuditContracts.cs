@@ -9,7 +9,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="ProductionId">Production of the action; null for global actions such as sign-ins.</param>
 /// <param name="ProductionName">Current name of the production, or null.</param>
 /// <param name="Code">Log code for the text of the entry, or null for an action this version does not describe (then <paramref name="Text"/> is the action code).</param>
-/// <param name="Params">Values for the text of the code, keyed in camelCase; the same as in <see cref="LogEntryDto.Params"/>.</param>
+/// <param name="Params">Values for the text of the code, keyed in camelCase; the same values as the params of a log entry.</param>
 /// <param name="Text">English text for clients that do not know the code.</param>
 /// <param name="Details">All details of the entry (device name, scene, IP address of a sign-in); never secrets.</param>
 public sealed record AuditEntryDto(

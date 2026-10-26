@@ -80,6 +80,13 @@ describe('formatDate and formatDateTime', () => {
     expect(formatDateTime(date)).toContain('14:05');
     expect(formatDateTime(date)).toContain('23.10.2026');
   });
+
+  it('adds the seconds on request', () => {
+    expect(formatDateTime(date)).not.toContain('14:05:09');
+    expect(formatDateTime(date, { seconds: true })).toContain('14:05:09');
+    resetLocaleForTests('de-CH');
+    expect(formatDateTime(date, { seconds: true })).toContain('14:05:09');
+  });
 });
 
 describe('compareText', () => {
