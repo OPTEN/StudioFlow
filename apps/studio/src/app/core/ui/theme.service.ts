@@ -16,11 +16,18 @@ export type ResolvedTheme = 'dark' | 'light';
 /** Media query that is true when the system asks for a light appearance. */
 export const SYSTEM_LIGHT_QUERY = '(prefers-color-scheme: light)';
 
+/** The Panel token of each theme (styles/_tokens.scss): the colour of the browser chrome around the Regie. */
+const THEME_CHROME_COLOUR: Readonly<Record<ResolvedTheme, string>> = {
+  dark: '#151a22',
+  light: '#f3f5f8',
+};
+
 /**
  * The appearance of the Regie, `/monitoring` and the login page (Dark, Light or System; default Dark). The choice is
  * kept per browser in `studioflow.theme`; a change in another tab is followed live, and System follows the system
  * setting live. The resolved theme is written to `<html data-theme>`, where the token sets in styles/_tokens.scss
- * pick it up. public/theme-init.js sets the same attribute before the first paint.
+ * pick it up, and its Panel colour to `<meta name="theme-color">`. public/theme-init.js sets both before the first
+ * paint.
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -40,9 +47,7 @@ export class ThemeService {
   });
 
   constructor() {
-    effect(() => {
-      this.document.documentElement.dataset['theme'] = this.resolved();
-    });
+    effect(() => this.apply(this.resolved()));
     this.followOtherTabs();
   }
 
@@ -50,6 +55,13 @@ export class ThemeService {
   choose(setting: ThemeSetting): void {
     this.chosen.set(setting);
     this.preferences.writeTheme(setting);
+  }
+
+  private apply(theme: ResolvedTheme): void {
+    this.document.documentElement.dataset['theme'] = theme;
+    this.document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', THEME_CHROME_COLOUR[theme]);
   }
 
   private watchSystemLight(): Signal<boolean> {
