@@ -55,6 +55,12 @@ export const senderStation: Translation<typeof en> = {
 
   'sender.station.message.title': 'Nachricht der Regie',
 
+  'sender.station.remote.adjusted': 'Die Regie hat die Kamera angepasst',
+  'sender.station.remote.lens': 'Die Regie hat das Objektiv gewechselt',
+  'sender.station.remote.refused': 'Die Kamera konnte die Änderung der Regie nicht übernehmen',
+  'sender.station.remote.reset': 'Die Regie hat die Kamera auf automatisch zurückgestellt',
+  'sender.station.remote.zoom': 'Die Regie hat gezoomt: {zoom}×',
+
   'sender.station.phone.back': 'Rück',
   'sender.station.phone.cameraLegend': 'Kamera',
   'sender.station.phone.controls': 'Kamera steuern',

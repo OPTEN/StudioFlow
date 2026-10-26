@@ -3,6 +3,7 @@
  * port types of `station-ports.ts` and are injected through the DI tokens there – never used by the app itself.
  */
 import type {
+  CameraSettings,
   LocalSlotState,
   MediaSessionState,
   SlotFailure,
@@ -10,7 +11,13 @@ import type {
   TechCheckResult,
 } from '@studioflow/media-client';
 import type { HubHandler, HubState } from '@studioflow/realtime-client';
-import type { DeviceSelfDto, LiveKitTokenDto, SlotTelemetryDto } from '@studioflow/scene-model';
+import type {
+  CameraControlDto,
+  CameraStateDto,
+  DeviceSelfDto,
+  LiveKitTokenDto,
+  SlotTelemetryDto,
+} from '@studioflow/scene-model';
 import type { SafeStorage } from '../app/core/browser-storage';
 import type { DeviceEnvironment } from '../app/core/device-environment';
 import type {
@@ -202,7 +209,13 @@ export class FakePublisher implements SenderPublisher {
   readonly calls: string[] = [];
   readonly states = new Map<string, LocalSlotState>();
   telemetry: SlotTelemetryDto[] = [];
+  /** What `getCameraState` reports. */
+  cameraState: CameraStateDto | null = null;
+  /** Settings of the last `publishCamera`. */
+  lastCamera: CameraSettings | null = null;
+  readonly controls: CameraControlDto[] = [];
   disposed = false;
+  private readonly cameraListeners = new Set<(settings: CameraSettings) => void>();
   private readonly listeners = new Set<
     (
       slot: string,
@@ -212,8 +225,9 @@ export class FakePublisher implements SenderPublisher {
     ) => void
   >();
 
-  publishCamera(slot: string, settings: { facingMode: string; resolution: number }): Promise<void> {
+  publishCamera(slot: string, settings: CameraSettings): Promise<void> {
     this.calls.push(`publishCamera:${slot}:${settings.facingMode}:${settings.resolution}`);
+    this.lastCamera = settings;
     this.emitSlot(slot, 'starting');
     return Promise.resolve();
   }
@@ -264,6 +278,27 @@ export class FakePublisher implements SenderPublisher {
 
   getSlotTelemetry(): Promise<SlotTelemetryDto[]> {
     return Promise.resolve(this.telemetry);
+  }
+
+  getCameraState(): Promise<CameraStateDto | null> {
+    return Promise.resolve(this.cameraState);
+  }
+
+  controlCamera(command: CameraControlDto): Promise<void> {
+    this.controls.push(command);
+    return Promise.resolve();
+  }
+
+  onCameraSettings(listener: (settings: CameraSettings) => void): () => void {
+    this.cameraListeners.add(listener);
+    return () => this.cameraListeners.delete(listener);
+  }
+
+  /** Tells the station what the camera keeps, as the real publisher does after a remote command. */
+  emitCameraSettings(settings: CameraSettings): void {
+    for (const listener of [...this.cameraListeners]) {
+      listener(settings);
+    }
   }
 
   localPreview(): MediaStream | null {

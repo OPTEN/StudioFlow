@@ -1,5 +1,6 @@
 import { toRtcState, type MediaSessionState, type TechCheckResult } from '@studioflow/media-client';
 import type {
+  CameraStateDto,
   DeviceReportDto,
   SlotState,
   SlotTelemetryDto,
@@ -23,6 +24,8 @@ export interface DeviceReportInput {
   readonly network: string | null;
   readonly rttMs: number | null;
   readonly techCheck: TechCheckResult | null;
+  /** `Publisher.getCameraState()` of a phone (issue #11); null on a laptop or without a running camera. */
+  readonly camera: CameraStateDto | null;
 }
 
 function emptyTelemetry(slot: string, state: SlotState): SlotTelemetryDto {
@@ -58,7 +61,8 @@ function finiteOrNull(value: number | null): number | null {
 /**
  * Builds the `Report` payload sent every 2 s over the device hub (spec 6): media state, one entry per slot of the
  * device (telemetry from the publisher, or `ended` for slots stopped on purpose, so the Regie sees “camera stopped” /
- * “sharing stopped” instead of an endless “reconnecting”), battery, network type, RTT and the last tech check.
+ * “sharing stopped” instead of an endless “reconnecting”), battery, network type, RTT, the last tech check and what
+ * the phone camera can do and does now.
  */
 export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
   const allowed = input.deviceSlots === null ? null : new Set(input.deviceSlots);
@@ -83,5 +87,6 @@ export function buildDeviceReport(input: DeviceReportInput): DeviceReportDto {
     network: input.network,
     rttMs: rtt === null ? null : Math.max(0, Math.round(rtt)),
     techCheck: wireTechCheck(input.techCheck),
+    camera: input.camera,
   };
 }

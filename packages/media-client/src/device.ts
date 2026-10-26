@@ -1,8 +1,9 @@
 /**
  * `@studioflow/media-client/device`: the livekit-free part of the package – device facts (platform label, phone
  * detection, screen-share capability, battery, network type), the screen wake lock, the technical check, the slot
- * failure codes and the rules of the remote camera control (shared with the Regie). Pages that do not publish (the sender's pairing screens) import this entry, so they do not load
- * livekit-client (~150 KB gzip). The main entry re-exports everything here.
+ * failure codes and the rules of the remote camera control (shared with the Regie). Pages that do not publish (the
+ * sender's pairing screens) import this entry, so they do not load livekit-client (~150 KB gzip). The main entry
+ * re-exports everything here.
  */
 export {
   CAMERA_PROTOCOL_VERSION,

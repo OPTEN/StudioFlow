@@ -15,13 +15,15 @@ import { MediaPreviewDirective } from '../shared/media-preview.directive';
 import { describeCameraProblem } from './camera-problem';
 import { ConnectionStatusComponent } from './connection-status.component';
 import { DeviceSessionService } from './device-session.service';
+import { remoteCameraNoticeText, type RemoteCameraNotice } from './remote-camera-notice';
 
 /** Controls stay visible this long after a tap in dark mode. */
 const WAKE_MS = 10_000;
 
 /**
  * Phone as a fixed camera (plan “Phone as a camera”): full-screen preview (mirrored only for the front camera), name and
- * slot code, connection line, and the controls start/stop, Front/Back, 720p/1080p, “Dark” and “Tech check”.
+ * slot code, connection line, and the controls start/stop, Front/Back, 720p/1080p, “Dark” and “Tech check”. A short
+ * note tells the person at the phone when the control room changed the camera remotely.
  */
 @Component({
   selector: 'sf-phone-station',
@@ -69,6 +71,10 @@ export class PhoneStationComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.clearWake());
+  }
+
+  protected noticeText(notice: RemoteCameraNotice): string {
+    return remoteCameraNoticeText(notice);
   }
 
   protected toggleCamera(): void {

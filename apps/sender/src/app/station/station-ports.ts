@@ -51,6 +51,9 @@ export type SenderPublisher = Pick<
   | 'onSlotState'
   | 'slotState'
   | 'getSlotTelemetry'
+  | 'getCameraState'
+  | 'controlCamera'
+  | 'onCameraSettings'
   | 'localPreview'
   | 'dispose'
 >;

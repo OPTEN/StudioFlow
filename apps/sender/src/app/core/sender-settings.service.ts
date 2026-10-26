@@ -1,5 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
-import type { TechCheckResult, TechProblem } from '@studioflow/media-client/device';
+import type {
+  CameraImageSettings,
+  TechCheckResult,
+  TechProblem,
+} from '@studioflow/media-client/device';
 import type { DeviceKind, TechCheckDto } from '@studioflow/scene-model';
 import { LOCAL_STORAGE, STORAGE_KEYS } from './browser-storage';
 
@@ -22,6 +26,10 @@ export interface SenderSettings {
   readonly sharedScreens: readonly string[];
   /** Last technical check of this device, reported after reloads too. */
   readonly techCheck: { readonly deviceId: string; readonly result: TechCheckResult } | null;
+  /** Lens chosen by the control room (browser device id), null for the default camera of {@link facing}. */
+  readonly lens: string | null;
+  /** Zoom, focus, brightness and light last applied by the control room (restored after a reload or reconnect). */
+  readonly image: CameraImageSettings;
 }
 
 /** Defaults of a fresh browser. */
@@ -32,7 +40,34 @@ export const DEFAULT_SETTINGS: SenderSettings = {
   cameraOn: true,
   sharedScreens: [],
   techCheck: null,
+  lens: null,
+  image: {},
 };
+
+const MAX_LENS_ID_LENGTH = 512;
+
+function finiteOrSkip(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/** Stored image settings; corrupt fields are dropped one by one. */
+export function parseImage(value: unknown): CameraImageSettings {
+  if (typeof value !== 'object' || value === null) {
+    return {};
+  }
+  const raw = value as Record<string, unknown>;
+  const image = {
+    zoom: finiteOrSkip(raw['zoom']),
+    focusMode:
+      raw['focusMode'] === 'auto' || raw['focusMode'] === 'manual' ? raw['focusMode'] : undefined,
+    focusDistance: finiteOrSkip(raw['focusDistance']),
+    exposureCompensation: finiteOrSkip(raw['exposureCompensation']),
+    torch: typeof raw['torch'] === 'boolean' ? raw['torch'] : undefined,
+  };
+  return Object.fromEntries(
+    Object.entries(image).filter(([, field]) => field !== undefined),
+  ) as CameraImageSettings;
+}
 
 const SCREEN_SLOT = /^screen-[1-9]$/;
 const LEVELS = new Set(['unknown', 'ok', 'warn', 'bad']);
@@ -109,6 +144,13 @@ export function parseSettings(value: unknown): SenderSettings {
     cameraOn: raw['cameraOn'] !== false,
     sharedScreens: [...new Set(sharedScreens)],
     techCheck: parseTechCheck(raw['techCheck']),
+    lens:
+      typeof raw['lens'] === 'string' &&
+      raw['lens'] !== '' &&
+      raw['lens'].length <= MAX_LENS_ID_LENGTH
+        ? raw['lens']
+        : null,
+    image: parseImage(raw['image']),
   };
 }
 

@@ -57,6 +57,12 @@ export const senderStation = {
 
   'sender.station.message.title': 'Message from the control room',
 
+  'sender.station.remote.adjusted': 'The control room adjusted the camera',
+  'sender.station.remote.lens': 'The control room switched the lens',
+  'sender.station.remote.refused': 'The camera could not apply the change from the control room',
+  'sender.station.remote.reset': 'The control room set the camera back to automatic',
+  'sender.station.remote.zoom': 'The control room zoomed: {zoom}×',
+
   'sender.station.phone.back': 'Back',
   'sender.station.phone.cameraLegend': 'Camera',
   'sender.station.phone.controls': 'Camera controls',
