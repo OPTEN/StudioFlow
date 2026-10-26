@@ -563,6 +563,76 @@
         }
       }
     },
+    "/api/productions/{productionId}/canvas": {
+      "put": {
+        "tags": [
+          "Productions"
+        ],
+        "operationId": "changeCanvas",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCanvasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/activate": {
       "post": {
         "tags": [
@@ -3854,7 +3924,7 @@
             "format": "int32"
           }
         },
-        "description": "Request to add a source to a scene. Missing values are chosen by the server (1240/680, 600 × 338, radius 12, contain for screens)."
+        "description": "Request to add a source to a scene. Missing values are chosen by the server (on a 1920 × 1080 canvas 1240/680, 600 × 338, radius 12, contain for screens; other canvases get the same layout in proportion)."
       },
       "AllocateSlotRequest": {
         "required": [
@@ -4415,6 +4485,84 @@
         },
         "description": "Camera section of a device report (and of the telemetry the Regie gets)."
       },
+      "CanvasDto": {
+        "required": [
+          "format",
+          "resolution",
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "format": {
+            "description": "Aspect ratio.",
+            "$ref": "#/components/schemas/CanvasFormat"
+          },
+          "resolution": {
+            "description": "Target resolution (short side).",
+            "$ref": "#/components/schemas/CanvasResolution"
+          },
+          "width": {
+            "type": "integer",
+            "description": "Width in canvas pixels, derived from format and resolution.",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Height in canvas pixels, derived from format and resolution.",
+            "format": "int32"
+          }
+        },
+        "description": "The output canvas of a production: the coordinate system of all scene items and the shape of the output page, the\nmonitors and the thumbnails. One canvas per production."
+      },
+      "CanvasFormat": {
+        "enum": [
+          "widescreen",
+          "portrait",
+          "square",
+          "standard"
+        ],
+        "description": "Format (aspect ratio) of the output canvas. One format per production; the list is fixed so the layouts fit."
+      },
+      "CanvasResolution": {
+        "enum": [
+          "p720",
+          "p1080"
+        ],
+        "description": "Target resolution of the output canvas, named after the short side. Together with the format it gives the canvas size."
+      },
+      "ChangeCanvasRequest": {
+        "required": [
+          "format",
+          "resolution"
+        ],
+        "type": "object",
+        "properties": {
+          "format": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New aspect ratio; required.",
+                "$ref": "#/components/schemas/CanvasFormat"
+              }
+            ]
+          },
+          "resolution": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New target resolution; required.",
+                "$ref": "#/components/schemas/CanvasResolution"
+              }
+            ]
+          }
+        },
+        "description": "Sets format and resolution of the output canvas. The same format with another resolution scales every scene item\nproportionally; another format fits the items into the new canvas (scaled uniformly, centred) and lets the Auto-Grid\narrange itself for the new shape. Not possible while the broadcast is live (409 `broadcast_live`)."
+      },
       "ChangePasswordRequest": {
         "required": [
           "currentPassword",
@@ -4488,7 +4636,30 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Display name."
+          },
+          "format": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Output format; null means 16:9.",
+                "$ref": "#/components/schemas/CanvasFormat"
+              }
+            ]
+          },
+          "resolution": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Target resolution; null means 1080p.",
+                "$ref": "#/components/schemas/CanvasResolution"
+              }
+            ]
           }
         },
         "description": "Request to create a production."
@@ -5924,7 +6095,8 @@
           "lastSwitchAt",
           "standbySlate",
           "endSlate",
-          "textTheme"
+          "textTheme",
+          "canvas"
         ],
         "type": "object",
         "properties": {
@@ -6012,6 +6184,10 @@
           "textTheme": {
             "description": "Colours of all texts and lower thirds.",
             "$ref": "#/components/schemas/TextThemeDto"
+          },
+          "canvas": {
+            "description": "Format and resolution of the output canvas; every scene item is placed in its pixels.",
+            "$ref": "#/components/schemas/CanvasDto"
           }
         },
         "description": "Production (OBS: scene collection): one event with its own devices, scenes and output."
@@ -6024,6 +6200,9 @@
         "anyOf": [
           {
             "$ref": "#/components/schemas/ProductionEventProductionChangedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ProductionEventProductionCanvasChangedEvent"
           },
           {
             "$ref": "#/components/schemas/ProductionEventProgramSwitchedEvent"
@@ -6088,6 +6267,7 @@
           "propertyName": "type",
           "mapping": {
             "productionChanged": "#/components/schemas/ProductionEventProductionChangedEvent",
+            "productionCanvasChanged": "#/components/schemas/ProductionEventProductionCanvasChangedEvent",
             "programSwitched": "#/components/schemas/ProductionEventProgramSwitchedEvent",
             "sceneUpserted": "#/components/schemas/ProductionEventSceneUpsertedEvent",
             "sceneRemoved": "#/components/schemas/ProductionEventSceneRemovedEvent",
@@ -6401,6 +6581,39 @@
           }
         },
         "description": "A device knocked on /join."
+      },
+      "ProductionEventProductionCanvasChangedEvent": {
+        "required": [
+          "production",
+          "scenes",
+          "revision",
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "productionCanvasChanged"
+            ],
+            "type": "string"
+          },
+          "production": {
+            "description": "The production with its new canvas.",
+            "$ref": "#/components/schemas/ProductionDto"
+          },
+          "scenes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneDto"
+            },
+            "description": "The scenes whose items were rescaled (scenes without items are unchanged and not listed)."
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Revision after this change.",
+            "format": "int64"
+          }
+        },
+        "description": "The output canvas changed. Production and the rescaled scenes arrive in one revision, so no client ever shows the new\ncanvas with the geometry of the old one."
       },
       "ProductionEventProductionChangedEvent": {
         "required": [
@@ -6955,7 +7168,7 @@
             "description": "Items, back to front."
           }
         },
-        "description": "Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back)."
+        "description": "Scene: ordered items on the canvas of the production (its `canvas` field). Item order is the z-order (first = back)."
       },
       "SceneItemDto": {
         "required": [
@@ -7346,9 +7559,7 @@
       "SystemInfoDto": {
         "required": [
           "version",
-          "publicBaseUrl",
-          "canvasWidth",
-          "canvasHeight"
+          "publicBaseUrl"
         ],
         "type": "object",
         "properties": {
@@ -7359,16 +7570,6 @@
           "publicBaseUrl": {
             "type": "string",
             "description": "Public base URL, e.g. https://studioflow.opten.ch."
-          },
-          "canvasWidth": {
-            "type": "integer",
-            "description": "Canvas width (1920).",
-            "format": "int32"
-          },
-          "canvasHeight": {
-            "type": "integer",
-            "description": "Canvas height (1080).",
-            "format": "int32"
           }
         },
         "description": "Static information about the installation."

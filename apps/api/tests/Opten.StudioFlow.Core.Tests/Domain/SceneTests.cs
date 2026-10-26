@@ -28,7 +28,7 @@ public sealed class SceneTests
     [Fact]
     public void AddItem_WithoutGeometry_UsesServerDefaults()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
 
         Assert.Equal((1240, 680, 600, 338, 12), (item.X, item.Y, item.W, item.H, item.Radius));
         Assert.Equal(ItemFit.Cover, item.Fit);
@@ -40,14 +40,14 @@ public sealed class SceneTests
     }
 
     [Fact]
-    public void AddItem_Screen_DefaultsToContain() => Assert.Equal(ItemFit.Contain, Scene.AddItem(Build.Add(Screen), catalog).Fit);
+    public void AddItem_Screen_DefaultsToContain() => Assert.Equal(ItemFit.Contain, Scene.AddItem(Build.Add(Screen), catalog, CanvasSize.FullHd).Fit);
 
     [Fact]
     public void AddItem_Change_IncrementsVersionAndAppendsAtFront()
     {
         var before = Scene.Version;
-        Scene.AddItem(Build.Add(Camera), catalog);
-        var second = Scene.AddItem(Build.Add(image.Id), catalog);
+        Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
+        var second = Scene.AddItem(Build.Add(image.Id), catalog, CanvasSize.FullHd);
 
         Assert.Equal(before + 2, Scene.Version);
         Assert.Equal(second.Id, Scene.Items[^1].Id);
@@ -56,7 +56,7 @@ public sealed class SceneTests
     [Fact]
     public void AddItem_UnknownSource_IsValidationError()
     {
-        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add("dev_unknown1/camera"), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add("dev_unknown1/camera"), catalog, CanvasSize.FullHd));
 
         Assert.True(error.Errors!.ContainsKey("source"));
     }
@@ -64,7 +64,7 @@ public sealed class SceneTests
     [Fact]
     public void AddItem_GeometryOutOfBounds_ReportsEveryField()
     {
-        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(new AddSceneItemRequest(Camera, -3841, 2161, 15, 2161, (ItemFit)9, 201), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(new AddSceneItemRequest(Camera, -3841, 2161, 15, 2161, (ItemFit)9, 201), catalog, CanvasSize.FullHd));
 
         Assert.Equal(["fit", "h", "radius", "w", "x", "y"], error.Errors!.Keys.Order(StringComparer.Ordinal));
     }
@@ -74,10 +74,10 @@ public sealed class SceneTests
     {
         for (var i = 0; i < SceneItemRules.MaxItems; i++)
         {
-            Scene.AddItem(Build.Add(Camera), catalog);
+            Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
         }
 
-        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add(Camera), catalog));
+        var error = Assert.Throws<StudioFlowException>(() => Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd));
 
         Assert.Equal(ErrorCodes.LimitReached, error.Code);
         Assert.Equal(ErrorKind.Conflict, error.Kind);
@@ -181,7 +181,7 @@ public sealed class SceneTests
     [Fact]
     public void ReplaceItems_DeletedSourceOfExistingItem_IsKept()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
         var withoutPhone = new SourceCatalog([laptop], [image]);
 
         Scene.ReplaceItems([item with { X = 10 }], SceneLayoutMode.AutoGrid, withoutPhone);
@@ -216,7 +216,7 @@ public sealed class SceneTests
     [Fact]
     public void UpdateItem_KeepsRouteIdAndReplacesItem()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
 
         Scene.UpdateItem(item.Id, item with { Id = "itm_other1", W = 800, Mirror = true }, catalog);
 
@@ -228,7 +228,7 @@ public sealed class SceneTests
     [Fact]
     public void UpdateItem_SourceDeletedLater_IsKept()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
 
         Scene.UpdateItem(item.Id, item with { Hidden = true }, new SourceCatalog([], []));
 
@@ -238,7 +238,7 @@ public sealed class SceneTests
     [Fact]
     public void UpdateItem_ChangedToUnknownSource_IsInvalid()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
 
         Assert.Throws<StudioFlowException>(() => Scene.UpdateItem(item.Id, item with { Source = "dev_gone1234/camera" }, catalog));
     }
@@ -250,7 +250,7 @@ public sealed class SceneTests
     [Fact]
     public void RemoveItem_Existing_RemovesAndUnknownIsNotFound()
     {
-        var item = Scene.AddItem(Build.Add(Camera), catalog);
+        var item = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
 
         Scene.RemoveItem(item.Id);
 
@@ -261,9 +261,9 @@ public sealed class SceneTests
     [Fact]
     public void ReorderItems_NewOrder_ReordersWithoutChangingItemsAndIncrementsVersion()
     {
-        var a = Scene.AddItem(Build.Add(Camera), catalog);
-        var b = Scene.AddItem(Build.Add(Screen), catalog);
-        var c = Scene.AddItem(Build.Add(image.Id), catalog);
+        var a = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
+        var b = Scene.AddItem(Build.Add(Screen), catalog, CanvasSize.FullHd);
+        var c = Scene.AddItem(Build.Add(image.Id), catalog, CanvasSize.FullHd);
         var version = Scene.Version;
 
         Assert.True(Scene.ReorderItems([c.Id, a.Id, b.Id]));
@@ -276,8 +276,8 @@ public sealed class SceneTests
     public void ReorderItems_SameOrderOrSingleItemOrEmptyScene_ChangesNothing()
     {
         Assert.False(Scene.ReorderItems([]));
-        var a = Scene.AddItem(Build.Add(Camera), catalog);
-        var b = Scene.AddItem(Build.Add(Screen), catalog);
+        var a = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
+        var b = Scene.AddItem(Build.Add(Screen), catalog, CanvasSize.FullHd);
         var version = Scene.Version;
 
         Assert.False(Scene.ReorderItems([a.Id, b.Id]));
@@ -295,8 +295,8 @@ public sealed class SceneTests
     [InlineData("empty")]
     public void ReorderItems_ListDoesNotMatchTheItems_IsConflictAndChangesNothing(string kind)
     {
-        var a = Scene.AddItem(Build.Add(Camera), catalog);
-        var b = Scene.AddItem(Build.Add(Screen), catalog);
+        var a = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd);
+        var b = Scene.AddItem(Build.Add(Screen), catalog, CanvasSize.FullHd);
         var version = Scene.Version;
         IReadOnlyList<string> ids = kind switch
         {
@@ -325,8 +325,8 @@ public sealed class SceneTests
     [Fact]
     public void ReorderItems_HiddenAndLockedItems_AreReorderedToo()
     {
-        var a = Scene.AddItem(Build.Add(Camera), catalog) with { Hidden = true };
-        var b = Scene.AddItem(Build.Add(Screen), catalog) with { Locked = true };
+        var a = Scene.AddItem(Build.Add(Camera), catalog, CanvasSize.FullHd) with { Hidden = true };
+        var b = Scene.AddItem(Build.Add(Screen), catalog, CanvasSize.FullHd) with { Locked = true };
         Scene.ReplaceItems([a, b], null, catalog);
 
         Assert.True(Scene.ReorderItems([b.Id, a.Id]));

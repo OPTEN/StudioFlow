@@ -249,14 +249,14 @@ public sealed class SecurityTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     }
 
     [Fact]
-    public async Task SystemInfo_Admin_ReturnsCanvasAndBaseUrlAndAnonymousIsUnauthorized()
+    public async Task SystemInfo_Admin_ReturnsBaseUrlAndAnonymousIsUnauthorized()
     {
         var admin = await app.AdminAsync();
 
         var info = await admin.Client.GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectAsync<SystemInfoDto>();
         var anonymous = await app.Anonymous().GetAsync("/api/system/info", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
 
-        Assert.Equal((1920, 1080, StudioFlowApp.PublicBaseUrl), (info.CanvasWidth, info.CanvasHeight, info.PublicBaseUrl));
+        Assert.Equal(StudioFlowApp.PublicBaseUrl, info.PublicBaseUrl);
         Assert.Equal(AppVersion.Current, info.Version);
         Assert.Matches(@"^\d+\.\d+\.\d+(\+[0-9A-Za-z]{1,7})?$", info.Version);
         Assert.Equal(ErrorCodes.Unauthorized, anonymous);

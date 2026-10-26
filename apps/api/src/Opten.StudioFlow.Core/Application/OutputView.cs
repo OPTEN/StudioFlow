@@ -14,7 +14,7 @@ public static class OutputView
         ArgumentNullException.ThrowIfNull(productionEvent);
         return productionEvent switch
         {
-            ProductionChangedEvent or ProgramSwitchedEvent or SceneUpsertedEvent or SceneRemovedEvent or ScenesReorderedEvent
+            ProductionChangedEvent or ProductionCanvasChangedEvent or ProgramSwitchedEvent or SceneUpsertedEvent or SceneRemovedEvent or ScenesReorderedEvent
                 or SourceRemovedEvent or AssetUpsertedEvent or AssetRemovedEvent => productionEvent,
             SourceUpsertedEvent upserted => upserted with { Source = WithoutHealth(upserted.Source) },
             _ => new RevisionOnlyEvent(productionEvent.Revision),

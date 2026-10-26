@@ -49,7 +49,13 @@ public sealed class ProductionService(
             var slugs = existing.Select(p => p.Slug).ToHashSet(StringComparer.Ordinal);
             var slug = Slugs.MakeUnique(Slugs.FromName(name), slugs.Contains);
             var now = clock.StorageNow();
-            var production = Production.Create(name, slug, isActive: !existing.Any(p => p.IsActive), now);
+            var production = Production.Create(
+                name,
+                slug,
+                isActive: !existing.Any(p => p.IsActive),
+                now,
+                request.Format ?? Canvases.DefaultFormat,
+                request.Resolution ?? Canvases.DefaultResolution);
             AddWithDefaultLink(unit, production, now);
             unit.Audit.Add(ProductionCreatedEntry(production, AuditActors.Admin));
             await unit.SaveChangesAsync(CancellationToken.None);
@@ -115,6 +121,36 @@ public sealed class ProductionService(
                 {
                     EmitProduction(context, production);
                     AuditUpdate(context, production, name, standbySlate, endSlate);
+                }
+
+                return Dtos.Production(production);
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Changes format and resolution of the output canvas; the rescaled scenes and the new canvas reach every client in
+    /// one event. Refused while the broadcast is live (<c>broadcast_live</c>).
+    /// </summary>
+    public Task<ProductionDto> ChangeCanvasAsync(string productionId, ChangeCanvasRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var (format, resolution) = Canvases.Required(request.Format, request.Resolution);
+        return coordinator.ExecuteAsync(
+            productionId,
+            async context =>
+            {
+                var production = await context.ProductionAsync(cancellationToken);
+                var from = CanvasText(production);
+                if (production.ChangeCanvas(format, resolution) is { } rescaled)
+                {
+                    var dto = Dtos.Production(production);
+                    var scenes = rescaled.Select(Dtos.Scene).ToArray();
+                    context.Emit(revision => new ProductionCanvasChangedEvent(revision, dto, scenes));
+                    context.Audit(
+                        AuditActors.Admin,
+                        AuditActions.CanvasChanged,
+                        new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.From] = from, [AuditDetails.To] = CanvasText(production) });
                 }
 
                 return Dtos.Production(production);
@@ -236,6 +272,9 @@ public sealed class ProductionService(
 
     /// <inheritdoc />
     public void Dispose() => tenantGate.Dispose();
+
+    /// <summary>The canvas for the audit log, e.g. <c>Widescreen 1920x1080</c>.</summary>
+    private static string CanvasText(Production production) => $"{production.CanvasFormat} {production.Canvas.Width}x{production.Canvas.Height}";
 
     private static void EmitProduction(MutationContext context, Production production)
     {

@@ -251,9 +251,9 @@ public sealed class OnAirStateTests
     public void TallyFor_ProgramAndPreview_PerSlotAndOverallMaximum()
     {
         var scenes = production.OrderedScenes;
-        scenes[0].AddItem(Build.Add(Source("screen-1")), catalog);
-        scenes[1].AddItem(Build.Add(Source("screen-2")), catalog);
-        scenes[1].AddItem(Build.Add(Source("screen-1")), catalog);
+        scenes[0].AddItem(Build.Add(Source("screen-1")), catalog, CanvasSize.FullHd);
+        scenes[1].AddItem(Build.Add(Source("screen-2")), catalog, CanvasSize.FullHd);
+        scenes[1].AddItem(Build.Add(Source("screen-1")), catalog, CanvasSize.FullHd);
         production.SetPreview(scenes[1].Id, Build.T0);
         production.StartBroadcast(Build.T0);
 
@@ -268,7 +268,7 @@ public sealed class OnAirStateTests
     [Fact]
     public void TallyFor_HiddenItem_IsOff()
     {
-        var item = production.OrderedScenes[0].AddItem(Build.Add(Source("screen-1")), catalog);
+        var item = production.OrderedScenes[0].AddItem(Build.Add(Source("screen-1")), catalog, CanvasSize.FullHd);
         production.OrderedScenes[0].UpdateItem(item.Id, item with { Hidden = true }, catalog);
         production.StartBroadcast(Build.T0);
 
@@ -280,7 +280,7 @@ public sealed class OnAirStateTests
     [InlineData(BroadcastState.Ended)]
     public void TallyFor_NotLive_IsAlwaysOff(BroadcastState state)
     {
-        production.OrderedScenes[0].AddItem(Build.Add(Source("screen-1")), catalog);
+        production.OrderedScenes[0].AddItem(Build.Add(Source("screen-1")), catalog, CanvasSize.FullHd);
         if (state == BroadcastState.Ended)
         {
             production.StartBroadcast(Build.T0);
@@ -296,7 +296,7 @@ public sealed class OnAirStateTests
     [Fact]
     public void TallyFor_PreviewOnly_IsPreview()
     {
-        production.OrderedScenes[2].AddItem(Build.Add(Source("camera")), catalog);
+        production.OrderedScenes[2].AddItem(Build.Add(Source("camera")), catalog, CanvasSize.FullHd);
         production.SetPreview(production.OrderedScenes[2].Id, Build.T0);
         production.StartBroadcast(Build.T0);
 

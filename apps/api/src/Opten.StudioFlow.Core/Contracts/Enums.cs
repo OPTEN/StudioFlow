@@ -15,6 +15,32 @@ public enum BroadcastState
     Ended,
 }
 
+/// <summary>Format (aspect ratio) of the output canvas. One format per production; the list is fixed so the layouts fit.</summary>
+public enum CanvasFormat
+{
+    /// <summary>16:9, the default.</summary>
+    Widescreen,
+
+    /// <summary>9:16 (portrait, social media).</summary>
+    Portrait,
+
+    /// <summary>1:1.</summary>
+    Square,
+
+    /// <summary>4:3.</summary>
+    Standard,
+}
+
+/// <summary>Target resolution of the output canvas, named after the short side. Together with the format it gives the canvas size.</summary>
+public enum CanvasResolution
+{
+    /// <summary>720 on the short side (1280 × 720 in 16:9).</summary>
+    P720,
+
+    /// <summary>1080 on the short side (1920 × 1080 in 16:9), the default.</summary>
+    P1080,
+}
+
 /// <summary>Kind of transition between program scenes. A fade always runs to completion (no T-bar).</summary>
 public enum TransitionKind
 {

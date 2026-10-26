@@ -25,6 +25,8 @@ internal sealed class ProductionConfiguration : IEntityTypeConfiguration<Product
         builder.Property(p => p.Name).HasMaxLength(Columns.Name).IsRequired();
         builder.Property(p => p.Slug).HasMaxLength(Slugs.MaxLength).IsRequired();
         builder.Property(p => p.Broadcast).HasConversion<string>().HasMaxLength(Columns.Enum);
+        builder.Property(p => p.CanvasFormat).HasConversion<string>().HasMaxLength(Columns.Enum);
+        builder.Property(p => p.CanvasResolution).HasConversion<string>().HasMaxLength(Columns.Enum);
         builder.Property(p => p.ProgramSceneId).HasMaxLength(Columns.Id);
         builder.Property(p => p.PreviewSceneId).HasMaxLength(Columns.Id);
         builder.Property(p => p.LastTransition).AsJson();
@@ -37,6 +39,7 @@ internal sealed class ProductionConfiguration : IEntityTypeConfiguration<Product
         builder.HasMany(p => p.Scenes).WithOne().HasForeignKey(s => s.ProductionId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(p => p.Scenes).HasField("scenes").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.Ignore(p => p.OrderedScenes);
+        builder.Ignore(p => p.Canvas);
     }
 }
 

@@ -3,7 +3,7 @@ using Opten.StudioFlow.Core.Contracts;
 namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
-/// A scene of a production (spec 4.3): ordered items on the 1920 × 1080 canvas, back to front. Every change increments
+/// A scene of a production (spec 4.3): ordered items on the canvas of the production, back to front. Every change increments
 /// <see cref="Version"/>. Items are immutable records, the list is replaced on every change.
 /// </summary>
 public sealed class Scene
@@ -66,6 +66,22 @@ public sealed class Scene
     /// <summary>Moves the scene to a new list position (not a content change, the version stays).</summary>
     internal void MoveTo(int sortOrder) => SortOrder = sortOrder;
 
+    /// <summary>
+    /// Moves every item from one canvas to another (see <see cref="CanvasFit"/>); returns false for a scene without items,
+    /// which has nothing to move. The background is drawn to cover the canvas and needs no change.
+    /// </summary>
+    internal bool FitTo(CanvasSize from, CanvasSize to)
+    {
+        if (Items.Count == 0)
+        {
+            return false;
+        }
+
+        Items = [.. Items.Select(item => CanvasFit.Item(item, from, to))];
+        Version++;
+        return true;
+    }
+
     /// <summary>Applies a partial settings update; returns false when the request changes nothing.</summary>
     public bool Update(UpdateSceneRequest request, SourceCatalog catalog)
     {
@@ -111,8 +127,8 @@ public sealed class Scene
         return changed;
     }
 
-    /// <summary>Adds a source as new front-most item with server defaults for missing geometry.</summary>
-    public SceneItemDto AddItem(AddSceneItemRequest request, SourceCatalog catalog)
+    /// <summary>Adds a source as new front-most item with server defaults for missing geometry, placed on the canvas.</summary>
+    public SceneItemDto AddItem(AddSceneItemRequest request, SourceCatalog catalog, CanvasSize canvas)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(catalog);
@@ -130,7 +146,7 @@ public sealed class Scene
             throw StudioFlowException.LimitReached("A scene can have at most 32 items.");
         }
 
-        var item = SceneItemRules.CreateItem(request, source!);
+        var item = SceneItemRules.CreateItem(request, source!, canvas);
         Items = [.. Items, item];
         Version++;
         return item;

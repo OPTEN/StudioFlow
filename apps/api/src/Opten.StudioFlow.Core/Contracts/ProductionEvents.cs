@@ -10,6 +10,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="Revision">Revision after this change.</param>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ProductionChangedEvent), "productionChanged")]
+[JsonDerivedType(typeof(ProductionCanvasChangedEvent), "productionCanvasChanged")]
 [JsonDerivedType(typeof(ProgramSwitchedEvent), "programSwitched")]
 [JsonDerivedType(typeof(SceneUpsertedEvent), "sceneUpserted")]
 [JsonDerivedType(typeof(SceneRemovedEvent), "sceneRemoved")]
@@ -33,6 +34,15 @@ public abstract record ProductionEvent(long Revision);
 
 /// <summary>Production settings or broadcast state changed (not a program switch).</summary>
 public sealed record ProductionChangedEvent(long Revision, ProductionDto Production) : ProductionEvent(Revision);
+
+/// <summary>
+/// The output canvas changed. Production and the rescaled scenes arrive in one revision, so no client ever shows the new
+/// canvas with the geometry of the old one.
+/// </summary>
+/// <param name="Revision">Revision after this change.</param>
+/// <param name="Production">The production with its new canvas.</param>
+/// <param name="Scenes">The scenes whose items were rescaled (scenes without items are unchanged and not listed).</param>
+public sealed record ProductionCanvasChangedEvent(long Revision, ProductionDto Production, IReadOnlyList<SceneDto> Scenes) : ProductionEvent(Revision);
 
 /// <summary>Program and/or preview changed. Renderers play <see cref="Transition"/> when the program changed.</summary>
 /// <param name="Revision">Revision after this change.</param>

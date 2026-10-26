@@ -16,6 +16,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="StandbySlate">Slate before the start.</param>
 /// <param name="EndSlate">Slate after the end.</param>
 /// <param name="TextTheme">Colours of all texts and lower thirds.</param>
+/// <param name="Canvas">Format and resolution of the output canvas; every scene item is placed in its pixels.</param>
 public sealed record ProductionDto(
     string Id,
     string TenantId,
@@ -31,7 +32,18 @@ public sealed record ProductionDto(
     DateTimeOffset? LastSwitchAt,
     SlateDto StandbySlate,
     SlateDto EndSlate,
-    TextThemeDto TextTheme);
+    TextThemeDto TextTheme,
+    CanvasDto Canvas);
+
+/// <summary>
+/// The output canvas of a production: the coordinate system of all scene items and the shape of the output page, the
+/// monitors and the thumbnails. One canvas per production.
+/// </summary>
+/// <param name="Format">Aspect ratio.</param>
+/// <param name="Resolution">Target resolution (short side).</param>
+/// <param name="Width">Width in canvas pixels, derived from format and resolution.</param>
+/// <param name="Height">Height in canvas pixels, derived from format and resolution.</param>
+public sealed record CanvasDto(CanvasFormat Format, CanvasResolution Resolution, int Width, int Height);
 
 /// <summary>Short production entry for lists.</summary>
 public sealed record ProductionSummaryDto(string Id, string Name, string Slug, bool IsActive, DateTimeOffset CreatedAt);
@@ -84,7 +96,19 @@ public sealed record ProductionSnapshot(
     int OperatorsOnline);
 
 /// <summary>Request to create a production.</summary>
-public sealed record CreateProductionRequest(string Name);
+/// <param name="Name">Display name.</param>
+/// <param name="Format">Output format; null means 16:9.</param>
+/// <param name="Resolution">Target resolution; null means 1080p.</param>
+public sealed record CreateProductionRequest(string Name, CanvasFormat? Format = null, CanvasResolution? Resolution = null);
+
+/// <summary>
+/// Sets format and resolution of the output canvas. The same format with another resolution scales every scene item
+/// proportionally; another format fits the items into the new canvas (scaled uniformly, centred) and lets the Auto-Grid
+/// arrange itself for the new shape. Not possible while the broadcast is live (409 <c>broadcast_live</c>).
+/// </summary>
+/// <param name="Format">New aspect ratio; required.</param>
+/// <param name="Resolution">New target resolution; required.</param>
+public sealed record ChangeCanvasRequest(CanvasFormat? Format, CanvasResolution? Resolution);
 
 /// <summary>Partial update of a production. Null fields stay unchanged.</summary>
 public sealed record UpdateProductionRequest(string? Name, SlateDto? StandbySlate, SlateDto? EndSlate, TextThemeDto? TextTheme = null);

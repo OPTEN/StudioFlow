@@ -196,7 +196,7 @@ public sealed class ProductionTests
         var phone = Build.Phone(production);
         var catalog = new SourceCatalog([phone], []);
         var original = Scenes[0];
-        var item = original.AddItem(Build.Add(phone.SourceIdOf(phone.Slots[0])), catalog);
+        var item = original.AddItem(Build.Add(phone.SourceIdOf(phone.Slots[0])), catalog, CanvasSize.FullHd);
         original.Update(new UpdateSceneRequest(null, SceneLayoutMode.AutoGrid, new SceneBackgroundDto("#ffffff", null)), catalog);
 
         var (clone, programChange) = production.AddScene("Copy", original.Id, Build.T0);

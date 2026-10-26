@@ -78,6 +78,8 @@ internal static class ApiSurface
             .Produces<ProductionChangesDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapPatch("/{productionId}", ProductionEndpoints.UpdateAsync)
             .WithName("updateProduction").Produces<ProductionDto>().ProducesValidationProblem();
+        g.MapPut("/{productionId}/canvas", ProductionEndpoints.ChangeCanvasAsync)
+            .WithName("changeCanvas").Produces<ProductionDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
         g.MapPost("/{productionId}/activate", ProductionEndpoints.ActivateAsync).WithName("activateProduction").Produces<ProductionDto>();
         g.MapPost("/{productionId}/broadcast/start", ProductionEndpoints.StartBroadcastAsync).WithName("startBroadcast").Produces<ProductionDto>();
         g.MapPost("/{productionId}/broadcast/end", ProductionEndpoints.EndBroadcastAsync).WithName("endBroadcast").Produces<ProductionDto>();
