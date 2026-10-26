@@ -435,7 +435,7 @@ test.describe('OUT media and reports', () => {
       await recordMeasurement(test.info(), 'out-15-chip', { connectedMs: Date.now() - connectedAfter }, `output opened -> chip connected after ${Date.now() - connectedAfter} ms`);
       expect(Date.now() - connectedAfter, 'chip within 5 s').toBeLessThanOrEqual(5000 + 3000);
       await expect(popover.locator('dd').nth(1), 'the address of the consumer').not.toHaveText('–');
-      await expect(popover.locator('dd').nth(2)).toHaveText('1920 × 1080 · 30 fps');
+      await expect(popover.locator('dd').nth(2)).toHaveText('1920 × 1080 · 16:9 · 30 fps');
       await expect(popover.locator('dd').nth(3)).toContainText('gemessen');
 
       const second = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 640, height: 360 } });

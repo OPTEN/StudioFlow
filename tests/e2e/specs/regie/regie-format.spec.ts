@@ -34,9 +34,11 @@ const near = (pixel: Rgba, hex: string, tolerance = 14): boolean => {
   );
 };
 
-/** Opens the menu of the production and returns the entry with the label. */
+/** Opens the menu of the production (if it is not open) and returns the entry with the label. */
 async function menuItem(page: Page, label: string) {
-  await page.locator('.c-prod__trigger').click();
+  if (!(await page.locator('.c-prod__pop').isVisible())) {
+    await page.locator('.c-prod__trigger').click();
+  }
   return page.getByRole('button', { name: label, exact: true });
 }
 
@@ -133,7 +135,7 @@ test.describe('REGIE format and resolution', () => {
       const frame = await output.frame();
       await expect(frame.locator('.sf-r-stage')).toBeVisible();
       await expect.poll(() => output.slateText(), { timeout: 15_000 }).toBe('');
-      expect(await stageSize(output)).toEqual({ width: 1080, height: 1920 });
+      await expect.poll(() => stageSize(output), { timeout: 10_000 }).toEqual({ width: 1080, height: 1920 });
       const portrait = await output.stagePixels();
       expect(portrait.canvas).toEqual({ width: 1080, height: 1920 });
       expect(portrait.image.width / portrait.image.height).toBeCloseTo(0.5625, 2);
@@ -219,7 +221,7 @@ test.describe('REGIE format and resolution', () => {
       expect((await api.startBroadcast(production.id)).status).toBe(200);
       const output = await openOutput(production, {}, { context: { context: { viewport: { width: 1280, height: 720 } } } });
       await expect.poll(() => output.slateText(), { timeout: 15_000 }).toBe('');
-      expect(await stageSize(output)).toEqual({ width: 1920, height: 1080 });
+      await expect.poll(() => stageSize(output), { timeout: 10_000 }).toEqual({ width: 1920, height: 1080 });
       expect((await api.endBroadcast(production.id)).status).toBe(200);
 
       const changed = await api.changeCanvas(production.id, { format: 'widescreen', resolution: 'p720' });
