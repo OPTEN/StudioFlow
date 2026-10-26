@@ -1,20 +1,23 @@
 <#
 .SYNOPSIS
-    Set up StudioFlow: writes .env with random secrets and the hash of the admin password.
+    Set up StudioFlow: writes .env with random secrets and optionally starts the stack.
 
 .DESCRIPTION
     Same behaviour as setup.sh. Asks for the domain, LAN IPv4 (detected automatically), TLS mode (plus e-mail and
-    DNS provider credentials), extra hosts, frame-ancestors and the admin account, and generates the LiveKit keys
-    and the database password. The API image ("hash-password") creates the password hash.
-    An existing .env is replaced only with -Force (copy .env.backup-<time>; secrets are carried over).
+    DNS provider credentials), extra hosts and frame-ancestors, and generates the LiveKit keys and the database
+    password. An existing .env is replaced only with -Force (copy .env.backup-<time>; secrets are carried over).
+
+    The Regie account is created later, in the first-run setup of the Regie, with the setup code that the API writes
+    to its log. -Start (or yes to the question of an interactive run) starts the stack and shows the code.
 
     Credentials of the DNS providers (dns-*) come from the environment, from the existing .env or are asked for
     without echo: CF_API_TOKEN, INFOMANIAK_API_TOKEN, HETZNER_API_TOKEN, DESEC_TOKEN, GANDI_BEARER_TOKEN,
     AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_REGION, OVH_ENDPOINT + OVH_APPLICATION_KEY +
     OVH_APPLICATION_SECRET + OVH_CONSUMER_KEY.
 
-    Then: docker compose up -d --build (details: docs/runbook.md); installation from a release with ready-made images:
-    docker compose up -d (docs/runbook.md, section 14).
+    Then (without -Start): docker compose up -d --build (details: docs/runbook.md); installation from a release with
+    ready-made images: docker compose up -d (docs/runbook.md, section 14). The setup code:
+    docker compose logs api | Select-String 'Setup code'
 
 .PARAMETER Domain
     Host name of the Regie, e.g. studioflow.opten.ch (test: localhost).
@@ -30,27 +33,19 @@
     Further addresses of the same site, separated by spaces, e.g. the IP (internal only).
 .PARAMETER FrameAncestors
     Origins allowed to embed the output, separated by spaces ('self' is always allowed).
-.PARAMETER AdminUser
-    User name of the admin account (default: admin).
-.PARAMETER AdminPasswordStdin
-    Read the admin password from standard input (one line; only with -NonInteractive).
-.PARAMETER GeneratePassword
-    Generate a strong admin password and show it once.
-.PARAMETER PlainPassword
-    Store the password in plain text instead of as a hash (local development only).
 .PARAMETER EnvFile
     Target file instead of ./.env.
 .PARAMETER NonInteractive
     Ask nothing; missing required values are an error.
 .PARAMETER Force
     Replace an existing .env.
+.PARAMETER Start
+    Start the stack afterwards and show the setup code of the first-run setup.
 
 .EXAMPLE
     ./setup.ps1
 .EXAMPLE
-    ./setup.ps1 -NonInteractive -Domain studioflow.opten.ch -TlsMode dns-cloudflare -GeneratePassword
-.EXAMPLE
-    $password | pwsh -NoProfile -File ./setup.ps1 -NonInteractive -Domain localhost -NodeIp 127.0.0.1 -TlsMode internal -AdminPasswordStdin
+    ./setup.ps1 -NonInteractive -Domain studioflow.opten.ch -TlsMode dns-cloudflare -Start
 #>
 #Requires -Version 7.4
 [CmdletBinding(PositionalBinding = $false)]
@@ -62,13 +57,10 @@ param(
     [string] $DnsChallengeDomain,
     [string] $ExtraHosts,
     [string] $FrameAncestors,
-    [string] $AdminUser,
-    [switch] $AdminPasswordStdin,
-    [switch] $GeneratePassword,
-    [switch] $PlainPassword,
     [string] $EnvFile,
     [switch] $NonInteractive,
     [switch] $Force,
+    [switch] $Start,
     [Alias('h')][switch] $Help,
     [Parameter(ValueFromRemainingArguments)][string[]] $UnknownArguments
 )
@@ -80,8 +72,6 @@ Import-Module (Join-Path $PSScriptRoot 'infra/scripts/StudioFlow.psm1') -Force
 Initialize-StudioFlow -Root $PSScriptRoot
 
 $TlsModes = @('internal', 'acme', 'custom', 'dns-cloudflare', 'dns-infomaniak', 'dns-hetzner', 'dns-desec', 'dns-route53', 'dns-gandi', 'dns-ovh')
-$MinPasswordLength = 12
-$GeneratedPasswordLength = 24
 $InternalHstsMaxAge = '3600'
 $Alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
@@ -100,9 +90,7 @@ function Test-Hostname([string] $Value)
 function Test-Host([string] $Value) { (Test-Ipv4 $Value) -or (Test-Hostname $Value) }
 function Test-Email([string] $Value) { $Value -match '^[^\s@''"]+@[^\s@''"]+\.[^\s@''"]+$' }
 function Test-FrameAncestor([string] $Value) { $Value -match '^(https?://)?(\*\.)?[A-Za-z0-9.-]+(:(\d{1,5}|\*))?$|^https?:$' }
-function Test-AdminUser([string] $Value) { $Value -match '^[A-Za-z0-9._@-]{1,64}$' }
 function Test-LiveKitSecret([string] $Value) { $Value -cmatch '^[A-Za-z][A-Za-z0-9]{31,}$' }
-function Test-PasswordHash([string] $Value) { $Value -cmatch '^AQAAAA[A-Za-z0-9+/]{20,}={0,2}$' }
 
 # --- helpers ----------------------------------------------------------------------------------------------------
 
@@ -181,62 +169,6 @@ function Get-ProviderVariable([string] $Mode)
 
 function Test-SecretVariable([string] $Name) { $Name -notin @('AWS_REGION', 'OVH_ENDPOINT') }
 
-# Hashes the password with the API image: `hash-password` reads it from stdin (sent without a newline) and prints
-# the ASP.NET Identity v3 hash. Returns the hash, or $null after showing the end of the error output.
-function Get-PasswordHash
-{
-    # The password comes from Read-Host / stdin as a string and goes to the process stdin; SecureString would not
-    # protect it on Linux and is not recommended for new code.
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', 'Password')]
-    param([string] $EnvPath, [string] $Password)
-
-    # A release installation (ready-made images) pulls the API image, a source checkout builds it.
-    if (Test-SfUsesImages)
-    {
-        Write-SfInfo 'Pulling the API image (for the password hash) ...'
-        $fetch = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'pull', '--quiet', 'api')
-        if ($fetch.ExitCode -ne 0)
-        {
-            Write-SfWarn 'The API image could not be pulled. While the repository is private, sign in to the registry first: docker login ghcr.io (user name and a token with read:packages).'
-            return $null
-        }
-    }
-    else
-    {
-        Write-SfInfo 'Building the API image (for the password hash) ...'
-        $fetch = Get-SfComposeOutput -Arguments @('--env-file', $EnvPath, 'build', '--quiet', 'api')
-        if ($fetch.ExitCode -ne 0)
-        {
-            Write-SfWarn 'The API image could not be built.'
-            return $null
-        }
-    }
-
-    $startInfo = [Diagnostics.ProcessStartInfo]::new('docker')
-    foreach ($argument in @('compose', '--env-file', $EnvPath, 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'dotnet', 'api', 'Opten.StudioFlow.Web.dll', 'hash-password'))
-    {
-        $startInfo.ArgumentList.Add($argument)
-    }
-    $startInfo.WorkingDirectory = Get-SfRoot
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardInput = $true
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.StandardInputEncoding = [Text.UTF8Encoding]::new($false)
-    $process = [Diagnostics.Process]::Start($startInfo)
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    $process.StandardInput.Write($Password)
-    $process.StandardInput.Close()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $process.WaitForExit()
-    $stderr = $stderrTask.GetAwaiter().GetResult()
-
-    $hash = @($stdout -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }) | Select-Object -Last 1
-    if ($process.ExitCode -eq 0 -and $hash -and (Test-PasswordHash $hash)) { return $hash }
-    $stderr -split "`n" | Where-Object { $_.Trim() -and $_ -notmatch 'View build details' } | Select-Object -Last 5 | ForEach-Object { Write-Host $_ }
-    $null
-}
-
 # --- main ---------------------------------------------------------------------------------------------------------
 
 try
@@ -253,7 +185,6 @@ try
     }
 
     $interactive = -not $NonInteractive
-    if ($AdminPasswordStdin -and $interactive) { throw '-AdminPasswordStdin only works together with -NonInteractive.' }
     if ($interactive -and ([Console]::IsInputRedirected -or -not [Environment]::UserInteractive))
     {
         throw 'No terminal for questions. Run with -NonInteractive and the options (see Get-Help ./setup.ps1 -Full).'
@@ -272,7 +203,7 @@ try
     function Get-Existing([string] $Key) { if ($existing.ContainsKey($Key)) { [string]$existing[$Key] } else { '' } }
 
     Write-SfStep 'Set up StudioFlow'
-    if (Test-Path -LiteralPath $EnvFile) { Write-SfInfo "The existing $(Split-Path -Leaf $EnvFile) will be replaced; secrets and admin account are carried over." }
+    if (Test-Path -LiteralPath $EnvFile) { Write-SfInfo "The existing $(Split-Path -Leaf $EnvFile) will be replaced; the secrets are carried over." }
 
     # Node IP
     $nodeIpValue = $NodeIp
@@ -402,50 +333,11 @@ try
         if (-not (Test-FrameAncestor $origin)) { throw "Invalid source for frame-ancestors: '$origin' (example: https://proxy.example.ch)." }
     }
 
-    # Admin account
-    $adminUserValue = $AdminUser
-    if (-not $adminUserValue)
+    # The Regie account is created in the first-run setup of the Regie; older versions kept it in .env.
+    if ((Get-Existing 'ADMIN__USERNAME') -or (Get-Existing 'ADMIN__PASSWORDHASH') -or (Get-Existing 'ADMIN__PASSWORD'))
     {
-        $adminUserValue = Get-Existing 'ADMIN__USERNAME'
-        if (-not $adminUserValue) { $adminUserValue = 'admin' }
-        if ($interactive) { $adminUserValue = Read-Prompt 'User name of the admin account' $adminUserValue }
-    }
-    if (-not (Test-AdminUser $adminUserValue)) { throw "Invalid user name '$adminUserValue' (1-64 characters: letters, digits, . _ @ -)." }
-
-    $existingHash = Get-Existing 'ADMIN__PASSWORDHASH'
-    $existingPlain = Get-Existing 'ADMIN__PASSWORD'
-    $password = ''
-    $passwordGenerated = $false
-    $keepCredentials = $false
-    if ($AdminPasswordStdin)
-    {
-        $password = [Console]::In.ReadLine()
-        if ($null -eq $password) { throw 'No password on standard input.' }
-        $password = $password.TrimEnd("`r")
-    }
-    elseif ($GeneratePassword) { $passwordGenerated = $true }
-    elseif (($existingHash -or $existingPlain) -and (-not $interactive -or (Read-SfConfirm 'Keep the existing admin password?' 'y')))
-    {
-        $keepCredentials = $true
-    }
-    elseif ($interactive)
-    {
-        while ($true)
-        {
-            $password = Read-SecretPrompt "Admin password (at least $MinPasswordLength characters; empty = generate a strong password)"
-            if (-not $password) { break }
-            if ($password.Length -lt $MinPasswordLength) { Write-SfWarn 'Too short.'; continue }
-            if ((Read-SecretPrompt 'Repeat the admin password') -ceq $password) { break }
-            Write-SfWarn 'The entries do not match.'
-        }
-        if (-not $password) { $passwordGenerated = $true }
-    }
-    else { $passwordGenerated = $true }
-
-    if ($passwordGenerated) { $password = New-RandomAlphanumeric $GeneratedPasswordLength }
-    elseif (-not $keepCredentials -and $password.Length -lt $MinPasswordLength)
-    {
-        throw "The admin password needs at least $MinPasswordLength characters."
+        Write-SfInfo 'ADMIN__USERNAME, ADMIN__PASSWORD and ADMIN__PASSWORDHASH are no longer used and are left out of the new file.'
+        Write-SfInfo 'The Regie account is created in the first-run setup of the Regie (setup code: docker compose logs api).'
     }
 
     # Secrets: keep existing ones (the database password is fixed once PostgreSQL is initialised).
@@ -463,7 +355,7 @@ try
 
     # --- write .env -----------------------------------------------------------------------------------------------
 
-    function New-EnvContent([string[]] $AdminLines)
+    function New-EnvContent
     {
         $lines = [Collections.Generic.List[string]]::new()
         $lines.Add("# StudioFlow - generated by setup.ps1 on $(Get-Date -Format 'yyyy-MM-dd HH:mm'). Never commit it to Git; keep a copy in the password vault.")
@@ -480,9 +372,6 @@ try
         if ($tlsModeValue -eq 'internal') { $lines.Add((Format-EnvLine 'STUDIOFLOW_HSTS_MAX_AGE' $InternalHstsMaxAge)) }
         if ($frameAncestorsValue) { $lines.Add((Format-EnvLine 'STUDIOFLOW_FRAME_ANCESTORS' $frameAncestorsValue)) }
         $lines.Add('')
-        $lines.Add((Format-EnvLine 'ADMIN__USERNAME' $adminUserValue))
-        foreach ($line in $AdminLines) { $lines.Add($line) }
-        $lines.Add('')
         $lines.Add((Format-EnvLine 'LIVEKIT_API_KEY' $liveKitKey))
         $lines.Add((Format-EnvLine 'LIVEKIT_API_SECRET' $liveKitSecret))
         $lines.Add((Format-EnvLine 'POSTGRES_PASSWORD' $postgresPassword))
@@ -492,46 +381,12 @@ try
         ($lines -join "`n") + "`n"
     }
 
-    $utf8 = [Text.UTF8Encoding]::new($false)
     $tmpEnv = Join-Path $envDirectory ('.env.setup.' + (New-RandomAlphanumeric 6))
-    function Write-EnvFile([string[]] $AdminLines)
-    {
-        [IO.File]::WriteAllText($tmpEnv, (New-EnvContent $AdminLines), $utf8)
-        Protect-SfPath -Path $tmpEnv
-    }
 
     try
     {
-        if ($keepCredentials)
-        {
-            $adminLines = @()
-            if ($existingHash) { $adminLines += Format-EnvLine 'ADMIN__PASSWORDHASH' $existingHash }
-            if ($existingPlain) { $adminLines += Format-EnvLine 'ADMIN__PASSWORD' $existingPlain }
-            Write-EnvFile $adminLines
-        }
-        elseif ($PlainPassword)
-        {
-            Write-SfWarn 'The admin password is stored in plain text (-PlainPassword). For local development only.'
-            Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
-        }
-        else
-        {
-            Write-EnvFile @()
-            $dockerAvailable = Test-SfDockerAvailable
-            $hash = if ($dockerAvailable) { Get-PasswordHash -EnvPath $tmpEnv -Password $password } else { $null }
-            if ($hash)
-            {
-                Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORDHASH' $hash)
-                Write-SfInfo 'Admin password stored as a hash.'
-            }
-            else
-            {
-                if (-not $dockerAvailable) { Write-SfWarn 'Docker is not available; the password hash needs the API image.' }
-                Write-SfWarn "The password hash could not be generated with the API image (it could not be built or pulled, or 'hash-password' is missing)."
-                Write-SfWarn 'The password is stored in plain text (ADMIN__PASSWORD) for now. Later run ./setup.ps1 -Force and set a new password.'
-                Write-EnvFile @(Format-EnvLine 'ADMIN__PASSWORD' $password)
-            }
-        }
+        [IO.File]::WriteAllText($tmpEnv, (New-EnvContent), [Text.UTF8Encoding]::new($false))
+        Protect-SfPath -Path $tmpEnv
 
         if (Test-Path -LiteralPath $EnvFile)
         {
@@ -560,16 +415,23 @@ try
         'acme' { Write-SfInfo "Certificate: Let's Encrypt via HTTP-01; 80/tcp and 443/tcp must be publicly reachable." }
         'custom' { Write-SfInfo 'Certificate: mount ./certs/fullchain.pem and privkey.pem to /certs (docker-compose.override.example.yml).' }
     }
-    if ($passwordGenerated)
-    {
-        Write-SfInfo ''
-        Write-SfInfo "Admin user:  $adminUserValue"
-        Write-SfInfo "Password:    $password"
-        Write-SfInfo 'The password is shown only now. Store it in the password vault.'
-    }
     Write-SfInfo ''
-    if (Test-SfUsesImages) { Write-SfInfo 'Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)' }
-    else { Write-SfInfo 'Next step: docker compose up -d --build' }
+    $usesImages = Test-SfUsesImages
+    if (-not $Start -and $interactive -and (Test-SfDockerAvailable)) { $Start = Read-SfConfirm 'Start StudioFlow now?' 'y' }
+    if ($Start)
+    {
+        Assert-SfDocker
+        Write-SfStep 'Starting StudioFlow'
+        Start-SfStackAndWait -ExtraArguments $(if ($usesImages) { @() } else { @('--build') })
+        Write-SfStep 'Regie account'
+        $null = Show-SfSetupCode
+    }
+    else
+    {
+        if ($usesImages) { Write-SfInfo 'Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)' }
+        else { Write-SfInfo 'Next step: docker compose up -d --build' }
+        Write-SfInfo "Then read the setup code for the first-run setup of the Regie: docker compose logs api | Select-String 'Setup code'"
+    }
 }
 catch
 {

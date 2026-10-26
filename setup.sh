@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StudioFlow setup: writes .env (domain, node IP, TLS mode, admin account, random secrets).
+# StudioFlow setup: writes .env (domain, node IP, TLS mode, random secrets) and optionally starts the stack.
 # Same behaviour as setup.ps1. Run ./setup.sh --help for the options.
 set -euo pipefail
 # Lists (hosts, origins) are split on whitespace below; never expand globs such as https://*.example.com.
@@ -10,13 +10,12 @@ SF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SF_ROOT/infra/scripts/common.sh"
 
 readonly TLS_MODES="internal acme custom dns-cloudflare dns-infomaniak dns-hetzner dns-desec dns-route53 dns-gandi dns-ovh"
-readonly MIN_PASSWORD_LENGTH=12
-readonly GENERATED_PASSWORD_LENGTH=24
 readonly INTERNAL_HSTS_MAX_AGE=3600
 
 usage() {
 	cat <<'EOF'
-Set up StudioFlow: writes .env with random secrets and the hash of the admin password.
+Set up StudioFlow: writes .env with random secrets. The Regie account is created later, in the first-run setup
+of the Regie, with the setup code that the API writes to its log (--start shows it).
 
 Usage: ./setup.sh [options]
 
@@ -28,13 +27,10 @@ Usage: ./setup.sh [options]
   --dns-challenge-domain N   CNAME target if _acme-challenge is delegated (dns-*; e.g. for Hostpoint, cyon)
   --extra-hosts "A B"        further addresses of the same site, e.g. the IP (internal only)
   --frame-ancestors "U V"    origins allowed to embed the output ('self' is always allowed)
-  --admin-user NAME          user name of the admin account (default: admin)
-  --admin-password-stdin     read the admin password from standard input (one line)
-  --generate-password        generate a strong admin password and show it once
-  --plain-password           store the password in plain text instead of as a hash (local development only)
   --env-file PATH            target file instead of ./.env
   --non-interactive          ask nothing; missing required values are an error
   --force                    replace an existing .env (a copy .env.backup-<time> is kept; secrets are carried over)
+  --start                    start the stack afterwards and show the setup code (interactive runs ask)
   -h, --help                 this help
 
 Credentials of the DNS providers (dns-*) come from the environment, from the existing .env or are asked for
@@ -44,20 +40,20 @@ OVH_APPLICATION_SECRET + OVH_CONSUMER_KEY.
 
 Examples:
   ./setup.sh
-  ./setup.sh --non-interactive --domain studioflow.opten.ch --tls-mode dns-cloudflare --generate-password
-  printf '%s' "$PASSWORD" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 \
-      --tls-mode internal --admin-password-stdin
+  ./setup.sh --non-interactive --domain studioflow.opten.ch --tls-mode dns-cloudflare --start
+  ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal
 
-Then: docker compose up -d --build   (details: docs/runbook.md)
+Then (without --start): docker compose up -d --build   (details: docs/runbook.md)
       docker compose up -d           (installation from a release with ready-made images, docs/runbook.md section 14)
+      docker compose logs api | grep 'Setup code'   (the code for the first-run setup of the Regie)
 EOF
 }
 
 # --- options ----------------------------------------------------------------------------------------------------
 
 opt_domain="" opt_node_ip="" opt_tls_mode="" opt_acme_email="" opt_challenge_domain="" opt_extra_hosts=""
-opt_frame_ancestors="" opt_admin_user="" password_source="" plain_password=false env_file="$SF_ROOT/.env"
-interactive=true force=false
+opt_frame_ancestors="" env_file="$SF_ROOT/.env"
+interactive=true force=false start=false
 has_extra_hosts=false has_frame_ancestors=false has_acme_email=false has_challenge_domain=false
 
 while [ $# -gt 0 ]; do
@@ -68,7 +64,7 @@ while [ $# -gt 0 ]; do
 			value="${arg#*=}"
 			arg="${arg%%=*}"
 			;;
-		--domain | --node-ip | --tls-mode | --acme-email | --dns-challenge-domain | --extra-hosts | --frame-ancestors | --admin-user | --env-file)
+		--domain | --node-ip | --tls-mode | --acme-email | --dns-challenge-domain | --extra-hosts | --frame-ancestors | --env-file)
 			[ $# -ge 2 ] || sf_die "Option $arg needs a value (see --help)."
 			value="$2"
 			shift
@@ -82,13 +78,10 @@ while [ $# -gt 0 ]; do
 		--dns-challenge-domain) opt_challenge_domain="$value" has_challenge_domain=true ;;
 		--extra-hosts) opt_extra_hosts="$value" has_extra_hosts=true ;;
 		--frame-ancestors) opt_frame_ancestors="$value" has_frame_ancestors=true ;;
-		--admin-user) opt_admin_user="$value" ;;
 		--env-file) env_file="$value" ;;
-		--admin-password-stdin) password_source=stdin ;;
-		--generate-password) password_source=generate ;;
-		--plain-password) plain_password=true ;;
 		--non-interactive) interactive=false ;;
 		--force) force=true ;;
+		--start) start=true ;;
 		-h | --help)
 			usage
 			exit 0
@@ -128,11 +121,7 @@ is_email() { [[ "$1" =~ ^[^[:space:]@\'\"]+@[^[:space:]@\'\"]+\.[^[:space:]@\'\"
 # CSP host sources: https://host[:port], https://*.host, host, https: - no keywords, quotes or separators.
 is_frame_ancestor() { [[ "$1" =~ ^(https?://)?(\*\.)?[A-Za-z0-9.-]+(:([0-9]{1,5}|\*))?$|^https?:$ ]]; }
 
-is_admin_user() { [[ "$1" =~ ^[A-Za-z0-9._@-]{1,64}$ ]]; }
-
 is_livekit_secret() { [[ "$1" =~ ^[A-Za-z][A-Za-z0-9]{31,}$ ]]; }
-
-is_password_hash() { [[ "$1" =~ ^AQAAAA[A-Za-z0-9+/]{20,}={0,2}$ ]]; }
 
 # --- helpers ----------------------------------------------------------------------------------------------------
 
@@ -243,9 +232,6 @@ docker_available() { docker info >/dev/null 2>&1 && docker compose version >/dev
 
 # --- collect the configuration ------------------------------------------------------------------------------------
 
-if [ "$password_source" = stdin ] && [ "$interactive" = true ]; then
-	sf_die "--admin-password-stdin only works together with --non-interactive."
-fi
 [ "$interactive" = true ] && require_tty
 
 env_dir="$(dirname "$env_file")"
@@ -257,7 +243,7 @@ if [ -e "$env_file" ] && [ "$force" != true ]; then
 fi
 
 sf_step "Set up StudioFlow"
-[ -e "$env_file" ] && sf_info "The existing $(basename "$env_file") will be replaced; secrets and admin account are carried over."
+[ -e "$env_file" ] && sf_info "The existing $(basename "$env_file") will be replaced; the secrets are carried over."
 
 # Node IP
 node_ip="$opt_node_ip"
@@ -372,45 +358,10 @@ for origin in $frame_ancestors; do
 	is_frame_ancestor "$origin" || sf_die "Invalid source for frame-ancestors: '$origin' (example: https://proxy.example.ch)."
 done
 
-# Admin account
-admin_user="$opt_admin_user"
-if [ -z "$admin_user" ]; then
-	admin_user="$(env_value ADMIN__USERNAME)"
-	admin_user="${admin_user:-admin}"
-	[ "$interactive" = true ] && admin_user="$(prompt "User name of the admin account" "$admin_user")"
-fi
-is_admin_user "$admin_user" || sf_die "Invalid user name '$admin_user' (1-64 characters: letters, digits, . _ @ -)."
-
-existing_hash="$(env_value ADMIN__PASSWORDHASH)"
-existing_plain="$(env_value ADMIN__PASSWORD)"
-password="" password_generated=false keep_credentials=false
-case "$password_source" in
-	stdin)
-		IFS= read -r password || [ -n "$password" ] || sf_die "No password on standard input."
-		password="${password%$'\r'}"
-		;;
-	generate) password_generated=true ;;
-	*)
-		if [ -n "$existing_hash$existing_plain" ] && { [ "$interactive" != true ] || sf_confirm "Keep the existing admin password?" y; }; then
-			keep_credentials=true
-		elif [ "$interactive" = true ]; then
-			while :; do
-				password="$(prompt_secret "Admin password (at least $MIN_PASSWORD_LENGTH characters; empty = generate a strong password)")"
-				[ -n "$password" ] || break
-				if [ ${#password} -lt "$MIN_PASSWORD_LENGTH" ]; then sf_warn "Too short."; continue; fi
-				[ "$(prompt_secret "Repeat the admin password")" = "$password" ] && break
-				sf_warn "The entries do not match."
-			done
-			[ -n "$password" ] || password_generated=true
-		else
-			password_generated=true
-		fi
-		;;
-esac
-if [ "$password_generated" = true ]; then
-	password="$(random_alnum "$GENERATED_PASSWORD_LENGTH")"
-elif [ "$keep_credentials" != true ] && [ ${#password} -lt "$MIN_PASSWORD_LENGTH" ]; then
-	sf_die "The admin password needs at least $MIN_PASSWORD_LENGTH characters."
+# The Regie account is created in the first-run setup of the Regie; older versions kept it in .env.
+if [ -n "$(env_value ADMIN__USERNAME)$(env_value ADMIN__PASSWORDHASH)$(env_value ADMIN__PASSWORD)" ]; then
+	sf_info "ADMIN__USERNAME, ADMIN__PASSWORD and ADMIN__PASSWORDHASH are no longer used and are left out of the new file."
+	sf_info "The Regie account is created in the first-run setup of the Regie (setup code: docker compose logs api)."
 fi
 
 # Secrets: keep existing ones (the database password is fixed once PostgreSQL is initialised).
@@ -436,7 +387,6 @@ tmp_env="$(mktemp "$env_dir/.env.setup.XXXXXX")"
 trap 'rm -f "$tmp_env"' EXIT
 
 write_env() {
-	local admin_lines="$1"
 	{
 		printf '# StudioFlow - generated by setup.sh on %s. Never commit it to Git; keep a copy in the password vault.\n' "$(date '+%Y-%m-%d %H:%M')"
 		printf '# All variables: .env.example and docs/architecture/implementation-spec.md (section 10).\n\n'
@@ -450,9 +400,6 @@ write_env() {
 		printf '%s' "$provider_lines" "$hsts_line"
 		[ -n "$frame_ancestors" ] && env_line STUDIOFLOW_FRAME_ANCESTORS "$frame_ancestors"
 		printf '\n'
-		env_line ADMIN__USERNAME "$admin_user"
-		printf '%s' "$admin_lines"
-		printf '\n'
 		env_line LIVEKIT_API_KEY "$livekit_key"
 		env_line LIVEKIT_API_SECRET "$livekit_secret"
 		env_line POSTGRES_PASSWORD "$postgres_password"
@@ -462,55 +409,7 @@ write_env() {
 	} >"$tmp_env"
 }
 
-# Hashes the password with the API image: `hash-password` reads it from stdin (sent without a newline) and prints
-# the ASP.NET Identity v3 hash. Prints the hash, or returns 1 and shows the end of the error output.
-hash_password() {
-	local env_arg out err hash="" rc=0 fetch=build
-	env_arg="$(sf_host_path "$tmp_env")"
-	out="$(mktemp)"
-	err="$(mktemp)"
-	# A release installation (ready-made images) pulls the API image, a source checkout builds it.
-	if sf_uses_images; then
-		fetch=pull
-		sf_info "Pulling the API image (for the password hash) ..." >&2
-	else
-		sf_info "Building the API image (for the password hash) ..." >&2
-	fi
-	if ! sf_compose --env-file "$env_arg" "$fetch" api >"$err" 2>&1; then
-		rc=1
-	elif ! printf '%s' "$password" | sf_compose --env-file "$env_arg" run --rm --no-deps -T --entrypoint dotnet api "$SF_API_DLL" hash-password >"$out" 2>"$err"; then
-		rc=1
-	else
-		hash="$(tr -d '\r' <"$out" | awk 'NF { line = $0 } END { print line }')"
-		is_password_hash "$hash" || { echo "hash-password did not return an Identity v3 hash." >"$err"; rc=1; }
-	fi
-	[ "$rc" -eq 0 ] || grep -v -e '^[[:space:]]*$' -e 'View build details' "$err" | tail -n 5 >&2 || true
-	[ "$rc" -eq 0 ] || [ "$fetch" != pull ] || sf_warn "While the repository is private, sign in to the registry first: docker login ghcr.io (user name and a token with read:packages)."
-	rm -f "$out" "$err"
-	[ "$rc" -eq 0 ] && printf '%s' "$hash"
-	return "$rc"
-}
-
-if [ "$keep_credentials" = true ]; then
-	admin_lines=""
-	[ -n "$existing_hash" ] && admin_lines+="$(env_line ADMIN__PASSWORDHASH "$existing_hash")"$'\n'
-	[ -n "$existing_plain" ] && admin_lines+="$(env_line ADMIN__PASSWORD "$existing_plain")"$'\n'
-	write_env "$admin_lines"
-elif [ "$plain_password" = true ]; then
-	sf_warn "The admin password is stored in plain text (--plain-password). For local development only."
-	write_env "$(env_line ADMIN__PASSWORD "$password")"$'\n'
-else
-	write_env ""
-	if docker_available && hash="$(hash_password)"; then
-		write_env "$(env_line ADMIN__PASSWORDHASH "$hash")"$'\n'
-		sf_info "Admin password stored as a hash."
-	else
-		docker_available || sf_warn "Docker is not available; the password hash needs the API image."
-		sf_warn "The password hash could not be generated with the API image (it could not be built or pulled, or 'hash-password' is missing)."
-		sf_warn "The password is stored in plain text (ADMIN__PASSWORD) for now. Later run ./setup.sh --force and set a new password."
-		write_env "$(env_line ADMIN__PASSWORD "$password")"$'\n'
-	fi
-fi
+write_env
 
 if [ -e "$env_file" ]; then
 	backup_file="$env_file.backup-$(date '+%Y%m%d-%H%M%S')"
@@ -534,13 +433,23 @@ case "$tls_mode" in
 	acme) sf_info "Certificate: Let's Encrypt via HTTP-01; 80/tcp and 443/tcp must be publicly reachable." ;;
 	custom) sf_info "Certificate: mount ./certs/fullchain.pem and privkey.pem to /certs (docker-compose.override.example.yml)." ;;
 esac
-if [ "$password_generated" = true ]; then
-	printf '\nAdmin user:  %s\nPassword:    %s\n' "$admin_user" "$password"
-	sf_info "The password is shown only now. Store it in the password vault."
-fi
 sf_info ""
-if sf_uses_images; then
-	sf_info "Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)"
+up_args=(--build)
+if sf_uses_images; then up_args=(); fi
+if [ "$start" != true ] && [ "$interactive" = true ] && docker_available; then
+	sf_confirm "Start StudioFlow now?" y && start=true
+fi
+if [ "$start" = true ]; then
+	sf_require_docker
+	sf_step "Starting StudioFlow"
+	sf_up_and_wait ${up_args[@]+"${up_args[@]}"}
+	sf_step "Regie account"
+	sf_show_setup_code || true
 else
-	sf_info "Next step: docker compose up -d --build"
+	if sf_uses_images; then
+		sf_info "Next step: docker compose up -d   (pulls the images; while the repository is private: docker login ghcr.io first)"
+	else
+		sf_info "Next step: docker compose up -d --build"
+	fi
+	sf_info "Then read the setup code for the first-run setup of the Regie: docker compose logs api | grep 'Setup code'"
 fi
