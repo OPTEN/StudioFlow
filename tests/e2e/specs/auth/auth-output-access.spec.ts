@@ -173,9 +173,9 @@ test.describe('AUTH hubs and output access', () => {
     // New key works; the log says so; cancelling is simply not calling the endpoint.
     expect((await new OutputApi(config.baseURL, production.slug, newKey).getOutputSnapshot()).status).toBe(200);
     expect((await negotiate(config.baseURL, 'output', { accessTokenQuery: newKey })).status).toBe(200);
-    const log = await studio.waitForEvent('logAppended', (event) => event.entry.text === 'Output-Link neu erzeugt');
-    expect(log.entry.text).toBe('Output-Link neu erzeugt');
-    expect((await production.snapshot()).recentLog.map((entry) => entry.text)).toContain('Output-Link neu erzeugt');
+    const log = await studio.waitForEvent('logAppended', (event) => event.entry.text === 'Output link “Proxy” regenerated');
+    expect(log.entry.text).toBe('Output link “Proxy” regenerated');
+    expect((await production.snapshot()).recentLog.map((entry) => entry.text)).toContain('Output link “Proxy” regenerated');
   });
 
   test('E2E-OUT-12 [api] access denied: wrong key, unknown slug, key of another production look identical', t.p0, async ({ config, api, production, onCleanup }) => {

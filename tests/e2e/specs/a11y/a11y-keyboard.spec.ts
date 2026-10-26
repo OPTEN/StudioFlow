@@ -233,7 +233,7 @@ test.describe('Keyboard-only Regie', () => {
     const { page } = regie;
     const cases: Array<{ name: string; trigger: () => ReturnType<Page['getByRole']>; popover: string; focusInside: boolean; key: 'Enter' | 'Space' }> = [
       { name: 'production menu', trigger: () => page.getByRole('button', { name: /^Produktion .*, Menü$/ }), popover: '[role=dialog][aria-label=Produktion]', focusInside: true, key: 'Enter' },
-      { name: 'output chip', trigger: () => page.getByRole('button', { name: /^Output an Proxy/ }), popover: '[role=dialog][aria-label=Output]', focusInside: false, key: 'Space' },
+      { name: 'output chip', trigger: () => page.getByRole('button', { name: /^Output/ }), popover: '[role=dialog][aria-label=Output]', focusInside: false, key: 'Space' },
       { name: 'Docks und Layout', trigger: () => page.getByRole('button', { name: 'Docks und Layout' }), popover: '[role=dialog][aria-label="Docks und Layout"]', focusInside: true, key: 'Enter' },
       { name: '+ Quelle', trigger: () => page.getByRole('button', { name: 'Quelle', exact: true }), popover: '[role=menu][aria-label="Quelle hinzufügen"]', focusInside: true, key: 'Space' },
       { name: 'scene menu', trigger: () => page.getByRole('button', { name: 'Aktionen für Szene Pause' }), popover: '[role=menu][aria-label="Szene Pause"]', focusInside: true, key: 'Enter' },

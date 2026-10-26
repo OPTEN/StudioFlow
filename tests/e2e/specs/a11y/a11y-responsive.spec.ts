@@ -65,7 +65,7 @@ function criticalControls(regie: RegiePage, studio: boolean): Array<[string, Loc
     ['Blende kürzer', page.getByRole('button', { name: 'Blende kürzer' })],
     ['Blende länger', page.getByRole('button', { name: 'Blende länger' })],
     ['Gerät koppeln', regie.pairButton()],
-    ['output chip', page.getByRole('button', { name: /^Output an Proxy/ })],
+    ['output chip', page.getByRole('button', { name: /^Output/ })],
     ['health chip', page.getByRole('button', { name: /Störung|Station|ok/ }).first()],
     ['Docks und Layout', page.getByRole('button', { name: 'Docks und Layout' })],
     ['+ Quelle', page.getByRole('button', { name: 'Quelle', exact: true })],
@@ -156,7 +156,7 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
   const { page } = regie;
   const viewport = page.viewportSize()!;
   const triggers: Array<[string, Locator]> = [
-    ['Output an Proxy', page.getByRole('button', { name: /^Output an Proxy/ })],
+    ['Output', page.getByRole('button', { name: /^Output/ })],
     ['Docks und Layout', page.getByRole('button', { name: 'Docks und Layout' })],
     ['+ Quelle', page.getByRole('button', { name: 'Quelle', exact: true })],
   ];

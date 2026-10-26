@@ -90,7 +90,7 @@ test.describe('CSP and external hosts', () => {
     await regie.clickScene('Begrüssung');
     await expect(regie.scene('Begrüssung')).toHaveAttribute('aria-pressed', 'true');
     await regie.setStudioMode(true);
-    for (const trigger of [page.getByRole('button', { name: /^Output an Proxy/ }), page.getByRole('button', { name: 'Docks und Layout' }), page.getByRole('button', { name: /^Produktion .*, Menü$/ }), page.getByRole('button', { name: 'Quelle', exact: true })]) {
+    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Docks und Layout' }), page.getByRole('button', { name: /^Produktion .*, Menü$/ }), page.getByRole('button', { name: 'Quelle', exact: true })]) {
       await trigger.click();
       await expect(page.locator('.c-pop').first()).toBeVisible();
       await page.keyboard.press('Escape');

@@ -150,7 +150,7 @@ test.describe('AUTH session', () => {
       ['PATCH', `/api/productions/${production.id}`],
       ['DELETE', `/api/productions/${production.id}/scenes/scn_doesnotexist`],
       ['POST', `/api/productions/${production.id}/pairing/phone-invite/renew`],
-      ['POST', `/api/productions/${production.id}/output/regenerate-key`],
+      ['POST', `/api/productions/${production.id}/output/links/olk_doesnotexist/regenerate-key`],
     ] as const) {
       expectProblem(await api.call(method, path, { json: {}, noCsrf: true }), 403, ERROR.forbidden);
     }
