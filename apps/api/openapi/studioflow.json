@@ -7570,7 +7570,7 @@
           },
           "publicBaseUrl": {
             "type": "string",
-            "description": "Public base URL, e.g. https://studioflow.opten.ch."
+            "description": "Public base URL, e.g. https://studioflow.example.com."
           }
         },
         "description": "Static information about the installation."

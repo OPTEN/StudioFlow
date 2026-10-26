@@ -1,0 +1,23 @@
+# gitleaks configuration (secret scan before the repository became public, docs/security-review.md).
+# Run:  docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest git /repo --config /repo/.gitleaks.toml
+# Everything gitleaks finds in the history of the repository is a test fixture or a dummy value; the rules below name
+# them, so a new finding is a real one. Rules other than generic-api-key stay active in these places.
+title = "StudioFlow gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Throwaway credentials of unit, API integration and end-to-end tests (made-up passwords and device secrets)"
+targetRules = ["generic-api-key"]
+paths = [
+  '''^tests/e2e/''',
+  '''^apps/api/tests/''',
+  '''^apps/(studio|sender)/src/.*\.spec\.ts$''',
+]
+
+[[allowlists]]
+description = "Dummy values that let `docker compose config` read the release bundle in the Release workflow"
+targetRules = ["generic-api-key"]
+paths = ['''^\.github/workflows/release\.yml$''']
+regexes = ['''sk0123456789abcdef0123456789abcdef''', '''POSTGRES_PASSWORD=0123456789abcdef''']

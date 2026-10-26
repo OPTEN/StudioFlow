@@ -156,7 +156,7 @@ describe('SetupPageComponent', () => {
 
   it('refuses a username with spaces, umlauts or more than 64 characters', async () => {
     await setup();
-    for (const username of ['two words', 'nico$', 'ä']) {
+    for (const username of ['two words', 'jane$', 'ä']) {
       type('setup-username', username);
       leave('setup-username');
       await render();
@@ -164,7 +164,7 @@ describe('SetupPageComponent', () => {
         'Use only letters, digits and . _ @ - and at most 64 characters.',
       );
     }
-    type('setup-username', 'nico.m@opten-ch_1');
+    type('setup-username', 'jane.m@example-ch_1');
     await render();
     expect(errorOf('setup-username')).toBeNull();
     expect(input('setup-username').maxLength).toBe(64);

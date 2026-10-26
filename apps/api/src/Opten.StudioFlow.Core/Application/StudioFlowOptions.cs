@@ -6,7 +6,7 @@ public sealed class StudioFlowOptions
     /// <summary>Configuration section name.</summary>
     public const string Section = "StudioFlow";
 
-    /// <summary>Public base URL, e.g. <c>https://studioflow.opten.ch</c>; used in invite, QR and output URLs.</summary>
+    /// <summary>Public base URL, e.g. <c>https://studioflow.example.com</c>; used in invite, QR and output URLs.</summary>
     public string PublicBaseUrl { get; set; } = "https://localhost";
 
     /// <summary>Space separated CSP sources allowed to embed the output (read-only in the Regie, enforced by Caddy).</summary>

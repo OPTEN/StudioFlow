@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject } from '@angular/core';
 import { SystemInfoService } from '../../core/api/system-info.service';
 
-/** "studioflow.opten.ch/join" for "https://studioflow.opten.ch/join/" (what people type; shown large). */
+/** "studioflow.example.com/join" for "https://studioflow.example.com/join/" (what people type; shown large). */
 export function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
 }
@@ -21,11 +21,11 @@ export class PublicUrlService {
     return url ? url.replace(/\/+$/, '') : null;
   });
 
-  /** "https://studioflow.opten.ch" (no trailing slash). */
+  /** "https://studioflow.example.com" (no trailing slash). */
   readonly baseUrl = computed(
     () => this.base() ?? this.document.location?.origin ?? 'https://studioflow.local',
   );
-  /** Short address for laptops: "https://studioflow.opten.ch/join". */
+  /** Short address for laptops: "https://studioflow.example.com/join". */
   readonly joinUrl = computed(() => `${this.baseUrl()}/join`);
 
   /** Loads the base URL once; failures keep the fallback (no toast, the fallback works on site). */

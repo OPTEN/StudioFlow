@@ -17,7 +17,7 @@ rules in `docs/i18n.md`.
 ## Local environment
 
 - Windows 11, Git Bash. Node 22 is not on the PATH: prefix commands with
-  `export PATH="/c/Users/nicom/AppData/Roaming/nvm/v22.22.3:$PATH"` (installed via nvm). A new worktree needs `npm ci`.
+  `export PATH="/c/Users/<user>/AppData/Roaming/nvm/v22.22.3:$PATH"` (installed via nvm). A new worktree needs `npm ci`.
 - .NET SDK 10, Docker Desktop 29 (start it first), Playwright browsers installed (chromium, firefox, webkit).
 - No `pwsh`; PowerShell scripts are parsed with Windows PowerShell 5.1 (scripts are ASCII-only English, see D9).
 - E2E: `tests/e2e/stack.sh up|test|down <n>` with the numbered stacks 1-5 (avoid port clashes), see

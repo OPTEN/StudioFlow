@@ -14,7 +14,7 @@ describe('QR code', () => {
   });
 
   it('encodes an invite URL into a square matrix without border', () => {
-    const matrix = qrMatrix('https://studioflow.opten.ch/join/i/inv_abcdefghijklmnop');
+    const matrix = qrMatrix('https://studioflow.example.com/join/i/inv_abcdefghijklmnop');
     expect(matrix.length).toBeGreaterThanOrEqual(21);
     expect(matrix.every((row) => row.length === matrix.length)).toBe(true);
     // Finder pattern in the top-left corner: a dark 7-module border.
@@ -24,11 +24,11 @@ describe('QR code', () => {
 
   it('renders the path dark on white with a 4-module quiet zone', async () => {
     const fixture = TestBed.createComponent(QrCodeComponent);
-    fixture.componentRef.setInput('value', 'https://studioflow.opten.ch/join/i/test');
+    fixture.componentRef.setInput('value', 'https://studioflow.example.com/join/i/test');
     fixture.componentRef.setInput('label', 'QR code for pairing');
     await fixture.whenStable();
     const svg = (fixture.nativeElement as HTMLElement).querySelector('svg');
-    const size = qrMatrix('https://studioflow.opten.ch/join/i/test').length;
+    const size = qrMatrix('https://studioflow.example.com/join/i/test').length;
     expect(svg?.getAttribute('role')).toBe('img');
     expect(svg?.getAttribute('aria-label')).toBe('QR code for pairing');
     expect(svg?.getAttribute('viewBox')).toBe(
