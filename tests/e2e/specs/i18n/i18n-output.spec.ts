@@ -4,7 +4,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * I18N - the output page has no language setting (docs/testing.md 2.16): `?lang=` wins, then the browser language,
+ * I18N - the output page has no language setting (docs/testing.md 2.17): `?lang=` wins, then the browser language,
  * then English. The language of the Regie in `studioflow.locale` (same origin) does not reach it. The standby and end
  * slates are texts of the production and stay as they were written.
  */

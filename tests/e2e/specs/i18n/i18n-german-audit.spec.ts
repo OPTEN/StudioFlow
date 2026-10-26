@@ -113,19 +113,11 @@ test.describe('German text audit', () => {
 
     // popovers and menus
     const popovers: Array<[string, () => ReturnType<Page['getByRole']>]> = [
-<<<<<<< HEAD:tests/e2e/specs/a11y/a11y-german.spec.ts
-      ['output popover', () => page.getByRole('button', { name: /^Output/ })],
-      ['layout popover', () => page.getByRole('button', { name: 'Docks und Layout' })],
-      ['production menu', () => page.getByRole('button', { name: /^Produktion .*, Menü$/ })],
-      ['add-source popover', () => page.getByRole('button', { name: 'Quelle', exact: true })],
-      ['scene menu', () => page.getByRole('button', { name: 'Aktionen für Szene Pause' })],
-=======
       ['output popover', () => page.getByRole('button', { name: /^Output/ })],
       ['layout popover', () => page.getByRole('button', { name: 'Docks and layout' })],
       ['production menu', () => page.getByRole('button', { name: /^Production .*, menu$/ })],
       ['add-source popover', () => page.getByRole('button', { name: 'Source', exact: true })],
       ['scene menu', () => page.getByRole('button', { name: 'Actions for scene Break' })],
->>>>>>> 71acff1 (test(e2e): assert the English UI texts and add the i18n specs):tests/e2e/specs/i18n/i18n-german-audit.spec.ts
     ];
     for (const [label, trigger] of popovers) {
       await trigger().click();

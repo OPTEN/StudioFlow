@@ -3,7 +3,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * I18N - numbers and server texts follow the language (docs/testing.md 2.16): English writes the decimal point
+ * I18N - numbers and server texts follow the language (docs/testing.md 2.17): English writes the decimal point
  * ("0.5 s"), German the decimal comma ("0,5 s") (decision D3); the log lines of the API are codes plus parameters that
  * the Regie renders in the active language.
  */
