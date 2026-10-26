@@ -5,6 +5,7 @@ import {
   canvasDto,
   stateFromOutputSnapshot,
   type AssetDto,
+  type AudioChannelDto,
   type OutputChangesDto,
   type OutputSnapshot,
   type ProductionDto,
@@ -21,6 +22,8 @@ export const KEY = 'k3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yK3yA';
 export const CAMERA = 'dev_aaaaaaaaaaaaaaaa/camera';
 export const SCREEN = 'dev_bbbbbbbbbbbbbbbb/screen-1';
 export const IMAGE = 'ast_cccccccccccccccc';
+export const MIC = 'dev_dddddddddddddddd/mic';
+export const CLIP = 'ast_eeeeeeeeeeeeeeee';
 
 export const CUT: TransitionDto = { kind: 'cut', durationMs: 0 };
 export const FADE: TransitionDto = { kind: 'fade', durationMs: 500 };
@@ -104,6 +107,39 @@ export function deviceSource(id: string, code: string, label: string): SourceDto
     statusSince: null,
     text: null,
   };
+}
+
+/** A microphone (`kind: audio`): a device microphone or the feed of an audio station. */
+export function micSource(id: string, code: string, label: string): SourceDto {
+  const [deviceId, slot] = id.split('/');
+  return {
+    id,
+    code,
+    kind: 'audio',
+    label,
+    deviceId,
+    slot,
+    assetId: null,
+    status: 'ok',
+    statusSince: null,
+    text: null,
+  };
+}
+
+/** A channel of the audio mixer: unity gain, not muted, following the picture, no delay. */
+export function channel(
+  sourceId: string,
+  overrides: Partial<AudioChannelDto> = {},
+): AudioChannelDto {
+  return { sourceId, gainDb: 0, muted: false, mode: 'follow', syncOffsetMs: 0, ...overrides };
+}
+
+/** An `audioChannelsChanged` event. */
+export function audioChannelsChanged(
+  revision: number,
+  channels: AudioChannelDto[],
+): ProductionEvent {
+  return { type: 'audioChannelsChanged', channels, revision };
 }
 
 export function asset(id: string, overrides: Partial<AssetDto> = {}): AssetDto {

@@ -1,5 +1,5 @@
 /**
- * Boot configuration of the output page: `/o/{slug}?k={key}[&bg=transparent][&debug=1][&latency=1][&lang=de-CH]`
+ * Boot configuration of the output page: `/o/{slug}?k={key}[&bg=transparent][&audio=off][&debug=1][&latency=1][&lang=de-CH]`
  * (spec 4.8, 9.3) and the measurement clock `/o/_clock`. `lang` (the language of the page) is read by `main.ts`; the
  * parser here ignores it.
  *
@@ -33,6 +33,8 @@ export type OutputBackground = 'black' | 'transparent';
 export interface OutputFlags {
   /** `bg=transparent` for OBS/vMix overlays; anything else is black. */
   readonly background: OutputBackground;
+  /** `audio=off`: the page makes no sound at all (no audio context, state `off` in the report); anything else is on. */
+  readonly audio: boolean;
   /** `debug=1`: measuring overlay (scene, revision, connections, per-source stats, latency). */
   readonly debug: boolean;
   /** `latency=1`: test aid that decodes latency stamps from source videos (see latency-probe.ts). */
@@ -79,17 +81,19 @@ export interface RouteWindow {
 }
 
 const TRUE_VALUES = new Set(['1', 'true', 'yes']);
+const OFF_VALUES = new Set(['off', '0', 'false', 'no']);
 
 function flag(params: URLSearchParams, name: string): boolean {
   const value = params.get(name);
   return value !== null && TRUE_VALUES.has(value.trim().toLowerCase());
 }
 
-/** Reads the display flags; unknown values fall back to the defaults (black, no debug, no latency). */
+/** Reads the display flags; unknown values fall back to the defaults (black, sound on, no debug, no latency). */
 export function parseFlags(search: string): OutputFlags {
   const params = new URLSearchParams(search);
   return {
     background: params.get('bg')?.trim().toLowerCase() === 'transparent' ? 'transparent' : 'black',
+    audio: !OFF_VALUES.has(params.get('audio')?.trim().toLowerCase() ?? ''),
     debug: flag(params, 'debug'),
     latency: flag(params, 'latency'),
   };

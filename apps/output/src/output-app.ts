@@ -44,8 +44,10 @@ import {
   type OutputMedia,
 } from './media';
 import { PlaybackLoad } from './playback-load';
+import { OutputAudio, type OutputMix } from './output-audio';
 import { ProgramView } from './program-view';
 import { noAccessSlate } from './slates';
+import { mountSoundButton } from './sound-button';
 import { StatusReporter } from './status-reporter';
 import { VersionWatch, type MarkerStorage } from './version-watch';
 
@@ -84,6 +86,10 @@ export interface OutputAppDeps {
   readonly storage?: MarkerStorage | null;
   /** Media starts after the first frame, at the latest after this time (default 2 s). */
   readonly mediaStartTimeoutMs?: number;
+  /** The audio mix (default: a Web Audio graph that plays the program). */
+  readonly createAudioMix?: () => OutputMix;
+  /** Captures the sound of a video element (default `captureStream()`). */
+  readonly captureVideo?: (video: HTMLVideoElement) => MediaStream | null;
 }
 
 /** A running output page (handles for tests and the debug overlay). */
@@ -95,6 +101,7 @@ export interface OutputApp {
   readonly guard: AccessGuard;
   readonly reporter: StatusReporter;
   readonly provider: DeferredSourceProvider;
+  readonly audio: OutputAudio;
   readonly versionWatch: VersionWatch;
   /** The media side once loaded. */
   media(): OutputMedia | null;
@@ -186,6 +193,20 @@ export function startOutputApp(
     return asset ? withOutputKey(asset.contentUrl, config.key) : null;
   };
   const provider = new DeferredSourceProvider(assetUrl);
+  // The sound: a Web Audio mix of the program (microphones and screens from LiveKit, videos from the stage).
+  const audio = new OutputAudio({
+    enabled: config.flags.audio,
+    ...(deps.createAudioMix ? { createMix: deps.createAudioMix } : {}),
+    ...(deps.captureVideo ? { captureVideo: deps.captureVideo } : {}),
+  });
+  disposers.push(
+    provider.onAssetVideosChange((sourceId, video, attached) =>
+      audio.assetVideo(sourceId, video, attached),
+    ),
+  );
+  if (config.flags.audio) {
+    disposers.push(mountSoundButton(doc, audio));
+  }
   const renderer = (deps.createRenderer ?? createSceneRenderer)(root, {
     mode: 'output',
     provider,
@@ -267,6 +288,7 @@ export function startOutputApp(
         }
         media = loaded;
         provider.bind(loaded.provider);
+        audio.bindInputs(loaded.provider);
         disposers.push(loaded.session.onStateChange(onMediaState));
         if (!guard.denied) {
           loaded.session.start();
@@ -299,6 +321,7 @@ export function startOutputApp(
     }
     if (!guard.denied) {
       view.setDenied(false);
+      audio.setAllowed(true);
     }
   };
   const allowWhenSynced = (): void => {
@@ -314,6 +337,7 @@ export function startOutputApp(
     onDenied: () => {
       pendingAllow = false;
       view.setDenied(true);
+      audio.setAllowed(false);
       // A page that may no longer see the production must not keep receiving its pictures either.
       if (media && !isTerminalMediaState(media.session.state)) {
         media.session.stop();
@@ -434,7 +458,8 @@ export function startOutputApp(
     }
   });
   disposers.push(
-    productionSync.onChange((_state, cause) => {
+    productionSync.onChange((state, cause) => {
+      audio.update(state, cause);
       const transition =
         cause.kind === 'event' && cause.event.type === 'programSwitched'
           ? cause.event.transition
@@ -463,6 +488,7 @@ export function startOutputApp(
         fps: roundOrNull(stats.fps || null, 1),
         programSceneId: view.shownSceneId,
         ...playbackLoad.measure(stats, await decoderSummary()),
+        audio: audio.report(),
       };
     },
     transport: {
@@ -471,7 +497,10 @@ export function startOutputApp(
       sendViaRest: (report) => api.report(report),
     },
     enabled: () => !guard.denied,
-    onTick: () => resumeVideos(root),
+    onTick: () => {
+      resumeVideos(root);
+      audio.tryResume();
+    },
   });
 
   const estimateLatency = async (): Promise<number | null> => {
@@ -508,6 +537,19 @@ export function startOutputApp(
         current ? current.provider.getStats(sourceId).catch(() => null) : Promise.resolve(null),
       ),
     );
+    const mix = audio.debug();
+    const audioChannels = await Promise.all(
+      mix.channels.map(async (channel) => ({
+        code: state?.sources.get(channel.sourceId)?.code ?? null,
+        label: state?.sources.get(channel.sourceId)?.label ?? null,
+        audible: channel.audible,
+        hasSound: channel.hasSound,
+        levelDb: channel.levelDb,
+        stats: current
+          ? await current.provider.getAudioStats(channel.sourceId).catch(() => null)
+          : null,
+      })),
+    );
     return {
       productionName: state?.production.name ?? null,
       sceneName: scene?.name ?? null,
@@ -526,6 +568,7 @@ export function startOutputApp(
         availability: provider.availability(sourceId).state,
         stats: stats[index] ?? null,
       })),
+      audio: { state: audio.state, programDb: mix.programDb, channels: audioChannels },
     };
   };
 
@@ -542,6 +585,7 @@ export function startOutputApp(
     guard,
     reporter,
     provider,
+    audio,
     versionWatch,
     media: () => media,
     debugInfo,
@@ -574,6 +618,7 @@ export function startOutputApp(
         current.provider.dispose();
       }
       provider.dispose();
+      audio.dispose();
       renderer.destroy();
     },
   };

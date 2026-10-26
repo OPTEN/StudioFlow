@@ -1,6 +1,7 @@
 import type { LiveKitTokenDto } from '@studioflow/scene-model';
 import type { SourceMediaProvider } from '@studioflow/scene-renderer';
 import type {
+  AudioSourceStats,
   DecoderSummary,
   MediaLogger,
   MediaSessionState,
@@ -19,6 +20,14 @@ export interface OutputMediaSession {
 /** The part of `LiveKitSourceProvider` the page uses beyond {@link SourceMediaProvider}. */
 export interface OutputMediaProvider extends SourceMediaProvider {
   getStats(sourceId: string): Promise<SourceStats | null>;
+  /** Receive statistics of the sound of a source (`?debug=1`). */
+  getAudioStats(sourceId: string): Promise<AudioSourceStats | null>;
+  /** The sound of a source (a microphone, the audio of a screen), null while it has none. */
+  audioStream(sourceId: string): MediaStream | null;
+  /** The sources that have a sound right now. */
+  audioSourceIds(): string[];
+  /** Notifies when the sound of a source appears, is replaced or goes away. */
+  onAudioChange(listener: (sourceId: string) => void): () => void;
   estimateLatencyMs(): Promise<number | null>;
   /** What the decoders did since the previous call (streams, software decoding, dropped frames). */
   decoderSummary(): Promise<DecoderSummary>;

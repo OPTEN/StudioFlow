@@ -16,6 +16,7 @@ const INFO: DebugInfo = {
   latencyMs: 61.6,
   rendererFps: 60,
   version: '0.1.0+1a2b3c4',
+  audio: null,
   sources: [
     {
       code: 'K1',

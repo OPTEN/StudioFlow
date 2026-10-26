@@ -74,7 +74,7 @@ function setup(
     slug: 'webinar',
     key: KEY,
     keyFromUrl: true,
-    flags: { background: 'black', debug: false, latency: false, ...flags },
+    flags: { background: 'black', audio: false, debug: false, latency: false, ...flags },
   };
   const app = startOutputApp(config, root, {
     createRenderer: (container: HTMLElement, options: SceneRendererOptions) =>
@@ -426,6 +426,7 @@ describe('output app: status reports', () => {
         droppedFramesPct: null,
         decodedStreams: 0,
         softwareDecodedStreams: 0,
+        audio: { state: 'off', levelDb: null },
       },
     ]);
     hub.emit(HUB.event, productionChanged(101, { broadcast: 'live' }));
@@ -439,6 +440,7 @@ describe('output app: status reports', () => {
       droppedFramesPct: null,
       decodedStreams: 0,
       softwareDecodedStreams: 0,
+      audio: { state: 'off', levelDb: null },
     });
     await flush(REPORT_INTERVAL_MS * 3);
     expect(reports(hub)).toHaveLength(5);
@@ -576,7 +578,7 @@ describe('invalid link page', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const stop = startInvalidLinkPage(
       root,
-      { background: 'transparent', debug: false, latency: false },
+      { background: 'transparent', audio: false, debug: false, latency: false },
       {
         createRenderer: (container, options) => (renderer = new FakeRenderer(container, options)),
         waitForFonts: () => Promise.resolve(),
@@ -596,7 +598,7 @@ describe('invalid link page', () => {
     document.body.append(root);
     const stop = startInvalidLinkPage(
       root,
-      { background: 'black', debug: false, latency: false },
+      { background: 'black', audio: false, debug: false, latency: false },
       {
         waitForFonts: () => Promise.resolve(),
       },
@@ -615,7 +617,7 @@ describe('real renderer in transparent mode', () => {
     document.body.append(root);
     const stop = startInvalidLinkPage(
       root,
-      { background: 'transparent', debug: false, latency: false },
+      { background: 'transparent', audio: false, debug: false, latency: false },
       {
         waitForFonts: () => Promise.resolve(),
       },

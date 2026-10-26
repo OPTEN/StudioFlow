@@ -1,6 +1,7 @@
 import { t } from '@studioflow/i18n';
 import {
   canvasSizeLabel,
+  formatDb,
   formatDecimal,
   formatKbpsAsMbit,
   formatRatioLabel,
@@ -9,9 +10,10 @@ import {
   resolutionLabel,
   type BroadcastState,
   type CanvasDto,
+  type OutputAudioDto,
 } from '@studioflow/scene-model';
 import type { HubState, SyncStatus } from '@studioflow/realtime-client';
-import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
+import type { AudioSourceStats, MediaSessionState, SourceStats } from '@studioflow/media-client';
 
 /**
  * `?debug=1`: a small mono panel top left with what a technician needs at the proxy: production and scene, revision,
@@ -31,6 +33,27 @@ export interface DebugSource {
   readonly stats: SourceStats | null;
 }
 
+/** One channel of the audio mix. */
+export interface DebugAudioChannel {
+  readonly code: string | null;
+  readonly label: string | null;
+  /** The channel is audible in the program right now. */
+  readonly audible: boolean;
+  /** The channel has a sound (a live track or a playing video). */
+  readonly hasSound: boolean;
+  /** Peak of the last ~85 ms before the fader in dBFS, null for silence. */
+  readonly levelDb: number | null;
+  readonly stats: AudioSourceStats | null;
+}
+
+/** The audio mix of the page. */
+export interface DebugAudio {
+  readonly state: OutputAudioDto['state'];
+  /** Peak of the program mix in dBFS, null for silence. */
+  readonly programDb: number | null;
+  readonly channels: readonly DebugAudioChannel[];
+}
+
 /** Everything the panel shows. */
 export interface DebugInfo {
   readonly productionName: string | null;
@@ -48,6 +71,8 @@ export interface DebugInfo {
   readonly sources: readonly DebugSource[];
   /** The build of this page: `0.1.0+1a2b3c4` (src/build-info.ts). */
   readonly version: string;
+  /** The audio mix; null until the page has one. */
+  readonly audio: DebugAudio | null;
 }
 
 function ms(value: number | null | undefined): string {
@@ -78,6 +103,34 @@ function sourceLine(source: DebugSource): string {
     t('output.debug.buffer', { value: ms(stats.jitterBufferDelayMs) }),
     ...(stats.decoder === undefined ? [] : [t(`output.debug.decoder.${stats.decoder}`)]),
     ...(source.availability === 'live' ? [] : [availability]),
+  ].join(' · ');
+}
+
+function dbfs(value: number | null): string {
+  return value === null ? MISSING_VALUE : `${formatDb(value)} dBFS`;
+}
+
+function audioChannelLine(channel: DebugAudioChannel): string {
+  const name =
+    [channel.code, channel.label].filter(Boolean).join(' ') || t('output.debug.sourceFallback');
+  const state = channel.hasSound
+    ? t(
+        channel.audible
+          ? 'output.debug.audioChannelState.audible'
+          : 'output.debug.audioChannelState.silent',
+      )
+    : t('output.debug.audioChannelState.noSound');
+  const line = t('output.debug.audioChannel', { name, level: dbfs(channel.levelDb), state });
+  const stats = channel.stats;
+  if (!stats) {
+    return line;
+  }
+  return [
+    line,
+    t('output.debug.loss', { value: formatPercent(stats.packetLossPct, 1) }),
+    t('output.debug.jitter', { value: ms(stats.jitterMs) }),
+    t('output.debug.buffer', { value: ms(stats.jitterBufferDelayMs) }),
+    stats.codec ?? MISSING_VALUE,
   ].join(' · ');
 }
 
@@ -119,6 +172,17 @@ export function formatDebugLines(info: DebugInfo): string[] {
   }
   for (const source of info.sources) {
     lines.push(sourceLine(source));
+  }
+  if (info.audio) {
+    lines.push(
+      t('output.debug.audio', {
+        state: t(`output.debug.audioState.${info.audio.state}`),
+        level: dbfs(info.audio.programDb),
+      }),
+    );
+    for (const channel of info.audio.channels) {
+      lines.push(audioChannelLine(channel));
+    }
   }
   // Last, so that the lines above keep their place whatever the number of sources.
   lines.push(t('output.debug.version', { version: info.version }));

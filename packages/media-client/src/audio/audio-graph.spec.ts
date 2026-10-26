@@ -413,6 +413,12 @@ describe('AudioGraph', () => {
       expect(levels.program).toBeCloseTo(-20, 1);
     });
 
+    it('reads the program level alone', () => {
+      const { graph, meter } = setup();
+      meter.setPeak(0.5);
+      expect(graph.programLevel()).toBeCloseTo(-6.02, 1);
+    });
+
     it('reads silence for a channel without a sound and for an idle program', () => {
       const { graph } = setup();
       graph.apply(targets({ [VIDEO]: target(1) }), { rampMs: 20 });

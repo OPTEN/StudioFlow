@@ -10,6 +10,7 @@ import { mediaTechcheck } from './media-techcheck';
 import { modelFormat } from './model-format';
 import { modelScene } from './model-scene';
 import { modelStatus } from './model-status';
+import { outputAudio } from './output-audio';
 import { outputClock } from './output-clock';
 import { outputDebug } from './output-debug';
 import { outputSlates } from './output-slates';
@@ -58,6 +59,7 @@ export const deCH: Translation<typeof en> = {
   ...modelFormat,
   ...modelScene,
   ...modelStatus,
+  ...outputAudio,
   ...outputClock,
   ...outputDebug,
   ...outputSlates,

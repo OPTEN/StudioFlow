@@ -32,6 +32,7 @@ export {
 export { ScreenWakeLock, type WakeLockEnvironment } from './wake-lock';
 export {
   ANALYSER_FFT_SIZE,
+  AssetAudioTap,
   AudioGraph,
   SILENCE_DB,
   StreamLevelMeter,
@@ -41,6 +42,7 @@ export {
   rampCurve,
   rampParam,
   type ApplyOptions,
+  type AssetAudioOptions,
   type AudioGraphOptions,
   type AudioGraphState,
   type GraphLevels,
