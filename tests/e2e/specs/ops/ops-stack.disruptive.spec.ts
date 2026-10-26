@@ -114,10 +114,10 @@ test.describe('OPS restart policy and persistence', () => {
 
   test('E2E-OPS-06 [stack] down and up keeps the data: scenes, devices, assets, the admin session, the certificate and the volumes', t.p0, async ({ config, api, production, pairContext }) => {
     test.setTimeout(420_000);
-    const phone = await pairPhone(pairContext, { name: 'Bleibt Da' });
+    const phone = await pairPhone(pairContext, { name: 'Stays Here' });
     const png = makePng(40, 30);
-    const asset = (await api.uploadAsset(production.id, { fileName: 'bleibt.png', contentType: 'image/png', data: png })).body;
-    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Bleibt Erhalten' });
+    const asset = (await api.uploadAsset(production.id, { fileName: 'stays.png', contentType: 'image/png', data: png })).body;
+    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Stays Kept' });
     const snapshot = (await api.getSnapshot(production.id)).body;
     const serial = await certSerial();
     const volumes = (await docker(['volume', 'ls', '--filter', `label=com.docker.compose.project=${PROJECT}`, '--format', '{{.Name}}'], { check: true })).stdout.split(/\r?\n/).filter(Boolean).sort();

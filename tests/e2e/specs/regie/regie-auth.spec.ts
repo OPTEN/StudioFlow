@@ -17,14 +17,14 @@ import { randomClientIp, recordRequests } from '../../support/regie/kit';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-const WRONG = 'Benutzername oder Passwort ist falsch.';
+const WRONG = 'Wrong username or password.';
 /**
  * Failed logins use an unknown user name: failures with the admin's own name also count towards the per-user lock (20 per
  * 15 minutes, spec 5), which would lock the harness out of its own login for a quarter of an hour. The per-address lock
  * (5 failures) counts every name, so the lockout test needs no real one either.
  */
 /** A user name that was never used: the per-user lock counts unknown names as well, across test runs (15 minutes). */
-const strangerName = () => `niemand-${Math.random().toString(36).slice(2, 10)}`;
+const strangerName = () => `nobody-${Math.random().toString(36).slice(2, 10)}`;
 
 async function cookieOf(context: BrowserContext, baseURL: string) {
   return (await context.cookies(baseURL)).find((cookie) => cookie.name === SESSION_COOKIE);
@@ -42,8 +42,8 @@ test.describe('REGIE login and session', () => {
       await page.goto('/');
       await expect(page).toHaveURL(/\/login$/);
       await expect(page.getByRole('heading', { name: /StudioFlow/ })).toBeVisible();
-      await expect(page.getByLabel('Benutzername')).toBeVisible();
-      await expect(page.getByLabel('Passwort')).toHaveAttribute('type', 'password');
+      await expect(page.getByLabel('Username')).toBeVisible();
+      await expect(page.getByLabel('Password')).toHaveAttribute('type', 'password');
       expect(
         await cookieOf(context, config.baseURL),
         'no cookie before signing in',
@@ -90,20 +90,20 @@ test.describe('REGIE login and session', () => {
       expect(
         await regie.submitLoginForm({
           username: config.admin.username,
-          password: 'falsches-Passwort-1',
+          password: 'wrong-password-1',
         }),
       ).toBe(401);
       await expect(regie.loginError()).toHaveText(WRONG);
       await expect(page).toHaveURL(/\/login$/);
       // Unknown user.
       expect(
-        await regie.submitLoginForm({ username: strangerName(), password: 'falsches-Passwort-2' }),
+        await regie.submitLoginForm({ username: strangerName(), password: 'wrong-password-2' }),
       ).toBe(401);
       await expect(regie.loginError(), 'the same text for both cases').toHaveText(WRONG);
       await expect(page.getByRole('alert')).toContainText(WRONG);
-      await expect(page.getByLabel('Passwort'), 'the password is cleared').toHaveValue('');
+      await expect(page.getByLabel('Password'), 'the password is cleared').toHaveValue('');
       await expect(
-        page.getByRole('button', { name: 'Anmelden' }),
+        page.getByRole('button', { name: 'Sign in' }),
         'the form stays usable',
       ).toBeEnabled();
       expect(await cookieOf(context, config.baseURL), 'no session cookie').toBeUndefined();
@@ -112,9 +112,9 @@ test.describe('REGIE login and session', () => {
         page,
         (path, method) => method === 'POST' && path === '/api/auth/login',
       );
-      await page.getByLabel('Benutzername').fill('');
-      await page.getByRole('button', { name: 'Anmelden' }).click();
-      await expect(regie.loginError()).toHaveText('Bitte Benutzername und Passwort eingeben.');
+      await page.getByLabel('Username').fill('');
+      await page.getByRole('button', { name: 'Sign in' }).click();
+      await expect(regie.loginError()).toHaveText('Please enter your username and password.');
       expect(posts).toHaveLength(0);
       expect(regie.problems.pageErrors).toEqual([]);
     },
@@ -135,12 +135,12 @@ test.describe('REGIE login and session', () => {
       expect(
         await regie.submitLoginForm({
           username: strangerName(),
-          password: 'falsches-Passwort-3',
+          password: 'wrong-password-3',
         }),
       ).toBe(401);
       await expect(regie.loginError()).toHaveText(WRONG);
       await expect(
-        regie.page.getByLabel('Passwort'),
+        regie.page.getByLabel('Password'),
         'the password field has the focus again',
       ).toBeFocused({ timeout: 2000 });
     },
@@ -158,17 +158,17 @@ test.describe('REGIE login and session', () => {
       const regie = new RegiePage(await locked.newPage(), config);
       const page = regie.page;
       await page.goto('/login');
-      const stranger = { username: strangerName(), password: 'falsches-Passwort-9' };
+      const stranger = { username: strangerName(), password: 'wrong-password-9' };
       for (let attempt = 1; attempt < LIMITS.loginFailuresPerIp; attempt++) {
         expect(await regie.submitLoginForm(stranger), `failure ${attempt}`).toBe(401);
         await expect(regie.loginError()).toHaveText(WRONG);
       }
       expect(await regie.submitLoginForm(stranger), 'the fifth failure starts the lock').toBe(429);
       await expect(regie.loginError()).toContainText(
-        /Zu viele Fehlversuche\. Bitte in \d+ Minuten? erneut versuchen\./,
+        /Too many failed attempts\. Please try again in \d+ minutes?\./,
       );
-      await expect(regie.loginError()).toContainText(/\d+ Min/);
-      await expect(page.getByRole('button', { name: 'Anmelden' })).toBeDisabled();
+      await expect(regie.loginError()).toContainText(/\d+ minutes?/);
+      await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
       expect(await cookieOf(locked, config.baseURL)).toBeUndefined();
 
       // The right password does not help while the address is locked (REST with the same client address).
@@ -209,8 +209,8 @@ test.describe('REGIE login and session', () => {
         path.startsWith('/hubs/studio/negotiate'),
       );
 
-      await first.page.getByRole('button', { name: /^Produktion .*, Menü$/ }).click();
-      await first.page.getByRole('button', { name: 'Abmelden' }).click();
+      await first.page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      await first.page.getByRole('button', { name: 'Sign out' }).click();
       const loggedOutAt = Date.now();
       await expect(first.page).toHaveURL(/\/login$/);
       expect((await probe.getSession()).status, 'the old cookie is dead on the server').toBe(401);
@@ -234,7 +234,7 @@ test.describe('REGIE login and session', () => {
       await first.page.waitForLoadState('domcontentloaded');
       await expect(first.page).toHaveURL(/\/login/);
       await expect(first.page.locator('sf-studio-page')).toHaveCount(0);
-      await expect(first.page.getByLabel('Benutzername')).toBeVisible();
+      await expect(first.page.getByLabel('Username')).toBeVisible();
       expect(first.problems.pageErrors).toEqual([]);
     },
   );
@@ -292,17 +292,17 @@ test.describe('REGIE login and session', () => {
   );
 
   test(
-    'E2E-AUTH-25 [regie ui] two operators: both stay signed in across a reload, both see «2 in der Regie», closing one brings the other back to one within 8 s',
+    'E2E-AUTH-25 [regie ui] two operators: both stay signed in across a reload, both see “2 in the control room”, closing one brings the other back to one within 8 s',
     t.p2,
     async ({ openRegie }) => {
       const first = await openRegie({ login: 'ui' });
       const second = await openRegie({ login: 'ui' });
       const label = (page: Page) => page.locator('.c-header__presence-label');
       const reader = (page: Page) => page.locator('.c-header__presence .u-sr-only');
-      await expect(label(first.page)).toHaveText('2 in der Regie', { timeout: 8000 });
-      await expect(label(second.page)).toHaveText('2 in der Regie', { timeout: 8000 });
+      await expect(label(first.page)).toHaveText('2 in the control room', { timeout: 8000 });
+      await expect(label(second.page)).toHaveText('2 in the control room', { timeout: 8000 });
       await expect(reader(first.page), 'screen readers get the full sentence').toHaveText(
-        '2 Personen in der Regie',
+        '2 people in the control room',
       );
 
       await first.page.reload();
@@ -311,12 +311,12 @@ test.describe('REGIE login and session', () => {
       await second.waitReady();
       expect(new URL(first.page.url()).pathname).toBe('/');
       expect(new URL(second.page.url()).pathname).toBe('/');
-      await expect(label(first.page)).toHaveText('2 in der Regie', { timeout: 8000 });
+      await expect(label(first.page)).toHaveText('2 in the control room', { timeout: 8000 });
 
       const closed = Date.now();
       await second.page.context().close();
-      await expect(label(first.page)).toHaveText('1 in der Regie', { timeout: 8000 });
-      await expect(reader(first.page)).toHaveText('Eine Person in der Regie');
+      await expect(label(first.page)).toHaveText('1 in the control room', { timeout: 8000 });
+      await expect(reader(first.page)).toHaveText('One person in the control room');
       test.info().annotations.push({
         type: 'measurement',
         description: `presence went back to 1 after ${Date.now() - closed} ms`,
@@ -338,7 +338,7 @@ test.describe('REGIE login and session', () => {
       await context.clearCookies();
       const start = Date.now();
       // An action: switch to another scene.
-      await regie.scene('Präsentation').click();
+      await regie.scene('Presentation').click();
       await expect(page, 'back on the login form within 10 s').toHaveURL(/\/login/, {
         timeout: 10_000,
       });
@@ -352,7 +352,7 @@ test.describe('REGIE login and session', () => {
         'at most 3 refused negotiate attempts',
       ).toBeLessThanOrEqual(3);
       expect(regie.problems.pageErrors, 'no uncaught exception').toEqual([]);
-      await expect(page.getByLabel('Benutzername')).toBeVisible();
+      await expect(page.getByLabel('Username')).toBeVisible();
     },
   );
 });

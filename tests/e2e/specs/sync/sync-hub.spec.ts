@@ -3,7 +3,8 @@ import path from 'node:path';
 import type { ProductionEvent } from '../../../../packages/scene-model/src/contracts';
 import { stateFromSnapshot } from '../../../../packages/scene-model/src/production-state';
 import { DeviceApi, OutputApi, PublicApi, inviteToken } from '../../support/api';
-import { DE, ERROR, LIMITS } from '../../support/constants';
+import { ERROR, LIMITS } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { REPO_ROOT } from '../../support/env';
 import { expect, expectProblem, knownBug, test, uniqueIp } from '../../support/fixtures';
 import { describeEvents, expectConsecutive, openStudio, percentile } from '../../support/helpers';
@@ -25,7 +26,7 @@ test.describe('SYNC studio hub', () => {
     const a = StudioHub.connect(config.baseURL, api.cookie);
     onCleanup(() => a.stop());
     await a.start();
-    // Unknown production: a HubException with the German error code prefix.
+    // Unknown production: a HubException with the error code prefix.
     await expect(a.subscribe('prd_aaaaaaaaaaaaaaaa')).rejects.toThrow(/not_found/);
     await expect(a.subscribe('not-a-production')).rejects.toThrow(/not_found|validation_failed/);
     const changes = await a.subscribe(production.id);
@@ -153,11 +154,11 @@ test.describe('SYNC studio hub', () => {
   test('INT-SYNC-05 [stack] telemetry is relayed at most every 2 s per device, is not revisioned and never crosses productions', t.p2, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(60_000);
     const { hub, revision } = await openStudio(config.baseURL, api, production, onCleanup);
-    const busy = await pairPhone(pairContext, { name: 'Telemetrie' });
-    const idle = await pairPhone(pairContext, { name: 'Ruhig' });
+    const busy = await pairPhone(pairContext, { name: 'Telemetry' });
+    const idle = await pairPhone(pairContext, { name: 'Quiet' });
     const foreign = await createProduction(api, 'INT-SYNC-05-other');
     const foreignContext = { production: foreign, stack };
-    const foreignPhone = await pairPhone(foreignContext, { name: 'Fremd' });
+    const foreignPhone = await pairPhone(foreignContext, { name: 'Foreign' });
     const hubs = [busy, idle, foreignPhone].map((device) => DeviceHub.connect(stack.anonymousBase, device.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} }));
     for (const device of hubs) onCleanup(() => device.stop());
     for (const device of hubs) await device.open();
@@ -188,7 +189,7 @@ test.describe('SYNC studio hub', () => {
     knownBug('BUG-19', 'every device report is relayed to the Regie as a telemetry message at once (92 messages in 10 s for 10 reports/s); spec 6 and INT-SYNC-05/INT-SRC-03 pin at most one per 2 s per device');
     test.setTimeout(60_000);
     const { hub } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Telemetrie' });
+    const phone = await pairPhone(pairContext, { name: 'Telemetry' });
     const device = DeviceHub.connect(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
     onCleanup(() => device.stop());
     await device.open();
@@ -295,7 +296,7 @@ test.describe('SYNC output hub', () => {
     expect(snapshotJson).not.toMatch(/"(devices|incidents|pairingRequests|invites|recentLog|outputStatus|operatorsOnline)"/);
     const studioFrom = studio.received.length;
 
-    const privateNames = ['Geheimes Handy', 'Knock Laptop Name', 'Platform-Secret-Text'];
+    const privateNames = ['Secret Phone', 'Knock Laptop Name', 'Platform-Secret-Text'];
     // 1. pairing a device (deviceUpserted, sourceUpserted, inviteRemoved/Upserted, logAppended)
     const phone = await pairPhone(pairContext, { name: privateNames[0], platform: privateNames[2] });
     // 2. knock request (pairingRequestUpserted / Removed)
@@ -316,10 +317,10 @@ test.describe('SYNC output hub', () => {
     // 5. public events: scene, asset, program switch, slate
     const scene = production.sceneIds[0]!;
     const next = production.sceneIds[1]!;
-    await api.updateScene(production.id, scene, { name: 'Szene Output' });
+    await api.updateScene(production.id, scene, { name: 'Scene Output' });
     const asset = (await api.uploadAsset(production.id, { fileName: 'out.png', contentType: 'image/png', data: makePng(1, 1) })).body;
     await api.switchProgram(production.id, { sceneId: next, transition: { kind: 'cut', durationMs: 0 } });
-    await api.updateProduction(production.id, { standbySlate: { title: 'Slate Titel', subtitle: 'Untertitel', backgroundAssetId: asset.id } });
+    await api.updateProduction(production.id, { standbySlate: { title: 'Slate Title', subtitle: 'Subtitle', backgroundAssetId: asset.id } });
     await api.startBroadcast(production.id);
     await sleep(500);
 
@@ -346,7 +347,7 @@ test.describe('SYNC output hub', () => {
     // Never any private text in anything the output received.
     const wire = JSON.stringify(outEvents);
     const cleaned = JSON.stringify(JSON.parse(wire, (key, value) => (key === 'label' ? undefined : value)));
-    for (const secret of [privateNames[1], privateNames[2], link.url, inviteToken(link.url), 'inc_', 'gekoppelt', 'abgelehnt', 'verbindet neu', 'Handy', DE.log.paired('K1', privateNames[0]!)]) {
+    for (const secret of [privateNames[1], privateNames[2], link.url, inviteToken(link.url), 'inc_', 'paired', 'denied', 'reconnecting', 'Phone', TEXT.log.paired('K1', privateNames[0]!)]) {
       expect(cleaned.toLowerCase(), `no ${secret} in output events`).not.toContain(secret.toLowerCase());
     }
     expect(wire).not.toMatch(/"(deviceSecret|pollToken|checkCode|platform|batteryPct)"/);
@@ -362,7 +363,7 @@ test.describe('SYNC output hub', () => {
     onCleanup(() => again.stop());
     const delta = await again.open(opened.revision);
     expect(delta.snapshot).toBeNull();
-    expect(JSON.stringify(delta.events).includes('gekoppelt')).toBe(false);
+    expect(JSON.stringify(delta.events).includes('paired')).toBe(false);
     const lastSeen = outEvents.at(-1)!.revision;
     expect(delta.events!.filter((event) => event.revision <= lastSeen).map((event) => event.revision)).toEqual(outEvents.map((event) => event.revision));
   });
@@ -373,15 +374,15 @@ test.describe('SYNC output hub', () => {
     const opened = await output.open();
     const other = await createProduction(api, 'INT-SYNC-02-other');
     onCleanup(() => api.activateProduction(production.id));
-    await api.updateScene(other.id, other.sceneIds[0]!, { name: 'Fremde Szene' });
+    await api.updateScene(other.id, other.sceneIds[0]!, { name: 'Foreign Scene' });
     await api.switchProgram(other.id, { sceneId: other.sceneIds[1]!, transition: { kind: 'cut', durationMs: 0 } });
     await sleep(500);
-    const foreign = output.events().filter((event) => JSON.stringify(event).includes(other.id) || JSON.stringify(event).includes('Fremde Szene'));
+    const foreign = output.events().filter((event) => JSON.stringify(event).includes(other.id) || JSON.stringify(event).includes('Foreign Scene'));
     expect(foreign, 'nothing from the other production').toEqual([]);
     // Our own production only reports that it is no longer the active one (productionChanged); no scene or switch events.
     expect(output.events().filter((event) => event.type !== 'productionChanged' && event.type !== 'revisionOnly')).toEqual([]);
-    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Eigene Szene' });
-    await output.waitForEvent('sceneUpserted', (event) => event.scene.name === 'Eigene Szene');
+    await api.updateScene(production.id, production.sceneIds[0]!, { name: 'Own Scene' });
+    await output.waitForEvent('sceneUpserted', (event) => event.scene.name === 'Own Scene');
     expect(output.events().every((event) => event.revision > opened.revision)).toBe(true);
   });
 });

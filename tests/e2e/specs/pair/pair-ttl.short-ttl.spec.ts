@@ -53,7 +53,7 @@ test.describe('PAIR short-TTL', () => {
   test('E2E-PAIR-06 [api] approving a request after it expired creates no device', t.shortTtl(), async ({ api, production, stack }) => {
     test.skip(!support.request, `GAP-01: Pairing:RequestTtl is not read by the API (a request lives ${support.observed.request} s)`);
     const publicApi = new PublicApi(stack.anonymousBase, stack.forwardedForWorks ? uniqueIp() : undefined);
-    const knock = await publicApi.createPairingRequest({ name: 'Laptop Spaet', kind: 'laptop', platform: 'Windows · Edge' });
+    const knock = await publicApi.createPairingRequest({ name: 'Laptop Late', kind: 'laptop', platform: 'Windows · Edge' });
     production.pendingRequests.push({ requestId: knock.body.requestId, pollToken: knock.body.pollToken });
     const wait = new Date(knock.body.expiresAt).getTime() - Date.now() + 1500;
     await sleep(wait);

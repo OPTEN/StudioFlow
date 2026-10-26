@@ -1,7 +1,0 @@
-[
-  {
-    "path": "docs/i18n-e2e-notes/p1.md",
-    "rules": "all",
-    "reason": "Maps the old German UI texts to the new English ones for the E2E conversion (P7)."
-  }
-]

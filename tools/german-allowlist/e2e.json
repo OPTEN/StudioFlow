@@ -1,0 +1,17 @@
+[
+  {
+    "path": "tests/e2e/specs/i18n/**",
+    "rules": "all",
+    "reason": "The i18n project runs the product in de-CH and asserts the German texts (D12)."
+  },
+  {
+    "path": "tests/e2e/support/text.de.ts",
+    "rules": "all",
+    "reason": "German literals for the i18n project (D12)."
+  },
+  {
+    "path": "tests/e2e/support/a11y/german.ts",
+    "rules": "all",
+    "reason": "The rules of the German text audit name the German typography and the agreed German terms."
+  }
+]

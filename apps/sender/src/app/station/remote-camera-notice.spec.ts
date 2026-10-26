@@ -62,13 +62,4 @@ describe('remote camera notice', () => {
     expect(remoteCameraNotice({ ...NOTHING, torch: true }, state(1))).toEqual({ kind: 'adjusted' });
     expect(remoteCameraNotice({ ...NOTHING, zoom: 2 }, null)).toEqual({ kind: 'adjusted' });
   });
-
-  it('speaks Swiss German', () => {
-    resetLocaleForTests('de-CH');
-
-    expect(remoteCameraNoticeText({ kind: 'zoom', zoom: 1.5 })).toBe('Die Regie hat gezoomt: 1,5×');
-    expect(remoteCameraNoticeText({ kind: 'reset' })).toBe(
-      'Die Regie hat die Kamera auf automatisch zurückgestellt',
-    );
-  });
 });

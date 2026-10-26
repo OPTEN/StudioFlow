@@ -1,4 +1,4 @@
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { expect, test } from '../../support/ui/fixtures';
 import { openProbedOutput, waitForReportedPicture } from '../../support/output/open';
 import { recordMeasurement, summarize, fmt } from '../../support/output/stats';
@@ -14,7 +14,7 @@ import { t } from '../../support/tags';
 
 test.describe('OUT basics', () => {
   test(
-    "E2E-OUT-01 [output] standby: slate «Gleich geht's los» with the production name, nothing else on the page, de-CH, own origin only, fast",
+    'E2E-OUT-01 [output] standby: slate “Starting soon” with the production name, nothing else on the page, lang en, own origin only, fast',
     t.smoke,
     async ({ browser, production, config, onCleanup }) => {
       const loads: Array<{ slateMs: number; loadMs: number; domContentMs: number }> = [];
@@ -27,7 +27,7 @@ test.describe('OUT basics', () => {
         const page = opened.output.page;
         await expect
           .poll(() => page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 })
-          .toContain(DE.slateStandby);
+          .toContain(TEXT.slate.standby);
         const timing = await page.evaluate(() => {
           const probe = (window as unknown as { __outProbe?: { events: Array<{ t: number; type: string }> } }).__outProbe;
           const slate = probe?.events.find((event) => event.type === 'slate+');
@@ -62,10 +62,10 @@ test.describe('OUT basics', () => {
         subtitle: document.querySelector('.sf-r-slate-subtitle')?.textContent,
         videos: document.querySelectorAll('video').length,
       }));
-      expect(facts.lang).toBe('de-CH');
-      expect(facts.title).toBe(DE.slateStandby);
+      expect(facts.lang).toBe('en');
+      expect(facts.title).toBe(TEXT.slate.standby);
       expect(facts.subtitle, 'the subtitle is the production name').toBe(production.name);
-      expect(facts.text, 'no other text than the slate').toBe(`${DE.slateStandby} ${production.name}`);
+      expect(facts.text, 'no other text than the slate').toBe(`${TEXT.slate.standby} ${production.name}`);
       expect(facts.interactive, 'no controls, links or inputs').toBe(0);
       expect(facts.videos).toBe(0);
       expect(await probe.standbySeen()).toBe(true);
@@ -89,8 +89,8 @@ test.describe('OUT basics', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const camera = await addCamera(deps, 'Kamera Eins');
-      const screens = await addScreens(deps, 'Laptop Eins', 1);
+      const camera = await addCamera(deps, 'Camera One');
+      const screens = await addScreens(deps, 'Laptop One', 1);
       const scene = production.sceneIds[0]!;
       const geometry = {
         camera: { x: 120, y: 90, w: 960, h: 540 },

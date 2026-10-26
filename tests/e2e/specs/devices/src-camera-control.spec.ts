@@ -31,7 +31,7 @@ test.describe('SRC camera control', () => {
     t.p1,
     async ({ regie, openPhone, pairContext }) => {
       test.setTimeout(120_000);
-      const { row } = await livePhone({ openPhone }, pairContext, regie, 'Handy ohne Regler', { init: (context) => installCameraStub(context, BARE_CAMERA) });
+      const { row } = await livePhone({ openPhone }, pairContext, regie, 'Phone without controls', { init: (context) => installCameraStub(context, BARE_CAMERA) });
       const panel = await openPanel(row);
 
       await expect(panel.getByTestId('camera-status')).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('SRC camera control', () => {
     t.p0,
     async ({ regie, api, production, openPhone, pairContext }) => {
       test.setTimeout(120_000);
-      const { phone, device, row } = await livePhone({ openPhone }, pairContext, regie, 'Handy Zoom', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
+      const { phone, device, row } = await livePhone({ openPhone }, pairContext, regie, 'Phone Zoom', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
       const panel = await openPanel(row);
       await expect(panel.getByTestId('camera-zoom')).toBeVisible({ timeout: 15_000 });
       await expect(panel.getByTestId('camera-zoom')).toHaveAttribute('min', '1');
@@ -54,19 +54,19 @@ test.describe('SRC camera control', () => {
 
       await panel.getByTestId('camera-zoom').fill('3');
       await expect.poll(async () => (await readCamera(phone.page)).zoom, { message: 'the camera zoomed', timeout: 15_000 }).toBeCloseTo(3, 5);
-      await expect(shown(panel, 'zoom')).toHaveText(/^3[.,]0×$/, { timeout: 15_000 });
+      await expect(shown(panel, 'zoom')).toHaveText(/^3.0×$/, { timeout: 15_000 });
       await expect(phone.page.getByTestId('remote-camera-notice')).not.toBeEmpty();
 
       await panel.getByTestId('camera-brightness').fill('1');
       await expect.poll(async () => (await readCamera(phone.page)).exposureCompensation, { timeout: 15_000 }).toBeCloseTo(1, 5);
-      await expect(shown(panel, 'brightness')).toHaveText(/^\+1[.,]0 EV$/, { timeout: 15_000 });
+      await expect(shown(panel, 'brightness')).toHaveText(/^\+1.0 EV$/, { timeout: 15_000 });
 
       // A value beyond the range is clamped by the API to what the phone reported; the camera really has the clamped value.
       const clamped = await api.sendDeviceCommand(production.id, device.id, { kind: 'cameraControl', slot: 'camera', text: null, camera: { v: 1, lensId: null, zoom: 20, focusMode: null, focusDistance: null, exposureCompensation: null, torch: null, reset: null } });
       expect(clamped.status).toBe(202);
       expect(clamped.body.camera?.zoom).toBe(8);
       await expect.poll(async () => (await readCamera(phone.page)).zoom, { timeout: 15_000 }).toBeCloseTo(8, 5);
-      await expect(shown(panel, 'zoom')).toHaveText(/^8[.,]0×$/, { timeout: 15_000 });
+      await expect(shown(panel, 'zoom')).toHaveText(/^8.0×$/, { timeout: 15_000 });
 
       // A control the phone does not report, a lens it does not have and a wrong version are refused (400).
       const none = { v: 1, lensId: null, zoom: null, focusMode: null, focusDistance: null, exposureCompensation: null, torch: null, reset: null };
@@ -82,7 +82,7 @@ test.describe('SRC camera control', () => {
     t.p0,
     async ({ regie, api, production, openPhone, pairContext }) => {
       test.setTimeout(150_000);
-      const { phone, sourceId, row } = await livePhone({ openPhone }, pairContext, regie, 'Handy Objektiv', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
+      const { phone, sourceId, row } = await livePhone({ openPhone }, pairContext, regie, 'Phone Lens', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
       await putInScene(api, production, 0, sourceId, FULL);
       const panel = await openPanel(row);
       const wide = panel.locator('[data-testid=camera-lens][data-lens=cam-wide]');
@@ -106,7 +106,7 @@ test.describe('SRC camera control', () => {
       expect((await readCamera(phone.page)).captures).toBe(capturesBefore + 1);
       // The source never left the air: the slot is live again, and zoom starts at 1× on the other lens.
       await phone.waitForCamera('live', 20_000);
-      await expect(shown(panel, 'zoom')).toHaveText(/^1[.,]0×$/, { timeout: 15_000 });
+      await expect(shown(panel, 'zoom')).toHaveText(/^1.0×$/, { timeout: 15_000 });
     },
   );
 
@@ -115,7 +115,7 @@ test.describe('SRC camera control', () => {
     t.p1,
     async ({ regie, openPhone, pairContext }) => {
       test.setTimeout(120_000);
-      const { phone, row } = await livePhone({ openPhone }, pairContext, regie, 'Handy Licht', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
+      const { phone, row } = await livePhone({ openPhone }, pairContext, regie, 'Phone Light', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
       const panel = await openPanel(row);
       await expect(panel.getByTestId('camera-torch-on')).toBeVisible({ timeout: 15_000 });
       await refuseConstraints(phone.page, ['torch']);
@@ -147,7 +147,7 @@ test.describe('SRC camera control', () => {
     t.p1,
     async ({ regie, openPhone, pairContext }) => {
       test.setTimeout(150_000);
-      const { phone, row } = await livePhone({ openPhone }, pairContext, regie, 'Handy Neustart', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
+      const { phone, row } = await livePhone({ openPhone }, pairContext, regie, 'Phone Restart', { init: (context) => installCameraStub(context, ANDROID_CAMERA) });
       const panel = await openPanel(row);
       const wide = panel.locator('[data-testid=camera-lens][data-lens=cam-wide]');
       await expect(wide).toBeVisible({ timeout: 15_000 });
@@ -160,7 +160,7 @@ test.describe('SRC camera control', () => {
       await phone.page.reload();
       await phone.waitConnected();
       await expect.poll(async () => await readCamera(phone.page), { message: 'the camera came back as it was', timeout: 30_000 }).toMatchObject({ deviceId: 'cam-wide', zoom: 2.5, exposureCompensation: -1 });
-      await expect(shown(panel, 'zoom')).toHaveText(/^2[.,]5×$/, { timeout: 20_000 });
+      await expect(shown(panel, 'zoom')).toHaveText(/^2.5×$/, { timeout: 20_000 });
       await expect(wide).toHaveAttribute('aria-pressed', 'true');
     },
   );

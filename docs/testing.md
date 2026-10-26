@@ -2,8 +2,8 @@
 
 Authoritative, concrete test plan for StudioFlow. Later test agents implement the tests exactly as written here.
 Source of truth for behaviour: `docs/architecture/implementation-spec.md` (binding), `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs`
-and `apps/api/src/Opten.StudioFlow.Core/Contracts/*.cs` (wire contract), `plan/StudioFlow Architekturplan.html` (sections 4–7),
-`DESIGN.md` (responsive rules, outage language), `prototype/regie.html` (Regie behaviour and German strings).
+and `apps/api/src/Opten.StudioFlow.Core/Contracts/*.cs` (wire contract), `docs/history/FlowStudio Architekturplan.html` (sections 4–7),
+`DESIGN.md` (responsive rules, outage language), `prototype/regie.html` (Regie behaviour and UI texts).
 Where the sources are silent or contradict each other, this plan **pins** an interpretation and marks it `[GAP-nn]`; all gaps are listed in
 section 7 and must be resolved by the implementers (fix the code to the pinned value, or change the pin here deliberately).
 
@@ -11,9 +11,10 @@ Status: version 1, written 2026-10-22 against `docs/architecture/implementation-
 Where the working tree already fixes a name or behaviour that is consistent with the spec, this plan follows it; where it deviates from the spec, the deviation is listed as a gap in section 7.
 Version 2 (2026-10-22, after the first full E2E run): aligned with implementation-spec 4.3, 4.5 and 12 and with the findings of `tests/e2e/known-bugs.json` (DOC-01 … DOC-07,
 BUG-05/08/10/16/18/19/20/21/22, OBS-01; summary in 7.2): paused/ended semantics, template z-order, 5 s hub timeout, LiveKit token TTL 10 min, crash method and healthcheck method under Docker 29,
-storage keys and opt-in test hooks as implemented, the final German texts reported by the implementers (GAP-27).
-Language: this document is English. UI strings are quoted in German (CH) exactly as the spec or prototype has them (`«ss»` instead of `«ß»`, `« »`,
-decimal comma, 24 h clock). A string the spec does not define is written as a regular expression or a `data-testid` and listed in GAP-27.
+storage keys and opt-in test hooks as implemented, the final UI texts reported by the implementers (GAP-27).
+Language: this document is English. UI strings are quoted as the English UI text in curly quotes (“Take”, “Scene A”, “0.3 s”, “2.8 Mbit/s”); the German text of any string is in
+`packages/i18n/src/messages/de-CH/`. The E2E suite runs in `en-US` plus a small `de-CH` project (`tests/e2e/specs/i18n`, decision D12 in `docs/decisions.md`, tests in 2.14).
+A string the spec does not define is written as a regular expression or a `data-testid` and listed in GAP-27.
 
 Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Browser and device matrix · 4 Manual tests · 5 Acceptance thresholds ·
 6 Execution, tags and reporting · 7 Spec gaps and pinned decisions.
@@ -32,7 +33,7 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
 `OUT` output page · `NET` resilience and network · `DEV` devices, viewports, accessibility · `DOCK` dock layout and persistence · `MEDIA` assets · `OPS` operations ·
-`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log.
+`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log · `I18N` language and formats.
 
 Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1** must pass before a release (nightly full run); **P2** robustness and polish
 (weekly or on demand, a failure is a defect but not a blocker).
@@ -46,16 +47,16 @@ Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1
 - Expect: observable results (UI text, API status/body, event sequence, video playing, tally colour, timing against a threshold T-…)
 ```
 
-Expected values quoted in `«…»` are literal German UI strings. `T-…` refers to section 5; the constants of the spec (limits, windows, durations, timeouts) are asserted exactly (`T-LIMITS`). `[GAP-nn]` refers to section 7. A test that depends on a
+Expected values quoted in `“…”` are literal UI strings: the English text of the catalogue `packages/i18n/src/messages/en/` (the German text of the same string is in `packages/i18n/src/messages/de-CH/` and is asserted only by the `i18n` project, see 2.14). `T-…` refers to section 5; the constants of the spec (limits, windows, durations, timeouts) are asserted exactly (`T-LIMITS`). `[GAP-nn]` refers to section 7. A test that depends on a
 hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in 1.7.
 
 ### 0.3 Common terms
 
 - **Error codes** (`ProblemDetails.code`, `ErrorCodes.cs`): `validation_failed` (400), `unauthorized` (401), `forbidden` (403, also `device_blocked`), `not_found` (404), `conflict`, `transition_running`, `broadcast_live`, `scene_is_live`, `asset_in_use`, `limit_reached` (409), `pairing_expired` (410), `unsupported_media` (415), `rate_limited` (429), `internal_error` (500).
 
-- **Station**: one device slot source as listed in the Stationen dock (K1, S1, …), identified by its slot code.
-- **Six places** (outage language, DESIGN.md): header health chip, message strip, monitor element (Program/Preview), scene list row, Quellen dock row,
-  Stationen dock row. A helper `regie.expectOutage(code, kind)` asserts all six (1.5).
+- **Station**: one device slot source as listed in the Stations dock (K1, S1, …), identified by its slot code.
+- **Six places** (outage language, DESIGN.md): header health chip, message strip, monitor element (Program/Preview), scene list row, Sources dock row,
+  Stations dock row. A helper `regie.expectOutage(code, kind)` asserts all six (1.5).
 - **Fake camera / fake screen**: a source produced by the Chromium fake device flags or the timecode canvas override (1.3).
 - **Short-TTL profile**: the stack started with the overrides of 1.2.6 (invite 20 s, request 20 s, credentials window 15 s, empty room 10 s, token TTL 60 s).
 
@@ -146,7 +147,7 @@ used outside tests; the production checks (E2E-OPS-02) assert that `setup.sh` ne
 - **One stack per run** (per CI shard). `workers: 1`, `fullyParallel: false`: the *active production* is global (`/join` pairs into it, spec 4.6), so two tests that
   pair by code or open the Regie cannot run concurrently in one stack. CI scales by sharding over runners (`--shard=i/n`), each runner with its own stack.
 - **Per test**: fixture `production` creates `POST /api/productions {name: "e2e <testId> <rand6>"}` (unique slug), activates it, and seeds the scenes the test asks for
-  (`production.seed({ scenes: ['Szene A','Szene B','Szene C'] })` renames the three default scenes «Begrüssung», «Präsentation», «Pause» that every created production gets, and adds more on request [GAP-02]). `production.id`, `production.slug`, `production.outputKey`
+  (`production.seed({ scenes: ['Scene A','Scene B','Scene C'] })` renames the three default scenes “Welcome”, “Presentation”, “Break” that every created production gets, and adds more on request [GAP-02]). `production.id`, `production.slug`, `production.outputKey`
   (from `GET …/output`) are available.
 - **After each test** (auto fixture): `POST …/broadcast/reset`; delete every device the test created (`DELETE …/devices/{id}` kicks the sender); close all contexts;
   restore `allowedIps` to `[]`; if the test was `@disruptive`, `stack.ensureHealthy()` (waits until all four containers are healthy, `/health/ready` is 200 and the admin login works).
@@ -192,7 +193,7 @@ interface OutputView { page: Page; frame: FrameLocator | null; sceneId(): Promis
   startScreencast(): Promise<Screencast>; }
 ```
 
-`pairPhone(via:'ui')` opens the phone invite URL in a fresh context (device descriptor + fake media args) and waits for «Verbunden»; `via:'api'` redeems through REST and writes the
+`pairPhone(via:'ui')` opens the phone invite URL in a fresh context (device descriptor + fake media args) and waits for “Connected”; `via:'api'` redeems through REST and writes the
 credentials to localStorage key `studioflow.sender.v1` (fast path for tests that are not about pairing). `pairLaptop` is analogous (`code`: `/join` form + approval through the
 admin API; `link`: `/j/{token}`).
 
@@ -218,7 +219,7 @@ Optional: `--use-file-for-fake-video-capture=tests/e2e/assets/camera.y4m` (gener
 for a deterministic camera picture. Never pass `--autoplay-policy=no-user-gesture-required` (it would hide autoplay defects of the output page).
 
 **Fake screen share.** `E2E_SCREEN_MODE=tab` (default on Chromium): `clock.open()` opens a tab titled `StudioFlow Timecode` in the same browser; the sender's `getDisplayMedia()` captures it.
-Closing that tab ends the capture and fires `ended` on the track (this is the automatable equivalent of the browser's «Stop sharing» button, `laptop.endShare(n)`).
+Closing that tab ends the capture and fires `ended` on the track (this is the automatable equivalent of the browser's “Stop sharing” button, `laptop.endShare(n)`).
 Fallbacks if the flag misbehaves in a Chromium version: `--auto-accept-this-tab-capture` (shares the sender tab itself), or `E2E_SCREEN_MODE=canvas` (init script replaces
 `navigator.mediaDevices.getDisplayMedia` with a `canvas.captureStream(30)` of the timecode canvas; `endShare` then calls `track.stop()` and dispatches `ended` manually). `canvas` mode is
 the only mode on Firefox and WebKit. The first harness test `E2E-NET-00` verifies the mode in use.
@@ -251,6 +252,7 @@ projects run the **UI-only subset** (pairing forms, redeem, layout, tally render
 | `ipad` | `devices['iPad (gen 7)']` landscape and portrait (WebKit) | sender kind detection, layout |
 | `regie-1280x720`, `regie-1440x900`, `regie-1920x1080`, `regie-1180`, `regie-900`, `regie-390x844` | Chromium with fixed viewport | responsive Regie tests (`E2E-DEV-01…06`) |
 | `small-320` | 320×568, touch, Chromium | sender at the narrowest width |
+| `i18n` | Chromium with `locale: 'de-CH'` | `specs/i18n` (2.17: the tests set the browser language they need), the German rules audit of `E2E-DEV-17`, files `*.de.spec.ts` |
 | `short-ttl`, `disruptive`, `soak` | Chromium | see 1.2.4 |
 
 ```ts
@@ -260,13 +262,13 @@ export default defineConfig({
   timeout: 60_000, expect: { timeout: 10_000 }, fullyParallel: false, workers: 1, retries: process.env.CI ? 1 : 0,
   globalSetup: './global-setup.ts', globalTeardown: './global-teardown.ts',
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'results/html' }], ['junit', { outputFile: 'results/junit.xml' }]],
-  use: { baseURL: process.env.E2E_BASE_URL ?? 'https://localhost', ignoreHTTPSErrors: true, locale: 'de-CH', timezoneId: 'Europe/Zurich',
+  use: { baseURL: process.env.E2E_BASE_URL ?? 'https://localhost', ignoreHTTPSErrors: true, locale: 'en-US', timezoneId: 'Europe/Zurich',
          trace: 'retain-on-failure', video: 'retain-on-failure', screenshot: 'only-on-failure', actionTimeout: 15_000 },
   projects: [ /* smoke -> main -> short-ttl -> disruptive (dependency chain), soak (manual), plus the device/viewport projects above */ ],
 });
 ```
 
-All projects set `locale: 'de-CH'`, `timezoneId: 'Europe/Zurich'`, `ignoreHTTPSErrors: true`, `permissions: ['clipboard-read','clipboard-write']` (Chromium), trace/video/screenshot `retain-on-failure`.
+All projects set `locale: 'en-US'` (only the `i18n` project sets `locale: 'de-CH'`), `timezoneId: 'Europe/Zurich'`, `ignoreHTTPSErrors: true`, `permissions: ['clipboard-read','clipboard-write']` (Chromium), trace/video/screenshot `retain-on-failure`.
 
 ### 1.5 Waiting, pixels and page objects
 
@@ -322,12 +324,12 @@ when the app starts (Regie: when the production store is created; sender: when t
 getters read the live state; assignments throw in strict mode; they live as long as the page (removed when the Angular service is destroyed; after a sign-out `__sfStudio` reports `revision: null`, `hub: 'idle'`). No other global debug object exists in a
 production build except the output page's `?latency=1` aid (`window.__studioflowLatency`).
 
-**Regie** (`apps/studio`): the roles/names of the prototype are the contract (`Studio-Modus` switch (`role=switch`), group `Art des Übergangs` with `Schnitt`/`Blende`, group `Dauer der Blende` with
-`Blende kürzer`/`Blende länger`, `Take` with `aria-keyshortcuts="Space"`, scene buttons `<name>[, live im Program][, in der Preview][, K2 gestört]` with `aria-pressed`, `Docks und Layout`, `Gerät koppeln`,
-grips `Dock <Titel> verschieben, mit Pfeiltasten`, separators `Höhe der Docks unten` / `Breite der Docks links|rechts` / `Grösse von A und B` / `Grösse von Preview und Program`, station rows with `aria-expanded` and
-`<code> <name>[, im Program|in der Preview][, <Zustand>]`, canvases `role=img` `Program-Monitor: <Szene>, entspricht dem Output`, toast `role=status`). Additionally:
+**Regie** (`apps/studio`): the roles/names of the prototype are the contract (`Studio Mode` switch (`role=switch`), group `Transition type` with `Cut`/`Fade`, group `Fade duration` with
+`Shorter fade`/`Longer fade`, `Take` with `aria-keyshortcuts="Space"`, scene buttons `<name>[, live on Program][, in Preview][, K2 disrupted]` with `aria-pressed`, `Docks and layout`, `Pair device`,
+grips `Move dock <title> with the arrow keys`, separators `Height of the docks at the bottom` / `Width of the docks on the left|on the right` / `Size of A and B` / `Size of Preview and Program`, station rows with `aria-expanded` and
+`<code> <name>[, on Program|in Preview][, <state>]`, canvases `role=img` `Program monitor: <scene>, matches the output`, toast `role=status`). Additionally:
 `[data-testid=regie-ready]` (set after the first snapshot), `[data-testid=connection-state][data-state=connected|reconnecting|disconnected]` (hub state, visible indicator), `[data-testid=toast]`,
-`[data-scene-id]` on scene buttons, `[data-code]` on station rows, `[data-item-id]` on Quellen rows and overlay boxes, `[data-testid=monitor-program|monitor-preview]`, `[data-testid=overlay]`.
+`[data-scene-id]` on scene buttons, `[data-code]` on station rows, `[data-item-id]` on Sources rows and overlay boxes, `[data-testid=monitor-program|monitor-preview]`, `[data-testid=overlay]`.
 `window.__sfStudio = { revision: number|null, lastSync: 'delta'|'snapshot'|null, hub: 'idle'|'connecting'|'connected'|'reconnecting'|'unauthorized'|'stopped' }` (read-only, opt-in; `revision` null before the first snapshot, `lastSync` = kind of the last `Subscribe` answer).
 
 **Sender** (`apps/sender`): `[data-testid=tally][data-tally=program|preview|off]`, `[data-testid=connection-state][data-state=connected|reconnecting|blocked|replaced]`,
@@ -358,8 +360,8 @@ Every E2E test title starts with its ID. Timing tests attach their samples as JS
 
 ## 2. Test catalogue
 
-Counts per area and level are in 2.0 (generated from this file). Unless a test says otherwise, E2E tests run in the `chromium-desktop` project with the `production`
-fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) and a logged-in `adminPage`.
+Counts per area and level are in 2.0 (generated from this file). Unless a test says otherwise, E2E tests run in the `chromium-desktop` project (browser language `en-US`) with the `production`
+fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) and a logged-in `adminPage`.
 
 ### 2.0 Summary
 
@@ -383,10 +385,12 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `AUDIT` Audit log | 6 | 7 | 4 | 17 | 10 | 7 | 0 |
 | `LINK` Output links and the camera | 5 | 4 | 3 | 12 | 9 | 2 | 1 |
 | `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
-| **Total** | **111** | **111** | **264** | **486** | **214** | **210** | **62** |
+| `I18N` Language and formats | 0 | 0 | 13 | 13 | 0 | 13 | 0 |
+| **Total** | **111** | **111** | **277** | **499** | **214** | **223** | **62** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats)
+
 
 ### 2.1 AUTH – Auth and security
 
@@ -407,7 +411,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 | `/openapi/**` | not mapped in Production | 404 |
 
 **UNIT-AUTH-01** · P0 · xunit — Password hash verification
-- Steps: hash `"s3cret-Pass"` with `AdminPasswordHasher` (Identity v3); verify correct, wrong, empty, 10 kB password, unicode password (`"Pässwörd-ü"`), hash with wrong version byte, truncated hash, non-base64 hash.
+- Steps: hash `"s3cret-Pass"` with `AdminPasswordHasher` (Identity v3); verify correct, wrong, empty, 10 kB password, unicode password (`"P\u00e4ssw\u00f6rd-\u00fc"`), hash with wrong version byte, truncated hash, non-base64 hash.
 - Expect: only the correct password succeeds; malformed hashes return failure without throwing; a hash starts with `AQAAAA` and two hashes of the same password differ.
 
 **UNIT-AUTH-02** · P0 · xunit — Account state and password rules [GAP-23]
@@ -524,7 +528,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **INT-AUTH-18** · P1 · xunit — Allowed IP list validation and effect
 - Steps: `PUT …/output/access` with valid/invalid entries (`999.1.1.1`, `10.0.0.0/33`, `abc`, empty string, duplicates, 51 entries); change the list while an output hub is connected from an IP that is no longer allowed.
-- Expect: invalid or more than 50 rules → 400 `validation_failed` with the offending index in `errors`; valid → 200, canonical entries returned, audit `output.access.changed` (log «Output-Zugriff geändert»); the now-forbidden connection is closed within 2 s [GAP-06].
+- Expect: invalid or more than 50 rules → 400 `validation_failed` with the offending index in `errors`; valid → 200, canonical entries returned, audit `output.access.changed` (log “Output access changed”); the now-forbidden connection is closed within 2 s [GAP-06].
 
 **INT-AUTH-19** · P0 · xunit — Path traversal in ids and names
 - Steps: ids `../../etc/passwd`, `..%2f..%2fx`, `%2e%2e%2f`, `..\..\x`, `/etc/passwd`, `C:\windows\win.ini`, `x%00`, 10 kB string, `ast_` + 16 uppercase chars, unicode look-alikes as `productionId`, `assetId`, `sceneId`, `itemId`, `deviceId`, `{slug}`, `{slot}`, `{token}`; upload file names `../../evil.png`, `..\..\evil.png`, `C:\evil.png`, `x.png\0.exe`, 300 chars, `...`, `CON.png`, `\u202egnp.exe`.
@@ -571,19 +575,19 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Expect: the account is deleted and the audit entry `account.reset` (actor `system`) written; the running app opens the setup within the 5 s maintenance tick, ends the old session (401), closes its hub connection and logs a new code that works; unconfirmed → exit 2 and nothing deleted; no account → exit 0 with a message; unreachable database → exit 1 without the connection string; a restart of the app finds the setup open with a new code; `hash-password` is no command any more.
 
 **E2E-AUTH-01** · P0 · pw — Login via UI and cookie flags
-- Steps: open `/` unauthenticated; land on `/login`; fill username/password (`getByLabel(/benutzer/i)`, `getByLabel(/passwort/i)`, `getByRole('button', {name: /anmelden/i})` [GAP-27]); submit.
+- Steps: open `/` unauthenticated; land on `/login`; fill username/password (`getByLabel(/username/i)`, `getByLabel(/password/i)`, `getByRole('button', {name: /sign in/i})` [GAP-27]); submit.
 - Expect: URL `/`, `[data-testid=regie-ready]` within `T-LOAD`; `context.cookies()` shows `sf_session` with `httpOnly:true, secure:true, sameSite:'Strict', path:'/'`; `document.cookie` does not contain `sf_session`; header shows production name and a clock.
 
 **E2E-AUTH-02** · P1 · pw — Login failure
 - Steps: wrong password; unknown user.
-- Expect: stays on `/login`; a German generic error (`role=alert`, same text for both cases, no hint which field is wrong); no cookie; focus returns to the password field.
+- Expect: stays on `/login`; a generic error (“Wrong username or password.”, `role=alert`, same text for both cases, no hint which field is wrong); no cookie; focus returns to the password field.
 
 **E2E-AUTH-03** · P1 · pw (`@disruptive`) — Lockout in the UI [GAP-03]
 - Steps: 5 wrong logins; then the right password; afterwards `docker compose restart api`.
-- Expect: the 5th failed login already shows a lock message with the remaining time (`/\d+ Min/`, [GAP-27]); the right password is still rejected (429 with `Retry-After`); after the restart login works.
+- Expect: the 5th failed login already shows a lock message with the remaining time (`/\d+ minutes?/i`, [GAP-27]); the right password is still rejected (429 with `Retry-After`); after the restart login works.
 
 **E2E-AUTH-04** · P1 · pw — Logout
-- Steps: open the Regie in two tabs of one context; logout in tab 1 (header action, name `/abmelden/i`).
+- Steps: open the Regie in two tabs of one context; logout in tab 1 (header action, name `/sign out/i`).
 - Expect: tab 1 on `/login`; `GET /api/auth/me` 401; the server closes the hub connections of the revoked session [GAP-04], so tab 2's hub goes to `disconnected` and tab 2 leaves the Regie for `/login` within 10 s (no endless reconnect: ≤ 3 negotiate attempts logged); browser back does not show Regie content.
 
 **E2E-AUTH-05** · P0 · pw — Protected pages redirect
@@ -608,15 +612,15 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-10** · P0 · pw — Embedding limited by frame-ancestors
 - Steps: `embedHost` serves a page at `https://embed.e2e.test` (allowed) and `https://other.e2e.test` (not allowed) each containing `<iframe src="https://localhost/o/{slug}?k=…" allow="autoplay; fullscreen">`; also iframes of `/`, `/join/`, `/login`.
-- Expect: allowed origin: slate `Gleich geht's los` visible inside the frame; other origin: the frame does not load (console `Refused to frame … frame-ancestors`, no slate); `/`, `/join/`, `/login` framed from any origin: blocked.
+- Expect: allowed origin: slate `Starting soon` visible inside the frame; other origin: the frame does not load (console `Refused to frame … frame-ancestors`, no slate); `/`, `/join/`, `/login` framed from any origin: blocked.
 
 **E2E-AUTH-11** · P0 · pw — XSS in the Regie
-- Pre: for each payload in `XSS`: scene name (≤ 80 chars: use first five; the 200-char payload is truncated or rejected 400, never rendered unescaped), device name (rename), asset name (upload filename), production name, Regie-Chat message, standby slate title/subtitle.
-- Steps: open the Regie; visit every surface: scene list, monitors, inspector (input `value`), Quellen, Stationen (collapsed and expanded), message strip, toasts (switch to the scene), log, production menu, Docks popover, output popover.
+- Pre: for each payload in `XSS`: scene name (≤ 80 chars: use first five; the 200-char payload is truncated or rejected 400, never rendered unescaped), device name (rename), asset name (upload filename), production name, Regie message, standby slate title/subtitle.
+- Steps: open the Regie; visit every surface: scene list, monitors, inspector (input `value`), Sources, Stations (collapsed and expanded), message strip, toasts (switch to the scene), log, production menu, Docks popover, output popover.
 - Expect: `window.__xss` undefined; no `dialog` event; no new `<script>`/`<img src="x">`/element with `onerror|onload` attributes; each payload is visible as literal text where its entity is shown and inside `aria-label`/`title` attributes as literal text; `document.title` unchanged; the app does not crash.
 
 **E2E-AUTH-12** · P1 · pw — XSS on the sender
-- Pre: device name, production name and a Regie-Chat message set to payloads.
+- Pre: device name, production name and a Regie message set to payloads.
 - Steps: open `/join/station` as that device (pixel7); trigger the message banner.
 - Expect: payloads rendered as text in header, station name, banner; no execution (same checks as -11).
 
@@ -625,8 +629,8 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Expect: slates and debug overlay show literal text; no execution.
 
 **E2E-AUTH-14** · P0 · pw — XSS through anonymous pairing input
-- Steps: `POST /api/pairing/requests {name: payload, kind: 'laptop', platform: payload}` for each payload (names > 60 → 400; use ≤ 60 and platform ≤ 80); open Regie Stationen dock, pairing dock (laptop tab) and approve the request.
-- Expect: knock card, `aria-label` of the code, toast «… möchte beitreten» show literal text; after approval station row, log entry and source label are literal; no execution.
+- Steps: `POST /api/pairing/requests {name: payload, kind: 'laptop', platform: payload}` for each payload (names > 60 → 400; use ≤ 60 and platform ≤ 80); open Regie Stations dock, pairing dock (laptop tab) and approve the request.
+- Expect: knock card, `aria-label` of the code, toast “… wants to join” show literal text; after approval station row, log entry and source label are literal; no execution.
 
 **E2E-AUTH-15** · P1 · pw — No CSP violations in a normal session
 - Steps: listen to `securitypolicyviolation` events and console errors in Regie, sender (phone) and output (iframe) while running login, pairing, camera publish, switch, drag, upload, key rotation.
@@ -662,15 +666,15 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-23** · P0 · pw — IP restriction through the proxy
 - Steps: open one output page; read its address from `OutputStatusDto.Addresses` via the Regie output popover; set `allowedIps` to `["203.0.113.9"]`; reload the output; then set `[<that address>]`.
-- Expect: with the foreign IP the output page shows the `Kein Zugang` slate, the hub is refused, status chip becomes «nicht verbunden»; the connected page is kicked within 2 s of saving; with the observed address the page works again.
+- Expect: with the foreign IP the output page shows the `No access` slate, the hub is refused, status chip becomes “not connected”; the connected page is kicked within 2 s of saving; with the observed address the page works again.
 
 **E2E-AUTH-24** · P0 · pw — Output link regeneration
-- Steps: output page connected and playing; Regie header output chip → popover → «Link neu erzeugen» → box text «Der alte Link hört sofort auf. Der Proxy braucht danach den neuen.» → «Neu erzeugen».
-- Expect: toast «Neuer Output-Link erzeugt. Der alte ist ungültig.»; the old page shows `Kein Zugang` and stops video within `T-KEY`; `lk.listParticipants` has no `output_*` identity of the old key; reloading the old URL → `Kein Zugang`; the new URL plays; log entry «Output-Link neu erzeugt»; «Abbrechen» in the confirm box changes nothing.
+- Steps: output page connected and playing; Regie header output chip → popover → “Regenerate link” → box text “The old link stops working immediately. The proxy needs the new one afterwards.” → “Regenerate”.
+- Expect: toast “New output link created. The old one is no longer valid.”; the old page shows `No access` and stops video within `T-KEY`; `lk.listParticipants` has no `output_*` identity of the old key; reloading the old URL → `No access`; the new URL plays; log entry “Output link regenerated”; “Cancel” in the confirm box changes nothing.
 
 **E2E-AUTH-25** · P2 · pw — Two operators and session persistence
 - Steps: log in twice (two contexts); reload both; check header presence.
-- Expect: both stay logged in across reload; presence shows two operators in both (`.sr` text «Zwei Personen in der Regie»); closing one decrements within 8 s.
+- Expect: both stay logged in across reload; presence shows two operators in both (`.sr` text “2 people in the control room”); closing one decrements within 8 s.
 
 **E2E-AUTH-26** · P1 · pw — Session expiry while the Regie is open [GAP-27]
 - Steps: Regie open; delete the `sf_session` cookie from the context; trigger an action; wait.
@@ -698,9 +702,9 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 ### 2.2 PAIR – Pairing
 
-Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf dem Laptop? Dann zulassen.», buttons «Zulassen» / «Ablehnen», log «Anfrage von {Name} abgelehnt», check code shown as «47 12»,
-«Prüfcode für die Regie», QR tab «Handy als Kamera» («Gilt einmal, noch mm:ss min.», «Neuen Code erzeugen», toast «Neuer QR-Code, der alte gilt nicht mehr»), laptop tab «Laptop ohne QR-Code», link tab «Einladungslink»
-(«Link erstellen», «Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.», «Link widerrufen», toast «Einladungslink widerrufen»), «Wartende Anfragen».
+Strings: knock card “{Name} wants to join”, “Does the laptop show the same check code? Then allow.”, buttons “Allow” / “Deny”, log “Request from {Name} denied”, check code shown as “47 12”,
+“Check code for the control room”, QR tab “Phone as a camera” (“Valid once, mm:ss min left.”, “Generate new code”, toast “New QR code, the old one is no longer valid”), laptop tab “Laptop without a QR code”, link tab “Invite link”
+(“Create link”, “Valid once and expires in 30 minutes. Whoever opens it is paired straight away.”, “Revoke link”, toast “Invite link revoked”), “Waiting requests”.
 
 **UNIT-PAIR-01** · P0 · xunit — Invite state machine (FakeTimeProvider)
 - Steps: create → redeem (clientId A) → redeem (clientId B); redeem with A again at +4:59 and +5:01 after first redeem; redeem at 29:59.999 and 30:00.000 after creation; revoked; unknown token.
@@ -712,7 +716,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-PAIR-03** · P1 · xunit — Check code allocation
 - Steps: allocate 20 codes with a seeded RNG; force a collision by an RNG returning a pending code; remove a request and allocate again; format codes.
-- Expect: 4 digits `0000–9999` (leading zeros kept, formatted «00 47»), unique among pending requests (collision re-draws), reusable after removal, drawn from a CSPRNG abstraction.
+- Expect: 4 digits `0000–9999` (leading zeros kept, formatted “00 47”), unique among pending requests (collision re-draws), reusable after removal, drawn from a CSPRNG abstraction.
 
 **UNIT-PAIR-04** · P0 · xunit — Pairing request lifecycle
 - Steps: create → poll → approve → poll ×5 → +5:00 / +5:01 → poll; create → deny → poll; create → +10:00 → poll and approve; approve twice; wrong poll token; unknown id; cancel (DELETE).
@@ -723,8 +727,8 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: 11th request → `rate_limited` (window slides); 21st pending → `rate_limited` [GAP-05]; slots free up when requests leave pending; the 21st redeem attempt → `rate_limited` (all attempts count, successful or not).
 
 **UNIT-PAIR-06** · P2 · xunit — Device naming
-- Steps: redeem without name ×3; with name `"  Anna  "`, `""`, 60 chars, 61 chars, control chars, only whitespace; remove «Handy 2», redeem again.
-- Expect: default «Handy {n}» for phones and «Laptop {n}» for laptops with the lowest free n among the existing names of that stem; given names are trimmed and cleaned of control characters, 1–60 text elements (emoji count once); empty after cleaning falls back to the default on a redeem and is `validation_failed` on `POST /api/pairing/requests`.
+- Steps: redeem without name ×3; with name `"  Anna  "`, `""`, 60 chars, 61 chars, control chars, only whitespace; remove “Phone 2”, redeem again.
+- Expect: default “Phone {n}” for phones and “Laptop {n}” for laptops with the lowest free n among the existing names of that stem; given names are trimmed and cleaned of control characters, 1–60 text elements (emoji count once); empty after cleaning falls back to the default on a redeem and is `validation_failed` on `POST /api/pairing/requests`.
 
 **UNIT-PAIR-07** · P1 · xunit — Slot code allocation (spec 4.4)
 - Steps: pair phones, laptops (screen-1, screen-2, camera), upload assets; delete K2/S1/M1; allocate again; 20 parallel allocations.
@@ -732,11 +736,11 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-PAIR-08** · P1 · ng — Sender pairing state machine
 - Steps: fake timers and fake API: form validation (name trimmed 1–60), kind detection (`getDisplayMedia` present, mobile UA), `POST requests` then polling; statuses `pending → approved|denied|expired`; network error during polling; reload with `studioflow.pairing` in sessionStorage; invite redeem with `clientId` generation and a lost response; stored credentials → `GET /api/device/me` (200, 401, 403 `device_blocked`); URL clean-up after redeem.
-- Expect: states `form → waiting → paired|denied|expired`; polling every 1,5 s (±0,2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `studioflow.sender.v1` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
+- Expect: states `form → waiting → paired|denied|expired`; polling every 1.5 s (±0.2 s), stopped after a terminal status and cancelled with `DELETE` when the user leaves; the `clientId` is generated once per invite attempt and reused on retry; credentials are written to `studioflow.sender.v1` only after success; 401 clears them and shows the pairing form, 403 shows the blocked state; no secret in URL, console or DOM.
 
 **INT-PAIR-01** · P0 · xunit — QR flow over REST and events
 - Steps: connect a studio hub client and `Subscribe`; `GET …/pairing/phone-invite`; redeem with `{clientId, kind:'phone', platform:'Pixel 7 · Chrome'}`; `GET /api/device/me`.
-- Expect: invite `Url` = `https://studioflow.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order (as implemented, DOC-02): `inviteRemoved` (the redeemed invite), `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `logAppended` «K1 Handy 1 gekoppelt», `inviteUpserted` (the next phone invite); revisions strictly consecutive (the reducer accepts any order).
+- Expect: invite `Url` = `https://studioflow.test/join/i/{token}`, `ExpiresAt` ≈ +30 min; redeem → `DeviceCredentialsDto` (device id `dev_…`, 43-char secret, production id); `me` lists slot `camera` code `K1`; hub events in revision order (as implemented, DOC-02): `inviteRemoved` (the redeemed invite), `deviceUpserted`, `sourceUpserted` (camera K1, status `offline`), `logAppended` “K1 Phone 1 paired”, `inviteUpserted` (the next phone invite); revisions strictly consecutive (the reducer accepts any order).
 
 **INT-PAIR-02** · P0 · xunit — Redeem idempotency
 - Steps: redeem with clientId A twice (simulating a lost response), then use the first secret; redeem with clientId B afterwards.
@@ -764,7 +768,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **INT-PAIR-08** · P0 · xunit — Limits and validation over HTTP [GAP-05]
 - Steps: 11 requests/IP/10 min with `X-Test-Remote-IP`; 21 pending; 21 redeem attempts; body validation: name empty/61 chars/control chars, `kind` invalid enum, `platform` 81 chars, unknown extra fields, body 300 KB.
-- Expect: 429 `rate_limited` with `Retry-After` for each limit; 400 `validation_failed` with field names (`name`, `kind`) for invalid bodies – also when the body cannot be bound (an unknown enum text such as `"kind":"tablet"`, a wrong JSON type, broken JSON): `errors` names the camelCase field path (`kind`, `items[0].fit`; `body` for the body as a whole) with «Ungültiger Wert.», never the serializer message or a .NET type name (BUG-08); a `platform` longer than 80 characters is truncated to 80 (accepted); 413 for oversize; extra fields ignored; limits are per IP, not global, except the pending cap.
+- Expect: 429 `rate_limited` with `Retry-After` for each limit; 400 `validation_failed` with field names (`name`, `kind`) for invalid bodies – also when the body cannot be bound (an unknown enum text such as `"kind":"tablet"`, a wrong JSON type, broken JSON): `errors` names the camelCase field path (`kind`, `items[0].fit`; `body` for the body as a whole) with “Invalid value.”, never the serializer message or a .NET type name (BUG-08); a `platform` longer than 80 characters is truncated to 80 (accepted); 413 for oversize; extra fields ignored; limits are per IP, not global, except the pending cap.
 
 **INT-PAIR-09** · P0 · xunit — Laptop invite link
 - Steps: `POST …/pairing/invites {kind:'laptopLink'}`; redeem `kind:'laptop'`; second redeem; create another and `DELETE …/invites/{id}`; redeem the revoked.
@@ -780,11 +784,11 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **INT-PAIR-12** · P0 · xunit — Block, unblock, delete lifecycle
 - Steps: device with a live camera, a device hub connection, an open incident and the source in a scene; block; unblock; block again; delete.
-- Expect: block → `deviceUpserted(state: blocked)`, `sourceUpserted(status: blocked)`, `incidentRemoved` for its incident, fake LiveKit `RemoveParticipant(room, deviceId)`, the device hub receives `self` (state blocked) then is closed, log «K1 Handy 1 gesperrt» (codes and device name, `LogTexts`; intended deviation from the prototype's «K1 gesperrt», BUG-10), audit `device.blocked`; unblock → `device.unblocked`, log «K1 Handy 1 entsperrt», status `offline`/`connecting` until it reconnects (no incident); delete → `deviceRemoved` + `sourceRemoved` per slot + `device.removed` (log «K1 Handy 1 entfernt»), the scene keeps the item (source ref now dangling, [GAP-35]).
+- Expect: block → `deviceUpserted(state: blocked)`, `sourceUpserted(status: blocked)`, `incidentRemoved` for its incident, fake LiveKit `RemoveParticipant(room, deviceId)`, the device hub receives `self` (state blocked) then is closed, log “K1 Phone 1 blocked” (codes and device name, `LogTexts`; intended deviation from the prototype's “K1 blocked”, BUG-10), audit `device.blocked`; unblock → `device.unblocked`, log “K1 Phone 1 unblocked”, status `offline`/`connecting` until it reconnects (no incident); delete → `deviceRemoved` + `sourceRemoved` per slot + `device.removed` (log “K1 Phone 1 removed”), the scene keeps the item (source ref now dangling, [GAP-35]).
 
 **INT-PAIR-13** · P2 · xunit — Rename device
 - Steps: `PATCH …/devices/{id}` with valid, trimmed, 60/61 chars, XSS strings, empty.
-- Expect: 200 with new name; `deviceUpserted` and `sourceUpserted` (labels «{name} · Screen 1», «{name} · Kamera» or «{name}» for phones) events; the connected device hub receives `self` with the new name; 400 `validation_failed` for empty/61 chars; XSS strings stored verbatim.
+- Expect: 200 with new name; `deviceUpserted` and `sourceUpserted` (labels “{name} · Screen 1”, “{name} · Camera” or “{name}” for phones) events; the connected device hub receives `self` with the new name; 400 `validation_failed` for empty/61 chars; XSS strings stored verbatim.
 
 **INT-PAIR-14** · P1 · xunit — Slot allocation and release [GAP-19]
 - Steps: laptop `POST /api/device/slots {kind:'screen'}` ×9 then a 10th; `{kind:'camera'}` twice; phone allocates a screen; `{kind:'image'}`; `DELETE /api/device/slots/screen-2`; delete a non-existing slot; delete `camera` of a phone.
@@ -803,52 +807,52 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: audit rows `device.paired` (actor `admin` for approve, `device:{id}` for redeem), `pairing.denied`, `invite.created`, `invite.revoked`; details contain ids and names, never secrets or tokens.
 
 **E2E-PAIR-01** · P0 · pw (`pixel7`) — QR pairing of a phone
-- Steps: Regie «Gerät koppeln» (Stationen dock header) → tab «Handy»; decode the QR (`jsqr` on a screenshot of the `role=img` «QR-Code zum Koppeln») and compare with `GET …/phone-invite`; open that URL in a Pixel 7 context.
-- Expect: QR decodes to the invite URL; countdown shows «Gilt einmal, noch 30:00 min.» and decreases; phone shows name «Handy 1», `connection-state=connected` («Verbunden») within 3 s; Regie lists station K1 «Handy 1» within `T-PAIR` and the QR in the dock has been replaced by a different one.
+- Steps: Regie “Pair device” (Stations dock header) → tab “Phone”; decode the QR (`jsqr` on a screenshot of the `role=img` “QR code for pairing a phone”) and compare with `GET …/phone-invite`; open that URL in a Pixel 7 context.
+- Expect: QR decodes to the invite URL; countdown shows “Valid once, 30:00 min left.” and decreases; phone shows name “Phone 1”, `connection-state=connected` (“Connected”) within 3 s; Regie lists station K1 “Phone 1” within `T-PAIR` and the QR in the dock has been replaced by a different one.
 
 **E2E-PAIR-02** · P0 · pw (`pixel7`) — Phone camera goes live
 - Steps: after E2E-PAIR-01 start the camera (auto-start or button); add K1 to scene A and make it program.
-- Expect: K1 lamp ok (green); station line shows `x,x Mbit/s` and `NN ms`; Program monitor `<video>` satisfies `expectVideoPlaying`; `T-VIDEO-START` met.
+- Expect: K1 lamp ok (green); station line shows `x.x Mbit/s` and `NN ms`; Program monitor `<video>` satisfies `expectVideoPlaying`; `T-VIDEO-START` met.
 
 **E2E-PAIR-03** · P0 · pw — Laptop pairing by check code
-- Steps: laptop context opens `/join` (also `/join/` and `/join/warten` deep link), enters «Laptop Anna», submits; compare codes; in the Regie click «Zulassen» on the knock card.
-- Expect: laptop shows `check-code` matching `^\d{2} \d{2}$` and the caption «Prüfcode für die Regie»; Regie knock card «Laptop Anna möchte beitreten» appears within `T-PAIR` with the same code; after «Zulassen» the laptop reaches `/join/station` with `connection-state=connected` within `T-PAIR`; Stationen shows S1 «Laptop Anna · Screen 1».
+- Steps: laptop context opens `/join` (also `/join/` and `/join/waiting` deep link), enters “Laptop Anna”, submits; compare codes; in the Regie click “Allow” on the knock card.
+- Expect: laptop shows `check-code` matching `^\d{2} \d{2}$` and the caption “Check code for the control room”; Regie knock card “Laptop Anna wants to join” appears within `T-PAIR` with the same code; after “Allow” the laptop reaches `/join/station` with `connection-state=connected` within `T-PAIR`; Stations shows S1 “Laptop Anna · Screen 1”.
 
 **E2E-PAIR-04** · P1 · pw — Laptop request denied
-- Steps: as -03 but «Ablehnen».
-- Expect: Regie log entry «Anfrage von Laptop Anna abgelehnt», card gone; laptop shows `pairing-denied` with an option to request again; no device was created.
+- Steps: as -03 but “Deny”.
+- Expect: Regie log entry “Request from Laptop Anna denied”, card gone; laptop shows `pairing-denied` with an option to request again; no device was created.
 
 **E2E-PAIR-05** · P1 · pw (`@short-ttl`) — Request expiry
 - Steps: laptop requests; nobody answers for 25 s.
 - Expect: laptop shows `pairing-expired` with a retry action; the knock card disappears from the Regie without reload; a new request gets a new code.
 
 **E2E-PAIR-06** · P1 · pw (`@short-ttl`) — Approving after expiry
-- Steps: laptop requests; the Regie goes offline (`net.cut`) so the card stays on screen; wait for expiry; Regie back online (`net.restore`) and click «Zulassen» on the stale card before the delta arrives (or on a frozen copy of the page).
-- Expect: no crash; card removed after the delta sync or the 410 response; a German notice (`/abgelaufen/i`, [GAP-27]); no device created.
+- Steps: laptop requests; the Regie goes offline (`net.cut`) so the card stays on screen; wait for expiry; Regie back online (`net.restore`) and click “Allow” on the stale card before the delta arrives (or on a frozen copy of the page).
+- Expect: no crash; card removed after the delta sync or the 410 response; a notice (`/expired/i`, [GAP-27]); no device created.
 
 **E2E-PAIR-07** · P1 · pw (`@short-ttl` for the expiry half) — Polling survives and window ends
-- Steps: laptop requests and waits; the laptop goes offline (`net.cut`); the Regie approves; the laptop comes back 5 s later and polls; separately: reload the tab on `/join/warten` while pending; separately: approve, then wait beyond the credentials window (15 s in the profile) before the laptop polls.
+- Steps: laptop requests and waits; the laptop goes offline (`net.cut`); the Regie approves; the laptop comes back 5 s later and polls; separately: reload the tab on `/join/waiting` while pending; separately: approve, then wait beyond the credentials window (15 s in the profile) before the laptop polls.
 - Expect: reload keeps the same request and the same check code (state in sessionStorage `studioflow.pairing`); credentials are obtained when polling resumes inside the window; after the window the laptop shows `pairing-expired` and offers a new request.
 
 **E2E-PAIR-08** · P1 · pw — Unique codes, identical names
-- Steps: create 8 pending requests through the API and one through the real `/join` form of a laptop context, all named «Laptop» (9 in total, under the 10-per-IP limit); open the pairing dock.
+- Steps: create 8 pending requests through the API and one through the real `/join` form of a laptop context, all named “Laptop” (9 in total, under the 10-per-IP limit); open the pairing dock.
 - Expect: 9 cards with 9 distinct codes; approving the card whose code equals the code shown on the real laptop's page pairs exactly that laptop, the other 8 requests stay pending.
 
 **E2E-PAIR-09** · P0 · pw — Double approve race
-- Steps: two Regie sessions show the same card; `Promise.all([A.click('Zulassen'), B.click('Zulassen')])`.
-- Expect: exactly one device (Stationen count +1, one `device.paired` audit row); the losing operator sees no error toast, the card disappears for both within 1 s; the laptop is paired once.
+- Steps: two Regie sessions show the same card; `Promise.all([A.click('Allow'), B.click('Allow')])`.
+- Expect: exactly one device (Stations count +1, one `device.paired` audit row); the losing operator sees no error toast, the card disappears for both within 1 s; the laptop is paired once.
 
 **E2E-PAIR-10** · P0 · pw — Invite link for laptops
-- Steps: Regie «Gerät koppeln» → tab «Link» → «Link erstellen»; copy with «Kopieren»; open `/j/{token}` in a laptop context; open the same link in a second context.
-- Expect: URL box shows `https://…/j/{token}` (mono), clipboard contains it, text «Gilt einmal und läuft in 30 Minuten ab. Wer ihn öffnet, ist direkt gekoppelt.»; the first context is redirected to `/join/i/{token}` and paired without approval (token then absent from the URL); the second context shows the expired page (`pairing-expired`) with a link to `/join`.
+- Steps: Regie “Pair device” → tab “Link” → “Create link”; copy with “Copy”; open `/j/{token}` in a laptop context; open the same link in a second context.
+- Expect: URL box shows `https://…/j/{token}` (mono), clipboard contains it, text “Valid once and expires in 30 minutes. Whoever opens it is paired straight away.”; the first context is redirected to `/join/i/{token}` and paired without approval (token then absent from the URL); the second context shows the expired page (`pairing-expired`) with a link to `/join`.
 
 **E2E-PAIR-11** · P1 · pw — Revoke link
-- Steps: create link; «Link widerrufen»; open the link.
-- Expect: toast «Einladungslink widerrufen»; the link opens the expired page; no invite listed in the Regie; log entry «Einladungslink erstellt» present.
+- Steps: create link; “Revoke link”; open the link.
+- Expect: toast “Invite link revoked”; the link opens the expired page; no invite listed in the Regie; log entry “Invite link created” present.
 
 **E2E-PAIR-12** · P1 · pw — New QR code
-- Steps: tab «Handy» → «Neuen Code erzeugen»; open the old QR URL, then the new one (two phone contexts).
-- Expect: toast «Neuer QR-Code, der alte gilt nicht mehr»; old → expired page; new → pairs; countdown restarts at 30:00.
+- Steps: tab “Phone” → “Generate new code”; open the old QR URL, then the new one (two phone contexts).
+- Expect: toast “New QR code, the old one is no longer valid”; old → expired page; new → pairs; countdown restarts at 30:00.
 
 **E2E-PAIR-13** · P0 · pw — Re-recognition on reload
 - Steps: paired phone; reload `/join/`; then clear localStorage and reload.
@@ -860,15 +864,15 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **E2E-PAIR-15** · P1 · pw — Kind detection and platform text
 - Steps: open `/join` with Desktop Chrome, Pixel 7, iPhone 14, iPad, Desktop Firefox; switch kind manually; submit.
-- Expect: default kind: laptop for desktop browsers (have `getDisplayMedia`), phone for Pixel 7, iPhone and iPad; the toggle changes it; the platform text sent matches `^[\w .()-]+ · (Chrome|Edge|Firefox|Safari)$` (e.g. «Pixel 7 · Chrome», «Windows · Edge»).
+- Expect: default kind: laptop for desktop browsers (have `getDisplayMedia`), phone for Pixel 7, iPhone and iPad; the toggle changes it; the platform text sent matches `^[\w .()-]+ · (Chrome|Edge|Firefox|Safari)$` (e.g. “Pixel 7 · Chrome”, “Windows · Edge”).
 
 **E2E-PAIR-16** · P1 · pw (`@short-ttl`) — Pairing limit message on the sender
 - Steps: the profile sets `Pairing:Limits:PendingTotal=3`; create 3 pending requests through the API, then submit the `/join` form.
-- Expect: the form shows a German rate-limit notice (`/später/i`, [GAP-27]) and does not spin forever; works again after a slot frees up.
+- Expect: the form shows a rate-limit notice (`/later/i`, “Too many attempts. Please try again later.”, [GAP-27]) and does not spin forever; works again after a slot frees up.
 
 **E2E-PAIR-17** · P0 · pw — Probe-webinar fleet (phase 1 acceptance)
-- Steps: pair 3 phones (QR) and 2 laptops (1 by code, 1 by link); start the 3 cameras and one screen share per laptop; build scene «Probe» with all five sources; make it program.
-- Expect: codes K1–K3, S1–S2; header chip «Alle 5 Stationen ok»; five playing `<video>` elements in the output within `T-VIDEO-START`; no incident.
+- Steps: pair 3 phones (QR) and 2 laptops (1 by code, 1 by link); start the 3 cameras and one screen share per laptop; build scene “Probe” with all five sources; make it program.
+- Expect: codes K1–K3, S1–S2; header chip “All 5 stations ok”; five playing `<video>` elements in the output within `T-VIDEO-START`; no incident.
 
 **E2E-PAIR-18** · P2 · pw — Second operator sees pairing live
 - Steps: operator A and B open the pairing dock; a laptop requests; A approves.
@@ -879,7 +883,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: after resubscription (delta) the card is shown; no duplicate cards.
 
 **E2E-PAIR-20** · P1 · pw — Short URL entry points
-- Steps: request `/join`, `/join/`, `/join/warten`, `/join/station`, `/join/i/abc`, `/j/abc`.
+- Steps: request `/join`, `/join/`, `/join/waiting`, `/join/station`, `/join/i/abc`, `/j/abc`.
 - Expect: all return the sender app shell (200) except `/j/abc` (3xx to `/join/i/abc`); unknown deep links render the pairing form rather than a server error; the shell works offline after the first load (service worker).
 
 ### 2.3 SCENE – Scenes and editing
@@ -906,14 +910,14 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-SCENE-06** · P1 · xunit — Source existence rules [GAP-17]
 - Steps: add item with unknown source, other production's source, malformed source (`../../x`, `dev_x/screen-10`, `dev_x/microphone`); replace items keeping a source whose device was deleted; replace adding a *new* item with a deleted source.
-- Expect: unknown/malformed/foreign → `validation_failed`; keeping an item whose source vanished later is allowed (renders «Quelle fehlt»); introducing a missing source through `ReplaceSceneItems` is rejected.
+- Expect: unknown/malformed/foreign → `validation_failed`; keeping an item whose source vanished later is allowed (renders “Source missing”); introducing a missing source through `ReplaceSceneItems` is rejected.
 
 **UNIT-SCENE-07** · P0 · xunit — Version and events per mutation
 - Steps: create, rename, add item, update item, remove item, replace items, change layout mode, change background.
 - Expect: `Version` increments by exactly 1 per mutation; each emits exactly one `sceneUpserted` with the full scene (and `logAppended` only where the spec has a log text); revision increments are consecutive.
 
 **UNIT-SCENE-08** · P1 · xunit — Clone
-- Steps: clone a scene with 5 items (2 hidden, 1 locked, auto-grid, background asset).
+- Steps: clone a scene with 5 items (2 hidden, 1 locked, auto grid, background asset).
 - Expect: new scene id, name as requested (validated), `Version` 1, all items copied with **new** item ids and identical properties, layout mode and background copied, `SortOrder` last; cloning an unknown scene → 400 `validation_failed` (`errors.cloneFromSceneId`); cloning at 99 scenes → 409 `limit_reached`.
 
 **UNIT-SCENE-09** · P1 · xunit — Reorder
@@ -930,15 +934,15 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-SCENE-12** · P0 · vitest — Layout templates produce the prototype rectangles
 - Steps: for each of the 8 template ids `full two pip col onetwo grid grid3 auto` apply to 1…10 visible items of mixed kinds (screen, image, video, camera) plus hidden items.
-- Expect: slot rectangles exactly equal `LAYOUT_TEMPLATES` (and the prototype `PRESETS`); items ordered by kind rank screen < media < camera, stable inside a rank; hidden items and items beyond the slot count keep their geometry; `fit: 'contain'` only for a screen in slot 0 unless template is `two`, `grid`, `grid3`; `radius: 0` for slots with `w === 1920` else 12; `auto` returns items unchanged (same order) with `layoutMode: 'autoGrid'`; all others `'free'`; the item order is the z-order, so a template re-orders the items (spec 4.3): the placed items first in slot order (slot 0 at the back, later slots in front, e.g. the small Bild-in-Bild window above the full-screen one), then every item without a slot (hidden items and items beyond the slot count) in front of them in their previous relative order; undo restores the previous order; the input array is not mutated.
+- Expect: slot rectangles exactly equal `LAYOUT_TEMPLATES` (and the prototype `PRESETS`); items ordered by kind rank screen < media < camera, stable inside a rank; hidden items and items beyond the slot count keep their geometry; `fit: 'contain'` only for a screen in slot 0 unless template is `two`, `grid`, `grid3`; `radius: 0` for slots with `w === 1920` else 12; `auto` returns items unchanged (same order) with `layoutMode: 'autoGrid'`; all others `'free'`; the item order is the z-order, so a template re-orders the items (spec 4.3): the placed items first in slot order (slot 0 at the back, later slots in front, e.g. the small picture-in-picture window above the full-screen one), then every item without a slot (hidden items and items beyond the slot count) in front of them in their previous relative order; undo restores the previous order; the input array is not mutated.
 
-**UNIT-SCENE-13** · P1 · vitest — Auto-Grid slot function
+**UNIT-SCENE-13** · P1 · vitest — Auto grid slot function
 - Steps: `autoGridSlots(n)` for n = 0…12.
-- Expect: 0 and 1 → the `full` slot (n ≤ 1, as in the prototype; with 0 available items nothing is rendered), 2 → `two`, 3 → `[[79,40,871,490],[970,40,871,490],[525,550,871,490]]`, 4 → `grid`, ≥ 5 → the 9 `grid3` slots; items beyond 9 are not rendered in Auto-Grid [GAP-11].
+- Expect: 0 and 1 → the `full` slot (n ≤ 1, as in the prototype; with 0 available items nothing is rendered), 2 → `two`, 3 → `[[79,40,871,490],[970,40,871,490],[525,550,871,490]]`, 4 → `grid`, ≥ 5 → the 9 `grid3` slots; items beyond 9 are not rendered in Auto grid [GAP-11].
 
 **UNIT-SCENE-14** · P2 · vitest — `clampItem` / `validateItem` / `itemDefaults`
 - Steps: out-of-range geometry, crop, radius, rotation; NaN/Infinity; `validateItem` messages.
-- Expect: client clamps exactly like the server bounds (radius 0…200, not 80 [GAP-11]); messages are German with «ss»; NaN becomes the previous value or default; defaults equal `NEW_ITEM_RECT`.
+- Expect: client clamps exactly like the server bounds (radius 0…200, not 80 [GAP-11]); messages are the English texts of `model.scene.validation.*`; NaN becomes the previous value or default; defaults equal `NEW_ITEM_RECT`.
 
 **UNIT-SCENE-15** · P0 · vitest — Renderer: fit, crop, radius, border, mirror, rotation, z-order
 - Steps: render items with each property in a happy-dom container.
@@ -948,7 +952,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Steps: `show(scene)`, keep references to item and `<video>` nodes, call `update(scene')` with moved/resized/reordered items, an added item, a removed item.
 - Expect: existing item elements and their `<video>` are the same DOM nodes (no re-creation, no `srcObject` reset), styles change in place, z-order follows the new array via order changes not re-creation, removed elements are detached once.
 
-**UNIT-SCENE-17** · P0 · vitest — Renderer: Auto-Grid availability and reflow
+**UNIT-SCENE-17** · P0 · vitest — Renderer: Auto grid availability and reflow
 - Steps: 4 camera items; statuses live → one `lost` inside hold time → one `lost` past hold → source back; media items; hidden item; call `refresh()` / provider events.
 - Expect: arranged rectangles = `autoGridSlots(n)` with `n` = visible items whose source is live, or lost-inside-hold, or media; the dropped camera disappears from the grid when its hold expires (reflow to 3), returns to its item order position when back; `effectiveRects()` reports the computed rectangles per item id; geometry stored in the scene is untouched.
 
@@ -958,7 +962,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **UNIT-SCENE-19** · P1 · ng — Undo/redo store
 - Steps: 65 edits on one scene; undo ×70; redo; edit after undo; switch scene; delete scene; reload store.
-- Expect: stack depth 60 per scene (oldest dropped); undo emits one `ReplaceSceneItems` restoring the snapshot; redo available until a new edit; stacks are per scene; deleting a scene drops its stack; empty undo → message «Nichts zum Rückgängigmachen»; undo is refused for a scene that is live in Studio-Modus («Diese Szene ist live und bleibt unverändert»); after undo selection is cleared if the item vanished.
+- Expect: stack depth 60 per scene (oldest dropped); undo emits one `ReplaceSceneItems` restoring the snapshot; redo available until a new edit; stacks are per scene; deleting a scene drops its stack; empty undo → message “Nothing to undo”; undo is refused for a scene that is live in Studio Mode (“This scene is live and stays unchanged”); after undo selection is cleared if the item vanished.
 
 **UNIT-SCENE-20** · P0 · ng — Edit coalescing queue
 - Steps: feed 200 drag updates for one item at 5 ms intervals while the fake API resolves after 40–400 ms random; feed updates for two items interleaved; fail one request (500) mid-drag.
@@ -1005,28 +1009,28 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: a valid order is stored, the version increases by one and `sceneUpserted` carries the new order; the same order changes nothing (no version, no event); a list that is not exactly the scene's ids is 409 `conflict` with nothing changed, a missing list is 400 `validation_failed`, an unknown scene 404; the other session's geometry edit survives (the request carries ids only); parallel requests are serialised (distinct versions, the last one stored); the Regie hub and the output hub both receive the new order of the program scene.
 
 **E2E-SCENE-01** · P1 · pw — Rename a scene
-- Steps: select the scene in the Szenen dock (inspector shows «Szene»), change field «Name», blur.
+- Steps: select the scene in the Scenes dock (inspector shows “Scene”), change field “Name”, blur.
 - Expect: scene row, monitor header, thumbnail label and API show the new name within 1 s; reload keeps it; empty or whitespace name is not sent (field reverts, hint shown); 81 characters are cut or rejected, never saved.
 
 **E2E-SCENE-02** · P1 · pw — Create and clone a scene [GAP-37]
-- Steps: Szenen dock header «Neue Szene»; inspector «Duplizieren» on a scene with three items.
+- Steps: Scenes dock header “+ Scene” (accessible name “Add scene”; new scenes are called “New scene N”); inspector “Duplicate” on a scene with three items (the copy is called “<name> (copy)”).
 - Expect: new scene appended with a default name; clone has the same items with different item ids and is editable independently; both operators see them within 1 s; at 99 scenes the control is disabled or shows an error.
 
 **E2E-SCENE-03** · P0 · pw — Delete a scene
-- Steps: select a non-program scene; «Szene löschen» → confirm box ««Szene B» wird gelöscht. Das lässt sich nicht rückgängig machen.» → «Szene löschen»; also «Abbrechen»; select the program scene.
-- Expect: toast «Szene «Szene B» gelöscht» and log entry; scene gone for both operators; keyboard keys re-map; «Abbrechen» keeps it; program scene: delete button `disabled` with hint «Die Live-Szene lässt sich nicht löschen. Andere Szenen im Studio-Modus bearbeiten.» (Studio-Modus off) or «Die Live-Szene lässt sich nicht löschen.» (on); API `DELETE` of the program scene → 409 `scene_is_live`.
+- Steps: select a non-program scene; “Delete scene” → confirm box ““Scene B” will be deleted. This cannot be undone.” → “Delete scene”; also “Cancel”; select the program scene.
+- Expect: toast “Scene “Scene B” deleted” and log entry; scene gone for both operators; keyboard keys re-map; “Cancel” keeps it; program scene: delete button `disabled` with hint “The live scene cannot be deleted. Edit other scenes in Studio Mode.” (Studio Mode off) or “The live scene cannot be deleted.” (on); API `DELETE` of the program scene → 409 `scene_is_live`.
 
 **E2E-SCENE-04** · P0 · pw — Add a source to a scene
-- Steps: Quellen dock «+ Quelle» → menu «Zu «Szene A» hinzufügen» → pick K1; repeat until all sources are in; block one device first.
-- Expect: menu lists only sources not yet in the scene and not blocked; new item at 1240/680 600×338, radius 12 (contain for screens), selected, toast «K1 in «Szene A» eingefügt»; empty menu shows «Alle Quellen sind schon in dieser Szene.»; an empty scene shows «Diese Szene ist leer.» with «Füge eine Quelle hinzu oder wende eine Vorlage an.».
+- Steps: Sources dock “+ Source” → menu “Add to “Scene A”” → pick K1; repeat until all sources are in; block one device first.
+- Expect: menu lists only sources not yet in the scene and not blocked; new item at 1240/680 600×338, radius 12 (contain for screens), selected, toast “K1 added to “Scene A””; empty menu shows “All sources are already in this scene.”; an empty scene shows “This scene is empty.” with “Add a source or apply a template.”.
 
 **E2E-SCENE-05** · P0 · pw — Apply layout templates (parametrised over 8)
 - Pre: scene with S1 (screen), K1, K2, K3 (cameras) plus one image (M1); for `full` one item, `two` two items, `pip` two, `col` three, `onetwo` three, `grid` four, `grid3` five, `auto` four.
-- Steps: inspector «Vorlage anwenden» → click the template (names Vollbild, Nebeneinander, Bild-in-Bild, Screen + Kamera-Spalte, Eins plus zwei, 2 × 2, 3 × 3, Auto-Grid [GAP-11]).
-- Expect: item rectangles equal the `LAYOUT_TEMPLATES` slots after kind ordering (read via API snapshot and via the inspector X/Y/B/H fields); toast «Vorlage «<Name>» angewendet» with «Rückgängig»; `auto` sets `layoutMode: autoGrid` and the Program monitor/output arrange the live items; a scene without visible items shows «Erst eine Quelle hinzufügen»; in Studio-Modus on the live scene the buttons are disabled.
+- Steps: inspector “Apply template” → click the template (names Full screen, Side by side, Picture in picture, Screen + camera column, One plus two, 2 × 2, 3 × 3, Auto grid [GAP-11]).
+- Expect: item rectangles equal the `LAYOUT_TEMPLATES` slots after kind ordering (read via API snapshot and via the inspector X/Y/B/H fields); toast “Template “<Name>” applied” with “Undo”; `auto` sets `layoutMode: autoGrid` and the Program monitor/output arrange the live items; a scene without visible items shows “Add a source first”; in Studio Mode on the live scene the buttons are disabled.
 
-**E2E-SCENE-06** · P1 · pw — Auto-Grid reflow when a camera drops
-- Pre: 4 phones live in an Auto-Grid scene that is program; output open.
+**E2E-SCENE-06** · P1 · pw — Auto grid reflow when a camera drops
+- Pre: 4 phones live in an Auto grid scene that is program; output open.
 - Steps: phone 4 goes offline (`goOffline`); wait past its hold (3 s); phone 4 comes back.
 - Expect: output initially shows four 871×490 tiles (2 × 2); after the hold expiry three tiles (two on top, one centred below at 525/550); when K4 is live again four tiles; no layout flicker of the other three videos (same `<video>` elements, playing throughout); `data-state` of K4 goes `hold` → `held`/absent → `live`.
 
@@ -1044,31 +1048,31 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **E2E-SCENE-10** · P1 · pw — Keyboard nudge and deselect
 - Steps: click an item; ArrowRight ×3; Shift+ArrowDown; Escape; click empty monitor area.
-- Expect: x +3, y +10 (API values), key repeat is one undo step, Escape deselects (inspector back to «Szene»), clicking empty area deselects.
+- Expect: x +3, y +10 (API values), key repeat is one undo step, Escape deselects (inspector back to “Scene”), clicking empty area deselects.
 
 **E2E-SCENE-11** · P1 · pw — Inspector number fields and bounds
 - Steps: type into X, Y, B, H, radius: `5000`, `-5000`, `0`, `abc`, `1.5`, empty, `99999999999`, radius `300`.
 - Expect: values clamp to server bounds (x 3840, y −2160, w 16, h 16, radius 200 [GAP-11]); non-numeric input is ignored; decimals are rounded; empty restores the previous value; persisted values equal what the fields show after reload; the label tab updates while typing.
 
 **E2E-SCENE-12** · P0 · pw — Undo/redo
-- Steps: move, resize, apply template, toggle fit, delete item; Ctrl+Z each time; Ctrl+Shift+Z; 65 edits then 70 undos; undo with empty stack; undo button in the Quellen header; switch scene and undo.
-- Expect: each undo restores the previous geometry/list through one `PUT items`; toast «Rückgängig gemacht»; empty stack → «Nichts zum Rückgängigmachen»; only the last 60 edits revert; undo applies to the scene it was recorded for (not the selected scene); redo works until a new edit; after reload the stack is empty.
+- Steps: move, resize, apply template, toggle fit, delete item; Ctrl+Z each time; Ctrl+Shift+Z; 65 edits then 70 undos; undo with empty stack; undo button in the Sources header; switch scene and undo.
+- Expect: each undo restores the previous geometry/list through one `PUT items`; toast “Undone”; empty stack → “Nothing to undo”; only the last 60 edits revert; undo applies to the scene it was recorded for (not the selected scene); redo works until a new edit; after reload the stack is empty.
 
 **E2E-SCENE-13** · P1 · pw — Layers
-- Steps: «Nach vorne» / «Nach hinten» on the middle of three items; check at ends.
-- Expect: array order in the API changes by one position (clamped at ends); Quellen list order (front first) and renderer DOM order follow; Program/output stacking changes visibly (overlap region shows the front item's pixel colour).
+- Steps: “Bring forward” / “Send backward” on the middle of three items; check at ends.
+- Expect: array order in the API changes by one position (clamped at ends); Sources list order (front first) and renderer DOM order follow; Program/output stacking changes visibly (overlap region shows the front item's pixel colour).
 
 **E2E-SCENE-14** · P1 · pw — Hide and lock items
-- Steps: eye button («Ausblenden: …» / «Einblenden: …», `aria-pressed`); lock button («Sperren: …» / «Entsperren: …»); try dragging and arrow keys on a locked item.
-- Expect: hidden item disappears from Program monitor and output DOM and gives no tally; the Quellen row is greyed and not selectable; a locked item can be selected but neither dragged nor nudged; inspector remains usable; both states persist for both operators.
+- Steps: eye button (“Hide: …” / “Show: …”, `aria-pressed`); lock button (“Lock: …” / “Unlock: …”); try dragging and arrow keys on a locked item.
+- Expect: hidden item disappears from Program monitor and output DOM and gives no tally; the Sources row is greyed and not selectable; a locked item can be selected but neither dragged nor nudged; inspector remains usable; both states persist for both operators.
 
 **E2E-SCENE-15** · P1 · pw — Remove item with undo toast
-- Steps: «Aus Szene entfernen» (inspector danger zone), then toast «Rückgängig».
-- Expect: toast «K1 aus «Szene A» entfernt»; item gone; «Rückgängig» restores the item with the same id, position and z-order.
+- Steps: “Remove from scene” (inspector danger zone), then toast “Undo”.
+- Expect: toast “K1 removed from “Scene A””; item gone; “Undo” restores the item with the same id, position and z-order.
 
 **E2E-SCENE-16** · P1 · pw — Fit, mirror, corners, hold
-- Steps: «Füllen» / «Ganz zeigen»; «Spiegeln»; corner radius 0/24/200; «Bei Ausfall» options.
-- Expect: output `<video>` computed `object-fit` cover/contain; mirror → transform `scaleX(-1)`; radius → `border-radius` = value × stage scale; options map to `holdMs` 3000 / 10000 / null with the labels «Standbild 3 s, dann abgedunkelt», «Standbild 10 s, dann abgedunkelt», «Standbild halten».
+- Steps: “Fill” / “Show all”; “Mirror”; corner radius 0/24/200; “On failure” options.
+- Expect: output `<video>` computed `object-fit` cover/contain; mirror → transform `scaleX(-1)`; radius → `border-radius` = value × stage scale; options map to `holdMs` 3000 / 10000 / null with the labels “Freeze frame 3 s, then dim”, “Freeze frame 10 s, then dim”, “Hold freeze frame”.
 
 **E2E-SCENE-17** · P0 · pw — Two operators edit concurrently
 - Steps: A drags item 1 while B types a new X for item 2 of the same scene; then both change item 1's X at the same moment (A types 100, B types 200).
@@ -1079,8 +1083,8 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: no two PUTs for the same item overlap in time; request count ≥ 2 and ≤ `ceil(dragMs / minDelay) + 2`; final server geometry equals the geometry at pointer release (±0 px); both operators and the output show it; no request after release carries an earlier position.
 
 **E2E-SCENE-19** · P1 · pw — Live-scene protection and live editing
-- Steps: Studio-Modus on with preview == program (select the program scene in the preview); then Studio-Modus off and drag an item of the program scene.
-- Expect: on: banner «Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.», overlay inert, controls disabled, actions toast «Diese Szene ist live. Erst eine andere Szene ins Program schalten.»; off: Program header shows «Änderungen gehen sofort live», the output follows the drag within `T-SWITCH` plus one request round trip.
+- Steps: Studio Mode on with preview == program (select the program scene in the preview); then Studio Mode off and drag an item of the program scene.
+- Expect: on: banner “This scene is live right now. Editing is possible once another scene is on Program.”, overlay inert, controls disabled, actions toast “This scene is live. Switch another scene to Program first.”; off: Program header shows “Changes go live immediately”, the output follows the drag within `T-SWITCH` plus one request round trip.
 
 **E2E-SCENE-20** · P2 · pw — Boundary behaviour at the limits
 - Steps: via UI drag an item far outside the canvas; add the 32nd item (32 image assets uploaded via API); try a 33rd; create scenes up to 99, then the 100th.
@@ -1092,11 +1096,11 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 **E2E-SCENE-22** · P1 · pw — Missing source
 - Steps: scene with S1 and K1; `DELETE` the laptop device through the API.
-- Expect: the item stays; Program/Preview monitor and thumbnail show the dark placeholder `#121821` with the label tab «Quelle fehlt» (Regie only); output shows the dark placeholder without text; the Quellen row is selectable and removable; no console errors.
+- Expect: the item stays; Program/Preview monitor and thumbnail show the dark placeholder `#121821` with the label tab “Source missing” (Regie only); output shows the dark placeholder without text; the Sources row is selectable and removable; no console errors.
 
 **E2E-SCENE-23** · P2 · pw — Thumbnails and inspector context
 - Steps: move an item; select an item vs nothing.
-- Expect: scene thumbnails (renderer `thumbnail` mode) update within 1 s; inspector title «Element» with sub «K1 · <name>» when an item is selected and «Szene» with the scene name otherwise.
+- Expect: scene thumbnails (renderer `thumbnail` mode) update within 1 s; inspector title “Item” with sub “K1 · <name>” when an item is selected and “Scene” with the scene name otherwise.
 
 **E2E-SCENE-24** · P2 · pw — Scene background colour and image [GAP-37]
 - Steps: set background colour `#102030` and an image asset through the API.
@@ -1128,9 +1132,9 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 
 ### 2.4 SWITCH – Switching, broadcast, tally
 
-Strings: toast ««Szene B» ist live», log «Szene «Szene B» ist live», toasts «Studio-Modus an: Preview und Take» / «Studio-Modus aus: Szenen schalten direkt live», hints «Klick auf eine Szene schaltet sie direkt live.» /
-«Klick auf eine Szene lädt sie in die Preview. Take schaltet live.», «Preview aus» + «Mit Studio-Modus erscheint hier die Preview.», Program header «Änderungen gehen sofort live», button «Take» with hint «Leerschlag»,
-header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung starten» / «Sendung beenden», slates «Gleich geht's los» (subtitle = production name) / «Danke fürs Zuschauen» / «Kein Zugang».
+Strings: toast ““Scene B” is live”, log “Scene “Scene B” is live”, toasts “Studio Mode on: Preview and Take” / “Studio Mode off: scenes switch live directly”, hints “Click a scene to switch it live directly.” /
+“Click a scene to load it into Preview. Take switches it live.”, “Preview off” + “With Studio Mode the Preview appears here.”, Program header “Changes go live immediately”, button “Take” with hint “Space”,
+header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start broadcast” / “End broadcast”, slates “Starting soon” (subtitle = production name) / “Thanks for watching” / “No access”.
 
 **UNIT-SWITCH-01** · P0 · xunit — Program switch
 - Steps: switch to another scene (cut and fade 300); to the current program; to an unknown id; with preview set; with broadcast standby/live/ended [GAP-09].
@@ -1150,11 +1154,11 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **UNIT-SWITCH-05** · P0 · xunit — Broadcast state machine [GAP-09]
 - Steps: standby→start→end→start→reset; start while live; end while ended; end while standby; reset from each state; timestamps.
-- Expect: `start` (standby|ended → live) sets `LiveSince` = now and clears `EndedAt`; `end` (live → ended) sets `EndedAt`; `reset` (any → standby) clears both; start while live, end while ended and reset while already in standby are idempotent no-ops (200, no event, no audit row); `end` while standby → 409 `conflict` («Die Sendung läuft nicht.») [GAP-09]; each effective transition emits `productionChanged`; audit rows `broadcast.started`/`broadcast.ended` exist for start/end (spec 4.9 lists none for reset); log texts «Sendung gestartet», «Sendung beendet».
+- Expect: `start` (standby|ended → live) sets `LiveSince` = now and clears `EndedAt`; `end` (live → ended) sets `EndedAt`; `reset` (any → standby) clears both; start while live, end while ended and reset while already in standby are idempotent no-ops (200, no event, no audit row); `end` while standby → 409 `conflict` (“The broadcast is not running.”) [GAP-09]; each effective transition emits `productionChanged`; audit rows `broadcast.started`/`broadcast.ended` exist for start/end (spec 4.9 lists none for reset); log texts “Broadcast started”, “Broadcast ended”.
 
 **UNIT-SWITCH-06** · P0 · xunit — Tally computation
-- Steps: matrix over: item in program/preview/both/neither; hidden item; same device with camera in program and screen in preview; media source; broadcast live/standby/ended; preview null; Auto-Grid scene; device with 9 slots.
-- Expect: per slot `program` if a non-hidden item with that source is in the program scene, else `preview` if in the preview scene, else `off`; overall = max over slots (program > preview > off); media never produce tally; standby and ended → every slot and overall `off`; Auto-Grid counts items regardless of availability.
+- Steps: matrix over: item in program/preview/both/neither; hidden item; same device with camera in program and screen in preview; media source; broadcast live/standby/ended; preview null; Auto grid scene; device with 9 slots.
+- Expect: per slot `program` if a non-hidden item with that source is in the program scene, else `preview` if in the preview scene, else `off`; overall = max over slots (program > preview > off); media never produce tally; standby and ended → every slot and overall `off`; Auto grid counts items regardless of availability.
 
 **UNIT-SWITCH-07** · P1 · xunit — Tally push policy
 - Steps: change program, preview, item hidden flag, item added/removed, broadcast state, device connects (`Hello`); change unrelated scene.
@@ -1162,10 +1166,10 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **UNIT-SWITCH-08** · P1 · xunit — Preview rules [GAP-18]
 - Steps: `setPreview` with existing scene, same as program, null, unknown scene; delete the preview scene.
-- Expect: existing/equal/null accepted (200), unknown → 404; deleting the preview scene clears it; the server stores the value only (no Studio-Modus knowledge).
+- Expect: existing/equal/null accepted (200), unknown → 404; deleting the preview scene clears it; the server stores the value only (no Studio Mode knowledge).
 
 **UNIT-SWITCH-09** · P1 · ng — Regie switching and keyboard logic
-- Steps: store with scenes; direct mode `chooseScene`; Studio-Modus on/off; `take`; local transition guard derived from the event `At` + `durationMs` and the server offset; keys 1–9, Space (on body, on button, in input), Escape order, Ctrl+Z; toggling Studio-Modus with `presence` 1 and 2.
+- Steps: store with scenes; direct mode `chooseScene`; Studio Mode on/off; `take`; local transition guard derived from the event `At` + `durationMs` and the server offset; keys 1–9, Space (on body, on button, in input), Escape order, Ctrl+Z; toggling Studio Mode with `presence` 1 and 2.
 - Expect: no request while a transition is running locally; Take disabled when preview is null or equals program; payloads are exactly `SwitchProgramRequest{sceneId, transition}` / `TakeRequest{transition}` with the selected transition; key handling equals the prototype (typing excluded, modifier keys ignored); toggling on sets the preview to the next scene (wrapping), toggling off clears the preview only when `presence ≤ 1`; settings written to `studioflow.studio` / `studioflow.transition`.
 
 **INT-SWITCH-01** · P0 · xunit — Switch over REST with the guard
@@ -1174,7 +1178,7 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **INT-SWITCH-02** · P0 · xunit — Event order and output filtering for a switch
 - Steps: studio hub and output hub clients subscribed; switch.
-- Expect: studio receives `programSwitched` then `logAppended` («Szene «X» ist live») with consecutive revisions; output receives `programSwitched` (identical payload) and `revisionOnly` for the log revision (same revision numbers); audit `scene.live`.
+- Expect: studio receives `programSwitched` then `logAppended` (“Scene “X” is live”) with consecutive revisions; output receives `programSwitched` (identical payload) and `revisionOnly` for the log revision (same revision numbers); audit `scene.live`.
 
 **INT-SWITCH-03** · P0 · xunit — Tally over the device hub
 - Steps: device hub `Hello`; switch program/preview; take; start/end/reset broadcast; hide the item.
@@ -1186,38 +1190,38 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 
 **INT-SWITCH-05** · P1 · xunit — Slates
 - Steps: `PATCH production {standbySlate:{title,subtitle,backgroundAssetId}}`; title empty/81 chars; background = video asset/unknown; delete the asset.
-- Expect: valid change → `productionChanged`; title 1–80 (trimmed), a longer subtitle is truncated instead of rejected; background must be an image of the production; delete of the used asset → 409 `asset_in_use`; null fields leave the slate unchanged; defaults «Gleich geht's los» (subtitle = production name) and «Danke fürs Zuschauen».
+- Expect: valid change → `productionChanged`; title 1–80 (trimmed), a longer subtitle is truncated instead of rejected; background must be an image of the production; delete of the used asset → 409 `asset_in_use`; null fields leave the slate unchanged; defaults “Starting soon” (subtitle = production name) and “Thanks for watching”.
 
 **INT-SWITCH-06** · P2 · xunit — Server time
 - Steps: read `ProductionSnapshot.ServerTime` repeatedly.
 - Expect: monotonic, within ±1 s of the test clock; `LastSwitchAt` and incident timestamps use the same clock.
 
-**E2E-SWITCH-01** · P0 · pw — Direct switch (Studio-Modus off)
-- Steps: click scene «Szene B» in the Szenen dock.
-- Expect: Program monitor header shows the new name; toast ««Szene B» ist live»; log entry «Szene «Szene B» ist live» in the message strip; scene button `aria-pressed=true`, label ends «, live im Program», tag PGM; API `programSceneId`; output scene id changes within `T-SWITCH`; Program screen gets the `is-flash` outline once; clicking the already-live scene does nothing (no toast, no request).
+**E2E-SWITCH-01** · P0 · pw — Direct switch (Studio Mode off)
+- Steps: click scene “Scene B” in the Scenes dock.
+- Expect: Program monitor header shows the new name; toast ““Scene B” is live”; log entry “Scene “Scene B” is live” in the message strip; scene button `aria-pressed=true`, label ends “, live on Program”, tag PGM; API `programSceneId`; output scene id changes within `T-SWITCH`; Program screen gets the `is-flash` outline once; clicking the already-live scene does nothing (no toast, no request).
 
 **E2E-SWITCH-02** · P0 · pw — Cut and fade
-- Steps: choose «Schnitt», switch; choose «Blende» (0,3 s), switch; instrument the output with `Element.prototype.animate` and `document.getAnimations()`.
+- Steps: choose “Cut”, switch; choose “Fade” (0.3 s), switch; instrument the output with `Element.prototype.animate` and `document.getAnimations()`.
 - Expect: cut: no opacity animation, next frame shows the new scene only; fade: exactly one opacity animation of `duration: 300` (± 1 ms) on the new layer, the old layer disappears when it ends; the API event carries `transition {kind, durationMs}` and the output uses it (not the Regie's local setting); `T-FADE`.
 
 **E2E-SWITCH-03** · P1 · pw — Fade duration stepper
-- Steps: press «Blende länger» up to the end and «Blende kürzer» down to the start; switch to «Schnitt»; reload.
-- Expect: values in order «0,2 s», «0,3 s», «0,5 s», «0,8 s», «1 s», «1,5 s», «2 s»; minus disabled at «0,2 s», plus disabled at «2 s»; both disabled and the value muted under «Schnitt»; selection persisted in `studioflow.transition`; the request body carries the matching `durationMs`.
+- Steps: press “Longer fade” up to the end and “Shorter fade” down to the start; switch to “Cut”; reload.
+- Expect: values in order “0.2 s”, “0.3 s”, “0.5 s”, “0.8 s”, “1 s”, “1.5 s”, “2 s”; minus disabled at “0.2 s”, plus disabled at “2 s”; both disabled and the value muted under “Cut”; selection persisted in `studioflow.transition`; the request body carries the matching `durationMs`.
 
 **E2E-SWITCH-04** · P0 · pw — A fade always completes; switches during a fade are ignored
-- Steps: duration 2 s; operator A clicks «Szene B», 300 ms later clicks «Szene C» and presses key `3`; operator B (separate Regie) clicks «Szene C» 500 ms after A's switch.
-- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running`, is ignored silently (no error toast, no state change); the Take button is `disabled` during the fade; after 2 s program = «Szene B» in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works.
+- Steps: duration 2 s; operator A clicks “Scene B”, 300 ms later clicks “Scene C” and presses key `3`; operator B (separate Regie) clicks “Scene C” 500 ms after A's switch.
+- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running`, is ignored silently (no error toast, no state change); the Take button is `disabled` during the fade; after 2 s program = “Scene B” in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works.
 
-**E2E-SWITCH-05** · P0 · pw — Studio-Modus
-- Steps: toggle the `Studio-Modus` switch on; click «Szene C»; toggle off; reload with it on.
-- Expect: toast «Studio-Modus an: Preview und Take»; Preview monitor and Take appear, docks and control column do not move (bounding boxes unchanged ±0 px, E2E-DOCK-09); preview defaults to the scene after the program (wrapping to the first after the last) when none is set [GAP-18]; clicking a scene only changes the preview (program and output unchanged); "Änderungen gehen sofort live" hidden; hint «Klick auf eine Szene lädt sie in die Preview. Take schaltet live.»; off: toast «Studio-Modus aus: Szenen schalten direkt live», Preview area shows «Preview aus»; state persists in `studioflow.studio`.
+**E2E-SWITCH-05** · P0 · pw — Studio Mode
+- Steps: toggle the `Studio Mode` switch on; click “Scene C”; toggle off; reload with it on.
+- Expect: toast “Studio Mode on: Preview and Take”; Preview monitor and Take appear, docks and control column do not move (bounding boxes unchanged ±0 px, E2E-DOCK-09); preview defaults to the scene after the program (wrapping to the first after the last) when none is set [GAP-18]; clicking a scene only changes the preview (program and output unchanged); “Changes go live immediately” hidden; hint “Click a scene to load it into Preview. Take switches it live.”; off: toast “Studio Mode off: scenes switch live directly”, Preview area shows “Preview off”; state persists in `studioflow.studio`.
 
 **E2E-SWITCH-06** · P0 · pw — Take
-- Steps: Studio-Modus on, preview «Szene C», program «Szene A»; press `Space` with focus on the page body; click «Take»; Space with focus on a button; Take with preview == program.
-- Expect: Take swaps (program «Szene C», preview «Szene A»), transition per settings, toast ««Szene C» ist live»; Space on a focused button/link activates that control instead of Take; Take is `disabled` when preview == program and while a transition runs; forcing the API call returns 409 `conflict`; second Take swaps back after the fade.
+- Steps: Studio Mode on, preview “Scene C”, program “Scene A”; press `Space` with focus on the page body; click “Take”; Space with focus on a button; Take with preview == program.
+- Expect: Take swaps (program “Scene C”, preview “Scene A”), transition per settings, toast ““Scene C” is live”; Space on a focused button/link activates that control instead of Take; Take is `disabled` when preview == program and while a transition runs; forcing the API call returns 409 `conflict`; second Take swaps back after the fade.
 
 **E2E-SWITCH-07** · P1 · pw — Number keys
-- Steps: with 12 scenes press `1`, `5`, `9`, `0`, `a`; Ctrl+3, Alt+3, Meta+3; focus in the scene-name input and press `2`; Studio-Modus on and off.
+- Steps: with 12 scenes press `1`, `5`, `9`, `0`, `a`; Ctrl+3, Alt+3, Meta+3; focus in the scene-name input and press `2`; Studio Mode on and off.
 - Expect: Studio off: key n switches scene n directly; on: key n sets the preview; keys beyond the scene count, `0`, letters, modified keys, and keys typed into input/select/textarea do nothing; scenes 10–12 have no key.
 
 **E2E-SWITCH-08** · P0 · pw — Output follows the program (latency)
@@ -1230,24 +1234,24 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 - Expect: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (preloaded); resolution of the new picture never drops below the LOW layer; `T-SWITCH` unaffected.
 
 **E2E-SWITCH-10** · P1 · pw — Preview scene sources are preloaded at high quality
-- Steps: output with `debug=1`; Studio-Modus on; select a preview scene whose camera is not in the program; read the per-source resolution from the `debug=1` overlay (`<code> <w>x<h> …` lines).
+- Steps: output with `debug=1`; Studio Mode on; select a preview scene whose camera is not in the program; read the per-source resolution from the `debug=1` overlay (`<code> <w>x<h> …` lines).
 - Expect: that camera is delivered at the highest simulcast layer (≥ 1280 px wide for a 1080p publisher) within 3 s of selecting the preview; before selection (source only in another scene) it is at the lowest layer (≤ 360 px wide).
 
 **E2E-SWITCH-11** · P0 · pw — Tally on devices
-- Pre: phone K1 in program scene A; phone K2 in preview scene B (Studio-Modus on); laptop with S1 in A and a camera slot in B; phone K3 in no scene.
-- Steps: read `tally` of each sender; take; hide K1's item; switch; `Sendung beenden`; `Sendung starten`; open K1 in dark mode.
-- Expect: K1 `program` (red, text «LIVE»), K2 `preview` (green, «Als Nächstes»), K3 `off` (neutral); laptop overall `program`; take flips K1/K2 within `T-TALLY`; hidden item → `off`; standby and ended → `off` for all even when in the program scene; after start red again; dark mode: black screen with thin tally frame in the tally colour; `data-tally` attribute and computed colours agree.
+- Pre: phone K1 in program scene A; phone K2 in preview scene B (Studio Mode on); laptop with S1 in A and a camera slot in B; phone K3 in no scene.
+- Steps: read `tally` of each sender; take; hide K1's item; switch; “End broadcast”; “Start broadcast”; open K1 in dark mode.
+- Expect: K1 `program` (red, text “LIVE”), K2 `preview` (green, “Up next”), K3 `off` (neutral); laptop overall `program`; take flips K1/K2 within `T-TALLY`; hidden item → `off`; standby and ended → `off` for all even when in the program scene; after start red again; dark mode: black screen with thin tally frame in the tally colour; `data-tally` attribute and computed colours agree.
 
 **E2E-SWITCH-12** · P0 · pw — Broadcast lifecycle and slates
-- Steps: header shows «BEREIT» (production standby), output slate; click «Sendung starten»; wait 5 s; «Sendung beenden» (confirm) ; «Sendung starten» again; reset (header production menu action [GAP-27]).
-- Expect: before start the output shows the standby slate «Gleich geht's los» with subtitle = production name, program scene not visible; after start header «LIVE» + runtime `00:00:0x` increasing each second (from `LiveSince`, server-corrected), slate fades out (300 ms) to the program; end requires confirmation, header «BEENDET», output end slate «Danke fürs Zuschauen»; start again restarts the runtime at `00:00:00`; reset → «BEREIT» and standby slate; operator B sees every state within 1 s; tally follows (E2E-SWITCH-11).
+- Steps: header shows “READY” (production standby), output slate; click “Start broadcast”; wait 5 s; “End broadcast” (confirm) ; “Start broadcast” again; reset (header production menu action “Back to Ready” [GAP-27]).
+- Expect: before start the output shows the standby slate “Starting soon” with subtitle = production name, program scene not visible; after start header “LIVE” + runtime `00:00:0x` increasing each second (from `LiveSince`, server-corrected), slate fades out (300 ms) to the program; end requires confirmation, header “ENDED”, output end slate “Thanks for watching”; start again restarts the runtime at `00:00:00`; reset → “READY” and standby slate; operator B sees every state within 1 s; tally follows (E2E-SWITCH-11).
 
 **E2E-SWITCH-13** · P2 · pw — Switching in standby
-- Steps: standby; switch program to «Szene B»; start.
-- Expect: output keeps the standby slate (no flash of scene B); after start it shows «Szene B».
+- Steps: standby; switch program to “Scene B”; start.
+- Expect: output keeps the standby slate (no flash of scene B); after start it shows “Scene B”.
 
-**E2E-SWITCH-14** · P1 · pw — Two operators and Studio-Modus presence [GAP-18]
-- Steps: A Studio-Modus on with preview P; B (Studio-Modus off) switches program; B toggles Studio-Modus on then off while A is connected; B leaves; A toggles off alone.
+**E2E-SWITCH-14** · P1 · pw — Two operators and Studio Mode presence [GAP-18]
+- Steps: A Studio Mode on with preview P; B (Studio Mode off) switches program; B toggles Studio Mode on then off while A is connected; B leaves; A toggles off alone.
 - Expect: B's direct switch does not change A's preview; toggling off in B does not clear the preview while A is connected (`PUT preview` not sent, presence 2); when A toggles off as the only operator the preview is cleared (`previewSceneId: null`); A's Program monitor updates ≤ 500 ms after B's switch.
 
 **E2E-SWITCH-15** · P1 · pw — Fade synchronisation Regie vs output
@@ -1271,28 +1275,28 @@ header «BEREIT» / «LIVE» + `hh:mm:ss` / «BEENDET», buttons «Sendung start
 - Expect: output standby slate shows the new texts and the image (cover); the asset cannot be deleted while used; changes propagate without reload.
 
 **E2E-SWITCH-20** · P2 · pw — Keyboard focus rules around Take
-- Steps: Tab to «Take», press Enter; click on the monitor then Space.
-- Expect: Enter on the focused button takes once (no double take from Space handler); `aria-keyshortcuts="Space"` present; hint «Leerschlag» visible.
+- Steps: Tab to “Take”, press Enter; click on the monitor then Space.
+- Expect: Enter on the focused button takes once (no double take from Space handler); `aria-keyshortcuts="Space"` present; hint “Space” visible.
 
 ### 2.5 SRC – Sources, stations and incidents
 
-Strings (exact): state words «verbindet neu», «Teilen beendet» (screen) / «Kamera beendet» (camera), «gesperrt», «verbindet …», «kein Bild», «nicht verbunden»; recovered «wieder da» + «war N s weg»; places «im Program» / «in der Preview» / «nicht live»;
-button «Gesehen»; «Neu teilen lassen»; strip with no incident «Keine offenen Meldungen» + «Letzte Ereignisse»; health chip «Alle N Stationen ok» / «1 Störung» / «N Störungen»; station recovered box «Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.»;
-block box «K1 wird sofort getrennt und kann sich nicht mehr verbinden, bis du es entsperrst.» with «Jetzt sperren» / «Abbrechen», «Gerät sperren», «Entsperren»; toasts «K1 gesperrt und getrennt», «K1 entsperrt», «Bitte an {Name} geschickt: «Bildschirm erneut teilen»»;
-log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», «K1 Kamera beendet», «K1 kein Bild», «K1 Handy 1 gesperrt», «K1 Handy 1 entsperrt», «K1 Handy 1 entfernt» (codes and device name, BUG-10; the prototype's «S1 gebeten, neu zu teilen» and «K2 bestätigt» do not exist); sender «Erneut teilen», «Die Regie bittet dich, den Bildschirm erneut zu teilen», «Gesperrt», «In einem anderen Tab geöffnet», «Hier weitermachen», «Verbunden», «Verbindet neu …», «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen».
+Strings (exact): state words “reconnecting”, “sharing stopped” (screen) / “camera stopped” (camera), “blocked”, “connecting…”, “no picture”, “not connected”; recovered “back” + “was gone for N s”; places “on Program” / “in Preview” / “not live”;
+button “Seen”; “Ask to share again”; strip with no incident “No open messages” + “Recent events”; health chip “All N stations ok” (“1 station ok” for a single station) / “1 incident” / “N incidents”; station recovered box “The station is back. Confirm to dismiss the message.”;
+block box “K1 will be disconnected immediately and cannot connect again until you unblock it.” with “Block now” / “Cancel”, “Block device”, “Unblock”; toasts “K1 blocked and disconnected”, “K1 unblocked”, “Request sent to {Name}: “Share screen again””;
+log “K2 reconnecting”, “K2 is back, was gone for 9 s”, “S1 sharing stopped”, “K1 camera stopped”, “K1 no picture”, “K1 Phone 1 blocked”, “K1 Phone 1 unblocked”, “K1 Phone 1 removed” (codes and device name, BUG-10; the prototype's “S1 asked to share again” and “K2 acknowledged” do not exist); sender “Share again”, “The control room asks you to share the screen again”, “Blocked”, “Opened in another tab”, “Continue here”, “Connected”, “Reconnecting…”, “Share screen”, “+ Another screen”, “Stop sharing”, “Remove”.
 
 **UNIT-SRC-01** · P0 · xunit — Source status state machine, all transitions [GAP-08]
 - Steps: drive the `SourceStatusTracker` with events (`DeviceConnected/Disconnected`, `TrackPublished/Unpublished`, `ParticipantLeft`, `Report(slot states, rtc)`, `Block/Unblock`, `SlotRemoved`) through this table:
   `offline→connecting` (device online, no track); `connecting→ok` (track published); `ok→reconnecting` (hub disconnected; participant left unintentionally; track unpublished while report says `rtc: reconnecting`; a report `rtc: reconnecting|disconnected` alone while the hub is up, because a frozen LiveKit sends no webhook; slot reported `paused`; slot missing from the report while no track is published); `ok→ended` (report `ended`); `ok→lost` (report `failed`); `reconnecting→ok`; `ended→ok`; `lost→ok`; `reconnecting→ended`; `reconnecting→lost`; `ended` + hub disconnect; `lost` + hub disconnect; any → `blocked`; `blocked→offline` on unblock; media always `ok`.
-- Expect: statuses as listed; `StatusSince` changes only on a status change; the pinned rules (they equal `SourceStatusRules` and `SourceHealth` in the working tree): a reported `ended`/`lost` wins over the connection state (sticky across hub disconnects of the same session, not across a new session); slot state `paused` (the operating system suspended the capture, e.g. the phone app in the background) is not live and expected back: `reconnecting` if the slot was live, `connecting` if it never was – never `ended`; only a deliberate stop is `ended` («Teilen beenden», the browser's stop button, the camera stopped by the user) [DOC-06, spec 4.5]; every report replaces all earlier slot states (a slot missing from it has no state) and a new `Hello` session starts without slot and rtc states; `reconnecting→ended|lost` keeps the open incident (same id, original `StartedAt`) and only changes its kind (`incidentUpserted`, no removal); slot state `starting` has no rule of its own (a slot that was live and has no track is `reconnecting`); the device hub connection is the fast signal: `ok` needs a connected hub and a live slot; media loss that only the device report shows (`rtc: reconnecting|disconnected` while the track is still `Published` and the hub is up) must also yield `reconnecting` within `T-DETECT-SILENT` [GAP-08]; unblock goes to `offline` until the device reconnects, never opens an incident.
+- Expect: statuses as listed; `StatusSince` changes only on a status change; the pinned rules (they equal `SourceStatusRules` and `SourceHealth` in the working tree): a reported `ended`/`lost` wins over the connection state (sticky across hub disconnects of the same session, not across a new session); slot state `paused` (the operating system suspended the capture, e.g. the phone app in the background) is not live and expected back: `reconnecting` if the slot was live, `connecting` if it never was – never `ended`; only a deliberate stop is `ended` (“Stop sharing”, the browser's stop button, the camera stopped by the user) [DOC-06, spec 4.5]; every report replaces all earlier slot states (a slot missing from it has no state) and a new `Hello` session starts without slot and rtc states; `reconnecting→ended|lost` keeps the open incident (same id, original `StartedAt`) and only changes its kind (`incidentUpserted`, no removal); slot state `starting` has no rule of its own (a slot that was live and has no track is `reconnecting`); the device hub connection is the fast signal: `ok` needs a connected hub and a live slot; media loss that only the device report shows (`rtc: reconnecting|disconnected` while the track is still `Published` and the hub is up) must also yield `reconnecting` within `T-DETECT-SILENT` [GAP-08]; unblock goes to `offline` until the device reconnects, never opens an incident.
 
 **UNIT-SRC-02** · P0 · xunit — Incident lifecycle
 - Steps: ok→reconnecting→ok; ok→ended→ok; reconnecting→ended→ok; ack while open; ack after recovery; ack twice; block with open incident; slot removal with open incident; new outage on the same source while a recovered incident is un-acked.
-- Expect: an outage from `ok` opens an incident (replacing an earlier incident of the same source: `incidentRemoved(old)` then `incidentUpserted(new)`); an escalation `reconnecting → ended|lost` updates the open incident in place; recovery sets `EndedAt` and keeps it; `ack` of a recovered incident → removed (204), `ack` of an open incident → 409 `conflict`, second ack → 404; block/slot removal remove incidents; log texts «K2 verbindet neu», «K2 wieder da, war 9 s weg» (rounded seconds, minimum 1), «S1 Teilen beendet», «K1 Kamera beendet» (camera stopped on purpose; a paused camera is «K1 verbindet neu», and when it is then stopped the open incident keeps its id and start and only changes its kind), «K1 kein Bild»; an acknowledgement writes no log entry.
+- Expect: an outage from `ok` opens an incident (replacing an earlier incident of the same source: `incidentRemoved(old)` then `incidentUpserted(new)`); an escalation `reconnecting → ended|lost` updates the open incident in place; recovery sets `EndedAt` and keeps it; `ack` of a recovered incident → removed (204), `ack` of an open incident → 409 `conflict`, second ack → 404; block/slot removal remove incidents; log texts “K2 reconnecting”, “K2 is back, was gone for 9 s” (rounded seconds, minimum 1), “S1 sharing stopped”, “K1 camera stopped” (camera stopped on purpose; a paused camera is “K1 reconnecting”, and when it is then stopped the open incident keeps its id and start and only changes its kind), “K1 no picture”; an acknowledgement writes no log entry.
 
 **UNIT-SRC-03** · P1 · xunit — Startup seed and API restart [GAP-08]
 - Steps: start the tracker with empty in-memory health and `ListParticipants` returning two participants with published `camera` tracks; device hubs reconnect after 3 s and after 20 s; a third device that never returns.
-- Expect: until its hub is back a seeded source is `offline` (the "was live" history is not carried over a restart), then `ok`; no incident is created for the restart itself – neither by the graceful shutdown before it (hub connections that end because the host stops are no outage: nothing is evaluated or written, BUG-20) nor after the start – so `incidentUpserted`/log entries «verbindet neu» do not appear; the device that never returns: if its source was live within 12 h (`lastLiveAt`) and is used in the program or preview scene it becomes `reconnecting` with an incident («K1 verbindet neu») once `Sources:RestartGrace` (15 s) after the start has passed (spec 12, GAP-08 b), otherwise it stays `offline` (grey, no incident).
+- Expect: until its hub is back a seeded source is `offline` (the "was live" history is not carried over a restart), then `ok`; no incident is created for the restart itself – neither by the graceful shutdown before it (hub connections that end because the host stops are no outage: nothing is evaluated or written, BUG-20) nor after the start – so `incidentUpserted`/log entries “reconnecting” do not appear; the device that never returns: if its source was live within 12 h (`lastLiveAt`) and is used in the program or preview scene it becomes `reconnecting` with an incident (“K1 reconnecting”) once `Sources:RestartGrace` (15 s) after the start has passed (spec 12, GAP-08 b), otherwise it stays `offline` (grey, no incident).
 
 **UNIT-SRC-04** · P1 · xunit — Telemetry aggregation [GAP-29]
 - Steps: reports with battery −5, 0, 100, 101, null; loss 0–100, −1, 150; bitrate negative; unknown slot names; 200 slots; stale (> 6 s) device.
@@ -1304,23 +1308,23 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **UNIT-SRC-06** · P0 · vitest — Publisher (`packages/media-client`)
 - Steps: fake `Room`/`LocalParticipant`: `publishCamera` (facing, 720/1080), `publishScreen` without and with a user gesture, `switchCamera`, `unpublish`, `stopAll`; camera track `ended` → re-acquire (fake timers); screen `ended`; rejoin; `getSlotTelemetry`.
-- Expect: camera `ended` → `restartTrack` attempts after 0,3 / 0,6 / 1,2 s, `failed` after the third failure, `live` again on success (slot states `starting → live → failed|live`); screen `ended` → `ended`, never restarts and never calls `getDisplayMedia` by itself; `publishScreen` outside a user gesture rejects; after a rejoin all `live` slots are republished; settings: camera H.264 with simulcast layers 1080p/540p/270p (or 720p/360p/180p) and `contentHint 'motion'`, screen VP9 with H.264 backup, simulcast off, `contentHint 'detail'`, max 1440p at 15–30 fps, dynacast on, no audio track ever; `onSlotState` fires once per change.
+- Expect: camera `ended` → `restartTrack` attempts after 0.3 / 0.6 / 1.2 s, `failed` after the third failure, `live` again on success (slot states `starting → live → failed|live`); screen `ended` → `ended`, never restarts and never calls `getDisplayMedia` by itself; `publishScreen` outside a user gesture rejects; after a rejoin all `live` slots are republished; settings: camera H.264 with simulcast layers 1080p/540p/270p (or 720p/360p/180p) and `contentHint 'motion'`, screen VP9 with H.264 backup, simulcast off, `contentHint 'detail'`, max 1440p at 15–30 fps, dynacast on, no audio track ever; `onSlotState` fires once per change.
 
 **UNIT-SRC-07** · P1 · vitest — Technical check logic
-- Steps: `runTechCheck` with fake camera settings, fake `fetch` for 5 pings and the 1 MB upload; bandwidth 6,00 / 5,99 / 3,00 / 2,99 Mbit/s; RTT outliers; low resolution/fps; upload timeout; camera permission denied.
+- Steps: `runTechCheck` with fake camera settings, fake `fetch` for 5 pings and the 1 MB upload; bandwidth 6.00 / 5.99 / 3.00 / 2.99 Mbit/s; RTT outliers; low resolution/fps; upload timeout; camera permission denied.
 - Expect: bandwidth ≥ 6 Mbit/s `ok`, ≥ 3 `warn`, else `bad`; RTT is the median of 5 pings; camera level from achieved size/fps; `Overall` = worst of the three; failures yield `bad` with a `Note`; result carries `At`, `UploadKbps`, `RttMs`.
 
 **UNIT-SRC-08** · P0 · ng — Regie outage presentation (store to the six places)
 - Steps: store with sources in `ok/connecting/reconnecting/ended/lost/blocked`, incidents open and recovered, scenes with those sources in program, preview, hidden.
-- Expect: header chip «Alle N Stationen ok» (N = non-blocked stations) / «1 Störung» / «N Störungen», lamp amber when only reconnecting, red when any red incident is open; strip entries sorted open first, red before amber, then by start, each with code, name, state word, place («im Program» / «in der Preview» / «nicht live»), timer, and only the right actions («Neu teilen lassen» for `ended`, «Gesehen» for recovered); station line text per status; scene row health = worst down source; monitor tab texts «K1 · Standbild mm:ss», «S1 · Teilen beendet» (small: «beendet»), «gesperrt»; recovered incidents never count as faults.
+- Expect: header chip “All N stations ok” (N = non-blocked stations; “1 station ok” for one) / “1 incident” / “N incidents”, lamp amber when only reconnecting, red when any red incident is open; strip entries sorted open first, red before amber, then by start, each with code, name, state word, place (“on Program” / “in Preview” / “not live”), timer, and only the right actions (“Ask to share again” for `ended`, “Seen” for recovered); station line text per status; scene row health = worst down source; monitor tab texts “K1 · Freeze frame mm:ss”, “S1 · sharing stopped” (small: “ended”), “blocked”; recovered incidents never count as faults.
 
 **UNIT-SRC-09** · P0 · ng — Sender station state machine
 - Steps: fake hub and media client: connect, hub drop, blocked (403), `sessionReplaced`, `self`, `tally`, `command` (`reshare`, `message`, `switchCamera`), wake lock lifecycle, report timer.
-- Expect: connection states `connected / reconnecting / blocked / replaced`; blocked retries every 15 s (fake timers) and shows «Gesperrt»; replaced never reconnects until «Hier weitermachen» is pressed; tally maps to `data-tally` and the texts «LIVE» / «Als Nächstes»; `reshare` shows the banner «Die Regie bittet dich, den Bildschirm erneut zu teilen» and «Erneut teilen» which calls `publishScreen` only from the click handler; message text is rendered escaped; reports every 2 s with slot states; wake lock re-acquired on `visibilitychange`.
+- Expect: connection states `connected / reconnecting / blocked / replaced`; blocked retries every 15 s (fake timers) and shows “Blocked”; replaced never reconnects until “Continue here” is pressed; tally maps to `data-tally` and the texts “LIVE” / “Up next”; `reshare` shows the banner “The control room asks you to share the screen again” and “Share again” which calls `publishScreen` only from the click handler; message text is rendered escaped; reports every 2 s with slot states; wake lock re-acquired on `visibilitychange`.
 
 **INT-SRC-01** · P0 · xunit — Webhook flow to incidents
 - Steps: studio hub subscribed; the device hub connects (`Hello`) and stays connected; signed webhooks: `participant_joined(dev_x)`, `track_published(camera)`, `participant_left(dev_x)`, `participant_joined`, `track_published`; then ack.
-- Expect: events in order: `deviceUpserted(online)`, `sourceUpserted(connecting)`, `sourceUpserted(ok)`, `sourceUpserted(reconnecting)`, `incidentUpserted(reconnecting)`, `logAppended` («K1 verbindet neu»), `sourceUpserted(ok)`, `incidentUpserted(endedAt set)`, `logAppended` («K1 wieder da, war N s weg»), `incidentRemoved` after `POST …/incidents/{id}/ack` (204); revisions consecutive.
+- Expect: events in order: `deviceUpserted(online)`, `sourceUpserted(connecting)`, `sourceUpserted(ok)`, `sourceUpserted(reconnecting)`, `incidentUpserted(reconnecting)`, `logAppended` (“K1 reconnecting”), `sourceUpserted(ok)`, `incidentUpserted(endedAt set)`, `logAppended` (“K1 is back, was gone for N s”), `incidentRemoved` after `POST …/incidents/{id}/ack` (204); revisions consecutive.
 
 **INT-SRC-02** · P1 · xunit — Webhook robustness [GAP-22]
 - Steps: duplicate event; `track_unpublished` before `track_published`; unknown identity; `studio_`/`output_` identities; malformed JSON; unknown event name; event for another room; huge payload.
@@ -1347,63 +1351,63 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 - Expect: the output receives `revisionOnly` for health-only changes (never a `sourceUpserted` with `status` ≠ `ok`); never `incident*`, `device*`, `logAppended` content; output snapshot sources carry `status: ok` and `statusSince: null`.
 
 **E2E-SRC-01** · P0 · pw (`pixel7`) — Phone camera live shows as ok everywhere
-- Steps: pair a phone, start the camera, put K1 into scene A (program), open Stationen row K1.
-- Expect: lamp green; row line `<n,n> Mbit/s` and `<n> ms`; detail list «Gerät» (e.g. «Pixel 7 · Chrome»), «Auflösung» (e.g. `1080p`), «Gekoppelt» «heute HH:MM», «Verlust» `0,0 %` (+ an «Akku» row on Chromium, where the Battery API exists); header chip «Alle 1 Stationen ok» (regex `^Alle \d+ Stationen ok$`); values change within 3 s (telemetry every 2 s); Program monitor video playing.
+- Steps: pair a phone, start the camera, put K1 into scene A (program), open Stations row K1.
+- Expect: lamp green; row line `<n.n> Mbit/s` and `<n> ms`; detail list “Device” (e.g. “Pixel 7 · Chrome”), “Resolution” (e.g. `1080p`), “Paired” “today HH:MM”, “Packet loss” `0.0%` (+ a “Battery” row on Chromium, where the Battery API exists); header chip “1 station ok” (regex `^(1 station|All \d+ stations) ok$`); values change within 3 s (telemetry every 2 s); Program monitor video playing.
 
 **E2E-SRC-02** · P0 · pw — Device loses network: outage in all six places
 - Pre: K1 (phone, in the program scene and the preview scene), K2 (phone, in another scene), S1 (laptop screen) live; output open; hold 3 s.
 - Steps: `phone1.goOffline()` (`net.cut`: hub and media of that phone die); sample the six places until all show the outage.
-- Expect: within `T-DETECT-CLEAN`: header chip «1 Störung» with amber lamp; strip segment `K1 <name> verbindet neu im Program <mm:ss>` (timer counting); Program (and Preview) monitor: element K1 with dashed amber outline and tab «K1 · Standbild 00:0x»; Szenen: the scene row shows an amber lamp and «K1 gestört»; Quellen row: amber lamp, «verbindet neu», timer; Stationen row: amber wash, «verbindet neu 00:0x Standbild»; log «K1 verbindet neu»; the output keeps K1's last frame (`E2E-OUT-06`); other stations unaffected. Test passes `regie.expectOutage('K1','reconnecting')`.
+- Expect: within `T-DETECT-CLEAN`: header chip “1 incident” with amber lamp; strip segment `K1 <name> reconnecting on Program <mm:ss>` (timer counting); Program (and Preview) monitor: element K1 with dashed amber outline and tab “K1 · Freeze frame 00:0x”; Scenes: the scene row shows an amber lamp and “K1 disrupted”; Sources row: amber lamp, “reconnecting”, timer; Stations row: amber wash, “reconnecting 00:0x freeze frame”; log “K1 reconnecting”; the output keeps K1's last frame (`E2E-OUT-06`); other stations unaffected. Test passes `regie.expectOutage('K1','reconnecting')`.
 
-**E2E-SRC-03** · P0 · pw — Recovery stays until «Gesehen»
-- Steps: continue after -02: `goOnline()` after 9 s; do nothing for 30 s; then «Gesehen».
-- Expect: within `T-RECOVER-SHORT` K1 is `ok`; strip shows a green entry `K1 <name> wieder da war 9 s weg` (±1 s) with button «Gesehen»; the Stationen row shows «wieder da · war 9 s weg» and the box «Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.»; the entry is still there after 30 s; header shows «Alle … Stationen ok» (recovered entries are not faults); after «Gesehen» the strip shows «Keine offenen Meldungen» + «Letzte Ereignisse» (≤ 4 entries with `HH:mm`, newest first: «K1 wieder da, war 9 s weg», «K1 verbindet neu», …); an acknowledgement adds no log entry [GAP-08].
+**E2E-SRC-03** · P0 · pw — Recovery stays until “Seen”
+- Steps: continue after -02: `goOnline()` after 9 s; do nothing for 30 s; then “Seen”.
+- Expect: within `T-RECOVER-SHORT` K1 is `ok`; strip shows a green entry `K1 <name> back was gone for 9 s` (±1 s) with button “Seen”; the Stations row shows “back · was gone 9 s” and the box “The station is back. Confirm to dismiss the message.”; the entry is still there after 30 s; header shows “All … stations ok” (recovered entries are not faults); after “Seen” the strip shows “No open messages” + “Recent events” (≤ 4 entries with `HH:mm`, newest first: “K1 is back, was gone for 9 s”, “K1 reconnecting”, …); an acknowledgement adds no log entry [GAP-08].
 
-**E2E-SRC-04** · P0 · pw — «Gesehen» is shared between operators
-- Steps: after a recovery both operators see the entry; A clicks «Gesehen» while B clicks within 100 ms.
+**E2E-SRC-04** · P0 · pw — “Seen” is shared between operators
+- Steps: after a recovery both operators see the entry; A clicks “Seen” while B clicks within 100 ms.
 - Expect: entry gone in both within 1 s; the second request returns 404 and produces no error toast.
 
 **E2E-SRC-05** · P1 · pw — Incident timers use server time
 - Steps: shift the Regie page clock by +5 min (`page.clock.install({ time: Date.now() + 300_000 })`, the clock keeps running) before an outage of 20 s.
-- Expect: timer in strip, Quellen and Stationen shows 00:20 ± 2 s (derived from `StatusSince`/`ServerTime`, not from the client clock); format `mm:ss`, passing 00:59 → 01:00 correctly.
+- Expect: timer in strip, Sources and Stations shows 00:20 ± 2 s (derived from `StatusSince`/`ServerTime`, not from the client clock); format `mm:ss`, passing 00:59 → 01:00 correctly.
 
 **E2E-SRC-06** · P0 · pw — Screen share ended by the user
 - Pre: laptop S1 sharing the timecode tab, S1 in the program scene, output open.
 - Steps: `laptop.endShare(1)` (closes the captured tab → `ended`).
-- Expect: red state in all six places within `T-DETECT-CLEAN`: strip `S1 <name> Teilen beendet im Program 00:0x` with button «Neu teilen lassen»; header «1 Störung» red lamp; monitor tab «S1 · Teilen beendet» (small items «S1 · beendet») red dashed outline; scene row «S1 gestört»; Quellen «Teilen beendet 00:0x»; Stationen «Teilen beendet 00:0x»; laptop sender shows the large button «Erneut teilen»; the sender did **not** call `getDisplayMedia` again (init-script counter stays 1); output holds the last frame.
+- Expect: red state in all six places within `T-DETECT-CLEAN`: strip `S1 <name> sharing stopped on Program 00:0x` with button “Ask to share again”; header “1 incident” red lamp; monitor tab “S1 · sharing stopped” (small items “S1 · ended”) red dashed outline; scene row “S1 disrupted”; Sources “sharing stopped 00:0x”; Stations “sharing stopped 00:0x”; laptop sender shows the large button “Share again”; the sender did **not** call `getDisplayMedia` again (init-script counter stays 1); output holds the last frame.
 
 **E2E-SRC-07** · P0 · pw — Reshare returns to the same place
-- Steps: after -06 click «Neu teilen lassen»; on the laptop click «Erneut teilen».
-- Expect: toast «Bitte an Laptop Lea · Screen 1 geschickt: «Bildschirm erneut teilen»» (no log entry, [GAP-08]); laptop shows «Die Regie bittet dich, den Bildschirm erneut zu teilen» with a prominent «Erneut teilen»; after the click the same slot `screen-1` publishes: S1 `ok`, incident «wieder da», the scene item is the same item (id, rectangle, z-order unchanged), no new station or source appears (counts unchanged, code S1), the output video resumes; the browser was asked exactly once more (user gesture).
+- Steps: after -06 click “Ask to share again”; on the laptop click “Share again”.
+- Expect: toast “Request sent to Laptop Lea · Screen 1: “Share screen again”” (no log entry, [GAP-08]); laptop shows “The control room asks you to share the screen again” with a prominent “Share again”; after the click the same slot `screen-1` publishes: S1 `ok`, incident “back”, the scene item is the same item (id, rectangle, z-order unchanged), no new station or source appears (counts unchanged, code S1), the output video resumes; the browser was asked exactly once more (user gesture).
 
-**E2E-SRC-08** · P1 · pw — Ending the share on the sender («Teilen beenden»)
-- Steps: laptop clicks «Teilen beenden» for screen 1; then «Bildschirm teilen» again.
-- Expect: treated as `ended` (incident «Teilen beendet», red); sharing again returns the slot to `ok` and «wieder da».
+**E2E-SRC-08** · P1 · pw — Ending the share on the sender (“Stop sharing”)
+- Steps: laptop clicks “Stop sharing” for screen 1; then “Share screen” again.
+- Expect: treated as `ended` (incident “sharing stopped”, red); sharing again returns the slot to `ok` and “back”.
 
-**E2E-SRC-09** · P0 · pw (`pixel7`) — Camera failure becomes «kein Bild»
-- Steps: init-script flag makes `getUserMedia` reject; stop the camera track (simulating another app grabbing the camera); wait for the 3 re-acquire attempts (backoff 0,3 / 0,6 / 1,2 s); clear the flag and restart the camera from the sender.
-- Expect: after ≈ 3 s the slot is `failed` → red incident kind `lost`: strip «K1 … kein Bild», station «kein Bild», monitor tab «K1 · kein Bild», `slot-camera[data-state=failed]` on the sender; after restart K1 `ok` and «wieder da»; with `getUserMedia` working the re-acquire succeeds within 1,5 s: the output freezes then resumes, no `failed` (a short «verbindet neu» incident that ends in «wieder da» is acceptable).
+**E2E-SRC-09** · P0 · pw (`pixel7`) — Camera failure becomes “no picture”
+- Steps: init-script flag makes `getUserMedia` reject; stop the camera track (simulating another app grabbing the camera); wait for the 3 re-acquire attempts (backoff 0.3 / 0.6 / 1.2 s); clear the flag and restart the camera from the sender.
+- Expect: after ≈ 3 s the slot is `failed` → red incident kind `lost`: strip “K1 … no picture”, station “no picture”, monitor tab “K1 · no picture”, `slot-camera[data-state=failed]` on the sender; after restart K1 `ok` and “back”; with `getUserMedia` working the re-acquire succeeds within 1.5 s: the output freezes then resumes, no `failed` (a short “reconnecting” incident that ends in “back” is acceptable).
 
 **E2E-SRC-10** · P0 · pw — Block and unblock
-- Pre: K1 live in a scene, listed in «+ Quelle» menus.
-- Steps: Stationen row K1 → expand → «Gerät sperren» → box → «Jetzt sperren»; wait 45 s; «Entsperren».
-- Expect: toast «K1 gesperrt und getrennt», log «K1 Handy 1 gesperrt»; row red «gesperrt · kann sich nicht verbinden»; incidents of K1 removed; monitor element tab «K1 · gesperrt» red dashed; K1 no longer offered in «+ Quelle»; sender shows «Gesperrt» and stops the camera within `T-BLOCK`; LiveKit has no participant `dev_…`; during the 45 s the sender polls at most 4 times (15 s cadence: count of `GET /api/device/me` or negotiate requests ≤ 4); «Abbrechen» in the box does nothing; «Entsperren» → toast «K1 entsperrt», log «K1 Handy 1 entsperrt»; the sender reconnects within 20 s, publishes again, K1 `ok`, no incident remains.
+- Pre: K1 live in a scene, listed in “+ Source” menus.
+- Steps: Stations row K1 → expand → “Block device” → box → “Block now”; wait 45 s; “Unblock”.
+- Expect: toast “K1 blocked and disconnected”, log “K1 Phone 1 blocked”; row red “blocked · cannot connect”; incidents of K1 removed; monitor element tab “K1 · blocked” red dashed; K1 no longer offered in “+ Source”; sender shows “Blocked” and stops the camera within `T-BLOCK`; LiveKit has no participant `dev_…`; during the 45 s the sender polls at most 4 times (15 s cadence: count of `GET /api/device/me` or negotiate requests ≤ 4); “Cancel” in the box does nothing; “Unblock” → toast “K1 unblocked”, log “K1 Phone 1 unblocked”; the sender reconnects within 20 s, publishes again, K1 `ok`, no incident remains.
 
 **E2E-SRC-11** · P0 · pw — Duplicate tab, no ping-pong
-- Steps: sender tab 1 live; open the sender in tab 2 of the same context; wait 30 s; click «Hier weitermachen» in tab 1; wait 30 s.
-- Expect: tab 1 shows «In einem anderen Tab geöffnet» with «Hier weitermachen» and releases camera and wake lock; tab 2 becomes live; Regie: one station, at most a brief amber blip, no permanent incident; for 30 s neither tab flips state again (exactly one `sessionReplaced` is delivered per takeover, to the replaced tab only, and the replaced tab sends no further `Hello`; LiveKit joins for the identity ≤ 2 per takeover); after «Hier weitermachen» the roles swap and stay swapped for 30 s.
+- Steps: sender tab 1 live; open the sender in tab 2 of the same context; wait 30 s; click “Continue here” in tab 1; wait 30 s.
+- Expect: tab 1 shows “Opened in another tab” with “Continue here” and releases camera and wake lock; tab 2 becomes live; Regie: one station, at most a brief amber blip, no permanent incident; for 30 s neither tab flips state again (exactly one `sessionReplaced` is delivered per takeover, to the replaced tab only, and the replaced tab sends no further `Hello`; LiveKit joins for the identity ≤ 2 per takeover); after “Continue here” the roles swap and stay swapped for 30 s.
 
 **E2E-SRC-12** · P1 · pw — Telemetry in station details and `/monitoring`
-- Steps: three stations live; open `/monitoring`; apply `lk.netem({lossPct:5})` on LiveKit and a battery stub (level 0,15) on one phone.
-- Expect: table rows for every station with bitrate (Mbit/s), fps, resolution, packet loss (%), RTT (ms), battery (%), network type, tech check level; values update within 3 s; problem stations sorted first (same order as the Stationen dock); low battery < 20 % shows «Akku 15 %» in the amber state colour on the station line; battery column empty (not 0) where the API is missing (Firefox/WebKit).
+- Steps: three stations live; open `/monitoring`; apply `lk.netem({lossPct:5})` on LiveKit and a battery stub (level 0.15) on one phone.
+- Expect: table rows for every station with bitrate (Mbit/s), fps, resolution, packet loss (%), RTT (ms), battery (%), network type, tech check level; values update within 3 s; problem stations sorted first (same order as the Stations dock); low battery < 20 % shows “Battery 15%” in the amber state colour on the station line; battery column empty (not 0) where the API is missing (Firefox/WebKit).
 
 **E2E-SRC-13** · P1 · pw — Technical check
 - Steps: first start of a sender runs the check; repeat with `net.cdpThrottle` upload 2 Mbit/s and 4 Mbit/s; run again on demand ([GAP-27] button).
 - Expect: camera level from achieved resolution/fps, network from RTT median of 5 pings, bandwidth from a 1 MB upload to `/api/device/bandwidth-test`: ≥ 6 Mbit/s `ok`, ≥ 3 `warn`, else `bad`; overall = worst; shown on the sender and in the Regie station detail; stored (`TechCheckDto.At`) and still shown after a Regie reload.
 
 **E2E-SRC-14** · P1 · pw — Several screens and optional camera on a laptop
-- Steps: `laptop.addScreen()` ×2 (3 screens), share all, end screen 2 only, «Entfernen» screen 3, add the laptop camera; try a 10th screen.
-- Expect: sources S1…S3 (labels «Laptop Lea · Screen n») and a K code for the camera («Laptop Lea · Kamera»); only S2 raises an incident; removing screen 3 removes the station and keeps scene items as «Quelle fehlt»; the 10th screen is refused by the UI (disabled or `/neun|9/i` notice) and the API (409 `limit_reached`).
+- Steps: `laptop.addScreen()` ×2 (3 screens), share all, end screen 2 only, “Remove” screen 3, add the laptop camera; try a 10th screen.
+- Expect: sources S1…S3 (labels “Laptop Lea · Screen n”) and a K code for the camera (“Laptop Lea · Camera”); only S2 raises an incident; removing screen 3 removes the station and keeps scene items as “Source missing”; the 10th screen is refused by the UI (disabled or `/9|nine/i` notice, “At most 9 screens are possible per device.”) and the API (409 `limit_reached`).
 
 **E2E-SRC-15** · P1 · pw — Station order
 - Steps: create states: S1 ended (red), K2 reconnecting (amber), K3 recovered, K4 connecting, K5 in program, K6 in preview, K7 unused.
@@ -1411,23 +1415,23 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **E2E-SRC-16** · P2 · pw — Accessibility names of stations
 - Steps: read the accessible name of the row button for K2 in program while reconnecting.
-- Expect: `K2 Handy Bühne rechts, im Program, verbindet neu` pattern (`<code> <name>[, im Program|in der Preview][, <Zustand>]`), `aria-expanded` toggles.
+- Expect: `K2 Phone stage right, on Program, reconnecting` pattern (`<code> <name>[, on Program|in Preview][, <state>]`), `aria-expanded` toggles.
 
-**E2E-SRC-17** · P1 · pw — Regie-Chat messages [GAP-30]
-- Steps: station detail → send message «In 10 s live»; 141 characters; to an offline device.
-- Expect: the phone shows a prominent banner (`message-banner`) with the text; 141 characters cannot be sent (UI limit and API 400); offline device: 202 and a Regie toast that the device is offline (`/offline|nicht verbunden/i`), nothing shown later when the device returns.
+**E2E-SRC-17** · P1 · pw — Regie messages [GAP-30]
+- Steps: station detail → send message “Live in 10 s”; 141 characters; to an offline device.
+- Expect: the phone shows a prominent banner (`message-banner`) with the text; 141 characters cannot be sent (UI limit and API 400); offline device: 202 and a Regie toast that the device is offline (`/offline|not connected/i`), nothing shown later when the device returns.
 
 **E2E-SRC-18** · P2 · pw (`pixel7`) — Switch camera command
-- Steps: «Kamera wechseln» on K1 (only offered for `ok` camera stations).
+- Steps: “Switch camera” on K1 (only offered for `ok` camera stations).
 - Expect: the sender re-acquires with the opposite `facingMode` (init-script records constraints); picture continues after ≤ 3 s; button absent for screens and for non-ok cameras.
 
 **E2E-SRC-19** · P1 · pw (`pixel7`) — Phone behaviour: wake lock, auto-start, settings, dark mode
 - Steps: stub `navigator.wakeLock`; start camera; hide/show the page (`visibilitychange`); reload; switch 720p/1080p; toggle dark mode; stop.
-- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`studioflow.sender.settings`); published resolution matches (station «Auflösung» `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `ended` → Regie `ended` (red incident, log «K1 Kamera beendet»); the page in the background (the OS suspends the camera) → slot `paused` → `reconnecting` («K1 verbindet neu»), back in the foreground → `ok` and «wieder da» [DOC-06, spec 4.5].
+- Expect: `wakeLock.request('screen')` called after start and again after becoming visible; reload auto-starts with the last facing/resolution (`studioflow.sender.settings`); published resolution matches (station “Resolution” `720p`/`1080p`); dark mode = black screen with thin tally frame; stop → slot `ended` → Regie `ended` (red incident, log “K1 camera stopped”); the page in the background (the OS suspends the camera) → slot `paused` → `reconnecting` (“K1 reconnecting”), back in the foreground → `ok` and “back” [DOC-06, spec 4.5].
 
 **E2E-SRC-20** · P0 · pw — A returning source keeps its place
 - Steps: scene with K1 at a custom rectangle and z-order; K1 offline 10 s and back; reload the phone.
-- Expect: same item id, rectangle and z-order; Quellen dock has no duplicate row; code K1 unchanged; output video back in the same rectangle.
+- Expect: same item id, rectangle and z-order; Sources dock has no duplicate row; code K1 unchanged; output video back in the same rectangle.
 
 **E2E-SRC-21** · P1 · pw — Hold frame on the Regie monitors
 - Steps: K1 lost.
@@ -1435,12 +1439,12 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 
 **E2E-SRC-22** · P2 · pw — Device removal while connected [GAP-35]
 - Steps: `DELETE …/devices/{id}` while the phone is live.
-- Expect: LiveKit participant removed, the phone shows a terminal state (`/entfernt|nicht mehr gekoppelt/i`, [GAP-27]) and offers pairing again, does not reconnect in a loop (≤ 1 request per 15 s); the Regie station disappears; scene items keep «Quelle fehlt».
+- Expect: LiveKit participant removed, the phone shows a terminal state (`/removed|no longer paired/i`, [GAP-27]) and offers pairing again, does not reconnect in a loop (≤ 1 request per 15 s); the Regie station disappears; scene items keep “Source missing”.
 
-Remote camera control (issue #11, decisions «#11» in `docs/decisions.md`; the camera is Chromium's fake device behind `support/devices/camera-stub.ts`, which answers `getCapabilities` / `getSettings` / `applyConstraints` like an Android profile; the real-phone procedure is MAN-14):
+Remote camera control (issue #11, decisions “#11” in `docs/decisions.md`; the camera is Chromium's fake device behind `support/devices/camera-stub.ts`, which answers `getCapabilities` / `getSettings` / `applyConstraints` like an Android profile; the real-phone procedure is MAN-14):
 
 **E2E-SRC-23** · P1 · pw (`pixel7`) — Camera control hidden where unsupported
-- Steps: a phone whose camera reports no capability and one lens; station detail → «Kamera».
+- Steps: a phone whose camera reports no capability and one lens; station detail → “Camera”.
 - Expect: the panel says that the controls are not available on this device; no slider, no lens picker, no reset button.
 
 **E2E-SRC-24** · P0 · pw (`pixel7`) — Zoom and brightness round trip, clamping, refusal
@@ -1452,7 +1456,7 @@ Remote camera control (issue #11, decisions «#11» in `docs/decisions.md`; the 
 - Expect: a dashed red confirmation appears and nothing changes before it is confirmed; after the confirmation the camera is the other lens (one more capture, no republish: the slot is `live` again) and the panel marks it; zoom starts again at 1×.
 
 **E2E-SRC-26** · P1 · pw (`pixel7`) — Refused change and reset
-- Steps: the camera refuses `torch` (`OverconstrainedError`); switch the light on; then zoom 4, lock the focus, light on, «Auf automatisch zurücksetzen».
+- Steps: the camera refuses `torch` (`OverconstrainedError`); switch the light on; then zoom 4, lock the focus, light on, “Reset to auto”.
 - Expect: an inline message in the panel, the light stays off in the panel and on the camera, the sender stays connected; the next working change clears the message; the reset gives zoom 1, automatic focus, 0 EV, light off.
 
 **E2E-SRC-27** · P1 · pw (`pixel7`) — Settings survive a reload
@@ -1461,7 +1465,7 @@ Remote camera control (issue #11, decisions «#11» in `docs/decisions.md`; the 
 
 ### 2.6 OUT – Output page
 
-Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bild kommt gleich zurück». The page has no other text and no controls. Preloading without black frames is tested by `E2E-SWITCH-09`; IP restriction and key rotation by `E2E-AUTH-23` and `E2E-AUTH-24`; assets via the key by `E2E-OUT-19`. Header chip «Output» (lamp + mono latency, and the names of the connected links, e.g. «Proxy + Teams camera»), popover «Zustand» «verbunden, 1 Abnehmer», «Abnehmer» (IP), «Format» «1920 × 1080 · 16:9 · 30 fps», «Latenz» «<n> ms gemessen», then the list of the output links («Proxy · verbunden») with the selected link below (issue #9, area `LINK`). As an OBS browser source the page needs no click: `E2E-OUT-02` (autoplay without a gesture, in an iframe too), `E2E-OUT-06` (hold frame) and `E2E-OUT-04` (`bg=transparent`) are the checks; `E2E-LINK-03` opens the URL of the downloaded OBS scene collection (also with `bg=transparent`), and `MAN-15` repeats it in OBS itself.
+Strings: “Starting soon”, “Thanks for watching”, “No access”, “Picture returns shortly”. The page has no other text and no controls; the language is the browser language or `?lang=` (E2E-I18N-07…10), the standby and end slates are texts of the production and do not change with it. Preloading without black frames is tested by `E2E-SWITCH-09`; IP restriction and key rotation by `E2E-AUTH-23` and `E2E-AUTH-24`; assets via the key by `E2E-OUT-19`. Header chip “Output” (lamp + mono latency, and the names of the connected links, e.g. “Proxy + Teams camera”), popover “State” “connected, 1 consumer”, “Consumers” (IP), “Format” “1920 × 1080 · 16:9 · 30 fps”, “Latency” “<n> ms measured”, then the list of the output links (“Proxy · connected”) with the selected link below (issue #9, area `LINK`). As an OBS browser source the page needs no click: `E2E-OUT-02` (autoplay without a gesture, in an iframe too), `E2E-OUT-06` (hold frame) and `E2E-OUT-04` (`bg=transparent`) are the checks; `E2E-LINK-03` opens the URL of the downloaded OBS scene collection (also with `bg=transparent`), and `MAN-15` repeats it in OBS itself.
 
 **UNIT-OUT-01** · P0 · vitest — Stage scaling and letterboxing math
 - Steps: container sizes 1920×1080, 1280×720, 800×600, 1680×720, 160×90, 3840×2160, 600×1000, 10×10, 0×0, fractional (1279.5×719.5).
@@ -1473,7 +1477,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **UNIT-OUT-03** · P0 · vitest — Hold frame timing (fake timers)
 - Steps: item with `onLost.holdMs` = 3000 / 10000 / null / 0, width 1360 / 320 / 319 px; source lost at t0; advance to t0+2999, +3000; source returns at +2000 and at +5000; lost again; two items with different hold times.
-- Expect: `data-state`: `live → hold` at loss (last frame kept, `video` element and `srcObject`/last frame retained) → `held` at exactly `holdMs` (null: never; 0: immediately); held style: blur ≈ 2.5 % of the item width (±1 px), overlay `rgba(13,17,23,.72)`, centred text «Bild kommt gleich zurück» only when the item is ≥ 320 px wide (319 px: no text); return in `hold` or `held` clears everything and resets the timer; independent timers per item; timers cleared on `destroy()`.
+- Expect: `data-state`: `live → hold` at loss (last frame kept, `video` element and `srcObject`/last frame retained) → `held` at exactly `holdMs` (null: never; 0: immediately); held style: blur ≈ 2.5 % of the item width (±1 px), overlay `rgba(13,17,23,.72)`, centred text “Picture returns shortly” only when the item is ≥ 320 px wide (319 px: no text); return in `hold` or `held` clears everything and resets the timer; independent timers per item; timers cleared on `destroy()`.
 
 **UNIT-OUT-04** · P1 · vitest — Fallback source
 - Steps: `fallbackSource` = image asset / live camera / unknown / own source; source lost beyond `holdMs`; source returns.
@@ -1497,7 +1501,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **UNIT-OUT-09** · P0 · vitest — Output boot and 403 handling (`apps/output`)
 - Steps: URL parsing (`/o/webinar?k=abc`, missing `k`, `bg=transparent`, `debug=1`, junk params, encoded slug); fake API returns 403 on snapshot/token/hub; advance fake timers 29 s, 30 s, 90 s.
-- Expect: missing key → slate «Kein Zugang» without any network request; 403 → slate «Kein Zugang» (`data-slate=denied`), no retry before 30 s, then at most one attempt per 30 s; unknown params ignored; slug/key never written into the DOM or console.
+- Expect: missing key → slate “No access” without any network request; 403 → slate “No access” (`data-slate=denied`), no retry before 30 s, then at most one attempt per 30 s; unknown params ignored; slug/key never written into the DOM or console.
 
 **UNIT-OUT-10** · P0 · vitest — Output state handling
 - Steps: snapshot then events: `programSwitched` (cut, fade), `sceneUpserted` for the shown scene, `productionChanged` (standby→live→ended→standby), `revisionOnly`, gap, hub loss, LiveKit loss.
@@ -1513,7 +1517,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-01** · P0 · pw — Output basics
 - Steps: open `/o/{slug}?k={key}` in a 1920×1080 viewport (standby).
-- Expect: slate title «Gleich geht's los», subtitle = production name; DOM contains no `button, a, input, select, textarea`, no text other than the slate; `<html lang="de-CH">`; first slate paint ≤ 1,0 s (`T-LOAD`); no console errors; page makes requests only to the stack origin.
+- Expect: slate title “Starting soon”, subtitle = production name; DOM contains no `button, a, input, select, textarea`, no text other than the slate; `<html lang="en">` (browser language `en-US`); first slate paint ≤ 1.0 s (`T-LOAD`); no console errors; page makes requests only to the stack origin.
 
 **E2E-OUT-02** · P0 · pw — Program rendering
 - Steps: start the broadcast with a scene holding K1 (camera) and S1 (screen).
@@ -1534,10 +1538,10 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
 - Steps: close the K1…K4 phone pages (track unpublished); observe `data-state` and frames.
-- Expect: immediately `hold`: the element stays visible with the last frame (not black; `expectVideoFrozen` for 1,5 s); K1 changes to `held` at 3,0 s ± 0,3 s (`T-HOLD`): filter blur ≈ 2,5 % of the item width (34 px at stage scale 1, i.e. an output viewport of 1920×1080; ± 1 px), overlay `rgba(13,17,23,.72)`, text «Bild kommt gleich zurück»; K2 (300 px) `held` without text; K3 stays `hold` for 60 s; K4 `held` at 10 s ± 0,3 s; reopening the K1 sender page within `held` (credentials in storage, auto-start) → `live` with moving frames, filter removed, no black frame in between (screencast).
+- Expect: immediately `hold`: the element stays visible with the last frame (not black; `expectVideoFrozen` for 1.5 s); K1 changes to `held` at 3.0 s ± 0.3 s (`T-HOLD`): filter blur ≈ 2.5 % of the item width (34 px at stage scale 1, i.e. an output viewport of 1920×1080; ± 1 px), overlay `rgba(13,17,23,.72)`, text “Picture returns shortly”; K2 (300 px) `held` without text; K3 stays `hold` for 60 s; K4 `held` at 10 s ± 0.3 s; reopening the K1 sender page within `held` (credentials in storage, auto-start) → `live` with moving frames, filter removed, no black frame in between (screencast).
 
 **E2E-OUT-07** · P1 · pw — Fallback source
-- Steps: K1 item `fallbackSource` = image asset «Pause-Slate»; K1 offline beyond `holdMs`; K1 back; then fallback = a live camera K2; then fallback = deleted asset.
+- Steps: K1 item `fallbackSource` = image asset “Break slate”; K1 offline beyond `holdMs`; K1 back; then fallback = a live camera K2; then fallback = deleted asset.
 - Expect: after `holdMs` the item shows the image (`data-state=fallback`, no blur); K1 back → live; fallback camera is shown live; deleted/unknown fallback → regular held style; no exceptions.
 
 **E2E-OUT-08** · P0 · pw — Survives API restart
@@ -1546,7 +1550,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-09** · P0 · pw — Survives LiveKit restart
 - Steps: `docker.restart('livekit')` with cameras on air.
-- Expect: pictures freeze on the last frame (state `hold`, later `held` per hold times), never black or empty; no page reload; within `T-RESTART-LK` after LiveKit is healthy the output and all senders have rejoined (fresh tokens), `data-state=live` again and frames advance; Regie shows `verbindet neu` incidents that end in «wieder da».
+- Expect: pictures freeze on the last frame (state `hold`, later `held` per hold times), never black or empty; no page reload; within `T-RESTART-LK` after LiveKit is healthy the output and all senders have rejoined (fresh tokens), `data-state=live` again and frames advance; Regie shows `reconnecting` incidents that end in “back”.
 
 **E2E-OUT-10** · P0 · pw — Reload
 - Steps: reload the output while live (F5) ten times, once with `cache: disabled`.
@@ -1558,10 +1562,10 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-12** · P0 · pw — Access denied
 - Steps: wrong key; missing `k`; unknown slug; key of another production; observe for 70 s with request logging.
-- Expect: slate «Kein Zugang» (`data-slate=denied`), no video, no scene content; identical for all four cases (no hint whether the slug exists); at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
+- Expect: slate “No access” (`data-slate=denied`), no video, no scene content; identical for all four cases (no hint whether the slug exists); at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
 
 **E2E-OUT-13** · P0 · pw — Glass-to-glass latency
-- Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene «Vollbild» with the source; output 1920×1080 standalone; warm-up 5 s.
+- Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene “Full screen” with the source; output 1920×1080 standalone; warm-up 5 s.
 - Steps: per source (screen, camera): read `readTimecode()` on every `requestVideoFrameCallback` for 60 s; compute latency per decoded frame; repeat with the Regie Program monitor `<video>`.
 - Expect: `T-LATENCY` for the output: p50 < 200 ms and p95 < 300 ms (hard), target p50 ≤ 150 ms; checksum failures < 5 %; decoded timestamps strictly increasing; results attached as `latency-screen.json`, `latency-camera.json`, `latency-regie.json` including p50/p95/p99/max/mean, frame count, codec, resolution, and the `OutputReport.latencyMs` average (informational: |estimate − measured| < 60 ms).
 
@@ -1571,7 +1575,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-15** · P1 · pw — Output status in the Regie
 - Steps: no output → open one → open a second → block the first page's main thread for 10 s (`page.evaluate` busy loop) → resume → close both.
-- Expect: chip «Output an Proxy» lamp grey/«nicht verbunden» → green with mono latency (e.g. «148 ms») within 5 s; popover «verbunden, 1 Abnehmer» → «2 Abnehmer», lists both IPs, «1920 × 1080 · 16:9 · 30 fps», «Latenz <n> ms gemessen»; blocked page → state `stale` after ≤ 8 s then `connected` again; closing → `none` within 8 s; link box shows the URL masked (`?k=••••••`) and «Kopieren» puts the full URL with the real key into the clipboard.
+- Expect: chip “Output to proxy” lamp grey/“not connected” → green with mono latency (e.g. “148 ms”) within 5 s; popover “connected, 1 consumer” → “2 consumers”, lists both IPs, “1920 × 1080 · 16:9 · 30 fps”, “Latency <n> ms measured”; blocked page → state `stale` after ≤ 8 s then `connected` again; closing → `none` within 8 s; link box shows the URL masked (`?k=••••••`) and “Copy” puts the full URL with the real key into the clipboard.
 
 **E2E-OUT-16** · P1 · pw — Embedding as the proxy would
 - Steps: `embedHost` page at the allowed origin with `<iframe src=… title="Webinar Q4 live" allow="autoplay; fullscreen" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0">`; request fullscreen on the iframe.
@@ -1591,7 +1595,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-20** · P1 · pw — Reports
 - Steps: observe output reports for 12 s.
-- Expect: ≈ 6 reports (hub `Report` or `POST /api/output/{slug}/report`, every 2 s ± 0,5 s) with `rendering: true`, `fps` between 20 and 31, `latencyMs`, `programSceneId` equal to the current program; `outputStatusChanged` emitted at most every 5 s unless the value changes > 20 %.
+- Expect: ≈ 6 reports (hub `Report` or `POST /api/output/{slug}/report`, every 2 s ± 0.5 s) with `rendering: true`, `fps` between 20 and 31, `latencyMs`, `programSceneId` equal to the current program; `outputStatusChanged` emitted at most every 5 s unless the value changes > 20 %.
 
 **E2E-OUT-21** · P1 · pw — Simulcast layer selection from the scene
 - Steps: output with `debug=1`; scene A with K1 at full canvas, scene B with K1 as a 270 px thumbnail, K2 only in scene C.
@@ -1607,11 +1611,11 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-OUT-24** · P2 · pw — Audio-ready but silent
 - Steps: output with a camera source; inspect media elements and console.
-- Expect: videos `muted`; no `<audio>` playing; no microphone/`getUserMedia` call; no autoplay-policy console warnings; no «Ton an» button (audio is not delivered yet).
+- Expect: videos `muted`; no `<audio>` playing; no microphone/`getUserMedia` call; no autoplay-policy console warnings; no “Sound on” button (audio is not delivered yet).
 
 **E2E-OUT-25** · P2 · pw — IP restriction (see E2E-AUTH-23) and key rotation (see E2E-AUTH-24) from the output's perspective
 - Steps: during both flows record the output page's visible state with screenshots.
-- Expect: while denied/kicked the page shows only the «Kein Zugang» slate (no stale scene content remains visible).
+- Expect: while denied/kicked the page shows only the “No access” slate (no stale scene content remains visible).
 
 ### 2.7 NET – Resilience and network
 
@@ -1649,14 +1653,14 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **INT-NET-05** · P2 · xunit — Graceful shutdown
 - Steps: dispose the host while hub clients are connected and a request is in flight.
-- Expect: in-flight request completes; every hub connection is aborted when the host begins to stop (clients see `onclose` immediately, not after the 5 s timeout); the host stops well within `HostOptions.ShutdownTimeout` = 5 s; the maintenance loops end at once; the disconnects caused by the shutdown write no audit or log entry, no incident and no «verbindet neu» (BUG-20, OBS-01); no unobserved exceptions logged at error level.
+- Expect: in-flight request completes; every hub connection is aborted when the host begins to stop (clients see `onclose` immediately, not after the 5 s timeout); the host stops well within `HostOptions.ShutdownTimeout` = 5 s; the maintenance loops end at once; the disconnects caused by the shutdown write no audit or log entry, no incident and no “reconnecting” (BUG-20, OBS-01); no unobserved exceptions logged at error level.
 
 **INT-NET-06** · P2 · xunit — Unhandled exceptions
 - Steps: inject a failing `IProductionRepository`; call mutating endpoints and a hub method.
 - Expect: ProblemDetails 500 with `traceId` only; the coordinator lock is released (next request works); hub method failure returns `HubException` with a generic message and the connection stays open.
 
 **E2E-NET-00** · P0 · pw — Harness canary (must pass first)
-- Steps: (1) `setOffline` blocks `fetch('/health/live')` and restores it, and an open WebSocket is closed or stalls (otherwise `net.cut` closes tracked sockets explicitly); (1b) `net.cut(phone)` makes the output's `inbound-rtp` for that phone stall and the Regie show the outage, `net.restore` recovers; (2) `cdpThrottle(400 kbit/s, 400 ms)` makes a 200 KB fetch take ≥ 4 s; (3) two senders publish; `lk.pause()` stalls `inbound-rtp` `packetsReceived` of the output, `unpause()` resumes; (4) `lk.netem({delayMs:200})` raises `candidate-pair.currentRoundTripTime` to ≥ 0,3 s (both directions are shaped), `clearNetem()` restores < 0,05 s; (5) `lk.disconnect()`/`connect()` restores reachability (both signalling and media) – otherwise the harness switches `lk.disconnect` to `docker pause`; (6) `docker.restart('api')` returns to healthy; (7) screen-share mode (`tab`|`canvas`) works: a share starts and the track ends when `endShare()` runs; (8) `timecode` decode works on the received video.
+- Steps: (1) `setOffline` blocks `fetch('/health/live')` and restores it, and an open WebSocket is closed or stalls (otherwise `net.cut` closes tracked sockets explicitly); (1b) `net.cut(phone)` makes the output's `inbound-rtp` for that phone stall and the Regie show the outage, `net.restore` recovers; (2) `cdpThrottle(400 kbit/s, 400 ms)` makes a 200 KB fetch take ≥ 4 s; (3) two senders publish; `lk.pause()` stalls `inbound-rtp` `packetsReceived` of the output, `unpause()` resumes; (4) `lk.netem({delayMs:200})` raises `candidate-pair.currentRoundTripTime` to ≥ 0.3 s (both directions are shaped), `clearNetem()` restores < 0.05 s; (5) `lk.disconnect()`/`connect()` restores reachability (both signalling and media) – otherwise the harness switches `lk.disconnect` to `docker pause`; (6) `docker.restart('api')` returns to healthy; (7) screen-share mode (`tab`|`canvas`) works: a share starts and the track ends when `endShare()` runs; (8) `timecode` decode works on the received video.
 - Expect: all checks pass or the run aborts with a message naming the failing tool; the used `E2E_SCREEN_MODE` and netem availability are recorded in the report; dependent tests fail explicitly ("tool X unavailable"), never silently pass; only a tool that the machine cannot provide at all (`E2E_NETEM=unavailable`, set by the CI step that loads the kernel modules) is recorded as skipped, and its tests are skipped with that reason.
 
 **E2E-NET-01** · P1 · pw — Regie on a slow network
@@ -1673,11 +1677,11 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-04** · P1 · pw (`@linux-netem`) — 5 % loss
 - Steps: (a) `lk.netem({lossPct:5})` (both directions) for 60 s with a camera on air; (b) only with `@netns`: `phone.netem({lossPct:5})` shapes one phone while the others stay clean.
-- Expect: (a) output fps ≥ 24, downlink loss `packetsLost/(packetsReceived+packetsLost)` between 2 and 9 %, Regie station «Verlust» (uplink, reported by the sender) between 2 and 9 %, total freeze ≤ 2 s per minute (`T-FREEZE`); (b) only the shaped phone shows loss; no `reconnecting` incident in either case; quality recovers ≤ 10 s after clearing.
+- Expect: (a) output fps ≥ 24, downlink loss `packetsLost/(packetsReceived+packetsLost)` between 2 and 9 %, Regie station “Packet loss” (uplink, reported by the sender) between 2 and 9 %, total freeze ≤ 2 s per minute (`T-FREEZE`); (b) only the shaped phone shows loss; no `reconnecting` incident in either case; quality recovers ≤ 10 s after clearing.
 
 **E2E-NET-05** · P1 · pw (`@linux-netem`) — 20 % loss
 - Steps: as -04 with 20 %.
-- Expect: picture continues (no freeze > 5 s), Regie shows high loss (≥ 10 %), the sender does not enter an endless reconnect loop (≤ 1 rejoin per 30 s; note that LiveKit's webhooks to the API are shaped as well, so incidents may appear a few seconds late); if ICE fails the standard incident «verbindet neu» appears and ends in «wieder da»; full quality ≤ 10 s after clearing.
+- Expect: picture continues (no freeze > 5 s), Regie shows high loss (≥ 10 %), the sender does not enter an endless reconnect loop (≤ 1 rejoin per 30 s; note that LiveKit's webhooks to the API are shaped as well, so incidents may appear a few seconds late); if ICE fails the standard incident “reconnecting” appears and ends in “back”; full quality ≤ 10 s after clearing.
 
 **E2E-NET-06** · P1 · pw (`@linux-netem`) — 1 Mbit/s rate limit
 - Steps: `lk.netem({rateKbit:1000})` with a camera and a screen on air for 60 s; clear.
@@ -1685,19 +1689,19 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-07** · P0 · pw — Short and long network loss of a phone
 - Steps: `phone.goOffline()` (`net.cut`) for 5 s, 30 s (and 5 min in the nightly run), then `goOnline()`; the `@netns` variant uses `phone.disconnect()` for real silent loss.
-- Expect: Regie outage in six places within `T-DETECT-CLEAN`; timers read the real durations; output holds the frame, `held` after 3 s; picture back within `T-RECOVER-SHORT` (5 s outage) / `T-RECOVER-LONG` (30 s, 5 min) after `goOnline`; the strip shows «wieder da» with «war 5 s weg» / «war 30 s weg» (± 1 s) until «Gesehen»; the station keeps its code and scene place.
+- Expect: Regie outage in six places within `T-DETECT-CLEAN`; timers read the real durations; output holds the frame, `held` after 3 s; picture back within `T-RECOVER-SHORT` (5 s outage) / `T-RECOVER-LONG` (30 s, 5 min) after `goOnline`; the strip shows “back” with “was gone for 5 s” / “was gone for 30 s” (± 1 s) until “Seen”; the station keeps its code and scene place.
 
 **E2E-NET-08** · P0 · pw — Silent loss of the media server
 - Steps: `lk.pause()` 10 s then `unpause()`; separately `lk.disconnect()` 10 s then `connect()`.
-- Expect: no picture ever turns black (hold), the Regie shows incidents for every live source within `T-DETECT-SILENT` and clears them as «wieder da» within `T-RECOVER-LONG` of restoration; senders and output rejoin on their own; no page reload; no duplicate stations.
+- Expect: no picture ever turns black (hold), the Regie shows incidents for every live source within `T-DETECT-SILENT` and clears them as “back” within `T-RECOVER-LONG` of restoration; senders and output rejoin on their own; no page reload; no duplicate stations.
 
 **E2E-NET-09** · P0 · pw — API outage
 - Steps: with Regie ×2, output, two phones live: `docker.stop('api')` for 30 s, then `start`.
-- Expect: the Regie shows `connection-state=reconnecting` and a visible German banner/indicator ([GAP-27]), stays responsive; commands fail with a toast, no unhandled rejection; hub reconnect attempts follow the backoff (5–12 negotiate attempts in 30 s, never > 20); output and phones keep streaming (media independent); phones show «Verbindet neu …» for the control connection; after start everything reconnects ≤ `T-RESTART-API`, Regie revision equals the server's, and no permanent incident is left (all `wieder da` or none).
+- Expect: the Regie shows `connection-state=reconnecting` and a visible banner/indicator ([GAP-27]), stays responsive; commands fail with a toast, no unhandled rejection; hub reconnect attempts follow the backoff (5–12 negotiate attempts in 30 s, never > 20); output and phones keep streaming (media independent); phones show “Reconnecting…” for the control connection; after start everything reconnects ≤ `T-RESTART-API`, Regie revision equals the server's, and no permanent incident is left (all `back` or none).
 
 **E2E-NET-10** · P1 · pw — Failed requests in the Regie
 - Steps: `net.routeFault` returns 500 for `PUT …/items/*` during a drag, 503 for `POST …/program`, aborts `POST …/take`, delays `GET /api/auth/me` 5 s; then remove the faults.
-- Expect: a German error toast per failure (generic, [GAP-27]), no unhandled promise rejection or uncaught error beyond logged network errors; the item snaps back to the last confirmed geometry (UI never diverges from server state after 2 s); program/preview unchanged on failure; Take button re-enabled; no automatic retry of non-idempotent calls; after removing the faults all actions work.
+- Expect: an error toast per failure (generic, [GAP-27]), no unhandled promise rejection or uncaught error beyond logged network errors; the item snaps back to the last confirmed geometry (UI never diverges from server state after 2 s); program/preview unchanged on failure; Take button re-enabled; no automatic retry of non-idempotent calls; after removing the faults all actions work.
 
 **E2E-NET-11** · P0 · pw — PostgreSQL down [GAP-32]
 - Steps: Regie, output, phones live; `docker.stop('postgres')` for 30 s; try to switch and edit; `start`.
@@ -1705,7 +1709,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-12** · P0 · pw (`@disruptive`) — Single container restarts
 - Steps: for each of `api`, `livekit`, `postgres`, `caddy`: `docker.restart(svc)` (and a crash – `kill -TERM 1` inside the container [DOC-04] – once for `api` to test the restart policy) with Regie ×2, output, 3 phones and 1 laptop live.
-- Expect: per service within its threshold (`T-RESTART-API`, `T-RESTART-LK`, 30 s for postgres/caddy after healthy): all clients reconnect without manual reload; Regie `connection-state=connected`; output playing; stations `ok`; no permanent incident; for `caddy` the media (UDP 7882) keeps flowing throughout; revisions of both Regies equal the server's; logs contain no unexpected errors beyond connection failures; `api`: the graceful restart takes a few seconds (`T-SHUTDOWN`, OBS-01) and writes no «verbindet neu» and no incident for sources whose device comes back (BUG-20), while a source on air whose device does not come back is flagged by the restart watch (spec 12).
+- Expect: per service within its threshold (`T-RESTART-API`, `T-RESTART-LK`, 30 s for postgres/caddy after healthy): all clients reconnect without manual reload; Regie `connection-state=connected`; output playing; stations `ok`; no permanent incident; for `caddy` the media (UDP 7882) keeps flowing throughout; revisions of both Regies equal the server's; logs contain no unexpected errors beyond connection failures; `api`: the graceful restart takes a few seconds (`T-SHUTDOWN`, OBS-01) and writes no “reconnecting” and no incident for sources whose device comes back (BUG-20), while a source on air whose device does not come back is flagged by the restart watch (spec 12).
 
 **E2E-NET-13** · P0 · pw (`@disruptive`) — Whole stack restart
 - Steps: `docker compose -p sf-e2e restart` (then crash all containers once: `kill -TERM 1` inside each, `kill -QUIT 1` for PostgreSQL [DOC-04]); same clients as -12.
@@ -1725,7 +1729,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-17** · P2 · pw — Failed pairing requests on the sender
 - Steps: abort `POST /api/pairing/requests` once and `redeem` once.
-- Expect: the sender shows a German retry state with a button, no spinner forever; second attempt works; no duplicate pending requests in the Regie.
+- Expect: the sender shows a retry state with a button, no spinner forever; second attempt works; no duplicate pending requests in the Regie.
 
 **E2E-NET-18** · P1 · pw (`soak`, nightly 30 min; weekly 60 min) — Soak
 - Pre: 3 phones + 2 laptops live, Regie ×2, output ×1 (plus one `debug=1` output), scene set with fades and cuts.
@@ -1733,7 +1737,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 - Expect: `T-MEM` thresholds met between minute 10 and the end; video element count == item count of the current scene ± 0; RTCPeerConnection count constant; WebSocket count constant; zero uncaught exceptions; no container restarts (`docker events`); latency p95 at the end ≤ start + 50 ms; revisions of both Regies equal the server's; CSV in `results/soak-<ts>.csv`.
 
 **E2E-NET-19** · P1 · pw — Many sources
-- Pre: 8 phone contexts (fake cameras 720p) + 2 laptops (screens); scenes: «3 × 3» with 9 items, Auto-Grid with 10, single full-screen.
+- Pre: 8 phone contexts (fake cameras 720p) + 2 laptops (screens); scenes: “3 × 3” with 9 items, Auto grid with 10, single full-screen.
 - Steps: run 5 min; switch between scenes; read output `stats()` and CDP `TaskDuration`/`Performance.getMetrics`.
 - Expect: `T-FPS`: output fps ≥ 24 in the 3 × 3 scene, main-thread busy ≤ 60 % of one core (4-core runner), heap ≤ 400 MB; Regie interactions (scene click → toast) ≤ 150 ms; non-program sources received at LOW only (total inbound ≤ 20 Mbit/s); no frame decode errors; no incident.
 
@@ -1755,7 +1759,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **E2E-NET-24** · P1 · pw — Short media blip (ICE restart)
 - Steps: `lk.pause()` 2 s with a camera on air.
-- Expect: SDK resume (no new participant identity creation, publication SID of the sender unchanged) or rejoin; picture back ≤ `T-RECOVER-SHORT`; at most a short «verbindet neu» incident that ends in «wieder da».
+- Expect: SDK resume (no new participant identity creation, publication SID of the sender unchanged) or rejoin; picture back ≤ `T-RECOVER-SHORT`; at most a short “reconnecting” incident that ends in “back”.
 
 **E2E-NET-25** · P2 · pw (`@netns`) — Uplink loss and full uplink disconnect of one phone
 - Steps: `phone.disconnect()` 20 s with `docker network disconnect` of the phone container (silent loss) then reconnect; compare detection to `T-DETECT-SILENT`.
@@ -1772,8 +1776,8 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DEV-01** · P0 · pw (`regie-1280x720`) — Regie at 1280×720
 - Pre: 7 scenes, 5 stations, one incident.
-- Steps: load, open Studio-Modus on and off, open each popover.
-- Expect: no page scroll (vertical and horizontal), header 50 px and message strip ≥ 38 px, monitors 16:9 without overflow, four docks side by side at the bottom (height clamp(240 px, 42 dvh, 420 px) ≥ 150 px), scene rows collapse to one line with 48 px thumbnails and dock headers 36 px (height ≤ 820 px rule), all seven scenes visible without scrolling; `expectInViewport` for: `Studio-Modus` switch, `Schnitt`/`Blende`, duration stepper, `Take` (Studio-Modus on), `Gerät koppeln`, output chip, health chip, `Docks und Layout`, `+ Quelle`, first and last scene.
+- Steps: load, open Studio Mode on and off, open each popover.
+- Expect: no page scroll (vertical and horizontal), header 50 px and message strip ≥ 38 px, monitors 16:9 without overflow, four docks side by side at the bottom (height clamp(240 px, 42 dvh, 420 px) ≥ 150 px), scene rows collapse to one line with 48 px thumbnails and dock headers 36 px (height ≤ 820 px rule), all seven scenes visible without scrolling; `expectInViewport` for: `Studio Mode` switch, `Cut`/`Fade`, duration stepper, `Take` (Studio Mode on), `Pair device`, output chip, health chip, `Docks and layout`, `+ Source`, first and last scene.
 
 **E2E-DEV-02** · P1 · pw (`regie-1440x900`) — Regie at 1440×900
 - Expect: as -01 without the compact rules (two-line scene rows, 40 px dock headers), first-viewport composition of the prototype brief (header, strip, monitors + 172 px control column, docks), no overflow, critical controls in the viewport.
@@ -1786,8 +1790,8 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Expect: docks stack in a two-column grid of hairline-separated sections below the stage, the page scrolls vertically only (no horizontal scroll), drag grips and splitters are hidden (`display:none`), pairing dock spans both columns, header wraps without overlap, Take reachable, state persisted layout is not lost.
 
 **E2E-DEV-05** · P0 · pw (`regie-900`) — Priority stack at 900 px
-- Steps: load at 900×900 in Studio-Modus off and on.
-- Expect: order top to bottom: Program monitor, controls (two columns; Take full width, min height 48 px), Preview monitor (Studio-Modus on), then docks in one column; Scenes dock is a horizontal scroll strip of 200 px cards; message strip shows only the ok state and incidents (log hidden); no horizontal page scroll.
+- Steps: load at 900×900 in Studio Mode off and on.
+- Expect: order top to bottom: Program monitor, controls (two columns; Take full width, min height 48 px), Preview monitor (Studio Mode on), then docks in one column; Scenes dock is a horizontal scroll strip of 200 px cards; message strip shows only the ok state and incidents (log hidden); no horizontal page scroll.
 
 **E2E-DEV-06** · P1 · pw (`regie-390x844`) — Regie on a phone-sized viewport
 - Steps: 390×844, touch enabled; switch a scene, open pairing, expand a station.
@@ -1806,7 +1810,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Expect: kind defaults to phone (no `getDisplayMedia`), layout uses the width (no oversized phone layout), targets ≥ 44 px, no overflow.
 
 **E2E-DEV-10** · P0 · pw (`small-320`) — Sender at 320 px
-- Steps: 320×568: pairing form, check code «47 12» (mono 24 px, letter spacing 0,14 em), station, laptop screen list with 60-character names and nine screens, banner with 140 characters.
+- Steps: 320×568: pairing form, check code “47 12” (mono 24 px, letter spacing 0.14 em), station, laptop screen list with 60-character names and nine screens, banner with 140 characters.
 - Expect: `scrollWidth ≤ 320`; long names wrap or ellipsize inside their container; the check code stays on one line; text ≥ 14 px; buttons full-width.
 
 **E2E-DEV-11** · P0 · pw (`pixel7`, `iphone14`, `small-320`) — Tap targets on the sender
@@ -1815,27 +1819,27 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DEV-12** · P1 · pw (`chromium-desktop`, `edge-desktop`, `firefox-desktop`) — Laptop sender in desktop browsers
 - Steps: pair by code, share (canvas mode on Firefox), add a second screen, end/reshare, camera.
-- Expect: same behaviour in all three; Firefox has no battery value; Edge reports platform «Windows · Edge» pattern; no console errors.
+- Expect: same behaviour in all three; Firefox has no battery value; Edge reports platform “Windows · Edge” pattern; no console errors.
 
 **E2E-DEV-13** · P0 · pw — Keyboard-only Regie
-- Steps: starting at the page top press `Tab` through the whole UI; activate with `Enter`/`Space`; open each popover (output, Docks und Layout, + Quelle) and close with `Escape`; use keys 1–9, Space, arrows on a selected item, Escape order (dock drag → popover → pairing dock → selection).
+- Steps: starting at the page top press `Tab` through the whole UI; activate with `Enter`/`Space`; open each popover (output, Docks and layout, + Source) and close with `Escape`; use keys 1–9, Space, arrows on a selected item, Escape order (dock drag → popover → pairing dock → selection).
 - Expect: every interactive element is reachable in a logical order (header → strip actions → monitors/overlay → control column → docks in zone order), focus ring visible (2 px blue outline offset 2 px; separators/blue 3 px line), popovers focus their first item and return focus to the trigger on Escape, no keyboard traps, hidden/parked docks are never focusable, `Space` on a focused button activates it (not Take).
 
 **E2E-DEV-14** · P1 · pw — Dock moves and splitters by keyboard
-- Steps: focus grip «Dock Szenen verschieben, mit Pfeiltasten» and press ArrowRight/Down repeatedly, then ArrowLeft/Up; focus separators «Höhe der Docks unten», «Breite der Docks rechts», «Grösse von Preview und Program», «Grösse von Szenen und Quellen»: Arrow keys, Shift+Arrow, Enter.
-- Expect: dock moves left → bottom → right (and back) with toast «<Dock> ist <links|unten|rechts> angedockt» and action «Layout zurücksetzen»; focus stays on the grip; no move beyond the ends; separators move 16 px per arrow (64 px with Shift) within their bounds, Enter resets; `aria-orientation` and `aria-label` as in 1.7; all changes persist.
+- Steps: focus grip “Move dock Scenes with the arrow keys” and press ArrowRight/Down repeatedly, then ArrowLeft/Up; focus separators “Height of the docks at the bottom”, “Width of the docks on the right”, “Size of Preview and Program”, “Size of Scenes and Sources”: Arrow keys, Shift+Arrow, Enter.
+- Expect: dock moves left → bottom → right (and back) with toast “<Dock> is docked <on the left|at the bottom|on the right>” and action “Reset layout”; focus stays on the grip; no move beyond the ends; separators move 16 px per arrow (64 px with Shift) within their bounds, Enter resets; `aria-orientation` and `aria-label` as in 1.7; all changes persist.
 
 **E2E-DEV-15** · P1 · pw — Screen reader semantics and automated a11y
 - Steps: `page.accessibility.snapshot()`/`ariaSnapshot` and `@axe-core/playwright` (tags `wcag2a`, `wcag2aa`) on: login, Regie (Studio off/on, outage state, pairing dock open, each popover, station expanded), `/monitoring`, sender (all states), output slates.
-- Expect: 0 critical/serious axe violations (colour-contrast findings reviewed individually and listed); regions `Monitore`, `Szenen`, `Quellen der Szene`, `Eigenschaften`, `Stationen`, status region `Meldungen`; switch `Studio-Modus`; groups `Art des Übergangs`, `Dauer der Blende`; scene buttons expose `aria-pressed` and the tally/health text; list `role=list` for sources; stations `aria-expanded`; canvases `role=img` with scene names; decorative lamps and icons `aria-hidden`; toast `role=status` `aria-live=polite`; presence text «Zwei Personen in der Regie» reflects the real count; every button has an accessible name.
+- Expect: 0 critical/serious axe violations (colour-contrast findings reviewed individually and listed); regions `Monitors`, `Scenes`, `Sources of the scene`, `Properties`, `Stations`, status region `Messages`; switch `Studio Mode`; groups `Transition type`, `Fade duration`; scene buttons expose `aria-pressed` and the tally/health text; list `role=list` for sources; stations `aria-expanded`; canvases `role=img` with scene names; decorative lamps and icons `aria-hidden`; toast `role=status` `aria-live=polite`; presence text “2 people in the control room” reflects the real count; every button has an accessible name.
 
 **E2E-DEV-16** · P1 · pw — Reduced motion
 - Steps: `emulateMedia({reducedMotion:'reduce'})` for Regie and sender; trigger outage, expand station, dock move, scene switch.
 - Expect: computed `transition-duration`/`animation-duration` 0 s on UI elements; lamp pulse and flash animations absent; `scrollIntoView` uses `behavior: 'auto'`; Regie monitors cut instead of fading; sender transitions off; the output page is not affected (E2E-SWITCH-16) [GAP-28].
 
-**E2E-DEV-17** · P1 · pw — German text audit
-- Steps: crawl visible text and `aria-label`/`title`/`placeholder` of every state of Regie, sender, login, monitoring and output slates (test sets the states via API).
-- Expect: no `ß` anywhere; names quoted with « » (a regex flags straight `"…"` quotes around words in UI text); durations `0,3 s` (decimal comma), rates `2,8` Mbit/s, clock `HH:mm:ss` 24 h; `lang="de-CH"` on the app root and toast; none of the English words `Loading|Error|Save|Cancel|Delete|Connect|Settings|Scene|Source|Station(s)?` appears as a whole UI word except `Take`, `Program`, `Preview`, `Studio-Modus`, `Stationen`, `Output`, `Dock`, `Slate`, `Tally`, `Auto-Grid`, `Blende`; `Intl` formats use `de-CH`.
+**E2E-DEV-17** · P1 · pw (`chromium-desktop` and the `i18n` project) — Text audit in English and in German
+- Steps: crawl visible text and `aria-label`/`title`/`placeholder`/`alt` of every state of Regie, sender, login, monitoring and output slates (test sets the states via API), once in `en-US` and once in `de-CH`.
+- Expect: **English (`en-US`, `tests/e2e/specs/a11y/a11y-english.spec.ts`)**: no German anywhere in the English UI, detected with the module of `npm run check:german` (`tools/lib/german.mjs`, loaded with `await import()` by `tests/e2e/support/a11y/english.ts`); `<html lang="en">`. **German (`de-CH`, project `i18n`, `tests/e2e/specs/i18n/i18n-german-audit.spec.ts`)**: no sharp s (`ss` instead) anywhere; names quoted with the Swiss guillemets (a regex flags straight `"…"` quotes around words in UI text); durations with a decimal comma (`0.3 s`), rates `2.8` Mbit/s, clock `HH:mm:ss` 24 h; `lang="de-CH"` on the app root and toast; none of the English UI words `Loading|Error|Save|Cancel|Delete|Connect|Settings|Scene|Source|Station(s)?` appears as a whole UI word except the agreed terms (`AGREED_ENGLISH` in `tests/e2e/support/a11y/german.ts`: `Take`, `Program`, `Preview`, `Output`, `Dock`, `Slate`, `Tally` and the German product words kept there); `Intl` formats use `de-CH`.
 
 **E2E-DEV-18** · P2 · pw — Long text does not break layouts
 - Steps: scene name 80 chars, device name 60 chars, production name 80 chars, message 140 chars, asset name 80 chars; at 1280×720, 900 and 320 (sender).
@@ -1851,11 +1855,11 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DEV-21** · P1 · pw — PWA and service worker of the sender
 - Steps: fetch `/join/manifest.webmanifest`; register check; go offline after first load; inspect caches.
-- Expect: manifest `name` «StudioFlow Sender», `scope` and `start_url` `/join/`, `display: standalone`, `theme_color #0d1117`, icons 192/512 (+ maskable) resolvable; service worker at `/join/ngsw-worker.js` with scope `/join/`; app shell loads offline and shows «Verbindet neu …»; requests to `/api`, `/hubs`, `/rtc` never come from the service worker cache; `ngsw.json` served `no-cache`.
+- Expect: manifest `name` “StudioFlow Sender”, `scope` and `start_url` `/join/`, `display: standalone`, `theme_color #0d1117`, icons 192/512 (+ maskable) resolvable; service worker at `/join/ngsw-worker.js` with scope `/join/`; app shell loads offline and shows “Reconnecting…”; requests to `/api`, `/hubs`, `/rtc` never come from the service worker cache; `ngsw.json` served `no-cache`.
 
 **E2E-DEV-22** · P2 · pw — Forced colours and zoom
 - Steps: `forcedColors: 'active'`; viewport 640×360 (≙ 200 % zoom at 1280×720).
-- Expect: states remain distinguishable by text (not colour alone: «verbindet neu», «Teilen beendet», lamps have labels in the row text); 640 px falls into the ≤ 900 px layout without horizontal scroll.
+- Expect: states remain distinguishable by text (not colour alone: “reconnecting”, “sharing stopped”, lamps have labels in the row text); 640 px falls into the ≤ 900 px layout without horizontal scroll.
 
 **E2E-DEV-23** · P1 · pw — Light mode (Dark | Light | System)
 - Steps: system set to light, fresh context; choose Light, System and Dark in the settings popover; reload; second tab; `emulateMedia` flips under System; abort the application bundle and reload; store an unknown value; login page and `/monitoring`; busy console with a reconnecting station in each theme; axe on login, Regie (with the settings popover) and `/monitoring`.
@@ -1873,7 +1877,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **UNIT-DOCK-03** · P0 · ng — Moving docks
 - Steps: `moveDock(id, zone, index)` to every zone/index incl. out-of-range; same position; keyboard traversal (`grip` arrows) at the ends; hide/show.
-- Expect: dock removed from its old zone and inserted at the clamped index; no-op when nothing changes (no save, no toast); arrow traversal order left → bottom → right and reverse, no wrap; layout saved after each change; toast text «<Dock> ist <links|unten|rechts> angedockt» with the reset action.
+- Expect: dock removed from its old zone and inserted at the clamped index; no-op when nothing changes (no save, no toast); arrow traversal order left → bottom → right and reverse, no wrap; layout saved after each change; toast text “<Dock> is docked <on the left|at the bottom|on the right>” with the reset action.
 
 **UNIT-DOCK-04** · P0 · ng — Resizing
 - Steps: `splitMove` for bottom (150 px min, total − 160 max, stored as a fraction), left/right (220 px min, 42 % of workspace max), between docks (110 px vertical / 180 px horizontal min, weights sum preserved), monitors (0.3…0.7); `resetSplit` for each kind.
@@ -1889,34 +1893,34 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DOCK-01** · P0 · pw — Default arrangement
 - Steps: fresh context at 1440×900 and 1280×720.
-- Expect: Szenen | Quellen | Eigenschaften | Stationen left to right in the bottom zone, left/right zones hidden, bottom height = clamp(240 px, 42 dvh, 420 px) (≥ 150 px), seams of 1 px.
+- Expect: Scenes | Sources | Properties | Stations left to right in the bottom zone, left/right zones hidden, bottom height = clamp(240 px, 42 dvh, 420 px) (≥ 150 px), seams of 1 px.
 
 **E2E-DOCK-02** · P0 · pw — Drag docks to left, bottom, right
-- Steps: pointer-drag the «Stationen» header to the right edge, then to the left edge, then back to the bottom between «Szenen» and «Quellen»; drag with less than 5 px; Escape during a drag; `pointercancel`.
-- Expect: while dragging a ghost follows the pointer, empty zones show dashed drop strips «Rechts andocken»/«Links andocken»/«Unten andocken», occupied zones show a 3 px blue insertion line; drop applies the move, toast «Stationen ist rechts angedockt» + «Layout zurücksetzen»; side zones default to 340 px (right) / 320 px (left); under 5 px nothing happens; Escape/cancel leaves the layout unchanged; `localStorage['studioflow.layout']` updated (v:1).
+- Steps: pointer-drag the “Stations” header to the right edge, then to the left edge, then back to the bottom between “Scenes” and “Sources”; drag with less than 5 px; Escape during a drag; `pointercancel`.
+- Expect: while dragging a ghost follows the pointer, empty zones show dashed drop strips “Dock on the right”/“Dock on the left”/“Dock at the bottom”, occupied zones show a 3 px blue insertion line; drop applies the move, toast “Stations is docked on the right” + “Reset layout”; side zones default to 340 px (right) / 320 px (left); under 5 px nothing happens; Escape/cancel leaves the layout unchanged; `localStorage['studioflow.layout']` updated (v:1).
 
 **E2E-DOCK-03** · P1 · pw — Resize with the pointer
-- Steps: drag the horizontal seam above the bottom zone (±100 px, beyond limits), the vertical seam of a side zone, the seam between two docks, the Preview/Program seam (Studio-Modus on); double-click each.
+- Steps: drag the horizontal seam above the bottom zone (±100 px, beyond limits), the vertical seam of a side zone, the seam between two docks, the Preview/Program seam (Studio Mode on); double-click each.
 - Expect: sizes follow the pointer within the limits of UNIT-DOCK-04; seam turns blue 3 px on hover/focus/drag (`box-shadow: 0 0 0 1px #79c0ff`), cursors `row-resize`/`col-resize`; double-click resets that seam to default; persisted in `studioflow.layout`; stage never shrinks below 160 px.
 
 **E2E-DOCK-04** · P1 · pw — Hide and show docks
-- Steps: «Docks und Layout» popover: uncheck/check each dock; hide all four; re-show.
+- Steps: “Docks and layout” popover: uncheck/check each dock; hide all four; re-show.
 - Expect: hidden docks leave the layout and the tab order, remaining docks reflow; hiding all leaves the stage (no error); re-showing restores the previous zone/order; `hidden` persisted; checkbox state reflects `aria`/`checked`.
 
 **E2E-DOCK-05** · P1 · pw — Reset layout
-- Steps: rearrange, resize, hide; click «Layout zurücksetzen» in the popover; rearrange again and use the toast action.
-- Expect: zones, sizes, weights and hidden reset to defaults, toast «Layout zurückgesetzt», storage updated.
+- Steps: rearrange, resize, hide; click “Reset layout” in the popover; rearrange again and use the toast action.
+- Expect: zones, sizes, weights and hidden reset to defaults, toast “Layout reset”, storage updated.
 
 **E2E-DOCK-06** · P0 · pw — Corrupted localStorage falls back
 - Steps: `addInitScript` sets `studioflow.layout` to each value of UNIT-DOCK-02, then load.
-- Expect: default layout is shown, no console errors, subsequent changes overwrite the broken value with valid JSON; `studioflow.studio` invalid (`"yes"`, `"2"`) → Studio-Modus off; `studioflow.transition` invalid → fade 0,3 s.
+- Expect: default layout is shown, no console errors, subsequent changes overwrite the broken value with valid JSON; `studioflow.studio` invalid (`"yes"`, `"2"`) → Studio Mode off; `studioflow.transition` invalid → fade 0.3 s.
 
-**E2E-DOCK-07** · P1 · pw — Pairing dock takes the place of Quellen and Eigenschaften
-- Steps: «Gerät koppeln» with default and custom layouts; close with the X button and with Escape.
-- Expect: dock «Gerät koppeln» appears in the slot of the first of Quellen/Eigenschaften and those two are hidden meanwhile; closing restores them and returns focus to «Gerät koppeln»; knock cards show in Stationen while the pairing dock is closed and in the pairing dock side column while it is open.
+**E2E-DOCK-07** · P1 · pw — Pairing dock takes the place of Sources and Properties
+- Steps: “Pair device” with default and custom layouts; close with the X button and with Escape.
+- Expect: dock “Pair device” appears in the slot of the first of Sources/Properties and those two are hidden meanwhile; closing restores them and returns focus to “Pair device”; knock cards show in Stations while the pairing dock is closed and in the pairing dock side column while it is open.
 
-**E2E-DOCK-08** · P1 · pw — Studio-Modus persistence and layout stability
-- Steps: toggle Studio-Modus with a custom layout; reload; second context.
+**E2E-DOCK-08** · P1 · pw — Studio Mode persistence and layout stability
+- Steps: toggle Studio Mode with a custom layout; reload; second context.
 - Expect: control column and docks keep their bounding boxes (±0 px) when the switch toggles; `studioflow.studio` persists across reload; independent per browser context.
 
 **E2E-DOCK-09** · P2 · pw — Per browser, survives logout
@@ -1935,7 +1939,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **UNIT-MEDIA-01** · P0 · xunit — File name sanitiser [GAP-13]
 - Steps: `../../etc/passwd.png`, `..\..\x.png`, `C:\x.png`, `/abs/x.png`, `x.png\0.exe`, 300-char names, `...`, `.hidden.png`, `CON.png`, `\u202egnp.exe`, emoji, empty, only dots, only spaces, HTML/JS content.
-- Expect: result is a single path-free segment of 1–80 characters without control, bidi-override or path characters; empty/dot-only input yields the fallback name `Medium`; extension in the *display name* is informational only; the stored file name is `{assetId}{ext derived from the verified type}`.
+- Expect: result is a single path-free segment of 1–80 characters without control, bidi-override or path characters; empty/dot-only input yields the fallback name `Media`; extension in the *display name* is informational only; the stored file name is `{assetId}{ext derived from the verified type}`.
 
 **UNIT-MEDIA-02** · P0 · xunit — Magic-byte detection [GAP-13]
 - Steps: byte prefixes for PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG (`FF D8 FF`), WebP (`RIFF….WEBP`), MP4 (`….ftyp` brands `isom iso2 mp41 mp42 avc1 M4V`), WebM (`1A 45 DF A3` + DocType `webm`), and: SVG (plain, with BOM, with XML prolog), GIF87a/89a, BMP, TIFF, ICO, PDF, `MZ`, ZIP, HTML, JS, TXT, empty, 1 byte, truncated headers, `ftypheic`, `ftypavif`, `ftypqt  `, EBML `matroska`, RIFF `WAVE`.
@@ -1994,12 +1998,12 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Expect: > 16384 in a dimension → 415 `unsupported_media`; at the limit accepted.
 
 **E2E-MEDIA-01** · P1 · pw — Upload through the UI
-- Steps: upload `tiny.png`, `photo.jpg`, `photo.webp`, `clip.mp4`, `clip.webm` through the Quellen dock upload control or drag-and-drop ([GAP-37] «+ Quelle» → «Medium hochladen»).
-- Expect: five sources M1…M5 appear (image/video icons) in «+ Quelle» menus within 2 s with thumbnails; progress state while uploading; success toast; both operators see them.
+- Steps: upload `tiny.png`, `photo.jpg`, `photo.webp`, `clip.mp4`, `clip.webm` through the Sources dock upload control or drag-and-drop ([GAP-37] “+ Source” → “Upload image or video…”).
+- Expect: five sources M1…M5 appear (image/video icons) in “+ Source” menus within 2 s with thumbnails; progress state while uploading; success toast; both operators see them.
 
 **E2E-MEDIA-02** · P1 · pw — Rejections are explained
 - Steps: SVG, GIF, EXE, `exe-as-png.png`, `svg-as-png.png`, an oversize file (profile `Media:MaxImageBytes` = 1 MiB).
-- Expect: no source is created; German error toast per file naming the reason (`/Typ|erlaubt/i` or `/gross/i`, [GAP-27]); the rest of a multi-file drop still uploads.
+- Expect: no source is created; error toast per file naming the reason (`/type|allowed/i` or `/large/i`, [GAP-27]); the rest of a multi-file drop still uploads.
 
 **E2E-MEDIA-03** · P0 · pw — Image on air
 - Steps: image in a program scene (cover and contain), output open; wrong key variant.
@@ -2011,10 +2015,10 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-MEDIA-05** · P1 · pw — Used asset cannot be deleted
 - Steps: delete an asset used in a scene (control in the source/asset list [GAP-37]), then remove the item and delete again.
-- Expect: blocked with a German message mentioning the use (`/verwendet/i`), asset stays; after removal deletion works and disappears for both operators.
+- Expect: blocked with a message mentioning the use (`/in use/i`), asset stays; after removal deletion works and disappears for both operators.
 
 **E2E-MEDIA-06** · P2 · pw — Asset as fallback and slate background
-- Steps: set «Pause-Slate» as `onLost.fallbackSource`, as standby slate background, as scene background.
+- Steps: set “Break slate” as `onLost.fallbackSource`, as standby slate background, as scene background.
 - Expect: output shows them as in E2E-OUT-07/-11; deletion blocked while in use.
 
 **E2E-MEDIA-07** · P1 · pw — Large upload and body limits
@@ -2039,7 +2043,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-01** · P1 · pw — Compose file and `.env.example` consistency
 - Steps: `docker compose config --format json` with a generated `.env`; extract all `${VAR}` references; compare with `.env.example`.
-- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged; a digest behind the tag is allowed, Renovate adds it); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
+- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its “set it in .env” message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged; a digest behind the tag is allowed, Renovate adds it); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
 
 **E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
 - Steps: run `./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --env-file <dir>/.env` twice into two directories, once without `--node-ip` (auto-detection); the options of older versions (`--admin-password-stdin`, `--generate-password`, `--plain-password`); a `.env` with `ADMIN__USERNAME`/`ADMIN__PASSWORD`/`ADMIN__PASSWORDHASH` replaced with `--force`; invalid inputs (invalid IP, `--tls-mode foo`, an unknown option; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
@@ -2050,7 +2054,7 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 
 **E2E-OPS-04** · P0 · pw — Fresh machine start
 - Steps: clean checkout, no volumes, no images; `./setup.sh`; `docker compose up -d --build`; measure.
-- Expect: the build succeeds from lock files only (`npm ci`, locked NuGet restore); start-to-healthy ≤ 120 s after the images are built; `GET /health/ready` 200; `/` serves the Regie login; admin login works; the default production «Webinar» (slug `webinar`, active, broadcast standby) with scenes «Begrüssung», «Präsentation», «Pause» exists and the program scene is «Begrüssung»; output URL shows the standby slate; a second `up -d` changes nothing (no restart, no new migration).
+- Expect: the build succeeds from lock files only (`npm ci`, locked NuGet restore); start-to-healthy ≤ 120 s after the images are built; `GET /health/ready` 200; `/` serves the Regie login; admin login works; the default production “Webinar” (slug `webinar`, active, broadcast standby) with scenes “Welcome”, “Presentation”, “Break” exists and the program scene is “Welcome”; output URL shows the standby slate; a second `up -d` changes nothing (no restart, no new migration).
 
 **E2E-OPS-05** · P1 · pw — Healthchecks are real
 - Steps: `docker inspect` health of each container; then show that each check exercises its service ([command] tests, DOC-07): run the healthcheck command inside the running container (exit 0) and in a container of the same image without the service (exit ≠ 0); `docker compose stop postgres` (api readiness must fail). `docker pause` is not used: Docker 29 marks a paused container unhealthy at once, even for a check that is just `true`.
@@ -2061,16 +2065,16 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial) and PostgreSQL data persist; `down -v` removes them; volume names `caddy_data`, `caddy_config`, `media`, `keys`, `pgdata` (plus `backups` and `backup_status` with the profile `backup`).
 
 **E2E-OPS-07** · P0 · pw — Backup
-- Steps: seed data (scenes, 2 devices, image + video asset); run `./backup.sh` while the stack is running and the Regie is used; run it twice within a minute; run `./backup.sh --label vor-test`; run it three times with `--keep 2`; run it with the stack stopped; kill it half way.
-- Expect: exit 0; folder `backups/YYYY-MM-DD_HHMM[_label]/` (a second run within the same minute gets the suffix `-2`; mode 700) containing `database.dump` (valid `pg_restore --list`), `media.tar.gz` (lists the uploaded files), `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (all checksums verify); the Regie stays responsive during the backup (switch latency within `T-SWITCH` + 100 ms); `--keep 2` leaves only the two newest dated folders; stack stopped → exit ≠ 0 with «PostgreSQL läuft nicht»; an aborted backup leaves no partial folder; `.env` is not part of the backup.
+- Steps: seed data (scenes, 2 devices, image + video asset); run `./backup.sh` while the stack is running and the Regie is used; run it twice within a minute; run `./backup.sh --label pre-test`; run it three times with `--keep 2`; run it with the stack stopped; kill it half way.
+- Expect: exit 0; folder `backups/YYYY-MM-DD_HHMM[_label]/` (a second run within the same minute gets the suffix `-2`; mode 700) containing `database.dump` (valid `pg_restore --list`), `media.tar.gz` (lists the uploaded files), `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (all checksums verify); the Regie stays responsive during the backup (switch latency within `T-SWITCH` + 100 ms); `--keep 2` leaves only the two newest dated folders; stack stopped → exit ≠ 0 with “PostgreSQL is not running”; an aborted backup leaves no partial folder; `.env` is not part of the backup.
 
 **E2E-OPS-08** · P0 · pw — Restore round trip
 - Steps: seed (production with 5 scenes, 2 devices with known credentials, 2 assets, rotated output key, ended broadcast); backup; `docker compose down -v`; fresh `.env` (same admin credentials, new LiveKit/DB secrets); `./restore.sh backups/<dir> --yes`; compare. Also: a flipped byte in `database.dump` (checksum), a corrupted dump with a matching checksum, restore into a running stack, restore while a broadcast is live (without and with `--force`), `--no-safety-backup`, an older-schema backup, restore without `--yes`.
-- Expect: snapshot JSON equal to the pre-backup snapshot (ignoring revision and server time); devices recognised with their old credentials; assets byte-identical (SHA-256); the old output URL works; the admin session from before the backup is still valid (keys volume) and the Caddy certificate is the old one; audit rows present; a checksum mismatch aborts before anything is touched; unless `--no-safety-backup` a safety backup `…_vor-restore` of the current state is written first; a corrupted dump exits ≠ 0 and the existing database stays intact (the dump is restored into a new database that replaces the old one only on success); a live broadcast blocks the restore unless `--force`; without `--yes` a confirmation is asked; an older schema is migrated at API start.
+- Expect: snapshot JSON equal to the pre-backup snapshot (ignoring revision and server time); devices recognised with their old credentials; assets byte-identical (SHA-256); the old output URL works; the admin session from before the backup is still valid (keys volume) and the Caddy certificate is the old one; audit rows present; a checksum mismatch aborts before anything is touched; unless `--no-safety-backup` a safety backup `…_pre-restore` of the current state is written first; a corrupted dump exits ≠ 0 and the existing database stays intact (the dump is restored into a new database that replaces the old one only on success); a live broadcast blocks the restore unless `--force`; without `--yes` a confirmation is asked; an older schema is migrated at API start.
 
 **E2E-OPS-09** · P0 · pw — `update.sh` refuses while live [GAP-31]
 - Steps: local bare git remote with one extra commit; (a) broadcast `live`, (b) `standby`, (c) `ended`, (d) api container stopped while the other services run, (e) the whole stack stopped; also `--no-pull`, `--backup`, `--force`, and a remote that is not fast-forward.
-- Expect: the script asks the API image: `docker compose exec api dotnet Opten.StudioFlow.Web.dll broadcast-status` (exit 0 = none live, 3 = live, anything else = unknown; [GAP-31]); (a) exit ≠ 0 with «Eine Sendung ist LIVE …», no `git pull`, no rebuild, container ids and uptime unchanged; (b)(c) `git pull --ff-only`, `docker compose up -d --build`, waits until all services are healthy, volumes retained, «Update abgeschlossen.»; (d) refuses (state unknown) unless `--force`; (e) proceeds («Stack läuft nicht, keine Sendung live»); `--backup` writes a `…_vor-update` backup first; a non-fast-forward pull aborts without restarting anything; `--no-pull` rebuilds only.
+- Expect: the script asks the API image: `docker compose exec api dotnet Opten.StudioFlow.Web.dll broadcast-status` (exit 0 = none live, 3 = live, anything else = unknown; [GAP-31]); (a) exit ≠ 0 with “A broadcast is LIVE …”, no `git pull`, no rebuild, container ids and uptime unchanged; (b)(c) `git pull --ff-only`, `docker compose up -d --build`, waits until all services are healthy, volumes retained, “Update complete.”; (d) refuses (state unknown) unless `--force`; (e) proceeds (“the stack is not running, no broadcast is live”); `--backup` writes a `…_pre-update` backup first; a non-fast-forward pull aborts without restarting anything; `--no-pull` rebuilds only.
 
 **E2E-OPS-10** · P2 · pw — Update with a new migration
 - Steps: build a variant image with an extra EF migration; run `update.sh`.
@@ -2168,11 +2172,11 @@ API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when
 
 **UNIT-SYNC-03** · P1 · vitest — Selectors
 - Steps: `programScene`, `previewScene`, `sourcesInScene`, `isSourceVisibleIn`, `sceneHealth`, `tallyOf`, `incidentPlace`, `stationOrder`, `isDown`.
-- Expect: `sceneHealth` returns the worst down source (red beats amber, first by item order within a class); `incidentPlace` → «im Program» | «in der Preview» | «nicht live» (hidden items do not count); `stationOrder`: open red (0), open amber (1), recovered (2), connecting (3), in program (4), in preview (5), rest (6), ties by code (`localeCompare`); `isDown` true for `reconnecting|ended|lost|blocked`.
+- Expect: `sceneHealth` returns the worst down source (red beats amber, first by item order within a class); `incidentPlace` → “on Program” | “in Preview” | “not live” (hidden items do not count); `stationOrder`: open red (0), open amber (1), recovered (2), connecting (3), in program (4), in preview (5), rest (6), ties by code (`localeCompare`); `isDown` true for `reconnecting|ended|lost|blocked`.
 
-**UNIT-SYNC-04** · P1 · vitest — German formatting
+**UNIT-SYNC-04** · P1 · vitest — Formatting in English and German
 - Steps: `formatDuration`, `formatRuntime`, `formatClock`, `formatHm`, `formatSeconds`, `formatRate`, `formatCheckCode`, `statusWord`.
-- Expect: `formatDuration(59_000)` «00:59», 60 s «01:00», 3599 s «59:59», 3600 s «60:00», negative «00:00»; `formatRuntime(3_725_000)` «01:02:05»; `formatSeconds(300)` «0,3 s», 1000 «1 s», 1500 «1,5 s», 2000 «2 s»; `formatRate(2.8)` «2,8», `formatRate(2)` «2,0»; `formatCheckCode('4712')` «47 12», other lengths returned unchanged; `statusWord`: reconnecting «verbindet neu», ended «Teilen beendet» (camera: «Kamera beendet»), blocked «gesperrt», connecting «verbindet …», lost «kein Bild», offline «nicht verbunden», ok «».
+- Expect: in English: `formatDuration(59_000)` “00:59”, 60 s “01:00”, 3599 s “59:59”, 3600 s “1:00:00”, negative “00:00”; `formatRuntime(3_725_000)` “01:02:05”; `formatSeconds(300)` “0.3 s”, 1000 “1 s”, 1500 “1.5 s”, 2000 “2 s”; `formatRate(2.8)` “2.8”, `formatRate(2)` “2.0”; `formatCheckCode('4712')` “47 12”, other lengths returned unchanged; `statusWord`: reconnecting “reconnecting”, ended “sharing stopped” (camera: “camera stopped”), blocked “blocked”, connecting “connecting…”, lost “no picture”, offline “not connected”, ok “”; in German (`resetLocaleForTests('de-CH')`) the same functions return the decimal comma (“0.3 s”, “2.8”, “2.0”) and the German status words; both locales use the 24 h clock.
 
 **INT-SYNC-01** · P0 · xunit — Studio hub subscribe, presence, resync
 - Steps: `Subscribe` for known/unknown production; two clients connect/disconnect (clean and TCP kill); `activateProduction` another production.
@@ -2366,7 +2370,7 @@ Spec 4.9, runbook 17. E2E specs run in English (`locale: 'en-US'`) on any stack;
 
 ### 2.16 LINK – Output links and the camera
 
-Several named output links per production and the output as a camera in Teams, Zoom and Webex through OBS (issue #9 stage 1, decisions «#9» in `docs/decisions.md`; spec 4.8, 9.1, 9.4; runbook section 17). The Regie runs in English (`en-US`) in the E2E specs.
+Several named output links per production and the output as a camera in Teams, Zoom and Webex through OBS (issue #9 stage 1, decisions “#9” in `docs/decisions.md`; spec 4.8, 9.1, 9.4; runbook section 17). The Regie runs in English (`en-US`) in the E2E specs.
 
 **UNIT-LINK-01** · P0 · ng (`obs-scene-collection.spec.ts`) — OBS scene collection generator
 - Steps: generate the collection for a link; parse it; names and URLs with quotes, backslashes, line breaks, emoji, query characters and non-ASCII text; file names of such link names.
@@ -2382,7 +2386,7 @@ Several named output links per production and the output as a camera in Teams, Z
 
 **UNIT-LINK-04** · P1 · ng (`output-popover.component.spec.ts`, `header.component.spec.ts`) — Output popover and chip
 - Steps: popover with two links in different states; select, add (valid, empty, blank, 41 characters, duplicate in another case, at the limit, refused by the server), rename, IP editor, regenerate and revoke with confirmation and cancel; "Use as camera …" and the download; the status event of a link; the chip with two connected links.
-- Expect: «Proxy · connected» per link and «last seen» or «never connected»; nothing is requested for invalid names; each action calls its own link route; the unsaved IP list is dropped when another link is selected; the key is never shown unmasked; five steps with 1920 × 1080 and 30; the download holds the selected link; the chip names the connected links and its tooltip lists all.
+- Expect: “Proxy · connected” per link and “last seen” or “never connected”; nothing is requested for invalid names; each action calls its own link route; the unsaved IP list is dropped when another link is selected; the key is never shown unmasked; five steps with 1920 × 1080 and 30; the download holds the selected link; the chip names the connected links and its tooltip lists all.
 
 **UNIT-LINK-05** · P2 · ng (`download.service.spec.ts`) — File download from the Regie
 - Steps: save a text file.
@@ -2390,7 +2394,7 @@ Several named output links per production and the output as a camera in Teams, Z
 
 **INT-LINK-01** · P0 · xunit (`OutputFlowTests`) — Output link use cases
 - Steps: authorise with the key of each link, wrong key, unknown slug, address outside one link's list; create (valid, invalid, duplicate, 10th, 11th); rename; regenerate and revoke with connected pages and LiveKit participants; connect after the link was revoked; last seen; a new production.
-- Expect: the key of any non-revoked link opens the output, the IP list applies per link, revoked and replaced keys are invalid at once; only the pages and `output_{slug}_{linkId}_*` participants of the changed link are aborted and removed; audit entries `output.link.created`, `output.link.renamed`, `output.link.revoked`, `output.key.regenerated` and `output.access.changed` with the link name and their log texts; every production starts with the link «Proxy».
+- Expect: the key of any non-revoked link opens the output, the IP list applies per link, revoked and replaced keys are invalid at once; only the pages and `output_{slug}_{linkId}_*` participants of the changed link are aborted and removed; audit entries `output.link.created`, `output.link.renamed`, `output.link.revoked`, `output.key.regenerated` and `output.access.changed` with the link name and their log texts; every production starts with the link “Proxy”.
 
 **INT-LINK-02** · P0 · xunit (`OutputLinkApiTests`) — Output link REST
 - Steps: `POST/PATCH/PUT/DELETE` of the link routes, invalid and duplicate names, 11 links, unknown links, links of another production, no session, no CSRF header; a revoked key on snapshot, changes, LiveKit token, report and the asset `?k=` route; a key of another production; `X-Forwarded-For` per link.
@@ -2402,19 +2406,87 @@ Several named output links per production and the output as a camera in Teams, Z
 
 **INT-LINK-04** · P0 · xunit (`OutputLinkMigrationTests`) — Migration of the single output key
 - Steps: a database at the migration before `AddOutputLinks` with productions that have a key and an IP list and audit entries of the key; migrate up; migrate down with a second link.
-- Expect: every production has one link «Proxy» with the old key and IP list, so old URLs keep working; the audit entries of key and access changes get the name «Proxy»; down restores the oldest link as the production's key.
+- Expect: every production has one link “Proxy” with the old key and IP list, so old URLs keep working; the audit entries of key and access changes get the name “Proxy”; down restores the oldest link as the production's key.
 
 **E2E-LINK-01** · P0 · pw — Two links, revoke one
-- Steps: Regie in English; add the link «Teams camera» in the popover; open one output page per link; look at the popover and the chip; revoke «Teams camera» in the popover; reload both pages.
-- Expect: «Proxy · connected» and «Teams camera · connected», the chip reads «Output Proxy + Teams camera»; after the confirmation the page of the revoked link shows «No access» within `T-KEY` (2 s) and stays denied after a reload, the other page keeps playing and stays connected; the row of the revoked link is gone.
+- Steps: Regie in English; add the link “Teams camera” in the popover; open one output page per link; look at the popover and the chip; revoke “Teams camera” in the popover; reload both pages.
+- Expect: “Proxy · connected” and “Teams camera · connected”, the chip reads “Output Proxy + Teams camera”; after the confirmation the page of the revoked link shows “No access” within `T-KEY` (2 s) and stays denied after a reload, the other page keeps playing and stays connected; the row of the revoked link is gone.
 
 **E2E-LINK-02** · P0 · pw — Links on the hubs
 - Steps: three output hub connections (Proxy, two new links) and a Regie hub; revoke one link; regenerate another.
 - Expect: the status event lists the three links by name; only the revoked link's connection closes (within `T-KEY`), its key gets 403 on REST and negotiate; regenerating closes only that link's connection; the proxy connection stays open.
 
 **E2E-LINK-03** · P0 · pw — Download the OBS scene collection
-- Steps: Regie in English; add «Teams camera»; «Use as camera …»; «Download OBS scene collection»; parse the file; open its URL in a new page, once with `bg=transparent`.
-- Expect: five steps naming 1920 × 1080; the file `StudioFlow-Teams-camera.json` is valid JSON with the browser source at 1920 × 1080, 30 fps, audio via OBS, shutdown off, refresh off, the URL of «Teams camera» (not the proxy key); the page of that URL turns the link «connected»; with `bg=transparent` the page and body are transparent.
+- Steps: Regie in English; add “Teams camera”; “Use as camera …”; “Download OBS scene collection”; parse the file; open its URL in a new page, once with `bg=transparent`.
+- Expect: five steps naming 1920 × 1080; the file `StudioFlow-Teams-camera.json` is valid JSON with the browser source at 1920 × 1080, 30 fps, audio via OBS, shutdown off, refresh off, the URL of “Teams camera” (not the proxy key); the page of that URL turns the link “connected”; with `bg=transparent` the page and body are transparent.
+
+### 2.17 I18N – Language and formats
+
+The language of the product is the setting `localStorage['studioflow.locale']` (`en` or `de-CH`; key absent = automatic from the browser language: `en*` and every unsupported language → English, `de*` → `de-CH`; decisions D1 and D2 in `docs/architecture/i18n-design.md`). The Regie, `/monitoring` and the sender share the key, a `storage` event switches the other open tabs; the output page has no setting (`?lang=`, then the browser language, then English). API texts are English and the clients render their own texts chosen by `code` (D7). The tests are in `tests/e2e/specs/i18n/` (`i18n-language`, `i18n-output`, `i18n-formats`), tagged `@p1 @i18n`, run in the `i18n` project (browser language `de-CH`) and set the browser language each test needs. English expectations come from `tests/e2e/support/text.ts`, the German ones from `tests/e2e/support/text.de.ts` (the strings of `packages/i18n/src/messages/de-CH/`). The German rules audit (no sharp s, decimal comma, 24 h clock, Swiss quotes) is `E2E-DEV-17` in 2.8, in `i18n-german-audit.spec.ts`.
+
+**E2E-I18N-01** · P1 · pw (`i18n`) — Browser language picks the language of the sign-in page
+- Steps: for each browser language `en-US`, `en-GB`, `de-CH`, `de-AT`, `de-DE`, `fr-CH` open `/login` in a fresh context.
+- Expect: `en-US`, `en-GB` and `fr-CH` (unsupported → English) show the page in English (button “Sign in”) and `<html lang="en">`; the detection stores nothing (`localStorage['studioflow.locale']` is `null`).
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect (German browser languages): `de-CH`, `de-AT` and `de-DE` show the page in German (button “Anmelden”) and `<html lang="de-CH">`; nothing is stored either.
+
+**E2E-I18N-02** · P1 · pw (`i18n`) — The stored setting beats the browser language
+- Steps: browser language `en-US`; on `/login` set the select “Interface language” to `de-CH`; reload; set it to `auto`.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: the page switches to German at once (button “Anmelden”), `studioflow.locale` = `de-CH`, `<html lang>` = `de-CH`; after the reload it is still German and the select shows `de-CH`; with `auto` the page is English again (“Sign in”, `<html lang="en">`) and the key is removed (`null`).
+
+**E2E-I18N-03** · P1 · pw (`i18n`) — A second tab follows a language change at once
+- Steps: two pages of one context (`en-US`) on `/login`; the first page sets the language to `de-CH`.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: the second page switches to German without a reload (`storage` event; button “Anmelden”, `<html lang="de-CH">`).
+
+**E2E-I18N-04** · P1 · pw (`i18n`) — Regie: the language switch changes the open Regie live
+- Pre: logged-in Regie in `en-US`; a marker on `window` and `history.length` are noted.
+- Steps: “Open settings” → popover “Settings” → select “Interface language” = `de-CH`; then switch back to `en` in the German popover.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: the region “Scenes” becomes the German region (“Szenen”) and the popover and its button get their German names (“Einstellungen”) at once, no English region name is left; `<html lang>` and `studioflow.locale` follow; the `window` marker survives and `history.length` is unchanged (no reload); after the switch back everything is English; no page errors.
+
+**E2E-I18N-05** · P1 · pw (`i18n`, `pixel7`) — Sender pairing page: live switch, persists over a reload
+- Steps: open the pairing page of the sender (heading “Pair device”); set the select “Interface language” to `de-CH`; reload.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: the heading becomes German (“Gerät koppeln”) without a reload (`window` marker survives), `<html lang="de-CH">`; after the reload the page is still German.
+
+**E2E-I18N-06** · P1 · pw (`i18n`) — The sign-in error is rendered by the client in the page language
+- Steps: wrong username and password on `/login`, once in `en-US` and once in `de-CH`.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: `role=alert` shows “Wrong username or password.” in English and “Benutzername oder Passwort ist falsch.” in German; the English `detail` of the API (“Username or password is incorrect.”) is never shown (D7).
+
+**E2E-I18N-07** · P1 · pw (`i18n`) — Output page: `?lang=` and the browser language
+- Steps: browser language `en-US`, output URL with a wrong key (slate “No access”): without `lang`, with `lang=de-CH`, `lang=de`, `lang=fr`.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: no `lang` → English (“No access”, `<html lang="en">`); `de-CH` and `de` → German slate (“Kein Zugang”, `<html lang="de-CH">`); the unknown `fr` → English.
+
+**E2E-I18N-08** · P1 · pw (`i18n`) — Output page: a German browser, and `?lang=en` wins
+- Steps: browser language `de-AT`, output URL with a wrong key, without and with `lang=en`.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: without `lang` the slate is German (“Kein Zugang”); with `lang=en` it is English (“No access”).
+
+**E2E-I18N-09** · P1 · pw (`i18n`) — The language of the Regie does not reach the output page
+- Steps: context whose origin has `studioflow.locale = 'de-CH'` (the Regie and the output page share the origin and `localStorage`); open the output with a wrong key, no `lang`, browser language `en-US`.
+- Expect: slate “No access” in English, `<html lang="en">`; the key is still in storage (the output page has no setting and ignores it).
+
+**E2E-I18N-10** · P1 · pw (`i18n`) — The standby slate is a production text, identical in both languages
+- Steps: open the output of a fresh production with `lang=de-CH`.
+- Expect: slate title “Starting soon” (the default text the server creates, D8) with the production name as subtitle, exactly as with `lang=en`; only texts of the page itself (for example “No access”) follow the language.
+
+**E2E-I18N-11** · P1 · pw (`i18n`) — Fade durations: decimal point in English, comma in German, live
+- Steps: Regie in `en-US`; press “Shorter fade” until it is disabled; switch the language to `de-CH` in the settings popover; press the longer-fade button until it is disabled; switch back to `en`; press “Shorter fade” once.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: “0.2 s” in English, “0,2 s” right after the switch (same value, comma); “2 s” at the longest step in both languages; “1.5 s” after one step down in English; the values `0.2 s … 2 s` are the seven steps of `E2E-SWITCH-03`.
+
+**E2E-I18N-12** · P1 · pw (`i18n`) — 24 h clock without AM/PM in both languages
+- Steps: read the header clock of the Regie in `en-US`; switch to `de-CH` in the settings popover; read it again.
+- Expect: both match `^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$`, never with AM/PM (D4); elapsed times (runtime `hh:mm:ss`, outage timers `mm:ss`) have the same shape in both languages.
+
+**E2E-I18N-13** · P1 · pw (`i18n`) — A log entry of the API is rendered in the language of the Regie
+- Steps: Regie in `en-US`; pair a phone named “Phone 1” through the API (the API writes the log entry `devicePaired` with its parameters); then switch the language to `de-CH` in the settings popover.
+<!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
+- Expect: “Recent events” shows “K1 Phone 1 paired” in English and “K1 Phone 1 gekoppelt” after the switch, with no English text left in the entry (the Regie renders `LogEntryDto` from `code` and `params`; `text` of the API is only the fallback).
 
 ### 2.17 FMT – Format and resolution
 
@@ -2505,6 +2577,7 @@ Legend: **●** runs and is required (priority of the test applies) · **○** r
 | DOCK-01…11 | ● | – | ○ (02…06) | ○ (02…06) | – | – | – | – | – |
 | MEDIA-01…10 | ● | – | ○ (01, 03, 04) | ○ (03, 04) | – | – | – | – | – |
 | LK-01…04 | ● | – | – | – | – | – | – | – | – |
+| I18N-01…13 | ● (project `i18n`; 05 with the `pixel7` profile) | – | – | – | ○ (05) | – | – | – | – |
 | OPS-01…19 | host shell (Linux; OPS-03 on Windows); OPS-04, 16 use `chromium-desktop` | – | – | – | – | – | – | – | – |
 
 Device/browser facts used by the matrix: Pixel 7 runs Chromium with the fake-media flags (same engine as production Android Chrome); iPhone/iPad profiles use Playwright WebKit (an approximation of Safari,
@@ -2517,46 +2590,46 @@ not iOS: no real camera, no real wake lock, no real Battery API; hence MAN-01); 
 Each procedure has a fixed evidence package: date, build/commit id, device models and OS versions, network (SSID, band, router), screenshots/screen recordings, and the measured numbers. Failures become defects with the evidence attached.
 
 **MAN-01 · Real iPhone (Safari 17+, iOS 17+) as camera.**
-Equipment: iPhone 12 or newer on 5 GHz Wi-Fi, Regie laptop, stack on LAN with a publicly trusted certificate (MAN-05). Procedure: scan the QR with the iOS Camera app; allow camera; start 720p then 1080p; switch front/back; put the phone on a charger and mount it landscape; check wake lock (screen stays on 10 min), dark mode, tally frame colours while the Regie switches program/preview; lock the screen for 10 s and unlock; receive an incoming call; switch to another app for 30 s; add to Home Screen and open as PWA; rotate; reload the page. Pass: pairing ≤ 10 s; picture at the Regie ≤ 3 s after start; tally changes ≤ 0,5 s after the switch; after lock/call/app switch the sender returns to live by itself ≤ 5 s after the app is visible again (or shows a clear «Erneut …» action when iOS forbids it) and the Regie shows «verbindet neu» then «wieder da»; no Battery value is shown on iOS (MAN-07); text readable without zoom.
+Equipment: iPhone 12 or newer on 5 GHz Wi-Fi, Regie laptop, stack on LAN with a publicly trusted certificate (MAN-05). Procedure: scan the QR with the iOS Camera app; allow camera; start 720p then 1080p; switch front/back; put the phone on a charger and mount it landscape; check wake lock (screen stays on 10 min), dark mode, tally frame colours while the Regie switches program/preview; lock the screen for 10 s and unlock; receive an incoming call; switch to another app for 30 s; add to Home Screen and open as PWA; rotate; reload the page. Pass: pairing ≤ 10 s; picture at the Regie ≤ 3 s after start; tally changes ≤ 0.5 s after the switch; after lock/call/app switch the sender returns to live by itself ≤ 5 s after the app is visible again (or shows a clear “Try again” action when iOS forbids it) and the Regie shows “reconnecting” then “back”; no Battery value is shown on iOS (MAN-07); text readable without zoom.
 
 **MAN-02 · Real Android phone (Chrome) as camera.**
-Equipment: Pixel 6+/Samsung S21+ and one low-end device. Procedure: as MAN-01 plus: battery level and charging in the station detail, low battery < 20 % shown as «Akku n %», camera switch command from the Regie, Wi-Fi ↔ mobile data toggle, 60 min continuous 1080p on a charger (temperature, throttling). Pass: as MAN-01; Battery API values correct (±5 %); no thermal shutdown in 60 min; resolution drop (if any) visible in the Regie «Auflösung».
+Equipment: Pixel 6+/Samsung S21+ and one low-end device. Procedure: as MAN-01 plus: battery level and charging in the station detail, low battery < 20 % shown as “Battery n%”, camera switch command from the Regie, Wi-Fi ↔ mobile data toggle, 60 min continuous 1080p on a charger (temperature, throttling). Pass: as MAN-01; Battery API values correct (±5 %); no thermal shutdown in 60 min; resolution drop (if any) visible in the Regie “Resolution”.
 
 **MAN-03 · Real Wi-Fi roaming and network change.**
-Equipment: two access points (same SSID, 5 GHz), a phone sending, Regie and output open. Procedure: walk the phone from AP 1 to AP 2 while sending; toggle airplane mode 5 s and 30 s; switch Wi-Fi off/on; hop between 2,4 and 5 GHz; test a guest/captive-portal network (expected: pairing refused or unreachable with a clear message). Pass: roaming/blip < 10 s → output shows at most a still frame and the picture returns ≤ 3 s after connectivity (`T-RECOVER-SHORT`); 30 s → «verbindet neu 00:30», recovery ≤ 8 s (`T-RECOVER-LONG`); the Regie shows all six places; no manual action on the phone needed.
+Equipment: two access points (same SSID, 5 GHz), a phone sending, Regie and output open. Procedure: walk the phone from AP 1 to AP 2 while sending; toggle airplane mode 5 s and 30 s; switch Wi-Fi off/on; hop between 2.4 and 5 GHz; test a guest/captive-portal network (expected: pairing refused or unreachable with a clear message). Pass: roaming/blip < 10 s → output shows at most a still frame and the picture returns ≤ 3 s after connectivity (`T-RECOVER-SHORT`); 30 s → “reconnecting 00:30”, recovery ≤ 8 s (`T-RECOVER-LONG`); the Regie shows all six places; no manual action on the phone needed.
 
 **MAN-04 · Real proxy and OBS Browser Source.**
-Equipment: the actual proxy product or an OBS instance (CEF Browser Source), the production domain (or staging), IP of the proxy. Procedure: embed `/o/{slug}?k=…` exactly as in the plan (iframe with `allow="autoplay; fullscreen"`) and as OBS Browser Source (1920×1080; with and without `bg=transparent`); set `frame-ancestors` to the proxy's domain; set the IP restriction to the proxy's egress IP; run 60 min; rotate the key and give the proxy the new link; restart the proxy page. Pass: autoplay without interaction, letterboxing correct in a non-16:9 frame, transparent overlay shows alpha in OBS, restricted IP works (other IP gets «Kein Zugang»), rotation kicks the old session ≤ 2 s, no frozen picture over 60 min, end-to-end latency measured with MAN-08.
+Equipment: the actual proxy product or an OBS instance (CEF Browser Source), the production domain (or staging), IP of the proxy. Procedure: embed `/o/{slug}?k=…` exactly as in the plan (iframe with `allow="autoplay; fullscreen"`) and as OBS Browser Source (1920×1080; with and without `bg=transparent`); set `frame-ancestors` to the proxy's domain; set the IP restriction to the proxy's egress IP; run 60 min; rotate the key and give the proxy the new link; restart the proxy page. Pass: autoplay without interaction, letterboxing correct in a non-16:9 frame, transparent overlay shows alpha in OBS, restricted IP works (other IP gets “No access”), rotation kicks the old session ≤ 2 s, no frozen picture over 60 min, end-to-end latency measured with MAN-08.
 
 **MAN-05 · Real certificates (DNS challenge) and device trust.**
 Equipment: the real domain (e.g. `studioflow.opten.ch`), DNS provider API token with minimal scope, iOS/Android/Windows/macOS devices without any installed CA. Procedure: `STUDIOFLOW_TLS_MODE=dns-<provider>` first start; check issuance (staging CA first, then production), the certificate chain, HSTS; open the Regie, `/join` and an invite link on each device; restart the stack (certificate reused from `caddy_data`); simulate renewal (`caddy reload` with a near-expiry staging cert, or wait); revoke/rotate the token and confirm the failure mode is logged clearly; for `internal` mode install the Caddy root (`https://<domain>/ca.crt`) on one device per OS using the documented steps. Pass: no browser warning on any device in `dns` mode; camera/screen permissions are offered (secure context); renewal succeeds without downtime; internal-CA instructions work in ≤ 5 min per device.
 
 **MAN-06 · Real screen-share stop UI.**
-Equipment: Windows 11 + Chrome and Edge, macOS + Chrome, Safari, Firefox. Procedure: share entire screen, a window and a tab; end via the browser's «Stop sharing» bar, via the OS (macOS menu bar), by closing the shared window, by minimising it, by switching tabs; press «Erneut teilen» from the sender; share two screens; share with a laptop sleeping/waking. Pass: every end path raises a red incident «Teilen beendet» ≤ 2 s (window closed/minimised may only freeze the picture – record behaviour); the browser never restarts sharing by itself; «Erneut teilen» works only from a click; the same slot and place in the scene are reused; text on screen stays sharp (`contentHint detail`).
+Equipment: Windows 11 + Chrome and Edge, macOS + Chrome, Safari, Firefox. Procedure: share entire screen, a window and a tab; end via the browser's “Stop sharing” bar, via the OS (macOS menu bar), by closing the shared window, by minimising it, by switching tabs; press “Share again” from the sender; share two screens; share with a laptop sleeping/waking. Pass: every end path raises a red incident “sharing stopped” ≤ 2 s (window closed/minimised may only freeze the picture – record behaviour); the browser never restarts sharing by itself; “Share again” works only from a click; the same slot and place in the scene are reused; text on screen stays sharp (`contentHint detail`).
 
 **MAN-07 · Battery API availability.**
-Procedure: open the sender on iPhone Safari, Android Chrome, desktop Chrome, Firefox. Pass: iOS/Firefox/Safari: no battery line and no «Akku 0 %»; Android Chrome: value and charging state update within 10 s; the `/monitoring` column shows «–» where unavailable.
+Procedure: open the sender on iPhone Safari, Android Chrome, desktop Chrome, Firefox. Pass: iOS/Firefox/Safari: no battery line and no “Battery 0%”; Android Chrome: value and charging state update within 10 s; the `/monitoring` column shows “–” where unavailable.
 
 **MAN-08 · Real glass-to-glass latency.**
 Equipment: a phone camera (or the sender phone) filming a running millisecond clock (stopwatch app) next to the output shown on a monitor; a 240 fps slow-motion camera (or screen capture of both at 120 fps) filming the clock and the output together; Wi-Fi 5 GHz, wired Regie/server. Procedure: collect ≥ 30 frames at random times; difference between the clock on the original and on the output = latency; repeat for camera (H.264), screen share (VP9) and via the proxy. Pass: p50 < 200 ms and p95 < 300 ms for the output (`T-LATENCY`, plan target ≈ 150 ms); record the numbers next to the automated figures of `E2E-OUT-13` and explain deviations > 50 ms.
 
 **MAN-09 · Probe webinar (phase 1 acceptance, phase 2 go-live rehearsal).**
-Equipment: 3 phones, 2 laptops, 2 operators, the proxy; 60 min. Script: pair everything with the three methods; build four scenes with templates; run with Studio-Modus off and on; at minute 10 unplug one phone's Wi-Fi for 10 s; minute 20 a speaker stops sharing; minute 30 block/unblock a phone; minute 40 rotate the output key; minute 50 `Sendung beenden` and restart. Pass: no outage goes unnoticed (all six places), no operator-visible error text other than designed ones, picture never black, the proxy needs only the planned manual step (new link), runtime/latency numbers recorded, operators rate the Regie usable at 1440×900 and 1280×720.
+Equipment: 3 phones, 2 laptops, 2 operators, the proxy; 60 min. Script: pair everything with the three methods; build four scenes with templates; run with Studio Mode off and on; at minute 10 unplug one phone's Wi-Fi for 10 s; minute 20 a speaker stops sharing; minute 30 block/unblock a phone; minute 40 rotate the output key; minute 50 “End broadcast” and restart. Pass: no outage goes unnoticed (all six places), no operator-visible error text other than designed ones, picture never black, the proxy needs only the planned manual step (new link), runtime/latency numbers recorded, operators rate the Regie usable at 1440×900 and 1280×720.
 
 **MAN-10 · Server placement: Regie laptop, Docker Desktop, VPS.**
 Procedure: run the stack (a) on the Regie laptop with Docker Desktop (WSL2): check UDP 7882/TCP 7881 reachability from phones, Windows Defender prompts, correct `STUDIOFLOW_NODE_IP`, behaviour when the laptop sleeps/changes network (expected: stack unavailable, documented); (b) on a Linux server on cable. Pass: phones send via both setups; no extra manual firewall steps beyond the runbook; load on the laptop leaves the Regie responsive (`T-FPS`).
 
 **MAN-11 · Camera conflicts on laptops and phones.**
-Procedure: laptop camera as slot while Teams/Zoom opens the camera; unplug a USB webcam; revoke the browser camera permission while live; phone: incoming call, another app takes the camera. Pass: slot becomes `failed` → «kein Bild» (red) after the re-acquire attempts; restarting from the sender returns «wieder da»; no endless loop of permission prompts.
+Procedure: laptop camera as slot while Teams/Zoom opens the camera; unplug a USB webcam; revoke the browser camera permission while live; phone: incoming call, another app takes the camera. Pass: slot becomes `failed` → “no picture” (red) after the re-acquire attempts; restarting from the sender returns “back”; no endless loop of permission prompts.
 
 **MAN-12 · Screen readers and keyboard on real hardware.**
 Equipment: NVDA/JAWS (Windows), VoiceOver (macOS and iOS). Procedure: operate login, switching, Take, outage handling, pairing and sender states with keyboard and screen reader only. Pass: an outage is announced (live region) within 2 s without moving focus; every control has a name; the order matches the visual order; Windows High Contrast keeps states distinguishable.
 
 **MAN-14 · Remote camera control on real phones (issue #11, the spike).**
-Equipment: at least one Android phone (Chrome, with an ultra-wide camera if possible, e.g. Pixel 6+ or Samsung S21+) and one iPhone (Safari 17+); Regie laptop; stack as in MAN-01. Procedure per phone: pair it, start the camera and open «Stationen» → the phone → «Kamera». Write down what the panel offers (lenses, zoom range, focus, brightness range, light) next to the phone model and browser version: that is the capability matrix of the device and goes into the runbook table «Remote camera control». Then: drag the zoom slider slowly and quickly (the picture follows, the value shown is the one the phone reports, no flood on a weak Wi-Fi: throttle the phone to 3G in the browser's network panel or move away from the access point); lock the focus and unlock it, point the phone at a close and a far object; move brightness to −2, +2 and press «Automatisch»; switch the light on and off; pick every lens while the station is in preview and then in the program (the confirmation appears only in the program); change the zoom on the phone's screen is not offered, so check that a second Regie operator who moves the same slider wins over the first (the last command wins) and both Regies show the value the phone reports; press «Auf automatisch zurücksetzen»; reload the phone page, lock and unlock the screen, take a call: the lens, zoom, focus and brightness come back as they were; put the phone to sleep or switch the camera to another app and send a command (the panel shows the real value or the inline message, never a stuck slider). Pass: only controls the phone supports are shown (an iPhone typically only the lens list); every value in the panel equals what the phone does; a lens switch in the program interrupts the picture for less than 1 s and the output shows the hold frame, not black; after a reload the camera is back as it was within 5 s; no console errors on the sender.
+Equipment: at least one Android phone (Chrome, with an ultra-wide camera if possible, e.g. Pixel 6+ or Samsung S21+) and one iPhone (Safari 17+); Regie laptop; stack as in MAN-01. Procedure per phone: pair it, start the camera and open “Stations” → the phone → “Camera”. Write down what the panel offers (lenses, zoom range, focus, brightness range, light) next to the phone model and browser version: that is the capability matrix of the device and goes into the runbook table “Remote camera control”. Then: drag the zoom slider slowly and quickly (the picture follows, the value shown is the one the phone reports, no flood on a weak Wi-Fi: throttle the phone to 3G in the browser's network panel or move away from the access point); lock the focus and unlock it, point the phone at a close and a far object; move brightness to −2, +2 and press “Auto”; switch the light on and off; pick every lens while the station is in preview and then in the program (the confirmation appears only in the program); change the zoom on the phone's screen is not offered, so check that a second Regie operator who moves the same slider wins over the first (the last command wins) and both Regies show the value the phone reports; press “Reset to auto”; reload the phone page, lock and unlock the screen, take a call: the lens, zoom, focus and brightness come back as they were; put the phone to sleep or switch the camera to another app and send a command (the panel shows the real value or the inline message, never a stuck slider). Pass: only controls the phone supports are shown (an iPhone typically only the lens list); every value in the panel equals what the phone does; a lens switch in the program interrupts the picture for less than 1 s and the output shows the hold frame, not black; after a reload the camera is back as it was within 5 s; no console errors on the sender.
 
 **MAN-15 · OBS virtual camera into Teams (issue #9, stage 1).**
-Equipment: a computer that is not the Regie laptop with OBS Studio 31 or 32 and the new Teams app (Windows 11, and the same on macOS), a second participant on another device, the stack as in MAN-01. Procedure: runbook section 18 from the start (link «Teams camera», download, import, Settings → Video, Start Virtual Camera, pick «OBS Virtual Camera», background effects off); check the browser source plays without a click and survives a scene switch in OBS; check «?bg=transparent» on the same link in a second browser source; switch scenes in the Regie and watch them in Teams; switch the Wi-Fi of the camera computer off for 30 s and on again; measure glass to glass (a stopwatch or a clock in the picture, filmed together with the second participant's screen) at least ten times; revoke the link and see the page in OBS turn to «No access». Pass: the import works without a message; the picture in Teams is the output picture, text readable at the size recommended in the runbook, no mirroring for the second participant; the picture is back within 10 s after the Wi-Fi returns without restarting the virtual camera; the latency is written down (median and worst) next to the OBS and Teams versions; revoking affects only this link.
+Equipment: a computer that is not the Regie laptop with OBS Studio 31 or 32 and the new Teams app (Windows 11, and the same on macOS), a second participant on another device, the stack as in MAN-01. Procedure: runbook section 18 from the start (link “Teams camera”, download, import, Settings → Video, Start Virtual Camera, pick “OBS Virtual Camera”, background effects off); check the browser source plays without a click and survives a scene switch in OBS; check “?bg=transparent” on the same link in a second browser source; switch scenes in the Regie and watch them in Teams; switch the Wi-Fi of the camera computer off for 30 s and on again; measure glass to glass (a stopwatch or a clock in the picture, filmed together with the second participant's screen) at least ten times; revoke the link and see the page in OBS turn to “No access”. Pass: the import works without a message; the picture in Teams is the output picture, text readable at the size recommended in the runbook, no mirroring for the second participant; the picture is back within 10 s after the Wi-Fi returns without restarting the virtual camera; the latency is written down (median and worst) next to the OBS and Teams versions; revoking affects only this link.
 
 **MAN-13 · External security scan.**
 Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline scan against the Regie, sender and output (authenticated and not), `nmap -p- <server>`; review the security-review document. Pass: only the published ports (80, 443, 7881/tcp, 7882/udp) are open; TLS ≥ 1.2 with modern ciphers; no ZAP findings above Low that are not documented; the CSP invariants I-CSP hold.
@@ -2571,19 +2644,19 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 |---|---|---|---|---|
 | `T-REPORT` | Device hub `Report` round trip, 10 devices back to back after a warm-up, p95 | ≤ 100 ms | stall ceiling 5000 ms (`DeviceReportLatencyTests`) | — |
 | `T-LOAD` | Regie: navigation → `regie-ready` (cold, p95 of 10) | ≤ 2 s | ≤ 3 s | plan §1 (light pages) |
-| | Output: navigation → slate visible / `load` event | ≤ 0,5 s / ≤ 1 s | ≤ 1 s / ≤ 2 s | plan §5, spec 9.3 |
+| | Output: navigation → slate visible / `load` event | ≤ 0.5 s / ≤ 1 s | ≤ 1 s / ≤ 2 s | plan §5, spec 9.3 |
 | | Output transfer size (HTML+JS+CSS, gzip/brotli) | ≤ 300 KB | ≤ 350 KB | spec 9.3 |
-| | Sender: navigation → station state | ≤ 1,5 s | ≤ 3 s | — |
+| | Sender: navigation → station state | ≤ 1.5 s | ≤ 3 s | — |
 | `T-PAIR` | QR/link redeem → station visible in the Regie | ≤ 1 s | ≤ 2 s | plan §4 |
-| | `POST /api/pairing/requests` → knock card in the Regie | ≤ 0,5 s | ≤ 1,5 s | — |
-| | «Zulassen» → laptop connected (poll 1,5 s) | ≤ 2,5 s | ≤ 3,5 s | spec 4.6 |
-| | Phone redeem → «Verbunden» | ≤ 2 s | ≤ 3 s | — |
+| | `POST /api/pairing/requests` → knock card in the Regie | ≤ 0.5 s | ≤ 1.5 s | — |
+| | “Allow” → laptop connected (poll 1.5 s) | ≤ 2.5 s | ≤ 3.5 s | spec 4.6 |
+| | Phone redeem → “Connected” | ≤ 2 s | ≤ 3 s | — |
 | `T-VIDEO-START` | Track published → first decoded frame in a Regie monitor / the output (source already in the scene) | ≤ 2 s | ≤ 3 s | — |
 | `T-DETECT-CLEAN` | Connection closed cleanly (setOffline, container stop, tab close) → outage shown in all six places | ≤ 2 s | ≤ 3 s | plan §6 (2–5 s) |
-| `T-DETECT-SILENT` | Packets silently dropped (pause, disconnect, 100 % loss) → outage shown in all six places (device hub: keep-alive 2 s, timeout 5 s) | ≤ 5 s | ≤ 6,5 s [GAP-12] | plan §6, spec 6/12 |
+| `T-DETECT-SILENT` | Packets silently dropped (pause, disconnect, 100 % loss) → outage shown in all six places (device hub: keep-alive 2 s, timeout 5 s) | ≤ 5 s | ≤ 6.5 s [GAP-12] | plan §6, spec 6/12 |
 | | Media-only loss while the hub stays up → outage shown | ≤ 6 s | ≤ 10 s | LiveKit ICE timeouts |
-| `T-RECOVER-SHORT` | Outage ≤ 10 s: network back → output frames advancing | ≤ 2 s (p95) | ≤ 3 s | plan §9 phase 0 («Reconnect unter 3 s») |
-| | …→ Regie shows `ok` + «wieder da» after frames advance | ≤ 0,5 s | ≤ 1 s | — |
+| `T-RECOVER-SHORT` | Outage ≤ 10 s: network back → output frames advancing | ≤ 2 s (p95) | ≤ 3 s | plan §9 phase 0 (reconnect in under 3 s) |
+| | …→ Regie shows `ok` + “back” after frames advance | ≤ 0.5 s | ≤ 1 s | — |
 | `T-RECOVER-LONG` | Outage ≥ 30 s (backoff at its 5 s cap + token + connect) → frames advancing | ≤ 5 s | ≤ 8 s | spec 8.2 |
 | `T-SWITCH` | Regie click/key → first frame of the new scene on the output (cut), p50 / p95 | 150 ms / 250 ms | — / 300 ms | plan §2 |
 | | Server: request received → event published, p95 | ≤ 20 ms | ≤ 50 ms | — |
@@ -2594,8 +2667,8 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | Fade left half-finished | never | never | PRODUCT.md principle 3 |
 | `T-TALLY` | Switch event → `tally` applied on the device, p95 | ≤ 250 ms | ≤ 500 ms | — |
 | `T-HOLD` | `data-state=hold` → `held` vs `holdMs` | ± 100 ms | ± 300 ms | spec 8.3 |
-| `T-BLOCK` | «Jetzt sperren» → sender «Gesperrt» and LiveKit participant gone | ≤ 1 s | ≤ 2 s | spec 4.6 |
-| | «Entsperren» → sender back (15 s retry cadence + connect) | ≤ 17 s | ≤ 20 s | spec 4.6 |
+| `T-BLOCK` | “Block now” → sender “Blocked” and LiveKit participant gone | ≤ 1 s | ≤ 2 s | spec 4.6 |
+| | “Unblock” → sender back (15 s retry cadence + connect) | ≤ 17 s | ≤ 20 s | spec 4.6 |
 | `T-KEY` | Key regeneration → connected outputs kicked; old key REST 403 | ≤ 1 s; immediate | ≤ 2 s; immediate | spec 4.8 |
 | `T-LATENCY` | Canvas-to-canvas (timecode source → output `<video>`), 720p30, localhost: p50 / p95 / max | ≤ 150 ms / ≤ 250 ms / ≤ 600 ms | < 200 ms / < 300 ms / — | plan §2, §9 phase 0 |
 | | Same for the Regie Program monitor | ≤ 150 ms | < 200 ms (p50) | spec 7 |
@@ -2606,8 +2679,8 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | `T-DB-OUTAGE` | PostgreSQL stopped or silent → request answered 503 ProblemDetails: direct API / through Caddy | ≤ 5 s / ≤ 5 s | ≤ 6 s / ≤ 10 s | GAP-32, BUG-21 |
 | `T-RESTART-LK` | LiveKit healthy → output and senders playing again | ≤ 6 s | ≤ 10 s | spec 7, 8.4 |
 | `T-RESTART-STACK` | All containers healthy → all browsers back; time to healthy after the command | ≤ 10 s; ≤ 60 s | ≤ 15 s; ≤ 90 s | plan §6 |
-| `T-SYNC-DELTA` | Hub reconnected → state consistent: delta / snapshot | ≤ 1 s / ≤ 2 s | ≤ 1,5 s / ≤ 3 s | spec 6 |
-| `T-FREEZE` | `totalFreezesDuration` per minute: 5 % loss / 200 ms delay | ≤ 1 s / ≤ 0,5 s | ≤ 2 s / ≤ 1 s | — |
+| `T-SYNC-DELTA` | Hub reconnected → state consistent: delta / snapshot | ≤ 1 s / ≤ 2 s | ≤ 1.5 s / ≤ 3 s | spec 6 |
+| `T-FREEZE` | `totalFreezesDuration` per minute: 5 % loss / 200 ms delay | ≤ 1 s / ≤ 0.5 s | ≤ 2 s / ≤ 1 s | — |
 | | 20 % loss: longest freeze | ≤ 2 s | ≤ 5 s | — |
 | `T-FPS` | Output rendered fps with ≤ 9 items, 1080p, 4-core runner / at CPU throttle 4× | ≥ 28 / ≥ 24 | ≥ 24 / ≥ 20 | spec 8.3 |
 | | Output main-thread busy (CDP `TaskDuration` / wall time) | ≤ 40 % | ≤ 60 % | — |
@@ -2657,16 +2730,16 @@ The smoke tests share one stack and one worker on purpose (state of the stack, t
 
 Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 days): the HTML report, `junit.xml`, `results.json`, traces, videos and screenshots (`retain-on-failure`), and `logs/<service>.log`, the `docker compose logs` of the four services (the harness writes them at the end of every run, also when the stack did not come up). `retries: 1` applies on CI (6.4).
 
-**`e2e-full.yml`** runs every Playwright project except `soak` (weekly, 60 minutes): `smoke`, `desktop-chromium`, `short-ttl`, `disruptive` (restarts, lockout, network impairment with the netem sidecar, which needs `NET_ADMIN`, granted by the compose file, and the kernel modules `sch_netem`, `ifb` and `act_mirred` on the runner; `tests/e2e/load-netem-modules.sh` loads them, installs `linux-modules-extra-$(uname -r)` if needed, and if the kernel still lacks them it writes a warning annotation and sets `E2E_NETEM=unavailable`: `E2E-NET-00` then records the netem tool as skipped and the tests that need it are skipped, not failed; `E2E-NET-00` reports whether the tools work), the `pixel-7`, `iphone-15` and `ipad` descriptors, `desktop-firefox` and `webkit`. The harness builds the images with `docker compose`. It runs Monday to Friday at 01:17 UTC while the repository is private (Actions minutes are limited) and on demand (`workflow_dispatch`). A failed run creates an issue labelled `ci-failure` («Nightly E2E run failed») or adds a comment to the one that is still open; the job `report-failure` is the only job with `issues: write`.
+**`e2e-full.yml`** runs every Playwright project except `soak` (weekly, 60 minutes): `smoke`, `desktop-chromium`, `i18n`, `short-ttl`, `disruptive` (restarts, lockout, network impairment with the netem sidecar, which needs `NET_ADMIN`, granted by the compose file, and the kernel modules `sch_netem`, `ifb` and `act_mirred` on the runner; `tests/e2e/load-netem-modules.sh` loads them, installs `linux-modules-extra-$(uname -r)` if needed, and if the kernel still lacks them it writes a warning annotation and sets `E2E_NETEM=unavailable`: `E2E-NET-00` then records the netem tool as skipped and the tests that need it are skipped, not failed; `E2E-NET-00` reports whether the tools work), the `pixel-7`, `iphone-15` and `ipad` descriptors, `desktop-firefox` and `webkit`. The harness builds the images with `docker compose`. It runs Monday to Friday at 01:17 UTC while the repository is private (Actions minutes are limited) and on demand (`workflow_dispatch`). A failed run creates an issue labelled `ci-failure` (“Nightly E2E run failed”) or adds a comment to the one that is still open; the job `report-failure` is the only job with `issues: write`.
 
 **Toolchain and supply chain.**
 - Node comes from `.nvmrc` (22.22.3), the .NET SDK from `global.json` (`10.0.301` with `rollForward: latestFeature`: a local SDK from 10.0.301 up to the newest 10.0 feature band is accepted, and CI installs the newest 10.0 SDK, the band the API Docker image is built with).
 - The default is `permissions: contents: read`. Every action is pinned by its full commit SHA with the release in a comment; to update one, look up the SHA of the new release tag (`gh api repos/<owner>/<action>/git/ref/tags/<tag>`, and dereference annotated tags with `git/tags/<sha>`) instead of using the tag.
 - Caches: npm (`actions/setup-node`), NuGet (`actions/setup-dotnet`, key from `Directory.Packages.props` and the `*.csproj` files), the Playwright browsers (`actions/cache/restore` and `actions/cache/save` as two steps, so that a red job still saves what it installed), Docker layers (`docker/build-push-action` with `type=gha`, one scope per image: `api`, `caddy`, `backup`).
 
-**Branch protection** for `main` is a repository setting of the owner, not part of the repository: require a pull request and the jobs `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (backup)` and `e2e-smoke` (a job that is skipped counts as passed, so every build job is required, not only `e2e-smoke`, which waits for them) plus «Conventional Commits title» (`pr-title.yml`) to be green before merging. The other repository settings of the releases are listed in `docs/releasing.md`, section 8.
+**Branch protection** for `main` is a repository setting of the owner, not part of the repository: require a pull request and the jobs `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (backup)` and `e2e-smoke` (a job that is skipped counts as passed, so every build job is required, not only `e2e-smoke`, which waits for them) plus “Conventional Commits title” (`pr-title.yml`) to be green before merging. The other repository settings of the releases are listed in `docs/releasing.md`, section 8.
 
-**`pr-title.yml`** checks that the title of every pull request follows Conventional Commits (`feat: ...`, `fix(api): ...`; the job is named «Conventional Commits title»). **`release.yml`** runs after `ci.yml` succeeded on a push to `main`: it builds the three images once, pushes them as `sha-<7>`, runs the smoke set again against those pushed images, scans them with Trivy, moves `:main`, and maintains the release (release-please); the release job tags the same images with the version. Details: `docs/releasing.md`. Its smoke run uses the same harness as `e2e-smoke` (`E2E_NO_BUILD=1` with the pulled images tagged `sf-e2e-1-api` and `sf-e2e-1-caddy`).
+**`pr-title.yml`** checks that the title of every pull request follows Conventional Commits (`feat: ...`, `fix(api): ...`; the job is named “Conventional Commits title”). **`release.yml`** runs after `ci.yml` succeeded on a push to `main`: it builds the three images once, pushes them as `sha-<7>`, runs the smoke set again against those pushed images, scans them with Trivy, moves `:main`, and maintains the release (release-please); the release job tags the same images with the version. Details: `docs/releasing.md`. Its smoke run uses the same harness as `e2e-smoke` (`E2E_NO_BUILD=1` with the pulled images tagged `sf-e2e-1-api` and `sf-e2e-1-caddy`).
 
 **Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on Windows with `setup.ps1`, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices or a dedicated runner (latency, real phones), which stay manual (section 4).
 
@@ -2705,15 +2778,15 @@ Docker with Compose v2 (`--wait`), Node ≥ 22.12, .NET 10 SDK, Playwright brows
 ## 7. Spec gaps, contradictions and pinned decisions
 
 Each entry: where the sources are silent or disagree, what this plan pins (and tests assert), and what the implementation must provide or decide. When a gap is resolved, update the pin here and the tests that cite it.
-"Spec" = `docs/architecture/implementation-spec.md`; "Plan" = `plan/StudioFlow Architekturplan.html`; "ApiSurface" = `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs`.
+"Spec" = `docs/architecture/implementation-spec.md`; "Plan" = `docs/history/FlowStudio Architekturplan.html`; "ApiSurface" = `apps/api/src/Opten.StudioFlow.Web/Endpoints/ApiSurface.cs`.
 
 **GAP-01 · Time-based rules can be faked but not configured.** Spec 4.6 (invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min), 5 (lockout 15 min, sliding cookie 12 h), 7 (token TTL 10 min, `empty_timeout` 300 s), 4.2 (fade guard). The working tree injects `TimeProvider` into the services (so expiry tests can use `FakeTimeProvider`), but the durations are `static readonly` constants (`Invite.Lifetime`, `Invite.ReplayWindow`, `PairingRequest.PendingLifetime`/`DecisionLifetime`, `LoginThrottle.Window`/`Lockout`, `PairingRequestStore.MaxPending`), so no short-TTL stack can be built.
 Pin: every duration and limit becomes an option with the spec default; configuration keys: `Pairing:InviteTtl`, `Pairing:RequestTtl`, `Pairing:CredentialsWindow`, `Pairing:RedeemIdempotencyWindow`, `Pairing:Limits:RequestsPerIpPer10Min` (10), `Pairing:Limits:PendingTotal` (20), `Pairing:Limits:RedeemPerIpPer10Min` (20), `Admin:Lockout:*`, `LiveKit:TokenTtl` (LiveKit's own `room.empty_timeout` is set in the `LIVEKIT_CONFIG` block of the compose file). Without them `E2E-PAIR-05/06/07`, `E2E-LK-03`, `E2E-NET-26` and all expiry integration tests cannot run.
 
-**GAP-02 · Production lifecycle beyond the first start.** Spec 4.2 describes only the default production «Webinar»; `createProduction` (ApiSurface) says nothing about content, activation or slug rules; there is no delete route.
-Pin (as implemented in `ProductionService.CreateAsync`): a created production gets the same three default scenes («Begrüssung», «Präsentation», «Pause»; program = first) and is active only when no other production is active; `AddScene` on a production without program makes the new scene the program; `activate` makes the production the only active one (emits `resync` to Regie sessions); slug = lower-case ASCII `[a-z0-9-]`, 1–48 chars (ä→ae, ö→oe, ü→ue, é→e, ß→ss, other characters → `-`, runs collapsed, ends trimmed), a collision appends `-2`, `-3`, …; empty after normalisation → `produktion` (all as in `Slugs.cs`). Productions accumulate in E2E (removed by `down -v`).
+**GAP-02 · Production lifecycle beyond the first start.** Spec 4.2 describes only the default production “Webinar”; `createProduction` (ApiSurface) says nothing about content, activation or slug rules; there is no delete route.
+Pin (as implemented in `ProductionService.CreateAsync`): a created production gets the same three default scenes (“Welcome”, “Presentation”, “Break”; program = first) and is active only when no other production is active; `AddScene` on a production without program makes the new scene the program; `activate` makes the production the only active one (emits `resync` to Regie sessions); slug = lower-case ASCII `[a-z0-9-]`, 1–48 chars (German umlauts → ae, oe, ue; accented letters lose the accent; the sharp s → ss; other characters → `-`, runs collapsed, ends trimmed), a collision appends `-2`, `-3`, …; empty after normalisation → `production` (all as in `Slugs.cs`). Productions accumulate in E2E (removed by `down -v`).
 
-**GAP-03 · Login lockout semantics.** Spec 5: "5 failed attempts per client IP within 15 minutes → 15 minutes 429 `rate_limited` with `Retry-After`; additionally 20 failures per username in 15 minutes lock the username"; Plan §7 "nach fünf Fehlversuchen 15 Minuten Sperre".
+**GAP-03 · Login lockout semantics.** Spec 5: "5 failed attempts per client IP within 15 minutes → 15 minutes 429 `rate_limited` with `Retry-After`; additionally 20 failures per username in 15 minutes lock the username"; Plan §7 (a 15 minute lock after five failed attempts).
 Pin (equals `LoginThrottle` in the working tree): failures 1–4 return 401, the 5th failure itself returns 429 and starts the lock, every later attempt (even with the correct password) gets 429 until the lock ends; success clears the IP counter; the window is sliding; `Retry-After` in seconds (≤ 900); counters live in memory (a restart clears them, the E2E lockout tests rely on it); the client IP is the proxy-forwarded address (all E2E traffic shares one IP).
 
 **GAP-04 · Authorisation details missing from the spec.** (a) No route → policy table (spec 5 lists the policies only); this plan pins the table in 2.1 (notably `GET /api/system/info` = Admin, health = anonymous). (b) Logout: a stateless Data Protection ticket stays valid until expiry; pin: logout invalidates the session server-side (revocation list/session id) and closes the hub connections of that session. (c) `Program.cs` calls `app.MapOpenApi()` unconditionally; pin: only in Development/OpenAPI generation, never in Production.
@@ -2728,7 +2801,7 @@ Pin: unknown slug returns the same 403 as a wrong key (byte-identical body); rem
 Pin: output snapshot sources carry `status: ok`, `statusSince: null`; health-only changes of a source are `revisionOnly` for the output; label/code changes are delivered. The output derives hold/lost purely from LiveKit track presence.
 
 **GAP-08 · Source status and incident transitions beyond "ok → x".** Spec 4.5 defines only `ok → reconnecting|ended|lost` and recovery. Missing: media loss that only the device report shows (`rtc: reconnecting|disconnected` while the hub is up; a frozen LiveKit sends no webhook), `reconnecting → ended|lost`, `ended`/`lost` + hub disconnect, slot states `starting` and `paused`, unblock recovery, ack of an open incident, and the API restart (the in-memory health and incident history are lost; a device that does not come back is never flagged).
-Resolved by implementation-spec 4.5 and 12 (decided 2026-10-22, DOC-06), pinned in `UNIT-SRC-01/02/03`: ended/lost are sticky (across hub disconnects of the same session, not across a new session); `reconnecting → ended|lost` updates the open incident in place; `starting` has no rule of its own; `paused` (the OS suspended the capture) is not live and expected back → `reconnecting` if the slot was live, never `ended`; only a deliberate stop is `ended` («Kamera beendet» / «Teilen beendet»); every report replaces all slot states and a new `Hello` session starts without them; a device report `rtc: reconnecting|disconnected` while the hub is up marks the live slots `reconnecting` at once (GAP-08 a); the prototype's log entries «K2 bestätigt» and «S1 gebeten, neu zu teilen» do not exist in spec 4.9 or `LogTexts` and are not expected; unblock → `offline` without incident; ack of an open incident → 409; second ack → 404; a graceful API shutdown is no outage (no evaluation, no log entry, no incident, BUG-20); after an API start the sources go `offline` → `ok` as the devices reconnect, without any incident, and a source that was live within 12 h, is used in the program or preview scene and whose device does not reconnect within 15 s becomes `reconnecting` with an incident (GAP-08 b) – no outage goes unnoticed across a restart.
+Resolved by implementation-spec 4.5 and 12 (decided 2026-10-22, DOC-06), pinned in `UNIT-SRC-01/02/03`: ended/lost are sticky (across hub disconnects of the same session, not across a new session); `reconnecting → ended|lost` updates the open incident in place; `starting` has no rule of its own; `paused` (the OS suspended the capture) is not live and expected back → `reconnecting` if the slot was live, never `ended`; only a deliberate stop is `ended` (“camera stopped” / “sharing stopped”); every report replaces all slot states and a new `Hello` session starts without them; a device report `rtc: reconnecting|disconnected` while the hub is up marks the live slots `reconnecting` at once (GAP-08 a); the prototype's log entries “K2 acknowledged” and “S1 asked to share again” do not exist in spec 4.9 or `LogTexts` and are not expected; unblock → `offline` without incident; ack of an open incident → 409; second ack → 404; a graceful API shutdown is no outage (no evaluation, no log entry, no incident, BUG-20); after an API start the sources go `offline` → `ok` as the devices reconnect, without any incident, and a source that was live within 12 h, is used in the program or preview scene and whose device does not reconnect within 15 s becomes `reconnecting` with an incident (GAP-08 b) – no outage goes unnoticed across a restart.
 
 **GAP-09 · Switching and broadcast edge rules.** Spec 4.2 is silent on: program switch/take/preview in standby or ended; `start` while live, `end` when not live, a direct switch to the preview scene; `setPreview` during a fade; double approval of a pairing request (Spec 4.6, ApiSurface approve 404/410).
 Pin: switching is allowed in every broadcast state (the output shows the slate; tally stays `off`); `start` while live, `end` while ended and `reset` while in standby are idempotent no-ops, `end` while standby → 409 `conflict` (as implemented in `Production.cs`); a direct switch to the scene that is currently the preview swaps program and preview like a take; `setPreview` is not guarded by the fade guard; the second of two concurrent approvals → 404 `not_found` with exactly one device created.
@@ -2736,11 +2809,11 @@ Pin: switching is allowed in every broadcast state (the output shows the slate; 
 **GAP-10 · Transition validation.** Spec 4.2 ("cut → durationMs 0; fade → one of …") vs `TransitionDto` doc ("Ignored (0) for a cut").
 Pin: `cut` with any duration is normalised to 0; `fade` with a duration outside the seven values → 400 `validation_failed` (`errors.transition.durationMs`).
 
-**GAP-11 · UI and server bounds, names and Auto-Grid overflow.** Prototype `regie.html` limits corner radius to 0…80 (input `max=80`, `clamp(v,0,80)`) while Spec 4.3 / `ITEM_BOUNDS.maxRadius` is 200; the prototype's drag minimum is 96×54 while the server minimum is 16×16; the template is «Screen + Kamera-Spalte» in Spec 4.3 and Plan §3 but «Screen + Spalte» in the prototype `PRESETS` and in `packages/scene-model/src/layout-templates.ts`; Auto-Grid has slots for at most 9 items but a scene may hold 32.
-Pin: the Studio clamps exactly like the server (radius 200, min 16 for typed values; a larger UI minimum for dragging is allowed but must be documented); display name «Screen + Kamera-Spalte» (id `col`); in Auto-Grid only the first 9 available items are rendered, the rest are not rendered.
+**GAP-11 · UI and server bounds, names and Auto grid overflow.** Prototype `regie.html` limits corner radius to 0…80 (input `max=80`, `clamp(v,0,80)`) while Spec 4.3 / `ITEM_BOUNDS.maxRadius` is 200; the prototype's drag minimum is 96×54 while the server minimum is 16×16; the template is “Screen + camera column” in Spec 4.3 and Plan §3 (and in the catalogue, `model.scene.templateName.col`) but “Screen + column” in the prototype `PRESETS`; Auto grid has slots for at most 9 items but a scene may hold 32.
+Pin: the Studio clamps exactly like the server (radius 200, min 16 for typed values; a larger UI minimum for dragging is allowed but must be documented); display name “Screen + camera column” (id `col`); in Auto grid only the first 9 available items are rendered, the rest are not rendered.
 
-**GAP-12 · Failure detection time.** Plan §6 "Heartbeats … erkennen einen Abbruch nach 2–5 s" vs Spec 6 (keep-alive 2 s, server timeout 6 s).
-Resolved (spec 6/12): server `ClientTimeoutInterval` 5 s, keep-alive 2 s, clients `serverTimeoutInMilliseconds` 5000. Pin: `T-DETECT-SILENT` target 5 s, hard limit 6,5 s (timeout + propagation).
+**GAP-12 · Failure detection time.** Plan §6 ("heartbeats … detect a drop after 2–5 s") vs Spec 6 (keep-alive 2 s, server timeout 6 s).
+Resolved (spec 6/12): server `ClientTimeoutInterval` 5 s, keep-alive 2 s, clients `serverTimeoutInMilliseconds` 5000. Pin: `T-DETECT-SILENT` target 5 s, hard limit 6.5 s (timeout + propagation).
 
 **GAP-13 · Asset validation details.** Spec 4.7 does not define: allowed MP4 `ftyp` brands (HEIC/AVIF use `ftyp`), WebM vs Matroska (both EBML), image dimension limits, how names are sanitised, the fallback name, rename validation, and the HTTP status for a content request without credentials or with another production's key.
 Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; image width/height must be 1…16384; names: single path-free segment, 1–80 chars, no control/bidi characters, fallback `Medium`, rename uses the same rules; content: no credential → 401, wrong or foreign key → 403; response carries the verified type, `nosniff`, `Content-Disposition: inline`, and (recommended) `Content-Security-Policy: default-src 'none'; sandbox`.
@@ -2748,7 +2821,7 @@ Pin: MP4 brands `isom iso2 mp41 mp42 avc1 M4V`; WebM requires DocType `webm`; im
 **GAP-14 · Content-Security-Policy is not specified.** Spec 10 says "strict CSP (see security review)", but no security-review document exists (`docs/` has only `architecture/`).
 Pin: invariants **I-CSP** (see `E2E-AUTH-09`); the exact policy is to be written in the security review; Angular's inline styles may require `style-src 'unsafe-inline'` (allowed, flagged P2); Safari needs the explicit `wss://<host>` in `connect-src`.
 
-**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible German text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
+**GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible (English) text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
 
 **GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `STUDIOFLOW_PUBLIC_BASE_URL`, `STUDIOFLOW_SUBNET`, `STUDIOFLOW_TRUSTED_PROXIES`, `STUDIOFLOW_MAX_UPLOAD`, `STUDIOFLOW_MAX_BODY`, `STUDIOFLOW_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
 Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags.
@@ -2756,11 +2829,11 @@ Pin: the implemented names are authoritative for the tests (`.env.example` is th
 **GAP-17 · Client-supplied ids and source references.** Spec 4.1 defines id shapes, 4.3 lets `ReplaceSceneItems` carry client item ids and "may keep a source that was deleted later" – without saying how the server distinguishes "kept" from "newly introduced".
 Pin: client-supplied item ids must match `^itm_[a-z0-9]{4,40}$` (clients generate them; server-generated ids use 16 base32 characters); a source reference must parse as `parseSourceRef`; an unknown source is allowed only if that exact item (same id and source) already exists in the scene.
 
-**GAP-18 · Studio-Modus and preview rules.** Spec 4.2: "turning it on sets the preview to the scene after the program if none is set; turning it off clears the preview only if no other Regie session is connected (the client decides)". Not stated: wrap-around after the last scene; the race between two operators.
+**GAP-18 · Studio Mode and preview rules.** Spec 4.2: "turning it on sets the preview to the scene after the program if none is set; turning it off clears the preview only if no other Regie session is connected (the client decides)". Not stated: wrap-around after the last scene; the race between two operators.
 Pin: wrap to the first scene; presence is read from the latest `presence` value; a stale count can clear another operator's preview – acceptable, test `E2E-SWITCH-14` documents it.
 
-**GAP-19 · Device and pairing API edge cases.** Not defined: device kind when `RedeemInviteRequest.Kind` contradicts the invite kind; `createInvite` with `phoneQr`; `allocateSlot`/`releaseSlot` error statuses (ApiSurface declares 409 and only 204); releasing a phone's camera; whether the sender's «Teilen beenden» is `ended` or `paused`.
-Pin: invite kind decides; `createInvite {phoneQr}` = renew; phone cannot allocate a screen (400); second laptop camera or 10th screen → 409 `limit_reached`; releasing an unknown slot → 404; releasing a phone's only camera slot → 409 `conflict`; «Teilen beenden» → `ended`.
+**GAP-19 · Device and pairing API edge cases.** Not defined: device kind when `RedeemInviteRequest.Kind` contradicts the invite kind; `createInvite` with `phoneQr`; `allocateSlot`/`releaseSlot` error statuses (ApiSurface declares 409 and only 204); releasing a phone's camera; whether the sender's “Stop sharing” is `ended` or `paused`.
+Pin: invite kind decides; `createInvite {phoneQr}` = renew; phone cannot allocate a screen (400); second laptop camera or 10th screen → 409 `limit_reached`; releasing an unknown slot → 404; releasing a phone's only camera slot → 409 `conflict`; “Stop sharing” → `ended`.
 
 **GAP-20 · Revision semantics.** Spec 5/6: counter per production? `GET …/changes?since=` for `since` > current, negative, 0.
 Pin: per production; since ≥ buffer start and ≤ current → delta; everything else valid → snapshot; negative/missing → 400.
@@ -2783,8 +2856,8 @@ Pin: the sequence 0, 300, 600, 1200, 2400, 4800, 5000 (+ jitter 0–250 from the
 **GAP-26 · Output may subscribe to every track.** Plan §7 accepts that the output token can subscribe to all sources (it composes scenes itself), Spec 7 grants `canSubscribe` without per-track limits.
 Pin: the output client subscribes only to sources of scenes (`E2E-OUT-22`); a server-side per-track restriction is not required but should be considered because the output link is a bearer secret that can be extracted from the page.
 
-**GAP-27 · German UI strings the spec does not define.** Login title, labels, error and lockout message; logout action; confirmation text of «Sendung beenden»; reset-broadcast action; connection-lost banner in the Regie; generic request-failure toast; messages for expired/denied/limited pairing and expired invite; «Neue Szene», «Duplizieren», upload and asset-delete controls and errors; slate editor; message composer and offline toast; sender banners for removed device and camera restart; technical-check re-run button; session-expired notice; the shape of `studioflow.transition`.
-Pin: tests locate these by role/regex or `data-testid` as written in each entry; implementers must choose the final texts (German CH, «ss», « ») and report them so the tests can assert them exactly. Reported so far (assert exactly): state word «Kamera beendet» for a camera stopped on purpose (screens «Teilen beendet»); Regie element view button «Zur Szene» (accessible name «Auswahl aufheben, zurück zur Szene», tooltip «Auswahl aufheben (Esc)»), upload toast action «Zur Szene hinzufügen»; logout failure toast «Abmelden hat nicht geklappt. {Grund}»; Regie strip without an active production «Keine aktive Produktion gefunden.», when the server cannot be reached «Der Server ist nicht erreichbar. Die Regie verbindet neu …»; toasts «K1 gesperrt und getrennt» / «K1 entsperrt» (codes only); sender slot errors «Ein Handy kann keinen Bildschirm teilen. Dafür bitte einen Laptop koppeln.», «Pro Gerät sind höchstens 9 Bildschirme möglich.», «Dieses Gerät hat schon eine Kamera.», «Die Kamera eines Handys lässt sich nicht entfernen. Die Regie kann das ganze Gerät entfernen.»; database outage «Die Datenbank ist im Moment nicht erreichbar. Bitte gleich nochmals versuchen.» (ProblemDetails `detail`, title «Vorübergehend nicht verfügbar»); binding errors «Ungültiger Wert.» per field.
+**GAP-27 · UI strings the spec does not define.** Login title, labels, error and lockout message; logout action; confirmation text of “End broadcast”; reset-broadcast action; connection-lost banner in the Regie; generic request-failure toast; messages for expired/denied/limited pairing and expired invite; “Add scene”, “Duplicate”, upload and asset-delete controls and errors; slate editor; message composer and offline toast; sender banners for removed device and camera restart; technical-check re-run button; session-expired notice; the shape of `studioflow.transition`.
+Pin: tests locate these by role/regex or `data-testid` as written in each entry; the final texts are the ones of the catalogue (English in `packages/i18n/src/messages/en/`, German in `.../de-CH/`; the API `detail` texts are English and clients show their own texts chosen by `code`, decision D7). Reported so far (assert exactly): state word “camera stopped” for a camera stopped on purpose (screens “sharing stopped”); Regie element view button “Back to scene” (accessible name “Clear selection, back to scene”, tooltip “Clear selection (Esc)”), upload toast action “Add to scene”; logout failure toast “Signing out failed. {reason}”; Regie strip without an active production “No active production found.”, when the server cannot be reached “The server is not reachable. The control room is reconnecting…”; toasts “K1 blocked and disconnected” / “K1 unblocked” (codes only); sender slot errors “A phone cannot share a screen. Please pair a laptop for that.”, “At most 9 screens are possible per device.”, “This device already has a camera.”, “The camera of a phone cannot be removed. The control room can remove the whole device.”; database outage “The database is currently not reachable. Please try again in a moment.” (ProblemDetails `detail`, title “Temporarily unavailable”); binding errors “Invalid value.” per field.
 
 **GAP-28 · Reduced motion scope.** Spec 8.3 gives the renderer a `reducedMotion` option; the Regie must honour `prefers-reduced-motion`; whether the *output page* does is open.
 Pin: Regie monitors/thumbnails and the sender honour the OS setting; the output page does not (the programme must look the same for the audience whatever the proxy machine's accessibility setting is).
@@ -2792,7 +2865,7 @@ Pin: Regie monitors/thumbnails and the sender honour the OS setting; the output 
 **GAP-29 · Telemetry bounds and staleness.** Not defined: valid ranges, slot count, when telemetry is considered stale.
 Pin: battery 0–100, loss 0–100, bitrate/fps/size ≥ 0 else `null`; ≤ 10 slots; a device silent for 6 s is `Rtc = Disconnected` and no telemetry is pushed.
 
-**GAP-30 · Regie-Chat semantics.** Not defined: text trimming, behaviour for blocked/offline devices, queueing.
+**GAP-30 · Regie message semantics.** Not defined: text trimming, behaviour for blocked/offline devices, queueing.
 Pin: trimmed 1–140 chars; always 202; delivered only to a connected device, never queued; the Regie shows a toast when the device is offline.
 
 **GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `reset-admin` (before issue 4: `hash-password`); `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.StudioFlow.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
@@ -2805,11 +2878,11 @@ Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE
 
 **GAP-34 · Local storage schemas.** Spec 9.1 names `studioflow.studio`, `studioflow.layout` (v1) and `studioflow.transition` but only the layout shape exists (prototype). Pin: `studioflow.transition` = `{"kind":"cut"|"fade","durationMs":<allowed value>}`; layout numeric fields are validated and clamped on load (the prototype does not validate them).
 
-**GAP-35 · Device removal while connected.** `deleteDevice` is in ApiSurface; the sender's reaction is undefined. Pin: LiveKit removal + hub close; the sender shows a terminal «entfernt»-type state with a way to pair again and does not reconnect in a loop.
+**GAP-35 · Device removal while connected.** `deleteDevice` is in ApiSurface; the sender's reaction is undefined. Pin: LiveKit removal + hub close; the sender shows a terminal “removed”-type state (“No longer paired”) with a way to pair again and does not reconnect in a loop.
 
 **GAP-36 · Pending knock requests when another production is activated.** Pin: they are dropped with outcome `expired` (pending requests belong to the active production).
 
-**GAP-37 · Regie controls that exist in the spec but not in the prototype.** Create/clone/reorder scene, scene background, media upload and delete, slate editor, broadcast reset, message composer, tech-check re-run. Pinned working names: «Neue Szene», «Duplizieren», «Medium hochladen»; reorder by dragging the scene row or `Alt+ArrowUp/Down`. Implementers choose the final controls; tests are adjusted via the page object.
+**GAP-37 · Regie controls that exist in the spec but not in the prototype.** Create/clone/reorder scene, scene background, media upload and delete, slate editor, broadcast reset, message composer, tech-check re-run. Pinned working names: “Add scene” (“+ Scene”), “Duplicate”, “Upload image or video…”; reorder by dragging the scene row or `Alt+ArrowUp/Down`. Implementers choose the final controls; tests are adjusted via the page object.
 
 **GAP-38 · Touch target sizes in the Regie.** DESIGN.md fixes 26–30 px controls; the plan asks for large touch targets only for the sender (Spec 9.2). Pin: sender ≥ 44 px (hard), Regie at ≤ 900 px best effort (Take ≥ 48 px, scene cards ≥ 44 px), other controls recorded.
 
@@ -2817,7 +2890,7 @@ Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE
 
 | # | Documents | Conflict | Pin |
 |---|---|---|---|
-| 1 | Plan §8 ("SignalR mit MessagePack") vs Spec 6 | Wire protocol | Spec wins: JSON protocol, camelCase, string enums (`INT-SYNC-03`) |
+| 1 | Plan §8 ("SignalR with MessagePack") vs Spec 6 | Wire protocol | Spec wins: JSON protocol, camelCase, string enums (`INT-SYNC-03`) |
 | 2 | Plan §6 (2–5 s) vs Spec 6 (6 s) | Failure detection | GAP-12 – resolved: 5 s |
 | 3 | Spec 4.8 vs ApiSurface (`getOutputSnapshot` 404) | Slug oracle | GAP-06 |
 | 4 | `ErrorCodes.LimitReached` doc vs Spec 4.6/4.3 | Which code for limits | GAP-05 |
@@ -2838,11 +2911,11 @@ Resolved on 2026-10-22 (product engineer; each with unit or integration tests in
 |---|---|---|
 | BUG-05 | The webhook accepts `application/json` next to `application/webhook+json`; other types 415 | INT-AUTH-25 |
 | BUG-08 | A body that cannot be bound is 400 `validation_failed` with `errors` naming the camelCase field path, no serializer text | INT-PAIR-08 |
-| BUG-10 | Intended deviation: log texts keep the device name («K1 Handy 1 gesperrt / entsperrt / entfernt»), more informative for multi-slot devices («S1 S2 Laptop Mia gesperrt») | INT-PAIR-12, 2.5 strings |
+| BUG-10 | Intended deviation: log texts keep the device name (“K1 Phone 1 blocked / unblocked / removed”), more informative for multi-slot devices (“S1 S2 Laptop Mia blocked”) | INT-PAIR-12, 2.5 strings |
 | BUG-16 | `HEAD` on the asset content: headers of GET without body, range-aware | INT-MEDIA-06, E2E-AUTH-17 |
 | BUG-18 | `X-Content-Type-Options` exactly once through Caddy (Caddy drops the upstream copy, `header_down`) | INT-AUTH-21 |
 | BUG-19 | Telemetry to the Regie at most once per device and 2 s, latest value wins | INT-SRC-03, INT-SYNC-05 |
-| BUG-20 | A graceful API shutdown is no outage: no «verbindet neu», no incident | UNIT-SRC-03, INT-NET-05, E2E-NET-12 |
+| BUG-20 | A graceful API shutdown is no outage: no “reconnecting”, no incident | UNIT-SRC-03, INT-NET-05, E2E-NET-12 |
 | BUG-21 | PostgreSQL down: 503 within 5 s (timeouts, fail-fast circuit, probe), no 504 from Caddy | INT-NET-04, E2E-NET-11, `T-DB-OUTAGE` |
 | BUG-22 | postgres runs with `cap_drop: ALL` plus the five capabilities of its entrypoint | E2E-OPS-01, E2E-OPS-13 |
 | OBS-01 | Hub connections aborted on `ApplicationStopping`, `HostOptions.ShutdownTimeout` 5 s, maintenance loops stop at once | INT-NET-05, `T-SHUTDOWN` |

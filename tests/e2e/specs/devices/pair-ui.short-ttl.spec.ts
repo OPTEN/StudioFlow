@@ -31,7 +31,7 @@ test.afterAll(async () => {
 
 test.describe('PAIR short-TTL, UI', () => {
   test(
-    'E2E-PAIR-05 [ui] an unanswered request expires: the laptop shows «Anfrage abgelaufen» with «Neue Anfrage», the knock card disappears without a reload, a new request gets a new code',
+    'E2E-PAIR-05 [ui] an unanswered request expires: the laptop shows “Request expired” with “New request”, the knock card disappears without a reload, a new request gets a new code',
     t.shortTtl(),
     async ({ regie, openLaptop }) => {
       test.skip(!support.request, 'Pairing:RequestTtl is not read by the API');
@@ -42,37 +42,37 @@ test.describe('PAIR short-TTL, UI', () => {
       const code = await laptop.checkCode();
       await openPairingTab(regie, 'laptop');
       await expect(regie.knockCard('Laptop Anna')).toBeVisible();
-      await expect(laptop.page.locator('.c-waiting__expiry')).toContainText(/Gilt noch 00:\d\d min\./);
+      await expect(laptop.page.locator('.c-waiting__expiry')).toContainText(/Valid for another 00:\d\d min\./);
 
       // Nobody answers for 25 s.
       await expect(laptop.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 40_000 });
-      await expect(laptop.page.getByRole('heading', { name: 'Anfrage abgelaufen' })).toBeVisible();
-      await expect(laptop.page.getByRole('button', { name: 'Neue Anfrage' })).toBeVisible();
+      await expect(laptop.page.getByRole('heading', { name: 'Request expired' })).toBeVisible();
+      await expect(laptop.page.getByRole('button', { name: 'New request' })).toBeVisible();
       await expect(regie.knockCard('Laptop Anna'), 'the card is gone without a reload').toHaveCount(0);
       expect(await regie.page.evaluate(() => performance.getEntriesByType('navigation').length), 'the Regie page was not reloaded').toBe(1);
 
-      await laptop.page.getByRole('button', { name: 'Neue Anfrage' }).click();
+      await laptop.page.getByRole('button', { name: 'New request' }).click();
       await laptop.submitPairingForm('Laptop Anna', 'laptop');
       const again = await laptop.checkCode();
       expect(again, 'a new request gets a new code').not.toBe(code);
       await expect(regie.knockCard('Laptop Anna')).toBeVisible();
-      await laptop.page.getByRole('button', { name: 'Abbrechen' }).click();
+      await laptop.page.getByRole('button', { name: 'Cancel' }).click();
       await expect(regie.knockCard('Laptop Anna'), 'cancelling removes the card').toHaveCount(0, { timeout: 10_000 });
     },
   );
 
   test(
-    'E2E-PAIR-06 [ui] approving after expiry: a Regie that missed the removal hides the expired card by its clock; a late «Zulassen» (410) shows a German notice, creates no device and does not crash',
+    'E2E-PAIR-06 [ui] approving after expiry: a Regie that missed the removal hides the expired card by its clock; a late “Allow” (410) shows a notice, creates no device and does not crash',
     t.shortTtl(),
     async ({ regie, openLaptop, api, production }) => {
       test.skip(!support.request, 'Pairing:RequestTtl is not read by the API');
       test.setTimeout(180_000);
       const laptop = await openLaptop();
       await laptop.gotoStart();
-      await laptop.submitPairingForm('Laptop Spaet', 'laptop');
+      await laptop.submitPairingForm('Laptop Late', 'laptop');
       await laptop.checkCode();
       await openPairingTab(regie, 'laptop');
-      await expect(regie.knockCard('Laptop Spaet')).toBeVisible();
+      await expect(regie.knockCard('Laptop Late')).toBeVisible();
 
       // The Regie loses its hub (no removal event reaches it) but keeps REST.
       const context = regie.page.context();
@@ -82,7 +82,7 @@ test.describe('PAIR short-TTL, UI', () => {
       await expect.poll(async () => (await regie.hooks())?.hub, { message: 'the Regie hub is down', timeout: 15_000 }).not.toBe('connected');
       await expect(laptop.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 40_000 });
       // The stale card is hidden by the expiry time even though the server's removal never arrived.
-      await expect(regie.knockCard('Laptop Spaet'), 'the expired card is hidden by the Regie clock').toHaveCount(0, { timeout: 10_000 });
+      await expect(regie.knockCard('Laptop Late'), 'the expired card is hidden by the Regie clock').toHaveCount(0, { timeout: 10_000 });
       expect((await production.snapshot()).devices, 'no device was created').toHaveLength(0);
       await context.unroute('**/hubs/studio/**');
       await regie.waitForHub('connected', 30_000);
@@ -91,24 +91,24 @@ test.describe('PAIR short-TTL, UI', () => {
   );
 
   test(
-    'E2E-PAIR-06 [ui, late answer] a «Zulassen» that the server answers 410 or 404 removes the card and says so in German',
+    'E2E-PAIR-06 [ui, late answer] an “Allow” that the server answers 410 or 404 removes the card and says so',
     t.shortTtl(),
     async ({ regie, openLaptop, api, production }) => {
       test.skip(!support.request, 'Pairing:RequestTtl is not read by the API');
       test.setTimeout(120_000);
       const laptop = await openLaptop();
       await laptop.gotoStart();
-      await laptop.submitPairingForm('Laptop Spaet', 'laptop');
+      await laptop.submitPairingForm('Laptop Late', 'laptop');
       await laptop.checkCode();
       await openPairingTab(regie, 'laptop');
-      await expect(regie.knockCard('Laptop Spaet')).toBeVisible();
+      await expect(regie.knockCard('Laptop Late')).toBeVisible();
       // The request is answered after it expired: the server says 410 (the answer is made up here; the real 410 and 404 of the
       // API are asserted in specs/pair, this checks what the card does with them).
       await regie.page.route('**/pairing/requests/*/approve', (route) =>
-        route.fulfill({ status: 410, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Gone', status: 410, code: 'pairing_expired', detail: 'Die Anfrage ist abgelaufen.' }) }),
+        route.fulfill({ status: 410, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Gone', status: 410, code: 'pairing_expired', detail: 'The request has expired.' }) }),
       );
-      await regie.approveKnock('Laptop Spaet');
-      await expect(regie.toast()).toContainText(/abgelaufen|schon beantwortet/);
+      await regie.approveKnock('Laptop Late');
+      await expect(regie.toast()).toContainText(/expired|already answered/);
       await regie.page.unroute('**/pairing/requests/*/approve');
       expect(regie.problems.pageErrors, 'no uncaught error').toEqual([]);
       expect((await production.snapshot()).devices, 'no device').toHaveLength(0);
@@ -117,7 +117,7 @@ test.describe('PAIR short-TTL, UI', () => {
   );
 
   test(
-    'E2E-PAIR-07 [ui, credentials window] a laptop that polls after the credentials window shows «Anfrage abgelaufen» and offers a new request',
+    'E2E-PAIR-07 [ui, credentials window] a laptop that polls after the credentials window shows “Request expired” and offers a new request',
     t.shortTtl(),
     async ({ regie, openLaptop, production }) => {
       test.skip(!support.request, 'Pairing:RequestTtl is not read by the API');
@@ -125,22 +125,22 @@ test.describe('PAIR short-TTL, UI', () => {
       // The laptop's connection dies right after it asked; the Regie approves; it comes back after the window (15 s).
       const late = await openLaptop();
       await late.gotoStart();
-      await late.submitPairingForm('Laptop Spaet', 'laptop');
+      await late.submitPairingForm('Laptop Late', 'laptop');
       await late.checkCode();
       await net.cut(late.context);
       await openPairingTab(regie, 'laptop');
-      await regie.approveKnock('Laptop Spaet');
+      await regie.approveKnock('Laptop Late');
       await sleep(18_000);
       await net.restore(late.context);
       await expect(late.page.getByTestId('pairing-expired'), 'after the window the credentials are gone').toBeVisible({ timeout: 20_000 });
-      await expect(late.page.getByRole('button', { name: 'Neue Anfrage' })).toBeVisible();
+      await expect(late.page.getByRole('button', { name: 'New request' })).toBeVisible();
       expect(await late.storedDevice()).toBeNull();
       expect((await production.snapshot()).devices.length, 'the device exists, the laptop cannot reach it any more').toBeGreaterThanOrEqual(1);
     },
   );
 
   test(
-    'E2E-PAIR-16 [ui] the pending cap shows a German notice on the form and works again after a slot frees up',
+    'E2E-PAIR-16 [ui] the pending cap shows a notice on the form and works again after a slot frees up',
     t.shortTtl(),
     async ({ openLaptop, production, stack }) => {
       test.skip(!support.pendingTotal, 'Pairing:Limits:PendingTotal is not read by the API');
@@ -155,12 +155,12 @@ test.describe('PAIR short-TTL, UI', () => {
       const laptop = await openLaptop();
       await laptop.gotoStart();
       await laptop.submitPairingForm('Laptop Anna', 'laptop');
-      await expect(laptop.page.getByRole('alert').filter({ hasText: /Zu viele Versuche\. Bitte in \d+ (Sekunden?|Minuten?) noch einmal versuchen\./ }), 'a German rate-limit notice (GAP-27: «Zu viele Versuche. Bitte in 1 Minute noch einmal versuchen.»)').toBeVisible({ timeout: 15_000 });
-      await expect(laptop.page.getByRole('button', { name: 'Weiter' }), 'the button is not stuck in the busy state').toBeEnabled();
+      await expect(laptop.page.getByRole('alert').filter({ hasText: /Too many attempts\. Please try again in \d+ (seconds?|minutes?)\./ }), 'a rate-limit notice (GAP-27: “Too many attempts. Please try again in 1 minute.”)').toBeVisible({ timeout: 15_000 });
+      await expect(laptop.page.getByRole('button', { name: 'Continue' }), 'the button is not stuck in the busy state').toBeEnabled();
       expect(new URL(laptop.page.url()).pathname).toBe('/join/');
       // A slot frees up: the same form works.
       await new PublicApi(stack.anonymousBase, uniqueIp()).cancelPairingRequest(requests[0]!.requestId, requests[0]!.pollToken);
-      await laptop.page.getByRole('button', { name: 'Weiter' }).click();
+      await laptop.page.getByRole('button', { name: 'Continue' }).click();
       await expect(laptop.page.getByTestId('check-code')).toBeVisible({ timeout: 15_000 });
     },
   );

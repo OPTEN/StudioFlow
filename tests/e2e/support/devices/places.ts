@@ -3,8 +3,8 @@ import { pollUntil } from '../helpers';
 import type { RegiePage } from '../ui/regie';
 
 /**
- * The «six places» of the outage language (docs/testing.md 0.3, DESIGN.md): header health chip, message strip, monitor
- * element (Program / Preview), scene list row, Quellen dock row and Stationen dock row. One DOM read gives all of them,
+ * The “six places” of the outage language (docs/testing.md 0.3, DESIGN.md): header health chip, message strip, monitor
+ * element (Program / Preview), scene list row, Sources dock row and Stations dock row. One DOM read gives all of them,
  * so a test can poll them at 100 ms and measure when the last one changed (T-DETECT-*).
  *
  * The Regie has no data-testid hooks; the class names are the ones of apps/studio (c-status__inc, c-src, c-st, c-scene)
@@ -99,7 +99,7 @@ export async function readPlaces(page: Page): Promise<Places> {
         health: text(button.querySelector('.c-scene__meta .c-state--bad, .c-scene__meta .c-state--warn')) || null,
         meta: text(button.querySelector('.c-scene__meta')),
       })),
-      sources: [...document.querySelectorAll('.c-src[role=listitem]')].map((row) => ({
+      sources: [...document.querySelectorAll('.c-src')].map((row) => ({
         code: text(row.querySelector('.c-code')),
         name: text(row.querySelector('.c-src__name')),
         state: text(row.querySelector('.c-src__state')),
@@ -124,13 +124,13 @@ export async function readPlaces(page: Page): Promise<Places> {
 export function outageWord(kind: OutageKind, source: SourceKindName = 'camera'): string {
   switch (kind) {
     case 'reconnecting':
-      return 'verbindet neu';
+      return 'reconnecting';
     case 'ended':
-      return source === 'camera' ? 'Kamera beendet' : 'Teilen beendet';
+      return source === 'camera' ? 'camera stopped' : 'sharing stopped';
     case 'lost':
-      return 'kein Bild';
+      return 'no picture';
     case 'blocked':
-      return 'gesperrt';
+      return 'blocked';
   }
 }
 
@@ -145,13 +145,13 @@ export interface OutageCheck {
 export interface OutageOptions {
   /** The code is on the Program monitor (default true). */
   inProgram?: boolean;
-  /** Also on the Preview monitor (Studio-Modus). */
+  /** Also on the Preview monitor (Studio Mode). */
   inPreview?: boolean;
   /** Source kind for the wording of `ended`. */
   source?: SourceKindName;
   /** The element is wide enough for the long monitor label (default true; narrow items show the short variants). */
   wide?: boolean;
-  /** The scene with the source is in the Quellen dock (default true). */
+  /** The scene with the source is in the Sources dock (default true). */
   inSources?: boolean;
 }
 
@@ -166,13 +166,13 @@ export function checkOutage(places: Places, code: string, kind: OutageKind, opti
 
   const wantsHeader = kind !== 'blocked';
   const headerLamp = kind === 'reconnecting' ? 'is-warn' : 'is-bad';
-  const header = !wantsHeader || (/^\d+ Störung(en)?$/.test(places.header.text) && places.header.lamp.includes(headerLamp));
+  const header = !wantsHeader || (/^\d+ incidents?$/.test(places.header.text) && places.header.lamp.includes(headerLamp));
   detail['header'] = `${places.header.text} [${places.header.lamp}]`;
 
   const monitorWord = (text: string): boolean => {
     if (!text.startsWith(`${code} · `)) return false;
-    if (kind === 'reconnecting') return wide ? /· Standbild \d+:\d\d$/.test(text) : /· \d+:\d\d$/.test(text);
-    if (kind === 'ended') return wide ? text.endsWith(`· ${word}`) : text.endsWith('· beendet');
+    if (kind === 'reconnecting') return wide ? /· Freeze frame \d+:\d\d$/.test(text) : /· \d+:\d\d$/.test(text);
+    if (kind === 'ended') return wide ? text.endsWith(`· ${word}`) : text.endsWith('· ended');
     return text.endsWith(`· ${word}`);
   };
   const program = options.inProgram === false ? true : places.program.some((label) => monitorWord(label.text));
@@ -180,7 +180,7 @@ export function checkOutage(places: Places, code: string, kind: OutageKind, opti
   detail['program'] = places.program.map((label) => `${label.text} (${label.outline})`).join(' | ') || 'no label';
   if (options.inPreview) detail['preview'] = places.preview.map((label) => `${label.text} (${label.outline})`).join(' | ') || 'no label';
 
-  const scene = kind === 'blocked' ? true : places.scenes.some((row) => row.health === 'gestört' && row.meta.includes(code));
+  const scene = kind === 'blocked' ? true : places.scenes.some((row) => row.health === 'disrupted' && row.meta.includes(code));
   detail['scene'] = places.scenes.map((row) => `${row.name}: ${row.meta}`).join(' | ');
 
   const sourceRow = places.sources.find((row) => row.code === code);
@@ -217,7 +217,7 @@ export async function waitForOutage(
   let last: { check: OutageCheck; places: Places } | undefined;
   try {
     await pollUntil(
-      `${code} shows «${outageWord(kind, options.source)}» in all six places`,
+      `${code} shows “${outageWord(kind, options.source)}” in all six places`,
       async () => {
         const places = await readPlaces(regie.page);
         last = { check: checkOutage(places, code, kind, options), places };
@@ -232,19 +232,19 @@ export async function waitForOutage(
   return { elapsedMs: Date.now() - startedAt, check: last!.check, places: last!.places };
 }
 
-/** The recovered state in the places that keep it until «Gesehen»: strip entry, station line and box. */
+/** The recovered state in the places that keep it until “Seen”: strip entry, station line and box. */
 export function checkRecovered(places: Places, code: string, seconds?: { min: number; max: number }): { ok: boolean; detail: string; seconds: number | null } {
   const strip = places.strip.find((entry) => entry.code === code && entry.recovered);
   const station = places.stations.find((row) => row.codes.includes(code));
-  const parsed = strip ? Number(/war (\d+) s weg/.exec(strip.place)?.[1] ?? NaN) : NaN;
+  const parsed = strip ? Number(/was gone for (\d+) s/.exec(strip.place)?.[1] ?? NaN) : NaN;
   const inRange = seconds === undefined || (Number.isFinite(parsed) && parsed >= seconds.min && parsed <= seconds.max);
   const ok = Boolean(
     strip &&
-      strip.word === 'wieder da' &&
-      strip.actions.includes('Gesehen') &&
+      strip.word === 'back' &&
+      strip.actions.includes('Seen') &&
       station &&
-      /wieder da\s*war \d+ s weg/.test(station.line) &&
-      station.recoveredBox?.includes('Die Station ist zurück. Bestätigen, damit die Meldung verschwindet.') &&
+      /back\s*was gone \d+ s/.test(station.line) &&
+      station.recoveredBox?.includes('The station is back. Confirm to dismiss the message.') &&
       inRange,
   );
   return {
@@ -254,14 +254,14 @@ export function checkRecovered(places: Places, code: string, seconds?: { min: nu
   };
 }
 
-/** Waits for the recovered state of `code` (strip entry «wieder da» with «Gesehen», station box) and returns the seconds. */
+/** Waits for the recovered state of `code` (strip entry “back” with “Seen”, station box) and returns the seconds. */
 export async function waitForRecovered(
   regie: RegiePage,
   code: string,
   options: { timeoutMs?: number; seconds?: { min: number; max: number }; stableMs?: number } = {},
 ): Promise<{ elapsedMs: number; seconds: number | null }> {
   // The state must hold for `stableMs`: a recovered entry that flashes for a few milliseconds and is replaced by a new outage
-  // (DEV-01) is not «back».
+  // (DEV-01) is not “back”.
   const stableMs = options.stableMs ?? 1500;
   let last = '';
   let since = 0;
@@ -269,7 +269,7 @@ export async function waitForRecovered(
   const startedAt = Date.now();
   try {
     const { value } = await pollUntil(
-      `${code} is back («wieder da») for ${stableMs} ms`,
+      `${code} is back for ${stableMs} ms`,
       async () => {
         const result = checkRecovered(await readPlaces(regie.page), code, options.seconds);
         last = result.detail;

@@ -1,5 +1,5 @@
 import { chromium } from '@playwright/test';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { CHROMIUM_ARGS } from '../../support/fake-media';
 import { installInitScript } from '../../support/net';
 import { expect, test } from '../../support/ui/fixtures';
@@ -41,21 +41,21 @@ test.describe('OUT other engines (Firefox)', () => {
           return laptop;
         },
       };
-      const camera = await addCamera(deps, 'Kamera Fuchs');
-      const screens = await addScreens(deps, 'Laptop Fuchs', 1);
+      const camera = await addCamera(deps, 'Camera Fox');
+      const screens = await addScreens(deps, 'Laptop Fox', 1);
       const scene = production.sceneIds[0]!;
       const cameraItem = await placeItem(api, production, scene, camera.source, { x: 0, y: 0, w: 1280, h: 720, fit: 'cover', radius: 0, holdMs: 1500 });
       await placeItem(api, production, scene, screens.sources[0]!, { x: 1300, y: 0, w: 600, h: 338, fit: 'contain', radius: 0 });
 
       // Firefox: no camera/microphone permissions in the context options (it rejects them), the probe and the init script as in Chromium.
-      const context = await browser.newContext({ baseURL: config.baseURL, ignoreHTTPSErrors: true, locale: 'de-CH', timezoneId: 'Europe/Zurich', viewport: { width: 1280, height: 720 } });
+      const context = await browser.newContext({ baseURL: config.baseURL, ignoreHTTPSErrors: true, locale: 'en-US', timezoneId: 'Europe/Zurich', viewport: { width: 1280, height: 720 } });
       onCleanup(() => context.close());
       await installInitScript(context);
       await installProbe(context);
       await installUiInit(context, { testHooks: false });
       const output = await OutputPage.open(context, production, {}, { viewport: { width: 1280, height: 720 } });
       const probe = new OutputProbe(output);
-      await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.standby);
       await goLive(api, production);
       // Firefox reports no frames for MediaStream videos (getVideoPlaybackQuality().totalVideoFrames stays 0): the videos are
       // checked by their size, readiness and a moving clock instead.
@@ -89,13 +89,13 @@ test.describe('OUT other engines (Firefox)', () => {
         return { text: root.querySelector('.sf-r-held-text')?.textContent, display: getComputedStyle(root.querySelector('.sf-r-held')!).display };
       }, cameraItem.id));
       expect(held.display).toBe('flex');
-      expect(held.text).toBe(DE.holdText);
+      expect(held.text).toBe(TEXT.slate.held);
 
       // End slate and standby slate.
       expect((await api.endBroadcast(production.id)).status).toBe(200);
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(DE.slateEnd);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(TEXT.slate.end);
       expect((await api.resetBroadcast(production.id)).status).toBe(200);
-      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { timeout: 10_000 }).toContain(TEXT.slate.standby);
 
       // Letterboxing: a 4:3 viewport gives a 16:9 stage, black bars, no scrollbars.
       await output.page.setViewportSize({ width: 800, height: 600 });

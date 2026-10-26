@@ -26,6 +26,8 @@ export interface OutputFlags {
   debug?: boolean;
   /** `bg=transparent` */
   transparent?: boolean;
+  /** `lang=de-CH`: the language of the page, which has no setting of its own. */
+  lang?: string;
 }
 
 export interface EmbedOptions extends OutputFlags {
@@ -69,6 +71,7 @@ export function outputPath(target: OutputTarget, flags: OutputFlags = {}): strin
   if (flags.transparent) query.set('bg', 'transparent');
   if (flags.debug) query.set('debug', '1');
   if (flags.latency) query.set('latency', '1');
+  if (flags.lang) query.set('lang', flags.lang);
   return `/o/${target.slug}?${query.toString()}`;
 }
 
@@ -235,7 +238,7 @@ export class OutputPage {
     return measured;
   }
 
-  /** Text of the slate layer («Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang»); empty when no slate shows. */
+  /** Text of the slate layer (“Starting soon”, “Thanks for watching”, “No access”); empty when no slate shows. */
   async slateText(): Promise<string> {
     const frame = await this.scope();
     return frame.evaluate(() => {

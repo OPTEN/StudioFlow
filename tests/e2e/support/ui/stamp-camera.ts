@@ -8,7 +8,7 @@ import {
 import { latencyStats, type LatencySample, type LatencyStats } from './output';
 
 /**
- * The latency stamp publisher (docs/testing.md 1.3 «timecode camera», research 2026-10-22 «Glass-to-glass latency»):
+ * The latency stamp publisher (docs/testing.md 1.3 “timecode camera”, research 2026-10-22 “Glass-to-glass latency”):
  * a fake camera that draws the stamp of `support/browser/latency-codec.js` (the codec of `apps/output/src/
  * latency-stamp.ts`: 34 blocks of 16 x 48 px on a 640 x 360 grid, current time in ms) onto a canvas and is handed to
  * the app through a `getUserMedia` override. The real sender publishes it to the real SFU; the output page, opened

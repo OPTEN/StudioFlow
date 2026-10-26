@@ -19,7 +19,7 @@ export interface UiPairedDevice<S> {
 }
 
 /**
- * QR flow: reads the code from the Regie's pairing dock with `jsqr`, opens its URL in the phone, waits for «Verbunden»
+ * QR flow: reads the code from the Regie's pairing dock with `jsqr`, opens its URL in the phone, waits for “Connected”
  * and for the station row in the Regie. Returns the invite URL that was in the QR code as well.
  */
 export async function pairPhoneViaQr(
@@ -31,13 +31,13 @@ export async function pairPhoneViaQr(
   await phone.waitConnected();
   const stored = await phone.waitForStoredDevice();
   const row = regie.page.locator(`.c-st[data-device="${stored.deviceId}"]`);
-  await expect(row, 'the phone appears in the Stationen dock').toBeVisible({ timeout: 15_000 });
+  await expect(row, 'the phone appears in the Stations dock').toBeVisible({ timeout: 15_000 });
   return { sender: phone, stored, row, qrUrl: qr.url };
 }
 
 /**
- * Knock flow: `/join/` on the laptop, name and «Weiter», the check code appears on the laptop and on the Regie's knock
- * card (the same digits), «Zulassen», then the laptop station and the station row in the Regie. Returns the code.
+ * Knock flow: `/join/` on the laptop, name and “Continue”, the check code appears on the laptop and on the Regie's knock
+ * card (the same digits), “Allow”, then the laptop station and the station row in the Regie. Returns the code.
  */
 export async function pairLaptopViaKnock(
   regie: RegiePage,
@@ -56,7 +56,7 @@ export async function pairLaptopViaKnock(
   await laptop.waitConnected();
   const stored = await laptop.waitForStoredDevice();
   const row = regie.page.locator(`.c-st[data-device="${stored.deviceId}"]`);
-  await expect(row, 'the laptop appears in the Stationen dock').toBeVisible({ timeout: 15_000 });
+  await expect(row, 'the laptop appears in the Stations dock').toBeVisible({ timeout: 15_000 });
   return { sender: laptop, stored, row, checkCode };
 }
 

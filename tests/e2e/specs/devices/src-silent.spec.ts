@@ -33,7 +33,7 @@ test.describe('SRC silent outage', () => {
       onCleanup(() => browser.close());
       const phone = await PhoneSender.open(browser, { profile: 'pixel7', context: { proxy: { server: proxy.url } } });
       onCleanup(() => phone.close());
-      const device = await pairViaApi(pairContext, phone, { name: 'Handy Proxy' });
+      const device = await pairViaApi(pairContext, phone, { name: 'Phone Proxy' });
       await phone.waitForCamera('live', 45_000);
       expect(proxy.tunnels, 'the phone talks through the proxy').toBeGreaterThan(0);
       await putInScene(api, production, 0, device.sourceId('camera'), FULL);
@@ -47,9 +47,9 @@ test.describe('SRC silent outage', () => {
       await testInfo.attach('detect-silent.json', { body: JSON.stringify({ elapsedMs: outage.elapsedMs, droppedBytes: proxy.dropped, detail: outage.check.detail }, null, 2), contentType: 'application/json' });
       expect(outage.elapsedMs, 'T-DETECT-SILENT hard limit 6.5 s').toBeLessThanOrEqual(THRESHOLD.detectSilentHardMs);
       expect(outage.elapsedMs, 'a silent loss is not detected before the client timeout can have elapsed').toBeGreaterThan(2000);
-      expect(await logTexts(api, production)).toContain('K1 verbindet neu');
+      expect(await logTexts(api, production)).toContain('K1 reconnecting');
 
-      // The phone notices as well (its server timeout is 5 s): «Verbindet neu …».
+      // The phone notices as well (its server timeout is 5 s): “Reconnecting…”.
       await expect(phone.connectionState().first()).toHaveAttribute('data-state', /reconnecting|offline/, { timeout: 15_000 });
 
       // The path comes back: new connections work, the phone returns by itself.
@@ -58,7 +58,7 @@ test.describe('SRC silent outage', () => {
       proxy.resume();
       await phone.waitForConnection('connected', 60_000);
       await waitForRecovered(regie, 'K1', { timeoutMs: 60_000 });
-      testInfo.annotations.push({ type: 'measurement', description: `recovery after a silent outage of about ${Math.round((resumedAt - startedAt) / 1000)} s: path back -> «wieder da» ${Date.now() - resumedAt} ms` });
+      testInfo.annotations.push({ type: 'measurement', description: `recovery after a silent outage of about ${Math.round((resumedAt - startedAt) / 1000)} s: path back -> “back” ${Date.now() - resumedAt} ms` });
     },
   );
 });

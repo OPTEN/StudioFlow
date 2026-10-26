@@ -1,6 +1,6 @@
 /**
- * Shared constants of the E2E suite: German strings asserted by tests, spec limits (T-LIMITS) and the thresholds of
- * docs/testing.md section 5. Strings are German (CH): «ss» instead of «ß», decimal comma, 24 h clock.
+ * Shared constants of the E2E suite: error codes, spec limits (T-LIMITS) and the thresholds of docs/testing.md section 5.
+ * The texts the tests assert are in text.ts.
  */
 
 /** Machine readable error codes (ProblemDetails.code). */
@@ -20,40 +20,6 @@ export const ERROR = {
   rateLimited: 'rate_limited',
   deviceBlocked: 'device_blocked',
   internalError: 'internal_error',
-} as const;
-
-/** German UI strings the tests assert (spec sections 4, 9; docs/testing.md 2.x). */
-export const DE = {
-  // Output slates
-  slateStandby: "Gleich geht's los",
-  slateEnd: 'Danke fürs Zuschauen',
-  slateDenied: 'Kein Zugang',
-  holdText: 'Bild kommt gleich zurück',
-  // Default production and scenes (spec 4.2)
-  defaultProduction: 'Webinar',
-  defaultScenes: ['Begrüssung', 'Präsentation', 'Pause'],
-  // Status words (spec 8.1 statusWord)
-  statusReconnecting: 'verbindet neu',
-  statusEnded: 'Teilen beendet',
-  statusBlocked: 'gesperrt',
-  statusConnecting: 'verbindet …',
-  statusLost: 'kein Bild',
-  statusOffline: 'nicht verbunden',
-  // Log entries (spec 4.5, 4.9, LogTexts)
-  log: {
-    reconnecting: (code: string) => `${code} verbindet neu`,
-    recovered: (code: string, seconds: number) => `${code} wieder da, war ${seconds} s weg`,
-    ended: (code: string) => `${code} Teilen beendet`,
-    blocked: (code: string) => `${code} gesperrt`,
-    unblocked: (code: string) => `${code} entsperrt`,
-    paired: (code: string, name: string) => `${code} ${name} gekoppelt`,
-  },
-  // Errors of the API (German details the Regie may show)
-  loginFailed: 'Benutzername oder Passwort ist falsch.',
-  noAccess: 'Kein Zugang.',
-  // Pairing
-  knockCard: (name: string) => `${name} möchte beitreten`,
-  checkCodeFormat: /^\d{2} \d{2}$/,
 } as const;
 
 /** Constants asserted exactly (T-LIMITS) - docs/architecture/implementation-spec.md sections 4-7. */

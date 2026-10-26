@@ -28,7 +28,7 @@ export const senderCameraProblem: Translation<typeof en> = {
     'In Safari links in der Adressleiste auf «aA» tippen, dann «Website-Einstellungen».',
   'sender.camera.problem.iosStep2': 'Bei «Kamera» die Option «Erlauben» wählen.',
   'sender.camera.problem.iosStep3':
-    'Die Seite neu laden. Hilft das nicht: Einstellungen › Apps › Safari › Kamera › «Erlauben».',
+    'Die Seite neu laden. Hilft das nicht: Einstellungen > Apps > Safari > Kamera > «Erlauben».',
   'sender.camera.problem.lostStep1':
     'Vielleicht hat ein Anruf oder eine andere App die Kamera übernommen.',
   'sender.camera.problem.lostTitle': 'Die Kamera liefert kein Bild mehr',
@@ -36,7 +36,7 @@ export const senderCameraProblem: Translation<typeof en> = {
     'Im Menü «Safari» die «Einstellungen für diese Website» öffnen.',
   'sender.camera.problem.macosSafariStep2': 'Bei «Kamera» die Option «Erlauben» wählen.',
   'sender.camera.problem.macosSafariStep3':
-    'Die Seite neu laden. In den Systemeinstellungen › Datenschutz › Kamera muss Safari erlaubt sein.',
+    'Die Seite neu laden. In den Systemeinstellungen > Datenschutz > Kamera muss Safari erlaubt sein.',
   'sender.camera.problem.missingStep1':
     'Prüfen, ob eine Kamera angeschlossen und eingeschaltet ist.',
   'sender.camera.problem.missingTitle': 'Keine Kamera gefunden',

@@ -65,6 +65,7 @@ jobs:
           tests/e2e/stack.sh test "$E2E_STACK"
           --project=smoke
           --project=desktop-chromium
+          --project=i18n
           --project=short-ttl
           --project=disruptive
           --project=pixel-7

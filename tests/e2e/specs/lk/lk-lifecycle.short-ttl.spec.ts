@@ -34,7 +34,7 @@ test.afterAll(async () => {
 test.describe('LK short profile', () => {
   test('E2E-LK-03 [lk] an empty room is closed after empty_timeout, recreated on demand under the same name; after an API restart the live source returns to ok without an incident', t.shortTtl('@p2'), async ({ api, production, pairContext, stack, context, onCleanup }) => {
     test.setTimeout(300_000);
-    const phone = await pairPhone(pairContext, { name: 'Raum Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Room Phone' });
     const headers: Record<string, string> = stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {};
     let sim = await SenderSim.start(stack.anonymousBase, phone.credentials, { headers });
     onCleanup(() => sim.stop());
@@ -79,7 +79,7 @@ test.describe('LK short profile', () => {
   test('E2E-NET-26 [lk] with a token lifetime of 60 s a connection survives 5 minutes; an expired token is refused; a rejoin fetches exactly one new token and causes no 401 loop', t.shortTtl('@p1'), async ({ config, api, production, pairContext, stack, context, onCleanup }) => {
     skipUnsupported(!support.tokenTtl, `GAP-01: LiveKit:TokenTtl is not read by the API (a token lives ${support.observed.token} s, expected about 60 s)`);
     test.setTimeout(600_000);
-    const phone = await pairPhone(pairContext, { name: 'Token Handy' });
+    const phone = await pairPhone(pairContext, { name: 'Token Phone' });
     const netHeaders: Record<string, string> = stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {};
     const sim = await SenderSim.start(stack.anonymousBase, phone.credentials, { headers: netHeaders });
     onCleanup(() => sim.stop());

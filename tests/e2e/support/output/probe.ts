@@ -122,7 +122,7 @@ export class OutputProbe {
     );
   }
 
-  /** Has the «Kein Zugang» slate ever been created in this document? */
+  /** Has the “No access” slate ever been created in this document? */
   async denySeen(): Promise<boolean> {
     return (await this.frame()).evaluate(
       () => (window as unknown as { __outProbe: { denySeen: boolean } }).__outProbe.denySeen,

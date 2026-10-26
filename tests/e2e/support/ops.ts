@@ -5,7 +5,7 @@ import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, SETTINGS } from './env';
 import { exec, type ExecOptions, type ExecResult } from './shell';
 
 /**
- * Isolated copies of the operations scripts (docs/testing.md 2.11: «an isolated copy of the repository»).
+ * Isolated copies of the operations scripts (docs/testing.md 2.11: “an isolated copy of the repository”).
  *
  * The scripts are copied unchanged into a temporary directory and run there with bash, so `backups/`, `.env.backup-*`
  * and the git state of an update never touch the working tree. They find the stack through the environment variables

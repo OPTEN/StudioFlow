@@ -79,7 +79,7 @@ test.describe('LINK output links and the camera', () => {
         .click();
       await expect
         .poll(() => teamsPage.slateText(), {
-          message: 'the revoked link shows «No access»',
+          message: 'the revoked link shows “No access”',
           timeout: 8000,
           intervals: [100],
         })
@@ -167,7 +167,7 @@ test.describe('LINK output links and the camera', () => {
   );
 
   test(
-    'E2E-LINK-03 [regie, download] «Use as camera …» downloads a valid OBS scene collection whose browser source is the chosen link at 1920 × 1080, 30 fps; that link works as an output page',
+    'E2E-LINK-03 [regie, download] “Use as camera …” downloads a valid OBS scene collection whose browser source is the chosen link at 1920 × 1080, 30 fps; that link works as an output page',
     t.p0,
     async ({ regie, browser, api, production, onCleanup }) => {
       test.setTimeout(120_000);

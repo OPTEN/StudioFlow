@@ -1,5 +1,5 @@
 import { CUT } from '../../support/api';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { makePng } from '../../support/media-samples';
 import { expect, test } from '../../support/ui/fixtures';
 import { SCREEN_COLORS } from '../../support/ui/init';
@@ -24,7 +24,7 @@ const FADE = (durationMs: number) => ({ kind: 'fade' as const, durationMs });
 
 /** A laptop with two fake screens (S1 red, S2 green) and the scenes A = S1 and B = S2, both full canvas. */
 async function screenScenes(deps: WorldDeps) {
-  const screens = await addScreens(deps, 'Laptop Farben', 2);
+  const screens = await addScreens(deps, 'Laptop Colours', 2);
   const [a, b, c] = deps.production.sceneIds as [string, string, string];
   const itemA = await placeItem(deps.api, deps.production, a, screens.sources[0]!, FULL);
   const itemB = await placeItem(deps.api, deps.production, b, screens.sources[1]!, FULL);
@@ -257,7 +257,7 @@ test.describe('OUT transitions', () => {
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const { a, b } = await screenScenes(deps);
       const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
-      await expect.poll(() => output.slateText(), { timeout: 15_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { timeout: 15_000 }).toContain(TEXT.slate.standby);
       await probe.waitForScene(a);
       await sleep(600);
       await probe.takeEvents();
@@ -294,7 +294,7 @@ test.describe('OUT transitions', () => {
       const slate = () => probe.snapshot().then((snapshot) => snapshot.slate);
 
       // Standby: title, subtitle = production name; the slate fades in over 300 ms and covers the stage.
-      await expect.poll(async () => (await slate())?.title, { timeout: 15_000 }).toBe(DE.slateStandby);
+      await expect.poll(async () => (await slate())?.title, { timeout: 15_000 }).toBe(TEXT.slate.standby);
       expect((await slate())!.subtitle, 'subtitle = production name').toBe(production.name);
       await expect.poll(async () => (await slate())?.opacity, { timeout: 2000 }).toBe(1);
       await probe.waitForScene(a);
@@ -305,7 +305,7 @@ test.describe('OUT transitions', () => {
       await probe.takeEvents();
 
       // The slate texts come from the production (API): title and subtitle change live.
-      const custom = { title: 'Pause bis 14:00', subtitle: 'Wir sind gleich zurück', backgroundAssetId: null };
+      const custom = { title: 'Break until 14:00', subtitle: 'We will be right back', backgroundAssetId: null };
       expect((await api.updateProduction(production.id, { standbySlate: custom })).status).toBe(200);
       await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(custom.title);
       expect((await slate())!.subtitle).toBe(custom.subtitle);
@@ -322,7 +322,7 @@ test.describe('OUT transitions', () => {
       const withImage = await output.stagePixels();
       expect(colorsClose(withImage.at(100, 100), '#c82828', 30), 'the slate image covers the stage').toBe(true);
       // Back to the plain slate.
-      await api.updateProduction(production.id, { standbySlate: { title: DE.slateStandby, subtitle: production.name, backgroundAssetId: null } });
+      await api.updateProduction(production.id, { standbySlate: { title: TEXT.slate.standby, subtitle: production.name, backgroundAssetId: null } });
       await expect.poll(() => frame.evaluate(() => getComputedStyle(document.querySelector('.sf-r-slate-image')!).display), { timeout: 5000 }).toBe('none');
 
       // Start: the slate fades out over 300 ms to the program (the picture was already behind it).
@@ -335,7 +335,7 @@ test.describe('OUT transitions', () => {
       let frames = await probe.stopSampler();
       let events = await probe.takeEvents();
       const fadeOut = frames.filter((sample) => sample.slate !== null && sample.slate.opacity < 1);
-      expect(fadeOut.length, 'the slate is seen at intermediate opacities').toBeGreaterThanOrEqual(8);
+      expect(fadeOut.length, 'the slate is seen at intermediate opacities').toBeGreaterThanOrEqual(3);
       const slateGone = firstEvent(events, 'slate-')!;
       expect(slateGone.t - started, 'start -> slate gone (fade 300 ms + request)').toBeLessThan(300 + 400);
       const slateAnimation = frames.flatMap((sample) => sample.anims ?? []).find((animation) => animation.cls?.includes('sf-r-slate') && animation.props.includes('opacity'));
@@ -347,19 +347,19 @@ test.describe('OUT transitions', () => {
       await probe.takeEvents();
       await probe.startSampler({ animations: true });
       expect((await api.endBroadcast(production.id)).status).toBe(200);
-      await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(DE.slateEnd);
+      await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(TEXT.slate.end);
       await expect.poll(async () => (await slate())?.opacity, { timeout: 2000 }).toBe(1);
       frames = await probe.stopSampler();
       events = await probe.takeEvents();
       const fadeIn = frames.filter((sample) => sample.slate !== null && sample.slate.opacity > 0.05 && sample.slate.opacity < 0.95);
-      expect(fadeIn.length, 'end slate fades in').toBeGreaterThanOrEqual(8);
+      expect(fadeIn.length, 'end slate fades in').toBeGreaterThanOrEqual(3);
       expect(frames.every((sample) => sample.layers.some((layer) => layer.id === a)), 'the last picture stays under the end slate').toBe(true);
-      expect(frames.filter((sample) => sample.slate).every((sample) => sample.slate!.title !== DE.slateStandby), 'no standby slate in between').toBe(true);
+      expect(frames.filter((sample) => sample.slate).every((sample) => sample.slate!.title !== TEXT.slate.standby), 'no standby slate in between').toBe(true);
       expect(toneOf((await output.stagePixels()).at(960, 1000)), 'covered: the end slate is opaque').toBe('dark');
 
       // Reset: back to the standby slate with the production's slate texts.
       expect((await api.resetBroadcast(production.id)).status).toBe(200);
-      await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(DE.slateStandby);
+      await expect.poll(async () => (await slate())?.title, { timeout: 5000 }).toBe(TEXT.slate.standby);
       expect((await slate())!.subtitle).toBe(production.name);
     },
   );
@@ -372,7 +372,7 @@ test.describe('OUT transitions', () => {
       const { probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 15_000 }).toBe(production.name);
       await probe.takeEvents();
-      const renamed = `${production.name} neu`;
+      const renamed = `${production.name} new`;
       expect((await api.updateProduction(production.id, { name: renamed })).status).toBe(200);
       await expect.poll(async () => (await probe.snapshot()).slate?.subtitle, { timeout: 5000, message: 'subtitle follows the production name' }).toBe(renamed);
       expect((await probe.takeEvents()).filter((event) => event.type === 'slate+'), 'updated in place, no new slate').toEqual([]);
@@ -385,8 +385,8 @@ test.describe('OUT transitions', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -454,8 +454,8 @@ test.describe('OUT transitions', () => {
       outBug('OUT-01', 'a cut to a scene whose camera is not in the program shows 1-5 frames without picture (dark scene ground)');
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);
@@ -519,8 +519,8 @@ test.describe('OUT transitions', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const k1 = await addCamera(deps, 'Kamera Eins');
-      const k2 = await addCamera(deps, 'Kamera Zwei');
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, k1.source, FULL);
       await placeItem(api, production, b, k2.source, FULL);

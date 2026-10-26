@@ -11,7 +11,7 @@ import { t } from '../../support/tags';
 /**
  * E2E-OPS-09: update.sh refuses while a broadcast is live [GAP-31]. The script runs unmodified in an isolated git work
  * tree that tracks a local bare remote; docker compose finds the stack under test through the environment (support/ops.ts).
- * The «docker compose up -d --build» of a successful update builds from the repository's build contexts (layer cache).
+ * The “docker compose up -d --build” of a successful update builds from the repository's build contexts (layer cache).
  */
 
 let box: OpsSandbox;
@@ -49,7 +49,7 @@ async function fingerprint(): Promise<Record<string, string>> {
 test.describe('OPS update', () => {
   test('E2E-OPS-09 [update.sh] a live broadcast blocks the update: no git pull, no rebuild, no restart', t.disruptive('@p0'), async ({ config, api, production }) => {
     test.setTimeout(300_000);
-    await pushExtraCommit('Aenderung waehrend der Sendung');
+    await pushExtraCommit('Change during the broadcast');
     const headBefore = await head();
     expect((await api.startBroadcast(production.id)).status).toBe(200);
     const before = await fingerprint();
@@ -63,10 +63,10 @@ test.describe('OPS update', () => {
     await api.resetBroadcast(production.id);
   });
 
-  test('E2E-OPS-09 [update.sh] standby: pulls fast-forward, rebuilds, waits until healthy, keeps the data; --backup writes a «pre-update» backup first', t.disruptive('@p0'), async ({ config, api, production }) => {
+  test('E2E-OPS-09 [update.sh] standby: pulls fast-forward, rebuilds, waits until healthy, keeps the data; --backup writes a “pre-update” backup first', t.disruptive('@p0'), async ({ config, api, production }) => {
     test.setTimeout(1_200_000);
     await api.resetBroadcast(production.id);
-    await pushExtraCommit('Neue Aenderung');
+    await pushExtraCommit('New change');
     const headBefore = await head();
     const snapshot = (await api.getSnapshot(production.id)).body;
     const result = await box.run('update.sh', ['--backup']);
@@ -77,7 +77,7 @@ test.describe('OPS update', () => {
     expect(result.stdout).toContain('Update complete.');
     expect(await head(), 'HEAD moved to the remote commit').not.toBe(headBefore);
     const backups = fs.readdirSync(box.path('backups')).filter((name) => name.endsWith('_pre-update') || /_pre-update-\d+$/.test(name));
-    expect(backups, 'a «pre-update» backup was written before the update').toHaveLength(1);
+    expect(backups, 'a “pre-update” backup was written before the update').toHaveLength(1);
     await ensureHealthy();
     const after = (await new AdminApi(config.baseURL, api.cookie).getSnapshot(production.id)).body;
     expect(after.scenes.map((scene) => scene.id), 'data retained').toEqual(snapshot.scenes.map((scene) => scene.id));
@@ -125,10 +125,10 @@ test.describe('OPS update', () => {
 
   test('E2E-OPS-09 [update.sh] a pull that is not a fast-forward aborts before anything is restarted', t.disruptive('@p1'), async () => {
     test.setTimeout(300_000);
-    await pushExtraCommit('Remote-Aenderung');
-    fs.writeFileSync(path.join(box.root, 'LOKAL.txt'), 'lokale Aenderung\n');
-    await git(['add', 'LOKAL.txt']);
-    await git(['commit', '-m', 'lokale Aenderung']);
+    await pushExtraCommit('Remote change');
+    fs.writeFileSync(path.join(box.root, 'LOCAL.txt'), 'local change\n');
+    await git(['add', 'LOCAL.txt']);
+    await git(['commit', '-m', 'local change']);
     const headBefore = await head();
     const before = await fingerprint();
     const result = await box.run('update.sh');

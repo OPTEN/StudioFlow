@@ -98,7 +98,7 @@ installed. Smoke tests for every piece are in `specs/ui/ui-fixtures.spec.ts` (ta
 
 | Module | What it gives |
 | --- | --- |
-| `init.ts` | `installUiInit(context, options)`: sets `localStorage['studioflow.testHooks'] = '1'` before any app script runs (the read-only state views `window.__sfStudio` / `window.__sfSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `de-CH`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, in `STUDIOFLOW_FRAME_ANCESTORS` of the test env) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
+| `init.ts` | `installUiInit(context, options)`: sets `localStorage['studioflow.testHooks'] = '1'` before any app script runs (the read-only state views `window.__sfStudio` / `window.__sfSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `en-US`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, in `STUDIOFLOW_FRAME_ANCESTORS` of the test env) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
 | `regie.ts` | `RegiePage`: `loginViaUi`, `loginViaApi` (session cookie injected into the context), `waitReady` (hub live: hooks, then `data-testid`, then what the DOM shows), `hooks()` / `waitForRevision` / `waitForConvergence` against the API snapshot, scene and Take locators, stations, the pairing dock (`openPairing`, `readPairingQr` with `jsqr`), knock cards (`approveKnock`, `knockCheckCode`) |
 | `sender.ts` | `PhoneSender` / `LaptopSender` in a context of their own or in an existing one: pairing form, check code, connection / tally / slot states through `data-testid`, `window.__sfSender`, stored credentials, camera and screen-share buttons, `browserStopsSharing()` (what the browser's «Stop sharing» does) |
 | `pairing.ts` | `pairPhoneViaQr(regie, phone)`: QR read from the dock, URL opened in the phone, station row waited for; `pairLaptopViaKnock(regie, laptop, name)`: `/join/`, check code on both screens, «Zulassen»; `pairViaApi(pairContext, sender)`: the fast path for tests that are not about pairing (REST pairing, credentials handed to the sender, it resumes into its station) |
@@ -133,14 +133,18 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
   `sync-client.ts`, `sim.ts`), pairing and production fixtures (`production.ts`, `fixtures.ts`), LiveKit helpers
   (`livekit.ts`, `livekit-browser.ts` with the latency stamp codec), fault injection (`docker-ctl.ts`, `net.ts`,
   `tcp-proxy.ts`), isolated script copies (`ops.ts`), stack settings and names (`env.ts`), start checks (`preflight.ts`),
-  German strings and thresholds (`constants.ts`), UI fixtures (`ui/`, `browser/`).
+  the English texts the specs share (`text.ts`; the German ones for the `i18n` project are in `text.de.ts`), error codes
+  and thresholds (`constants.ts`), UI fixtures (`ui/`, `browser/`).
 - `specs/<area>/` the tests. File suffixes choose the project: `*.disruptive.spec.ts`, `*.short-ttl.spec.ts`,
   `*.mobile.spec.ts`, `*.firefox.spec.ts`, `*.webkit.spec.ts`, `*.soak.spec.ts`; everything else runs in `smoke`
-  (tag `@smoke`) or `desktop-chromium`.
+  (tag `@smoke`) or `desktop-chromium`. `specs/i18n/` and `*.de.spec.ts` run in the `i18n` project only.
 - `known-bugs.json` registry of confirmed product bugs and documentation differences (each open entry carries steps, expected, actual and evidence).
 
 ## Conventions
 
+- The suite runs in `en-US` (the product follows the browser language). Texts are literals: the specs never import the
+  product catalogue, so a changed product text fails the suite. The `i18n` project (`locale: 'de-CH'`) runs the
+  German checks; a fixture such as `openRegie` takes the locale of the project, `newUiContext` defaults to `en-US`.
 - A confirmed product bug keeps its full assertions and calls `knownBug('BUG-nn', ...)`: while the entry is `open` the
   test is expected to fail and turns red the day the product is fixed; then set the entry to `fixed`.
 - Tests that depend on a tool (netem, pause, disconnect) call `requireTool()`: the canary `E2E-NET-00` decides. The
@@ -158,4 +162,4 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
   `config.baseURL` (`https://localhost:849N` on a numbered one), and an Origin check compares with it, not with
   `https://localhost`.
 - UI tests read state through the hooks or the API, wait with `expect.poll` / locators (never `waitForTimeout` for
-  state), and prefer roles and German labels; `data-testid`s only where docs/testing.md 1.7 lists them.
+  state), and prefer roles and the English labels; `data-testid`s only where docs/testing.md 1.7 lists them.

@@ -8,7 +8,7 @@ import { decodeQr, PixelImage } from './pixels';
 /**
  * Page object of the Regie (`apps/studio`, docs/testing.md 1.5 and 1.7): login through the UI or by injecting the
  * session cookie of an API login, waiting until the hub is live, reading state through `window.__sfStudio` and through
- * the API, and the actions the pairing, switching and station tests need. Locators prefer roles and German labels;
+ * the API, and the actions the pairing, switching and station tests need. Locators prefer roles and English labels;
  * `data-testid` hooks are used where the product has them.
  *
  * The read-only state view `window.__sfStudio` only exists with `localStorage['studioflow.testHooks'] = '1'` (set by
@@ -25,7 +25,7 @@ export interface StudioHooks {
 
 export type PairingTab = 'phone' | 'laptop' | 'link';
 
-const TAB_LABEL: Record<PairingTab, string> = { phone: 'Handy', laptop: 'Laptop', link: 'Link' };
+const TAB_LABEL: Record<PairingTab, string> = { phone: 'Phone', laptop: 'Laptop', link: 'Link' };
 
 /** `sf_session=value` to a cookie for `context.addCookies`. */
 function sessionCookie(cookie: string, baseURL: string) {
@@ -87,7 +87,7 @@ export class RegiePage {
     return regie;
   }
 
-  /** Login form: «Benutzername», «Passwort», «Anmelden»; resolves when the Regie route is reached. */
+  /** Login form: “Username”, “Password”, “Sign in”; resolves when the Regie route is reached. */
   async loginViaUi(
     credentials: { username: string; password: string } = this.config.admin,
   ): Promise<void> {
@@ -108,14 +108,14 @@ export class RegiePage {
     if (!new URL(this.page.url(), this.config.baseURL).pathname.startsWith('/login')) {
       await this.page.goto('/login');
     }
-    await this.page.getByLabel('Benutzername').fill(credentials.username);
-    await this.page.getByLabel('Passwort').fill(credentials.password);
+    await this.page.getByLabel('Username').fill(credentials.username);
+    await this.page.getByLabel('Password').fill(credentials.password);
     const [response] = await Promise.all([
       this.page.waitForResponse(
         (candidate) =>
           candidate.url().endsWith('/api/auth/login') && candidate.request().method() === 'POST',
       ),
-      this.page.getByRole('button', { name: 'Anmelden' }).click(),
+      this.page.getByRole('button', { name: 'Sign in' }).click(),
     ]);
     return response.status();
   }
@@ -190,7 +190,7 @@ export class RegiePage {
       }
       const page = document.querySelector('sf-studio-page');
       const loading = [...document.querySelectorAll('.c-empty strong')].some((element) =>
-        /werden geladen/.test(element.textContent ?? ''),
+        /^Loading /.test(element.textContent ?? ''),
       );
       const banner = document.querySelector('.c-status__net');
       const scenes = document.querySelectorAll('button.c-scene[aria-pressed]').length;
@@ -268,7 +268,7 @@ export class RegiePage {
 
   // --- scenes and switching ----------------------------------------------------------------------------------------
 
-  /** A scene button («Präsentation», aria-pressed; the accessible name may add «, live im Program» etc.). */
+  /** A scene button (“Presentation”, aria-pressed; the accessible name may add “, live on Program” etc.). */
   scene(name: string): Locator {
     return this.page
       .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$)`) })
@@ -280,7 +280,7 @@ export class RegiePage {
   }
 
   studioModeSwitch(): Locator {
-    return this.page.getByRole('switch', { name: 'Studio-Modus' });
+    return this.page.getByRole('switch', { name: 'Studio Mode' });
   }
 
   async setStudioMode(on: boolean): Promise<void> {
@@ -288,20 +288,20 @@ export class RegiePage {
     if ((await toggle.isChecked()) !== on) await toggle.setChecked(on);
   }
 
-  /** «Take» (only in Studio-Modus). */
+  /** “Take” (only in Studio Mode). */
   take(): Locator {
     return this.page.getByRole('button', { name: /^Take/ });
   }
 
-  transitionOption(kind: 'Schnitt' | 'Blende'): Locator {
+  transitionOption(kind: 'Cut' | 'Fade'): Locator {
     return this.page
-      .getByRole('group', { name: 'Art des Übergangs' })
+      .getByRole('group', { name: 'Transition type' })
       .getByRole('button', { name: kind });
   }
 
   // --- stations and pairing ----------------------------------------------------------------------------------------
 
-  /** A station row by slot code («K1», «S1») or device name. */
+  /** A station row by slot code (“K1”, “S1”) or device name. */
   station(codeOrName: string): Locator {
     return this.page.locator('.c-st[data-device]').filter({ hasText: codeOrName });
   }
@@ -309,14 +309,14 @@ export class RegiePage {
   /** Waits for the station row of a freshly paired device and returns it. */
   async waitForStation(codeOrName: string, timeout = 15_000): Promise<Locator> {
     const row = this.station(codeOrName).first();
-    await expect(row, `station ${codeOrName} appears in the Stationen dock`).toBeVisible({
+    await expect(row, `station ${codeOrName} appears in the Stations dock`).toBeVisible({
       timeout,
     });
     return row;
   }
 
   pairButton(): Locator {
-    return this.page.getByRole('button', { name: 'Gerät koppeln', exact: true });
+    return this.page.getByRole('button', { name: 'Pair device', exact: true });
   }
 
   pairingDock(): Locator {
@@ -327,7 +327,7 @@ export class RegiePage {
     return this.page.getByRole('tab', { name: TAB_LABEL[tab] });
   }
 
-  /** Opens the pairing dock («Gerät koppeln») on a tab (Handy | Laptop | Link) and waits for the panel. */
+  /** Opens the pairing dock (“Pair device”) on a tab (Phone | Laptop | Link) and waits for the panel. */
   async openPairing(tab: PairingTab = 'phone'): Promise<void> {
     const button = this.pairButton();
     if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
@@ -338,14 +338,14 @@ export class RegiePage {
   }
 
   async closePairing(): Promise<void> {
-    const close = this.page.getByRole('button', { name: 'Gerät koppeln schliessen' });
+    const close = this.page.getByRole('button', { name: 'Close pair device' });
     if (await close.isVisible()) await close.click();
     await expect(this.pairingTab('phone')).toBeHidden();
   }
 
-  /** The QR code of the phone tab (`role=img`, «QR-Code zum Koppeln eines Handys»). */
+  /** The QR code of the phone tab (`role=img`, “QR code for pairing a phone”). */
   pairingQr(): Locator {
-    return this.page.getByRole('img', { name: 'QR-Code zum Koppeln eines Handys' });
+    return this.page.getByRole('img', { name: 'QR code for pairing a phone' });
   }
 
   /**
@@ -373,12 +373,12 @@ export class RegiePage {
   /** The knock card (laptop waiting for approval) of a device name. The pairing dock may show it twice; this is the first. */
   knockCard(name: string): Locator {
     return this.page
-      .getByRole('group', { name: 'Kopplungsanfrage' })
+      .getByRole('group', { name: 'Pairing request' })
       .filter({ hasText: name })
       .first();
   }
 
-  /** The check code on a knock card, e.g. «47 12». */
+  /** The check code on a knock card, e.g. “47 12”. */
   async knockCheckCode(name: string): Promise<string> {
     const card = this.knockCard(name);
     await expect(card, `knock card of ${name}`).toBeVisible();
@@ -386,11 +386,11 @@ export class RegiePage {
   }
 
   async approveKnock(name: string): Promise<void> {
-    await this.knockCard(name).getByRole('button', { name: 'Zulassen' }).click();
+    await this.knockCard(name).getByRole('button', { name: 'Allow' }).click();
   }
 
   async denyKnock(name: string): Promise<void> {
-    await this.knockCard(name).getByRole('button', { name: 'Ablehnen' }).click();
+    await this.knockCard(name).getByRole('button', { name: 'Deny' }).click();
   }
 
   // --- feedback ---------------------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ export class RegiePage {
     return this.page.getByRole('status').filter({ hasText: /\S/ });
   }
 
-  /** Text of the visible incident strip («K1 verbindet neu …»). */
+  /** Text of the visible incident strip (“K1 reconnecting”). */
   statusLine(): Locator {
     return this.page.locator('sf-status-line');
   }

@@ -61,7 +61,7 @@ async function buildWorld(
   onCleanup(() => a.stop());
   onCleanup(() => b.stop());
   onCleanup(() => output.stop());
-  const phones = [await pairPhone(pairContext, { name: 'Handy Eins' }), await pairPhone(pairContext, { name: 'Handy Zwei' })];
+  const phones = [await pairPhone(pairContext, { name: 'Phone One' }), await pairPhone(pairContext, { name: 'Phone Two' })];
   const senders: SenderSim[] = [];
   for (const phone of phones) {
     const sim = await SenderSim.start(stack.anonymousBase, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
@@ -229,8 +229,8 @@ test.describe('NET API disruption', () => {
     void readyAt;
   });
 
-  test('E2E-NET-12 [api, UNIT-SRC-03] a restart of the API writes no «verbindet neu» entry for sources whose device comes back', t.p1, async ({ config, api, production, pairContext, stack, context, onCleanup }) => {
-    knownBug('BUG-20', 'a graceful API shutdown flags every live source as «verbindet neu» (log entry) although the restart is no outage of the source (UNIT-SRC-03)');
+  test('E2E-NET-12 [api, UNIT-SRC-03] a restart of the API writes no “reconnecting” entry for sources whose device comes back', t.p1, async ({ config, api, production, pairContext, stack, context, onCleanup }) => {
+    knownBug('BUG-20', 'a graceful API shutdown flags every live source as “reconnecting” (log entry) although the restart is no outage of the source (UNIT-SRC-03)');
     test.setTimeout(240_000);
     const world = await buildWorld({ config, api, production, pairContext, stack, context, onCleanup });
     const session = new AdminApi(config.baseURL, api.cookie);
@@ -241,8 +241,8 @@ test.describe('NET API disruption', () => {
     await eventually(() => world.senders.every((sim) => sim.hub.isConnected && sim.hellos >= 2), 20_000, 250);
     await sleep(17_000);
     const after = (await session.getSnapshot(production.id)).body;
-    const added = after.recentLog.map((entry) => entry.text).filter((text) => !before.includes(text) || text.includes('verbindet neu'));
-    expect(added.filter((text) => text.includes('verbindet neu')), 'log entries «verbindet neu» caused by the restart').toEqual([]);
+    const added = after.recentLog.map((entry) => entry.text).filter((text) => !before.includes(text) || text.includes('reconnecting'));
+    expect(added.filter((text) => text.includes('reconnecting')), 'log entries “reconnecting” caused by the restart').toEqual([]);
     expect(after.incidents.filter((incident) => incident.endedAt === null)).toEqual([]);
     for (const phone of world.phones) expect(after.sources.find((source) => source.id === phone.sourceId())!.status).toBe('ok');
   });
@@ -299,7 +299,7 @@ test.describe('NET other services', () => {
     // The API's own answer (direct port): through Caddy the request ends with a 504 before the API gives up (BUG-21).
     const direct = session.withBase(stack.direct, uniqueIp());
     const reads = timed(() => direct.call<ProductionSnapshot & Problem>('GET', `/api/productions/${production.id}/snapshot`, { timeoutMs: long }));
-    const writes = timed(() => direct.call<SceneDto & Problem>('PATCH', `/api/productions/${production.id}/scenes/${production.sceneIds[0]!}`, { json: { name: 'Waehrend der Stoerung' }, timeoutMs: long }));
+    const writes = timed(() => direct.call<SceneDto & Problem>('PATCH', `/api/productions/${production.id}/scenes/${production.sceneIds[0]!}`, { json: { name: 'During the outage' }, timeoutMs: long }));
     const logins = timed(() => new AdminApi(stack.direct, '', uniqueIp()).call<Problem>('POST', '/api/auth/login', { json: { username: config.admin.username, password: config.admin.password }, anonymous: true, timeoutMs: long }));
 
     const notReady = await eventually(async () => (await readyStatus()) === 503, 10_000, 250);
@@ -340,7 +340,7 @@ test.describe('NET other services', () => {
     expect(Date.now() - startedAt).toBeLessThanOrEqual(60_000);
     // Writes work again, nothing was lost, the sender hubs never dropped (no incident).
     const renamed = await eventuallyValue(async () => {
-      const result = await session.updateScene(production.id, production.sceneIds[0]!, { name: 'Nach der Stoerung' });
+      const result = await session.updateScene(production.id, production.sceneIds[0]!, { name: 'After the outage' });
       return result.status === 200 ? result : undefined;
     }, 30_000);
     expect(renamed, 'writes work again after PostgreSQL is back (API not restarted)').toBeTruthy();
@@ -388,7 +388,7 @@ test.describe('NET other services', () => {
     await waitUntil('livekit healthy', async () => (await dockerCtl.health('livekit')) === 'healthy', { timeoutMs: 90_000, intervalMs: 500 });
     const healthyAt = Date.now();
     expect((await tryFetch(`${stack.direct}/health/ready`))?.status, 'the API is ready while LiveKit restarts').toBe(200);
-    // The restarted LiveKit has no tracks: the reconcile (every 15 s) turns the stale «ok» into an outage.
+    // The restarted LiveKit has no tracks: the reconcile (every 15 s) turns the stale “ok” into an outage.
     const session = new AdminApi(config.baseURL, api.cookie);
     const flagged = await eventually(async () => (await session.getSnapshot(production.id)).body.sources.find((source) => source.id === phone.sourceId())?.status === 'reconnecting', 40_000, 500);
     test.info().annotations.push({ type: 'measurement', description: `stale track flagged ${flagged} ms after LiveKit was healthy (reconcile every 15 s)` });
@@ -441,7 +441,7 @@ test.describe('NET other services', () => {
     await waitUntil('postgres healthy', async () => (await dockerCtl.health('postgres')) === 'healthy', { timeoutMs: 90_000, intervalMs: 500 });
     const ready = await eventually(async () => (await tryFetch(`${stackConfig().apiDirect}/health/ready`))?.status === 200, 40_000, 500);
     expect(ready, 'readiness recovers after a PostgreSQL restart without restarting the API').not.toBeNull();
-    const after = await session.updateScene(production.id, production.sceneIds[0]!, { name: 'Nach dem Neustart' });
+    const after = await session.updateScene(production.id, production.sceneIds[0]!, { name: 'After the restart' });
     expect(after.status, after.raw.text()).toBe(200);
     expect((await session.getSnapshot(production.id)).body.scenes).toHaveLength(before.scenes.length);
   });
@@ -449,11 +449,11 @@ test.describe('NET other services', () => {
   test('E2E-NET-13 [stack] whole stack restart and crash: everything returns by itself, data and sessions survive', t.disruptive('@p0'), async ({ config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(420_000);
     const session = new AdminApi(config.baseURL, api.cookie);
-    const phone = await pairPhone(pairContext, { name: 'Bleibt Gekoppelt' });
+    const phone = await pairPhone(pairContext, { name: 'Stays Paired' });
     const scene = production.sceneIds[0]!;
     await session.addSceneItem(production.id, scene, { source: phone.sourceId(), x: 100, y: 120, w: 800, h: 450 });
     const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108020000009077' + '53de0000000c4944415408d763f8cfc000000301010018dd8db00000000049454e44ae426082', 'hex');
-    const asset = (await session.uploadAsset(production.id, { fileName: 'bleibt.png', contentType: 'image/png', data: png })).body;
+    const asset = (await session.uploadAsset(production.id, { fileName: 'stays.png', contentType: 'image/png', data: png })).body;
     await session.startBroadcast(production.id);
     const before = (await session.getSnapshot(production.id)).body;
     await production.refreshOutput();

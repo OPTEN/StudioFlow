@@ -1,7 +1,0 @@
-[
-  {
-    "path": "docs/i18n-e2e-notes/p2.md",
-    "rules": "all",
-    "reason": "The hand-over list for the E2E conversion quotes the former German UI texts."
-  }
-]

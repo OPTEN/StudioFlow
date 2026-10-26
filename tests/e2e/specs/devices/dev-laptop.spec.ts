@@ -28,7 +28,7 @@ for (const browserName of ['chromium', 'edge'] as const) {
         }
         onCleanup(() => senderBrowser.close());
       }
-      // Edge keeps its own user agent (the descriptor of the desktop profile would make it «Chrome»).
+      // Edge keeps its own user agent (the descriptor of the desktop profile would make it “Chrome”).
       const laptop = await LaptopSender.open(senderBrowser, browserName === 'edge' ? { context: { userAgent: undefined } } : {});
       onCleanup(() => laptop.close());
       const paired = await pairLaptopViaKnock(regie, laptop, 'Laptop Mia');
@@ -46,15 +46,15 @@ for (const browserName of ['chromium', 'edge'] as const) {
       await laptop.waitForSlot('camera', 'live', 30_000);
 
       const snapshot = (await api.getSnapshot(production.id)).body;
-      expect(snapshot.sources.filter((source) => source.deviceId === paired.stored.deviceId).map((source) => `${source.code} ${source.label}`).sort()).toEqual(['K1 Laptop Mia · Kamera', 'S1 Laptop Mia · Screen 1', 'S2 Laptop Mia · Screen 2']);
+      expect(snapshot.sources.filter((source) => source.deviceId === paired.stored.deviceId).map((source) => `${source.code} ${source.label}`).sort()).toEqual(['K1 Laptop Mia · Camera', 'S1 Laptop Mia · Screen 1', 'S2 Laptop Mia · Screen 2']);
       const device = snapshot.devices[0]!;
-      testInfo.annotations.push({ type: 'device', description: `${browserName}: platform «${device.platform}», battery ${device.telemetry?.batteryPct ?? 'none'}` });
+      testInfo.annotations.push({ type: 'device', description: `${browserName}: platform “${device.platform}”, battery ${device.telemetry?.batteryPct ?? 'none'}` });
       expect(device.platform, 'platform text').toMatch(/^Windows · (Chrome|Edge)$/);
       if (browserName === 'edge') expect(device.platform).toBe('Windows · Edge');
-      // Chromium and Edge have the Battery API: the Regie shows the «Akku» row once the first report has arrived.
+      // Chromium and Edge have the Battery API: the Regie shows the “Battery” row once the first report has arrived.
       const row = regie.page.locator(`.c-st[data-device="${paired.stored.deviceId}"]`);
       await row.locator('.c-st__row').click();
-      await expect(row.locator('.c-st__kv')).toContainText(/Akku\s*\d+ %/, { timeout: 15_000 });
+      await expect(row.locator('.c-st__kv')).toContainText(/Battery\s*\d+%/, { timeout: 15_000 });
       await expect.poll(async () => (await readPlaces(regie.page)).stations[0]?.tone, { message: 'no outage', timeout: 5000 }).toBe('');
       expect(laptop.problems.pageErrors, 'no uncaught error').toEqual([]);
       expect(laptop.problems.cspViolations, 'no CSP violation').toEqual([]);
@@ -96,7 +96,7 @@ test.describe('DEV sender, PWA', () => {
       expect(ngsw.headers()['cache-control'] ?? '', 'ngsw.json cache control').toMatch(/no-cache|no-store|max-age=0/);
 
       // A paired phone, so the shell and the station can be loaded offline.
-      const device = await (await import('../../support/production')).pairPhone(pairContext, { name: 'Handy PWA' });
+      const device = await (await import('../../support/production')).pairPhone(pairContext, { name: 'Phone PWA' });
       await phone.seedCredentials(device.credentials);
       await phone.gotoStart();
       await phone.waitConnected();
@@ -122,15 +122,15 @@ test.describe('DEV sender, PWA', () => {
       await page.context().setOffline(true);
       await page.reload();
       await expect(page.locator('sf-root, main').first()).toBeVisible({ timeout: 20_000 });
-      await expect(page.locator('[data-testid=connection-state]').first()).toContainText(/Offline|Verbindet neu/, { timeout: 20_000 });
-      await expect(page.getByText(/Offline: keine Netzwerkverbindung/)).toBeVisible();
+      await expect(page.locator('[data-testid=connection-state]').first()).toContainText(/Offline|Reconnecting/, { timeout: 20_000 });
+      await expect(page.getByText(/Offline: no network connection/)).toBeVisible();
       await page.context().setOffline(false);
       await phone.waitConnected(40_000);
       // And the unpaired shell works offline too.
       await page.evaluate(() => localStorage.removeItem('studioflow.sender.v1'));
       await page.context().setOffline(true);
       await page.goto('/join/');
-      await expect(page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole('heading', { name: 'Pair device' })).toBeVisible({ timeout: 20_000 });
       await page.context().setOffline(false);
       expect(pairViaApi).toBeDefined();
     },
