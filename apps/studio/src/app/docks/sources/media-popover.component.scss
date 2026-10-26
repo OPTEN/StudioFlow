@@ -16,7 +16,7 @@
 .c-media-pop__drop {
   @include state-transition(background-color, border-color);
   align-items: center;
-  border: 1px dashed var(--seam-strong);
+  border: 1px dashed var(--control-edge);
   border-radius: var(--radius-md);
   color: var(--text-2);
   cursor: pointer;
