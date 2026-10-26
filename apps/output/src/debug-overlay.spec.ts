@@ -17,6 +17,7 @@ const INFO: DebugInfo = {
   mediaState: 'connected',
   latencyMs: 61.6,
   rendererFps: 60,
+  version: '0.1.0+1a2b3c4',
   sources: [
     {
       code: 'K1',
@@ -46,6 +47,7 @@ describe('formatDebugLines', () => {
       'Latency ≈ 62 ms · Renderer 60 fps',
       'K1 Handy Lea · 1920×1080 · 30 fps · 2.8 Mbit/s · Loss 0.3% · Buffer 48 ms',
       'S1 Laptop Tom · Screen 1 · freeze frame',
+      'StudioFlow 0.1.0+1a2b3c4',
     ]);
   });
 
@@ -61,6 +63,7 @@ describe('formatDebugLines', () => {
       mediaState: null,
       latencyMs: null,
       rendererFps: 0,
+      version: '0.1.0',
       sources: [],
     });
     expect(lines).toEqual([
@@ -71,7 +74,17 @@ describe('formatDebugLines', () => {
       'LiveKit loading…',
       'Latency ≈ – · Renderer 0 fps',
       'No camera or screen source in the picture',
+      'StudioFlow 0.1.0',
     ]);
+  });
+
+  it('names the build in the last line, whatever the number of sources', () => {
+    const none = formatDebugLines({ ...INFO, sources: [] });
+    const two = formatDebugLines(INFO);
+    expect(none.at(-1)).toBe('StudioFlow 0.1.0+1a2b3c4');
+    expect(two.at(-1)).toBe('StudioFlow 0.1.0+1a2b3c4');
+    expect(two.slice(0, 6)).toEqual(none.slice(0, 6));
+    expect(formatDebugLines({ ...INFO, version: '0.0.0' }).at(-1)).toBe('StudioFlow 0.0.0');
   });
 
   it('marks partial stats and sources without picture', () => {

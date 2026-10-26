@@ -30,6 +30,13 @@ The version is written in these files, all changed by the release pull request a
 | `apps/api/Directory.Build.props` (`<Version>`) | The API: `GET /api/system/info` reports it as `0.1.0+1a2b3c4` (version and commit; the Docker build passes the commit) |
 | `docker-compose.release.yml` (default of `STUDIOFLOW_IMAGE_TAG`) | The images a release installation starts |
 
+The frontends have no file of their own. The Regie shows the version the **API** reports, in the last row of the
+settings (gear) popover. The output page is served without a session, so it cannot ask the API: its build writes the
+`version` of `package.json` plus the commit (the Docker build argument `STUDIOFLOW_REVISION`, the same one the API
+image gets) into the bundle, and the `?debug=1` overlay prints `StudioFlow 0.1.0+1a2b3c4` as its last line (just
+`0.1.0` where the build does not know the commit, like the plain `docker compose build` of development). CI and the
+Release workflow pass the commit to the `api` and `web` images alike.
+
 Before the first release every file says `0.0.0`. `release-please-config.json` holds the rules (`node` release type,
 tags `vX.Y.Z`, before 1.0 a breaking change raises the minor version only, and `initial-version` `0.1.0`: without a
 release tag release-please would otherwise start at `1.0.0`).
@@ -224,7 +231,5 @@ becomes a problem, delete old `sha-` versions that no release uses (GitHub packa
 
 ## 10. Not done yet
 
-- The version in the Regie menu and in the `?debug=1` overlay of the output (issue #18): the API provides it
-  (`GET /api/system/info`, admin only); the frontends are not changed here.
-- `arm64` images, and a `licenses` label (no licence file yet).
+- `arm64` images.
 - The E2E harness still builds its images itself (CI and Release pass prebuilt images with `E2E_NO_BUILD=1`).

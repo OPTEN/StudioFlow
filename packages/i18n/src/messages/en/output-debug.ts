@@ -3,7 +3,7 @@ import type { Namespace } from '../../types';
 /**
  * The `?debug=1` panel of the output page: state words per connection (`output.debug.<group>.<state>`, looked up by
  * the state names of the hub, the sync and the media session) and the lines of the panel. The units `fps`, `Mbit/s`
- * and `ms` are written by the code.
+ * and `ms` are written by the code. The last line names the build (`StudioFlow 0.1.0+1a2b3c4`).
  */
 export const outputDebug = {
   'output.debug.availability.live': 'live',
@@ -53,4 +53,6 @@ export const outputDebug = {
   'output.debug.sync.offline': 'offline, last state',
   'output.debug.sync.syncing': 'syncing',
   'output.debug.sync.unauthorized': 'no access',
+
+  'output.debug.version': 'StudioFlow {version}',
 } as const satisfies Namespace<'output.debug'>;

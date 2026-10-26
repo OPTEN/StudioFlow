@@ -54,6 +54,8 @@ test.describe('OUT media and reports', () => {
       expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Renderer \d+ fps$/);
       expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms$`));
 
+      expect(lines.at(-1), 'the version of the build, last').toMatch(/^StudioFlow \d+\.\d+\.\d+(\+[0-9a-f]{7})?$/);
+
       // Values match the video element and the API (the picture size may still grow through simulcast layers).
       await expect
         .poll(async () => {

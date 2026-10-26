@@ -30,6 +30,7 @@ import {
   type OutputApi,
 } from './api';
 import { keepVideosPlaying, resumeVideos } from './autoplay';
+import { BUILD_VERSION } from './build-info';
 import type { OutputConfig, OutputFlags } from './config';
 import { hideIdleCursor } from './cursor';
 import type { DebugInfo } from './debug-overlay';
@@ -499,6 +500,7 @@ export function startOutputApp(
       mediaState: current?.session.state ?? null,
       latencyMs: await estimateLatency(),
       rendererFps: renderer.stats().fps,
+      version: BUILD_VERSION,
       sources: sourceIds.map((sourceId, index) => ({
         code: state?.sources.get(sourceId)?.code ?? null,
         label: state?.sources.get(sourceId)?.label ?? null,

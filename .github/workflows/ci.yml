@@ -204,7 +204,9 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           tags: studioflow-${{ matrix.image }}
-          build-args: ${{ matrix.image == 'backup' && format('POSTGRES_IMAGE={0}', steps.pin.outputs.postgres_image) || '' }}
+          # api and caddy get the commit like in release.yml (version 0.1.0+1a2b3c4 in the API and the output overlay); the
+          # same arguments keep the layers of this cache usable for the release build.
+          build-args: ${{ matrix.image == 'backup' && format('POSTGRES_IMAGE={0}', steps.pin.outputs.postgres_image) || format('STUDIOFLOW_REVISION={0}', github.sha) }}
           # e2e-smoke checks the label after docker load: the image under test is the one this run built.
           labels: org.opencontainers.image.revision=${{ github.sha }}
           outputs: ${{ matrix.handover && format('type=docker,dest={0}/{1}.tar', runner.temp, matrix.image) || 'type=cacheonly' }}

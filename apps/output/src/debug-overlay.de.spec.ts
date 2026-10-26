@@ -15,6 +15,7 @@ const INFO: DebugInfo = {
   mediaState: null,
   latencyMs: 61.6,
   rendererFps: 60,
+  version: '0.1.0+1a2b3c4',
   sources: [
     {
       code: 'K1',
@@ -42,12 +43,14 @@ describe('formatDebugLines in German', () => {
       'LiveKit lädt …',
       'Latenz ≈ 62 ms · Renderer 60 fps',
       'K1 Handy Lea · 1920×1080 · 30 fps · 2,8 Mbit/s · Verlust 0,3 % · Puffer 48 ms · kein Bild',
+      'StudioFlow 0.1.0+1a2b3c4',
     ]);
   });
 
   it('names a missing scene and production', () => {
     const lines = formatDebugLines({ ...INFO, productionName: null, sceneName: null, sources: [] });
     expect(lines[0]).toBe('Produktion unbekannt · keine Szene');
-    expect(lines.at(-1)).toBe('Keine Kamera- oder Screen-Quelle im Bild');
+    expect(lines.at(-2)).toBe('Keine Kamera- oder Screen-Quelle im Bild');
+    expect(lines.at(-1)).toBe('StudioFlow 0.1.0+1a2b3c4');
   });
 });

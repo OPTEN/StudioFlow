@@ -20,7 +20,12 @@ COPY packages/ packages/
 COPY apps/studio/ apps/studio/
 COPY apps/sender/ apps/sender/
 COPY apps/output/ apps/output/
-RUN npm run build:web \
+RUN npm run build:studio && npm run build:sender
+# The release workflow passes the commit; the output page then shows its version as 0.1.0+1a2b3c4 in the ?debug=1
+# overlay (apps/output/src/build-info.ts). Declared after the Angular builds, so that a new commit rebuilds only the
+# small output page. (The three builds are `npm run build:web`.)
+ARG STUDIOFLOW_REVISION=
+RUN STUDIOFLOW_REVISION="$STUDIOFLOW_REVISION" npm run build:output \
  && test -s dist/studio/browser/index.html \
  && test -s dist/sender/browser/index.html \
  && test -s dist/output/index.html

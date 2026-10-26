@@ -49,4 +49,6 @@ export const outputDebug: Translation<typeof en> = {
   'output.debug.sync.offline': 'offline, letzter Stand',
   'output.debug.sync.syncing': 'gleicht ab',
   'output.debug.sync.unauthorized': 'kein Zugang',
+
+  'output.debug.version': 'StudioFlow {version}',
 };
