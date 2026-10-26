@@ -295,7 +295,9 @@ the value changes by > 20 %).
 Table `audit_entries` (id, productionId nullable, at, actor `admin` | `device:{id}` | `system`, action, details jsonb).
 Actions: login.succeeded, login.failed, login.locked, scene.live, broadcast.started, broadcast.ended, device.paired,
 device.blocked, device.unblocked, device.removed, pairing.denied, invite.created, invite.revoked, output.key.regenerated,
-output.access.changed, asset.uploaded, asset.deleted, scene.created, scene.deleted. The API derives the log entry
+output.access.changed, asset.uploaded, asset.deleted, scene.created, scene.deleted, account.setup,
+account.password.changed, account.reset (account entries have no production; the snapshot of every production shows
+them in its log). The API derives the log entry
 (`LogEntryDto`: a stable `code`, its `params` and an English `text` fallback) for the Regie, which renders it in the
 user's language from `code` and `params`; `RecentLog` in the snapshot holds the latest 20 entries of the production.
 
@@ -306,12 +308,38 @@ names, request/response types). Implement every route; keep the contract. Succes
 types; errors are RFC 7807 `ProblemDetails` with extension `code` (see `ErrorCodes`) and, for validation, `errors`.
 
 Authentication and authorization:
-- Admin: `POST /api/auth/login` checks `Admin:Username` and `Admin:PasswordHash` (ASP.NET Identity v3 hash; created by
-  `dotnet Opten.StudioFlow.Web.dll hash-password`, which reads the password from stdin) or, for local setups only,
-  `Admin:Password` (plain). Startup fails without one of them. Cookie `sf_session`: HttpOnly, Secure
-  (`SameAsRequest` only in Development/Testing), SameSite=Strict, sliding 12 h. Data Protection keys persisted to
+- Admin account: there is exactly one, created in the **first-run setup** and stored in the table `admin_account`
+  (constant primary key 1 plus a check constraint, so the database refuses a second row, also under concurrent setups;
+  password hashed with the ASP.NET Identity `PasswordHasher`, v3). It is in no configuration: `Admin:Username`,
+  `Admin:Password` and `Admin:PasswordHash` are ignored with a startup warning that names the keys. `Admin:SessionLifetime`
+  and `Admin:Lockout:*` stay.
+- First-run setup: while no account exists the API issues a one-time **setup code** `XXXX-XXXX` (32 unambiguous
+  characters, about 40 bits, from a cryptographic random source). It lives in memory only, is written to the server log
+  (`Setup code: XXXX-XXXX`, `docker compose logs api`) and nowhere else, is new on every start and after every
+  `reset-admin`, and is invalid once the account exists. `GET /api/auth/setup` (public) answers
+  `{ "setupRequired": bool }` and nothing else. `POST /api/auth/setup` (`SetupRequest`: `setupCode`, `username`,
+  `password`) creates the account and signs it in (200 `SessionDto`, cookie); 403 `setup_code_invalid` for a wrong or
+  missing code (compared in constant time, case, spaces and hyphen ignored), 409 `setup_closed` once an account exists
+  (also for the loser of two concurrent setups), 400 `validation_failed` for a user name or password that breaks the
+  rules, 429 under the lockout. Wrong codes count like failed logins (5 per client IP, 20 in total within 15 minutes;
+  the key `#setup` cannot be a user name). Rules: user name 1–64 characters of `A-Za-z0-9._@-`; password 12–256
+  characters, not equal to the user name (ignoring case), not on a built-in list of common passwords. A 400 names the
+  broken rules as codes in `errors` (`username_invalid`, `password_too_short`, `password_too_long`,
+  `password_equals_username`, `password_too_common`); the Regie shows its own texts (decision D7).
+- `POST /api/auth/login` checks the account (user name case-sensitive, the password is verified against a throw-away
+  hash when the user name is wrong, so the time reveals nothing); before the setup it answers 401. Cookie
+  `sf_session`: HttpOnly, Secure (`SameAsRequest` only in Development/Testing), SameSite=Strict, sliding 12 h; it carries
+  a session id and the **security stamp** of the account. Data Protection keys persisted to
   `/data/keys` (`DataProtection:KeysPath`). Lockout: 5 failed attempts per client IP within 15 minutes → 15 minutes
   429 `rate_limited` with `Retry-After`; additionally 20 failures per username in 15 minutes lock the username.
+- `POST /api/auth/password` (admin, CSRF header; `ChangePasswordRequest`: `currentPassword`, `newPassword`) answers 204
+  and renews the cookie of the caller. A wrong current password is 400 `password_incorrect` and counts towards the
+  lockout like a failed login; a new password that breaks the rules is 400 with the codes in `errors.newPassword`.
+  The change renews the security stamp, so every other session is refused at once and its hub connections are closed.
+- Forgotten password: `docker compose exec api dotnet Opten.StudioFlow.Web.dll reset-admin [--yes]` deletes the account
+  (without `--yes` it asks for `yes`; exit code 2 when not confirmed). The running API reads the account every 5 s,
+  notices the change, ends all sessions and opens the first-run setup with a new code (logged); a stopped API does so
+  at its next start. The command writes the audit entry `account.reset`.
 - CSRF: cookie-authenticated unsafe requests (POST/PUT/PATCH/DELETE) must carry `X-StudioFlow: 1` (the Angular
   interceptor sets it); otherwise 403. No CORS is enabled.
 - Hubs reject WebSocket/negotiate requests whose `Origin` host differs from the request host (403).
@@ -571,9 +599,12 @@ Fades use the Web Animations API on opacity (new scene layer over old), `reduced
 ### 9.1 Regie (`apps/studio`, Angular)
 
 Implements `prototype/regie.html` faithfully with real data. `DESIGN.md` + `.impeccable/design.json` are the design
-system (tokens, typography, components, responsive rules). Routes: `/login`, `/` (Regie), `/monitoring`
+system (tokens, typography, components, responsive rules). Routes: `/setup` (first-run setup: setup code, user
+name, password, repeat password, with a message next to each field once it was left and the focus on the first problem
+on submit; the new account is signed in and the Regie opens; the guards lead everyone to `/setup` while no account
+exists and `/setup` to `/login` once it does), `/login`, `/` (Regie), `/monitoring`
 (full-page station metrics: bitrate, fps, resolution, packet loss, RTT, battery, network, tech check; live).
-Header: brand, production name (menu: rename, switch/create production, slates), “Start broadcast” / “End broadcast”
+Header: brand, production name (menu: rename, switch/create production, slates, change password, sign out), “Start broadcast” / “End broadcast”
 (start/end/reset broadcast, confirmation for ending), LIVE runtime (while live; else “READY” / “ENDED”),
 output chip with popover (state, consumers, IPs, format, latency, link copy, IP restriction editor, regenerate key
 with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
@@ -764,8 +795,7 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 | `STUDIOFLOW_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
 | `STUDIOFLOW_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
 | `STUDIOFLOW_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `studioflow`; default `172.30.0.0/24` (only Caddy can reach the API) |
-| `ADMIN__USERNAME` | api | **Required.** Admin user name |
-| `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` | api | One of them is required by the API: ASP.NET Identity v3 hash (setup writes it) or plain password (local development, `--plain-password`, or setup's fallback). Compose passes the unset one as an empty string |
+| – | api | No account setting: the Regie account is created in the first-run setup and lives in the database. `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of older versions are ignored (the API warns when it sees them; setup leaves them out of a new `.env`). `ADMIN__SESSIONLIFETIME` and `ADMIN__LOCKOUT__*` stay |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `studioflow`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
 | `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__STUDIOFLOW` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=studioflow;Username=studioflow;Password=…` |
 | `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | Default `26214400`, `1073741824` |
@@ -778,14 +808,14 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
 
 - `setup.sh` / `setup.ps1`: interactive or `--non-interactive` (`--domain`, `--node-ip` (default: source address of the
   default route, confirmed interactively), `--tls-mode`, `--acme-email`, `--dns-challenge-domain`, `--extra-hosts`,
-  `--frame-ancestors`, `--admin-user`, `--admin-password-stdin`, `--generate-password`, `--plain-password`,
-  `--env-file`, `--force`; PowerShell: `-Domain`, `-NodeIp`, …). Provider credentials come from the environment, the
-  existing `.env` or a hidden prompt. Generates the LiveKit secret and the PostgreSQL password, builds the API image
-  and stores `ADMIN__PASSWORDHASH` from
-  `docker compose run --rm --no-deps -T --entrypoint dotnet api Opten.StudioFlow.Web.dll hash-password` (falls back to
-  `ADMIN__PASSWORD` with a warning). Writes `.env` atomically with mode 600; refuses to overwrite it without
-  `--force`, then keeps `.env.backup-<time>` and reuses the PostgreSQL password, the LiveKit key pair and (if wanted)
-  the admin credentials.
+  `--frame-ancestors`, `--env-file`, `--force`, `--start`; PowerShell: `-Domain`, `-NodeIp`, …). Provider credentials
+  come from the environment, the existing `.env` or a hidden prompt. Generates the LiveKit secret and the PostgreSQL
+  password; it asks for no password, because the Regie account is created in the first-run setup. Writes `.env`
+  atomically with mode 600; refuses to overwrite it without `--force`, then keeps `.env.backup-<time>` and reuses the
+  PostgreSQL password and the LiveKit key pair (account settings of older versions are not carried over, with a
+  notice). With `--start` (an interactive run asks) it starts the stack and prints the setup code from `docker compose
+  logs api`, retrying while the API starts (`sf_show_setup_code` / `Show-SfSetupCode`: the newest of the line
+  `Setup code: XXXX-XXXX` and the line `The Regie account exists` counts).
 - `backup.sh` / `backup.ps1` (`--dir`, `--keep N`, `--label`): `pg_dump -Fc` via `docker compose exec`, the volumes
   media, keys and caddy_data as `.tar.gz` (via `toolbox`), `backup-info.txt` and `SHA256SUMS` into
   `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time. The folder logic (names,
@@ -813,11 +843,11 @@ Scripts (repository root; bash and PowerShell 7.4+ with the same options and beh
 What the scripts and Caddy require from the API image:
 - `ENTRYPOINT`/`WORKDIR` such that `dotnet Opten.StudioFlow.Web.dll` works in the working directory, BusyBox `wget`
   for the healthcheck, `/health/live` on port 8080.
-- `hash-password`: reads the password from stdin (sent **without** a trailing newline; tolerate one), prints the
-  Identity v3 hash as the last stdout line, exit 0.
+- `reset-admin [--yes]`: deletes the Regie account (section 5); exit 0, 2 when the operator did not confirm, 1 on
+  errors (only the exception type is printed).
 - `broadcast-status`: exit code 3 if any production is live, 0 if none, any other code on error (`update` and
   `restore` then refuse unless forced).
-- Treat empty `ADMIN__PASSWORDHASH` / `ADMIN__PASSWORD` as unset; trust `X-Forwarded-*` only from
+- Trust `X-Forwarded-*` only from
   `FORWARDEDHEADERS__KNOWNNETWORKS__0` (ForwardLimit 1: Caddy replaces any client-sent `X-Forwarded-For`).
 
 ## 11. Testing (minimum)

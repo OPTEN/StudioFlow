@@ -79,7 +79,7 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 
 **Integration test recipe (`INT-*`).**
 - One `PostgreSqlContainer` per test class (xUnit class fixture), one database per test method (`CREATE DATABASE t_<guid>`) so tests run in parallel; migrations applied by the factory.
-- Factory environment `Testing` (cookie `Secure` policy `SameAsRequest`, see spec 5), but all clients use `https://localhost` base addresses so `Secure` is emitted. Configuration overrides (the names `docker-compose.yml` passes as `STUDIOFLOW__…`, `ADMIN__…`, `LIVEKIT__…`, `MEDIA__…`, `DATAPROTECTION__…`, `FORWARDEDHEADERS__…` environment variables): `Admin:Username`, `Admin:Password`, `StudioFlow:PublicBaseUrl=https://studioflow.test`, `LiveKit:ApiKey`, `LiveKit:ApiSecret`, `LiveKit:InternalUrl=<fake server>`, `ConnectionStrings:StudioFlow=<Testcontainers database>`, `Media:Path=<temp>`, `Media:MaxImageBytes=1048576`, `Media:MaxVideoBytes=2097152`, `DataProtection:KeysPath=<temp>`, `ForwardedHeaders:KnownNetworks:0=<test proxy network>`.
+- Factory environment `Testing` (cookie `Secure` policy `SameAsRequest`, see spec 5), but all clients use `https://localhost` base addresses so `Secure` is emitted. Configuration overrides (the names `docker-compose.yml` passes as `STUDIOFLOW__…`, `LIVEKIT__…`, `MEDIA__…`, `DATAPROTECTION__…`, `FORWARDEDHEADERS__…` environment variables): `StudioFlow:PublicBaseUrl=https://studioflow.test`, `LiveKit:ApiKey`, `LiveKit:ApiSecret`, `LiveKit:InternalUrl=<fake server>`, `ConnectionStrings:StudioFlow=<Testcontainers database>`, `Media:Path=<temp>`, `Media:MaxImageBytes=1048576`, `Media:MaxVideoBytes=2097152`, `DataProtection:KeysPath=<temp>`, `ForwardedHeaders:KnownNetworks:0=<test proxy network>`.
 - Replaced services: `TimeProvider` → `FakeTimeProvider` (all expiry/lockout/rate-limit/fade-guard code must read `TimeProvider`, [GAP-01]); `ILiveKitRoomService` → recording fake (`RemoveParticipant`, `ListParticipants` calls captured, scripted failures); remote IP → test middleware that sets `HttpContext.Connection.RemoteIpAddress` from header `X-Test-Remote-IP` (and forwarded-header trust configured for the test proxy network).
 - SignalR: `HubConnectionBuilder().WithUrl(new Uri(server.BaseAddress, "/hubs/studio"), o => { o.HttpMessageHandlerFactory = _ => server.CreateHandler(); o.WebSocketFactory = (ctx, ct) => server.CreateWebSocketClient().ConnectAsync(ctx.Uri, ct); o.Headers["Cookie"] = cookie; })`, JSON protocol with the same camelCase/enum options as the server. Helper `HubRecorder` stores every `event`, `tally`, `presence`, `telemetry`, `resync` message with arrival time.
 - Webhook helper `LiveKitWebhookSigner.Sign(body)` builds the HS256 JWT (`iss`=API key, `sha256` claim = base64 SHA-256 of the body) exactly like LiveKit.
@@ -131,15 +131,15 @@ STUDIOFLOW_NODE_IP=127.0.0.1
 STUDIOFLOW_SUBNET=172.31.250.0/24
 STUDIOFLOW_FRAME_ANCESTORS=https://embed.e2e.test   # 'self' is always allowed by Caddy
 # STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:18443   # only when Caddy is not on 443 (port override of docker-compose.test.yml)
-ADMIN__USERNAME=e2e-admin
-ADMIN__PASSWORD=<fixed test-only value>      # plain password path (setup.sh --plain-password, "local setups only", spec 5); E2E-OPS-15 also runs with ADMIN__PASSWORDHASH
 LIVEKIT_API_KEY=e2e_lk_key
 LIVEKIT_API_SECRET=<fixed test-only value, starts with a letter, ≥ 32 chars>
 POSTGRES_PASSWORD=<fixed test-only value>
 ```
 
-.NET reads environment variables case-insensitively, so `ADMIN__USERNAME` binds to `Admin:Username`. The values are never used outside tests; the production
-checks (E2E-OPS-02) assert that `setup.sh` never emits fixed values.
+There is no account setting. The harness creates the Regie account (user `e2e-admin`, a fixed test-only password) once per stack in the
+**first-run setup**: global setup, and every `ensureHealthy`, reads the setup code from `docker compose logs api`, `POST`s `/api/auth/setup` on the
+direct API port and then logs in (`support/stack.ts`, `ensureHarnessAccount`). A reused stack that has the account is left alone. The values are never
+used outside tests; the production checks (E2E-OPS-02) assert that `setup.sh` never emits fixed values.
 
 #### 1.2.4 Resetting state and isolation
 
@@ -366,7 +366,7 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 <!--SUMMARY-->
 | Area | Unit | Integration | E2E | Total | P0 | P1 | P2 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `AUTH` Auth and security | 11 | 26 | 27 | 64 | 30 | 27 | 7 |
+| `AUTH` Auth and security | 12 | 29 | 31 | 72 | 36 | 29 | 7 |
 | `PAIR` Pairing | 8 | 17 | 20 | 45 | 19 | 21 | 5 |
 | `SCENE` Scenes and editing | 20 | 7 | 24 | 51 | 19 | 26 | 6 |
 | `SWITCH` Switching, broadcast, tally | 9 | 6 | 20 | 35 | 18 | 12 | 5 |
@@ -379,7 +379,7 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `OPS` Operations | 2 | 0 | 27 | 29 | 13 | 13 | 3 |
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
-| **Total** | **89** | **91** | **240** | **420** | **177** | **184** | **59** |
+| **Total** | **90** | **94** | **244** | **428** | **183** | **186** | **59** |
 <!--/SUMMARY-->
 
 Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration)
@@ -403,12 +403,16 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 | `/openapi/**` | not mapped in Production | 404 |
 
 **UNIT-AUTH-01** · P0 · xunit — Password hash verification
-- Steps: hash `"s3cret-Pass"` with the Identity v3 hasher (same call as `hash-password`); verify correct, wrong, empty, 10 kB password, unicode password (`"Pässwörd-ü"`), hash with wrong version byte, truncated hash, non-base64 hash.
-- Expect: only the correct password succeeds; malformed hashes return failure without throwing; output of `hash-password` starts with `AQAAAA` and two hashes of the same password differ.
+- Steps: hash `"s3cret-Pass"` with `AdminPasswordHasher` (Identity v3); verify correct, wrong, empty, 10 kB password, unicode password (`"Pässwörd-ü"`), hash with wrong version byte, truncated hash, non-base64 hash.
+- Expect: only the correct password succeeds; malformed hashes return failure without throwing; a hash starts with `AQAAAA` and two hashes of the same password differ.
 
-**UNIT-AUTH-02** · P0 · xunit — Admin credential configuration validation [GAP-23]
-- Steps: build options with (a) neither `Admin:PasswordHash` nor `Admin:Password`, (b) only `Password`, (c) only `PasswordHash`, (d) both, (e) empty username.
-- Expect: (a) and (e) throw `InvalidOperationException` naming the missing key, message contains no secret values; (b) and (c) accepted; (d) the hash is used and the plain password ignored.
+**UNIT-AUTH-02** · P0 · xunit — Account state and password rules [GAP-23]
+- Steps: `AdminAccountState` with a fake store: no account, an account, an account deleted or changed elsewhere (`RefreshAsync`), a refresh whose database read started before a use case finished; `Verify` with the right and wrong pairs (also wrong user name: a hash is still checked); `IsCurrent` with the right and an old security stamp. `AdminAccountRules`: user names (1–64 of `A-Za-z0-9._@-`), passwords of 11/12/256/257 characters, the user name in any case, common passwords in any case.
+- Expect: no account → the first-run setup is open and a setup code is issued once and logged; an account closes it and clears the code; a change elsewhere is reported (`RefreshAsync` returns true) and ends old stamps; a stale read never overwrites a newer state; every rule reports its code (`username_invalid`, `password_too_short`, `password_too_long`, `password_equals_username`, `password_too_common`); no message contains a password.
+
+**UNIT-AUTH-10** · P0 · xunit — Setup code
+- Steps: issue many codes; match with different case, spaces and hyphen placement, wrong, empty, `null`; clear; issue again.
+- Expect: `XXXX-XXXX` from the 32-character alphabet without I, O, 0, 1; all different; only the current code matches (constant-time comparison via `Secrets.FixedTimeEquals`); nothing matches before the first issue or after `Clear`.
 
 **UNIT-AUTH-03** · P1 · xunit — Constant-time secret comparison
 - Steps: compare equal strings, strings differing in the first/last char, different lengths, empty, null; verify device secrets through `SecretHasher.Verify(secret, storedSha256)`.
@@ -550,6 +554,18 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Steps: pair a device, create an invite, regenerate the output key; dump all tables (`pg_dump --data-only`) and the Data Protection directory.
 - Expect: the plaintext device secret and poll token do not appear (device secrets and poll tokens are stored as lowercase-hex SHA-256 hashes; poll tokens only in memory); invite tokens and the output key are stored in clear because the Regie must show their URLs (one-time and revocable, documented in the security review); the Data Protection directory is not part of any API response.
 
+**INT-AUTH-27** · P0 · xunit — First-run setup [issue 4]
+- Steps: app without an account. `GET /api/auth/setup`; login; an admin route; setup with a wrong, empty, missing code; five wrong codes from one address; user names and passwords that break the rules (valid code); setup with the valid code (`  regie  ` as user name); setup again with the old, a wrong and an empty code; eight concurrent setups with the valid code; a restart on the same database with and without an account; the app with `Admin:Username`/`Admin:Password` set.
+- Expect: `{"setupRequired":true}` and nothing else, the code is in the log (`Setup code: …`) and in no response; login 401, admin routes 401; wrong/missing code 403 `setup_code_invalid` and nothing created; the fifth wrong code 429 with `Retry-After` and then the right code from that address is 429 too; rule violations 400 `validation_failed` with the codes in `errors` and the code stays valid; the valid code → 200 `SessionDto{regie}` with a cookie, the account row has an Identity hash (no plain password), the audit entry `account.setup` has user name and address and no secret, the snapshot log shows `accountSetUp`, the status is `false` and the code is gone; every further attempt → 409 `setup_closed`; exactly one of the concurrent setups wins (one `admin_account` row, one audit entry) and the others get 409; the database refuses a second row; after a restart with an account the setup stays closed and no code is logged, without an account there is a new code and the old one is 403; the old `Admin:*` settings are ignored with a warning that names the keys and not the values.
+
+**INT-AUTH-28** · P0 · xunit — Password change [issue 4]
+- Steps: two sessions with a studio hub connection each; the first changes the password (`POST /api/auth/password`); wrong current password (once, then five times); new passwords that break the rules; without a session; without the CSRF header.
+- Expect: 204 and a renewed cookie for the caller; the second session is refused (401) and its hub connection is closed, the caller's old cookie is refused and the renewed one works, its hub connection stays; the old password no longer logs in, the new one does; the audit entry `account.password.changed` has no password; the snapshot log shows `passwordChanged`; wrong current password 400 `password_incorrect`, nothing changes, the fifth failure locks like a login (429); rules 400 with the codes in `errors.newPassword`; 401 without a session; 403 without the header.
+
+**INT-AUTH-29** · P1 · xunit — reset-admin [issue 4]
+- Steps: `reset-admin --yes` against the database of a running app; without `--yes` with the input `no`, empty and `yes`; no account; database unreachable; a restart afterwards.
+- Expect: the account is deleted and the audit entry `account.reset` (actor `system`) written; the running app opens the setup within the 5 s maintenance tick, ends the old session (401), closes its hub connection and logs a new code that works; unconfirmed → exit 2 and nothing deleted; no account → exit 0 with a message; unreachable database → exit 1 without the connection string; a restart of the app finds the setup open with a new code; `hash-password` is no command any more.
+
 **E2E-AUTH-01** · P0 · pw — Login via UI and cookie flags
 - Steps: open `/` unauthenticated; land on `/login`; fill username/password (`getByLabel(/benutzer/i)`, `getByLabel(/passwort/i)`, `getByRole('button', {name: /anmelden/i})` [GAP-27]); submit.
 - Expect: URL `/`, `[data-testid=regie-ready]` within `T-LOAD`; `context.cookies()` shows `sf_session` with `httpOnly:true, secure:true, sameSite:'Strict', path:'/'`; `document.cookie` does not contain `sf_session`; header shows production name and a clock.
@@ -659,6 +675,22 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 **E2E-AUTH-27** · P1 · pw — Server surface is not exposed
 - Steps: request `/openapi/v1.json`, `/swagger`, `/metrics`, `/health/live` and `/health/ready` through Caddy and `/appsettings.json`, `/.env`, `/Opten.StudioFlow.Web.dll`.
 - Expect: OpenAPI/swagger/metrics/appsettings/.env/dll are 404 (or SPA HTML, never their content); health endpoints answer only the status document (no connection strings, versions or exception text).
+
+**E2E-AUTH-30** · P0 · pw — reset-admin reopens the first-run setup [issue 4]
+- Steps: sign in over the API; `docker compose exec api dotnet Opten.StudioFlow.Web.dll reset-admin --yes`; poll `GET /api/auth/setup`; use the old session; log in; read the API log.
+- Expect: within 60 s `setupRequired` is `true`; the old session is 401; the login is 401; the log has a new `Setup code: XXXX-XXXX` that differs from the last one.
+
+**E2E-AUTH-31** · P0 · pw — First-run setup in the browser [issue 4]
+- Steps: with no account open `/` and `/login`; submit a short password; submit a wrong code with a good password; submit the right code (typed in lower case) with the good password.
+- Expect: both pages lead to `/setup` ("First-run setup", labelled fields); a short password is explained next to the field without a request; the wrong code is 403 and explained next to the code field; the right code is 200, the browser lands in the Regie and it is ready; the status is `false`, the code is gone from the log's newest line, the account signs in over the API.
+
+**E2E-AUTH-32** · P0 · pw — The account survives a restart [issue 4]
+- Steps: `docker compose restart api`; status, log, a `POST /api/auth/setup`, `/setup` in the browser, a login.
+- Expect: `setupRequired` is `false` and the newest log line says the account exists; the setup answers 409 `setup_closed`; `/setup` leads to `/login`; the login works.
+
+**E2E-AUTH-33** · P1 · pw — Password change in the production menu [issue 4]
+- Steps: signed in in the browser and over the API; production menu › "Change password" with the current and a new password; use the other session, the old and the new password, the browser session; change back.
+- Expect: 204 and a toast "Password changed."; the other session is 401; the old password is 401; the new password logs in; the browser session continues; the harness password is restored.
 
 ### 2.2 PAIR – Pairing
 
@@ -1984,8 +2016,8 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its German «fehlt in .env» message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged; a digest behind the tag is allowed, Renovate adds it); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
 
 **E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
-- Steps: run `printf '%s' "$PW" | ./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --admin-password-stdin --env-file <dir>/.env` twice into two directories, once with `--generate-password`, once with `--plain-password`, once without `--node-ip` (auto-detection); invalid inputs (invalid IP, `--tls-mode foo`, password shorter than 12 characters; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
-- Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode, admin user; secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `studioflow`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); the admin password is stored as `ADMIN__PASSWORDHASH` starting `AQAAAA` with `ADMIN__PASSWORD` empty (the plain password only with `--plain-password`) and is never printed or logged (except the single display of `--generate-password`); `STUDIOFLOW_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; invalid inputs exit ≠ 0 with a German «Fehler: …» message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets.
+- Steps: run `./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --env-file <dir>/.env` twice into two directories, once without `--node-ip` (auto-detection); the options of older versions (`--admin-password-stdin`, `--generate-password`, `--plain-password`); a `.env` with `ADMIN__USERNAME`/`ADMIN__PASSWORD`/`ADMIN__PASSWORDHASH` replaced with `--force`; invalid inputs (invalid IP, `--tls-mode foo`, an unknown option; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
+- Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode; no `ADMIN__*` line and no password prompt or display (the Regie account is created in the first-run setup; the next-steps text names `docker compose logs api | grep 'Setup code'`); secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `studioflow`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); `STUDIOFLOW_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; the old options are unknown (exit 1, no file); old account settings are dropped with the notice "no longer used" and the old password is never printed; invalid inputs exit ≠ 0 with an `Error: …` message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets. With `--start` the script starts the stack and prints the setup code (or "The Regie account exists already").
 
 **E2E-OPS-03** · P1 · pw (Windows runner) — `setup.ps1`
 - Steps/Expect: as -02 with `setup.ps1` (same options, same results); ACL of `.env` limited to the current user.
@@ -2034,9 +2066,9 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Steps: run the soak-light scenario (pairing, switching, uploads, block, key rotation, restarts) and read `docker compose logs`.
 - Expect: no device secret, output key, password, LiveKit secret, JWT, `access_token` or `k` value; no stack traces for expected 4xx; log level default Information; structured templates (no string concatenation of secrets); Caddy access log redacts `access_token`/`k`.
 
-**E2E-OPS-15** · P1 · pw — Admin hash path and startup validation
-- Steps: `dotnet Opten.StudioFlow.Web.dll hash-password` with the password on stdin (in the api image); start the API with that hash; start with neither password nor hash.
-- Expect: the hash logs in; the process without credentials exits ≠ 0 with a message naming `Admin:PasswordHash`/`Admin:Password` and no secret; the password never appears in `docker inspect` when hashed.
+**E2E-OPS-15** · P1 · pw — Regie account commands
+- Steps: `dotnet Opten.StudioFlow.Web.dll reset-admin` in the api image without `--yes` and with an empty stdin; with `--yes` and an unreachable database (the password in the connection string is a known probe); `docker inspect` of the running api container.
+- Expect: the unconfirmed run prints "Type yes to continue", exits 2 and says the account was not changed; the unreachable database exits 1 and the output holds no connection string or password; the api container has no `ADMIN__USERNAME`/`ADMIN__PASSWORD` variable. The reset on the running stack is `E2E-AUTH-30`.
 
 **E2E-OPS-16** · P1 · pw — No external requests at runtime
 - Steps: run the stack on a Docker network created with `--internal` (no egress) in `internal` TLS mode; open Regie, sender, output; record all requests.
@@ -2479,8 +2511,8 @@ Pin: a `Hello` whose sessionId is not the current one and was replaced earlier i
 **GAP-22 · LiveKit webhook semantics.** Not defined: idempotency, out-of-order events, unknown identities/rooms, malformed bodies.
 Pin: state-based processing (duplicates and reordering converge), unknown identities/events/rooms → 200 and ignored, malformed JSON → 400, > 1 MB → 413.
 
-**GAP-23 · Admin credential precedence.** Spec 5 allows `Admin:PasswordHash` or `Admin:Password`.
-Pin: the hash wins if both are set; neither → startup fails (non-zero exit) with a message naming the keys and no values.
+**GAP-23 · Admin credential precedence (closed by issue 4).** Spec 5 used to allow `Admin:PasswordHash` or `Admin:Password`.
+Pin: there is no account setting any more. The account lives in the database and is created in the first-run setup with a one-time code from the server log (spec 5). `Admin:Username`, `Admin:Password` and `Admin:PasswordHash` are ignored; the API warns at startup and names the keys, never the values. Tests: `INT-AUTH-27` (ignored settings), `UNIT-AUTH-02`, `E2E-OPS-02`.
 
 **GAP-24 · Output page details.** Not defined: what `bg=transparent` covers, the content of `debug=1`, and what a reloading output shows while the broadcast is live.
 Pin: transparent makes the page, the stage and the scene background colour transparent (contain bars and missing-source placeholders stay opaque); `debug=1` shows `scene`, `revision`, `hub`, `livekit`, per source `<code> <w>x<h> <fps> fps <kbps> kbps` and `latency <n> ms`; a live production never flashes the standby slate on load.
@@ -2503,7 +2535,7 @@ Pin: battery 0–100, loss 0–100, bitrate/fps/size ≥ 0 else `null`; ≤ 10 s
 **GAP-30 · Regie-Chat semantics.** Not defined: text trimming, behaviour for blocked/offline devices, queueing.
 Pin: trimmed 1–140 chars; always 202; delivered only to a connected device, never queued; the Regie shows a toast when the device is offline.
 
-**GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `dotnet Opten.StudioFlow.Web.dll hash-password`; `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.StudioFlow.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
+**GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `reset-admin` (before issue 4: `hash-password`); `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.StudioFlow.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
 Pin: the API image provides `broadcast-status` (exit codes 0/3, other = unknown) and spec 5 is extended; the scripts refuse while live or unknown unless `--force`; backup folders contain `database.dump`, `media.tar.gz`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt`, `SHA256SUMS` (suffix `-2` on a name clash); `restore.sh <dir>` verifies the checksums, writes a `…_vor-restore` safety backup, restores the database into a new database before swapping, and asks for confirmation unless `--yes`.
 
 **GAP-32 · Database outage behaviour.** Spec 5 defines `/health/live` and `/health/ready` but not behaviour of writes and hubs while PostgreSQL is down.
@@ -2535,7 +2567,7 @@ Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE
 | 8 | `Program.cs` (`MapOpenApi()` unconditional, `appsettings.json` `AllowedHosts: *`) vs Spec 10 (strict exposure) | Hardening | GAP-04c, `E2E-OPS-18` |
 | 9 | Spec 4.5 vs `SlotState.Paused`/`Starting` (Contracts/Enums.cs) | Unmapped states | GAP-08 |
 | 10 | Spec 10 (TLS modes `dns \| internal \| public`, ports 80/443) vs `.env.example`/`setup.sh`/`docker-compose.yml` (`internal \| acme \| custom \| dns-<provider>`, 443/udp too) | TLS mode names, ports | GAP-16 |
-| 11 | Spec 5 (only `hash-password`) vs `update.sh`/`restore.sh` (`broadcast-status`) | API CLI commands | GAP-31 |
+| 11 | Spec 5 (only `reset-admin`, before issue 4 `hash-password`) vs `update.sh`/`restore.sh` (`broadcast-status`) | API CLI commands | GAP-31 |
 
 ### 7.2 Findings of the E2E run (`tests/e2e/known-bugs.json`)
 

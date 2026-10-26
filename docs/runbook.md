@@ -182,20 +182,38 @@ images of a release instead, without Git and without a build: see section 14.
 
 `setup` asks for: LAN IPv4 (detected automatically, confirm it), TLS mode (+ email and token), domain, additional
 addresses (`internal` only), origins that may embed the output (`STUDIOFLOW_FRAME_ANCESTORS`, for example the domain
-of the proxy), admin user and password (twice, hidden, or leave empty for a generated password that is shown exactly
-once). It generates the LiveKit keys and the database password, builds the API image and stores only the **hash** of
-the password. The `.env` gets permissions 600.
+of the proxy). It generates the LiveKit keys and the database password; the `.env` gets permissions 600. It asks for
+**no password**: the Regie account is created in the first-run setup of the Regie (below), and `.env` holds no account
+setting. At the end it offers to start the stack and then shows the setup code.
 
-- Without prompts: `./setup.sh --non-interactive --domain … --tls-mode … --generate-password` (all options:
+- Without prompts: `./setup.sh --non-interactive --domain … --tls-mode … --start` (all options:
   `./setup.sh --help`, `Get-Help ./setup.ps1 -Full`). Tokens then come from the environment.
-- Run again (different domain, new password): `./setup.sh --force`. The old file stays as `.env.backup-<time>`; the
+- Run again (different domain): `./setup.sh --force`. The old file stays as `.env.backup-<time>`; the
   database password and the LiveKit keys are kept (the database password cannot be changed through the `.env` after the
-  first initialisation). Then `docker compose up -d`.
+  first initialisation). `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of an older `.env` are no longer
+  used and are not carried over. Then `docker compose up -d`.
 - **Put the `.env` into the password vault (Keeper) right away.** It is not in Git and not in the backups.
 - Local development with `ng serve`: see `docker-compose.override.example.yml`.
 
-First login: `https://<domain>/` with the admin account. On first start the API creates the database and the
-production "Webinar".
+### First-run setup of the Regie account
+
+As long as no Regie account exists, the API writes a one-time **setup code** to its log and the Regie shows the page
+"First-run setup" instead of the login. The code protects the short time between the start and the setup: whoever
+reaches the page first from the network still needs it.
+
+1. Read the code: `docker compose logs api | grep 'Setup code'` (the line `Setup code: K7QM-3XD2`;
+   PowerShell: `docker compose logs api | Select-String 'Setup code'`). `./setup.sh --start` prints it at the end. The
+   API writes it a few seconds after the start.
+2. Open `https://<domain>/`, enter the code, a user name and a password (at least 12 characters, not the user name, not a
+   common password) and repeat the password. You are signed in at once and the production "Webinar" is ready (on first
+   start the API creates the database and that production).
+3. The code is valid until the account exists or the API restarts (then a new one is logged). Wrong codes count like
+   failed logins: 5 from the same address lock it for 15 minutes.
+
+The account is in the database and therefore part of every backup and restore. After the setup, the first-run setup
+never opens again, unless the account is reset (section 11, "Login does not work"). Change the password in the Regie:
+production menu (the production name in the header) › Change password; it needs the old password and signs out all other
+sessions.
 
 The interface language follows the browser by default and can be changed in the Regie (section 13).
 
@@ -502,9 +520,24 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 ### Login does not work
 
 - After 5 failed attempts from the same IP the login is locked for 15 minutes (the API answers with 429).
-- Forgot the password: `./setup.sh --force`, answer no to the question about keeping the existing admin password, set a
-  new password, then `docker compose up -d`.
-- `docker compose logs api` at start: if `ADMIN__PASSWORDHASH`/`ADMIN__PASSWORD` is missing, the API does not start.
+- Forgot the password: reset the account, then create a new one in the first-run setup:
+
+  ```bash
+  docker compose exec api dotnet Opten.StudioFlow.Web.dll reset-admin      # asks for "yes"; --yes skips the question
+  docker compose logs api | grep 'Setup code'                                # the new code, a few seconds later
+  ```
+
+  The command deletes the account only (productions, scenes, devices and media stay). The running API notices within 5
+  seconds, signs everybody out and opens the first-run setup with a new code. In a script use `-T` and `--yes`:
+  `docker compose exec -T api dotnet Opten.StudioFlow.Web.dll reset-admin --yes`. Exit code 2: not confirmed.
+  Anyone who can run Docker commands on the server can do this; that is the recovery path by design.
+- The Regie shows "First-run setup" instead of the login: there is no account yet (fresh install, restore of an empty
+  database or a reset). Read the code as above. If the code is rejected, the API restarted since: read the newest one.
+- `docker compose logs api` at start: `The Regie account exists` means the login is open, `Setup code: …` that the
+  first-run setup is open. `Admin:Username … are ignored` warns about old `ADMIN__*` settings in the environment:
+  remove them, they have no effect.
+- A password change signs out every other session at once. If one of them is a Regie open on another device, it
+  returns to the login.
 
 ### Simulating network problems on purpose (test, never during a broadcast)
 
@@ -530,6 +563,10 @@ The setting stays until `clear` or until the LiveKit container is recreated.
 - Never set `STUDIOFLOW_TRUSTED_PROXIES` to the LAN – otherwise the IP restriction of the output can be bypassed with a
   forged `X-Forwarded-For`.
 - Give the output link only to the proxy; if you suspect it has leaked, regenerate the key in the Regie.
+- Create the Regie account right after the first start: until then the first-run setup is open to whoever knows the
+  setup code, and the code is in the API log (anyone with access to Docker on the server can read it, nobody else).
+  Do not open a new installation to the internet before the account exists. The log, the backups and the database
+  hold no password: only its hash.
 - Keep the operating system and Docker up to date; apply StudioFlow updates as described in section 8.
 
 ## 13. Interface language
@@ -573,7 +610,7 @@ are made: `docs/releasing.md`.
 | Image | Content |
 |---|---|
 | `ghcr.io/opten/studioflow-web` | Caddy (TLS, DNS modules) with the Regie, sender and output frontends |
-| `ghcr.io/opten/studioflow-api` | The API with its commands (`hash-password`, `broadcast-status`) |
+| `ghcr.io/opten/studioflow-api` | The API with its commands (`reset-admin`, `broadcast-status`) |
 | `ghcr.io/opten/studioflow-backup` | The automatic backups (profile `backup`, section 7); pulled only when `COMPOSE_PROFILES=backup` is set in `.env` |
 
 All three always have the same version (`0.4.2`): they are built from one commit and must match. `livekit` and `postgres`
@@ -591,10 +628,11 @@ are third-party images with a fixed version in the Compose file.
    tar -xzf studioflow-X.Y.Z.tar.gz && cd studioflow-X.Y.Z    # Windows 10/11: the same command works in a terminal
    ```
 
-3. `./setup.sh` (Windows: `pwsh ./setup.ps1`) asks the questions of section 5, pulls the API image for the password hash
-   and writes the `.env`. Put it into the password vault.
+3. `./setup.sh` (Windows: `pwsh ./setup.ps1`) asks the questions of section 5 and writes the `.env`. Put it into the
+   password vault.
 4. `docker compose up -d` pulls the images of this release and starts the stack; `docker compose ps` shows four
-   healthy services. First login as in section 5.
+   healthy services. Create the account in the first-run setup as in section 5 (`./setup.sh --start` does steps 3 and 4
+   and shows the setup code).
 
 The folder holds `docker-compose.yml` (the release file: it names the images instead of building them), `.env.example`,
 the `setup`, `update`, `backup` and `restore` scripts, this runbook (`docs/runbook.md`), `QUICKSTART.md` and `VERSION`.
