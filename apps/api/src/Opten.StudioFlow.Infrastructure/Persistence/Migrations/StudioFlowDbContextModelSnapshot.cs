@@ -400,6 +400,16 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("tenant_id");
 
+                    b.Property<string>("TextSources")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("text_sources");
+
+                    b.Property<string>("TextTheme")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("text_theme");
+
                     b.HasKey("Id")
                         .HasName("pk_productions");
 

@@ -3,16 +3,18 @@ using System.Diagnostics.CodeAnalysis;
 namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
-/// A parsed source reference as stored in scene items: <c>{deviceId}/{slot}</c> for a device slot or <c>{assetId}</c>
-/// for an uploaded image or video (spec 4.4). Mirrors <c>parseSourceRef</c> in <c>packages/scene-model</c>.
+/// A parsed source reference as stored in scene items: <c>{deviceId}/{slot}</c> for a device slot, <c>{assetId}</c> for
+/// an uploaded image or video or <c>{textId}</c> for a text (spec 4.4). Mirrors <c>parseSourceRef</c> in
+/// <c>packages/scene-model</c>.
 /// </summary>
 public readonly record struct SourceRef
 {
-    private SourceRef(string? deviceId, string? slot, string? assetId)
+    private SourceRef(string? deviceId, string? slot, string? assetId, string? textId)
     {
         DeviceId = deviceId;
         Slot = slot;
         AssetId = assetId;
+        TextId = textId;
     }
 
     /// <summary>Device id for device slots.</summary>
@@ -24,9 +26,11 @@ public readonly record struct SourceRef
     /// <summary>Asset id for media sources.</summary>
     public string? AssetId { get; }
 
-    /// <summary>True for a device slot, false for an asset.</summary>
+    /// <summary>Text id for text sources.</summary>
+    public string? TextId { get; }
+
+    /// <summary>True for a device slot, false for an asset or a text.</summary>
     [MemberNotNullWhen(true, nameof(DeviceId), nameof(Slot))]
-    [MemberNotNullWhen(false, nameof(AssetId))]
     public bool IsDevice => DeviceId is not null;
 
     /// <summary>The reference of a device slot.</summary>
@@ -44,13 +48,19 @@ public readonly record struct SourceRef
         var slash = value.IndexOf('/', StringComparison.Ordinal);
         if (slash < 0)
         {
-            if (!EntityIds.IsValid(value, EntityIds.Asset))
+            if (EntityIds.IsValid(value, EntityIds.Asset))
             {
-                return false;
+                sourceRef = new SourceRef(null, null, value, null);
+                return true;
             }
 
-            sourceRef = new SourceRef(null, null, value);
-            return true;
+            if (EntityIds.IsValid(value, EntityIds.Text))
+            {
+                sourceRef = new SourceRef(null, null, null, value);
+                return true;
+            }
+
+            return false;
         }
 
         var deviceId = value[..slash];
@@ -60,10 +70,10 @@ public readonly record struct SourceRef
             return false;
         }
 
-        sourceRef = new SourceRef(deviceId, slot, null);
+        sourceRef = new SourceRef(deviceId, slot, null, null);
         return true;
     }
 
     /// <inheritdoc />
-    public override string ToString() => IsDevice ? ForDevice(DeviceId, Slot) : AssetId;
+    public override string ToString() => IsDevice ? ForDevice(DeviceId, Slot) : AssetId ?? TextId ?? string.Empty;
 }

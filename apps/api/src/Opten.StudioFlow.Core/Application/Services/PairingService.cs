@@ -213,10 +213,10 @@ public sealed class PairingService(
                 }
 
                 var devices = await context.Data.Devices.ListAsync(productionId, cancellationToken);
-                var assets = await context.Data.Assets.ListAsync(productionId, cancellationToken);
+                var catalog = await context.CatalogAsync(cancellationToken);
                 var kind = invite.DeviceKind;
                 var name = TextRules.Truncate(request.Name, TextRules.DeviceNameMax) ?? Device.DefaultName(kind, devices.Select(d => d.Name));
-                var (device, secret) = Device.Pair(productionId, name, kind, request.Platform, invite.PairingMethod, context.Now, new SourceCatalog(devices, assets).CodesInUse);
+                var (device, secret) = Device.Pair(productionId, name, kind, request.Platform, invite.PairingMethod, context.Now, catalog.CodesInUse);
                 invite.Redeem(clientId, device.Id, context.Now);
                 context.Data.Devices.Add(device);
                 context.Emit(revision => new InviteRemovedEvent(revision, invite.Id));

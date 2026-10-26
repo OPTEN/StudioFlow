@@ -186,6 +186,25 @@ internal static class SceneEndpoints
         TypedResults.Ok(await scenes.ReplaceItemsAsync(productionId, sceneId, body, cancellationToken));
 }
 
+/// <summary>Texts and lower thirds.</summary>
+internal static class TextEndpoints
+{
+    public static async Task<IResult> CreateAsync(string productionId, [FromBody] CreateTextSourceRequest body, TextService texts, CancellationToken cancellationToken)
+    {
+        var text = await texts.CreateAsync(productionId, body, cancellationToken);
+        return TypedResults.Created($"/api/productions/{productionId}/texts/{text.Id}", text);
+    }
+
+    public static async Task<IResult> UpdateAsync(string productionId, string textId, [FromBody] UpdateTextSourceRequest body, TextService texts, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await texts.UpdateAsync(productionId, textId, body, cancellationToken));
+
+    public static async Task<IResult> DeleteAsync(string productionId, string textId, TextService texts, CancellationToken cancellationToken)
+    {
+        await texts.DeleteAsync(productionId, textId, cancellationToken);
+        return TypedResults.NoContent();
+    }
+}
+
 /// <summary>Regie actions on devices.</summary>
 internal static class DeviceAdminEndpoints
 {

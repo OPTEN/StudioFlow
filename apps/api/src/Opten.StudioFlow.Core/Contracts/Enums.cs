@@ -59,6 +59,35 @@ public enum SourceKind
 
     /// <summary>Uploaded video. Slot code M1, M2, …</summary>
     Video,
+
+    /// <summary>Text or lower third rendered as HTML. Slot code T1, T2, …</summary>
+    Text,
+}
+
+/// <summary>Fixed design of a text source; the colours come from the production's <see cref="TextThemeDto"/>.</summary>
+public enum TextStyle
+{
+    /// <summary>Bar at the bottom left with a name and a role.</summary>
+    LowerThird,
+
+    /// <summary>Large title, centred by default.</summary>
+    Title,
+
+    /// <summary>Small note in a corner.</summary>
+    Note,
+}
+
+/// <summary>Horizontal alignment of a text source (the lower third always follows the reading direction).</summary>
+public enum TextAlign
+{
+    /// <summary>Left edge.</summary>
+    Left,
+
+    /// <summary>Centred.</summary>
+    Center,
+
+    /// <summary>Right edge.</summary>
+    Right,
 }
 
 /// <summary>Health of a source as shown in the Regie (lamps, washes, message strip).</summary>
@@ -351,4 +380,16 @@ public enum LogCode
 
     /// <summary>The Regie account was reset (<c>reset-admin</c>); the first-run setup is open again.</summary>
     AccountReset,
+
+    /// <summary>A text was created. Params: <c>code</c>, <c>name</c> (line 1).</summary>
+    TextCreated,
+
+    /// <summary>A text was deleted. Params: <c>code</c>, <c>name</c> (line 1).</summary>
+    TextDeleted,
+
+    /// <summary>A text was shown on the program scene. Params: <c>code</c>.</summary>
+    TextShown,
+
+    /// <summary>A text was hidden on the program scene. Params: <c>code</c>.</summary>
+    TextHidden,
 }

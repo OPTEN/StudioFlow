@@ -29,13 +29,14 @@ public static class MutationContextExtensions
         return await context.Data.Assets.GetAsync(context.ProductionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Media item");
     }
 
-    /// <summary>All sources of the production.</summary>
+    /// <summary>All sources of the production: device slots, media and texts.</summary>
     public static async Task<SourceCatalog> CatalogAsync(this MutationContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
         var devices = await context.Data.Devices.ListAsync(context.ProductionId, cancellationToken);
         var assets = await context.Data.Assets.ListAsync(context.ProductionId, cancellationToken);
-        return new SourceCatalog(devices, assets);
+        var production = await context.ProductionAsync(cancellationToken);
+        return new SourceCatalog(devices, assets, production.TextSources);
     }
 
     /// <summary>The production name for device self messages.</summary>

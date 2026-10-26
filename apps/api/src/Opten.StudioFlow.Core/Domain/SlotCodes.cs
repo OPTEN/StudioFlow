@@ -4,7 +4,7 @@ using Opten.StudioFlow.Core.Contracts;
 namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
-/// Slot codes (spec 4.4): K = camera, S = screen, M = media, followed by the lowest number of that letter that is free in
+/// Slot codes (spec 4.4): K = camera, S = screen, M = media, T = text, followed by the lowest number of that letter that is free in
 /// the production when the source is created. Codes never change while the source exists.
 /// </summary>
 public static class SlotCodes
@@ -14,6 +14,7 @@ public static class SlotCodes
     {
         SourceKind.Camera => 'K',
         SourceKind.Screen => 'S',
+        SourceKind.Text => 'T',
         _ => 'M',
     };
 

@@ -21,6 +21,7 @@ public static class LogTexts
         AuditActions.OutputKeyRegenerated, AuditActions.OutputAccessChanged, AuditActions.AssetUploaded, AuditActions.AssetDeleted,
         AuditActions.SourceReconnecting, AuditActions.SourceEnded, AuditActions.SourceLost, AuditActions.SourceRecovered,
         AuditActions.AccountSetUp, AuditActions.PasswordChanged, AuditActions.AccountReset,
+        AuditActions.TextCreated, AuditActions.TextDeleted, AuditActions.TextShown, AuditActions.TextHidden,
     ];
 
     /// <summary>Parameter names of <see cref="LogEntryDto.Params"/>.</summary>
@@ -60,6 +61,10 @@ public static class LogTexts
             AuditActions.OutputAccessChanged => With(LogCode.OutputAccessChanged, "Output access changed"),
             AuditActions.AssetUploaded => With(LogCode.AssetUploaded, $"{code} “{name}” uploaded", (Param.Code, code), (Param.Name, name)),
             AuditActions.AssetDeleted => With(LogCode.AssetDeleted, $"{code} “{name}” deleted", (Param.Code, code), (Param.Name, name)),
+            AuditActions.TextCreated => With(LogCode.TextCreated, $"{code} “{name}” created", (Param.Code, code), (Param.Name, name)),
+            AuditActions.TextDeleted => With(LogCode.TextDeleted, $"{code} “{name}” deleted", (Param.Code, code), (Param.Name, name)),
+            AuditActions.TextShown => With(LogCode.TextShown, $"{code} shown", (Param.Code, code)),
+            AuditActions.TextHidden => With(LogCode.TextHidden, $"{code} hidden", (Param.Code, code)),
             AuditActions.SourceReconnecting => With(LogCode.SourceReconnecting, $"{code} reconnecting", (Param.Code, code)),
             AuditActions.SourceEnded when string.Equals(entry.Detail(AuditDetails.Kind), nameof(SourceKind.Camera), StringComparison.Ordinal) => With(LogCode.CameraEnded, $"{code} camera stopped", (Param.Code, code)),
             AuditActions.SourceEnded => With(LogCode.ScreenEnded, $"{code} sharing stopped", (Param.Code, code)),
