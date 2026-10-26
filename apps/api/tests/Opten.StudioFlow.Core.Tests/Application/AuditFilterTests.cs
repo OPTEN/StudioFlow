@@ -47,7 +47,7 @@ public sealed class AuditFilterTests
         var filter = AuditFilter.Create(new AuditFilterInput(Categories: ["Media", "output"]));
 
         Assert.Equal(
-            new[] { AuditActions.AssetDeleted, AuditActions.AssetUploaded, AuditActions.OutputAccessChanged, AuditActions.OutputKeyRegenerated },
+            new[] { AuditActions.AssetDeleted, AuditActions.AssetUploaded, AuditActions.OutputAccessChanged, AuditActions.OutputKeyRegenerated, AuditActions.OutputLinkCreated, AuditActions.OutputLinkRenamed, AuditActions.OutputLinkRevoked },
             filter.Actions!.Order(StringComparer.Ordinal));
         Assert.All(filter.Actions!, action => Assert.Contains(AuditCategories.Of(action), new[] { AuditCategory.Media, AuditCategory.Output }));
     }

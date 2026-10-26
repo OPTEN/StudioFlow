@@ -98,9 +98,8 @@ public sealed class AuditApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
     public async Task Routes_WithAnOutputKey_AreUnauthorized()
     {
         var admin = await app.AdminAsync();
-        var output = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
         var client = app.Anonymous();
-        client.DefaultRequestHeaders.Add("X-Output-Key", output.Url[(output.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..]);
+        client.DefaultRequestHeaders.Add("X-Output-Key", (await admin.GetOutputLinksAsync())[0].Key());
 
         await client.GetAsync("/api/audit", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Unauthorized);
     }
@@ -647,10 +646,14 @@ public sealed class AuditEventsApiTests(StudioFlowApp app) : IClassFixture<Studi
         var invite = await admin.Client.PostJsonAsync($"/api/productions/{id}/pairing/invites", new CreateInviteRequest(InviteKind.LaptopLink)).ExpectAsync<InviteDto>(HttpStatusCode.Created);
         secrets.Add(Pairing.TokenOf(invite));
         await admin.Client.DeleteAsync($"/api/productions/{id}/pairing/invites/{invite.Id}", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
-        var oldOutput = await admin.Client.GetAsync($"/api/productions/{id}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        var newOutput = await admin.Client.PostAsync($"/api/productions/{id}/output/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        secrets.AddRange([KeyOf(oldOutput), KeyOf(newOutput)]);
-        await admin.Client.PutJsonAsync($"/api/productions/{id}/output/access", new UpdateOutputAccessRequest(["203.0.113.0/24"])).ExpectAsync<OutputSettingsDto>();
+        var links = $"/api/productions/{id}/output/links";
+        var proxy = (await admin.Client.GetAsync($"/api/productions/{id}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>()).Links[0];
+        var regenerated = await admin.Client.PostAsync($"{links}/{proxy.Id}/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync<OutputLinkDto>();
+        await admin.Client.PutJsonAsync($"{links}/{proxy.Id}/access", new UpdateOutputAccessRequest(["203.0.113.0/24"])).ExpectAsync<OutputLinkDto>();
+        var camera = await admin.Client.PostJsonAsync(links, new CreateOutputLinkRequest("Teams " + tag)).ExpectAsync<OutputLinkDto>(HttpStatusCode.Created);
+        await admin.Client.PatchJsonAsync($"{links}/{camera.Id}", new RenameOutputLinkRequest("Camera " + tag)).ExpectAsync<OutputLinkDto>();
+        await admin.Client.DeleteAsync($"{links}/{camera.Id}", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.NoContent);
+        secrets.AddRange([proxy.Key(), regenerated.Key(), camera.Key()]);
 
         // Media.
         using var upload = new MultipartFormDataContent { { UploadFile(), "file", "Cover " + tag + ".png" } };
@@ -674,6 +677,7 @@ public sealed class AuditEventsApiTests(StudioFlowApp app) : IClassFixture<Studi
             AuditActions.ProductionCreated, AuditActions.ProductionRenamed, AuditActions.SlateChanged, AuditActions.ProductionActivated,
             AuditActions.DevicePaired, AuditActions.DeviceRenamed, AuditActions.DeviceBlocked, AuditActions.DeviceUnblocked, AuditActions.DeviceRemoved,
             AuditActions.InviteCreated, AuditActions.InviteRevoked, AuditActions.OutputKeyRegenerated, AuditActions.OutputAccessChanged,
+            AuditActions.OutputLinkCreated, AuditActions.OutputLinkRenamed, AuditActions.OutputLinkRevoked,
             AuditActions.AssetUploaded, AuditActions.AssetDeleted,
             AuditActions.BroadcastStarted, AuditActions.SceneLive, AuditActions.BroadcastEnded, AuditActions.BroadcastReset,
         ];
@@ -708,8 +712,6 @@ public sealed class AuditEventsApiTests(StudioFlowApp app) : IClassFixture<Studi
 
         Assert.Equal(before, (await AuditSeed.AllAsync(app)).Count(a => a.Action is AuditActions.InviteCreated or AuditActions.InviteRevoked));
     }
-
-    private static string KeyOf(OutputSettingsDto output) => output.Url[(output.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
 
     private static ByteArrayContent UploadFile()
     {
