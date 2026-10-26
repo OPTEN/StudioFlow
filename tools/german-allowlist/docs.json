@@ -1,0 +1,17 @@
+[
+  {
+    "path": "DESIGN.md",
+    "rules": "all",
+    "reason": "Quotes the German text next to the English text of the states the design describes."
+  },
+  {
+    "path": "docs/architecture/implementation-spec.md",
+    "rules": "all",
+    "reason": "The binding spec names the German translation of the texts it pins next to the English source."
+  },
+  {
+    "path": "docs/runbook.md",
+    "rules": "all",
+    "reason": "Describes the Swiss spelling rules of the German translation."
+  }
+]
