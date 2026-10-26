@@ -116,6 +116,42 @@ public interface IAuditRepository
     Task<IReadOnlyList<AuditEntry>> ListRecentAsync(string productionId, IReadOnlyCollection<string> actions, int count, CancellationToken cancellationToken);
 }
 
+/// <summary>A row of an audit query: the entry with the current name of its production.</summary>
+/// <param name="Id">Database id.</param>
+/// <param name="At">Time of the action.</param>
+/// <param name="Actor"><c>admin</c>, <c>device:{id}</c> or <c>system</c>.</param>
+/// <param name="Action">Action code.</param>
+/// <param name="ProductionId">Production of the action, or null.</param>
+/// <param name="ProductionName">Name of the production, or null.</param>
+/// <param name="Details">Parameters of the action.</param>
+public sealed record AuditRow(
+    long Id,
+    DateTimeOffset At,
+    string Actor,
+    string Action,
+    string? ProductionId,
+    string? ProductionName,
+    IReadOnlyDictionary<string, string> Details);
+
+/// <summary>Read access to the audit log (ordered by time and id, newest first) and the retention that shrinks it.</summary>
+public interface IAuditLog
+{
+    /// <summary>The entries that match the filter and come after <paramref name="after"/>, at most <paramref name="limit"/>.</summary>
+    Task<IReadOnlyList<AuditRow>> QueryAsync(AuditFilter filter, AuditCursor? after, int limit, CancellationToken cancellationToken);
+
+    /// <summary>The number of matching entries, counted up to <paramref name="limit"/>.</summary>
+    Task<int> CountAsync(AuditFilter filter, int limit, CancellationToken cancellationToken);
+
+    /// <summary>The matching entries, at most <paramref name="limit"/>, read row by row from the database (never all in memory).</summary>
+    IAsyncEnumerable<AuditRow> StreamAsync(AuditFilter filter, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Deletes up to <paramref name="batchSize"/> entries older than <paramref name="cutoff"/>; returns how many.</summary>
+    Task<int> DeleteOlderThanAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
+
+    /// <summary>Removes the IP address from up to <paramref name="batchSize"/> entries older than <paramref name="cutoff"/>; returns how many.</summary>
+    Task<int> RemoveIpAddressesOlderThanAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// Persistence of the Regie account. Every change is written together with its audit entry in one transaction, and
 /// the database allows at most one account (<see cref="AdminAccount.OnlyId"/>).

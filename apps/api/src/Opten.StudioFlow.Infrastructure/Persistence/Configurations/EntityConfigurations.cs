@@ -153,6 +153,12 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
         builder.Property(a => a.Action).HasMaxLength(Columns.Id).IsRequired();
         builder.Property(a => a.Details).AsJson().IsRequired();
         builder.HasIndex(a => new { a.ProductionId, a.Id });
+
+        // The audit log view and the export read newest first, with or without a production (spec 4.9); the retention
+        // deletes the oldest entries and looks for the ones that still hold an IP address.
+        builder.HasIndex(a => new { a.At, a.Id }).IsDescending(true, true);
+        builder.HasIndex(a => new { a.ProductionId, a.At, a.Id }).IsDescending(false, true, true);
+        builder.HasIndex(a => a.At).HasDatabaseName("ix_audit_entries_at_with_ip").HasFilter("(details ->> 'ip') IS NOT NULL");
     }
 }
 

@@ -169,8 +169,20 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audit_entries");
 
+                    b.HasIndex("At")
+                        .HasDatabaseName("ix_audit_entries_at_with_ip")
+                        .HasFilter("(details ->> 'ip') IS NOT NULL");
+
+                    b.HasIndex("At", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("ix_audit_entries_at_id");
+
                     b.HasIndex("ProductionId", "Id")
                         .HasDatabaseName("ix_audit_entries_production_id_id");
+
+                    b.HasIndex("ProductionId", "At", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_audit_entries_production_id_at_id");
 
                     b.ToTable("audit_entries", (string)null);
                 });

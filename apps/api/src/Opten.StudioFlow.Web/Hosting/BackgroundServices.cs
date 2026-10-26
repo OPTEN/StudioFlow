@@ -33,6 +33,7 @@ internal sealed class StartupInitializer(
     IOptions<RealtimeOptions> realtime,
     IOptions<DatabaseOptions> database,
     IOptions<BackupOptions> backup,
+    IOptions<AuditOptions> audit,
     ILogger<StartupInitializer> logger) : IHostedService
 {
     /// <summary>Keys of <c>Admin:</c> that older versions used for the account.</summary>
@@ -42,7 +43,7 @@ internal sealed class StartupInitializer(
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
         _ = (admin.Value, liveKit.Value, media.Value, studio.Value);
-        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value);
+        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         await account.RefreshAsync(cancellationToken);
@@ -68,7 +69,8 @@ internal sealed class StartupInitializer(
 /// Periodic maintenance in independent loops, so a slow step (LiveKit unreachable, database down) never delays the
 /// others: every second output staleness, expired knocks, silent devices with held-back telemetry and the restart
 /// watch; invites every 10 s; LiveKit reconcile at startup and every 15 s; last-live times every
-/// <c>Sources:LiveMarkInterval</c>; the Regie account every 5 s; lockout cleanup every minute. A failing step is logged and retried on the next tick.
+/// <c>Sources:LiveMarkInterval</c>; the Regie account every 5 s; lockout cleanup every minute; the audit retention every
+/// <c>Audit:MaintenanceInterval</c>. A failing step is logged and retried on the next tick.
 /// The loops end as soon as the host begins to stop (OBS-01): a tick during the shutdown would only see the hub
 /// connections closing and must not evaluate sources.
 /// </summary>
@@ -81,6 +83,8 @@ internal sealed class MaintenanceWorker(
     LoginThrottle throttle,
     AdminAccountState account,
     AdminSessions adminSessions,
+    AuditRetentionService auditRetention,
+    AuditOptions audit,
     SourceMonitorOptions sources,
     HostShutdown shutdown,
     TimeProvider clock,
@@ -105,7 +109,8 @@ internal sealed class MaintenanceWorker(
             LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync)),
             ReconcileLoopAsync(token),
             LoopAsync(sources.LiveMarkInterval, token, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
-            LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)));
+            LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)),
+            LoopAsync(audit.MaintenanceInterval, token, ("audit retention", auditRetention.RunAsync)));
     }
 
     /// <summary>Notices a <c>reset-admin</c> (or any change made in another process) and ends the sessions that are no longer valid.</summary>
