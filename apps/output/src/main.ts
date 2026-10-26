@@ -1,7 +1,8 @@
 /**
  * Output page entry point (spec 9.3): `/o/{slug}?k=…[&bg=transparent][&debug=1][&latency=1][&lang=de-CH]` renders the
- * program of one production as a 1920 × 1080 stage; `/o/_clock` is the measurement clock. Kept small: the composition
- * lives in output-app.ts, livekit-client and the optional overlays are loaded lazily after the first frame.
+ * program of one production as a stage of the size of its canvas (1920 × 1080 by default); `/o/_clock` is the
+ * measurement clock. Kept small: the composition lives in
+ * output-app.ts, livekit-client and the optional overlays are loaded lazily after the first frame.
  */
 import './styles.css';
 import { initLocale, parseLocaleTag } from '@studioflow/i18n';

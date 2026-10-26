@@ -11,6 +11,8 @@ export const outputDebug: Translation<typeof en> = {
   'output.debug.broadcast.standby': 'bereit',
 
   'output.debug.buffer': 'Puffer {value}',
+  'output.debug.canvas': 'Leinwand {size} · {format} · {resolution}',
+  'output.debug.canvasUnknown': 'Leinwand unbekannt',
   'output.debug.connections': 'Hub {hub} · Sync {sync}',
 
   'output.debug.hub.connected': 'verbunden',

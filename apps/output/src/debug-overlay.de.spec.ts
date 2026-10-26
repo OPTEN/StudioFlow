@@ -1,4 +1,5 @@
 import { resetLocaleForTests } from '@studioflow/i18n';
+import { canvasDto } from '@studioflow/scene-model';
 import { formatDebugLines, type DebugInfo } from './debug-overlay';
 
 beforeEach(() => resetLocaleForTests('de-CH'));
@@ -8,6 +9,7 @@ const INFO: DebugInfo = {
   sceneName: 'Begrüssung',
   broadcast: 'live',
   revision: 100,
+  canvas: canvasDto('square', 'p720'),
   hubState: 'reconnecting',
   syncStatus: 'offline',
   mediaState: null,
@@ -35,6 +37,7 @@ describe('formatDebugLines in German', () => {
     expect(formatDebugLines(INFO)).toEqual([
       'Webinar · Szene «Begrüssung»',
       'Revision 100 · Sendung live',
+      'Leinwand 720 × 720 · 1:1 · 720p',
       'Hub verbindet neu · Sync offline, letzter Stand',
       'LiveKit lädt …',
       'Latenz ≈ 62 ms · Renderer 60 fps',

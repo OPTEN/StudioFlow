@@ -3,6 +3,7 @@
  */
 import { vi } from 'vitest';
 import type {
+  CanvasSize,
   LiveKitTokenDto,
   OutputReport,
   SceneDto,
@@ -72,6 +73,11 @@ export class FakeRenderer implements SceneRenderer {
   }
   setPreloadScenes(scenes: readonly SceneDto[]): void {
     this.calls.push({ method: 'setPreloadScenes', scenes: [...scenes] });
+  }
+  /** The canvases the page set, in order (not part of {@link summary}). */
+  readonly canvases: CanvasSize[] = [];
+  setCanvas(canvas: CanvasSize): void {
+    this.canvases.push(canvas);
   }
   /** Number of `refresh` calls (not part of {@link summary}). */
   refreshes = 0;

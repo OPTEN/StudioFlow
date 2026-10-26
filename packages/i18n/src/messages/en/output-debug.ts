@@ -15,6 +15,8 @@ export const outputDebug = {
   'output.debug.broadcast.standby': 'ready',
 
   'output.debug.buffer': 'Buffer {value}',
+  'output.debug.canvas': 'Canvas {size} · {format} · {resolution}',
+  'output.debug.canvasUnknown': 'Canvas unknown',
   'output.debug.connections': 'Hub {hub} · Sync {sync}',
 
   'output.debug.hub.connected': 'connected',
