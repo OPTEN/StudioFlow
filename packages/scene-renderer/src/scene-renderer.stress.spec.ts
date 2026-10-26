@@ -140,7 +140,7 @@ describe('scene renderer: randomised stress', () => {
           }
           case 6:
             statuses.set(pick(SOURCES), pick(STATUSES));
-            renderer.setSourceStatuses();
+            renderer.refresh();
             break;
           case 7:
             mounted.setSize(Math.round(next() * 2000), Math.round(next() * 1200));

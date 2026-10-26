@@ -1,5 +1,10 @@
 import { t } from '@studioflow/i18n';
-import { parseSourceRef, slotKind, type SceneItemDto } from '@studioflow/scene-model';
+import {
+  DEFAULT_FADE_MS,
+  parseSourceRef,
+  slotKind,
+  type SceneItemDto,
+} from '@studioflow/scene-model';
 
 import { SMALL_PICTURE, type DesiredSizeCollector } from './desired-sizes';
 import { createElement, FILL, px, setStyle, setStyles, setText, setVisible } from './dom';
@@ -24,9 +29,11 @@ import type { MediaView } from './media-view';
 import { alertPresentation, type AlertPresentation } from './monitor-alert';
 import { MonitorOverlay } from './monitor-overlay';
 import { PALETTE, UI_FONT } from './palette';
+import { animatePresence, type PresenceAnimation } from './presence';
 import type { RenderContext, RenderFrame } from './render-context';
 import { isSameSource, type ResolvedSource } from './source-resolver';
 import { isLostState, normalizeHoldMs, sourceState, type SourceState } from './source-state';
+import { TextBlock } from './text-block';
 import type { CanvasRect } from './types';
 
 /** The hold message (`renderer.held`) is only drawn on items at least this wide (canvas pixels). */
@@ -53,6 +60,7 @@ export type MediaFactory = (source: ResolvedSource) => MediaView;
  *   div.sf-r-fallback      fallback source after the hold time
  *   div.sf-r-held          dark scrim + “Picture returns shortly”
  *   div.sf-r-border        inset box-shadow border
+ *   div.sf-r-text          text items only: the text drawn as HTML ({@link TextBlock})
  *   …                      monitor overlay: “Source missing”, alert outline and label ({@link MonitorOverlay})
  * ```
  */
@@ -81,6 +89,10 @@ export class ItemView {
   private rect: CanvasRect | null = null;
   private pictureBox: Box | null = null;
   private alert: AlertPresentation | null = null;
+  private textBlock: TextBlock | null = null;
+  private presence: PresenceAnimation | null = null;
+  /** Whether the text item is shown; null before its first render. */
+  private textShown: boolean | null = null;
 
   constructor(
     item: SceneItemDto,
@@ -159,6 +171,7 @@ export class ItemView {
     if (!this.media || !isSameSource(this.media.source, source)) {
       this.resetLostState();
       this.releaseHoldFrame();
+      this.releaseText();
       this.media?.dispose();
       this.media = this.mountMedia(source);
     }
@@ -181,9 +194,14 @@ export class ItemView {
       source,
       isDevice ? this.ctx.availability(source.sourceId) : { state: 'live' },
       this.holdMs,
-      !isDevice || this.ctx.isKnown(source.sourceId),
+      this.isKnown(source),
       now,
     );
+  }
+
+  /** True for a text item: it overlays the picture, keeps its own rectangle in the Auto-Grid and fades in and out. */
+  get isText(): boolean {
+    return this.media?.source.kind === 'text';
   }
 
   /** Paint order within the layer (array index). */
@@ -194,6 +212,10 @@ export class ItemView {
   /** Renders the item at `rect` (null: hidden, or not placed by the Auto-Grid) for the given source state. */
   render(rect: CanvasRect | null, state: SourceState, frame: RenderFrame): void {
     this.rect = rect;
+    if (this.isText) {
+      this.renderText(rect, state, frame);
+      return;
+    }
     setVisible(this.root, rect !== null);
     if (rect) {
       this.renderGeometry(rect);
@@ -265,9 +287,84 @@ export class ItemView {
   dispose(): void {
     this.resetLostState();
     this.releaseHoldFrame();
+    this.releaseText();
     this.media?.dispose();
     this.media = null;
     this.root.remove();
+  }
+
+  private isKnown(source: ResolvedSource): boolean {
+    switch (source.kind) {
+      case 'device':
+        return this.ctx.isKnown(source.sourceId);
+      case 'text':
+        return this.ctx.textOf(source.sourceId) !== undefined;
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * A text item: drawn as HTML into the item rectangle and faded and slid in or out when it is shown or hidden. While
+   * it hides (`rect` null) it keeps its last geometry until the animation has ended.
+   */
+  private renderText(rect: CanvasRect | null, state: SourceState, frame: RenderFrame): void {
+    const block = this.textBlock ?? this.mountText();
+    const sourceId = this.media?.source.sourceId ?? '';
+    if (rect) {
+      this.renderGeometry(rect);
+      block.render(rect, this.ctx.textOf(sourceId), this.ctx.textTheme());
+    }
+    this.present(rect !== null, block);
+    const missing = this.ctx.mode === 'monitor' && state.kind === 'missing';
+    setStyle(this.root, 'background-color', missing ? PALETTE.placeholder : '');
+    this.alert = null;
+    this.overlay.render({ missing, alert: null, radius: this.look.radius, scale: frame.scale });
+  }
+
+  private mountText(): TextBlock {
+    const block = new TextBlock(this.ctx.doc);
+    this.root.append(block.element);
+    this.textBlock = block;
+    return block;
+  }
+
+  /**
+   * Shows or hides the text. The first render only sets the state (a scene that is cut or faded in brings its texts
+   * along); later changes animate, and a change while an animation runs finishes that one first, so every
+   * animation runs to completion.
+   */
+  private present(shown: boolean, block: TextBlock): void {
+    if (shown === this.textShown) {
+      return;
+    }
+    const first = this.textShown === null;
+    this.textShown = shown;
+    this.presence?.finish();
+    if (shown) {
+      setVisible(this.root, true);
+    }
+    if (first) {
+      setVisible(this.root, shown);
+      return;
+    }
+    const duration = this.ctx.reducedMotion ? 0 : DEFAULT_FADE_MS;
+    this.presence = animatePresence(block.element, shown, block.enterOffset, duration, () =>
+      this.ctx.guard(() => {
+        this.presence = null;
+        if (!this.textShown) {
+          setVisible(this.root, false);
+        }
+      }),
+    );
+  }
+
+  private releaseText(): void {
+    this.presence?.finish();
+    this.presence = null;
+    this.textShown = null;
+    this.textBlock?.element.remove();
+    this.textBlock = null;
   }
 
   private mountMedia(source: ResolvedSource): MediaView {

@@ -73,7 +73,11 @@ export class FakeRenderer implements SceneRenderer {
   setPreloadScenes(scenes: readonly SceneDto[]): void {
     this.calls.push({ method: 'setPreloadScenes', scenes: [...scenes] });
   }
-  setSourceStatuses(): void {}
+  /** Number of `refresh` calls (not part of {@link summary}). */
+  refreshes = 0;
+  refresh(): void {
+    this.refreshes += 1;
+  }
   effectiveRects(): ReadonlyMap<string, CanvasRect> {
     return new Map<string, CanvasRect>();
   }

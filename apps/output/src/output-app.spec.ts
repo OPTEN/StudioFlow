@@ -176,6 +176,18 @@ describe('output app: boot', () => {
     expect(app.provider.assetUrl('ast_unknown00000000')).toBeNull();
   });
 
+  it('hands the renderer the text content and the text colours of the synced state', async () => {
+    const { renderer } = await boot();
+    const options = renderer.options as SceneRendererOptions;
+
+    expect(options.textOf?.('txt_unknown00000000')).toBeUndefined();
+    expect(options.textTheme?.()).toEqual({
+      accent: '#1f6feb',
+      background: '#0d1117',
+      foreground: '#ffffff',
+    });
+  });
+
   it('loads LiveKit only after the first frame and then binds and starts it', async () => {
     const ctx = setup();
     await flush(1000);

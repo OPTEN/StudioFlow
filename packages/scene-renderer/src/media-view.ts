@@ -57,7 +57,8 @@ export function createImage(doc: Document, className: string, styles: StyleMap):
 
 /**
  * The media element of one resolved source: a provider-fed `<video>` for device sources (registered with
- * `provider.attach`), a looping `<video>` for video assets, an `<img>` for images, nothing for missing sources.
+ * `provider.attach`), a looping `<video>` for video assets, an `<img>` for images, nothing for texts (drawn by the item)
+ * and missing sources.
  * A view is reused as long as its source stays the same (recreating a video element flashes black).
  */
 export class MediaView {
@@ -91,6 +92,7 @@ export class MediaView {
         this.loader = new AssetLoader(this.element);
         this.loader.load(source.url);
         break;
+      case 'text':
       case 'missing':
         this.element = this.video = null;
         break;

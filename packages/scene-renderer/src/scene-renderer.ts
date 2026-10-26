@@ -205,7 +205,7 @@ class DomSceneRenderer implements SceneRenderer {
     });
   }
 
-  setSourceStatuses(): void {
+  refresh(): void {
     this.requestRender();
   }
 

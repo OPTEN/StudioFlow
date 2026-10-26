@@ -40,6 +40,7 @@ export function production(overrides: Partial<ProductionDto> = {}): ProductionDt
     lastSwitchAt: null,
     standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
     endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
+    textTheme: { accent: '#1f6feb', background: '#0d1117', foreground: '#ffffff' },
     ...overrides,
   };
 }
@@ -99,6 +100,7 @@ export function deviceSource(id: string, code: string, label: string): SourceDto
     assetId: null,
     status: 'ok',
     statusSince: null,
+    text: null,
   };
 }
 

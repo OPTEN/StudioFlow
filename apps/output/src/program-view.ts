@@ -11,7 +11,7 @@ import { noAccessSlate } from './slates';
 /** The renderer calls the view makes. */
 export type ProgramRenderer = Pick<
   SceneRenderer,
-  'show' | 'update' | 'transitionTo' | 'showSlate' | 'setPreloadScenes'
+  'show' | 'update' | 'transitionTo' | 'showSlate' | 'setPreloadScenes' | 'refresh'
 >;
 
 /** Slate for the broadcast state: standby slate before the start, end slate after the end, none while live. */
@@ -51,7 +51,8 @@ const NOTHING = Symbol('nothing');
  *   picture is already there); the first state and every catch-up after a reconnect are shown without transition,
  *   a live `programSwitched` plays its transition, changes of the shown scene are diffed in place (`update`);
  * - standby → standby slate, live → no slate, ended → end slate;
- * - every other scene is preloaded, the preview first.
+ * - every other scene is preloaded, the preview first;
+ * - a change of the sources (text content) or of the text colours re-renders the texts on stage (`refresh`).
  * While access is denied the stage is cleared (no picture of a production this link may no longer see stays in the
  * DOM) and “No access” is shown; the latest state is kept and rendered again when access returns.
  */
@@ -61,6 +62,8 @@ export class ProgramView {
   #scene: SceneDto | null | typeof NOTHING = NOTHING;
   #slateKey: string | null | typeof NOTHING = NOTHING;
   #preload: readonly SceneDto[] = [];
+  #sources: ProductionState['sources'] | null = null;
+  #textThemeKey = '';
   #rendered = false;
 
   constructor(
@@ -134,6 +137,7 @@ export class ProgramView {
       this.#preload = preload;
       this.renderer.setPreloadScenes(preload);
     }
+    this.#renderTexts(state);
     this.#rendered = true;
   }
 
@@ -155,6 +159,17 @@ export class ProgramView {
     if (scene && scene !== previous) {
       this.renderer.update(scene);
     }
+  }
+
+  /** Texts read their content and colours from the state: a change asks the renderer to draw them again. */
+  #renderTexts(state: ProductionState): void {
+    const themeKey = JSON.stringify(state.production.textTheme ?? null);
+    const changed = state.sources !== this.#sources || themeKey !== this.#textThemeKey;
+    if (this.#sources !== null && changed) {
+      this.renderer.refresh();
+    }
+    this.#sources = state.sources;
+    this.#textThemeKey = themeKey;
   }
 
   #renderSlate(slate: SlateDto | null): void {

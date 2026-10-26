@@ -191,6 +191,8 @@ export function startOutputApp(
     // The Regie chose cut or fade for the audience; the proxy machine's motion setting does not change that.
     reducedMotion: false,
     assetKindOf: (assetId) => sync?.state?.assets.get(assetId)?.kind,
+    textOf: (sourceId) => sync?.state?.sources.get(sourceId)?.text ?? undefined,
+    textTheme: () => sync?.state?.production.textTheme,
     label: 'Program',
     onError: (error) => log.warn(`renderer: ${describe(error)}`),
   });

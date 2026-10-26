@@ -1,3 +1,5 @@
+import type { TextSourceDto, TextThemeDto } from '@studioflow/scene-model';
+
 import { guarded, type ErrorSink } from './guard';
 import type { MediaHost } from './media-view';
 import { resolveSource, type ResolvedSource } from './source-resolver';
@@ -26,6 +28,12 @@ export interface RenderContext extends MediaHost {
   isKnown(sourceId: string): boolean;
   /** Slot code of a source for monitor labels. */
   codeOf(sourceId: string): string | undefined;
+  /** Content of a text source; undefined when unknown. */
+  textOf(sourceId: string): TextSourceDto | undefined;
+  /** Colours of all texts; undefined uses the defaults. */
+  textTheme(): TextThemeDto | undefined;
+  /** Texts appear and disappear without animation. */
+  readonly reducedMotion: boolean;
   /** Time (performance.now() base) since which `sourceId` has `status`, as observed by this renderer. */
   statusSince(sourceId: string, status: MonitorSourceStatus, now: number): number;
   /** Asks for a render pass soon (after an asynchronous change such as a first new frame). */
@@ -59,7 +67,7 @@ export function createRenderContext(
   sink: ErrorSink,
   hooks: RenderContextHooks,
 ): RenderContext {
-  const { provider, statusOf, codeOf, assetKindOf } = options;
+  const { provider, statusOf, codeOf, assetKindOf, textOf, textTheme } = options;
   const statusOfSource = (sourceId: string): MonitorSourceStatus | undefined =>
     guarded(sink, () => statusOf?.(sourceId), undefined);
   return {
@@ -87,6 +95,9 @@ export function createRenderContext(
     statusOf: statusOfSource,
     isKnown: (sourceId) => !statusOf || statusOfSource(sourceId) !== undefined,
     codeOf: (sourceId) => guarded(sink, () => codeOf?.(sourceId), undefined),
+    textOf: (sourceId) => guarded(sink, () => textOf?.(sourceId), undefined),
+    textTheme: () => guarded(sink, () => textTheme?.(), undefined),
+    reducedMotion: options.reducedMotion === true,
     statusSince: (sourceId, status, now) => hooks.statusSince(sourceId, status, now),
     requestRender: () => hooks.requestRender(),
     holdFrameDonor: (sourceId, requester) => hooks.holdFrameDonor(sourceId, requester),

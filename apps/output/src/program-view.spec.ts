@@ -3,6 +3,8 @@ import { preloadScenesFor, ProgramView, slateFor } from './program-view';
 import { noAccessSlate } from './slates';
 import { FakeRenderer } from './testing/fakes';
 import {
+  CAMERA,
+  deviceSource,
   FADE,
   IMAGE,
   item,
@@ -223,5 +225,46 @@ describe('ProgramView', () => {
     renderer.reset();
     view.setDenied(true);
     expect(renderer.summary()).toEqual([]);
+  });
+  it('redraws the texts when a text changes, and only then', () => {
+    const { renderer, view } = setup();
+    const first = state();
+    view.apply(first);
+    expect(renderer.refreshes).toBe(0);
+
+    const text = {
+      id: 'txt_aaaaaaaa',
+      code: 'T1',
+      line1: 'Mia Meier',
+      line2: null,
+      style: 'lowerThird',
+      align: 'left',
+    } as const;
+    const withText = next(first, {
+      type: 'sourceUpserted',
+      revision: 101,
+      source: { ...deviceSource(CAMERA, 'K1', 'x'), id: text.id, kind: 'text', text },
+    });
+    view.apply(withText);
+    expect(renderer.refreshes).toBe(1);
+
+    view.apply(
+      next(withText, sceneUpserted(102, scene('scn_b', 1, [item('i1', IMAGE)], { version: 2 }))),
+    );
+    expect(renderer.refreshes).toBe(1);
+  });
+
+  it('redraws the texts when the text colours change, not on other production changes', () => {
+    const { renderer, view } = setup();
+    const first = state();
+    view.apply(first);
+
+    const renamed = next(first, productionChanged(101, { name: 'Renamed' }));
+    view.apply(renamed);
+    expect(renderer.refreshes).toBe(0);
+
+    const textTheme = { accent: '#ff8800', background: '#000000', foreground: '#ffffff' };
+    view.apply(next(renamed, productionChanged(102, { name: 'Renamed', textTheme })));
+    expect(renderer.refreshes).toBe(1);
   });
 });
