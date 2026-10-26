@@ -3,13 +3,24 @@ import type { Namespace } from '../../types';
 /**
  * "Recent events" and the audit log. One message per `LogCode` of the API (`regie.log.<code>`); the parameters are the
  * ones the API sends in `LogEntryDto.params`, except `{downtime}` of `sourceRecovered`, which the client formats from
- * `downSeconds`, and `{lens}` of `cameraLensSwitched`, which the client names from the lens kind.
+ * `downSeconds`, `{lens}` of `cameraLensSwitched`, which the client names from the lens kind, and `{value}` of the audio
+ * changes, which the client formats (dB, the name of the mode).
  */
 export const regieLog = {
   'regie.log.accountReset': 'Account reset',
   'regie.log.accountSetUp': 'Account set up',
   'regie.log.assetDeleted': '{code} “{name}” deleted',
   'regie.log.assetUploaded': '{code} “{name}” uploaded',
+  'regie.log.audioEnded': '{code} microphone stopped',
+  'regie.log.audioGainChanged': '{code} gain {value} dB',
+  'regie.log.audioLost': '{code} no sound',
+  'regie.log.audioModeAlways': 'always audible',
+  'regie.log.audioModeChanged': '{code} mode: {value}',
+  'regie.log.audioModeFollow': 'follows the picture',
+  'regie.log.audioModeOff': 'off',
+  'regie.log.audioMuted': '{code} muted',
+  'regie.log.audioSyncOffsetChanged': '{code} sync offset {value} ms',
+  'regie.log.audioUnmuted': '{code} unmuted',
   'regie.log.auditExported': 'Audit log exported as {format}, {rows} rows',
   'regie.log.auditRetention':
     'Audit retention ({days} days): entries deleted {deleted}, IP addresses removed {anonymised}',

@@ -1,6 +1,8 @@
+import { sameChannel } from './audio';
 import { LIMITS } from './constants';
 import type {
   AssetDto,
+  AudioChannelDto,
   DeviceDto,
   DeviceTelemetryMessage,
   IncidentDto,
@@ -39,6 +41,8 @@ export interface ProductionState {
    * and show "Source missing". Empty for the output page, which never sees them.
    */
   readonly placeholders: readonly SourcePlaceholderDto[];
+  /** The channels of the audio mixer by source reference; a channel disappears with its source. */
+  readonly audioChannels: ReadonlyMap<string, AudioChannelDto>;
   readonly devices: ReadonlyMap<string, DeviceDto>;
   readonly assets: ReadonlyMap<string, AssetDto>;
   /** Pending knocks, oldest first. */
@@ -82,7 +86,7 @@ interface ChangesParts<TSnapshot> {
 /** Fields shared by the Regie and the output snapshot. */
 type SnapshotBase = Pick<
   ProductionSnapshot,
-  'revision' | 'serverTime' | 'production' | 'scenes' | 'sources' | 'assets'
+  'revision' | 'serverTime' | 'production' | 'scenes' | 'sources' | 'audioChannels' | 'assets'
 >;
 
 /** Sort key of an ISO timestamp: unparsable values sort last. */
@@ -110,6 +114,26 @@ function sortedScenes(scenes: readonly SceneDto[]): SceneDto[] {
 
 function toMap<T extends { readonly id: string }>(items: readonly T[]): ReadonlyMap<string, T> {
   return new Map(items.map((item) => [item.id, item]));
+}
+
+function toChannelMap(channels: readonly AudioChannelDto[]): ReadonlyMap<string, AudioChannelDto> {
+  return new Map(channels.map((channel) => [channel.sourceId, channel]));
+}
+
+/** Replaces the channels of the event; the map stays the same object when every channel is already as sent. */
+function withChannels(
+  map: ReadonlyMap<string, AudioChannelDto>,
+  channels: readonly AudioChannelDto[],
+): ReadonlyMap<string, AudioChannelDto> {
+  const changed = channels.filter((channel) => !sameChannel(map.get(channel.sourceId), channel));
+  if (changed.length === 0) {
+    return map;
+  }
+  const next = new Map(map);
+  for (const channel of changed) {
+    next.set(channel.sourceId, channel);
+  }
+  return next;
 }
 
 function mapWith<T>(map: ReadonlyMap<string, T>, key: string, value: T): ReadonlyMap<string, T> {
@@ -160,6 +184,7 @@ function stateFromBase(snapshot: SnapshotBase, receivedAtMs: number): Production
     scenes: sortedScenes(snapshot.scenes),
     sources: toMap(snapshot.sources),
     placeholders: [],
+    audioChannels: toChannelMap(snapshot.audioChannels),
     devices: new Map(),
     assets: toMap(snapshot.assets),
     pairingRequests: [],
@@ -256,9 +281,15 @@ function reduceEvent(state: ProductionState, event: ProductionEvent): Production
     case 'sourceUpserted':
       return { ...state, sources: mapWith(state.sources, event.source.id, event.source) };
     case 'sourceRemoved':
-      return { ...state, sources: mapWithout(state.sources, event.sourceId) };
+      return {
+        ...state,
+        sources: mapWithout(state.sources, event.sourceId),
+        audioChannels: mapWithout(state.audioChannels, event.sourceId),
+      };
     case 'placeholderRemoved':
       return { ...state, placeholders: removeById(state.placeholders, event.placeholderId) };
+    case 'audioChannelsChanged':
+      return { ...state, audioChannels: withChannels(state.audioChannels, event.channels) };
     case 'deviceUpserted':
       return { ...state, devices: mapWith(state.devices, event.device.id, event.device) };
     case 'deviceRemoved':

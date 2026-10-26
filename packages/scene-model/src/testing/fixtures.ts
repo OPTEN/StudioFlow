@@ -4,6 +4,7 @@
  */
 import type {
   AssetDto,
+  AudioChannelDto,
   DeviceDto,
   DeviceTelemetryDto,
   IncidentDto,
@@ -75,6 +76,14 @@ export function itemFixture(
   };
 }
 
+/** A channel of the audio mixer: unity gain, audible, following the picture, no delay. */
+export function audioChannelFixture(
+  sourceId: string,
+  overrides: Partial<AudioChannelDto> = {},
+): AudioChannelDto {
+  return { sourceId, gainDb: 0, muted: false, mode: 'follow', syncOffsetMs: 0, ...overrides };
+}
+
 /** A free-layout scene. */
 export function sceneFixture(
   id: string,
@@ -102,7 +111,7 @@ export function deviceSourceFixture(
   status: SourceStatus = 'ok',
   overrides: Partial<SourceDto> = {},
 ): SourceDto {
-  const kind: SourceKind = slot === 'camera' ? 'camera' : 'screen';
+  const kind: SourceKind = slot === 'camera' ? 'camera' : slot === 'mic' ? 'audio' : 'screen';
   return {
     id: `${deviceId}/${slot}`,
     code,
@@ -153,6 +162,7 @@ export function assetFixture(
     sizeBytes: 1024,
     width: 1920,
     height: 1080,
+    hasAudio: false,
     createdAt: FIXTURE_TIME,
     contentUrl: `/api/assets/${id}/content`,
     ...overrides,
@@ -257,6 +267,7 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
     scenes: [sceneFixture('scn_a', 0), sceneFixture('scn_b', 1)],
     sources: [],
     placeholders: [],
+    audioChannels: [],
     devices: [],
     assets: [],
     pairingRequests: [],
@@ -277,6 +288,7 @@ export function outputSnapshotFixture(overrides: Partial<OutputSnapshot> = {}): 
     production: productionFixture(),
     scenes: [sceneFixture('scn_a', 0), sceneFixture('scn_b', 1)],
     sources: [],
+    audioChannels: [],
     assets: [],
     ...overrides,
   };

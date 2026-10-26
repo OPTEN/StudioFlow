@@ -1,4 +1,4 @@
-import type { DeviceDto, SourceStatus } from './contracts';
+import type { AudioChannelDto, DeviceDto, SourceStatus } from './contracts';
 import { stateFromSnapshot, type ProductionState } from './production-state';
 import {
   assetForSource,
@@ -22,6 +22,7 @@ import {
 import {
   assetFixture,
   assetSourceFixture,
+  audioChannelFixture,
   deviceFixture,
   deviceSourceFixture,
   incidentFixture,
@@ -372,5 +373,65 @@ describe('healthSummary', () => {
       ],
     };
     expect(healthSummary(state)).toEqual({ active: 2, bad: true, text: '2 incidents' });
+  });
+});
+
+describe('microphones in the tally', () => {
+  const MIC = 'dev_k1aaaa/mic';
+
+  function micState(options: {
+    broadcast?: 'standby' | 'live';
+    channel?: Partial<AudioChannelDto>;
+    mic?: boolean;
+  }): ProductionState {
+    const base = studioState({ broadcast: options.broadcast ?? 'live' });
+    return {
+      ...base,
+      sources: new Map([...base.sources, [MIC, deviceSourceFixture('dev_k1aaaa', 'mic', 'A1')]]),
+      audioChannels: new Map(
+        options.mic === false
+          ? []
+          : [[MIC, audioChannelFixture(MIC, { mode: 'follow', ...options.channel })]],
+      ),
+    };
+  }
+
+  it('tallies a microphone as program while its channel would be audible, never as preview', () => {
+    expect(tallyOf(micState({}), MIC)).toBe('program');
+    expect(tallyOf(micState({ channel: { muted: true } }), MIC)).toBe('off');
+    expect(tallyOf(micState({ channel: { mode: 'off' } }), MIC)).toBe('off');
+    expect(tallyOf(micState({ mic: false }), MIC)).toBe('off');
+    // Independent of the broadcast state, like the pictures.
+    expect(tallyOf(micState({ broadcast: 'standby' }), MIC)).toBe('program');
+  });
+
+  it('puts the incident of a microphone on air only while it is audible', () => {
+    expect(incidentPlace(micState({}), MIC)).toBe('program');
+    expect(incidentPlace(micState({ channel: { muted: true } }), MIC)).toBe('off');
+  });
+
+  it('gives the device a microphone tally of its own that does not count for the overall one', () => {
+    const state = micState({});
+    // K1 is in the program, so its phone is on air with the camera and the microphone.
+    expect(deviceTally(state, 'dev_k1aaaa')).toEqual({
+      overall: 'program',
+      slots: { camera: 'program', mic: 'program' },
+    });
+    // The microphone alone (the camera of the device is not on any scene) leaves the overall tally off.
+    const alone = {
+      ...state,
+      sources: new Map([['dev_k3aaaa/mic', deviceSourceFixture('dev_k3aaaa', 'mic', 'A1')]]),
+      audioChannels: new Map([
+        ['dev_k3aaaa/mic', audioChannelFixture('dev_k3aaaa/mic', { mode: 'always' })],
+      ]),
+    };
+    expect(deviceTally(alone, 'dev_k3aaaa')).toEqual({ overall: 'off', slots: { mic: 'program' } });
+  });
+
+  it('is off for the whole device while the broadcast is not live', () => {
+    expect(deviceTally(micState({ broadcast: 'standby' }), 'dev_k1aaaa')).toEqual({
+      overall: 'off',
+      slots: { camera: 'off', mic: 'off' },
+    });
   });
 });

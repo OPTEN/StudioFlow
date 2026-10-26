@@ -1,4 +1,5 @@
 import { formatNumber, formatTime, t } from '@studioflow/i18n';
+import { AUDIO_LIMITS } from './audio';
 import type { IncidentKind, SourceKind, SourceStatus } from './contracts';
 
 /**
@@ -134,22 +135,47 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
+ * A fader position or a level in dB as the mixer shows it: "−6.0" (U+2212 for the minus sign), "0.0", "+3.5"; the floor
+ * of the fader is "−∞". The unit is rendered separately.
+ */
+export function formatDb(db: number | null | undefined): string {
+  if (db === Number.NEGATIVE_INFINITY || (isKnown(db) && db <= AUDIO_LIMITS.minGainDb)) {
+    return '−∞';
+  }
+  if (!isKnown(db)) {
+    return MISSING_VALUE;
+  }
+  const text = toFixed(Math.abs(db), 1);
+  if (text === toFixed(0, 1)) {
+    return text;
+  }
+  return db < 0 ? `−${text}` : `+${text}`;
+}
+
+/**
  * Short word for a source status as used on lamps, rows and labels ("K2 reconnecting"). `ok` has no word (empty
- * string). `ended` depends on the kind of the source: a camera that was stopped on purpose is "camera stopped", a
- * screen share (and a source of unknown kind) "sharing stopped".
+ * string). `ended` and `lost` depend on the kind of the source: a camera that was stopped on purpose is "camera
+ * stopped", a microphone "microphone stopped", a screen share (and a source of unknown kind) "sharing stopped"; a
+ * camera that failed has "no picture", a microphone "no sound".
  */
 export function statusWord(status: SourceStatus, kind?: SourceKind | null): string {
   switch (status) {
     case 'reconnecting':
       return t('model.status.reconnecting');
     case 'ended':
-      return t(kind === 'camera' ? 'model.status.endedCamera' : 'model.status.endedScreen');
+      return t(
+        kind === 'camera'
+          ? 'model.status.endedCamera'
+          : kind === 'audio'
+            ? 'model.status.endedAudio'
+            : 'model.status.endedScreen',
+      );
     case 'blocked':
       return t('model.status.blocked');
     case 'connecting':
       return t('model.status.connecting');
     case 'lost':
-      return t('model.status.lost');
+      return t(kind === 'audio' ? 'model.status.lostAudio' : 'model.status.lost');
     case 'offline':
       return t('model.status.offline');
     case 'ok':

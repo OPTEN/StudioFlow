@@ -18,6 +18,8 @@ export type {
   AssetDto,
   AssetKind,
   AssignPlaceholderRequest,
+  AudioChannelDto,
+  AudioMode,
   AuditCategory,
   AuditEntryDto,
   AuditPageDto,
@@ -84,6 +86,8 @@ export type {
   MediaSuggestionsDto,
   MediaTestDto,
   MediaTestRequest,
+  OutputAudioDto,
+  OutputAudioState,
   OutputChangesDto,
   OutputLinkDto,
   OutputLinkStatusDto,
@@ -116,6 +120,7 @@ export type {
   SceneLayoutMode,
   ServerSettingsDto,
   SessionDto,
+  SetAudioChannelsRequest,
   SetPreviewRequest,
   SetupRequest,
   SetupStatusDto,
@@ -154,6 +159,7 @@ export type {
 export type ProductionChangedEvent = Api.ProductionEventProductionChangedEvent;
 export type ProductionCanvasChangedEvent = Api.ProductionEventProductionCanvasChangedEvent;
 export type ProgramSwitchedEvent = Api.ProductionEventProgramSwitchedEvent;
+export type AudioChannelsChangedEvent = Api.ProductionEventAudioChannelsChangedEvent;
 export type SceneUpsertedEvent = Api.ProductionEventSceneUpsertedEvent;
 export type SceneRemovedEvent = Api.ProductionEventSceneRemovedEvent;
 export type ScenesReorderedEvent = Api.ProductionEventScenesReorderedEvent;

@@ -84,6 +84,45 @@ describe('logEntryText', () => {
     );
   });
 
+  it('writes the entries of the audio mixer', () => {
+    expect(logEntryText(entry('audioMuted', { code: 'A1' }))).toBe('A1 muted');
+    expect(logEntryText(entry('audioUnmuted', { code: 'A1' }))).toBe('A1 unmuted');
+    expect(logEntryText(entry('audioGainChanged', { code: 'A1', value: '-6' }))).toBe(
+      'A1 gain −6.0 dB',
+    );
+    expect(logEntryText(entry('audioGainChanged', { code: 'A1', value: '-100' }))).toBe(
+      'A1 gain −∞ dB',
+    );
+    expect(logEntryText(entry('audioModeChanged', { code: 'A2', value: 'follow' }))).toBe(
+      'A2 mode: follows the picture',
+    );
+    expect(logEntryText(entry('audioModeChanged', { code: 'A2', value: 'always' }))).toBe(
+      'A2 mode: always audible',
+    );
+    expect(logEntryText(entry('audioModeChanged', { code: 'A2', value: 'off' }))).toBe(
+      'A2 mode: off',
+    );
+    expect(logEntryText(entry('audioSyncOffsetChanged', { code: 'S1', value: '120' }))).toBe(
+      'S1 sync offset 120 ms',
+    );
+    expect(logEntryText(entry('audioEnded', { code: 'A1' }))).toBe('A1 microphone stopped');
+    expect(logEntryText(entry('audioLost', { code: 'A1' }))).toBe('A1 no sound');
+  });
+
+  it('writes the mixer entries in German with the decimal comma', () => {
+    resetLocaleForTests('de-CH');
+    const german = tFor('de-CH');
+    expect(logEntryText(entry('audioGainChanged', { code: 'A1', value: '-6.5' }))).toBe(
+      german('regie.log.audioGainChanged', { code: 'A1', value: '−6,5' }),
+    );
+    expect(logEntryText(entry('audioModeChanged', { code: 'A1', value: 'follow' }))).toBe(
+      german('regie.log.audioModeChanged', {
+        code: 'A1',
+        value: german('regie.log.audioModeFollow'),
+      }),
+    );
+  });
+
   it('uses the English text of an audit entry without a code', () => {
     expect(logEntryText({ code: null, params: {}, text: 'scene.live' })).toBe('scene.live');
   });
@@ -113,7 +152,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(57);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(64);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }
