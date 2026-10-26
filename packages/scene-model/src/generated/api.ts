@@ -740,6 +740,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportAuditCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/export.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportAuditJson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pairing/requests": {
         parameters: {
             query?: never;
@@ -1043,6 +1091,52 @@ export interface components {
          * @enum {unknown}
          */
         AssetKind: "image" | "video";
+        /**
+         * @description What an entry of the audit log is about: the category filter of the log view and a column of the export.
+         * @enum {unknown}
+         */
+        AuditCategory: "production" | "devices" | "security" | "media" | "output" | "system";
+        /** @description An entry of the audit log as the Regie shows it. */
+        AuditEntryDto: {
+            /**
+             * Format: int64
+             * @description Database id; ascending in the order the entries were written.
+             */
+            id: number;
+            /**
+             * Format: date-time
+             * @description Time of the action.
+             */
+            at: string;
+            /** @description `admin`, `system` or `device:{id}`. */
+            actor: string;
+            /** @description Action code such as `scene.live`. */
+            action: string;
+            /** @description What the action is about. */
+            category: components["schemas"]["AuditCategory"];
+            /** @description Production of the action; null for global actions such as sign-ins. */
+            productionId: null | string;
+            /** @description Current name of the production, or null. */
+            productionName: null | string;
+            code: null | components["schemas"]["LogCode"];
+            /** @description Values for the text of the code, keyed in camelCase; the same values as the params of a log entry. */
+            params: {
+                [key: string]: string;
+            };
+            /** @description English text for clients that do not know the code. */
+            text: string;
+            /** @description All details of the entry (device name, scene, IP address of a sign-in); never secrets. */
+            details: {
+                [key: string]: string;
+            };
+        };
+        /** @description One page of the audit log, newest first. */
+        AuditPageDto: {
+            /** @description The entries of the page. */
+            entries: components["schemas"]["AuditEntryDto"][];
+            /** @description Pass as `cursor` to get the next page; null on the last page. */
+            nextCursor: null | string;
+        };
         /** @description Result of the upload part of the technical check. */
         BandwidthTestResultDto: {
             /**
@@ -1512,7 +1606,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -2400,6 +2494,9 @@ export type AddSceneItemRequest = components['schemas']['AddSceneItemRequest'];
 export type AllocateSlotRequest = components['schemas']['AllocateSlotRequest'];
 export type AssetDto = components['schemas']['AssetDto'];
 export type AssetKind = components['schemas']['AssetKind'];
+export type AuditCategory = components['schemas']['AuditCategory'];
+export type AuditEntryDto = components['schemas']['AuditEntryDto'];
+export type AuditPageDto = components['schemas']['AuditPageDto'];
 export type BandwidthTestResultDto = components['schemas']['BandwidthTestResultDto'];
 export type BorderDto = components['schemas']['BorderDto'];
 export type BroadcastState = components['schemas']['BroadcastState'];
@@ -4447,6 +4544,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutputSettingsDto"];
+                };
+            };
+        };
+    };
+    listAuditLog: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                production?: string;
+                category?: string[];
+                action?: string[];
+                actor?: string;
+                q?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    exportAuditCsv: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                production?: string;
+                category?: string[];
+                action?: string[];
+                actor?: string;
+                q?: string;
+                separator?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    exportAuditJson: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                production?: string;
+                category?: string[];
+                action?: string[];
+                actor?: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
