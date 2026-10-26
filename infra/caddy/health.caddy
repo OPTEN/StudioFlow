@@ -1,0 +1,6 @@
+# Loopback-only health endpoint for the container healthcheck (plain HTTP, not published).
+http://127.0.0.1:2020 {
+	bind 127.0.0.1
+	respond /healthz 200
+	respond 404
+}

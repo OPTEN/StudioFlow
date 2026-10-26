@@ -1,6 +1,4 @@
 # dns-infomaniak: Let's Encrypt DNS-01 via Infomaniak (CH). API token with the scopes domain:read dns:read dns:write.
-tls {$STUDIOFLOW_ACME_EMAIL} {
-	dns infomaniak {env.INFOMANIAK_API_TOKEN}
-	propagation_delay 30s
-	import /etc/caddy/snippets/dns-challenge.caddy
-}
+# args[0] = the token.
+dns infomaniak {args[0]}
+propagation_delay 30s

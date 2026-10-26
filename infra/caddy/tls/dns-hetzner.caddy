@@ -1,7 +1,4 @@
 # dns-hetzner: Let's Encrypt DNS-01 via the Hetzner Cloud DNS API (the old dns.hetzner.com API is shut down).
-# Module v2.0.1 supports only this inline form; the block form fails with "wrong argument count".
-tls {$STUDIOFLOW_ACME_EMAIL} {
-	dns hetzner {env.HETZNER_API_TOKEN}
-	propagation_delay 30s
-	import /etc/caddy/snippets/dns-challenge.caddy
-}
+# Module v2.0.1 supports only this inline form; the block form fails with "wrong argument count". args[0] = the token.
+dns hetzner {args[0]}
+propagation_delay 30s

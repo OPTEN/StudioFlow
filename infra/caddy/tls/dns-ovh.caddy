@@ -1,11 +1,8 @@
 # dns-ovh: Let's Encrypt DNS-01 via OVHcloud. Application key/secret and consumer key with GET/POST/PUT/DELETE on
-# /domain/zone/*; OVH_ENDPOINT is for example ovh-eu.
-tls {$STUDIOFLOW_ACME_EMAIL} {
-	dns ovh {
-		endpoint {env.OVH_ENDPOINT}
-		application_key {env.OVH_APPLICATION_KEY}
-		application_secret {env.OVH_APPLICATION_SECRET}
-		consumer_key {env.OVH_CONSUMER_KEY}
-	}
-	import /etc/caddy/snippets/dns-challenge.caddy
+# /domain/zone/*. args: [0] endpoint (for example ovh-eu), [1] application key, [2] application secret, [3] consumer key.
+dns ovh {
+	endpoint {args[0]}
+	application_key {args[1]}
+	application_secret {args[2]}
+	consumer_key {args[3]}
 }

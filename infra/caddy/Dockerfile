@@ -1,4 +1,6 @@
-# StudioFlow edge image: Caddy with the DNS-challenge modules, the Caddyfile and the three built frontends.
+# StudioFlow edge image: Caddy with the DNS-challenge modules, its bootstrap configuration and snippets, and the three built
+# frontends. The sites themselves come from the API at runtime (admin API of Caddy, docs/architecture/implementation-spec.md
+# section 10).
 # Build context is the repository root (docker-compose.yml: context ".", dockerfile infra/caddy/Dockerfile).
 
 ARG NODE_VERSION=22.22.3
@@ -64,9 +66,10 @@ RUN addgroup -S -g 10001 caddy \
 # capabilities a file capability makes exec fail ("operation not permitted"), so remove it.
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 RUN setcap -r /usr/bin/caddy
-COPY infra/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY infra/caddy/Caddyfile infra/caddy/global.caddy infra/caddy/servers.caddy infra/caddy/health.caddy infra/caddy/studioflow.caddy /etc/caddy/
 COPY infra/caddy/snippets/ /etc/caddy/snippets/
 COPY infra/caddy/tls/ /etc/caddy/tls/
+COPY infra/caddy/validate.sh /usr/local/bin/validate-caddy-config
 COPY --from=web /src/dist/studio/browser/ /srv/studio/
 COPY --from=web /src/dist/sender/browser/ /srv/join/
 COPY --from=web /src/dist/output/ /srv/o/
@@ -76,31 +79,11 @@ COPY --from=web /src/dist/studio/3rdpartylicenses.txt /srv/studio/3rdpartylicens
 COPY --from=web /src/dist/sender/3rdpartylicenses.txt /srv/join/3rdpartylicenses.txt
 COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /srv/studio/licenses/
 
-# Fail the build on a broken config: validate every TLS mode, with and without ACME e-mail and extra hosts, with
-# dummy credentials ("custom" needs mounted certificate files and is checked at startup). Validation provisions a
-# local CA, so it runs with a throwaway data directory: a CA baked into the image would be copied into every new
-# caddy_data volume.
-RUN set -eu; \
-    export XDG_DATA_HOME=/tmp/validate/data XDG_CONFIG_HOME=/tmp/validate/config \
-      STUDIOFLOW_DOMAIN=build.invalid STUDIOFLOW_DEFAULT_SNI=build.invalid \
-      STUDIOFLOW_TRUSTED_PROXIES=127.0.0.1/32 STUDIOFLOW_HSTS_MAX_AGE=0 STUDIOFLOW_FRAME_ANCESTORS= \
-      STUDIOFLOW_MAX_UPLOAD=1MiB STUDIOFLOW_MAX_IMPORT=1MiB STUDIOFLOW_MAX_BODY=1MiB \
-      STUDIOFLOW_DNS_RESOLVERS=1.1.1.1 STUDIOFLOW_DNS_CHALLENGE_DOMAIN=_acme-challenge.build.invalid \
-      CF_API_TOKEN=build-validation-dummy-token-0123456789abcdef \
-      INFOMANIAK_API_TOKEN=dummy HETZNER_API_TOKEN=dummy DESEC_TOKEN=dummy GANDI_BEARER_TOKEN=dummy \
-      AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_REGION=eu-central-1 \
-      OVH_ENDPOINT=ovh-eu OVH_APPLICATION_KEY=dummy OVH_APPLICATION_SECRET=dummy OVH_CONSUMER_KEY=dummy; \
-    for file in /etc/caddy/tls/*.caddy; do \
-      mode="$(basename "$file" .caddy)"; \
-      [ "$mode" = custom ] && continue; \
-      for email in '' build@example.com; do \
-        echo "validate TLS mode: $mode (e-mail: ${email:-none})"; \
-        STUDIOFLOW_TLS_MODE="$mode" STUDIOFLOW_ACME_EMAIL="$email" STUDIOFLOW_EXTRA_HOSTS="${email:+127.0.0.1 build2.invalid}" \
-          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; \
-      done; \
-    done; \
-    rm -rf /tmp/validate; \
-    test ! -e /data/caddy/pki
+# Fail the build on a broken config: the bootstrap file and, for every DNS provider, a Caddyfile in the shape the API pushes
+# (infra/caddy/validate.sh). Runs with a throwaway data directory: a local CA baked into the image would be copied into
+# every new caddy_data volume.
+RUN sh /usr/local/bin/validate-caddy-config \
+ && rm /usr/local/bin/validate-caddy-config
 
 USER caddy
 
