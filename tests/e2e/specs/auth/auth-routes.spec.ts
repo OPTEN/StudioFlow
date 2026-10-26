@@ -36,6 +36,8 @@ type Policy = 'anonymous' | 'admin' | 'device' | 'output' | 'webhook' | 'asset-c
 /** The pinned route policy matrix: operation id -> policy. A route missing here fails the test. */
 const POLICY: Record<string, Policy> = {
   login: 'anonymous',
+  getSetupStatus: 'anonymous',
+  completeSetup: 'anonymous',
   createPairingRequest: 'anonymous',
   getPairingRequestStatus: 'anonymous',
   cancelPairingRequest: 'anonymous',
@@ -68,8 +70,8 @@ test.describe('AUTH routes', () => {
     expect(all.length, 'operations in openapi/studioflow.json').toBeGreaterThan(50);
     for (const operation of all) {
       if (policyOf(operation) === 'admin') {
-        // The admin group is everything under /api/productions plus the three session routes.
-        expect(operation.path, `${operation.operationId} would be classified as admin`).toMatch(/^\/api\/(productions|auth\/(logout|me)|system\/info)/);
+        // The admin group is everything under /api/productions plus the session and password routes.
+        expect(operation.path, `${operation.operationId} would be classified as admin`).toMatch(/^\/api\/(productions|auth\/(logout|me|password)|system\/info)/);
       }
     }
     for (const id of Object.keys(POLICY)) expect(all.map((operation) => operation.operationId), `policy entry ${id} exists`).toContain(id);
@@ -129,7 +131,7 @@ test.describe('AUTH routes', () => {
           if (response.status !== 401) failures.push(`${label}: expected 401`);
           break;
         case 'anonymous':
-          if (operation.operationId !== 'login' && (response.status === 401 || response.status === 403)) failures.push(`${label}: public route must not demand credentials`);
+          if (!['login', 'completeSetup'].includes(operation.operationId) && (response.status === 401 || response.status === 403)) failures.push(`${label}: public route must not demand credentials`);
           break;
       }
       // No route answers 200 with data to an anonymous caller, except the public ones.

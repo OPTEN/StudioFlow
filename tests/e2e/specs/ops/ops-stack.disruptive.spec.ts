@@ -1,19 +1,17 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { AdminApi } from '../../support/api';
 import { dockerCtl } from '../../support/docker-ctl';
-import { OUTPUT_DIR, PROJECT, TEST_ADMIN, imageNameOf, stackConfig, volumeNameOf } from '../../support/env';
+import { PROJECT, stackConfig, volumeNameOf } from '../../support/env';
 import { expect, test, uniqueIp } from '../../support/fixtures';
 import { certSerial } from '../../support/ops';
 import { makePng } from '../../support/media-samples';
 import { pairPhone } from '../../support/production';
-import { exec, sleep, waitUntil } from '../../support/shell';
-import { SERVICES, apiReady, compose, containerName, docker, ensureHealthy, inspectService, recreateApi, tryFetch, type Service } from '../../support/stack';
+import { sleep, waitUntil } from '../../support/shell';
+import { SERVICES, compose, containerName, docker, ensureHealthy, inspectService, tryFetch, type Service } from '../../support/stack';
 import { t } from '../../support/tags';
 
 /**
  * OPS on the running stack (docs/testing.md 2.11): E2E-OPS-05 healthchecks are real, -06 restart policy and
- * persistence, -15 the admin hash path. Everything here disturbs the stack and puts it back.
+ * persistence. Everything here disturbs the stack and puts it back.
  */
 
 test.afterEach(async () => {
@@ -145,36 +143,5 @@ test.describe('OPS restart policy and persistence', () => {
     expect(await certSerial(), 'same certificate (caddy_data volume)').toBe(serial);
     expect(after.production.broadcast).toBe(snapshot.production.broadcast);
     void uniqueIp;
-  });
-});
-
-test.describe('OPS admin hash path', () => {
-  test('E2E-OPS-15 [stack] an API started with ADMIN__PASSWORDHASH accepts exactly that password and never holds it in clear text', t.p1, async () => {
-    test.setTimeout(420_000);
-    const config = stackConfig();
-    const password = 'Hash-Login-Passwort-2026';
-    const hashRun = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', imageNameOf('api'), 'Opten.StudioFlow.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
-    expect(hashRun.code, hashRun.output).toBe(0);
-    const hash = hashRun.stdout.trim().split(/\r?\n/).pop()!;
-    expect(hash).toMatch(/^AQAAAA/);
-    const overrideDir = path.join(OUTPUT_DIR, 'ops');
-    fs.mkdirSync(overrideDir, { recursive: true });
-    const override = path.join(overrideDir, 'docker-compose.hash.yml');
-    fs.writeFileSync(override, `services:\n  api:\n    environment:\n      ADMIN__PASSWORD: ""\n      ADMIN__PASSWORDHASH: '${hash}'\n`);
-    try {
-      await recreateApi([override]);
-      const login = await new AdminApi(config.baseURL).login(config.admin.username, password);
-      expect(login.status, 'the password of the hash logs in').toBe(200);
-      const wrong = await new AdminApi(config.apiDirect, '', uniqueIp()).login(config.admin.username, TEST_ADMIN.password);
-      expect(wrong.status, 'the old plain password is no longer accepted').toBe(401);
-      const env = (await docker(['inspect', '-f', '{{json .Config.Env}}', containerName('api')], { check: true })).stdout;
-      expect(env.includes(password), 'docker inspect does not show the password').toBe(false);
-      expect(env.includes(hash), 'the hash is the only credential in the environment').toBe(true);
-    } finally {
-      fs.rmSync(override, { force: true });
-      await recreateApi([]);
-    }
-    expect((await new AdminApi(config.baseURL).login(config.admin.username, config.admin.password)).status, 'the harness password works again').toBe(200);
-    await apiReady();
   });
 });

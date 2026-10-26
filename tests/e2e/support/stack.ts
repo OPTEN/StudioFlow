@@ -110,13 +110,54 @@ export async function apiReady(): Promise<boolean> {
   return (await tryFetch(`${stackConfig().apiDirect}/health/ready`))?.status === 200;
 }
 
+/** True while the Regie has no account (the first-run setup is open); undefined when the API does not answer. */
+export async function setupRequired(): Promise<boolean | undefined> {
+  const response = await tryFetch(`${stackConfig().apiDirect}/api/auth/setup`);
+  return response?.status === 200 ? ((await response.json()) as { setupRequired: boolean }).setupRequired : undefined;
+}
+
+/** The setup code the API logged last, or undefined when its newest line says the account exists (or it logged neither). */
+export async function readSetupCode(): Promise<string | undefined> {
+  const lines = (await serviceLogs('api')).split(/\r?\n/).filter((line) => /Setup code: [A-Z0-9]{4}-[A-Z0-9]{4}|The Regie account exists/.test(line));
+  return /Setup code: ([A-Z0-9]{4}-[A-Z0-9]{4})/.exec(lines.at(-1) ?? '')?.[1];
+}
+
+/** Waits for the setup code of the running API (it writes the line while it starts). */
+export async function waitForSetupCode(timeoutMs = 60_000): Promise<string> {
+  let code: string | undefined;
+  await waitUntil('the setup code in the API log', async () => (code = await readSetupCode()) !== undefined, { timeoutMs, intervalMs: 1000 });
+  return code!;
+}
+
 /**
- * Waits until the stack is usable again after a disruption: containers healthy, /health/ready 200 and the admin login
- * works through Caddy.
+ * Creates the Regie account of the harness (`stackConfig().admin`) in the first-run setup when the stack has none, with
+ * the code from the API log. A stack that has the account is left alone.
+ */
+export async function ensureHarnessAccount(): Promise<void> {
+  if ((await setupRequired()) !== true) return;
+  const config = stackConfig();
+  const setupCode = await waitForSetupCode();
+  const response = await tryFetch(`${config.apiDirect}/api/auth/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ setupCode, username: config.admin.username, password: config.admin.password }),
+  });
+  if (response?.status !== 200) throw new Error(`the first-run setup of the harness account failed with ${response?.status}: ${await response?.text()}`);
+}
+
+/** Runs `reset-admin --yes` inside the api container: the account is deleted and the running API reopens the first-run setup. */
+export async function resetAdminAccount(): Promise<ExecResult> {
+  return compose(['exec', '-T', 'api', 'dotnet', 'Opten.StudioFlow.Web.dll', 'reset-admin', '--yes'], { check: true });
+}
+
+/**
+ * Waits until the stack is usable again after a disruption: containers healthy, /health/ready 200, the harness account
+ * exists (the first-run setup of a fresh stack is done here) and its login works through Caddy.
  */
 export async function ensureHealthy(timeoutMs = 240_000): Promise<void> {
   await waitHealthy(timeoutMs);
   await waitUntil('/health/ready 200', apiReady, { timeoutMs: 60_000, intervalMs: 500 });
+  await ensureHarnessAccount();
   const config = stackConfig();
   await waitUntil(
     'admin login through Caddy',

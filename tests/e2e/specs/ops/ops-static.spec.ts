@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, TEST_ADMIN, imageNameOf, parseEnvFile, stackConfig } from '../../support/env';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, imageNameOf, parseEnvFile, stackConfig } from '../../support/env';
 import { expect, knownBug, test } from '../../support/fixtures';
 import { detectLanIPv4 } from '../../support/network-info';
-import { OPS_HASH_PROJECT, OpsSandbox, bashPath, cleanComposeEnv, composeConfig } from '../../support/ops';
+import { OpsSandbox, bashPath, cleanComposeEnv, composeConfig } from '../../support/ops';
 import { containerName, docker } from '../../support/stack';
 import { exec } from '../../support/shell';
 import { t } from '../../support/tags';
@@ -13,7 +13,7 @@ import { t } from '../../support/tags';
 /**
  * OPS - the parts of docs/testing.md 2.11 that read the compose file and the scripts and do not change the running
  * stack: E2E-OPS-01 (compose file and .env.example), -02 (setup.sh), -12 (network exposure), -13 (hardening),
- * -15 (admin hash path and startup validation). Scripts run unmodified in an isolated copy (support/ops.ts).
+ * -15 (the Regie account: reset-admin). Scripts run unmodified in an isolated copy (support/ops.ts).
  */
 
 const read = (relative: string): string => fs.readFileSync(path.join(REPO_ROOT, relative), 'utf8');
@@ -102,7 +102,7 @@ test.describe('OPS compose file', () => {
     const { all } = composeVariables();
     const missing = [...all].filter((name) => !documented.has(name));
     expect(missing, 'variables read by docker-compose.yml but not documented in .env.example').toEqual([]);
-    for (const name of ['ADMIN__PASSWORD', 'ADMIN__PASSWORDHASH', 'LIVEKIT_API_SECRET', 'POSTGRES_PASSWORD', 'BACKUP_RCLONE_CONFIG', 'CF_API_TOKEN', 'INFOMANIAK_API_TOKEN', 'HETZNER_API_TOKEN', 'DESEC_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'GANDI_BEARER_TOKEN', 'OVH_APPLICATION_SECRET', 'OVH_CONSUMER_KEY']) {
+    for (const name of ['LIVEKIT_API_SECRET', 'POSTGRES_PASSWORD', 'BACKUP_RCLONE_CONFIG', 'CF_API_TOKEN', 'INFOMANIAK_API_TOKEN', 'HETZNER_API_TOKEN', 'DESEC_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'GANDI_BEARER_TOKEN', 'OVH_APPLICATION_SECRET', 'OVH_CONSUMER_KEY']) {
       expect(documented.get(name), `${name} has no value in .env.example`).toBe('');
     }
     expect(read('.env.example'), 'no placeholder secret').not.toMatch(/changeme|devkey|password123/i);
@@ -244,41 +244,30 @@ echo "unique: $(basename "$(sf_backup_unique_dir "$dir" 2026-10-23_0300)")"`;
 
 test.describe('OPS setup.sh', () => {
   const sandboxes: OpsSandbox[] = [];
-  const sandbox = (mode: 'none' | 'hash' = 'none') => {
-    const created = OpsSandbox.create('setup', { mode });
+  const sandbox = () => {
+    const created = OpsSandbox.create('setup', { mode: 'none' });
     sandboxes.push(created);
     return created;
   };
 
   test.afterAll(async () => {
     for (const created of sandboxes) await created.cleanup();
-    // `docker compose down` would need the whole .env; the project only left a network and the built image behind.
-    const leftovers = (await docker(['ps', '-aq', '--filter', `label=com.docker.compose.project=${OPS_HASH_PROJECT}`])).stdout.split(/\s+/).filter(Boolean);
-    if (leftovers.length) await docker(['rm', '-f', ...leftovers]);
-    await docker(['network', 'rm', `${OPS_HASH_PROJECT}_studioflow`]).catch(() => undefined);
-    const volumes = (await docker(['volume', 'ls', '-q', '--filter', `label=com.docker.compose.project=${OPS_HASH_PROJECT}`])).stdout.split(/\s+/).filter(Boolean);
-    if (volumes.length) await docker(['volume', 'rm', ...volumes]).catch(() => undefined);
-    await docker(['image', 'rm', `${OPS_HASH_PROJECT}-api`]).catch(() => undefined);
   });
 
   const secretsOf = (file: string) => {
     const env = parseEnvFile(file);
-    return { livekit: env['LIVEKIT_API_SECRET']!, postgres: env['POSTGRES_PASSWORD']!, hash: env['ADMIN__PASSWORDHASH'] ?? '' };
+    return { livekit: env['LIVEKIT_API_SECRET']!, postgres: env['POSTGRES_PASSWORD']! };
   };
-  const generated = (output: string) => /Password:\s+(\S+)/.exec(output)?.[1];
 
-  test('E2E-OPS-02 [setup.sh] --generate-password writes a valid .env twice with different secrets; the password is shown once and stored as a hash', t.p0, async () => {
-    test.setTimeout(900_000);
-    const box = sandbox('hash');
-    const runs: Array<{ file: string; output: string; password: string }> = [];
+  test('E2E-OPS-02 [setup.sh] writes a valid .env twice with different secrets and without any account setting; the Regie account is left to the first-run setup', t.p0, async () => {
+    const box = sandbox();
+    const runs: Array<{ file: string; output: string }> = [];
     for (const name of ['a', 'b']) {
       fs.mkdirSync(box.path(name));
       const file = box.path(name, '.env');
-      const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--generate-password', '--env-file', file]);
+      const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--env-file', file]);
       expect(result.code, result.output.slice(-1500)).toBe(0);
-      const password = generated(result.stdout);
-      expect(password, 'the generated password is displayed once').toMatch(/^[A-Za-z0-9]{24}$/);
-      runs.push({ file, output: result.output, password: password! });
+      runs.push({ file, output: result.output });
     }
     const [first, second] = runs as [(typeof runs)[number], (typeof runs)[number]];
     for (const run of runs) {
@@ -287,68 +276,72 @@ test.describe('OPS setup.sh', () => {
       expect(env['STUDIOFLOW_DOMAIN']).toBe('localhost');
       expect(env['STUDIOFLOW_NODE_IP']).toBe('127.0.0.1');
       expect(env['STUDIOFLOW_TLS_MODE']).toBe('internal');
-      expect(env['ADMIN__USERNAME']).toBe('admin');
       expect(env['LIVEKIT_API_KEY'], 'the key is the non-secret id').toBe('studioflow');
       expect(env['LIVEKIT_API_SECRET'], 'LiveKit secret: starts with a letter, at least 32 characters').toMatch(/^[A-Za-z][A-Za-z0-9]{31,}$/);
       expect(env['POSTGRES_PASSWORD'], 'database password').toMatch(/^[A-Za-z0-9]{32}$/);
-      expect(env['ADMIN__PASSWORDHASH'], 'ASP.NET Identity v3 hash').toMatch(/^AQAAAA[A-Za-z0-9+/]{20,}={0,2}$/);
-      expect(env['ADMIN__PASSWORD'] ?? '', 'no plain password next to the hash').toBe('');
+      expect(Object.keys(env).filter((key) => key.startsWith('ADMIN__')), 'no account setting').toEqual([]);
       expect(env['STUDIOFLOW_HSTS_MAX_AGE'], 'internal mode: short HSTS').toBe('3600');
       expect(text, 'no known default or placeholder').not.toMatch(/changeme|password123|devkey|=example|=secret\b/i);
-      expect(text, 'the generated password is not in the file').not.toContain(run.password);
+      expect(run.output, 'no password is asked for or shown').not.toMatch(/password:/i);
+      expect(run.output, 'the next steps name the setup code').toContain('Setup code');
     }
-    expect(first.password).not.toBe(second.password);
     expect(secretsOf(first.file).livekit).not.toBe(secretsOf(second.file).livekit);
     expect(secretsOf(first.file).postgres).not.toBe(secretsOf(second.file).postgres);
-    expect(secretsOf(first.file).hash).not.toBe(secretsOf(second.file).hash);
-    // The password appears exactly once in the output of its own run (the single display) and never in the other's.
-    expect(first.output.split(first.password).length - 1, 'shown once').toBe(1);
-    expect(second.output).not.toContain(first.password);
     // Generated by the script, the file is not tracked: .env is git-ignored.
     const ignored = await exec('git', ['check-ignore', '-q', '.env'], { cwd: REPO_ROOT });
     expect(ignored.code, '.env is git-ignored').toBe(0);
   });
 
-  test('E2E-OPS-02 [setup.sh] --admin-password-stdin and --plain-password: the password is stored as the user chose and never printed', t.p0, async () => {
+  test('E2E-OPS-02 [setup.sh] the account settings of older versions are not carried over, with a notice', t.p0, async () => {
     const box = sandbox();
-    const password = 'Stdin-Passwort-2026-xyz';
-    fs.mkdirSync(box.path('plain'));
-    const file = box.path('plain', '.env');
-    const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--admin-user', 'regie', '--env-file', file], { input: `${password}\n` });
+    fs.mkdirSync(box.path('legacy'));
+    const file = box.path('legacy', '.env');
+    fs.writeFileSync(file, ['STUDIOFLOW_DOMAIN=localhost', 'ADMIN__USERNAME=regie', 'ADMIN__PASSWORD=Altes-Passwort-2026', 'ADMIN__PASSWORDHASH=AQAAAAEAACcQAAAAEExample', ''].join('\n'));
+    const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--force', '--env-file', file]);
     expect(result.code, result.output.slice(-1500)).toBe(0);
-    const env = parseEnvFile(file);
-    expect(env['ADMIN__USERNAME']).toBe('regie');
-    expect(env['ADMIN__PASSWORD'], '--plain-password stores the plain value').toBe(password);
-    expect(env['ADMIN__PASSWORDHASH'] ?? '').toBe('');
-    expect(result.output, 'the password is never printed').not.toContain(password);
-    expect(result.stderr, 'the plain storage is flagged as local-only').toMatch(/plain text/);
+    const text = fs.readFileSync(file, 'utf8');
+    expect(text, 'the old account settings are gone').not.toMatch(/ADMIN__/);
+    expect(text, 'the old password is gone').not.toContain('Altes-Passwort-2026');
+    expect(result.stdout, 'the notice says they are no longer used').toMatch(/no longer used/);
+    expect(result.output, 'the old password is never printed').not.toContain('Altes-Passwort-2026');
+  });
+
+  test('E2E-OPS-02 [setup.sh] the options of older versions that asked for a password are unknown now', t.p1, async () => {
+    const box = sandbox();
+    for (const option of ['--admin-password-stdin', '--generate-password', '--plain-password']) {
+      fs.mkdirSync(box.path(option.slice(2)));
+      const file = box.path(option.slice(2), '.env');
+      const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', option, '--env-file', file]);
+      expect(result.code, option).toBe(1);
+      expect(result.stderr, option).toMatch(/Error: Unknown option/);
+      expect(fs.existsSync(file), 'no .env written').toBe(false);
+    }
   });
 
   test('E2E-OPS-02 [setup.sh] without --node-ip the LAN IPv4 of the default route is detected', t.p1, async () => {
     const box = sandbox();
     fs.mkdirSync(box.path('auto'));
     const file = box.path('auto', '.env');
-    const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file], { input: 'Auto-Passwort-2026-xyz\n' });
+    const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--tls-mode', 'internal', '--env-file', file]);
     expect(result.code, result.output.slice(-1500)).toBe(0);
     const ip = parseEnvFile(file)['STUDIOFLOW_NODE_IP']!;
     expect(ip, 'a private IPv4').toMatch(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/);
     expect(ip, 'the address of the default route').toBe(await detectLanIPv4());
   });
 
-  const invalid: Array<{ name: string; args: string[]; input?: string; message: RegExp }> = [
-    { name: 'an empty domain for a certificate authority mode', args: ['--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Error: Invalid or missing domain/ },
-    { name: 'an invalid IP', args: ['--domain', 'localhost', '--node-ip', '300.1.1.1', '--tls-mode', 'internal'], input: 'Passwort-2026-lang-genug\n', message: /Error: Invalid or missing LAN IPv4/ },
-    { name: 'an unknown TLS mode', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'foo'], input: 'Passwort-2026-lang-genug\n', message: /Error: Unknown TLS mode/ },
-    { name: 'a password shorter than 12 characters', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--plain-password'], input: 'kurz\n', message: /Error: The admin password needs at least 12 characters/ },
+  const invalid: Array<{ name: string; args: string[]; message: RegExp }> = [
+    { name: 'an empty domain for a certificate authority mode', args: ['--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], message: /Error: Invalid or missing domain/ },
+    { name: 'an invalid IP', args: ['--domain', 'localhost', '--node-ip', '300.1.1.1', '--tls-mode', 'internal'], message: /Error: Invalid or missing LAN IPv4/ },
+    { name: 'an unknown TLS mode', args: ['--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'foo'], message: /Error: Unknown TLS mode/ },
     { name: 'an unknown option', args: ['--domain', 'localhost', '--bogus'], message: /Error: Unknown option/ },
-    { name: 'an IP address as domain with a public CA mode', args: ['--domain', '192.0.2.10', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], input: 'Passwort-2026-lang-genug\n', message: /Error: No certificate can be issued for an IP address/ },
+    { name: 'an IP address as domain with a public CA mode', args: ['--domain', '192.0.2.10', '--node-ip', '127.0.0.1', '--tls-mode', 'acme'], message: /Error: No certificate can be issued for an IP address/ },
   ];
   for (const entry of invalid) {
-    test(`E2E-OPS-02 [setup.sh] ${entry.name}: exit 1 with a German «Fehler:» and no file`, t.p1, async () => {
+    test(`E2E-OPS-02 [setup.sh] ${entry.name}: exit 1 with an error message and no file`, t.p1, async () => {
       const box = sandbox();
       fs.mkdirSync(box.path('bad'));
       const file = box.path('bad', '.env');
-      const result = await box.run('setup.sh', ['--non-interactive', ...entry.args, '--admin-password-stdin', '--env-file', file], { input: entry.input ?? '' });
+      const result = await box.run('setup.sh', ['--non-interactive', ...entry.args, '--env-file', file]);
       expect(result.code, result.output).toBe(1);
       expect(result.stderr).toMatch(entry.message);
       expect(fs.existsSync(file), 'no .env written').toBe(false);
@@ -360,13 +353,13 @@ test.describe('OPS setup.sh', () => {
     const box = sandbox();
     fs.mkdirSync(box.path('emptydomain'));
     const file = box.path('emptydomain', '.env');
-    const result = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file], { input: 'Passwort-2026-lang-genug\n' });
+    const result = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--env-file', file]);
     expect(result.code, result.output.slice(-600)).toBe(0);
     expect(parseEnvFile(file)['STUDIOFLOW_DOMAIN'], 'the node IP is the domain').toBe('127.0.0.1');
 
     fs.mkdirSync(box.path('emptydomain-acme'));
     const acme = box.path('emptydomain-acme', '.env');
-    const refused = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme', '--admin-password-stdin', '--plain-password', '--env-file', acme], { input: 'Passwort-2026-lang-genug\n' });
+    const refused = await box.run('setup.sh', ['--non-interactive', '--domain', '', '--node-ip', '127.0.0.1', '--tls-mode', 'acme', '--env-file', acme]);
     expect(refused.code, 'a public TLS mode needs a real domain').not.toBe(0);
     expect(fs.existsSync(acme), 'no .env written').toBe(false);
   });
@@ -375,14 +368,14 @@ test.describe('OPS setup.sh', () => {
     const box = sandbox();
     fs.mkdirSync(box.path('force'));
     const file = box.path('force', '.env');
-    const common = ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--admin-password-stdin', '--plain-password', '--env-file', file];
-    expect((await box.run('setup.sh', common, { input: 'Erstes-Passwort-2026\n' })).code).toBe(0);
+    const common = ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--env-file', file];
+    expect((await box.run('setup.sh', common)).code).toBe(0);
     const original = fs.readFileSync(file, 'utf8');
-    const refused = await box.run('setup.sh', common, { input: 'Zweites-Passwort-2026\n' });
+    const refused = await box.run('setup.sh', common);
     expect(refused.code, 'second run without --force').toBe(1);
     expect(refused.stderr).toMatch(/Error: .*already exists/);
     expect(fs.readFileSync(file, 'utf8'), 'the file is unchanged').toBe(original);
-    const forced = await box.run('setup.sh', [...common, '--force', '--frame-ancestors', 'https://embed.example.ch'], { input: 'Zweites-Passwort-2026\n' });
+    const forced = await box.run('setup.sh', [...common, '--force', '--frame-ancestors', 'https://embed.example.ch']);
     expect(forced.code, forced.output.slice(-1000)).toBe(0);
     const before = parseEnvFile(file);
     const backups = fs.readdirSync(box.path('force')).filter((name) => name.startsWith('.env.backup-'));
@@ -391,7 +384,6 @@ test.describe('OPS setup.sh', () => {
     const old = parseEnvFile(box.path('force', backups[0]!));
     expect(before['LIVEKIT_API_SECRET'], 'LiveKit secret kept').toBe(old['LIVEKIT_API_SECRET']);
     expect(before['POSTGRES_PASSWORD'], 'database password kept (PostgreSQL is initialised with it)').toBe(old['POSTGRES_PASSWORD']);
-    expect(before['ADMIN__PASSWORD'], 'the new password was taken').toBe('Zweites-Passwort-2026');
     expect(before['STUDIOFLOW_FRAME_ANCESTORS']).toBe('https://embed.example.ch');
   });
 
@@ -489,39 +481,33 @@ test.describe('OPS network and hardening', () => {
   });
 });
 
-test.describe('OPS admin hash path', () => {
+test.describe('OPS Regie account', () => {
   const IMAGE = imageNameOf('api');
 
-  test('E2E-OPS-15 [image] hash-password reads the password from stdin, prints a salted Identity v3 hash and never echoes the password', t.p1, async () => {
-    const password = 'Hash-Test-Passwort-2026';
-    const run = () => exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', IMAGE, 'Opten.StudioFlow.Web.dll', 'hash-password'], { input: password, timeoutMs: 120_000 });
-    const [first, second] = [await run(), await run()];
-    for (const result of [first, second]) {
-      expect(result.code, result.output).toBe(0);
-      const hash = result.stdout.trim().split(/\r?\n/).pop()!;
-      expect(hash).toMatch(/^AQAAAA[A-Za-z0-9+/]{20,}={0,2}$/);
-      expect(result.output, 'the password is not echoed').not.toContain(password);
-    }
-    expect(first.stdout.trim(), 'salted: two runs differ').not.toBe(second.stdout.trim());
+  test('E2E-OPS-15 [image] reset-admin without --yes asks first and an empty answer changes nothing', t.p1, async () => {
+    const result = await exec('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'dotnet', IMAGE, 'Opten.StudioFlow.Web.dll', 'reset-admin'], { input: '', timeoutMs: 120_000 });
+    expect(result.code, 'not confirmed: exit code 2').toBe(2);
+    expect(result.stdout).toContain('Type yes to continue');
+    expect(result.stderr).toMatch(/not changed/);
   });
 
-  test('E2E-OPS-15 [image] the API refuses to start without Admin:PasswordHash and Admin:Password, names the keys and leaks no secret', t.p1, async () => {
+  test('E2E-OPS-15 [image] reset-admin names no connection string when the database is not reachable', t.p1, async () => {
     const config = stackConfig();
     const result = await exec(
       'docker',
       [
         'run', '--rm', '--network', 'none',
-        '-e', `CONNECTIONSTRINGS__STUDIOFLOW=Host=nowhere;Database=studioflow;Username=studioflow;Password=${config.postgresPassword}`,
-        '-e', `LIVEKIT__APIKEY=${config.livekit.apiKey}`,
-        '-e', `LIVEKIT__APISECRET=${config.livekit.apiSecret}`,
-        '-e', `ADMIN__USERNAME=${TEST_ADMIN.username}`,
-        IMAGE,
+        '-e', `CONNECTIONSTRINGS__STUDIOFLOW=Host=nowhere;Database=studioflow;Username=studioflow;Password=${config.postgresPassword};Timeout=2`,
+        '--entrypoint', 'dotnet', IMAGE, 'Opten.StudioFlow.Web.dll', 'reset-admin', '--yes',
       ],
       { timeoutMs: 120_000 },
     );
-    expect(result.code, 'the process exits with an error').not.toBe(0);
-    expect(result.output, 'names the missing keys').toMatch(/Admin:PasswordHash|Admin:Password/);
+    expect(result.code, 'the command fails').toBe(1);
     expect(result.output).not.toContain(config.postgresPassword);
-    expect(result.output).not.toContain(config.livekit.apiSecret);
+  });
+
+  test('E2E-OPS-15 [stack] Compose passes no account setting to the api container', t.p1, async () => {
+    const env = (await docker(['inspect', '-f', '{{json .Config.Env}}', containerName('api')], { check: true })).stdout;
+    expect(env, 'the api container has no account setting').not.toMatch(/ADMIN__(USERNAME|PASSWORD)/);
   });
 });

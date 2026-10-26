@@ -32,8 +32,6 @@ export interface StackSettings {
   postgresPort: number;
   /** /24 of the compose network; the services take .10 (LiveKit), .11 (API), .12 (PostgreSQL), .13 (Caddy). */
   subnet: string;
-  /** /24 of the scratch stack of the OPS specs (setup.sh builds the API image and hashes a password in it). */
-  opsSubnet: string;
 }
 
 /**
@@ -59,7 +57,6 @@ export function numberedStack(n: number): StackSettings {
     livekitPort: 17890 + n,
     postgresPort: 15490 + n,
     subnet: `172.31.${200 + n}.0/24`,
-    opsSubnet: `172.31.${210 + n}.0/24`,
   };
 }
 
@@ -74,7 +71,6 @@ const DEFAULT_SETTINGS: StackSettings = {
   livekitPort: 17880,
   postgresPort: 15432,
   subnet: '172.31.250.0/24',
-  opsSubnet: '172.31.251.0/24',
 };
 
 function portOf(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
@@ -94,7 +90,7 @@ function portOf(env: NodeJS.ProcessEnv, name: string, fallback: number): number 
  *   E2E_PROJECT  compose project (default sf-e2e)
  *   E2E_HTTPS_PORT, E2E_HTTP_PORT, E2E_API_PORT, E2E_LIVEKIT_PORT, E2E_POSTGRES_PORT  host ports
  *   E2E_RTC_TCP_PORT, E2E_RTC_UDP_PORT  LiveKit media ports (STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT)
- *   E2E_SUBNET   /24 of the compose network, E2E_OPS_SUBNET the one of the OPS scratch stack
+ *   E2E_SUBNET   /24 of the compose network
  */
 export function resolveStackSettings(env: NodeJS.ProcessEnv = process.env): StackSettings {
   const rawStack = env['E2E_STACK']?.trim();
@@ -116,7 +112,6 @@ export function resolveStackSettings(env: NodeJS.ProcessEnv = process.env): Stac
     livekitPort: portOf(env, 'E2E_LIVEKIT_PORT', base.livekitPort),
     postgresPort: portOf(env, 'E2E_POSTGRES_PORT', base.postgresPort),
     subnet,
-    opsSubnet: env['E2E_OPS_SUBNET']?.trim() || base.opsSubnet,
   };
 }
 
@@ -155,7 +150,7 @@ export const COMPOSE_FILES = {
   shortTtl: path.join(E2E_DIR, 'docker-compose.short-ttl.yml'),
 } as const;
 
-/** Throwaway values; they only protect a stack that lives for the duration of a test run. */
+/** Throwaway values; they only protect a stack that lives for the duration of a test run. The admin is created in the first-run setup (support/stack.ts, ensureHarnessAccount). */
 export const TEST_ADMIN = { username: 'e2e-admin', password: 'e2e-Admin-Passw0rd-2026' } as const;
 export const TEST_LIVEKIT = {
   apiKey: 'e2e_lk_key',
@@ -233,7 +228,7 @@ export function stackConfig(): StackConfig {
     postgresPort: Number(env['E2E_POSTGRES_PORT'] ?? SETTINGS.postgresPort),
     nodeIp: env['STUDIOFLOW_NODE_IP'] ?? '127.0.0.1',
     subnet,
-    admin: { username: env['ADMIN__USERNAME'] ?? TEST_ADMIN.username, password: env['ADMIN__PASSWORD'] ?? TEST_ADMIN.password },
+    admin: { username: TEST_ADMIN.username, password: TEST_ADMIN.password },
     livekit: { apiKey: env['LIVEKIT_API_KEY'] ?? TEST_LIVEKIT.apiKey, apiSecret: env['LIVEKIT_API_SECRET'] ?? TEST_LIVEKIT.apiSecret },
     postgresPassword: env['POSTGRES_PASSWORD'] ?? TEST_POSTGRES_PASSWORD,
     frameAncestors: env['STUDIOFLOW_FRAME_ANCESTORS'] ?? '',
@@ -271,9 +266,6 @@ export function renderEnvFile(nodeIp: string, overrides: Record<string, string> 
     // 'self' is always allowed by Caddy; the UI tests embed the output on https://embed.test (fake origin served with
     // page.route), the embedding specs on https://embed.e2e.test.
     STUDIOFLOW_FRAME_ANCESTORS: 'https://embed.e2e.test https://embed.test',
-    ADMIN__USERNAME: TEST_ADMIN.username,
-    ADMIN__PASSWORD: TEST_ADMIN.password,
-    ADMIN__PASSWORDHASH: '',
     LIVEKIT_API_KEY: TEST_LIVEKIT.apiKey,
     LIVEKIT_API_SECRET: TEST_LIVEKIT.apiSecret,
     POSTGRES_PASSWORD: TEST_POSTGRES_PASSWORD,
