@@ -104,7 +104,7 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
     public string SourceId { get; } = sourceId;
 
     /// <summary>Slot code (for incidents and log texts).</summary>
-    public string Code { get; } = code;
+    public string Code { get; private set; } = code;
 
     /// <summary>Current status.</summary>
     public SourceStatus Status { get; private set; } = initial;
@@ -117,6 +117,17 @@ public sealed class SourceHealth(string sourceId, string code, SourceStatus init
 
     /// <summary>The current incident (open or recovered and not acknowledged).</summary>
     public IncidentDto? Incident { get; private set; }
+
+    /// <summary>
+    /// The source took over the code of a placeholder: the code of the incident changes with it. Returns the changed
+    /// incident, or null when there is none.
+    /// </summary>
+    public IncidentDto? Recode(string code)
+    {
+        Code = code;
+        Incident = Incident is null ? null : Incident with { Code = code };
+        return Incident;
+    }
 
     /// <summary>Applies a newly evaluated status.</summary>
     public SourceHealthChange Apply(SourceStatus next, DateTimeOffset now)

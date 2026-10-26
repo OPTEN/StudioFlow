@@ -17,6 +17,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 [JsonDerivedType(typeof(ScenesReorderedEvent), "scenesReordered")]
 [JsonDerivedType(typeof(SourceUpsertedEvent), "sourceUpserted")]
 [JsonDerivedType(typeof(SourceRemovedEvent), "sourceRemoved")]
+[JsonDerivedType(typeof(PlaceholderRemovedEvent), "placeholderRemoved")]
 [JsonDerivedType(typeof(DeviceUpsertedEvent), "deviceUpserted")]
 [JsonDerivedType(typeof(DeviceRemovedEvent), "deviceRemoved")]
 [JsonDerivedType(typeof(AssetUpsertedEvent), "assetUpserted")]
@@ -73,6 +74,9 @@ public sealed record SourceUpsertedEvent(long Revision, SourceDto Source) : Prod
 
 /// <summary>A source was removed (slot released, device or asset deleted).</summary>
 public sealed record SourceRemovedEvent(long Revision, string SourceId) : ProductionEvent(Revision);
+
+/// <summary>A placeholder was assigned to a source or removed. The scenes that changed arrive as <c>sceneUpserted</c> before it.</summary>
+public sealed record PlaceholderRemovedEvent(long Revision, string PlaceholderId) : ProductionEvent(Revision);
 
 /// <summary>A device was paired or changed (name, state, connection, tech check).</summary>
 public sealed record DeviceUpsertedEvent(long Revision, DeviceDto Device) : ProductionEvent(Revision);

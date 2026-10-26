@@ -89,6 +89,7 @@ internal static class StudioFlowHost
         services.AddValidatedOptions<RealtimeOptions>(configuration, RealtimeOptions.Section);
         services.AddValidatedOptions<BackupOptions>(configuration, BackupOptions.Section);
         services.AddValidatedOptions<AuditOptions>(configuration, AuditOptions.Section);
+        services.AddValidatedOptions<TransferOptions>(configuration, TransferOptions.Section);
         services.AddSingleton(TimeProvider.System);
         services.AddStudioFlowInfrastructure(configuration);
         AddApplication(services);
@@ -189,6 +190,16 @@ internal static class StudioFlowHost
         services.AddSingleton<PairingService>();
         services.AddSingleton<AssetService>();
         services.AddSingleton<TextService>();
+        services.AddSingleton<PlaceholderService>();
+        services.AddSingleton(sp => new ProductionTransferService(
+            sp.GetRequiredService<ProductionCoordinator>(),
+            sp.GetRequiredService<ProductionService>(),
+            sp.GetRequiredService<IUnitOfWorkFactory>(),
+            sp.GetRequiredService<IMediaStore>(),
+            sp.GetRequiredService<TransferOptions>(),
+            sp.GetRequiredService<TimeProvider>(),
+            AppVersion.Current,
+            sp.GetRequiredService<ILogger<ProductionTransferService>>()));
         services.AddSingleton<OutputService>();
         services.AddSingleton<LiveKitSyncService>();
         services.AddSingleton<StudioSessionService>();

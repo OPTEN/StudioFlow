@@ -16,7 +16,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
         ArgumentNullException.ThrowIfNull(context);
         var (production, devices, assets) = await LoadAsync(context, cancellationToken);
         var runtime = context.Runtime;
-        var catalog = new SourceCatalog(devices, assets, production.TextSources);
+        var catalog = new SourceCatalog(devices, assets, production.TextSources, production.Placeholders);
         var invites = await context.Data.Invites.ListOpenAsync(production.Id, context.Now, cancellationToken);
         var log = await context.Data.Audit.ListRecentAsync(production.Id, LogTexts.RecentActions, RecentLogSize * 3, cancellationToken);
         var sourceIds = catalog.All.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
@@ -27,6 +27,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             Dtos.Production(production),
             [.. production.OrderedScenes.Select(Dtos.Scene)],
             [.. catalog.All.Select(e => Dtos.Source(e, runtime.Sources.GetValueOrDefault(e.Id)))],
+            production.Placeholders,
             [.. devices.Select(d => Dtos.Device(d, runtime.FindDevice(d.Id)))],
             [.. assets.Select(Dtos.Asset)],
             [.. pairingRequests.Pending(production.Id, context.Now).Select(r => r.ToDto())],

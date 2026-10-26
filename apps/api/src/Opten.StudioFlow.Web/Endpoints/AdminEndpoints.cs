@@ -148,6 +148,65 @@ internal static class ProductionEndpoints
 
     public static async Task<IResult> GetTelemetryAsync(string productionId, ProductionService productions, CancellationToken cancellationToken) =>
         TypedResults.Ok(await productions.GetTelemetryAsync(productionId, cancellationToken));
+
+    public static async Task<IResult> DuplicateAsync(string productionId, [FromBody] DuplicateProductionRequest body, ProductionTransferService transfers, CancellationToken cancellationToken)
+    {
+        var created = await transfers.DuplicateAsync(productionId, body, cancellationToken);
+        return TypedResults.Created($"/api/productions/{created.Id}", created);
+    }
+
+    // Prepared before the first byte: an unknown production is a normal 404, and the audit entry exists when the download starts.
+    public static async Task<IResult> ExportAsync(string productionId, ProductionTransferService transfers, CancellationToken cancellationToken) =>
+        new ArchiveResult(await transfers.PrepareExportAsync(productionId, cancellationToken));
+
+    // The file is buffered to disk by the form reader and then read as a ZIP file; ?dryRun=true checks it and answers what
+    // the import would do without keeping anything.
+    public static async Task<IResult> ImportAsync(IFormFile file, [FromQuery] bool? dryRun, ProductionTransferService transfers, CancellationToken cancellationToken)
+    {
+        await using var content = file.OpenReadStream();
+        if (dryRun == true)
+        {
+            return TypedResults.Ok(await transfers.PreviewImportAsync(content, cancellationToken));
+        }
+
+        var created = await transfers.ImportAsync(content, cancellationToken);
+        return TypedResults.Created($"/api/productions/{created.Id}", created);
+    }
+
+    /// <summary>
+    /// Writes the export while it is built: the response has no length, nothing is collected in memory or on disk. The ZIP
+    /// writer closes each file with a few bytes of synchronous output, which the server only allows when asked, so
+    /// synchronous IO is enabled for this response alone.
+    /// </summary>
+    private sealed class ArchiveResult(PreparedExport export) : IResult
+    {
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            await using (export)
+            {
+                var response = httpContext.Response;
+                response.ContentType = "application/zip";
+                response.Headers.ContentDisposition = $"attachment; filename=\"{export.FileName}\"";
+                if (httpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpBodyControlFeature>() is { } body)
+                {
+                    body.AllowSynchronousIO = true;
+                }
+
+                await response.StartAsync(httpContext.RequestAborted);
+                await export.WriteAsync(response.Body, httpContext.RequestAborted);
+            }
+        }
+    }
+}
+
+/// <summary>Placeholders of a copied production.</summary>
+internal static class PlaceholderEndpoints
+{
+    public static async Task<IResult> AssignAsync(string productionId, string placeholderId, [FromBody] AssignPlaceholderRequest body, PlaceholderService placeholders, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await placeholders.AssignAsync(productionId, placeholderId, body, cancellationToken));
+
+    public static async Task<IResult> RemoveAsync(string productionId, string placeholderId, PlaceholderService placeholders, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await placeholders.RemoveAsync(productionId, placeholderId, cancellationToken));
 }
 
 /// <summary>Scenes and items.</summary>

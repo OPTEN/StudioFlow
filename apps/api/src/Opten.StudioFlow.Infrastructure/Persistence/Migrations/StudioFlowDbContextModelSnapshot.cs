@@ -437,6 +437,11 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("Placeholders")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("placeholders");
+
                     b.Property<string>("PreviewSceneId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")

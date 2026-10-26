@@ -93,6 +93,21 @@ public interface IMediaStore
 
     /// <summary>Deletes a stored file (missing files are ignored).</summary>
     void Delete(string productionId, string fileName);
+
+    /// <summary>
+    /// Opens a stored file for reading, or returns null when it is missing. The handle stays valid when the file is deleted
+    /// meanwhile, so an export or a duplicate reads a consistent set of files without holding up the production.
+    /// </summary>
+    Stream? OpenRead(string productionId, string fileName);
+
+    /// <summary>
+    /// Stores a copy of a file that was verified when it was uploaded (a duplicate) as <c>{productionId}/{assetId}{extension}</c>
+    /// and returns the file name. The size limits of uploads do not apply: the file exists in the original production already.
+    /// </summary>
+    Task<string> CopyAsync(string productionId, string assetId, string extension, Stream content, CancellationToken cancellationToken);
+
+    /// <summary>Deletes the folder of a production with every file in it (an import or duplicate that was aborted); a missing folder is ignored.</summary>
+    void DeleteProduction(string productionId);
 }
 
 /// <summary>Hashes and checks the password of the Regie account (ASP.NET Core Identity v3 format).</summary>

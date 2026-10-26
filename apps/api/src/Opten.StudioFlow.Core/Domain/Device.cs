@@ -161,6 +161,18 @@ public sealed class Device
         return existing;
     }
 
+    /// <summary>
+    /// Gives a slot another code: a source that is not used anywhere takes over the code of the placeholder it replaces
+    /// (“Use as K1”). Throws <c>not_found</c> for a slot the device does not have.
+    /// </summary>
+    public DeviceSlot RecodeSlot(string slot, string code)
+    {
+        var existing = FindSlot(slot) ?? throw StudioFlowException.NotFound("Source");
+        var recoded = existing with { Code = code };
+        Slots = [.. Slots.Select(s => s == existing ? recoded : s)];
+        return recoded;
+    }
+
     /// <summary>The slot with the given name, if any.</summary>
     public DeviceSlot? FindSlot(string slot) => Slots.FirstOrDefault(s => string.Equals(s.Slot, slot, StringComparison.Ordinal));
 

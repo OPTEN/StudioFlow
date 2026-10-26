@@ -25,6 +25,9 @@ public static class EntityIds
     /// <summary>Prefix of text source ids.</summary>
     public const string Text = "txt_";
 
+    /// <summary>Prefix of placeholder ids (device sources of a copied production that are not assigned yet).</summary>
+    public const string Placeholder = "plh_";
+
     /// <summary>Prefix of invite ids.</summary>
     public const string Invite = "inv_";
 

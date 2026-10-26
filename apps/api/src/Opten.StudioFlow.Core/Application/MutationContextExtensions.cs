@@ -50,7 +50,7 @@ public static class MutationContextExtensions
         var devices = await context.Data.Devices.ListAsync(context.ProductionId, cancellationToken);
         var assets = await context.Data.Assets.ListAsync(context.ProductionId, cancellationToken);
         var production = await context.ProductionAsync(cancellationToken);
-        return new SourceCatalog(devices, assets, production.TextSources);
+        return new SourceCatalog(devices, assets, production.TextSources, production.Placeholders);
     }
 
     /// <summary>The production name for device self messages.</summary>
