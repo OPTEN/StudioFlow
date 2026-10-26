@@ -783,3 +783,35 @@ summary, never a failure). The nightly **E2E full** run scans the images with Tr
 **Checking the configuration** (needs Node.js): `npx --yes --package renovate -- renovate-config-validator --strict`, and
 what Renovate finds in the repository: `npx --yes renovate --platform=local --dry-run=extract` (with the repository
 configuration passed as `RENOVATE_CONFIG_FILE=.github/renovate.json5` until it is committed).
+
+## 16. Remote camera control
+
+The Regie can zoom, switch the lens, lock the focus, shift the brightness and switch the light of a **phone** from the
+Stations dock: open the station, press "Camera". Laptops and webcams are not controlled.
+
+- **Only what the phone supports appears.** The phone reports what its browser allows; a control that is missing is not
+  shown. If the panel says "Not available on this device", the browser reports no camera control at all. The Regie
+  always shows the value the phone reports back, not the one that was requested (a slider that jumps back means the
+  phone refused or rounded the value; a short message says so).
+- **Lens switch.** The phone changes to another camera of the device (wide-angle, standard, tele, front). The picture
+  freezes for less than a second. For a station that is in the program the Regie asks first. Zoom starts again at 1×
+  on the new lens.
+- **The last command wins.** If two operators move the same slider, the phone follows the last command and both Regies
+  show the value of the phone. Settings belong to the phone, not to a scene; there are no presets.
+- **After an interruption** (reload, call, other app, reconnect) the phone restores its lens, zoom, focus, brightness and
+  light, because it keeps them in its browser storage. "Reset to auto" sets zoom, focus, brightness and light back to
+  automatic (the lens stays).
+- **Slow Wi-Fi.** A dragged slider sends at most about ten commands a second; the API merges what arrives faster
+  (`Sources__CameraCommandInterval`, default `00:00:00.100`) and the phone applies only the newest value.
+
+What a device can do depends on the model and the browser. Fill in the table when you test a phone (`docs/testing.md`,
+MAN-14) and keep it with your setup notes:
+
+| Phone, OS, browser | Lenses | Zoom | Focus | Brightness | Light |
+|---|---|---|---|---|---|
+| Android phone, Chrome | usually one entry per back camera, labels differ by model | most models | depends on the model | depends on the model | back camera, most models |
+| iPhone, Safari | front and back, ultra-wide as a separate entry where iOS lists it | usually not | no | no | no |
+| (your phone) | | | | | |
+
+The first two rows are expectations from the browser documentation, not measurements: confirm them with MAN-14 before a
+production relies on them.
