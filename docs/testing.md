@@ -2385,7 +2385,7 @@ Several named output links per production and the output as a camera in Teams, Z
 
 **UNIT-LINK-05** · P2 · ng (`download.service.spec.ts`) — File download from the Regie
 - Steps: save a text file.
-- Expect: the file has the given name and type, the object URL is released, no link stays in the page, and the click does not reach the page (an open popover stays open).
+- Expect: the file has the given name and type, the object URL is released, no link stays in the page, and the link is clicked inside a given element (the open popover stays open).
 
 **INT-LINK-01** · P0 · xunit (`OutputFlowTests`) — Output link use cases
 - Steps: authorise with the key of each link, wrong key, unknown slug, address outside one link's list; create (valid, invalid, duplicate, 10th, 11th); rename; regenerate and revoke with connected pages and LiveKit participants; connect after the link was revoked; last seen; a new production.

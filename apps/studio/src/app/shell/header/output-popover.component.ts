@@ -56,7 +56,7 @@ export function linkStateText(state: OutputState): string {
 
 /**
  * Output popover (prototype `renderOutPop`, spec 4.8, 9.1): the summary of the output (state, consumers, format,
- * latency), the named output links with their own state ("Proxy · connected"), "Add link", and the selected link with
+ * latency), the named output links with their own state ("Proxy · connected"), "Create link", and the selected link with
  * its URL, IP restriction, "Use as camera …", regenerate and revoke (`sf-output-link`). Loads the output settings when
  * it opens and again whenever a link changes its state, so "last seen" stays current.
  */

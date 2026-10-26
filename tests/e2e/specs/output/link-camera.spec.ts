@@ -34,7 +34,7 @@ async function openPopover(page: Page): Promise<Locator> {
 
 async function addLink(pop: Locator, name: string): Promise<void> {
   await pop.getByLabel('Name of the new link').fill(name);
-  await pop.getByRole('button', { name: 'Add link' }).click();
+  await pop.getByRole('button', { name: 'Create link' }).click();
   await expect(linkRow(pop, name)).toBeVisible();
 }
 

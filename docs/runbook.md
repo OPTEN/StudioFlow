@@ -891,7 +891,7 @@ computer". The camera carries **video only**; the sound keeps coming from the mi
 ### 18.1 Set it up (about 10 minutes)
 
 1. **A link of its own for the camera.** In the Regie click the chip "Output" in the header. In the "Links" section
-   type `Teams camera` into the field "Name of the new link" and click "Add link". The new link is selected and shows
+   type `Teams camera` into the field "Name of the new link" and click "Create link". The new link is selected and shows
    its masked address. Optional but recommended: under "Access" type the IP address of the camera computer, click "Add",
    then "Save"; from then on only that computer can open this link. Every consumer has its own link, so the proxy
    link (named "Proxy") is not touched.

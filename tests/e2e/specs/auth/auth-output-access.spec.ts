@@ -75,7 +75,7 @@ test.describe('AUTH hubs and output access', () => {
     expect(fifty.status, '50 rules are allowed').toBe(200);
     expect((await set([])).status).toBe(200);
     const snapshot = await production.snapshot();
-    expect(snapshot.recentLog.map((entry) => entry.text), 'audit/log entry «Output-Zugriff geändert»').toContain('Output-Zugriff geändert');
+    expect(snapshot.recentLog.map((entry) => entry.text), 'audit/log entry «Access of output link “Proxy” changed»').toContain('Access of output link “Proxy” changed');
   });
 
   test('INT-AUTH-16 [stack] IP restriction with the forwarded address (REST, hub negotiate and asset ?k=)', t.p0, async ({ stack, api, production }) => {
