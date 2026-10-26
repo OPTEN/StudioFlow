@@ -5,7 +5,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * I18N - the language of the Regie, the monitoring page and the sender (docs/testing.md 2.15): the browser language
+ * I18N - the language of the Regie, the monitoring page and the sender (docs/testing.md 2.16): the browser language
  * picks the locale, the setting in `studioflow.locale` beats it, and a change applies at once without a reload.
  * The `i18n` project runs in `de-CH`; every test here sets the browser language it needs.
  */

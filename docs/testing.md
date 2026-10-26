@@ -252,7 +252,7 @@ projects run the **UI-only subset** (pairing forms, redeem, layout, tally render
 | `ipad` | `devices['iPad (gen 7)']` landscape and portrait (WebKit) | sender kind detection, layout |
 | `regie-1280x720`, `regie-1440x900`, `regie-1920x1080`, `regie-1180`, `regie-900`, `regie-390x844` | Chromium with fixed viewport | responsive Regie tests (`E2E-DEV-01…06`) |
 | `small-320` | 320×568, touch, Chromium | sender at the narrowest width |
-| `i18n` | Chromium with `locale: 'de-CH'` | `specs/i18n` (2.15: the tests set the browser language they need), the German rules audit of `E2E-DEV-17`, files `*.de.spec.ts` |
+| `i18n` | Chromium with `locale: 'de-CH'` | `specs/i18n` (2.16: the tests set the browser language they need), the German rules audit of `E2E-DEV-17`, files `*.de.spec.ts` |
 | `short-ttl`, `disruptive`, `soak` | Chromium | see 1.2.4 |
 
 ```ts
