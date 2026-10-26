@@ -15,6 +15,8 @@ internal sealed class ServiceHarness : IDisposable
         PairingOptions = pairing ?? new PairingOptions();
         Production = Core.Domain.Production.Create("Webinar", "webinar", isActive: true, Clock.Now);
         Data.Productions.Add(Production);
+        Link = OutputLink.Create(Production.Id, OutputLink.DefaultName, [], Clock.Now);
+        Data.OutputLinks.Add(Link);
         Requests = new PairingRequestStore(PairingOptions);
         Runtimes = new ProductionRuntimeRegistry(Clock);
         Coordinator = new ProductionCoordinator(Runtimes, Data, new InlineDispatcher(Publisher), Clock, shutdown);
@@ -51,6 +53,9 @@ internal sealed class ServiceHarness : IDisposable
     public StudioFlowOptions Options { get; } = new() { PublicBaseUrl = "https://sf.example" };
 
     public Production Production { get; }
+
+    /// <summary>The link every production starts with.</summary>
+    public OutputLink Link { get; }
 
     public ProductionRuntimeRegistry Runtimes { get; }
 

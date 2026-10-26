@@ -38,7 +38,7 @@ public sealed class StudioHub(StudioSessionService sessions, HubConnectionRegist
     }
 }
 
-/// <summary>Output hub (<c>/hubs/output</c>, output key).</summary>
+/// <summary>Output hub (<c>/hubs/output</c>, key of an output link).</summary>
 [Authorize(Policy = Policies.Output)]
 public sealed class OutputHub(OutputService outputs, HubConnectionRegistry registry) : Hub<IOutputClient>
 {
@@ -47,7 +47,7 @@ public sealed class OutputHub(OutputService outputs, HubConnectionRegistry regis
     {
         registry.Register(Context);
         var address = Context.GetHttpContext() is { } http ? ClientAddress.Of(http) : "unknown";
-        await outputs.ConnectedAsync(ProductionId, Context.ConnectionId, address, Context.ConnectionAborted);
+        await outputs.ConnectedAsync(ProductionId, LinkId, Context.ConnectionId, address, Context.ConnectionAborted);
         await base.OnConnectedAsync();
     }
 
@@ -58,7 +58,7 @@ public sealed class OutputHub(OutputService outputs, HubConnectionRegistry regis
 
     /// <summary>Status report of the page (about every two seconds).</summary>
     [HubMethodName(HubMethods.Report)]
-    public Task ReportAsync(OutputReport report) => outputs.ReportAsync(ProductionId, report, Context.ConnectionAborted);
+    public Task ReportAsync(OutputReport report) => outputs.ReportAsync(ProductionId, LinkId, report, Context.ConnectionAborted);
 
     /// <inheritdoc />
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -69,6 +69,8 @@ public sealed class OutputHub(OutputService outputs, HubConnectionRegistry regis
     }
 
     private string ProductionId => Context.User?.FindFirstValue(StudioFlowClaims.ProductionId) ?? throw new HubException(ErrorCodes.Forbidden);
+
+    private string LinkId => Context.User?.FindFirstValue(StudioFlowClaims.OutputLinkId) ?? throw new HubException(ErrorCodes.Forbidden);
 }
 
 /// <summary>Sender hub (<c>/hubs/device</c>, device credential).</summary>

@@ -322,7 +322,7 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("invites", (string)null);
                 });
 
-            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Production", b =>
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.OutputLink", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -333,6 +333,56 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("allowed_ips");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("KeyCreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("key_created_at");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ProductionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("production_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_output_links");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_output_links_key");
+
+                    b.HasIndex("ProductionId")
+                        .HasDatabaseName("ix_output_links_production_id");
+
+                    b.ToTable("output_links", (string)null);
+                });
+
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Production", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
 
                     b.Property<string>("Broadcast")
                         .IsRequired()
@@ -375,16 +425,6 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<string>("OutputKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("output_key");
-
-                    b.Property<DateTimeOffset>("OutputKeyCreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("output_key_created_at");
-
                     b.Property<string>("PreviewSceneId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
@@ -424,10 +464,6 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_productions");
-
-                    b.HasIndex("OutputKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_productions_output_key");
 
                     b.HasIndex("TenantId")
                         .IsUnique()
@@ -556,6 +592,16 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_invites_production_id");
+                });
+
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.OutputLink", b =>
+                {
+                    b.HasOne("Opten.StudioFlow.Core.Domain.Production", null)
+                        .WithMany()
+                        .HasForeignKey("ProductionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_output_links_production_id");
                 });
 
             modelBuilder.Entity("Opten.StudioFlow.Core.Domain.Scene", b =>

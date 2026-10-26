@@ -17,6 +17,8 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
 
     public List<Invite> Invites { get; } = [];
 
+    public List<OutputLink> OutputLinks { get; } = [];
+
     public List<AuditEntry> Audit { get; } = [];
 
     public Dictionary<string, SourceLastLive> LiveMarks { get; } = new(StringComparer.Ordinal);
@@ -30,7 +32,7 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
 
     public IUnitOfWork Create() => new Unit(this);
 
-    private sealed class Unit(InMemoryData data) : IUnitOfWork, IProductionRepository, IDeviceRepository, IAssetRepository, IInviteRepository, IAuditRepository, ISourceActivityRepository
+    private sealed class Unit(InMemoryData data) : IUnitOfWork, IProductionRepository, IDeviceRepository, IAssetRepository, IInviteRepository, IOutputLinkRepository, IAuditRepository, ISourceActivityRepository
     {
         private readonly List<AuditEntry> pendingAudit = [];
         private readonly List<SourceLastLive> pendingMarks = [];
@@ -42,6 +44,8 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
         public IAssetRepository Assets => this;
 
         public IInviteRepository Invites => this;
+
+        public IOutputLinkRepository OutputLinks => this;
 
         public IAuditRepository Audit => this;
 
@@ -102,15 +106,6 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
         Task<string?> IProductionRepository.GetNameAsync(string productionId, CancellationToken cancellationToken) =>
             Task.FromResult(data.Productions.FirstOrDefault(p => p.Id == productionId)?.Name);
 
-        Task<OutputKeyInfo?> IProductionRepository.GetOutputKeyAsync(string productionId, CancellationToken cancellationToken) =>
-            Task.FromResult(data.Productions.Where(p => p.Id == productionId).Select(Key).FirstOrDefault());
-
-        Task<OutputKeyInfo?> IProductionRepository.GetOutputKeyBySlugAsync(string slug, CancellationToken cancellationToken) =>
-            Task.FromResult(data.Productions.Where(p => p.Slug == slug).Select(Key).FirstOrDefault());
-
-        Task<IReadOnlyList<OutputKeyInfo>> IProductionRepository.ListOutputKeysAsync(CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<OutputKeyInfo>>([.. data.Productions.Select(Key)]);
-
         Task<bool> IProductionRepository.AnyLiveAsync(CancellationToken cancellationToken) =>
             Task.FromResult(data.Productions.Any(p => p.Broadcast == BroadcastState.Live));
 
@@ -160,12 +155,32 @@ internal sealed class InMemoryData : IUnitOfWorkFactory
 
         void IInviteRepository.Remove(Invite invite) => data.Invites.Remove(invite);
 
+        Task<OutputLink?> IOutputLinkRepository.GetAsync(string productionId, string linkId, CancellationToken cancellationToken) =>
+            Task.FromResult(data.OutputLinks.FirstOrDefault(l => l.Id == linkId && l.ProductionId == productionId));
+
+        Task<IReadOnlyList<OutputLink>> IOutputLinkRepository.ListAsync(string productionId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OutputLink>>([.. data.OutputLinks.Where(l => l.ProductionId == productionId).OrderBy(l => l.CreatedAt)]);
+
+        Task<IReadOnlyList<OutputLinkAccess>> IOutputLinkRepository.ListAccessAsync(string productionId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OutputLinkAccess>>([.. Access().Where(a => a.ProductionId == productionId)]);
+
+        Task<IReadOnlyList<OutputLinkAccess>> IOutputLinkRepository.ListAccessBySlugAsync(string slug, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OutputLinkAccess>>([.. Access().Where(a => a.Slug == slug)]);
+
+        Task<IReadOnlyList<OutputLinkAccess>> IOutputLinkRepository.ListAllAccessAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OutputLinkAccess>>([.. Access()]);
+
+        void IOutputLinkRepository.Add(OutputLink link) => data.OutputLinks.Add(link);
+
+        void IOutputLinkRepository.Remove(OutputLink link) => data.OutputLinks.Remove(link);
+
         void IAuditRepository.Add(AuditEntry entry) => pendingAudit.Add(entry);
 
         Task<IReadOnlyList<AuditEntry>> IAuditRepository.ListRecentAsync(string productionId, IReadOnlyCollection<string> actions, int count, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<AuditEntry>>([.. data.Audit.Where(a => a.ProductionId == productionId && actions.Contains(a.Action)).Reverse().Take(count)]);
 
-        private static OutputKeyInfo Key(Production p) => new(p.Id, p.Slug, p.OutputKey, p.AllowedIps);
+        private IEnumerable<OutputLinkAccess> Access() =>
+            data.OutputLinks.Join(data.Productions, l => l.ProductionId, p => p.Id, (l, p) => new OutputLinkAccess(p.Id, p.Slug, l.Id, l.Name, l.Key, l.AllowedIps));
     }
 }
 

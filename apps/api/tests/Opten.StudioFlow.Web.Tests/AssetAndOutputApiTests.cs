@@ -74,7 +74,7 @@ public sealed class AssetApiTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         var bytes = MediaSamples.Png(64, 32, 5000);
         var asset = await UploadAsync(admin, bytes, "range.png", "image/png").ExpectAsync<AssetDto>(HttpStatusCode.Created);
         var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        var key = settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+        var key = settings.Links[0].Key();
 
         using var full = await admin.Client.GetAsync(asset.ContentUrl, TestContext.Current.CancellationToken);
         using var range = new HttpRequestMessage(HttpMethod.Get, $"{asset.ContentUrl}?k={key}");
@@ -183,9 +183,11 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
 
         var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
 
-        Assert.StartsWith("https://sf.test/o/webinar?k=", settings.Url, StringComparison.Ordinal);
+        var link = Assert.Single(settings.Links);
+        Assert.Equal("Proxy", link.Name);
+        Assert.StartsWith("https://sf.test/o/webinar?k=", link.Url, StringComparison.Ordinal);
         Assert.Equal(["'self'", "https://stream.example"], settings.FrameAncestors);
-        Assert.Empty(settings.AllowedIps);
+        Assert.Empty(link.AllowedIps);
     }
 
     [Fact]
@@ -272,7 +274,7 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     public async Task AllowedIps_ClientFromTrustedProxy_UsesForwardedAddress()
     {
         var (admin, key, slug) = await ProductionAsync();
-        await admin.Client.PutJsonAsync($"/api/productions/{admin.ProductionId}/output/access", new UpdateOutputAccessRequest(["192.168.50.0/24"])).ExpectAsync<OutputSettingsDto>();
+        await admin.Client.PutJsonAsync($"/api/productions/{admin.ProductionId}/output/links/{(await admin.GetOutputLinksAsync())[0].Id}/access", new UpdateOutputAccessRequest(["192.168.50.0/24"])).ExpectAsync<OutputLinkDto>();
 
         var viaProxy = OutputClient(key, "10.99.0.2");
         viaProxy.DefaultRequestHeaders.Add("X-Forwarded-For", "192.168.50.7");
@@ -289,11 +291,11 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     public async Task Access_InvalidEntries_AreRejectedAndValidOnesNormalized()
     {
         var (admin, _, _) = await ProductionAsync();
-        var url = $"/api/productions/{admin.ProductionId}/output/access";
+        var url = $"/api/productions/{admin.ProductionId}/output/links/{(await admin.GetOutputLinksAsync())[0].Id}/access";
 
         await admin.Client.PutJsonAsync(url, new UpdateOutputAccessRequest(["10.0.0.0/33"])).ExpectProblemAsync(HttpStatusCode.BadRequest);
-        var settings = await admin.Client.PutJsonAsync(url, new UpdateOutputAccessRequest(["10.1.2.3/8", "2001:db8::1"])).ExpectAsync<OutputSettingsDto>();
-        var cleared = await admin.Client.PutJsonAsync(url, new UpdateOutputAccessRequest([])).ExpectAsync<OutputSettingsDto>();
+        var settings = await admin.Client.PutJsonAsync(url, new UpdateOutputAccessRequest(["10.1.2.3/8", "2001:db8::1"])).ExpectAsync<OutputLinkDto>();
+        var cleared = await admin.Client.PutJsonAsync(url, new UpdateOutputAccessRequest([])).ExpectAsync<OutputLinkDto>();
 
         Assert.Equal(["10.0.0.0/8", "2001:db8::1"], settings.AllowedIps);
         Assert.Empty(cleared.AllowedIps);
@@ -304,15 +306,16 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     {
         var (admin, key, slug) = await ProductionAsync();
         app.Rooms.Available = true;
-        app.Rooms.Participants[admin.ProductionId] = [new("PA_1", $"output_{slug}_abc", []), new("PA_2", "studio_x", [])];
+        var linkId = (await admin.GetOutputLinksAsync())[0].Id;
+        app.Rooms.Participants[admin.ProductionId] = [new("PA_1", $"output_{slug}_{linkId}_abc", []), new("PA_2", "studio_x", [])];
         try
         {
-            var settings = await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/output/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-            var newKey = settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+            var link = await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/output/links/{linkId}/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync<OutputLinkDto>();
+            var newKey = link.Key();
 
             await OutputClient(key).GetAsync($"/api/output/{slug}/snapshot", TestContext.Current.CancellationToken).ExpectProblemAsync(HttpStatusCode.Forbidden);
             await OutputClient(newKey).GetAsync($"/api/output/{slug}/snapshot", TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
-            Assert.Contains(app.Rooms.Removed, r => r.Identity == $"output_{slug}_abc");
+            Assert.Contains(app.Rooms.Removed, r => r.Identity == $"output_{slug}_{linkId}_abc");
             Assert.DoesNotContain(app.Rooms.Removed, r => r.Identity == "studio_x");
         }
         finally
@@ -346,6 +349,6 @@ public sealed class OutputApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         var admin = await app.AdminAsync();
         var production = await admin.Client.PostJsonAsync("/api/productions", new CreateProductionRequest("Out " + Guid.NewGuid().ToString("N")[..6])).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
         var settings = await admin.Client.GetAsync($"/api/productions/{production.Id}/output").ExpectAsync<OutputSettingsDto>();
-        return (admin with { ProductionId = production.Id }, settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..], production.Slug);
+        return (admin with { ProductionId = production.Id }, settings.Links[0].Key(), production.Slug);
     }
 }

@@ -341,8 +341,11 @@ public sealed class LogTextsTests
         Assert.Equal("Request from Lea denied", Text(AuditActions.PairingDenied, (AuditDetails.Name, "Lea")));
         Assert.Equal("Invite link created", Text(AuditActions.InviteCreated, (AuditDetails.Kind, "LaptopLink")));
         Assert.Equal("Invite link revoked", Text(AuditActions.InviteRevoked, (AuditDetails.Kind, "LaptopLink")));
-        Assert.Equal("Output link regenerated", Text(AuditActions.OutputKeyRegenerated));
-        Assert.Equal("Output access changed", Text(AuditActions.OutputAccessChanged));
+        Assert.Equal("Output link “Teams” created", Text(AuditActions.OutputLinkCreated, (AuditDetails.Name, "Teams")));
+        Assert.Equal("Output link renamed to “Teams camera”", Text(AuditActions.OutputLinkRenamed, (AuditDetails.Name, "Teams camera")));
+        Assert.Equal("Output link “Teams” revoked", Text(AuditActions.OutputLinkRevoked, (AuditDetails.Name, "Teams")));
+        Assert.Equal("Output link “Proxy” regenerated", Text(AuditActions.OutputKeyRegenerated, (AuditDetails.Name, "Proxy")));
+        Assert.Equal("Access of output link “Proxy” changed", Text(AuditActions.OutputAccessChanged, (AuditDetails.Name, "Proxy")));
         Assert.Equal("M1 “Pause” uploaded", Text(AuditActions.AssetUploaded, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")));
         Assert.Equal("M1 “Pause” deleted", Text(AuditActions.AssetDeleted, (AuditDetails.Code, "M1"), (AuditDetails.Name, "Pause")));
     }
@@ -405,8 +408,11 @@ public sealed class LogTextsTests
             (AuditActions.PairingDenied, [(AuditDetails.Name, "Lea")], LogCode.PairingDenied, "Request from Lea denied", new() { ["name"] = "Lea" }),
             (AuditActions.InviteCreated, [linkInvite], LogCode.InviteLinkCreated, "Invite link created", new()),
             (AuditActions.InviteRevoked, [linkInvite], LogCode.InviteLinkRevoked, "Invite link revoked", new()),
-            (AuditActions.OutputKeyRegenerated, [], LogCode.OutputLinkRegenerated, "Output link regenerated", new()),
-            (AuditActions.OutputAccessChanged, [], LogCode.OutputAccessChanged, "Output access changed", new()),
+            (AuditActions.OutputLinkCreated, [(AuditDetails.Name, "Teams")], LogCode.OutputLinkCreated, "Output link “Teams” created", new() { ["name"] = "Teams" }),
+            (AuditActions.OutputLinkRenamed, [(AuditDetails.Name, "Teams")], LogCode.OutputLinkRenamed, "Output link renamed to “Teams”", new() { ["name"] = "Teams" }),
+            (AuditActions.OutputLinkRevoked, [(AuditDetails.Name, "Teams")], LogCode.OutputLinkRevoked, "Output link “Teams” revoked", new() { ["name"] = "Teams" }),
+            (AuditActions.OutputKeyRegenerated, [(AuditDetails.Name, "Proxy")], LogCode.OutputLinkRegenerated, "Output link “Proxy” regenerated", new() { ["name"] = "Proxy" }),
+            (AuditActions.OutputAccessChanged, [(AuditDetails.Name, "Proxy")], LogCode.OutputAccessChanged, "Access of output link “Proxy” changed", new() { ["name"] = "Proxy" }),
             (AuditActions.AssetUploaded, asset, LogCode.AssetUploaded, "M1 “Intro” uploaded", new() { ["code"] = "M1", ["name"] = "Intro" }),
             (AuditActions.AssetDeleted, asset, LogCode.AssetDeleted, "M1 “Intro” deleted", new() { ["code"] = "M1", ["name"] = "Intro" }),
             (AuditActions.SourceReconnecting, [(AuditDetails.Code, "K2")], LogCode.SourceReconnecting, "K2 reconnecting", new() { ["code"] = "K2" }),

@@ -28,6 +28,9 @@ public static class EntityIds
     /// <summary>Prefix of invite ids.</summary>
     public const string Invite = "inv_";
 
+    /// <summary>Prefix of output link ids.</summary>
+    public const string OutputLink = "olk_";
+
     /// <summary>Prefix of pairing request ids.</summary>
     public const string PairingRequest = "prq_";
 

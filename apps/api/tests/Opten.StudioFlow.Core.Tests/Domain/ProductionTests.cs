@@ -20,8 +20,6 @@ public sealed class ProductionTests
         Assert.Equal(new SlateDto("Starting soon", "Webinar", null), production.StandbySlate);
         Assert.Equal("Thanks for watching", production.EndSlate.Title);
         Assert.Equal("opten", production.TenantId);
-        Assert.Equal(43, production.OutputKey.Length);
-        Assert.Empty(production.AllowedIps);
     }
 
     [Fact]
@@ -273,32 +271,5 @@ public sealed class ProductionTests
         Assert.Equal(image.Id, production.EndSlate.BackgroundAssetId);
         Assert.True(production.UsesAsset(image.Id));
         Assert.False(production.Update(new UpdateProductionRequest(null, null, null), catalog));
-    }
-
-    [Fact]
-    public void SetAllowedIps_Valid_NormalizesAndDeduplicates()
-    {
-        production.SetAllowedIps(["10.1.2.3/8", " 10.0.0.0/8", "::1"]);
-
-        Assert.Equal(["10.0.0.0/8", "::1"], production.AllowedIps);
-    }
-
-    [Fact]
-    public void SetAllowedIps_InvalidEntry_NamesTheIndex() =>
-        Assert.True(Assert.Throws<StudioFlowException>(() => production.SetAllowedIps(["10.0.0.0/8", "nope"])).Errors!.ContainsKey("allowedIps[1]"));
-
-    [Fact]
-    public void SetAllowedIps_TooMany_IsValidationError() =>
-        Assert.Throws<StudioFlowException>(() => production.SetAllowedIps([.. Enumerable.Range(0, 51).Select(i => $"10.0.0.{i}")]));
-
-    [Fact]
-    public void RegenerateOutputKey_Always_ReplacesKey()
-    {
-        var old = production.OutputKey;
-
-        production.RegenerateOutputKey(Build.T0.AddDays(1));
-
-        Assert.NotEqual(old, production.OutputKey);
-        Assert.Equal(Build.T0.AddDays(1), production.OutputKeyCreatedAt);
     }
 }

@@ -35,6 +35,7 @@ internal sealed class OutputAuthenticationHandler(
             [
                 new Claim(ClaimTypes.NameIdentifier, access.Slug),
                 new Claim(StudioFlowClaims.ProductionId, access.ProductionId),
+                new Claim(StudioFlowClaims.OutputLinkId, access.LinkId),
             ],
             Scheme.Name);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));

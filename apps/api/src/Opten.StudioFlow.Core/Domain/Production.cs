@@ -80,15 +80,6 @@ public sealed class Production
     /// <summary>Texts and lower thirds of the production (source kind text), in creation order.</summary>
     public IReadOnlyList<TextSourceDto> TextSources { get; private set; } = [];
 
-    /// <summary>Secret key of the output link (shown to the Regie, therefore not hashed).</summary>
-    public string OutputKey { get; private set; } = string.Empty;
-
-    /// <summary>When the output key was created.</summary>
-    public DateTimeOffset OutputKeyCreatedAt { get; private set; }
-
-    /// <summary>IP addresses or CIDR ranges allowed to open the output; empty allows every address.</summary>
-    public IReadOnlyList<string> AllowedIps { get; private set; } = [];
-
     /// <summary>Creation time.</summary>
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -115,8 +106,6 @@ public sealed class Production
             IsActive = isActive,
             Broadcast = BroadcastState.Standby,
             StandbySlate = new SlateDto("Starting soon", validName, null),
-            OutputKey = Secrets.New(),
-            OutputKeyCreatedAt = now,
             CreatedAt = now,
         };
         for (var i = 0; i < DefaultSceneNames.Count; i++)
@@ -366,44 +355,6 @@ public sealed class Production
         }
 
         return true;
-    }
-
-    /// <summary>Creates a new output key; the old one is invalid immediately.</summary>
-    public void RegenerateOutputKey(DateTimeOffset now)
-    {
-        OutputKey = Secrets.New();
-        OutputKeyCreatedAt = now;
-    }
-
-    /// <summary>Validates and normalises the IP restriction of the output.</summary>
-    public void SetAllowedIps(IReadOnlyList<string>? rules)
-    {
-        if (rules is null)
-        {
-            throw StudioFlowException.Invalid("allowedIps", "The list is missing.");
-        }
-
-        if (rules.Count > IpRule.MaxRules)
-        {
-            throw StudioFlowException.Invalid("allowedIps", $"At most {IpRule.MaxRules} entries.");
-        }
-
-        var errors = new ValidationErrors();
-        var normalized = new List<string>(rules.Count);
-        for (var i = 0; i < rules.Count; i++)
-        {
-            if (IpRule.TryParse(rules[i], out var rule))
-            {
-                normalized.Add(rule.ToString());
-            }
-            else
-            {
-                errors.Add($"allowedIps[{i}]", "Enter an IP address or range (CIDR), e.g. 192.168.1.0/24.");
-            }
-        }
-
-        errors.ThrowIfAny();
-        AllowedIps = [.. normalized.Distinct(StringComparer.Ordinal)];
     }
 
     /// <summary>True when a slate, a scene background, an item or a fallback uses the asset.</summary>

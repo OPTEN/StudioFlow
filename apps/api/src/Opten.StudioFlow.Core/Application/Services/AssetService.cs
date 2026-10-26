@@ -117,10 +117,12 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
         }
 
         await using var unit = data.Create();
-        var access = await unit.Productions.GetOutputKeyAsync(productionId, cancellationToken)
-            ?? throw (isAdmin ? StudioFlowException.NotFound("Production") : OutputService.NoAccess());
-
-        if (!isAdmin && !(Secrets.FixedTimeEquals(outputKey, access.OutputKey) && IpRule.IsAllowed(access.AllowedIps, client)))
+        if (isAdmin)
+        {
+            await RequireProductionAsync(unit, productionId, cancellationToken);
+        }
+        else if (OutputLinkAccess.Find(await unit.OutputLinks.ListAccessAsync(productionId, cancellationToken), outputKey) is not { } link
+            || !IpRule.IsAllowed(link.AllowedIps, client))
         {
             throw OutputService.NoAccess();
         }

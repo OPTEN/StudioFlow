@@ -129,7 +129,7 @@ public sealed class PinnedHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
         var admin = await app.AdminAsync();
         var credentials = await app.PairPhoneAsync(admin);
         var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", TestContext.Current.CancellationToken).ExpectAsync<OutputSettingsDto>();
-        await using var output = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..]));
+        await using var output = app.Hub(HubMethods.OutputHubPath, o => o.AccessTokenProvider = () => Task.FromResult<string?>(settings.Links[0].Key()));
         var events = HubProbe.On<ProductionEvent>(output, HubMethods.Event);
         await output.StartAsync(TestContext.Current.CancellationToken);
         var start = await output.InvokeAsync<OutputChangesDto>(HubMethods.SubscribeOutput, null, TestContext.Current.CancellationToken);

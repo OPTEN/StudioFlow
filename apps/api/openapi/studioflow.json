@@ -2531,15 +2531,190 @@
         }
       }
     },
-    "/api/productions/{productionId}/output/access": {
+    "/api/productions/{productionId}/output/links": {
+      "post": {
+        "tags": [
+          "Output"
+        ],
+        "operationId": "createOutputLink",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOutputLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputLinkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/output/links/{linkId}": {
+      "patch": {
+        "tags": [
+          "Output"
+        ],
+        "operationId": "renameOutputLink",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameOutputLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputLinkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Output"
+        ],
+        "operationId": "revokeOutputLink",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/output/links/{linkId}/access": {
       "put": {
         "tags": [
           "Output"
         ],
-        "operationId": "updateOutputAccess",
+        "operationId": "updateOutputLinkAccess",
         "parameters": [
           {
             "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2563,7 +2738,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OutputSettingsDto"
+                  "$ref": "#/components/schemas/OutputLinkDto"
                 }
               }
             }
@@ -2577,19 +2752,37 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/productions/{productionId}/output/regenerate-key": {
+    "/api/productions/{productionId}/output/links/{linkId}/regenerate-key": {
       "post": {
         "tags": [
           "Output"
         ],
-        "operationId": "regenerateOutputKey",
+        "operationId": "regenerateOutputLinkKey",
         "parameters": [
           {
             "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "linkId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2603,7 +2796,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OutputSettingsDto"
+                  "$ref": "#/components/schemas/OutputLinkDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -4242,6 +4445,19 @@
         },
         "description": "Creates an invite link."
       },
+      "CreateOutputLinkRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–40 characters, unique per production (ignoring case)."
+          }
+        },
+        "description": "Creates a named output link."
+      },
       "CreatePairingRequest": {
         "required": [
           "name",
@@ -5064,6 +5280,9 @@
           "pairingDenied",
           "inviteLinkCreated",
           "inviteLinkRevoked",
+          "outputLinkCreated",
+          "outputLinkRenamed",
+          "outputLinkRevoked",
           "outputLinkRegenerated",
           "outputAccessChanged",
           "assetUploaded",
@@ -5208,6 +5427,116 @@
         },
         "description": "Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):\nchanges the output must not see – devices, pairing, invites, incidents, log, output status and health-only source\nchanges – appear as RevisionOnlyEvent with the same revision."
       },
+      "OutputLinkDto": {
+        "required": [
+          "id",
+          "name",
+          "url",
+          "keyCreatedAt",
+          "lastSeenAt",
+          "allowedIps"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Link id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Link name, unique per production."
+          },
+          "url": {
+            "type": "string",
+            "description": "Absolute output URL including the secret key of the link."
+          },
+          "keyCreatedAt": {
+            "type": "string",
+            "description": "When the current key was created.",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When a page of the link last connected or disconnected; null while it was never used.",
+            "format": "date-time"
+          },
+          "allowedIps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IP addresses or CIDR ranges allowed to open the link; empty allows every address."
+          }
+        },
+        "description": "An output link for the Regie."
+      },
+      "OutputLinkStatusDto": {
+        "required": [
+          "linkId",
+          "name",
+          "state",
+          "consumers",
+          "addresses",
+          "latencyMs",
+          "fps",
+          "lastReportAt"
+        ],
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "description": "Link id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Link name."
+          },
+          "state": {
+            "description": "None, connected or stale.",
+            "$ref": "#/components/schemas/OutputState"
+          },
+          "consumers": {
+            "type": "integer",
+            "description": "Number of connected output pages of the link.",
+            "format": "int32"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Remote IP addresses of the output pages of the link."
+          },
+          "latencyMs": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Estimated receive latency reported by the output page.",
+            "format": "int32"
+          },
+          "fps": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Rendered frames per second of the program.",
+            "format": "double"
+          },
+          "lastReportAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Last report time.",
+            "format": "date-time"
+          }
+        },
+        "description": "Live state of one output link (a consumer such as the proxy or the Teams camera)."
+      },
       "OutputReport": {
         "required": [
           "rendering",
@@ -5249,28 +5578,23 @@
       },
       "OutputSettingsDto": {
         "required": [
-          "url",
-          "keyCreatedAt",
-          "allowedIps",
+          "links",
+          "maxLinks",
           "frameAncestors"
         ],
         "type": "object",
         "properties": {
-          "url": {
-            "type": "string",
-            "description": "Absolute output URL including the secret key."
-          },
-          "keyCreatedAt": {
-            "type": "string",
-            "description": "When the current key was created.",
-            "format": "date-time"
-          },
-          "allowedIps": {
+          "links": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/OutputLinkDto"
             },
-            "description": "IP addresses or CIDR ranges allowed to open the output; empty allows every address."
+            "description": "The output links, oldest first."
+          },
+          "maxLinks": {
+            "type": "integer",
+            "description": "Maximum number of links per production.",
+            "format": "int32"
           },
           "frameAncestors": {
             "type": "array",
@@ -5346,17 +5670,18 @@
           "addresses",
           "latencyMs",
           "fps",
-          "lastReportAt"
+          "lastReportAt",
+          "links"
         ],
         "type": "object",
         "properties": {
           "state": {
-            "description": "None, connected or stale.",
+            "description": "Connected when any link is connected, else stale when any link is stale, else none.",
             "$ref": "#/components/schemas/OutputState"
           },
           "consumers": {
             "type": "integer",
-            "description": "Number of connected output pages.",
+            "description": "Number of connected output pages of all links.",
             "format": "int32"
           },
           "addresses": {
@@ -5364,14 +5689,14 @@
             "items": {
               "type": "string"
             },
-            "description": "Remote IP addresses of the output pages."
+            "description": "Remote IP addresses of the output pages of all links."
           },
           "latencyMs": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Estimated receive latency reported by the output page.",
+            "description": "Estimated receive latency reported by the output page that reported last.",
             "format": "int32"
           },
           "fps": {
@@ -5379,7 +5704,7 @@
               "null",
               "number"
             ],
-            "description": "Rendered frames per second of the program.",
+            "description": "Rendered frames per second of the program, from the same report.",
             "format": "double"
           },
           "lastReportAt": {
@@ -5387,11 +5712,18 @@
               "null",
               "string"
             ],
-            "description": "Last report time.",
+            "description": "Last report time of any link.",
             "format": "date-time"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputLinkStatusDto"
+            },
+            "description": "Every output link of the production, ordered by name."
           }
         },
-        "description": "Live state of the output consumer (chip “Output to proxy” in the header)."
+        "description": "Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own."
       },
       "PairingMethod": {
         "enum": [
@@ -6476,6 +6808,19 @@
         },
         "description": "Renames a device."
       },
+      "RenameOutputLinkRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "1–40 characters, unique per production (ignoring case)."
+          }
+        },
+        "description": "Renames an output link."
+      },
       "ReorderSceneItemsRequest": {
         "required": [
           "itemIds"
@@ -7249,7 +7594,7 @@
             }
           }
         },
-        "description": "Sets the IP restriction of the output."
+        "description": "Sets the IP restriction of an output link."
       },
       "UpdateProductionRequest": {
         "required": [

@@ -178,10 +178,16 @@ internal static class ApiSurface
     private static void MapOutputAdmin(RouteGroupBuilder g)
     {
         g.MapGet("/", OutputEndpoints.GetSettingsAsync).WithName("getOutputSettings").Produces<OutputSettingsDto>();
-        g.MapPut("/access", OutputEndpoints.UpdateAccessAsync)
-            .WithName("updateOutputAccess").Produces<OutputSettingsDto>().ProducesValidationProblem();
-        g.MapPost("/regenerate-key", OutputEndpoints.RegenerateKeyAsync).WithName("regenerateOutputKey")
-            .Produces<OutputSettingsDto>();
+        g.MapPost("/links", OutputEndpoints.CreateLinkAsync).WithName("createOutputLink")
+            .Produces<OutputLinkDto>(201).ProducesValidationProblem().ProducesProblem(409);
+        g.MapPatch("/links/{linkId}", OutputEndpoints.RenameLinkAsync).WithName("renameOutputLink")
+            .Produces<OutputLinkDto>().ProducesValidationProblem().ProducesProblem(404);
+        g.MapPut("/links/{linkId}/access", OutputEndpoints.UpdateAccessAsync).WithName("updateOutputLinkAccess")
+            .Produces<OutputLinkDto>().ProducesValidationProblem().ProducesProblem(404);
+        g.MapPost("/links/{linkId}/regenerate-key", OutputEndpoints.RegenerateKeyAsync).WithName("regenerateOutputLinkKey")
+            .Produces<OutputLinkDto>().ProducesProblem(404);
+        g.MapDelete("/links/{linkId}", OutputEndpoints.RevokeLinkAsync).WithName("revokeOutputLink")
+            .Produces(204).ProducesProblem(404);
     }
 
     /// <summary>

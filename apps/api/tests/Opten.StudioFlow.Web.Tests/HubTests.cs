@@ -406,18 +406,16 @@ public sealed class OutputHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
         await output.StartAsync(TestContext.Current.CancellationToken);
         await output.InvokeAsync<OutputChangesDto>(HubMethods.SubscribeOutput, null, TestContext.Current.CancellationToken);
 
-        await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/output/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
+        await admin.Client.PostAsync($"/api/productions/{admin.ProductionId}/output/links/{await LinkIdAsync(admin)}/regenerate-key", null, TestContext.Current.CancellationToken).ExpectAsync(HttpStatusCode.OK);
         await closed.WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
         await using var retry = Output(key);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await Assert.ThrowsAsync<HttpRequestException>(() => retry.StartAsync(TestContext.Current.CancellationToken))).StatusCode);
     }
 
-    private static async Task<string> KeyAsync(AdminSession admin)
-    {
-        var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output").ExpectAsync<OutputSettingsDto>();
-        return settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
-    }
+    private static async Task<string> KeyAsync(AdminSession admin) => (await admin.GetOutputLinksAsync())[0].Key();
+
+    private static async Task<string> LinkIdAsync(AdminSession admin) => (await admin.GetOutputLinksAsync())[0].Id;
 
     private HubConnection Output(string key, string? proxy = null, string? forwardedFor = null) => app.Hub(HubMethods.OutputHubPath, o =>
     {

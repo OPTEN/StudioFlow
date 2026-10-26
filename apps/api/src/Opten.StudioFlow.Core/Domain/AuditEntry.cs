@@ -86,10 +86,19 @@ public static class AuditActions
     /// <summary>An invite was revoked.</summary>
     public const string InviteRevoked = "invite.revoked";
 
-    /// <summary>The output key was regenerated.</summary>
+    /// <summary>An output link was created.</summary>
+    public const string OutputLinkCreated = "output.link.created";
+
+    /// <summary>An output link was renamed.</summary>
+    public const string OutputLinkRenamed = "output.link.renamed";
+
+    /// <summary>An output link was revoked.</summary>
+    public const string OutputLinkRevoked = "output.link.revoked";
+
+    /// <summary>The key of an output link was regenerated.</summary>
     public const string OutputKeyRegenerated = "output.key.regenerated";
 
-    /// <summary>The output IP restriction changed.</summary>
+    /// <summary>The IP restriction of an output link changed.</summary>
     public const string OutputAccessChanged = "output.access.changed";
 
     /// <summary>An asset was uploaded.</summary>
@@ -157,7 +166,7 @@ public static class AuditDetails
     /// <summary>A single slot code.</summary>
     public const string Code = "code";
 
-    /// <summary>A name (asset, knock).</summary>
+    /// <summary>A name (asset, knock, output link).</summary>
     public const string Name = "name";
 
     /// <summary>Kind (invite kind, source kind).</summary>

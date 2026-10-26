@@ -100,6 +100,25 @@ public static class Webhooks
         $$$"""{"event":"{{{kind}}}","id":"EV_2","createdAt":"1792660682","room":{"sid":"RM_1","name":"{{{room}}}"},"participant":{"sid":"{{{participantSid}}}","identity":"{{{identity}}}","state":"ACTIVE"}}""";
 }
 
+/// <summary>Output link shortcuts.</summary>
+public static class OutputLinks
+{
+    /// <summary>The secret key in the URL of a link.</summary>
+    public static string Key(this OutputLinkDto link)
+    {
+        ArgumentNullException.ThrowIfNull(link);
+        return link.Url[(link.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
+    }
+
+    /// <summary>The links of the production of the session.</summary>
+    public static async Task<IReadOnlyList<OutputLinkDto>> GetOutputLinksAsync(this AdminSession admin)
+    {
+        ArgumentNullException.ThrowIfNull(admin);
+        var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output").ExpectAsync<OutputSettingsDto>();
+        return settings.Links;
+    }
+}
+
 /// <summary>Pairing shortcuts through the public API.</summary>
 public static class Pairing
 {

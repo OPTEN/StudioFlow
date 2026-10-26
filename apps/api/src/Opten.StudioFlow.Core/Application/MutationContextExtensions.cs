@@ -29,6 +29,20 @@ public static class MutationContextExtensions
         return await context.Data.Assets.GetAsync(context.ProductionId, assetId, cancellationToken) ?? throw StudioFlowException.NotFound("Media item");
     }
 
+    /// <summary>
+    /// Makes sure the output tracker knows the output links of the production (loaded once; the link mutations keep it
+    /// up to date), so the output status names every link.
+    /// </summary>
+    public static async Task EnsureOutputLinksAsync(this MutationContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (!context.Runtime.Output.HasLinks)
+        {
+            var links = await context.Data.OutputLinks.ListAsync(context.ProductionId, cancellationToken);
+            context.Runtime.Output.LoadLinks(links.Select(l => (l.Id, l.Name)), context.Now);
+        }
+    }
+
     /// <summary>All sources of the production: device slots, media and texts.</summary>
     public static async Task<SourceCatalog> CatalogAsync(this MutationContext context, CancellationToken cancellationToken)
     {

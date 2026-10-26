@@ -48,8 +48,9 @@ public sealed class ProductionService(
             var existing = await unit.Productions.ListAsync(cancellationToken);
             var slugs = existing.Select(p => p.Slug).ToHashSet(StringComparer.Ordinal);
             var slug = Slugs.MakeUnique(Slugs.FromName(name), slugs.Contains);
-            var production = Production.Create(name, slug, isActive: !existing.Any(p => p.IsActive), clock.StorageNow());
-            unit.Productions.Add(production);
+            var now = clock.StorageNow();
+            var production = Production.Create(name, slug, isActive: !existing.Any(p => p.IsActive), now);
+            AddWithDefaultLink(unit, production, now);
             unit.Audit.Add(ProductionCreatedEntry(production, AuditActors.Admin));
             await unit.SaveChangesAsync(CancellationToken.None);
             return Dtos.Production(production);
@@ -72,8 +73,9 @@ public sealed class ProductionService(
                 return;
             }
 
-            var production = Production.Create("Webinar", "webinar", isActive: true, clock.StorageNow());
-            unit.Productions.Add(production);
+            var now = clock.StorageNow();
+            var production = Production.Create("Webinar", "webinar", isActive: true, now);
+            AddWithDefaultLink(unit, production, now);
             unit.Audit.Add(ProductionCreatedEntry(production, AuditActors.System));
             await unit.SaveChangesAsync(cancellationToken);
         }
@@ -81,6 +83,13 @@ public sealed class ProductionService(
         {
             tenantGate.Release();
         }
+    }
+
+    /// <summary>Every production starts with one output link, so the output page is usable right away.</summary>
+    private static void AddWithDefaultLink(IUnitOfWork unit, Production production, DateTimeOffset now)
+    {
+        unit.Productions.Add(production);
+        unit.OutputLinks.Add(OutputLink.Create(production.Id, OutputLink.DefaultName, [], now));
     }
 
     /// <summary>The full Regie snapshot.</summary>
