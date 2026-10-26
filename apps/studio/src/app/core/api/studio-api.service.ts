@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { operations } from '@studioflow/scene-model';
+import type { ImportPreviewDto, ProductionDto, operations } from '@studioflow/scene-model';
 import { firstValueFrom, type Observable } from 'rxjs';
 import { ApiError } from './api-error';
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from './csrf.interceptor';
@@ -244,6 +244,69 @@ export class StudioApiService {
     );
   }
 
+  // ---------------------------------------------------------------- Duplicate, export, import
+
+  /**
+   * `POST …/duplicate`: a copy of the production (also while it is live); it is not the active production. 400 for an
+   * invalid name, 409 `limit_reached` at the limit of productions.
+   */
+  duplicateProduction(
+    productionId: string,
+    body: ApiBody<'duplicateProduction'>,
+  ): Promise<ApiResult<'duplicateProduction'>> {
+    return this.post<ApiResult<'duplicateProduction'>>(
+      this.production(productionId, '/duplicate'),
+      body,
+    );
+  }
+
+  /** URL of the export (`GET …/export`, a ZIP file); no request is made. The browser downloads it with the admin cookie. */
+  exportUrl(productionId: string): string {
+    return this.production(productionId, '/export');
+  }
+
+  /**
+   * `POST /api/productions/import?dryRun=true` (multipart field `file`) with upload progress: what the import would do
+   * (name, counts, size, placeholders, warnings). Nothing is stored. Rejects with an {@link ApiError}: 400
+   * `invalid_archive` / `unsupported_format`, 409 `limit_reached`, 413 `archive_too_large`, 415 `unsupported_media`.
+   */
+  previewImport(file: File, options: UploadOptions = {}): Promise<ImportPreviewDto> {
+    return this.uploadFile<ImportPreviewDto>('/api/productions/import?dryRun=true', file, options);
+  }
+
+  /** `POST /api/productions/import` (multipart field `file`) with upload progress: the new production, not active. Same errors as {@link previewImport}. */
+  importProduction(file: File, options: UploadOptions = {}): Promise<ProductionDto> {
+    return this.uploadFile<ProductionDto>('/api/productions/import', file, options);
+  }
+
+  // ---------------------------------------------------------------- Placeholders
+
+  /** `PUT …/placeholders/{id}/assignment`: the source takes the place of the placeholder in every scene. */
+  assignPlaceholder(
+    productionId: string,
+    placeholderId: string,
+    body: ApiBody<'assignPlaceholder'>,
+  ): Promise<ApiResult<'assignPlaceholder'>> {
+    return this.call(
+      this.http.put<ApiResult<'assignPlaceholder'>>(
+        this.production(productionId, `/placeholders/${enc(placeholderId)}/assignment`),
+        body,
+      ),
+    );
+  }
+
+  /** `DELETE …/placeholders/{id}`: removes the placeholder and every scene item that shows it. */
+  removePlaceholder(
+    productionId: string,
+    placeholderId: string,
+  ): Promise<ApiResult<'removePlaceholder'>> {
+    return this.call(
+      this.http.delete<ApiResult<'removePlaceholder'>>(
+        this.production(productionId, `/placeholders/${enc(placeholderId)}`),
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------- Scenes
 
   /** `POST …/scenes`: new (or cloned) scene; 409 `limit_reached` at 99 scenes. */
@@ -453,53 +516,11 @@ export class StudioApiService {
     file: File,
     options: UploadOptions = {},
   ): Promise<ApiResult<'uploadAsset'>> {
-    return new Promise((resolve, reject) => {
-      if (options.signal?.aborted) {
-        reject(new ApiError({ status: 0, code: 'aborted' }));
-        return;
-      }
-      const xhr = this.xhrFactory();
-      const abort = (): void => xhr.abort();
-      const cleanup = (): void => options.signal?.removeEventListener('abort', abort);
-      xhr.open('POST', this.production(productionId, '/assets'));
-      xhr.setRequestHeader(CSRF_HEADER, CSRF_HEADER_VALUE);
-      xhr.setRequestHeader('Accept', 'application/json');
-      xhr.withCredentials = true;
-      xhr.upload.onprogress = (event: ProgressEvent) => {
-        const total = event.lengthComputable ? event.total : null;
-        options.onProgress?.({
-          loaded: event.loaded,
-          total,
-          fraction: total ? Math.min(1, event.loaded / total) : null,
-        });
-      };
-      xhr.onload = () => {
-        cleanup();
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            resolve(JSON.parse(xhr.responseText) as ApiResult<'uploadAsset'>);
-          } catch {
-            reject(new ApiError({ status: xhr.status, code: 'internal_error' }));
-          }
-          return;
-        }
-        reject(
-          ApiError.fromResponse(xhr.status, xhr.responseText, xhr.getResponseHeader('Retry-After')),
-        );
-      };
-      xhr.onerror = () => {
-        cleanup();
-        reject(new ApiError({ status: 0, code: 'network' }));
-      };
-      xhr.onabort = () => {
-        cleanup();
-        reject(new ApiError({ status: 0, code: 'aborted' }));
-      };
-      options.signal?.addEventListener('abort', abort, { once: true });
-      const form = new FormData();
-      form.append('file', file, file.name);
-      xhr.send(form);
-    });
+    return this.uploadFile<ApiResult<'uploadAsset'>>(
+      this.production(productionId, '/assets'),
+      file,
+      options,
+    );
   }
 
   /** `PATCH …/assets/{assetId}`: rename. */
@@ -660,6 +681,57 @@ export class StudioApiService {
 
   private device(productionId: string, deviceId: string, suffix = ''): string {
     return this.production(productionId, `/devices/${enc(deviceId)}${suffix}`);
+  }
+
+  /** A multipart upload of one file (field `file`) with progress; see {@link uploadAsset}. */
+  private uploadFile<T>(url: string, file: File, options: UploadOptions): Promise<T> {
+    return new Promise((resolve, reject) => {
+      if (options.signal?.aborted) {
+        reject(new ApiError({ status: 0, code: 'aborted' }));
+        return;
+      }
+      const xhr = this.xhrFactory();
+      const abort = (): void => xhr.abort();
+      const cleanup = (): void => options.signal?.removeEventListener('abort', abort);
+      xhr.open('POST', url);
+      xhr.setRequestHeader(CSRF_HEADER, CSRF_HEADER_VALUE);
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (event: ProgressEvent) => {
+        const total = event.lengthComputable ? event.total : null;
+        options.onProgress?.({
+          loaded: event.loaded,
+          total,
+          fraction: total ? Math.min(1, event.loaded / total) : null,
+        });
+      };
+      xhr.onload = () => {
+        cleanup();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText) as T);
+          } catch {
+            reject(new ApiError({ status: xhr.status, code: 'internal_error' }));
+          }
+          return;
+        }
+        reject(
+          ApiError.fromResponse(xhr.status, xhr.responseText, xhr.getResponseHeader('Retry-After')),
+        );
+      };
+      xhr.onerror = () => {
+        cleanup();
+        reject(new ApiError({ status: 0, code: 'network' }));
+      };
+      xhr.onabort = () => {
+        cleanup();
+        reject(new ApiError({ status: 0, code: 'aborted' }));
+      };
+      options.signal?.addEventListener('abort', abort, { once: true });
+      const form = new FormData();
+      form.append('file', file, file.name);
+      xhr.send(form);
+    });
   }
 
   private post<T>(url: string, body: unknown = null): Promise<T> {

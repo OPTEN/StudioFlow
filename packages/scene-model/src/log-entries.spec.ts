@@ -102,7 +102,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(47);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(52);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }

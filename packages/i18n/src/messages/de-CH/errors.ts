@@ -28,6 +28,12 @@ export const errors: Translation<typeof en> = {
     'Der Einrichtungscode stimmt nicht. Nach einem Neustart zeigt der Server einen neuen an.',
   'errors.code.setup_closed': 'Die Ersteinrichtung ist bereits abgeschlossen. Bitte anmelden.',
   'errors.code.password_incorrect': 'Das aktuelle Passwort stimmt nicht.',
+  'errors.code.invalid_archive':
+    'Diese Datei ist kein gültiger StudioFlow-Export oder sie ist beschädigt. Es wurde nichts importiert.',
+  'errors.code.unsupported_format':
+    'Diese Datei wurde mit einer neueren Version von StudioFlow exportiert. Aktualisiere zuerst diese Installation. Es wurde nichts importiert.',
+  'errors.code.archive_too_large':
+    'Diese Datei ist grösser, als diese Installation annimmt. Es wurde nichts importiert.',
   'errors.code.network': 'Keine Verbindung zum Server. Bitte nochmals versuchen.',
   'errors.code.aborted': 'Abgebrochen.',
 

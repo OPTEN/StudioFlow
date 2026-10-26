@@ -52,6 +52,9 @@ export const ERROR_CODE_MESSAGES = {
   setup_code_invalid: 'errors.code.setup_code_invalid',
   setup_closed: 'errors.code.setup_closed',
   password_incorrect: 'errors.code.password_incorrect',
+  invalid_archive: 'errors.code.invalid_archive',
+  unsupported_format: 'errors.code.unsupported_format',
+  archive_too_large: 'errors.code.archive_too_large',
   network: 'errors.code.network',
   aborted: 'errors.code.aborted',
 } as const satisfies Readonly<Record<ApiErrorCode | ClientErrorCode, MessageKey>>;
@@ -240,7 +243,8 @@ export type ErrorMessageOverrides = Partial<
 export function toUserMsg(error: unknown): Msg {
   const apiError = ApiError.from(error);
   const { code, status } = apiError;
-  if (status === 413) {
+  // 413 is about media (25 MB / 1 GB) unless the API names its own code: a production file is "too large for this installation".
+  if (status === 413 && code !== 'archive_too_large') {
     return msg('errors.status.413');
   }
   if (code === 'rate_limited' && apiError.retryAfterSeconds !== null) {

@@ -256,6 +256,7 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
     production: productionFixture(),
     scenes: [sceneFixture('scn_a', 0), sceneFixture('scn_b', 1)],
     sources: [],
+    placeholders: [],
     devices: [],
     assets: [],
     pairingRequests: [],
