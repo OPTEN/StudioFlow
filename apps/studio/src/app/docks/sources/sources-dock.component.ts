@@ -23,6 +23,7 @@ import { toneClass, type StateTone } from '../shared/source-view';
 import { ADD_SOURCE_POPOVER, AddSourcePopoverComponent } from './add-source-popover.component';
 import { AssetUploadService } from './asset-upload.service';
 import { MEDIA_POPOVER, MediaPopoverComponent } from './media-popover.component';
+import { PlaceholderListComponent } from './placeholder-list.component';
 import { flipOrder, sourceRows, type SourceRowView } from './source-rows';
 import { dragHasFiles } from './upload-validation';
 
@@ -33,7 +34,8 @@ import { dragHasFiles } from './upload-validation';
  * (toggle, `aria-pressed`). The header holds undo and "+ Source" (add a source, upload, manage media). Files dropped
  * on the dock are uploaded. The rows are reordered by drag and drop or from the keyboard
  * ({@link SortableListComponent}); the top row is the front layer, and `EditorService.reorderItems` sends the new
- * order.
+ * order. In a copied production the section "Missing sources" below the rows lists the placeholders of the original
+ * devices with "Assign…" ({@link PlaceholderListComponent}).
  */
 @Component({
   selector: 'sf-sources-dock',
@@ -43,6 +45,7 @@ import { dragHasFiles } from './upload-validation';
     ElapsedComponent,
     IconComponent,
     MediaPopoverComponent,
+    PlaceholderListComponent,
     PopoverTriggerDirective,
     SortableItemDirective,
     SortableListComponent,
@@ -73,7 +76,14 @@ export class SourcesDockComponent {
   protected readonly count = computed(() => this.scene()?.items.length ?? null);
   protected readonly rows = computed<readonly SourceRowView[]>(() => {
     const scene = this.scene();
-    return scene ? sourceRows(scene, this.store.sources(), this.editor.selectedItemId()) : [];
+    return scene
+      ? sourceRows(
+          scene,
+          this.store.sources(),
+          this.editor.selectedItemId(),
+          this.store.placeholders(),
+        )
+      : [];
   });
   protected readonly rowIds = computed(() => this.rows().map((row) => row.itemId));
   protected readonly rowsById = computed(

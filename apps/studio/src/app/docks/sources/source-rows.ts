@@ -8,6 +8,7 @@ import {
   type SceneDto,
   type SourceDto,
   type SourceKind,
+  type SourcePlaceholderDto,
 } from '@studioflow/scene-model';
 import type { IconName } from '../../core/ui/icon.component';
 import {
@@ -46,15 +47,21 @@ export interface SourceRowView {
   readonly statusSince: string | null;
   /** The source no longer exists ("Source missing"). */
   readonly missing: boolean;
+  /** Id of the placeholder the row shows (a device of the original production, issue #14), or null. */
+  readonly placeholderId: string | null;
 }
 
 /** Kind of a source, guessed from the reference when the source was deleted. */
 export function kindOfReference(
   sourceId: string,
   source: SourceDto | null | undefined,
+  placeholder?: SourcePlaceholderDto | null,
 ): SourceKind {
   if (source) {
     return source.kind;
+  }
+  if (placeholder) {
+    return placeholder.kind;
   }
   const parsed = parseSourceRef(sourceId);
   switch (parsed?.kind) {
@@ -75,29 +82,43 @@ export function flipOrder<T>(order: readonly T[]): T[] {
   return [...order].reverse();
 }
 
-/** Rows of the edit scene, front to back (prototype: reversed item order). */
+/**
+ * Rows of the edit scene, front to back (prototype: reversed item order). An item that shows a placeholder of a copied
+ * production keeps the code and name of the original device and says "Source missing" until a source is assigned.
+ */
 export function sourceRows(
   scene: SceneDto,
   sources: ReadonlyMap<string, SourceDto>,
   selectedItemId: string | null,
+  placeholders: readonly SourcePlaceholderDto[] = [],
 ): SourceRowView[] {
   return flipOrder(scene.items).map((item) => {
     const source = sources.get(item.source) ?? null;
-    const kind = kindOfReference(item.source, source);
+    const placeholder = source
+      ? null
+      : (placeholders.find((p) => p.sourceId === item.source) ?? null);
+    const kind = kindOfReference(item.source, source, placeholder);
     return {
       itemId: item.id,
       sourceId: item.source,
-      code: source?.code ?? '–',
-      name: source?.label ?? t('model.scene.sourceMissing'),
+      code: source?.code ?? placeholder?.code ?? '–',
+      name:
+        source?.label ??
+        (placeholder
+          ? (placeholder.label ?? t('regie.placeholders.unnamed'))
+          : t('model.scene.sourceMissing')),
       icon: KIND_ICON[kind],
       hidden: item.hidden,
       locked: item.locked,
       selected: item.id === selectedItemId && (!item.hidden || kind === 'text'),
       isText: kind === 'text',
       lamp: sourceLamp(source),
-      state: sourceStateView(source),
+      state: placeholder
+        ? { word: t('model.scene.sourceMissing'), tone: 'muted', timer: false }
+        : sourceStateView(source),
       statusSince: source?.statusSince ?? null,
       missing: source === null,
+      placeholderId: placeholder?.id ?? null,
     };
   });
 }

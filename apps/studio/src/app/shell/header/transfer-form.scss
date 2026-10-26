@@ -1,0 +1,89 @@
+// Duplicate and import forms inside the production menu (same rhythm as the other forms of that menu).
+@use 'mixins' as *;
+
+.c-xfer {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px 8px;
+
+  .c-pop-h {
+    padding-inline: 0;
+  }
+}
+
+.c-xfer__field {
+  display: grid;
+  gap: 4px;
+}
+
+.c-xfer__label {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-xfer__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+// What an import file contains (preview before anything is created).
+.c-xfer__kv {
+  margin: 0;
+}
+
+.c-xfer__kv dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.c-xfer__list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.c-xfer__more {
+  color: var(--muted);
+}
+
+.c-xfer__warn {
+  border-left: 3px solid var(--amber);
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin: 0;
+  padding: 2px 0 2px 8px;
+}
+
+.c-xfer__file {
+  @include ellipsis;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.c-xfer__progress {
+  background: var(--raised-2);
+  border-radius: var(--radius-xs);
+  height: 6px;
+  overflow: hidden;
+
+  > span {
+    background: var(--blue-fill);
+    display: block;
+    height: 100%;
+    transition: width var(--dur-fast, 120ms) linear;
+  }
+}
+
+.c-xfer__input {
+  // The native file input is opened by "Choose file…"; it stays out of the layout and the tab order.
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+}

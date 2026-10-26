@@ -1,0 +1,97 @@
+<div class="c-xfer" role="group" [attr.aria-label]="t('regie.transfer.import.title')">
+  <div class="c-pop-h">{{ t('regie.transfer.import.title') }}</div>
+
+  <input
+    #picker
+    hidden
+    type="file"
+    data-testid="import-file"
+    [accept]="accept"
+    (change)="choose($event)"
+  />
+
+  @if (phase() === 'choose') {
+    <p class="c-hint">{{ t('regie.transfer.import.hint') }}</p>
+  }
+
+  @if (preview(); as info) {
+    <div class="c-label">{{ t('regie.transfer.import.previewTitle') }}</div>
+    <dl class="c-kv c-xfer__kv" data-testid="import-preview">
+      <dt>{{ t('regie.transfer.import.name') }}</dt>
+      <dd data-testid="import-name">{{ info.name }}</dd>
+    </dl>
+    <ul class="c-xfer__list">
+      <li>{{ scenesText() }}</li>
+      <li>{{ textsText() }}</li>
+      <li>{{ mediaText() }}</li>
+    </ul>
+    @if (placeholders().length > 0) {
+      <div class="c-label">{{ t('regie.transfer.import.placeholders') }}</div>
+      <ul class="c-xfer__list" data-testid="import-placeholders">
+        @for (placeholder of placeholders(); track placeholder.code) {
+          <li>
+            <span class="c-code">{{ placeholder.code }}</span> {{ placeholder.label }}
+          </li>
+        }
+        @if (morePlaceholders() > 0) {
+          <li class="c-xfer__more">+{{ morePlaceholders() }}</li>
+        }
+      </ul>
+    }
+    @for (text of warnings(); track text) {
+      <p class="c-xfer__warn" role="status">{{ text }}</p>
+    }
+    <p class="c-hint">{{ versionText() }}</p>
+  }
+
+  @if (working()) {
+    <p class="c-xfer__file" role="status" [title]="file()?.name ?? ''">
+      {{
+        phase() === 'checking'
+          ? t('regie.transfer.import.checking', { file: file()?.name ?? '' })
+          : t('regie.transfer.import.busy')
+      }}
+    </p>
+    <div
+      class="c-xfer__progress"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-label]="t('regie.transfer.import.busy')"
+      [attr.aria-valuenow]="fraction() === null ? null : percentValue()"
+    >
+      <span [style.width]="percentWidth()"></span>
+    </div>
+    @if (percent(); as text) {
+      <p class="c-hint">{{ t('regie.transfer.import.progress', { percent: text }) }}</p>
+    }
+  }
+
+  @if (message(); as text) {
+    <p class="c-field-error" role="alert">{{ text }}</p>
+  }
+
+  <div class="c-xfer__row">
+    @if (phase() === 'choose') {
+      <button class="c-btn c-btn--sm c-btn--fill" type="button" (click)="picker.click()">
+        {{ t('regie.transfer.import.choose') }}
+      </button>
+    } @else if (phase() === 'preview' || phase() === 'importing') {
+      <button
+        class="c-btn c-btn--sm c-btn--fill"
+        type="button"
+        data-testid="import-submit"
+        [disabled]="working()"
+        (click)="submit()"
+      >
+        {{ t('regie.transfer.import.submit') }}
+      </button>
+      <button class="c-btn c-btn--sm" type="button" [disabled]="working()" (click)="picker.click()">
+        {{ t('regie.transfer.import.another') }}
+      </button>
+    }
+    <button class="c-btn c-btn--sm" type="button" (click)="cancel()">
+      {{ t('common.cancel') }}
+    </button>
+  </div>
+</div>

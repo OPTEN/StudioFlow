@@ -43,12 +43,23 @@ import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { CanvasPickerComponent } from './canvas-picker.component';
 import { ChangePasswordFormComponent } from './change-password-form.component';
+import { DuplicateProductionFormComponent } from './duplicate-production-form.component';
+import { ImportProductionFormComponent } from './import-production-form.component';
 
 /** Id of the production menu popover. */
 export const PRODUCTION_POPOVER = 'production';
 
 /** Views of the production menu. */
-type MenuMode = 'menu' | 'rename' | 'slates' | 'textColors' | 'canvas' | 'create' | 'password';
+type MenuMode =
+  | 'menu'
+  | 'rename'
+  | 'slates'
+  | 'textColors'
+  | 'canvas'
+  | 'create'
+  | 'duplicate'
+  | 'import'
+  | 'password';
 
 function nameControl(): FormControl<string> {
   return new FormControl('', {
@@ -88,8 +99,8 @@ function textControl(required: boolean): FormControl<string> {
  * The production name in the header and its menu (spec 9.1): rename, edit the standby and end slates, set the text
  * colours and the format and resolution of the output (not while the broadcast is live; another format asks first
  * when scenes have elements), switch to or create another production (with its format; not while the broadcast is
- * live), change the password and sign out. Typed reactive forms
- * for every input.
+ * live), duplicate the production (also while it is live), export it as a file, import a file as a new production
+ * (issue #14), change the password and sign out. Typed reactive forms for every input.
  */
 @Component({
   selector: 'sf-production-menu',
@@ -97,7 +108,9 @@ function textControl(required: boolean): FormControl<string> {
     CanvasPickerComponent,
     ChangePasswordFormComponent,
     ConfirmBoxComponent,
+    DuplicateProductionFormComponent,
     IconComponent,
+    ImportProductionFormComponent,
     PopoverDirective,
     PopoverTriggerDirective,
     ReactiveFormsModule,
@@ -122,6 +135,11 @@ export class ProductionMenuComponent {
   protected readonly listError = signal(false);
   protected readonly name = computed(() => this.store.production()?.name ?? 'StudioFlow');
   protected readonly live = computed(() => this.store.broadcast() === 'live');
+  /** Download link of the export of the current production (a ZIP file; the browser saves it). */
+  protected readonly exportHref = computed(() => {
+    const id = this.store.productionId();
+    return id ? this.api.exportUrl(id) : null;
+  });
 
   protected readonly renameControl = nameControl();
   protected readonly createControl = nameControl();
@@ -372,6 +390,19 @@ export class ProductionMenuComponent {
       this.toasts.show(t('regie.header.production.switched', { name: production.name }));
       this.popovers.close(this.popoverId);
     });
+  }
+
+  /** The export was started by the link; the browser downloads the file, the menu closes. */
+  protected exported(): void {
+    this.toasts.show(t('regie.transfer.export.started', { name: this.name() }));
+    // The link has to stay in the page until the browser has followed it.
+    setTimeout(() => this.popovers.close(this.popoverId));
+  }
+
+  /** A copy or an import was created: back to the menu, where it is listed (it is not the active production). */
+  protected async created(): Promise<void> {
+    this.mode.set('menu');
+    await this.loadProductions();
   }
 
   protected logout(): void {

@@ -27,6 +27,7 @@ import { InlineEditComponent } from '../shared/inline-edit.component';
 import { messageParts } from '../shared/message-parts';
 import { toneClass, type StateTone } from '../shared/source-view';
 import { MessageComposerComponent } from './message-composer.component';
+import { PlaceholderOfferComponent } from './placeholder-offer.component';
 import { StationCommandsService } from './station-commands.service';
 import { StationThumbComponent } from './station-thumb.component';
 import { stationDetails, techLamps, type StationView } from './station-view';
@@ -50,6 +51,7 @@ type Confirmation = 'block' | 'remove' | null;
     IconComponent,
     InlineEditComponent,
     MessageComposerComponent,
+    PlaceholderOfferComponent,
     StationThumbComponent,
   ],
   templateUrl: './station-row.component.html',

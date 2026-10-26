@@ -272,6 +272,12 @@
             </div>
           </form>
         }
+        @case ('duplicate') {
+          <sf-duplicate-production-form (done)="created()" (cancelled)="mode.set('menu')" />
+        }
+        @case ('import') {
+          <sf-import-production-form (done)="created()" (cancelled)="mode.set('menu')" />
+        }
         @case ('password') {
           <sf-change-password-form (done)="mode.set('menu')" (cancelled)="mode.set('menu')" />
         }
@@ -310,6 +316,25 @@
             <svg sfIcon="layout"></svg>{{ t('regie.canvas.menu') }}
           </button>
           <div class="c-menu-sep"></div>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('duplicate')"
+          >
+            <svg sfIcon="copy"></svg>{{ t('regie.transfer.menu.duplicate') }}
+          </button>
+          @if (exportHref(); as href) {
+            <a
+              class="c-menu-item"
+              download
+              data-testid="export-production"
+              [href]="href"
+              (click)="exported()"
+              ><svg sfIcon="download"></svg>{{ t('regie.transfer.menu.export') }}</a
+            >
+          }
+          <div class="c-menu-sep"></div>
           <div class="c-pop-h">{{ t('regie.header.production.switchTitle') }}</div>
           @if (productions(); as list) {
             @for (production of list; track production.id) {
@@ -343,6 +368,14 @@
             (click)="show('create')"
           >
             <svg sfIcon="plus"></svg>{{ t('regie.header.production.newMenu') }}
+          </button>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('import')"
+          >
+            <svg sfIcon="upload"></svg>{{ t('regie.transfer.menu.import') }}
           </button>
           <div class="c-menu-sep"></div>
           <a class="c-menu-item" routerLink="/audit"

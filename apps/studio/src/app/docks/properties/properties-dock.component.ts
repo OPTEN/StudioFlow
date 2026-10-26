@@ -13,6 +13,7 @@ import { ProductionStoreService } from '../../core/state/production-store.servic
 import { IconComponent } from '../../core/ui/icon.component';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
 import { EditorService } from '../../stage/editor.service';
+import { placeholderName } from '../sources/placeholder-view';
 import { ElementInspectorComponent } from './element-inspector.component';
 import { SceneInspectorComponent } from './scene-inspector.component';
 
@@ -86,7 +87,11 @@ export class PropertiesDockComponent {
     const item = this.editor.selectedItem();
     if (item) {
       const source = this.store.sourceById(item.source);
-      return source ? `${source.code} · ${source.label}` : t('model.scene.sourceMissing');
+      if (source) {
+        return `${source.code} · ${source.label}`;
+      }
+      const placeholder = this.store.placeholderOf(item.source);
+      return placeholder ? placeholderName(placeholder) : t('model.scene.sourceMissing');
     }
     return this.editor.editScene()?.name ?? null;
   });
