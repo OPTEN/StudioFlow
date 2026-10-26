@@ -374,7 +374,7 @@
 .c-linkbox {
   align-items: center;
   background: var(--ground);
-  border: 1px solid var(--seam-strong);
+  border: 1px solid var(--control-edge);
   border-radius: var(--radius-md);
   display: flex;
   gap: 6px;
@@ -515,7 +515,7 @@
   input {
     @include state-transition(background-color);
     appearance: none;
-    background: var(--seam-strong);
+    background: var(--control-edge);
     border-radius: var(--radius-switch);
     cursor: pointer;
     flex: none;
@@ -560,7 +560,7 @@
 .c-input,
 .c-select {
   background: var(--ground);
-  border: 1px solid var(--seam-strong);
+  border: 1px solid var(--control-edge);
   border-radius: var(--radius-md);
   color: var(--text);
   height: 30px;
@@ -595,7 +595,7 @@
 .c-num {
   align-items: center;
   background: var(--ground);
-  border: 1px solid var(--seam-strong);
+  border: 1px solid var(--control-edge);
   border-radius: var(--radius-md);
   display: flex;
   gap: 6px;

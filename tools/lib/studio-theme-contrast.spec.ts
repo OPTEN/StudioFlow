@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { compile } from 'sass';
 
-/** WCAG 2.x contrast of the Regie's colour tokens, read from the CSS that apps/studio/src/styles.scss compiles to. */
+/**
+ * WCAG 2.x contrast of the Regie's colour tokens, read from the CSS that apps/studio/src/styles.scss compiles to.
+ * Also checks that the browser chrome colour (<meta name="theme-color">) is the Panel token of each theme.
+ */
 
 type Rgb = readonly [number, number, number];
 interface Colour {
@@ -10,8 +15,8 @@ interface Colour {
 type Tokens = ReadonlyMap<string, Colour>;
 
 const SURFACES = ['ground', 'panel', 'raised', 'raised-2', 'float'] as const;
-/** Where state hues appear as text: not on Raised Higher, which only holds chips, pressed buttons and the toast. */
-const HUE_SURFACES = ['ground', 'panel', 'raised', 'float'] as const;
+/** Where a form field with its own edge sits (dock bodies, the link box, popovers); the edge must stand out from these. */
+const FIELD_SURFACES = ['ground', 'panel', 'float'] as const;
 const STATE_HUES = ['blue', 'green', 'red', 'amber'] as const;
 const WASHED_TEXT = ['red', 'amber', 'green', 'blue'] as const;
 const AA_TEXT = 4.5;
@@ -117,7 +122,7 @@ describe.each([
   });
 
   it.each([...STATE_HUES, 'violet'])('keeps the %s text readable on its surfaces (4.5:1)', (name) => {
-    for (const surface of HUE_SURFACES) {
+    for (const surface of SURFACES) {
       expectContrast(colour(name), colour(surface), AA_TEXT, `${name} on ${surface}`);
     }
   });
@@ -129,12 +134,38 @@ describe.each([
     expectContrast(colour(name), wash, AA_TEXT, `${name} on ${name}-wash`);
   });
 
+  it.each([
+    ['red', 'PGM'],
+    ['green', 'PVW'],
+  ] as const)('keeps the %s %s tag readable on its row (4.5:1)', (name) => {
+    const wash = colour(`${name}-wash`);
+    // The current scene row is Raised, and the tag adds its own wash to it.
+    const currentRow = composite(wash, colour('raised'));
+    expectContrast(colour(name), currentRow, AA_TEXT, `${name} tag on the current row`);
+    // A station row in the same state has the wash too, and the tag adds a second one.
+    const stateRow = composite(wash, colour('panel'));
+    expectContrast(colour(name), composite(wash, stateRow), AA_TEXT, `${name} tag on a ${name} row`);
+  });
+
   it('keeps lamps, tally outlines and the focus ring visible on the surfaces (3:1)', () => {
     for (const hue of STATE_HUES) {
-      for (const surface of ['panel', 'ground', 'raised'] as const) {
+      for (const surface of SURFACES) {
         expectContrast(colour(hue), colour(surface), AA_COMPONENT, `${hue} on ${surface}`);
       }
     }
+  });
+
+  // Buttons, segmented controls, tabs, popovers and separators keep the quieter Strong Seam: a text label or a fill
+  // identifies them (WCAG 1.4.11 asks for the boundary only where it is the sole indicator).
+  it('draws the edge of text fields, selects, number fields and the switch track at 3:1 (WCAG 1.4.11)', () => {
+    for (const surface of FIELD_SURFACES) {
+      expectContrast(colour('control-edge'), colour(surface), AA_COMPONENT, `control-edge on ${surface}`);
+    }
+  });
+
+  it('keeps the Take hint (on-fill on the blue fill and its hover) readable (4.5:1)', () => {
+    expectContrast(colour('on-fill'), colour('blue-fill'), AA_TEXT, 'Take hint on blue-fill');
+    expectContrast(colour('on-fill'), colour('blue-fill-hover'), AA_TEXT, 'Take hint on blue-fill-hover');
   });
 
   it('keeps white text readable on the blue fill and its hover (4.5:1)', () => {
@@ -163,13 +194,54 @@ describe.each([
   });
 });
 
-describe('the light theme', () => {
-  it('draws the borders of controls at 3:1 against the surfaces they sit on', () => {
-    for (const surface of ['panel', 'ground'] as const) {
-      expectContrast(token(light, 'seam-strong'), token(light, surface), AA_COMPONENT, surface);
-    }
+function hex({ rgb }: Colour): string {
+  return `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+}
+
+describe('the browser chrome colour', () => {
+  const service = readFileSync('apps/studio/src/app/core/ui/theme.service.ts', 'utf8');
+  const initScript = readFileSync('apps/studio/public/theme-init.js', 'utf8');
+  const index = readFileSync('apps/studio/src/index.html', 'utf8');
+
+  /** Runs public/theme-init.js against a stand-in for the page; returns the colour it leaves in the meta tag. */
+  function chromeAfterInit(stored: string | null, systemLight: boolean): string {
+    const meta = { content: '', setAttribute: (_name: string, value: string) => void (meta.content = value) };
+    const page = {
+      documentElement: { dataset: {} },
+      querySelector: (selector: string) => (selector === 'meta[name="theme-color"]' ? meta : null),
+    };
+    runInNewContext(initScript, {
+      document: page,
+      localStorage: { getItem: () => stored },
+      matchMedia: () => ({ matches: systemLight }),
+    });
+    return meta.content;
+  }
+
+  it.each([
+    ['dark', dark],
+    ['light', light],
+  ] as const)('is the Panel colour of the %s theme in ThemeService', (name, tokens) => {
+    expect(service).toContain(`${name}: '${hex(token(tokens, 'panel'))}'`);
   });
 
+  it('is the Panel colour of the dark theme in index.html, before any script ran', () => {
+    expect(index).toContain(`<meta name="theme-color" content="${hex(token(dark, 'panel'))}" />`);
+  });
+
+  it.each([
+    [null, false, hex(token(dark, 'panel'))],
+    ['dark', true, hex(token(dark, 'panel'))],
+    ['light', false, hex(token(light, 'panel'))],
+    ['system', true, hex(token(light, 'panel'))],
+    ['system', false, hex(token(dark, 'panel'))],
+    ['sepia', true, hex(token(dark, 'panel'))],
+  ] as const)('is set by theme-init.js for the stored setting %s (system light: %s) to %s', (stored, systemLight, expected) => {
+    expect(chromeAfterInit(stored, systemLight)).toBe(expected);
+  });
+});
+
+describe('the light theme', () => {
   it('defines every themed colour of the dark theme, and none of the picture surfaces', () => {
     const themed = [...dark.keys()].filter((name) => !isPictureToken(name));
     expect(themed.length).toBeGreaterThan(20);
