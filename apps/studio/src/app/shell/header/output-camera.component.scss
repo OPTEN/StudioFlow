@@ -1,0 +1,22 @@
+// "Use as camera …": numbered steps and the download of the OBS scene collection.
+.c-output-camera {
+  border-top: 1px solid var(--seam-strong);
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+.c-output-camera__steps {
+  color: var(--text-2);
+  display: grid;
+  font-size: 12.5px;
+  gap: 4px;
+  margin: 0;
+  padding: 0 12px 6px 30px;
+}
+
+.c-output-camera__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 8px 8px;
+}

@@ -62,6 +62,8 @@ export type {
   LoginRequest,
   LostBehaviorDto,
   OutputChangesDto,
+  OutputLinkDto,
+  OutputLinkStatusDto,
   OutputReport,
   OutputSettingsDto,
   OutputSnapshot,

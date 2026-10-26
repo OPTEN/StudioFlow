@@ -1,0 +1,91 @@
+// The selected output link of the output popover: name, secret URL, IP restriction editor, actions.
+@use 'mixins' as *;
+
+.c-output-link {
+  border-top: 1px solid var(--seam-strong);
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+.c-output-link__head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 8px;
+}
+
+.c-output-link__name {
+  @include ellipsis;
+  font-size: 14px;
+}
+
+.c-output-link__rename {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+
+  .c-input {
+    flex: 1;
+    height: 28px;
+  }
+
+  .c-btn {
+    flex: none;
+    height: 28px;
+  }
+}
+
+.c-output-link__ips {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 6px 8px;
+}
+
+.c-output-link__ip {
+  align-items: center;
+  display: flex;
+  font-size: 12.5px;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.c-output-link__add {
+  display: flex;
+  gap: 6px;
+  padding: 0 8px 6px;
+
+  .c-input {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    height: 28px;
+  }
+
+  .c-btn {
+    flex: none;
+    height: 28px;
+  }
+}
+
+.c-output-link__note {
+  padding: 0 8px 6px;
+}
+
+.c-output-link__row,
+.c-output-link__camera {
+  display: flex;
+  gap: 8px;
+  padding: 2px 8px 8px;
+}
+
+.c-output-link__danger {
+  border-top: 1px solid var(--seam-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 8px 4px;
+}

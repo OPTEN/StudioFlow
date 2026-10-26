@@ -10,10 +10,11 @@
         class="c-chipbtn"
         type="button"
         aria-haspopup="dialog"
+        [attr.title]="outputTitle()"
         [sfPopoverTrigger]="outputPopover"
       >
         <svg sfIcon="output"></svg>
-        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>
+        <span class="c-header__out-label">{{ outputLabel() }}</span>
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
         <span class="u-mono">{{ outputLatency() }}</span>
         <svg sfIcon="chev" [size]="13"></svg>

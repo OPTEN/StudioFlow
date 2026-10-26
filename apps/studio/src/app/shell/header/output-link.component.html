@@ -1,0 +1,157 @@
+<section
+  class="c-output-link"
+  [attr.aria-label]="t('regie.output.link.keyLabel', { name: link().name })"
+>
+  @if (renaming()) {
+    <form class="c-output-link__rename" (submit)="rename($event)">
+      <input
+        class="c-input"
+        type="text"
+        autocomplete="off"
+        [attr.aria-label]="t('regie.output.link.renameLabel', { name: link().name })"
+        [class.is-invalid]="nameControl.invalid && nameControl.touched"
+        [formControl]="nameControl"
+      />
+      <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
+        {{ t('common.save') }}
+      </button>
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        [disabled]="busy()"
+        (click)="renaming.set(false)"
+      >
+        {{ t('common.cancel') }}
+      </button>
+    </form>
+    @if (nameControl.invalid && nameControl.touched) {
+      <p class="c-field-error c-output-link__note">
+        {{ t('regie.output.link.nameInvalid', { max: nameMax }) }}
+      </p>
+    }
+  } @else {
+    <div class="c-output-link__head">
+      <strong class="c-output-link__name">{{ link().name }}</strong>
+      <button class="c-btn c-btn--sm" type="button" (click)="startRename()">
+        <svg sfIcon="pencil" [size]="14"></svg>{{ t('regie.output.link.rename') }}
+      </button>
+    </div>
+  }
+
+  <div class="c-linkbox">
+    <span class="c-linkbox__text" #url>{{ displayUrl() }}</span>
+    <button class="c-btn c-btn--sm" type="button" (click)="copy()">
+      <svg sfIcon="copy" [size]="14"></svg>{{ t('common.copy') }}
+    </button>
+  </div>
+
+  <div class="c-pop-h" id="sf-output-access">{{ t('regie.header.output.access') }}</div>
+  <p class="c-pop-note">
+    @if (ips().length === 0) {
+      {{ t('regie.header.output.accessNoRestriction') }}
+    } @else {
+      {{ t('regie.header.output.accessRestricted') }}
+    }
+  </p>
+  @if (ips().length > 0) {
+    <ul class="c-output-link__ips" aria-labelledby="sf-output-access">
+      @for (ip of ips(); track ip) {
+        <li class="c-output-link__ip">
+          <span class="u-mono">{{ ip }}</span>
+          <button
+            class="c-ibtn"
+            type="button"
+            [attr.aria-label]="t('regie.header.output.removeIp', { ip })"
+            (click)="removeIp(ip)"
+          >
+            <svg sfIcon="close" [size]="14"></svg>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+  <form class="c-output-link__add" (submit)="addIp($event)">
+    <input
+      class="c-input"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      [placeholder]="t('regie.header.output.ipPlaceholder')"
+      [attr.aria-label]="t('regie.header.output.ipLabel')"
+      [class.is-invalid]="ipControl.invalid && ipControl.touched"
+      [formControl]="ipControl"
+    />
+    <button class="c-btn c-btn--sm" type="submit">{{ t('common.add') }}</button>
+  </form>
+  @if (ipControl.invalid && ipControl.touched) {
+    <p class="c-field-error c-output-link__note">{{ t('regie.header.output.ipInvalid') }}</p>
+  }
+  @if (ipsDirty()) {
+    <div class="c-output-link__row">
+      <button
+        class="c-btn c-btn--sm c-btn--fill"
+        type="button"
+        [disabled]="savingIps()"
+        (click)="saveIps()"
+      >
+        {{ t('common.save') }}
+      </button>
+      <button class="c-btn c-btn--sm" type="button" [disabled]="savingIps()" (click)="discardIps()">
+        {{ t('regie.header.output.discard') }}
+      </button>
+    </div>
+  }
+
+  @if (cameraOpen()) {
+    <sf-output-camera [link]="link()" (closed)="cameraOpen.set(false)" />
+  } @else {
+    <div class="c-output-link__camera">
+      <button class="c-btn c-btn--sm" type="button" (click)="cameraOpen.set(true)">
+        <svg sfIcon="camera" [size]="14"></svg>{{ t('regie.output.camera.open') }}
+      </button>
+    </div>
+  }
+
+  @switch (confirming()) {
+    @case ('regenerate') {
+      <sf-confirm-box
+        [label]="t('regie.header.output.regenerate')"
+        [message]="t('regie.header.output.regenerateMessage', { name: link().name })"
+        [confirmLabel]="t('regie.header.output.regenerateConfirm')"
+        [busy]="busy()"
+        (confirm)="regenerate()"
+        (cancel)="confirming.set(null)"
+      />
+    }
+    @case ('revoke') {
+      <sf-confirm-box
+        [label]="t('regie.output.link.revoke')"
+        [message]="t('regie.output.link.revokeMessage', { name: link().name })"
+        [confirmLabel]="t('regie.output.link.revokeConfirm')"
+        [busy]="busy()"
+        (confirm)="revoke()"
+        (cancel)="confirming.set(null)"
+      />
+    }
+    @default {
+      <div class="c-output-link__danger">
+        <button
+          class="c-btn c-btn--sm c-btn--danger"
+          type="button"
+          [disabled]="busy()"
+          (click)="confirming.set('regenerate')"
+        >
+          {{ t('regie.header.output.regenerate') }}
+        </button>
+        <button
+          class="c-btn c-btn--sm c-btn--danger"
+          type="button"
+          [disabled]="busy()"
+          (click)="confirming.set('revoke')"
+        >
+          {{ t('regie.output.link.revoke') }}
+        </button>
+      </div>
+    }
+  }
+</section>

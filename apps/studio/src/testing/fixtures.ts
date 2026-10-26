@@ -257,6 +257,7 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
       latencyMs: null,
       fps: null,
       lastReportAt: null,
+      links: [],
     },
     recentLog: [],
     operatorsOnline: 1,
