@@ -18,12 +18,12 @@ public enum LoginOutcome
 
 /// <summary>Result of a login attempt.</summary>
 /// <param name="Outcome">What happened.</param>
-/// <param name="Username">The signed-in user name.</param>
+/// <param name="Identity">The signed-in account.</param>
 /// <param name="RetryAfter">Remaining lockout.</param>
-public sealed record LoginResult(LoginOutcome Outcome, string? Username, TimeSpan? RetryAfter);
+public sealed record LoginResult(LoginOutcome Outcome, AdminIdentity? Identity, TimeSpan? RetryAfter);
 
-/// <summary>Admin login with lockout and audit (spec 4.9, 5).</summary>
-public sealed class AdminLoginService(IAdminCredentials credentials, LoginThrottle throttle, IUnitOfWorkFactory data, TimeProvider clock)
+/// <summary>Login of the Regie account with lockout and audit (spec 4.9, 5).</summary>
+public sealed class AdminLoginService(AdminAccountState account, LoginThrottle throttle, IUnitOfWorkFactory data, TimeProvider clock)
 {
     /// <summary>Checks the credentials of a login attempt from <paramref name="ip"/>.</summary>
     public async Task<LoginResult> LoginAsync(string? username, string? password, string ip)
@@ -39,11 +39,11 @@ public sealed class AdminLoginService(IAdminCredentials credentials, LoginThrott
             [AuditDetails.Username] = TextRules.Truncate(username, 100) ?? string.Empty,
             [AuditDetails.Ip] = ip,
         };
-        if (credentials.Verify(username, password))
+        if (account.Verify(username, password) is { } identity)
         {
             throttle.RegisterSuccess(ip);
             await AuditAsync(AuditActions.LoginSucceeded, details);
-            return new LoginResult(LoginOutcome.Succeeded, credentials.Username, null);
+            return new LoginResult(LoginOutcome.Succeeded, identity, null);
         }
 
         var lockout = throttle.RegisterFailure(ip, username);

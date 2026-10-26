@@ -2,6 +2,8 @@ import type { Translation } from '../../types';
 import type { regieLog as en } from '../en/regie-log';
 
 export const regieLog: Translation<typeof en> = {
+  'regie.log.accountReset': 'Konto zurückgesetzt',
+  'regie.log.accountSetUp': 'Konto eingerichtet',
   'regie.log.assetDeleted': '{code} «{name}» gelöscht',
   'regie.log.assetUploaded': '{code} «{name}» hochgeladen',
   'regie.log.broadcastEnded': 'Sendung beendet',
@@ -16,6 +18,7 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.outputAccessChanged': 'Output-Zugriff geändert',
   'regie.log.outputLinkRegenerated': 'Output-Link neu erzeugt',
   'regie.log.pairingDenied': 'Anfrage von {name} abgelehnt',
+  'regie.log.passwordChanged': 'Passwort geändert',
   'regie.log.sceneCreated': 'Szene «{scene}» erstellt',
   'regie.log.sceneDeleted': 'Szene «{scene}» gelöscht',
   'regie.log.sceneLive': 'Szene «{scene}» ist live',

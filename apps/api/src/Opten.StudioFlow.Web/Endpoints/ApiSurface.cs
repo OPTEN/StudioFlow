@@ -43,6 +43,12 @@ internal static class ApiSurface
     {
         g.MapPost("/login", AuthEndpoints.LoginAsync).WithName("login")
             .Produces<SessionDto>().ProducesProblem(401).ProducesProblem(429);
+        g.MapGet("/setup", AuthEndpoints.GetSetupStatus).WithName("getSetupStatus").Produces<SetupStatusDto>();
+        g.MapPost("/setup", AuthEndpoints.SetUpAsync).WithName("completeSetup")
+            .Produces<SessionDto>().ProducesValidationProblem().ProducesProblem(403).ProducesProblem(409).ProducesProblem(429);
+        g.MapPost("/password", AuthEndpoints.ChangePasswordAsync).WithName("changePassword")
+            .Produces(204).ProducesValidationProblem().ProducesProblem(401).ProducesProblem(403).ProducesProblem(429)
+            .RequireAuthorization(Policies.Admin).AddEndpointFilter<CsrfHeaderFilter>();
         g.MapPost("/logout", (Delegate)AuthEndpoints.LogoutAsync).WithName("logout").Produces(204).ProducesProblem(401).ProducesProblem(403)
             .RequireAuthorization(Policies.Admin).AddEndpointFilter<CsrfHeaderFilter>();
         g.MapGet("/me", AuthEndpoints.GetSession).WithName("getSession").Produces<SessionDto>().ProducesProblem(401)

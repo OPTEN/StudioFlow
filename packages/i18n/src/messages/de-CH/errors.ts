@@ -22,6 +22,10 @@ export const errors: Translation<typeof en> = {
     'Auf dem Server ist ein Fehler aufgetreten. Bitte nochmals versuchen.',
   'errors.code.service_unavailable':
     'Der Server ist gerade nicht erreichbar. Bitte gleich nochmals versuchen.',
+  'errors.code.setup_code_invalid':
+    'Der Einrichtungscode stimmt nicht. Nach einem Neustart zeigt der Server einen neuen an.',
+  'errors.code.setup_closed': 'Die Ersteinrichtung ist bereits abgeschlossen. Bitte anmelden.',
+  'errors.code.password_incorrect': 'Das aktuelle Passwort stimmt nicht.',
   'errors.code.network': 'Keine Verbindung zum Server. Bitte nochmals versuchen.',
   'errors.code.aborted': 'Abgebrochen.',
 

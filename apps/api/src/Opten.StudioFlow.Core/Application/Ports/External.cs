@@ -95,12 +95,12 @@ public interface IMediaStore
     void Delete(string productionId, string fileName);
 }
 
-/// <summary>Checks the admin credentials from the configuration.</summary>
-public interface IAdminCredentials
+/// <summary>Hashes and checks the password of the Regie account (ASP.NET Core Identity v3 format).</summary>
+public interface IAdminPasswordHasher
 {
-    /// <summary>The configured admin user name.</summary>
-    string Username { get; }
+    /// <summary>Hashes a password with a random salt.</summary>
+    string Hash(string password);
 
-    /// <summary>True when user name and password match (constant time for the user name).</summary>
-    bool Verify(string? username, string? password);
+    /// <summary>True when <paramref name="password"/> belongs to <paramref name="hash"/>; a malformed hash never matches.</summary>
+    bool Verify(string hash, string password);
 }

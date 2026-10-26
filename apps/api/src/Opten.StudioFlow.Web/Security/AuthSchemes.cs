@@ -37,6 +37,9 @@ internal static class StudioFlowClaims
 
     /// <summary>Random id of an admin session (logout revokes it, GAP-04).</summary>
     public const string SessionId = "studioflow:sid";
+
+    /// <summary>Security stamp of the account when the session was issued; a password change makes older stamps invalid.</summary>
+    public const string SecurityStamp = "studioflow:stamp";
 }
 
 /// <summary>Names of the cookie, headers and query parameters of the security layer.</summary>

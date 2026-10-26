@@ -153,3 +153,17 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
         builder.HasIndex(a => new { a.ProductionId, a.Id });
     }
 }
+
+/// <summary>Table <c>admin_account</c>: the one Regie account. The key is the constant 1, so a second row cannot exist.</summary>
+internal sealed class AdminAccountConfiguration : IEntityTypeConfiguration<AdminAccount>
+{
+    public void Configure(EntityTypeBuilder<AdminAccount> builder)
+    {
+        builder.ToTable("admin_account", table => table.HasCheckConstraint("ck_admin_account_only_row", $"id = {AdminAccount.OnlyId}"));
+        builder.HasKey(a => a.Id);
+        builder.Property(a => a.Id).ValueGeneratedNever();
+        builder.Property(a => a.Username).HasMaxLength(AdminAccount.UsernameMaxLength).IsRequired();
+        builder.Property(a => a.PasswordHash).HasMaxLength(Columns.Name).IsRequired();
+        builder.Property(a => a.SecurityStamp).HasMaxLength(Columns.Secret).IsRequired();
+    }
+}

@@ -270,6 +270,39 @@ public sealed class HubConnectionRegistryTests
         Assert.False(other.Aborted);
     }
 
+    [Fact]
+    public async Task AbortSessionsExcept_PasswordChange_ClosesEveryRegieConnectionButTheKeptSessionAndSpareDevices()
+    {
+        var registry = new HubConnectionRegistry(new RealtimeOptions(), TimeProvider.System, NullLogger<HubConnectionRegistry>.Instance);
+        var kept = new FakeCallerContext("kept");
+        var other = new FakeCallerContext("other");
+        var another = new FakeCallerContext("another");
+        var device = new FakeCallerContext("device");
+        registry.Register(kept, "sid-1");
+        registry.Register(other, "sid-2");
+        registry.Register(another, "sid-3");
+        registry.Register(device);
+
+        var closed = registry.AbortSessionsExcept("sid-1");
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, closed);
+        Assert.False(kept.Aborted);
+        Assert.True(other.Aborted);
+        Assert.True(another.Aborted);
+        Assert.False(device.Aborted);
+    }
+
+    [Fact]
+    public void AbortSessionsExcept_NoSessionToKeep_ClosesEveryRegieConnection()
+    {
+        var registry = new HubConnectionRegistry(new RealtimeOptions(), TimeProvider.System, NullLogger<HubConnectionRegistry>.Instance);
+        registry.Register(new FakeCallerContext("a"), "sid-1");
+        registry.Register(new FakeCallerContext("b"), "sid-2");
+
+        Assert.Equal(2, registry.AbortSessionsExcept(null));
+    }
+
     private sealed class FakeCallerContext(string connectionId) : HubCallerContext
     {
         public bool Aborted { get; private set; }

@@ -6,6 +6,21 @@ public sealed record LoginRequest(string Username, string Password);
 /// <summary>The signed-in admin.</summary>
 public sealed record SessionDto(string Username);
 
+/// <summary>Whether the Regie has no account yet. Public, because the Regie asks before anyone is signed in.</summary>
+/// <param name="SetupRequired">True while the first-run setup is open.</param>
+public sealed record SetupStatusDto(bool SetupRequired);
+
+/// <summary>First-run setup: creates the Regie account and signs it in.</summary>
+/// <param name="SetupCode">The one-time code from the server log (<c>XXXX-XXXX</c>).</param>
+/// <param name="Username">User name of the new account.</param>
+/// <param name="Password">Password of the new account.</param>
+public sealed record SetupRequest(string SetupCode, string Username, string Password);
+
+/// <summary>Changes the password of the signed-in admin; every other session ends.</summary>
+/// <param name="CurrentPassword">The password in use now.</param>
+/// <param name="NewPassword">The new password.</param>
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
 /// <summary>LiveKit connection data for a client. The token carries exactly the rights of the role.</summary>
 /// <param name="Url">WebSocket URL of LiveKit (same origin, proxied by Caddy).</param>
 /// <param name="Token">Signed access token.</param>
@@ -80,4 +95,35 @@ public static class ErrorCodes
     /// by itself once the database is back.
     /// </summary>
     public const string ServiceUnavailable = "service_unavailable";
+
+    /// <summary>The setup code of the first-run setup is wrong or missing (403).</summary>
+    public const string SetupCodeInvalid = "setup_code_invalid";
+
+    /// <summary>The first-run setup is closed because the Regie account exists (409).</summary>
+    public const string SetupClosed = "setup_closed";
+
+    /// <summary>The current password of a password change is wrong (400).</summary>
+    public const string PasswordIncorrect = "password_incorrect";
+}
+
+/// <summary>
+/// Reasons in the field errors (<c>errors</c>) of a <see cref="ErrorCodes.ValidationFailed"/> answer to the first-run
+/// setup and the password change. They are codes, not texts: the client shows its own text for each.
+/// </summary>
+public static class FieldErrorCodes
+{
+    /// <summary>The user name is empty, longer than 64 characters or has characters other than letters, digits and <c>. _ @ -</c>.</summary>
+    public const string UsernameInvalid = "username_invalid";
+
+    /// <summary>The password has fewer than 12 characters.</summary>
+    public const string PasswordTooShort = "password_too_short";
+
+    /// <summary>The password has more than 256 characters.</summary>
+    public const string PasswordTooLong = "password_too_long";
+
+    /// <summary>The password equals the user name (ignoring case).</summary>
+    public const string PasswordEqualsUsername = "password_equals_username";
+
+    /// <summary>The password is on the list of common passwords.</summary>
+    public const string PasswordTooCommon = "password_too_common";
 }

@@ -2,7 +2,6 @@ using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure.Persistence;
-using Opten.StudioFlow.Infrastructure.Security;
 using Opten.StudioFlow.Web.Hosting;
 using Opten.StudioFlow.Web.Tests.Support;
 
@@ -10,29 +9,6 @@ namespace Opten.StudioFlow.Web.Tests;
 
 public sealed class HostingTests(StudioFlowApp app) : IClassFixture<StudioFlowApp>
 {
-    [Fact]
-    public async Task HashPassword_Stdin_PrintsVerifiableHash()
-    {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-
-        var exitCode = await CliCommands.HashPasswordAsync(new StringReader("secret\r\n"), output, error);
-
-        Assert.Equal(0, exitCode);
-        var hash = output.ToString().Trim();
-        Assert.True(new AdminCredentials(Microsoft.Extensions.Options.Options.Create(new AdminOptions { Username = "a", PasswordHash = hash })).Verify("a", "secret"));
-    }
-
-    [Fact]
-    public async Task HashPassword_EmptyStdin_Fails()
-    {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-
-        Assert.Equal(1, await CliCommands.HashPasswordAsync(new StringReader(string.Empty), output, error));
-        Assert.Empty(output.ToString());
-    }
-
     [Fact]
     public async Task BroadcastStatus_IdleThenLive_PrintsStateAndExitCode()
     {

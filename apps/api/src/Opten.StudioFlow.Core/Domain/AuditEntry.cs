@@ -14,6 +14,15 @@ public static class AuditActions
     /// <summary>Lockout started.</summary>
     public const string LoginLocked = "login.locked";
 
+    /// <summary>The Regie account was set up in the first-run setup.</summary>
+    public const string AccountSetUp = "account.setup";
+
+    /// <summary>The password of the Regie account was changed.</summary>
+    public const string PasswordChanged = "account.password.changed";
+
+    /// <summary>The Regie account was reset with <c>reset-admin</c>.</summary>
+    public const string AccountReset = "account.reset";
+
     /// <summary>A scene went on air.</summary>
     public const string SceneLive = "scene.live";
 

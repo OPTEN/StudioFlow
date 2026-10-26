@@ -58,11 +58,12 @@ public static class InfrastructureServices
                 .AddInterceptors(new DatabaseCircuitInterceptor(circuit));
         });
         services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
+        services.AddSingleton<IAdminAccountStore, AdminAccountStore>();
         return services;
     }
 
     /// <summary>
-    /// Persistence, LiveKit, media storage and admin credentials. The settings are validated when they are first read;
+    /// Persistence, LiveKit, media storage and the Regie session settings with the password hasher. The settings are validated when they are first read;
     /// the web host reads them during startup (not with <c>ValidateOnStart</c>, which would also run during the
     /// build-time OpenAPI generation that has no configuration).
     /// </summary>
@@ -93,10 +94,8 @@ public static class InfrastructureServices
         services.AddSingleton<IMediaStore, FileMediaStore>();
 
         services.AddOptions<AdminOptions>().Bind(configuration.GetSection(AdminOptions.Section))
-            .Validate(o => !string.IsNullOrWhiteSpace(o.Username), "Admin:Username is required.")
-            .Validate(o => !string.IsNullOrEmpty(o.PasswordHash) || !string.IsNullOrEmpty(o.Password), "Admin:PasswordHash (or, for local setups, Admin:Password) is required.")
             .Validate(o => o.SessionLifetime >= TimeSpan.FromSeconds(1) && o.SessionLifetime <= TimeSpan.FromDays(30), "Admin:SessionLifetime must be between 00:00:01 and 30.00:00:00.");
-        services.AddSingleton<IAdminCredentials, AdminCredentials>();
+        services.AddSingleton<IAdminPasswordHasher, AdminPasswordHasher>();
         return services;
     }
 

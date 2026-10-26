@@ -187,6 +187,9 @@ internal static class StudioFlowHost
         services.AddSingleton<OutputService>();
         services.AddSingleton<LiveKitSyncService>();
         services.AddSingleton<StudioSessionService>();
+        services.AddSingleton<SetupCode>();
+        services.AddSingleton<AdminAccountState>();
+        services.AddSingleton<AdminAccountService>();
         services.AddSingleton<AdminLoginService>();
         services.AddSingleton<SourceRestartWatch>();
     }

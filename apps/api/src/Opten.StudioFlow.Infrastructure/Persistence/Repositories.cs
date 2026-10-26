@@ -108,7 +108,7 @@ internal sealed class AuditRepository(StudioFlowDbContext db) : IAuditRepository
 
     public async Task<IReadOnlyList<AuditEntry>> ListRecentAsync(string productionId, IReadOnlyCollection<string> actions, int count, CancellationToken cancellationToken) =>
         await db.AuditEntries.AsNoTracking()
-            .Where(a => a.ProductionId == productionId && actions.Contains(a.Action))
+            .Where(a => (a.ProductionId == productionId || a.ProductionId == null) && actions.Contains(a.Action))
             .OrderByDescending(a => a.Id).Take(count).ToListAsync(cancellationToken);
 }
 

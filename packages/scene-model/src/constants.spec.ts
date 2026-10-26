@@ -40,6 +40,8 @@ describe('constants', () => {
     expect(LIMITS.itemsPerScene).toBe(32);
     expect(LIMITS.scenesPerProduction).toBe(99);
     expect(LIMITS.recentLogEntries).toBe(20);
+    expect(LIMITS.usernameLength).toBe(64);
+    expect([LIMITS.passwordMinLength, LIMITS.passwordMaxLength]).toEqual([12, 256]);
     expect(ROTATIONS).toEqual([0, 90, 180, 270]);
     expect(ITEM_BOUNDS.maxCropPerSide * 2).toBe(ITEM_BOUNDS.maxCropPerAxis);
   });

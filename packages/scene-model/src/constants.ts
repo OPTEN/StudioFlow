@@ -56,6 +56,9 @@ export const LIMITS = {
   productionNameLength: 80,
   assetNameLength: 80,
   messageLength: 140,
+  usernameLength: 64,
+  passwordMinLength: 12,
+  passwordMaxLength: 256,
   screensPerDevice: 9,
   /** Entries of "Recent events" the snapshot carries and the client keeps. */
   recentLogEntries: 20,

@@ -339,4 +339,13 @@ public enum LogCode
 
     /// <summary>A source is back after an outage. Params: <c>code</c>, <c>downSeconds</c>.</summary>
     SourceRecovered,
+
+    /// <summary>The Regie account was set up in the first-run setup.</summary>
+    AccountSetUp,
+
+    /// <summary>The password of the Regie account was changed.</summary>
+    PasswordChanged,
+
+    /// <summary>The Regie account was reset (<c>reset-admin</c>); the first-run setup is open again.</summary>
+    AccountReset,
 }

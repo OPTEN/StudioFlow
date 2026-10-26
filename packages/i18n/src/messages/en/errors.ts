@@ -24,6 +24,10 @@ export const errors = {
   'errors.code.internal_error': 'A server error occurred. Please try again.',
   'errors.code.service_unavailable':
     'The server is not reachable right now. Please try again shortly.',
+  'errors.code.setup_code_invalid':
+    'The setup code is not correct. After a restart the server shows a new one.',
+  'errors.code.setup_closed': 'The first-run setup is already complete. Please sign in.',
+  'errors.code.password_incorrect': 'The current password is not correct.',
   'errors.code.network': 'No connection to the server. Please try again.',
   'errors.code.aborted': 'Cancelled.',
 
