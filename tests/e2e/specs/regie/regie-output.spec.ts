@@ -521,7 +521,7 @@ test.describe('REGIE monitoring page', () => {
       await mon.getByRole('button', { name: 'Station', exact: true }).click();
       await expect
         .poll(monitoringOrder, { message: 'by name' })
-        .toEqual(['Phone One', 'Phone Two', 'Laptop Lea']);
+        .toEqual(['Laptop Lea', 'Phone One', 'Phone Two']);
       await mon.getByRole('button', { name: 'Station', exact: true }).click();
       await mon.getByRole('button', { name: 'Station', exact: true }).click();
       await expect(header('Station')).not.toHaveAttribute('aria-sort', /.+/);

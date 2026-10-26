@@ -76,7 +76,8 @@
       "fix": "Decide: raise the dim text to 4.5:1 or record the exception in DESIGN.md and accept the finding in the test."
     },
     "A11Y-09": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-26: the Sources dock of the drag-and-drop work (#19) renders the empty note outside the list; the axe test passes.",
       "severity": "medium",
       "area": "A11Y",
       "title": "The Sources list of an empty scene is role=list without a listitem (the empty-state text is its only child): axe aria-required-children (critical)",

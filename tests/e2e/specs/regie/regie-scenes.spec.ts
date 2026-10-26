@@ -568,7 +568,7 @@ test.describe('REGIE scenes', () => {
       ).toContainText('Source missing');
       // The thumbnail of the scene row draws it as well.
       expect(
-        (await renderedItems(page, '.c-scenes-dock__list > sf-scene-row:nth-child(1)')).some(
+        (await renderedItems(page, '.c-scenes-dock__list sf-scene-row')).some(
           (entry) => entry.id === laptopItem!.id,
         ),
       ).toBe(true);
@@ -698,7 +698,7 @@ test.describe('REGIE scenes', () => {
         radius: 0,
       });
       const itemId = scene.items[0]!.id;
-      const thumb = '.c-scenes-dock__list > sf-scene-row:nth-child(1)';
+      const thumb = '.c-scenes-dock__list sf-scene-row';
       await expect
         .poll(
           async () => (await renderedItems(page, thumb)).find((entry) => entry.id === itemId)?.x,

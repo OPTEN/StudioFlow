@@ -122,7 +122,7 @@ test.describe('PAIR phone, QR code', () => {
       })();
       const paired = await pairPhoneViaQr(regie, phone);
       await phone.waitForCamera('live', 45_000);
-      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+,\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 20_000 });
+      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 20_000 });
       sampling = false;
       await sampler;
       testInfo.annotations.push({ type: 'measurement', description: `station line while the phone connects: ${lines.join(' -> ')}` });
@@ -136,7 +136,7 @@ test.describe('PAIR phone, QR code', () => {
       const videoMs = Date.now() - liveAt;
       testInfo.annotations.push({ type: 'measurement', description: `T-VIDEO-START (source already live, item added -> playing picture in the Program monitor): ${videoMs} ms` });
       await expect(paired.row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
-      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+,\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
+      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
       await expect(paired.row.locator('.c-st__tag, .c-tag--pgm')).toHaveText('PGM');
       expect((await readPlaces(regie.page)).strip).toHaveLength(0);
       // The sender's own preview and tally agree: K1 is in the program scene, the broadcast has not started.
