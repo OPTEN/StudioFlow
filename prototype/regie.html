@@ -1915,14 +1915,14 @@ function renderPair() {
     drawQR($('#qr'), (S.qrIssued % 100000) + 7);
   } else if (S.tab === 'laptop') {
     b.innerHTML = `<h3>Laptop without a QR code</h3><p>Open this address in the browser on the laptop:</p>
-      <div class="big-url"><span id="joinUrl">studioflow.opten.ch/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Copy</button></div>
+      <div class="big-url"><span id="joinUrl">studioflow.example.com/join</span><button class="btn btn-sm" type="button" data-copy="joinUrl">${icon('copy', 14)}Copy</button></div>
       <p>Enter a name there. The request appears on the right with a verification code.</p>
       <div class="mini" aria-hidden="true"><div class="mini-bar">What it looks like on the laptop</div><div class="mini-b"><span class="mini-field">Laptop Mia</span><span class="mini-cap">Verification code for the control room</span><span class="mini-code">${S.pending ? S.pending.code : '47 12'}</span></div></div>`;
     side.innerHTML = requestsHtml();
   } else {
     b.innerHTML = `<h3>Invite link</h3><p>For laptops that should be paired before the webinar. Send the link by Teams or email.</p>
       ${S.linkMade
-        ? `<div class="big-url"><span id="inviteUrl">studioflow.opten.ch/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Copy</button></div><p class="hint">Valid once and expires in 30 minutes. Whoever opens it is paired right away.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Revoke link</button></div>`
+        ? `<div class="big-url"><span id="inviteUrl">studioflow.example.com/j/7F3K-29QX</span><button class="btn btn-sm" type="button" data-copy="inviteUrl">${icon('copy', 14)}Copy</button></div><p class="hint">Valid once and expires in 30 minutes. Whoever opens it is paired right away.</p><div><button class="btn btn-sm btn-danger" type="button" data-unlink>Revoke link</button></div>`
         : `<div><button class="btn btn-fill" type="button" data-mklink>${icon('link', 15)}Create link</button></div>`}`;
     side.innerHTML = requestsHtml();
   }
@@ -1978,7 +1978,7 @@ function answerKnock(ok) {
 function renderOutPop() {
   $('#outPop').innerHTML = `<div class="pop-h">Output to proxy</div>
     <dl class="kv"><dt>State</dt><dd class="state-ok">connected, 1 consumer</dd><dt>Consumer</dt><dd class="mono">10.0.0.42</dd><dt>Format</dt><dd class="mono">1920 × 1080 · 30 fps</dd><dt>Latency</dt><dd><span class="mono">${$('#outLat').textContent}</span> measured</dd></dl>
-    <div class="linkbox"><span id="outUrl">studioflow.opten.ch/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Copy</button></div>
+    <div class="linkbox"><span id="outUrl">studioflow.example.com/o/webinar?k=••••••</span><button class="btn btn-sm" type="button" data-copy-out>${icon('copy', 14)}Copy</button></div>
     ${S.outConfirm
       ? `<div class="confirm"><span>The old link stops working immediately. The proxy then needs the new one.</span><div class="confirm-row"><button class="btn btn-sm btn-danger-fill" type="button" data-out="yes">Regenerate</button><button class="btn btn-sm" type="button" data-out="no">Cancel</button></div></div>`
       : `<div style="padding:10px 8px 4px;border-top:1px solid var(--seam-strong);margin-top:6px;display:flex;align-items:center;gap:10px"><span class="hint" style="flex:1">If you suspect it was shared</span><button class="btn btn-sm btn-danger" type="button" data-out="ask">Regenerate link</button></div>`}`;

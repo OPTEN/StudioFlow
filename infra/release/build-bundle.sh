@@ -6,10 +6,12 @@
 #
 # Writes OUTPUT_DIR/assets/ - exactly the files that are attached to the release:
 #   studioflow-X.Y.Z.tar.gz            the install folder: docker-compose.yml (the release file, pinned to X.Y.Z),
-#                                      .env.example, setup/update/backup/restore scripts, runbook, QUICKSTART.md, VERSION
+#                                      .env.example, setup/update/backup/restore scripts, runbook, QUICKSTART.md, VERSION,
+#                                      LICENSE, NOTICE, THIRD_PARTY_NOTICES.md
 #   docker-compose.yml, env.example    the same two files on their own (GitHub drops the leading dot of .env.example)
 #   QUICKSTART.md                      one page: install, update, roll back
-#   studioflow-prototype-X.Y.Z.zip     the clickable Regie prototype (open prototype/regie.html in a browser)
+#   studioflow-prototype.html          the clickable Regie prototype as one self-contained file (fonts embedded, works
+#                                      offline); no version in the name, so that .../releases/latest/download/ links to it
 #   SHA256SUMS                         checksums of all of the above
 set -euo pipefail
 
@@ -54,6 +56,7 @@ install -m 0644 setup.ps1 update.ps1 backup.ps1 restore.ps1 "$stage/"
 install -m 0755 infra/scripts/common.sh "$stage/infra/scripts/"
 install -m 0644 infra/scripts/StudioFlow.psm1 "$stage/infra/scripts/"
 install -m 0644 docs/runbook.md "$stage/docs/"
+install -m 0644 LICENSE NOTICE THIRD_PARTY_NOTICES.md "$stage/"
 sed "s/@VERSION@/$version/g" infra/release/QUICKSTART.md >"$stage/QUICKSTART.md"
 printf '%s\n' "$version" >"$stage/VERSION"
 
@@ -65,8 +68,12 @@ tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$epoch" -cf - -C "
 install -m 0644 "$stage/docker-compose.yml" "$stage/QUICKSTART.md" "$assets/"
 install -m 0644 .env.example "$assets/env.example"
 
-# The prototype keeps its fonts next to regie.html, so it works offline from the unpacked folder.
-(cd "$root" && zip -qr -X "$assets/studioflow-prototype-$version.zip" prototype)
+# The prototype with its fonts inlined (tools/build-prototype.mjs: plain Node, no npm install needed).
+command -v node >/dev/null || {
+	echo "Error: node is needed to build the prototype file." >&2
+	exit 1
+}
+node tools/build-prototype.mjs --out "$assets/studioflow-prototype.html"
 
 (cd "$assets" && sha256sum -- * >SHA256SUMS)
 rm -rf "$out/stage"

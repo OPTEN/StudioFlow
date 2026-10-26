@@ -27,6 +27,7 @@
     "check": "npm run check:i18n && npm run check:german && npm run typecheck",
     "notices": "node tools/third-party-notices.mjs",
     "check:notices": "node tools/third-party-notices.mjs --check",
+    "build:prototype": "node tools/build-prototype.mjs",
     "test:unit": "vitest run",
     "test:studio": "ng test studio --watch=false",
     "test:sender": "ng test sender --watch=false",
