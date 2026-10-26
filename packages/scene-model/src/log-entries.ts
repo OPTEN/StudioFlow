@@ -31,6 +31,10 @@ export const LOG_MESSAGE_KEYS = {
   accountSetUp: 'regie.log.accountSetUp',
   passwordChanged: 'regie.log.passwordChanged',
   accountReset: 'regie.log.accountReset',
+  textCreated: 'regie.log.textCreated',
+  textDeleted: 'regie.log.textDeleted',
+  textShown: 'regie.log.textShown',
+  textHidden: 'regie.log.textHidden',
 } as const satisfies Record<LogCode, MessageKey>;
 
 /**

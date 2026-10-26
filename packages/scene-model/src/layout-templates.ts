@@ -111,6 +111,7 @@ function kindRank(kind: SourceKind | undefined): number {
       return 1;
     case 'camera':
       return 2;
+    case 'text':
     case undefined:
       return 3;
   }
@@ -126,8 +127,9 @@ function kindRank(kind: SourceKind | undefined): number {
  * Z-order: the item order is the layer order (first = back), so the result is re-ordered to match the slots, because
  * slots may overlap (picture in picture: the small picture lies on top of the full one):
  * 1. the placed items first, in slot order – slot 0 at the back, every later slot in front of the earlier ones;
- * 2. then every item that got no slot – hidden items and visible items beyond the slot count – in front of the
- *    placed ones, in their previous relative order and with their geometry unchanged.
+ * 2. then every item that got no slot – hidden items, texts (they overlay the picture and keep their place) and
+ *    visible items beyond the slot count – in front of the placed ones, in their previous relative order and with
+ *    their geometry unchanged.
  *
  * Unplaced items go in front so that nothing that is visible, or becomes visible when it is shown again later,
  * disappears behind a template slot it does not belong to: a leftover stays visible and clickable in the monitor,
@@ -147,7 +149,7 @@ export function applyLayoutTemplate(
   const slots = layoutTemplate(templateId).slots ?? [];
   const candidates = items
     .map((item, index) => ({ item, index }))
-    .filter(({ item }) => !item.hidden)
+    .filter(({ item }) => !item.hidden && kindOf(item.source) !== 'text')
     .sort(
       (a, b) =>
         kindRank(kindOf(a.item.source)) - kindRank(kindOf(b.item.source)) || a.index - b.index,

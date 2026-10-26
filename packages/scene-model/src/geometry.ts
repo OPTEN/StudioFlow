@@ -9,8 +9,16 @@ import {
   ROTATIONS,
   type Rotation,
 } from './constants';
-import type { BorderDto, CropDto, LostBehaviorDto, SceneItemDto, SourceKind } from './contracts';
+import type {
+  BorderDto,
+  CropDto,
+  LostBehaviorDto,
+  SceneItemDto,
+  SourceKind,
+  TextStyle,
+} from './contracts';
 import { formatDecimal } from './format';
+import { textItemRect } from './text';
 
 /** Rectangle in canvas pixels (1920 × 1080 space). Structurally identical to the renderer's `CanvasRect`. */
 export interface CanvasRect {
@@ -225,19 +233,26 @@ export function validateItem(
 
 /**
  * A new item with the server defaults of `AddSceneItem` (spec 4.3): 600 × 338 at 1240/680, radius 12, contain for
- * screens and cover for everything else, no crop, no rotation, hold the last frame 3 s on loss.
+ * screens and cover for everything else, no crop, no rotation, hold the last frame 3 s on loss. A text gets the
+ * rectangle of its style (`textItemRect`) and no corner radius, and starts hidden so it can be prepared off air.
  */
-export function newItem(source: string, kind: SourceKind | undefined, id: string): SceneItemDto {
+export function newItem(
+  source: string,
+  kind: SourceKind | undefined,
+  id: string,
+  textStyle: TextStyle = 'lowerThird',
+): SceneItemDto {
+  const isText = kind === 'text';
   return {
     id,
     source,
-    ...NEW_ITEM_RECT,
+    ...(isText ? textItemRect(textStyle) : NEW_ITEM_RECT),
     fit: kind === 'screen' ? 'contain' : 'cover',
     crop: { ...NO_CROP },
-    radius: DEFAULT_ITEM_RADIUS,
+    radius: isText ? 0 : DEFAULT_ITEM_RADIUS,
     mirror: false,
     rotation: 0,
-    hidden: false,
+    hidden: isText,
     locked: false,
     border: null,
     onLost: { holdMs: DEFAULT_HOLD_MS, fallbackSource: null },

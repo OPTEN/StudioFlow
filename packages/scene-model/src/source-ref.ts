@@ -2,11 +2,12 @@ import type { SourceKind } from './contracts';
 
 /**
  * A source reference as stored in scene items: `{deviceId}/{slot}` for a device slot (the device id is the LiveKit
- * identity, the slot the LiveKit track name) or `{assetId}` for an uploaded image or video.
+ * identity, the slot the LiveKit track name), `{assetId}` for an uploaded image or video or `{textId}` for a text.
  */
 export type ParsedSourceRef =
   | { readonly kind: 'device'; readonly deviceId: string; readonly slot: string }
-  | { readonly kind: 'asset'; readonly assetId: string };
+  | { readonly kind: 'asset'; readonly assetId: string }
+  | { readonly kind: 'text'; readonly textId: string };
 
 const SLOT_PATTERN = /^(camera|screen-[1-9])$/;
 const ID_PATTERN = /^[a-z]{3}_[a-z0-9]{4,40}$/;
@@ -15,7 +16,13 @@ const ID_PATTERN = /^[a-z]{3}_[a-z0-9]{4,40}$/;
 export function parseSourceRef(ref: string): ParsedSourceRef | null {
   const slash = ref.indexOf('/');
   if (slash < 0) {
-    return ID_PATTERN.test(ref) && ref.startsWith('ast_') ? { kind: 'asset', assetId: ref } : null;
+    if (!ID_PATTERN.test(ref)) {
+      return null;
+    }
+    if (ref.startsWith('ast_')) {
+      return { kind: 'asset', assetId: ref };
+    }
+    return ref.startsWith('txt_') ? { kind: 'text', textId: ref } : null;
   }
   const deviceId = ref.slice(0, slash);
   const slot = ref.slice(slash + 1);

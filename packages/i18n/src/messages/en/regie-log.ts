@@ -29,4 +29,8 @@ export const regieLog = {
   'regie.log.sourceLost': '{code} no picture',
   'regie.log.sourceReconnecting': '{code} reconnecting',
   'regie.log.sourceRecovered': '{code} is back, was gone for {downtime}',
+  'regie.log.textCreated': '{code} “{name}” created',
+  'regie.log.textDeleted': '{code} “{name}” deleted',
+  'regie.log.textHidden': '{code} hidden',
+  'regie.log.textShown': '{code} shown',
 } as const satisfies Namespace<'regie.log'>;

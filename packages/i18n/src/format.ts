@@ -104,3 +104,18 @@ export function compareText(
 export function lowerCase(text: string): string {
   return text.toLocaleLowerCase(activeLocale().dateTag);
 }
+
+const graphemeSegmenter =
+  typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter('en', { granularity: 'grapheme' })
+    : null;
+
+/**
+ * Number of user-perceived characters of a text (an emoji with modifiers or a combined letter counts once). It does not
+ * depend on the active locale and matches the text elements the API counts.
+ */
+export function countCharacters(text: string): number {
+  return graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(text)).length
+    : Array.from(text).length;
+}

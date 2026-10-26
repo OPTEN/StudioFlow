@@ -26,4 +26,8 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.sourceLost': '{code} kein Bild',
   'regie.log.sourceReconnecting': '{code} verbindet neu',
   'regie.log.sourceRecovered': '{code} wieder da, war {downtime} weg',
+  'regie.log.textCreated': '{code} «{name}» erstellt',
+  'regie.log.textDeleted': '{code} «{name}» gelöscht',
+  'regie.log.textHidden': '{code} ausgeblendet',
+  'regie.log.textShown': '{code} eingeblendet',
 };

@@ -1,5 +1,6 @@
 import {
   compareText,
+  countCharacters,
   formatDate,
   formatDateTime,
   formatNumber,
