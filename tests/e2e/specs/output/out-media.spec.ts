@@ -43,15 +43,16 @@ test.describe('OUT media and reports', () => {
 
       const sceneName = (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === production.sceneIds[0])!.name;
       await expect
-        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, hub, livekit, latency, source)', timeout: 15_000 })
-        .toBeGreaterThanOrEqual(6);
+        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, hub, livekit, latency, source)', timeout: 15_000 })
+        .toBeGreaterThanOrEqual(7);
       const lines = await output.debugLines();
       expect(lines[0], 'production and scene').toBe(`${production.name} · Szene «${sceneName}»`);
       expect(lines[1], 'revision and broadcast').toMatch(/^Revision \d+ · Sendung live$/);
-      expect(lines[2], 'hub and sync state').toBe('Hub verbunden · Sync aktuell');
-      expect(lines[3], 'LiveKit state').toBe('LiveKit verbunden');
-      expect(lines[4], 'latency estimate and renderer fps').toMatch(/^Latenz ≈ \d+ ms · Renderer \d+ fps$/);
-      expect(lines[5], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Kamera Eins · \\d+×\\d+ · \\d+ fps · [\\d,]+ Mbit/s · Verlust [\\d,]+ % · Puffer \\d+ ms$`));
+      expect(lines[2], 'canvas of the production').toBe('Leinwand 1920 × 1080 · 16:9 · 1080p');
+      expect(lines[3], 'hub and sync state').toBe('Hub verbunden · Sync aktuell');
+      expect(lines[4], 'LiveKit state').toBe('LiveKit verbunden');
+      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latenz ≈ \d+ ms · Renderer \d+ fps$/);
+      expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Kamera Eins · \\d+×\\d+ · \\d+ fps · [\\d,]+ Mbit/s · Verlust [\\d,]+ % · Puffer \\d+ ms$`));
 
       // Values match the video element and the API (the picture size may still grow through simulcast layers).
       await expect
