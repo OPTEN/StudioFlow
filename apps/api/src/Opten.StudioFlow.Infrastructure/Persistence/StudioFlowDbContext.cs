@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Opten.StudioFlow.Core.Domain;
 
 namespace Opten.StudioFlow.Infrastructure.Persistence;
@@ -85,7 +86,8 @@ public sealed class StudioFlowDbContext(DbContextOptions<StudioFlowDbContext> op
                 foreignKey.SetConstraintName($"fk_{table}_{columns}");
             }
 
-            foreach (var index in entity.GetIndexes())
+            // An index with a name of its own (a filtered index that shares its columns with another one) keeps it.
+            foreach (var index in entity.GetIndexes().Where(i => i.FindAnnotation(RelationalAnnotationNames.Name) is null))
             {
                 var columns = string.Join('_', index.Properties.Select(p => ToSnakeCase(p.Name)));
                 index.SetDatabaseName($"ix_{table}_{columns}");

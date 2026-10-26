@@ -16,6 +16,9 @@ internal static class ApiSurface
     /// <summary>Rate limit of invite redemptions (<c>Pairing:Limits:RedeemPerIpPer10Min</c>, default 20 per IP per 10 minutes; 429).</summary>
     public const string RedeemLimit = "pairing-redeem";
 
+    /// <summary>Rate limit of the audit log exports (<c>Audit:ExportsPerMinute</c>, default 6 per IP per minute; 429).</summary>
+    public const string AuditExportLimit = "audit-export";
+
     /// <summary>Maps every API route.</summary>
     public static IEndpointRouteBuilder MapStudioFlowApi(this IEndpointRouteBuilder app)
     {
@@ -28,6 +31,7 @@ internal static class ApiSurface
         MapPairingAdmin(Admin(app.MapGroup("/api/productions/{productionId}/pairing").WithTags("Pairing")));
         MapAssets(Admin(app.MapGroup("/api/productions/{productionId}/assets").WithTags("Assets")));
         MapOutputAdmin(Admin(app.MapGroup("/api/productions/{productionId}/output").WithTags("Output")));
+        MapAudit(Admin(app.MapGroup("/api/audit").WithTags("Audit")));
         MapPairingPublic(app.MapGroup("/api/pairing").WithTags("Pairing (public)"));
         MapDevice(app.MapGroup("/api/device").WithTags("Device (sender)").RequireAuthorization(Policies.Device));
         MapOutputPublic(app.MapGroup("/api/output/{slug}").WithTags("Output (public)"));
@@ -178,6 +182,22 @@ internal static class ApiSurface
             .WithName("updateOutputAccess").Produces<OutputSettingsDto>().ProducesValidationProblem();
         g.MapPost("/regenerate-key", OutputEndpoints.RegenerateKeyAsync).WithName("regenerateOutputKey")
             .Produces<OutputSettingsDto>();
+    }
+
+    /// <summary>
+    /// Entries newest first. A page ends with <c>nextCursor</c> (keyset over time and id): pass it as <c>cursor</c> to continue,
+    /// also while entries are added. <c>limit</c> is 1 to 200, 50 by default. The exports hold at most <c>Audit:ExportMaxRows</c> rows
+    /// (409 <c>limit_reached</c> otherwise) and are logged as <c>audit.exported</c>.
+    /// </summary>
+    private static void MapAudit(RouteGroupBuilder g)
+    {
+        g.MapGet("/", AuditEndpoints.ListAsync).WithName("listAuditLog").Produces<AuditPageDto>().ProducesValidationProblem();
+        g.MapGet("/export.csv", AuditEndpoints.ExportCsvAsync).WithName("exportAuditCsv")
+            .Produces(200, contentType: "text/csv").ProducesValidationProblem().ProducesProblem(409).ProducesProblem(429)
+            .RequireRateLimiting(AuditExportLimit);
+        g.MapGet("/export.json", AuditEndpoints.ExportJsonAsync).WithName("exportAuditJson")
+            .Produces<IReadOnlyList<AuditEntryDto>>().ProducesValidationProblem().ProducesProblem(409).ProducesProblem(429)
+            .RequireRateLimiting(AuditExportLimit);
     }
 
     private static void MapPairingPublic(RouteGroupBuilder g)

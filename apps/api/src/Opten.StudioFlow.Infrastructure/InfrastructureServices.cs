@@ -58,6 +58,7 @@ public static class InfrastructureServices
                 .AddInterceptors(new DatabaseCircuitInterceptor(circuit));
         });
         services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
+        services.AddSingleton<IAuditLog, AuditLog>();
         services.AddSingleton<IAdminAccountStore, AdminAccountStore>();
         return services;
     }

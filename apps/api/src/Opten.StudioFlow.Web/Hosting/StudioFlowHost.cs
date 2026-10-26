@@ -45,6 +45,9 @@ internal static class StudioFlowHost
     /// <summary>The window of the pairing rate limits (part of the key names <c>…PerIpPer10Min</c>).</summary>
     private static readonly TimeSpan PairingLimitWindow = TimeSpan.FromMinutes(10);
 
+    /// <summary>The window of the audit export limit (part of the key name <c>ExportsPerMinute</c>).</summary>
+    private static readonly TimeSpan ExportLimitWindow = TimeSpan.FromMinutes(1);
+
     /// <summary>True while <c>dotnet build</c> generates the OpenAPI document (the app is started without a database).</summary>
     public static bool IsDocumentGeneration => Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 
@@ -85,6 +88,7 @@ internal static class StudioFlowHost
         services.AddValidatedOptions<OutputMonitorOptions>(configuration, OutputMonitorOptions.Section);
         services.AddValidatedOptions<RealtimeOptions>(configuration, RealtimeOptions.Section);
         services.AddValidatedOptions<BackupOptions>(configuration, BackupOptions.Section);
+        services.AddValidatedOptions<AuditOptions>(configuration, AuditOptions.Section);
         services.AddSingleton(TimeProvider.System);
         services.AddStudioFlowInfrastructure(configuration);
         AddApplication(services);
@@ -192,6 +196,8 @@ internal static class StudioFlowHost
         services.AddSingleton<AdminAccountState>();
         services.AddSingleton<AdminAccountService>();
         services.AddSingleton<AdminLoginService>();
+        services.AddSingleton<AuditLogService>();
+        services.AddSingleton<AuditRetentionService>();
         services.AddSingleton<SourceRestartWatch>();
     }
 
@@ -267,8 +273,9 @@ internal static class StudioFlowHost
                 context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 await Problems.WriteAsync(context.HttpContext, StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited, "Too many attempts. Please try again later.");
             };
-            options.AddPolicy(ApiSurface.PairingRequestsLimit, context => PerClient(context, Limits(context).RequestsPerIpPer10Min));
-            options.AddPolicy(ApiSurface.RedeemLimit, context => PerClient(context, Limits(context).RedeemPerIpPer10Min));
+            options.AddPolicy(ApiSurface.PairingRequestsLimit, context => PerClient(context, Limits(context).RequestsPerIpPer10Min, PairingLimitWindow));
+            options.AddPolicy(ApiSurface.RedeemLimit, context => PerClient(context, Limits(context).RedeemPerIpPer10Min, PairingLimitWindow));
+            options.AddPolicy(ApiSurface.AuditExportLimit, context => PerClient(context, context.RequestServices.GetRequiredService<AuditOptions>().ExportsPerMinute, ExportLimitWindow));
         });
     }
 
@@ -293,12 +300,12 @@ internal static class StudioFlowHost
 
     private static PairingLimits Limits(HttpContext context) => context.RequestServices.GetRequiredService<PairingOptions>().Limits;
 
-    /// <summary>Sliding window of 10 minutes per client address.</summary>
-    private static RateLimitPartition<string> PerClient(HttpContext context, int permits) =>
+    /// <summary>Sliding window per client address.</summary>
+    private static RateLimitPartition<string> PerClient(HttpContext context, int permits, TimeSpan window) =>
         RateLimitPartition.GetSlidingWindowLimiter(ClientAddress.Of(context), _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = permits,
-            Window = PairingLimitWindow,
+            Window = window,
             SegmentsPerWindow = 10,
             QueueLimit = 0,
         });
