@@ -109,6 +109,9 @@ services:
       BACKUP__STATUSFILE: /data/backup-status/backup-status.json
       BACKUP__SCHEDULE: ${BACKUP_SCHEDULE:-}
       BACKUP__WARNAFTERHOURS: ${BACKUP_WARN_AFTER_HOURS:-48}
+      # Audit log retention (runbook: What happened? View the audit log): entries and, earlier, their IP addresses are removed after this many days.
+      AUDIT__RETENTIONDAYS: ${AUDIT_RETENTION_DAYS:-365}
+      AUDIT__IPRETENTIONDAYS: ${AUDIT_IP_RETENTION_DAYS:-90}
     volumes:
       - media:/data/media
       # ASP.NET Core Data Protection keys: logins survive restarts and updates.

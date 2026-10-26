@@ -32,7 +32,7 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
 `OUT` output page · `NET` resilience and network · `DEV` devices, viewports, accessibility · `DOCK` dock layout and persistence · `MEDIA` assets · `OPS` operations ·
-`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds.
+`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log.
 
 Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1** must pass before a release (nightly full run); **P2** robustness and polish
 (weekly or on demand, a failure is a defect but not a blocker).
@@ -380,10 +380,11 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
 | `TXT` Texts and lower thirds | 5 | 3 | 5 | 13 | 4 | 8 | 1 |
-| **Total** | **95** | **97** | **254** | **446** | **189** | **197** | **60** |
+| `AUDIT` Audit log | 6 | 7 | 4 | 17 | 10 | 7 | 0 |
+| **Total** | **101** | **104** | **258** | **463** | **199** | **204** | **60** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log)
 
 ### 2.1 AUTH – Auth and security
 
@@ -2288,6 +2289,78 @@ Issue #13. A text is a source (kind `text`, code `T1`, id `txt_…`) with two li
 **E2E-TXT-05** · P2 · pw — Scales with the window
 - Steps: a lower third on the output; resize the window to 960 × 540 and 1920 × 1080.
 - Expect: the accent bar fills the same part of the stage at both sizes; the computed font size is a canvas value (61.2 px for a 180 px high item).
+
+### 2.15 AUDIT – Audit log
+
+Spec 4.9, runbook 17. E2E specs run in English (`locale: 'en-US'`) on any stack; the Web tests need Docker for PostgreSQL.
+
+**UNIT-AUDIT-01** · P0 · xunit — CSV escaping and formula protection (`AuditCsvTests`)
+- Steps: cells with the separator, quotes, line breaks, umlauts; cells that start with `=`, `+`, `-`, `@`, tab, carriage return; `=` inside a text; a device named like a formula in text, production and details; comma and semicolon.
+- Expect: RFC 4180 quoting with doubled quotes and CRLF line ends; a leading `'` for the six formula starts (before quoting) and for nothing else; umlauts and quotation marks unchanged; details as readable JSON; header and row follow the column list of spec 4.9.
+
+**UNIT-AUDIT-02** · P0 · xunit — Filter and cursor validation (`AuditFilterTests`, `AuditCursorTests`, `AuditOptionsTests`)
+- Steps: empty input; unreadable times, end not after start; unknown category or action; text of 100 and 101 characters; categories and actions together; cursors round-tripped, garbled, too long, overflowing; option values at and beyond the bounds.
+- Expect: validation errors name every wrong field (`from`, `to`, `category`, `action`, `q`, `production`, `actor`, `cursor`, `limit`); categories become the actions of those categories and are intersected with `action`; a cursor survives encode and parse and nothing else parses; the options refuse values outside their range and an IP retention longer than the retention.
+
+**UNIT-AUDIT-03** · P0 · xunit — Retention with `FakeTimeProvider` (`AuditRetentionTests`)
+- Steps: entries of 1, 89, 91, 364, 366 and 400 days, some with an IP; run; run again; batch size 10 with 25 and with exactly 10 old entries; a live broadcast; the broadcast ends; other periods; the clock moves two days.
+- Expect: exactly the entries older than the retention are deleted, the IP is removed after the IP period and the rest of the entry stays; the second run changes nothing and writes no entry; batches continue until one is not full; nothing happens while a production is live and the next run catches up; one `audit.retention` entry (system, days, deleted, anonymised) per run that changed something.
+
+**UNIT-AUDIT-04** · P1 · xunit — Texts, codes and categories (`LogTextsTests`, `AuditCategoriesTests`)
+- Steps: every action constant; every `LogCode`; entries of unknown actions and of phone QR invites; Recent events versus the audit log.
+- Expect: every action has one category and an English text with the parameters of its code; every code is produced by some action; unknown actions and phone QR invites have no text; `RecentActions` is a subset and sign-ins never reach Recent events.
+
+**UNIT-AUDIT-05** · P1 · xunit — Services record the audit events (`AuditEventTests`)
+- Steps: create, rename, activate a production; change slates; reset the broadcast; switch with a click and with Take; rename a device; switch a phone lens, move a slider, repeat the same lens; renew the phone QR; acknowledge an incident.
+- Expect: one entry each with the actor and details of spec 4.9 (`via`, old and new name, slate, lens kind, code); no entry for a slider, the same lens or a phone QR code; entries that are not in Recent events do not appear there.
+
+**UNIT-AUDIT-06** · P1 · ng, vitest — Page, store and filters
+- Steps: `ng test studio` (`audit-page.component.spec.ts`, `.de.spec.ts`, `audit-log.store.spec.ts`, `audit-filters.spec.ts`, `audit-view.spec.ts`, `studio-api.service.spec.ts`); `vitest` (`log-entries.spec.ts`, `format.spec.ts`).
+- Expect: rows, details on demand, filters as query parameters, debounced search, "Last broadcast" lookup, custom range check, load more and automatic loading, new entries at the top, stale answers dropped, export with the filter and a semicolon in German, errors and empty and loading states, no custom keyboard handling needed (native controls), German texts and local time.
+
+**INT-AUDIT-01** · P0 · xunit — Authorisation
+- Steps: the three routes without a session, with a device token (valid, wrong secret, blocked) and with an output key.
+- Expect: 401 `unauthorized` everywhere; no export entry is written.
+
+**INT-AUDIT-02** · P0 · xunit — Filters, validation and injection
+- Steps: time range (from inclusive, to exclusive), production, `none`, category, action, actor, text (case, umlauts, `%` and `_`); SQL fragments as text, actor and production; invalid values.
+- Expect: exactly the matching entries; wildcards are literal; SQL in a filter is text (the table is intact, nothing sleeps); invalid input is 400 `validation_failed` naming the field; legacy phone QR entries are hidden.
+
+**INT-AUDIT-03** · P0 · xunit — Paging is stable
+- Steps: 130 entries with equal times, pages of 7; entries added between pages (newer ones, and ones that share the time of the cursor); inserts running in parallel.
+- Expect: no entry twice, none lost, ordered by time and id; the pages continue exactly after the previous one; a new first page shows the new entries.
+
+**INT-AUDIT-04** · P0 · xunit — Exports
+- Steps: CSV and JSON of a filter; semicolon; names starting with `=`, `@`, `+`; quotes and umlauts; nothing found; more rows than `Audit:ExportMaxRows`; more exports than `Audit:ExportsPerMinute`.
+- Expect: UTF-8 with BOM, header, rows, dated file name; formulas neutralised; an empty export is the header; too large is 409 `limit_reached` without bytes and without an entry; 429 with `Retry-After` per client; an export writes `audit.exported` with format, rows and filter.
+
+**INT-AUDIT-05** · P1 · xunit — 100 000 rows are streamed (`AuditExportStreamingTests`, runs alone)
+- Steps: insert 100 000 entries with 300 characters of details (about 42 MiB of CSV), read the export in 64 KiB chunks, measure the live heap (full collection) every 4 MiB.
+- Expect: 100 001 lines; the live heap grows by less than 24 MiB (measured about 2 MiB; with all rows buffered it grew by about 90 MiB).
+
+**INT-AUDIT-06** · P0 · xunit — Retention on the database
+- Steps: 230 old entries with a batch size of 100, entries with IP addresses at 85, 95 and 400 days, an entry at 364 days; run; run again; run with a live broadcast.
+- Expect: exactly the old entries are gone, the IP is removed from the 95-day entry only and its user name stays, one `audit.retention` entry (system) counts both, the second run changes nothing, a live broadcast postpones the run; the entry is in the view with its code.
+
+**INT-AUDIT-07** · P0 · xunit — Every action leaves an entry and no entry holds a secret
+- Steps: failed sign-ins up to the lockout, sign-in, sign-out, production create/rename/slate/activate, device pair/rename/block/unblock/delete, invite link create/revoke, output key regenerate and access, upload and delete, broadcast start/switch/preview/take/end/reset; then search the table, the view and the CSV for the admin password, device secret, invite token and both output keys.
+- Expect: every action of the list has an entry (Take and click are told apart); sign-ins carry the IP; none of the secrets appears anywhere; renewing the phone QR code writes nothing.
+
+**E2E-AUDIT-01** · P0 · pw — "Last broadcast" and the CSV (smoke)
+- Steps: start a broadcast, switch twice, end it; production menu → "Audit log"; choose "Last broadcast"; "Export CSV".
+- Expect: exactly four rows in the order ended, live, live, started with the scene names, "Admin" and the production; the download is `studioflow-audit-YYYY-MM-DD.csv` with a UTF-8 BOM, the English header and the same four descriptions in the same order, production id and details (`via: click`); the export is then an entry of the log.
+
+**E2E-AUDIT-02** · P1 · pw — Filters, details and keyboard
+- Steps: switch a scene and rename the production; category "Production" on, then "Access and security" on and "Production" off; clear; search for the scene name; focus the details button, Enter, Space; search for text nobody has.
+- Expect: the category and text filters narrow the table; the details show `scene.live` and `via click`; `aria-expanded` follows; the empty state says "No entries match."
+
+**E2E-AUDIT-03** · P1 · pw — More pages and 1024 px and a tablet
+- Steps: 30 switches; open the log; "Load more"; viewports 1024 × 768 and 768 × 1024.
+- Expect: the next page is appended; no horizontal page scroll, all filters, the export button and the columns time and what are visible.
+
+**E2E-AUDIT-04** · P1 · pw — axe in both themes
+- Steps: open the page with one entry expanded; scan in the dark theme; switch to the light theme; scan.
+- Expect: no critical or serious violation (WCAG 2.1 A/AA) in either theme.
 
 ---
 

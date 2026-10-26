@@ -115,6 +115,10 @@ Implementation details fixed with the work on #13 (spec 4.4, 8.3, 9.1):
 
 1. Retention 365 days; IP addresses in login entries are removed after 90 days.
 2. Own page, not a dock.
+3. Implementation: the page is `/audit` (production menu). The retention (`Audit:RetentionDays` 365, `Audit:IpRetentionDays`
+   90) runs hourly in batches and waits while a broadcast is live. Exports are refused above 50 000 rows instead of cut
+   short, and are rate limited. The phone QR invite, renewed every half hour, is no longer audited. The details are in
+   spec 4.9 and runbook 17.
 
 ## #18 Releases
 

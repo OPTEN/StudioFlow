@@ -815,3 +815,59 @@ MAN-14) and keep it with your setup notes:
 
 The first two rows are expectations from the browser documentation, not measurements: confirm them with MAN-14 before a
 production relies on them.
+
+## 17. What happened? View the audit log
+
+The audit log answers questions such as "Who switched to the break scene at 14:03?", "When was phone K2 admitted?" or
+"Were there failed sign-ins?". It records what the Regie and the server did, never secrets (no password, device secret,
+output link or invite token).
+
+**View it.** Production name (top left) → "Audit log". The page lists the entries newest first: time (in the time zone of
+your browser, with seconds), who (Admin, a device with its slot codes and name, System), what, production. The arrow in
+front of the time shows the raw details of an entry (for a sign-in the IP address, for a scene whether it went live with
+Take or with a click). The list loads 50 entries at a time; "Load more" (or scrolling to the end) loads the next ones.
+New entries appear at the top while the page is open.
+
+**Narrow it down.**
+
+- *Time range*: any time, today, last broadcast (from its start to its end, the question after a webinar), or a custom
+  range. "Last broadcast" uses the chosen production, or the active one.
+- *Production*: one production, all of them, or "No production" for sign-ins and account changes.
+- *Category*: production (broadcast, scenes, slates), devices, access and security, media, output, system. Several
+  categories can be on at once.
+- *Search*: part of a device name, a scene, a user name or an action code such as `device.blocked`.
+
+**Export.** "Export CSV" and "Export JSON" save the entries that match the current filters. The CSV opens in Excel with
+umlauts (UTF-8 with byte order mark); the separator is a comma in the English interface and a semicolon in the German
+one. Cells that start with `=`, `+`, `-` or `@` get a leading `'`, so a device name cannot run as a formula. An export is
+limited to 50 000 entries (`Audit__ExportMaxRows`): with more, narrow the time range. At most 6 exports per minute and
+client are allowed. Every export is an entry itself ("Audit log exported as csv, 42 rows"). The file name is
+`studioflow-audit-YYYY-MM-DD.csv`.
+
+**What is recorded.** Sign-ins (success, failure, lockout) and sign-outs, the account (set up, password changed, reset),
+productions (created, renamed, activated), the broadcast (start, end, reset), scenes (live, created, deleted), the slates,
+devices (paired, renamed, blocked, unblocked, removed, camera lens switched), invite links, knocks that were denied,
+"Seen" on a message, media (uploaded, deleted), the output link and its access rules, and the exports and the retention
+themselves. Not recorded: the preview, zoom and focus of a phone camera, the phone QR code that renews itself.
+
+**How long it is kept (retention).** The API deletes entries older than `AUDIT_RETENTION_DAYS` (default 365) and removes
+the IP address from entries older than `AUDIT_IP_RETENTION_DAYS` (default 90, at most the first value; IP addresses are
+personal data under the Swiss FADP). Set both in `.env`, then `docker compose up -d`. The step runs every hour, in
+batches, and waits while a broadcast is live. When it changed something, the log says so ("Audit retention (365 days):
+entries deleted 142, IP addresses removed 7", actor System) and so does the API log:
+
+```bash
+docker compose logs api | grep "Audit retention"
+```
+
+Entries cannot be changed or deleted from the Regie. If you must remove something earlier (a request under data
+protection law), use SQL on the database after a backup:
+`docker compose exec postgres psql -U studioflow studioflow -c "delete from audit_entries where id = 123"`.
+
+**Troubleshooting.**
+
+- "The export would be too large": narrow the time range or the filters.
+- "Too many attempts" on an export: wait a minute.
+- The page is empty after "Last broadcast": the production has had no broadcast yet, or choose another production.
+- The table grows although retention is on: check the API log for "Maintenance step audit retention failed" (database
+  problem) and that `AUDIT_RETENTION_DAYS` is what you expect (`docker compose exec api printenv AUDIT__RETENTIONDAYS`).

@@ -7,7 +7,7 @@ import { t } from '../../support/tags';
 import { expect, test } from '../../support/ui/fixtures';
 
 /**
- * AUDIT in the Regie (docs/testing.md 2.14: E2E-AUDIT-01 ... 04): the audit log page `/audit`. A broadcast with two
+ * AUDIT in the Regie (docs/testing.md 2.15: E2E-AUDIT-01 ... 04): the audit log page `/audit`. A broadcast with two
  * switches is "Last broadcast" and the CSV download has the same rows; the filters, the details and the keyboard;
  * the page at 1024 px and on a tablet; axe in the dark and the light theme. The specs run in English.
  */
