@@ -24,7 +24,7 @@ import { parseOutputUrl } from '../../support/api';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-const chip = (page: Page): Locator => page.getByRole('button', { name: /Output an Proxy/ });
+const chip = (page: Page): Locator => page.getByRole('button', { name: /^Output/ });
 const popover = (page: Page): Locator => page.getByRole('dialog', { name: 'Output' });
 const kv = (pop: Locator, term: string): Locator => pop.locator(`dt:text-is("${term}") + dd`);
 const ipInput = (pop: Locator): Locator => pop.getByLabel('IP-Adresse oder Netz (CIDR)');
@@ -259,7 +259,7 @@ test.describe('REGIE output popover', () => {
       await pop.getByRole('button', { name: 'Link neu erzeugen' }).click();
       const confirm = pop.getByRole('group', { name: 'Link neu erzeugen' });
       await expect(confirm).toContainText(
-        'Der alte Link hört sofort auf. Der Proxy braucht danach den neuen.',
+        'Der alte Link von «Proxy» hört sofort auf. Was ihn nutzt, braucht danach den neuen.',
       );
       await confirm.getByRole('button', { name: 'Abbrechen' }).click();
       await expect(confirm).toBeHidden();
@@ -274,7 +274,7 @@ test.describe('REGIE output popover', () => {
         .getByRole('button', { name: 'Neu erzeugen' })
         .click();
       await expect(toastOf(page)).toContainText(
-        'Neuer Output-Link erzeugt. Der alte ist ungültig.',
+        'Neuer Link für «Proxy» erzeugt. Der alte ist ungültig.',
       );
       await expect
         .poll(() => output.slateText(), {
@@ -298,7 +298,7 @@ test.describe('REGIE output popover', () => {
           { message: 'no output participant of the old key is left in LiveKit', timeout: 8000 },
         )
         .toBe(false);
-      await expect(regie.statusLine()).toContainText('Output-Link neu erzeugt');
+      await expect(regie.statusLine()).toContainText('Output-Link «Proxy» neu erzeugt');
 
       // The old link stays dead after a reload; the new one plays (standby slate, connected).
       await output.page.reload();

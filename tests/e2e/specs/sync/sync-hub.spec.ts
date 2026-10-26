@@ -405,13 +405,14 @@ test.describe('SYNC surface', () => {
       '{requestId}': knock.body.requestId,
       '{assetId}': asset.id,
       '{incidentId}': 'inc_aaaaaaaaaaaaaaaa',
+      '{linkId}': 'olk_aaaaaaaaaaaaaaaa',
       '{slug}': production.slug,
       '{slot}': 'screen-7',
       '{token}': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     };
     const failures: string[] = [];
     let called = 0;
-    const skip = new Set(['logout', 'login', 'unpairDevice', 'deleteDevice', 'regenerateOutputKey', 'activateProduction', 'receiveLiveKitWebhook']);
+    const skip = new Set(['logout', 'login', 'unpairDevice', 'deleteDevice', 'activateProduction', 'receiveLiveKitWebhook']);
     for (const [route, verbs] of Object.entries(document.paths)) {
       for (const [verb, operation] of Object.entries(verbs)) {
         if (skip.has(operation.operationId)) continue;

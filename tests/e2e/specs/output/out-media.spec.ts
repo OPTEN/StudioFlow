@@ -412,7 +412,7 @@ test.describe('OUT media and reports', () => {
       const camera = await addCamera(deps, 'Kamera Eins');
       await placeItem(api, production, production.sceneIds[0]!, camera.source, FULL);
       await goLive(api, production);
-      const chip = regie.page.getByRole('button', { name: /Output an Proxy/ });
+      const chip = regie.page.getByRole('button', { name: /^Output/ });
       const lamp = chip.locator('.c-lamp');
       await expect(chip).toBeVisible();
       await expect(lamp, 'no output: grey lamp').toHaveClass(/is-idle/);

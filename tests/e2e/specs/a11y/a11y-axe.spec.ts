@@ -105,7 +105,7 @@ test.describe('axe scans: Regie', () => {
     const { page } = regie;
     const scanner = new Scanner(page);
     const cases: Array<[string, () => ReturnType<typeof page.getByRole>, string]> = [
-      ['output', () => page.getByRole('button', { name: /^Output an Proxy/ }), '[role=dialog][aria-label=Output]'],
+      ['output', () => page.getByRole('button', { name: /^Output/ }), '[role=dialog][aria-label=Output]'],
       ['layout', () => page.getByRole('button', { name: 'Docks und Layout' }), '[role=dialog][aria-label="Docks und Layout"]'],
       ['production-menu', () => page.getByRole('button', { name: /^Produktion .*, Menü$/ }), '[role=dialog][aria-label=Produktion]'],
       ['add-source', () => page.getByRole('button', { name: 'Quelle', exact: true }), '[role=menu][aria-label="Quelle hinzufügen"]'],

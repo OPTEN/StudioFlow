@@ -76,7 +76,7 @@ test.describe('German text audit', () => {
 
     // popovers and menus
     const popovers: Array<[string, () => ReturnType<Page['getByRole']>]> = [
-      ['output popover', () => page.getByRole('button', { name: /^Output an Proxy/ })],
+      ['output popover', () => page.getByRole('button', { name: /^Output/ })],
       ['layout popover', () => page.getByRole('button', { name: 'Docks und Layout' })],
       ['production menu', () => page.getByRole('button', { name: /^Produktion .*, Menü$/ })],
       ['add-source popover', () => page.getByRole('button', { name: 'Quelle', exact: true })],
