@@ -270,6 +270,24 @@ describe('newItem', () => {
     });
   });
 
+  it.each([
+    ['lowerThird', { x: 80, y: 820, w: 960, h: 180 }],
+    ['title', { x: 160, y: 390, w: 1600, h: 300 }],
+    ['note', { x: 1320, y: 60, w: 540, h: 96 }],
+  ] as const)(
+    'places a %s hidden, without corners, in the rectangle of its style',
+    (style, rect) => {
+      const item = newItem('txt_abcd1234', 'text', 'itm_t', style);
+
+      expect(item).toMatchObject({ ...rect, radius: 0, hidden: true });
+      expect(validateItem(item)).toEqual([]);
+    },
+  );
+
+  it('starts a text without a style as a lower third', () => {
+    expect(newItem('txt_abcd1234', 'text', 'itm_t')).toMatchObject({ x: 80, y: 820 });
+  });
+
   it.each(['camera', 'image', 'video', undefined] as const)('uses cover for %s', (kind) => {
     expect(newItem('src', kind, 'itm_y').fit).toBe('cover');
   });

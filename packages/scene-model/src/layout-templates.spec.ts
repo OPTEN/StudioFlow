@@ -181,6 +181,22 @@ describe('applyLayoutTemplate', () => {
     expect(rectOf(byId(placed, 'c'))).toEqual(slotRect('full', 0));
   });
 
+  it('leaves a shown text where it is: it overlays the picture and takes no slot', () => {
+    const items = [
+      itemFixture('cam', 'cam1'),
+      itemFixture('txt', 'txt1', { x: 80, y: 820, w: 960, h: 180 }),
+      itemFixture('img', 'image'),
+    ];
+    const kinds = (id: string): SourceKind | undefined => (id === 'txt1' ? 'text' : kindOf(id));
+
+    const { items: result } = applyLayoutTemplate(items, 'two', kinds);
+
+    expect(result.map((item) => item.id)).toEqual(['img', 'cam', 'txt']);
+    expect(rectOf(byId(result, 'img'))).toEqual(slotRect('two', 0));
+    expect(rectOf(byId(result, 'cam'))).toEqual(slotRect('two', 1));
+    expect(byId(result, 'txt')).toMatchObject({ x: 80, y: 820, w: 960, h: 180, fit: 'cover' });
+  });
+
   it('keeps the geometry of items beyond the slot count', () => {
     const extra = itemFixture('c2', 'cam2', {
       x: 5,
@@ -369,6 +385,7 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
         image: 1,
         video: 1,
         camera: 2,
+        text: 3,
       };
       const expectedPlaced = visible
         .map((item, index) => ({ id: item.id, rank: rank[kindAt(index)], index }))

@@ -30,6 +30,7 @@ export type {
   CreatePairingRequest,
   CreateProductionRequest,
   CreateSceneRequest,
+  CreateTextSourceRequest,
   CropDto,
   DeviceCommandDto,
   DeviceCommandKind,
@@ -101,11 +102,16 @@ export type {
   TallyState,
   TechCheckDto,
   TechCheckLevel,
+  TextAlign,
+  TextSourceDto,
+  TextStyle,
+  TextThemeDto,
   TransitionDto,
   TransitionKind,
   UpdateOutputAccessRequest,
   UpdateProductionRequest,
   UpdateSceneRequest,
+  UpdateTextSourceRequest,
 } from './generated/api';
 
 /** Event subtypes under their short names (the generator prefixes them with `ProductionEvent`). */

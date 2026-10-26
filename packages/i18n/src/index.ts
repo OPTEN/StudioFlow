@@ -32,6 +32,7 @@ export type { I18nProblem, ProblemHandler } from './diagnostics';
 
 export {
   compareText,
+  countCharacters,
   formatDate,
   formatDateTime,
   formatNumber,

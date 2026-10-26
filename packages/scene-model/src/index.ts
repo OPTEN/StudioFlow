@@ -10,3 +10,4 @@ export * from './production-state';
 export * from './selectors';
 export * from './format';
 export * from './log-entries';
+export * from './text';

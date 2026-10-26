@@ -27,8 +27,19 @@ describe('parseSourceRef', () => {
     });
   });
 
+  it('parses texts', () => {
+    expect(parseSourceRef('txt_ab12cd34ef56gh78')).toEqual({
+      kind: 'text',
+      textId: 'txt_ab12cd34ef56gh78',
+    });
+  });
+
   it.each([
     '',
+    'txt_',
+    'txt_abc',
+    'txt_ABCD1234',
+    'txt_abcd1234/camera',
     'camera',
     'dev_abcd',
     'dev_abcd/',
