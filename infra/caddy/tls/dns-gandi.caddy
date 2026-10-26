@@ -1,6 +1,3 @@
 # dns-gandi: Let's Encrypt DNS-01 via Gandi LiveDNS. Personal Access Token with "Manage domain technical
-# configurations".
-tls {$STUDIOFLOW_ACME_EMAIL} {
-	dns gandi {env.GANDI_BEARER_TOKEN}
-	import /etc/caddy/snippets/dns-challenge.caddy
-}
+# configurations". args[0] = the token.
+dns gandi {args[0]}

@@ -1,0 +1,12 @@
+# Options of the HTTPS server (imported inside its servers block).
+
+# Only these peers may set X-Forwarded-For. The default (loopback) trusts nobody, so LAN clients cannot spoof their address
+# for the output IP restriction.
+trusted_proxies static {$STUDIOFLOW_TRUSTED_PROXIES}
+
+timeouts {
+	# Caddy's defaults are 1m. A phone upload may stall during a WLAN handover; only stalls count, the total duration of an
+	# upload is not limited.
+	read_body_idle 5m
+	write_idle 2m
+}

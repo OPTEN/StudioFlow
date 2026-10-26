@@ -1,3 +1,0 @@
-# custom: your own certificate. Mount the files read-only at /certs (see docker-compose.override.example.yml);
-# Caddy does not renew them.
-tls /certs/fullchain.pem /certs/privkey.pem

@@ -1,5 +1,3 @@
 # dns-cloudflare: Let's Encrypt DNS-01 via Cloudflare. API token with Zone:Read and DNS:Edit for the zone.
-tls {$STUDIOFLOW_ACME_EMAIL} {
-	dns cloudflare {env.CF_API_TOKEN}
-	import /etc/caddy/snippets/dns-challenge.caddy
-}
+# args[0] = the API token. Imported inside the tls block of the site (apps/api, CaddyfileRenderer, TlsModes.DnsProviders).
+dns cloudflare {args[0]}
