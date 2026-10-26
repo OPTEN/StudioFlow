@@ -10,7 +10,7 @@ namespace Opten.StudioFlow.Web.Tests;
 /// <summary>The migration from one output key per production to named output links keeps every existing output URL working.</summary>
 public sealed class OutputLinkMigrationTests(PostgresFixture postgres)
 {
-    private const string BeforeOutputLinks = "AddAdminAccount";
+    private const string BeforeOutputLinks = "AddTexts";
     private const string OldKey = "old-key-of-the-proxy-aaaaaaaaaaaaaaaaaaaaaaaa";
 
     [Fact]
