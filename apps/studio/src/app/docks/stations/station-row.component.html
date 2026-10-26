@@ -138,6 +138,18 @@
               {{ t('regie.stations.action.switchCamera') }}
             </button>
           }
+          @if (view().canControlCamera) {
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              data-testid="camera-open"
+              [attr.aria-expanded]="cameraOpen()"
+              [attr.aria-controls]="cameraPanelId()"
+              (click)="toggleCamera()"
+            >
+              {{ t('regie.camera.panel.open') }}
+            </button>
+          }
           @if (!view().blocked) {
             <button
               class="c-btn c-btn--sm"
@@ -211,6 +223,14 @@
             [busy]="busy('remove')"
             (confirm)="remove()"
             (cancel)="confirm.set(null)"
+          />
+        }
+        @if (cameraOpen() && view().canControlCamera) {
+          <sf-camera-panel
+            [id]="cameraPanelId()"
+            [device]="device()"
+            [inProgram]="view().tally === 'program'"
+            [label]="label()"
           />
         }
         @if (composing()) {

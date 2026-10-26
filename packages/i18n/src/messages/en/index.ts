@@ -12,6 +12,7 @@ import { outputClock } from './output-clock';
 import { outputDebug } from './output-debug';
 import { outputSlates } from './output-slates';
 import { regieAccount } from './regie-account';
+import { regieCamera } from './regie-camera';
 import { regieCore } from './regie-core';
 import { regieDocks } from './regie-docks';
 import { regieHeader } from './regie-header';
@@ -51,6 +52,7 @@ export const en = {
   ...outputDebug,
   ...outputSlates,
   ...regieAccount,
+  ...regieCamera,
   ...regieCore,
   ...regieDocks,
   ...regieHeader,
