@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   DEFAULT_TEXT_THEME,
@@ -87,6 +88,7 @@ function textControl(required: boolean): FormControl<string> {
     PopoverDirective,
     PopoverTriggerDirective,
     ReactiveFormsModule,
+    RouterLink,
   ],
   templateUrl: './production-menu.component.html',
   styleUrl: './production-menu.component.scss',

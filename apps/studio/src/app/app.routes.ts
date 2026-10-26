@@ -5,7 +5,7 @@ import { LoginPageComponent } from './login/login-page.component';
 import { SetupPageComponent } from './setup/setup-page.component';
 
 /**
- * Routes of the Regie (spec 9.1). The Regie and the monitoring page are lazy chunks, so the login page stays small;
+ * Routes of the Regie (spec 9.1). The Regie, the monitoring page and the audit log are lazy chunks, so the login page stays small;
  * livekit-client is loaded even later, by `StudioMediaService`. While no account exists the login leads to the
  * first-run setup, and once the account exists the setup leads to the login.
  */
@@ -34,6 +34,12 @@ export const routes: Routes = [
     data: { titleKey: 'regie.monitoring.title' satisfies PlainMessageKey },
     loadComponent: () =>
       import('./monitoring/monitoring-page.component').then((m) => m.MonitoringPageComponent),
+  },
+  {
+    path: 'audit',
+    canActivate: [authGuard],
+    data: { titleKey: 'regie.audit.title' satisfies PlainMessageKey },
+    loadComponent: () => import('./audit/audit-page.component').then((m) => m.AuditPageComponent),
   },
   { path: '**', redirectTo: '' },
 ];

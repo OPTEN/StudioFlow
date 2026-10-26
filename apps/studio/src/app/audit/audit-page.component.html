@@ -1,0 +1,264 @@
+<div class="c-audit">
+  <header class="c-audit__top">
+    <div class="c-audit__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
+    <h1 class="c-audit__title">{{ t('regie.audit.title') }}</h1>
+    <span class="c-audit__spacer"></span>
+    <a class="c-btn c-btn--sm c-audit__back" routerLink="/">{{ t('regie.audit.back') }}</a>
+  </header>
+
+  <main class="c-audit__main">
+    <section class="c-audit__filters" [attr.aria-label]="t('regie.audit.filters.label')">
+      <div class="c-audit__field">
+        <label class="c-label" for="audit-range">{{ t('regie.audit.range.label') }}</label>
+        <select
+          id="audit-range"
+          class="c-select"
+          [value]="filters().range"
+          (change)="setRange($any($event.target).value)"
+        >
+          @for (range of ranges; track range) {
+            <option [value]="range" [selected]="filters().range === range">
+              {{ t(`regie.audit.range.${range}`) }}
+            </option>
+          }
+        </select>
+      </div>
+
+      @if (filters().range === 'custom') {
+        <div class="c-audit__field">
+          <label class="c-label" for="audit-from">{{ t('regie.audit.range.from') }}</label>
+          <input
+            id="audit-from"
+            class="c-input"
+            type="datetime-local"
+            [value]="filters().from"
+            [class.is-invalid]="rangeInvalid()"
+            (change)="setCustomTime('from', $any($event.target).value)"
+          />
+        </div>
+        <div class="c-audit__field">
+          <label class="c-label" for="audit-to">{{ t('regie.audit.range.to') }}</label>
+          <input
+            id="audit-to"
+            class="c-input"
+            type="datetime-local"
+            [value]="filters().to"
+            [class.is-invalid]="rangeInvalid()"
+            [attr.aria-describedby]="rangeInvalid() ? 'audit-range-error' : null"
+            (change)="setCustomTime('to', $any($event.target).value)"
+          />
+        </div>
+      }
+
+      <div class="c-audit__field">
+        <label class="c-label" for="audit-production">{{
+          t('regie.audit.production.label')
+        }}</label>
+        <select
+          id="audit-production"
+          class="c-select"
+          [value]="filters().production"
+          (change)="setProduction($any($event.target).value)"
+        >
+          <option value="" [selected]="filters().production === ''">
+            {{ t('regie.audit.production.all') }}
+          </option>
+          @for (production of productions(); track production.id) {
+            <option [value]="production.id" [selected]="filters().production === production.id">
+              {{ productionOptionName(production) }}
+            </option>
+          }
+          <option [value]="noProduction" [selected]="filters().production === noProduction">
+            {{ t('regie.audit.production.none') }}
+          </option>
+        </select>
+      </div>
+
+      <div class="c-audit__field c-audit__field--search">
+        <label class="c-label" for="audit-search">{{ t('regie.audit.search.label') }}</label>
+        <input
+          id="audit-search"
+          class="c-input"
+          type="search"
+          maxlength="100"
+          autocomplete="off"
+          [placeholder]="t('regie.audit.search.placeholder')"
+          [value]="searchDraft()"
+          (input)="search($any($event.target).value)"
+        />
+      </div>
+
+      <div
+        class="c-audit__field c-audit__field--categories"
+        role="group"
+        [attr.aria-label]="t('regie.audit.category.label')"
+      >
+        <span class="c-label" aria-hidden="true">{{ t('regie.audit.category.label') }}</span>
+        <div class="c-audit__chips">
+          @for (category of categories; track category) {
+            <button
+              class="c-audit__chip"
+              type="button"
+              [attr.aria-pressed]="isCategoryOn(category)"
+              (click)="toggleCategory(category)"
+            >
+              {{ t(categoryKeys[category]) }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="c-audit__actions">
+        @if (filtered()) {
+          <button class="c-btn c-btn--sm" type="button" (click)="clearFilters()">
+            {{ t('regie.audit.clear') }}
+          </button>
+        }
+        <div role="group" [attr.aria-label]="t('regie.audit.export.label')" class="c-audit__export">
+          <button
+            class="c-btn c-btn--sm c-btn--primary"
+            type="button"
+            [disabled]="exporting() || log.status() !== 'ready'"
+            (click)="exportAs('csv')"
+          >
+            {{ exporting() ? t('regie.audit.export.running') : t('regie.audit.export.csv') }}
+          </button>
+          <button
+            class="c-btn c-btn--sm"
+            type="button"
+            [disabled]="exporting() || log.status() !== 'ready'"
+            (click)="exportAs('json')"
+          >
+            {{ t('regie.audit.export.json') }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    @if (rangeInvalid()) {
+      <p id="audit-range-error" class="c-field-error" role="alert">
+        {{ t('regie.audit.range.invalid') }}
+      </p>
+    }
+    @if (rangeNote(); as note) {
+      <p class="c-hint" role="status">{{ note }}</p>
+    }
+
+    <div class="c-audit__bar">
+      <span class="c-audit__count" role="status">
+        @if (log.status() === 'ready') {
+          {{ t('regie.audit.count', { count: log.entries().length }) }}
+        }
+      </span>
+      <span class="c-hint">{{ t('regie.audit.live') }}</span>
+    </div>
+
+    @switch (log.status()) {
+      @case ('loading') {
+        <div class="c-empty" role="status">
+          <strong>{{ t('regie.audit.loading') }}</strong>
+        </div>
+      }
+      @case ('error') {
+        <div class="c-empty c-audit__error" role="alert">
+          <strong>{{ errorText() }}</strong>
+          <button class="c-btn c-btn--sm" type="button" (click)="retry()">
+            {{ t('regie.audit.error.retry') }}
+          </button>
+        </div>
+      }
+      @default {
+        @if (log.entries().length === 0) {
+          <div class="c-empty">
+            <strong>{{ t('regie.audit.empty.none') }}</strong
+            >{{ t('regie.audit.empty.hint') }}
+          </div>
+        } @else {
+          <div class="c-audit__scroll">
+            <table class="c-audit-table">
+              <caption class="u-sr-only">
+                {{
+                  t('regie.audit.caption')
+                }}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="c-audit-table__time">
+                    {{ t('regie.audit.column.time') }}
+                  </th>
+                  <th scope="col">{{ t('regie.audit.column.actor') }}</th>
+                  <th scope="col">{{ t('regie.audit.column.event') }}</th>
+                  <th scope="col" class="c-audit-table__production">
+                    {{ t('regie.audit.column.production') }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of log.entries(); track entry.id) {
+                  <tr [class.is-fresh]="log.isFresh(entry)" [class.is-open]="isExpanded(entry)">
+                    <td class="c-audit-table__time u-mono">
+                      <button
+                        class="c-audit-table__toggle"
+                        type="button"
+                        [attr.aria-expanded]="isExpanded(entry)"
+                        [attr.aria-controls]="'audit-details-' + entry.id"
+                        [attr.aria-label]="toggleLabel(entry)"
+                        (click)="toggle(entry)"
+                      >
+                        <svg sfIcon="chev" [size]="12" [class.is-open]="isExpanded(entry)"></svg>
+                      </button>
+                      <time [attr.datetime]="entry.at" [title]="entry.at">{{ time(entry) }}</time>
+                    </td>
+                    <td>{{ actor(entry) }}</td>
+                    <td class="c-audit-table__event">{{ entryText(entry) }}</td>
+                    <td class="c-audit-table__production">{{ production(entry) }}</td>
+                  </tr>
+                  @if (isExpanded(entry)) {
+                    <tr class="c-audit-table__details" [id]="'audit-details-' + entry.id">
+                      <td colspan="4">
+                        <dl class="c-audit-details">
+                          <dt>{{ t('regie.audit.details.action') }}</dt>
+                          <dd class="u-mono">{{ entry.action }}</dd>
+                          <dt>{{ t('regie.audit.details.actor') }}</dt>
+                          <dd class="u-mono">{{ entry.actor }}</dd>
+                          <dt>{{ t('regie.audit.details.time') }}</dt>
+                          <dd class="u-mono">{{ entry.at }}</dd>
+                          <dt>{{ t('regie.audit.details.entry') }}</dt>
+                          <dd class="u-mono">#{{ entry.id }}</dd>
+                          @for (row of details(entry); track row.key) {
+                            <dt class="u-mono">{{ row.key }}</dt>
+                            <dd class="u-mono">{{ row.value }}</dd>
+                          }
+                        </dl>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (log.hasMore()) {
+            <div class="c-audit__more" #loadMoreAnchor>
+              @if (log.moreStatus() === 'error') {
+                <span class="c-field-error" role="alert">{{ t('regie.audit.error.more') }}</span>
+              }
+              <button
+                class="c-btn"
+                type="button"
+                [disabled]="log.moreStatus() === 'loading'"
+                (click)="loadMore()"
+              >
+                {{
+                  log.moreStatus() === 'loading'
+                    ? t('regie.audit.loadingMore')
+                    : t('regie.audit.loadMore')
+                }}
+              </button>
+            </div>
+          }
+        }
+      }
+    }
+  </main>
+</div>

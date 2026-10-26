@@ -75,7 +75,10 @@ export function formatDate(date: Date): string {
 }
 
 /** Calendar date and time (24 h), e.g. "23 Oct 2026, 14:05" or "23.10.2026, 14:05"; with `seconds` "…, 14:05:09". */
-export function formatDateTime(date: Date, { seconds = false }: { seconds?: boolean } = {}): string {
+export function formatDateTime(
+  date: Date,
+  { seconds = false }: { seconds?: boolean } = {},
+): string {
   const { dateTag } = activeLocale();
   const options = {
     dateStyle: 'medium',

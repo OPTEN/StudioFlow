@@ -1,0 +1,279 @@
+// Audit log page: header bar like the Regie, one hairline, then the filters and the table of entries.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.c-audit {
+  background: var(--seam);
+  display: grid;
+  gap: 1px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.c-audit__top {
+  align-items: center;
+  background: var(--panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 50px;
+  padding: 6px var(--gr) 6px var(--gl);
+}
+
+.c-audit__brand {
+  align-items: center;
+  display: flex;
+  font-size: 16.5px;
+  font-weight: 700;
+  gap: 9px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.c-audit__title {
+  @include label-text;
+  margin: 0;
+}
+
+.c-audit__spacer {
+  flex: 1 1 auto;
+}
+
+.c-audit__back {
+  text-decoration: none;
+}
+
+.c-audit__main {
+  background: var(--panel);
+  overflow: auto;
+  padding: 12px var(--gr) 24px var(--gl);
+}
+
+.c-audit__filters {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.c-audit__field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+
+  .c-select,
+  .c-input {
+    min-width: 150px;
+    width: auto;
+  }
+}
+
+.c-audit__field--search {
+  flex: 1 1 200px;
+  max-width: 340px;
+
+  .c-input {
+    width: 100%;
+  }
+}
+
+.c-audit__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.c-audit__chip {
+  background: transparent;
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+  font: 600 12.5px var(--font-ui);
+  height: 30px;
+  padding: 0 10px;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--raised-2);
+    box-shadow: var(--shadow-selected);
+    color: var(--text);
+  }
+}
+
+.c-audit__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.c-audit__export {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.c-audit__bar {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 6px 0 8px;
+}
+
+.c-audit__count {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.c-audit__bar .c-hint {
+  margin-left: auto;
+}
+
+.c-audit__error {
+  align-items: flex-start;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.c-audit__scroll {
+  overflow-x: auto;
+}
+
+.c-audit-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+  width: 100%;
+
+  th,
+  td {
+    border-bottom: 1px solid var(--seam);
+    line-height: 22px;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    @include label-text(11px);
+    background: var(--panel);
+    padding-block: 4px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  tbody tr.is-fresh {
+    animation: audit-fresh 2.4s var(--ease) 1;
+  }
+
+  tbody tr.is-open > td {
+    background: var(--raised);
+    border-bottom-color: transparent;
+  }
+}
+
+@keyframes audit-fresh {
+  from {
+    background: var(--blue-wash);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-audit-table tbody tr.is-fresh {
+    animation: none;
+  }
+}
+
+.c-audit-table__time {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.c-audit-table__event {
+  min-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.c-audit-table__toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  width: 28px;
+
+  &:hover {
+    background: var(--raised-2);
+    color: var(--text);
+  }
+
+  .c-icon {
+    transform: rotate(-90deg);
+    transition: transform var(--dur-state) var(--ease);
+
+    &.is-open {
+      transform: none;
+    }
+  }
+}
+
+.c-audit-table__details td {
+  background: var(--raised);
+  padding-left: 42px;
+}
+
+.c-audit-details {
+  display: grid;
+  gap: 2px 14px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+
+  dt {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  dd {
+    color: var(--text-2);
+    font-size: 12px;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.c-audit__more {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 14px 0 4px;
+}
+
+// A tablet: the filters wrap and the table scrolls sideways when it does not fit.
+@media (max-width: 900px) {
+  .c-audit__actions {
+    margin-left: 0;
+  }
+}

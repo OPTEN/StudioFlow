@@ -14,6 +14,7 @@ import { outputClock } from './output-clock';
 import { outputDebug } from './output-debug';
 import { outputSlates } from './output-slates';
 import { regieAccount } from './regie-account';
+import { regieAudit } from './regie-audit';
 import { regieCamera } from './regie-camera';
 import { regieCore } from './regie-core';
 import { regieDocks } from './regie-docks';
@@ -55,6 +56,7 @@ export const deCH: Translation<typeof en> = {
   ...outputDebug,
   ...outputSlates,
   ...regieAccount,
+  ...regieAudit,
   ...regieCamera,
   ...regieCore,
   ...regieDocks,

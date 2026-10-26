@@ -25,6 +25,53 @@ describe('logEntryText', () => {
     expect(logEntryText(entry('cameraEnded', { code: 'K1' }))).toBe('K1 camera stopped');
   });
 
+  it('writes the entries of the audit log', () => {
+    expect(logEntryText(entry('loginFailed', { username: 'root' }))).toBe(
+      'Sign-in failed for “root”',
+    );
+    expect(logEntryText(entry('loginLocked'))).toBe(
+      'Sign-in locked after too many failed attempts',
+    );
+    expect(logEntryText(entry('productionRenamed', { from: 'Spring', name: 'Autumn' }))).toBe(
+      'Production “Spring” renamed to “Autumn”',
+    );
+    expect(logEntryText(entry('deviceRenamed', { subject: 'K1 Phone', name: 'Stage' }))).toBe(
+      'K1 Phone renamed to “Stage”',
+    );
+    expect(logEntryText(entry('standbySlateChanged'))).toBe('Slate before the broadcast changed');
+    expect(
+      logEntryText(entry('auditRetention', { days: '365', deleted: '142', anonymised: '7' })),
+    ).toBe('Audit retention (365 days): entries deleted 142, IP addresses removed 7');
+    expect(logEntryText(entry('auditExported', { format: 'csv', rows: '42' }))).toBe(
+      'Audit log exported as csv, 42 rows',
+    );
+  });
+
+  it('names the lens of a lens switch in the language of the camera panel', () => {
+    const params = { subject: 'K1 Phone' };
+    expect(logEntryText(entry('cameraLensSwitched', { ...params, lens: 'ultraWide' }))).toBe(
+      'K1 Phone: lens switched to Wide-angle',
+    );
+    expect(logEntryText(entry('cameraLensSwitched', { ...params, lens: 'front' }))).toBe(
+      'K1 Phone: lens switched to Front',
+    );
+    expect(logEntryText(entry('cameraLensSwitched', { ...params, lens: 'other' }))).toBe(
+      'K1 Phone: lens switched to Other',
+    );
+    resetLocaleForTests('de-CH');
+    const german = tFor('de-CH');
+    expect(logEntryText(entry('cameraLensSwitched', { ...params, lens: 'tele' }))).toBe(
+      german('regie.log.cameraLensSwitched', {
+        subject: 'K1 Phone',
+        lens: german('regie.camera.lens.tele'),
+      }),
+    );
+  });
+
+  it('uses the English text of an audit entry without a code', () => {
+    expect(logEntryText({ code: null, params: {}, text: 'scene.live' })).toBe('scene.live');
+  });
+
   it('formats the downtime of a recovered source from downSeconds', () => {
     expect(logEntryText(entry('sourceRecovered', { code: 'K2', downSeconds: '9' }))).toBe(
       'K2 is back, was gone for 9 s',
@@ -50,7 +97,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(28);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(43);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }
