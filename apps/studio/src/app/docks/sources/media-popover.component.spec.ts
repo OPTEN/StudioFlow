@@ -40,6 +40,7 @@ function mediaSource(id: string, code: string, label: string): SourceDto {
     assetId: id,
     status: 'ok',
     statusSince: null,
+    text: null,
   };
 }
 

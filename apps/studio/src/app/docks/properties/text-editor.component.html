@@ -1,0 +1,160 @@
+<section class="c-text" [attr.aria-label]="t('regie.text.editor.label')">
+  <div class="c-text__preview">
+    <span class="c-insp__label" id="sf-text-preview">{{ t('regie.text.preview.title') }}</span>
+    <sf-text-preview [item]="item()" [text]="preview()" />
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="sf-text-visibility">{{
+      t('regie.text.visibility.label')
+    }}</span>
+    <div class="c-text__visibility">
+      <button
+        class="c-btn c-btn--sm"
+        type="button"
+        data-text-toggle
+        [class.c-btn--fill]="!shown()"
+        [attr.aria-label]="
+          t(shown() ? 'regie.text.visibility.hideLabel' : 'regie.text.visibility.showLabel', {
+            code: text().code,
+          })
+        "
+        [disabled]="disabled()"
+        (click)="toggleShown()"
+      >
+        <svg [sfIcon]="shown() ? 'eye-off' : 'eye'" [size]="14"></svg
+        >{{ t(shown() ? 'regie.text.visibility.hide' : 'regie.text.visibility.show') }}
+      </button>
+      <span class="c-text__state" [class.is-shown]="shown()" role="status">{{
+        t(shown() ? 'regie.text.visibility.stateShown' : 'regie.text.visibility.stateHidden')
+      }}</span>
+    </div>
+  </div>
+
+  <div class="c-insp__row">
+    <span class="c-insp__label" id="sf-text-style">{{ t('regie.text.editor.style') }}</span>
+    <div class="c-seg" role="group" aria-labelledby="sf-text-style">
+      @for (style of styles; track style) {
+        <button
+          type="button"
+          [attr.aria-pressed]="draft().style === style"
+          [disabled]="disabled()"
+          (click)="setStyle(style)"
+        >
+          {{ t(`regie.text.style.${style}`) }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="c-insp__row c-insp__row--top">
+    <label class="c-insp__label" for="sf-text-line1">{{ t('regie.text.editor.line1') }}</label>
+    <div class="c-text__field">
+      <input
+        class="c-input"
+        id="sf-text-line1"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        [attr.maxlength]="lineMax * 2"
+        [attr.aria-invalid]="line1Empty() ? 'true' : null"
+        [attr.aria-describedby]="line1Empty() ? 'sf-text-line1-error' : 'sf-text-line1-count'"
+        [placeholder]="t('regie.text.editor.line1Placeholder')"
+        [disabled]="disabled()"
+        [value]="draft().line1"
+        (input)="setLine('line1', $event)"
+        (blur)="onBlur()"
+      />
+      @if (line1Empty()) {
+        <span class="c-field-error" id="sf-text-line1-error">{{
+          t('regie.text.editor.line1Required')
+        }}</span>
+      } @else {
+        <span
+          class="c-text__count"
+          id="sf-text-line1-count"
+          [class.is-over]="line1Count() > lineMax"
+          >{{ t('regie.text.counter', { count: line1Count(), max: lineMax }) }}</span
+        >
+      }
+    </div>
+  </div>
+
+  <div class="c-insp__row c-insp__row--top">
+    <label class="c-insp__label" for="sf-text-line2">{{ t('regie.text.editor.line2') }}</label>
+    <div class="c-text__field">
+      <input
+        class="c-input"
+        id="sf-text-line2"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        [attr.maxlength]="lineMax * 2"
+        aria-describedby="sf-text-line2-count"
+        [placeholder]="t('regie.text.editor.line2Placeholder')"
+        [disabled]="disabled()"
+        [value]="draft().line2"
+        (input)="setLine('line2', $event)"
+        (blur)="onBlur()"
+      />
+      <span
+        class="c-text__count"
+        id="sf-text-line2-count"
+        [class.is-over]="line2Count() > lineMax"
+        >{{ t('regie.text.counter', { count: line2Count(), max: lineMax }) }}</span
+      >
+    </div>
+  </div>
+
+  @if (hasAlignment()) {
+    <div class="c-insp__row">
+      <span class="c-insp__label" id="sf-text-align">{{ t('regie.text.align.label') }}</span>
+      <div class="c-seg" role="group" aria-labelledby="sf-text-align">
+        @for (align of alignments; track align) {
+          <button
+            type="button"
+            [attr.aria-pressed]="draft().align === align"
+            [disabled]="disabled()"
+            (click)="setAlign(align)"
+          >
+            {{ t(`regie.text.align.${align}`) }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (disabled()) {
+    <p class="c-hint c-insp__note">{{ t('regie.text.editor.offline') }}</p>
+  } @else {
+    <p class="c-hint c-insp__note">{{ t('regie.text.editor.hintLive') }}</p>
+  }
+  @if (sharedCount() > 1) {
+    <p class="c-hint c-insp__note">
+      {{ t('regie.text.editor.sharedHint', { count: sharedCount() }) }}
+    </p>
+  }
+
+  <div class="c-text__danger">
+    @if (confirming()) {
+      <sf-confirm-box
+        [flush]="true"
+        [message]="deleteMessage()"
+        [confirmLabel]="t('regie.text.delete.confirm')"
+        [busy]="busy()"
+        (confirm)="deleteText()"
+        (cancel)="confirming.set(false)"
+      />
+    } @else {
+      <span class="c-hint">{{ t('regie.text.delete.hint') }}</span>
+      <button
+        class="c-btn c-btn--danger c-btn--sm"
+        type="button"
+        [disabled]="disabled()"
+        (click)="askDelete()"
+      >
+        {{ t('regie.text.delete.button') }}
+      </button>
+    }
+  </div>
+</section>

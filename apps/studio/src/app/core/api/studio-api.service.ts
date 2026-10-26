@@ -493,6 +493,34 @@ export class StudioApiService {
     return this.production(productionId, `/assets/${enc(assetId)}/content`);
   }
 
+  // ---------------------------------------------------------------- Texts
+
+  /** `POST …/texts`: a new text or lower third; 409 `limit_reached` at 64 texts. */
+  createText(productionId: string, body: ApiBody<'createText'>): Promise<ApiResult<'createText'>> {
+    return this.post<ApiResult<'createText'>>(this.production(productionId, '/texts'), body);
+  }
+
+  /** `PUT …/texts/{textId}`: replaces the content; every scene that shows the text changes. */
+  updateText(
+    productionId: string,
+    textId: string,
+    body: ApiBody<'updateText'>,
+  ): Promise<ApiResult<'updateText'>> {
+    return this.call(
+      this.http.put<ApiResult<'updateText'>>(
+        this.production(productionId, `/texts/${enc(textId)}`),
+        body,
+      ),
+    );
+  }
+
+  /** `DELETE …/texts/{textId}`: deletes the text and removes it from every scene. */
+  deleteText(productionId: string, textId: string): Promise<void> {
+    return this.call(
+      this.http.delete<void>(this.production(productionId, `/texts/${enc(textId)}`)),
+    );
+  }
+
   // ---------------------------------------------------------------- Output
 
   /** `GET …/output`: URL with key, allowed IPs, frame ancestors. */

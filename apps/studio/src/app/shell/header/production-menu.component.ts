@@ -7,9 +7,20 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { t } from '@studioflow/i18n';
-import { LIMITS, type ProductionSummaryDto, type SlateDto } from '@studioflow/scene-model';
+import { t, type PlainMessageKey } from '@studioflow/i18n';
+import {
+  DEFAULT_TEXT_THEME,
+  LIMITS,
+  contrastRatio,
+  formatDecimal,
+  hasReadableContrast,
+  isHexColor,
+  type ProductionSummaryDto,
+  type SlateDto,
+  type TextThemeDto,
+} from '@studioflow/scene-model';
 import { toUserMessage } from '../../core/api/api-error';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -27,7 +38,7 @@ import { ChangePasswordFormComponent } from './change-password-form.component';
 export const PRODUCTION_POPOVER = 'production';
 
 /** Views of the production menu. */
-type MenuMode = 'menu' | 'rename' | 'slates' | 'create' | 'password';
+type MenuMode = 'menu' | 'rename' | 'slates' | 'textColors' | 'create' | 'password';
 
 function nameControl(): FormControl<string> {
   return new FormControl('', {
@@ -39,6 +50,20 @@ function nameControl(): FormControl<string> {
     ],
   });
 }
+
+function colorControl(): FormControl<string> {
+  return new FormControl(DEFAULT_TEXT_THEME.accent, {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(/^#[0-9a-fA-F]{6}$/)],
+  });
+}
+
+/** The three colours of the text theme, in the order of the form. */
+const TEXT_COLOR_FIELDS = [
+  { key: 'accent', label: 'regie.header.production.textAccent' },
+  { key: 'background', label: 'regie.header.production.textBackground' },
+  { key: 'foreground', label: 'regie.header.production.textForeground' },
+] as const satisfies readonly { key: keyof TextThemeDto; label: PlainMessageKey }[];
 
 function textControl(required: boolean): FormControl<string> {
   return new FormControl('', {
@@ -93,6 +118,34 @@ export class ProductionMenuComponent {
     endSubtitle: textControl(false),
     endBackground: new FormControl('', { nonNullable: true }),
   });
+  protected readonly textColorFields = TEXT_COLOR_FIELDS;
+  protected readonly textForm = new FormGroup({
+    accent: colorControl(),
+    background: colorControl(),
+    foreground: colorControl(),
+  });
+  private readonly textColors = toSignal(this.textForm.valueChanges, {
+    initialValue: this.textForm.getRawValue(),
+  });
+  /** The colours being edited, or null while one of them is not a valid `#rrggbb`. */
+  protected readonly editedTheme = computed<TextThemeDto | null>(() => {
+    const { accent, background, foreground } = this.textColors();
+    const theme = {
+      accent: (accent ?? '').toLowerCase(),
+      background: (background ?? '').toLowerCase(),
+      foreground: (foreground ?? '').toLowerCase(),
+    };
+    return Object.values(theme).every((color) => isHexColor(color)) ? theme : null;
+  });
+  /** Contrast of the text on its background as text ("4,6"), when it is below the readable minimum; else null. */
+  protected readonly lowContrast = computed(() => {
+    const theme = this.editedTheme();
+    if (!theme || hasReadableContrast(theme)) {
+      return null;
+    }
+    // Rounded down, so a ratio just below the minimum never reads "4.5".
+    return formatDecimal(Math.floor(contrastRatio(theme.foreground, theme.background) * 10) / 10);
+  });
   /** Image assets that can sit behind a slate. */
   protected readonly imageAssets = computed(() =>
     [...this.store.assets().values()].filter((asset) => asset.kind === 'image'),
@@ -126,7 +179,39 @@ export class ProductionMenuComponent {
         endBackground: production.endSlate.backgroundAssetId ?? '',
       });
     }
+    if (mode === 'textColors') {
+      this.textForm.reset(this.store.textTheme());
+    }
     this.mode.set(mode);
+  }
+
+  /** Sets one colour from the colour picker or the hex field. */
+  protected setColor(key: keyof TextThemeDto, value: string): void {
+    this.textForm.controls[key].setValue(value.trim().toLowerCase());
+    this.textForm.controls[key].markAsTouched();
+  }
+
+  protected resetTextColors(): void {
+    this.textForm.reset(DEFAULT_TEXT_THEME);
+  }
+
+  protected async saveTextColors(event: Event): Promise<void> {
+    event.preventDefault();
+    const textTheme = this.editedTheme();
+    if (!textTheme) {
+      this.textForm.markAllAsTouched();
+      return;
+    }
+    await this.run(async (id) => {
+      await this.api.updateProduction(id, {
+        name: null,
+        standbySlate: null,
+        endSlate: null,
+        textTheme,
+      });
+      this.toasts.show(t('regie.header.production.textColorsSaved'));
+      this.mode.set('menu');
+    });
   }
 
   protected async rename(event: Event): Promise<void> {

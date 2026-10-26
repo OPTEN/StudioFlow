@@ -93,6 +93,28 @@ describe('StudioApiService', () => {
     await expect(result).resolves.toEqual({ id: 'prd_1' });
   });
 
+  it('creates, updates and deletes texts under /texts', async () => {
+    const body = { line1: 'Mia', line2: null, style: 'lowerThird', align: null } as const;
+    const created = api.createText('prd_1', body);
+    const create = http.expectOne('/api/productions/prd_1/texts');
+    expect([create.request.method, create.request.body]).toEqual(['POST', body]);
+    expect(create.request.headers.get(CSRF_HEADER)).toBe('1');
+    create.flush({ id: 'txt_1' });
+    await created;
+
+    const updated = api.updateText('prd_1', 'txt/1', { ...body, align: 'left' });
+    const update = http.expectOne('/api/productions/prd_1/texts/txt%2F1');
+    expect(update.request.method).toBe('PUT');
+    update.flush({ id: 'txt/1' });
+    await updated;
+
+    const deleted = api.deleteText('prd_1', 'txt_1');
+    const remove = http.expectOne('/api/productions/prd_1/texts/txt_1');
+    expect(remove.request.method).toBe('DELETE');
+    remove.flush(null, { status: 204, statusText: 'No Content' });
+    await deleted;
+  });
+
   it('sends no CSRF header on GET', async () => {
     const result = api.getActiveProduction();
     const request = http.expectOne('/api/productions/active');

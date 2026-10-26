@@ -7,6 +7,7 @@ export const regieSources: Translation<typeof en> = {
   'regie.sources.add.liveLocked':
     'Diese Szene ist live. Erst eine andere Szene ins Program schalten.',
   'regie.sources.add.manage': 'Medien verwalten …',
+  'regie.sources.add.newText': 'Neuer Text',
   'regie.sources.add.noSources':
     'Noch keine Quellen. Geräte unter Stationen koppeln oder ein Bild oder Video hochladen.',
   'regie.sources.add.offline':
@@ -28,6 +29,7 @@ export const regieSources: Translation<typeof en> = {
   'regie.sources.group.camera': 'Kameras',
   'regie.sources.group.media': 'Medien',
   'regie.sources.group.screen': 'Screens',
+  'regie.sources.group.text': 'Texte',
 
   'regie.sources.hint.autoGrid':
     'Auto-Grid: Die Reihenfolge der Elemente ist ihre Position im Raster. Eine Zeile ziehen, um ein Element in eine andere Zelle zu verschieben.',

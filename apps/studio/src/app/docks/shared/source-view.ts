@@ -32,11 +32,12 @@ export const KIND_ICON: Readonly<Record<SourceKind, IconName>> = {
   screen: 'screen',
   image: 'image',
   video: 'video',
+  text: 'text',
 };
 
-/** True for uploaded media (image, video), which are always available and have no lamp. */
-export function isMediaKind(kind: SourceKind | undefined): boolean {
-  return kind === 'image' || kind === 'video';
+/** True for camera and screen slots of a device; media and texts are always available and have no lamp. */
+export function isDeviceKind(kind: SourceKind | undefined): boolean {
+  return kind === 'camera' || kind === 'screen';
 }
 
 /** Lamp of a status: ok green, reconnecting amber, ended/lost/blocked red, connecting/offline idle. */
@@ -56,12 +57,12 @@ export function statusLamp(status: SourceStatus): LampTone {
   }
 }
 
-/** Lamp of a source row; null for media (no lamp), idle for a deleted source ("Source missing"). */
+/** Lamp of a source row; null for media and texts (no lamp), idle for a deleted source ("Source missing"). */
 export function sourceLamp(source: SourceDto | null | undefined): LampTone | null {
   if (!source) {
     return 'is-idle';
   }
-  return isMediaKind(source.kind) ? null : statusLamp(source.status);
+  return isDeviceKind(source.kind) ? statusLamp(source.status) : null;
 }
 
 /** Tone of a status word. */
@@ -88,7 +89,7 @@ export function statusHasTimer(status: SourceStatus): boolean {
 
 /** State line of a source row (prototype `srcState`); null while the source is ok, a medium or deleted. */
 export function sourceStateView(source: SourceDto | null | undefined): SourceStateView | null {
-  if (!source || source.status === 'ok' || isMediaKind(source.kind)) {
+  if (!source || source.status === 'ok' || !isDeviceKind(source.kind)) {
     return null;
   }
   return {

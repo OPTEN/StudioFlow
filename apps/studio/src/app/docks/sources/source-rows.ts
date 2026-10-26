@@ -36,7 +36,9 @@ export interface SourceRowView {
   readonly hidden: boolean;
   readonly locked: boolean;
   readonly selected: boolean;
-  /** Lamp of a device source; null for media (no lamp). */
+  /** The row shows a text: it can be selected while hidden and is shown and hidden live. */
+  readonly isText: boolean;
+  /** Lamp of a device source; null for media and texts (no lamp). */
   readonly lamp: LampTone | null;
   /** State line ("reconnecting" + timer), or null while ok. */
   readonly state: SourceStateView | null;
@@ -55,7 +57,14 @@ export function kindOfReference(
     return source.kind;
   }
   const parsed = parseSourceRef(sourceId);
-  return parsed?.kind === 'device' ? (slotKind(parsed.slot) ?? 'camera') : 'image';
+  switch (parsed?.kind) {
+    case 'device':
+      return slotKind(parsed.slot) ?? 'camera';
+    case 'text':
+      return 'text';
+    default:
+      return 'image';
+  }
 }
 
 /**
@@ -74,15 +83,17 @@ export function sourceRows(
 ): SourceRowView[] {
   return flipOrder(scene.items).map((item) => {
     const source = sources.get(item.source) ?? null;
+    const kind = kindOfReference(item.source, source);
     return {
       itemId: item.id,
       sourceId: item.source,
       code: source?.code ?? '–',
       name: source?.label ?? t('model.scene.sourceMissing'),
-      icon: KIND_ICON[kindOfReference(item.source, source)],
+      icon: KIND_ICON[kind],
       hidden: item.hidden,
       locked: item.locked,
-      selected: item.id === selectedItemId && !item.hidden,
+      selected: item.id === selectedItemId && (!item.hidden || kind === 'text'),
+      isText: kind === 'text',
       lamp: sourceLamp(source),
       state: sourceStateView(source),
       statusSince: source?.statusSince ?? null,
@@ -93,14 +104,14 @@ export function sourceRows(
 
 /** A group of the "+ Source" menu. */
 export interface SourceGroup {
-  readonly id: 'camera' | 'screen' | 'media';
+  readonly id: 'camera' | 'screen' | 'media' | 'text';
   readonly label: string;
   readonly sources: readonly SourceDto[];
 }
 
 /**
  * Sources that can be added to the scene (prototype `renderAddSource`): every source not yet in the scene and not
- * blocked, grouped into Cameras, Screens and Media, each sorted by slot code. Empty groups are left out.
+ * blocked, grouped into Cameras, Screens, Media and Texts, each sorted by slot code. Empty groups are left out.
  */
 export function addableSourceGroups(
   scene: SceneDto,
@@ -125,6 +136,11 @@ export function addableSourceGroups(
       id: 'media',
       label: t('regie.sources.group.media'),
       sources: free.filter((source) => source.kind === 'image' || source.kind === 'video'),
+    },
+    {
+      id: 'text',
+      label: t('regie.sources.group.text'),
+      sources: free.filter((source) => source.kind === 'text'),
     },
   ];
   return groups.filter((group) => group.sources.length > 0);

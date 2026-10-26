@@ -98,7 +98,8 @@ function sameRects(
  * - Pictures come from `StudioMediaService.provider()`; until it exists (or when LiveKit is unavailable) a placeholder
  *   provider renders the layout with dark device placeholders and real images/videos. The renderer is recreated when
  *   the provider, the mode or the reduced-motion preference changes.
- * - Monitor alerts read the store (`statusOf`, `codeOf`) and refresh whenever the sources change.
+ * - Monitor alerts read the store (`statusOf`, `codeOf`); texts read their content and colours (`textOf`, `textTheme`). The
+ *   renderer refreshes whenever the sources or the text colours change.
  * - Renderer work happens outside Angular's templates: the renderer owns its DOM and timers and never writes signals;
  *   only {@link rects} is a signal (Auto-Grid rectangles for the edit overlay, monitor mode only).
  * - On destroy the renderer is destroyed (DOM, timers, provider registrations).
@@ -175,7 +176,8 @@ export class SceneViewComponent {
     });
     effect(() => {
       this.store.sources();
-      untracked(() => this.renderer?.setSourceStatuses());
+      this.store.textTheme();
+      untracked(() => this.renderer?.refresh());
     });
     effect(() => {
       const label = this.ariaLabel();
@@ -204,6 +206,8 @@ export class SceneViewComponent {
       statusOf: (sourceId) => this.store.statusOf(sourceId),
       codeOf: (sourceId) => this.store.codeOf(sourceId),
       assetKindOf: (assetId) => this.assetKind(assetId),
+      textOf: (sourceId) => this.store.textOf(sourceId),
+      textTheme: () => this.store.textTheme(),
       reducedMotion,
       label: this.ariaLabel(),
       onError: (error) => console.warn('[StudioFlow] scene renderer', error),

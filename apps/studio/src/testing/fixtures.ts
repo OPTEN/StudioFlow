@@ -1,19 +1,21 @@
 /**
  * Builders for wire objects in the Regie specs. Test-only (imported by *.spec.ts files only).
  */
-import type {
-  DeviceDto,
-  IncidentDto,
-  LogEntryDto,
-  ProductionChangesDto,
-  ProductionDto,
-  ProductionEvent,
-  ProductionSnapshot,
-  SceneDto,
-  SceneItemDto,
-  SourceDto,
-  SourceKind,
-  SourceStatus,
+import {
+  DEFAULT_TEXT_THEME,
+  type DeviceDto,
+  type IncidentDto,
+  type LogEntryDto,
+  type ProductionChangesDto,
+  type ProductionDto,
+  type ProductionEvent,
+  type ProductionSnapshot,
+  type SceneDto,
+  type SceneItemDto,
+  type SourceDto,
+  type SourceKind,
+  type SourceStatus,
+  type TextSourceDto,
 } from '@studioflow/scene-model';
 
 /** Production id of the fixtures. */
@@ -36,6 +38,7 @@ export function productionFixture(overrides: Partial<ProductionDto> = {}): Produ
     lastSwitchAt: null,
     standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
     endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
+    textTheme: DEFAULT_TEXT_THEME,
     ...overrides,
   };
 }
@@ -105,7 +108,37 @@ export function sourceFixture(
     assetId: null,
     status,
     statusSince: null,
+    text: null,
     ...overrides,
+  };
+}
+
+/** A text source (lower third by default) as the API sends it: the content sits in `text`, the label is line 1. */
+export function textSourceFixture(
+  id: string,
+  code: string,
+  overrides: Partial<TextSourceDto> = {},
+): SourceDto {
+  const text: TextSourceDto = {
+    id,
+    code,
+    line1: 'Mia Meier',
+    line2: 'Moderator',
+    style: 'lowerThird',
+    align: 'left',
+    ...overrides,
+  };
+  return {
+    id,
+    code,
+    kind: 'text',
+    label: text.line1,
+    deviceId: null,
+    slot: null,
+    assetId: null,
+    status: 'ok',
+    statusSince: null,
+    text,
   };
 }
 

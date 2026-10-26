@@ -85,7 +85,7 @@
   opacity: 0.5;
 }
 
-.c-src.is-hidden .c-src__select {
+.c-src.is-hidden:not(.is-text) .c-src__select {
   cursor: default;
 }
 

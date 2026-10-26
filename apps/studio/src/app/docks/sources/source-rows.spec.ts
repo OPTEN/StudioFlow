@@ -34,6 +34,7 @@ const M1: SourceDto = {
   assetId: 'ast_aaaaaaaaaaaaaaaa',
   status: 'ok',
   statusSince: null,
+  text: null,
 };
 const sources = new Map([K1, K2, K3, S1, M1].map((source) => [source.id, source]));
 

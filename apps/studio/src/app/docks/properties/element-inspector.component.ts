@@ -12,6 +12,7 @@ import { ProductionStoreService } from '../../core/state/production-store.servic
 import { IconComponent } from '../../core/ui/icon.component';
 import { EditorService } from '../../stage/editor.service';
 import { NumberFieldDirective } from '../shared/number-field.directive';
+import { TextEditorComponent } from './text-editor.component';
 import {
   CROP_SIDES,
   MAX_CROP_PERCENT,
@@ -39,7 +40,7 @@ type NumberKey = 'x' | 'y' | 'w' | 'h' | 'radius';
  */
 @Component({
   selector: 'sf-element-inspector',
-  imports: [IconComponent, NumberFieldDirective],
+  imports: [IconComponent, NumberFieldDirective, TextEditorComponent],
   templateUrl: './element-inspector.component.html',
   styleUrl: './element-inspector.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,6 +59,8 @@ export class ElementInspectorComponent {
   protected readonly maxCrop = MAX_CROP_PERCENT;
 
   protected readonly disabled = computed(() => !this.editor.canEdit());
+  /** The content of the item's text; null for every other kind of source. */
+  protected readonly text = computed(() => this.store.textOf(this.item().source) ?? null);
   protected readonly rotation = computed(() => snapRotation(this.item().rotation));
   protected readonly cropped = computed(() => hasCrop(this.item()));
   protected readonly holdChoices = computed(() => holdChoices(this.item().onLost.holdMs));
