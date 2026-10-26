@@ -208,3 +208,19 @@ Live site not checked · Repo: StudioFlow @ dd13fd0 (main) · Code review: 27 it
 - Code review by the agent: 2026-10-22T19:40:00Z
 - File and line references point to the audited commit dd13fd0; they may have moved since (for example in `docs/runbook.md`, which has since been translated).
 - Sources: dotnet list package (GitHub Advisory DB), npm audit, OSV.dev, endoflife.date, DNS-over-HTTPS (Cloudflare/Google).
+
+## Changes since the audit (issue #4, first-run setup)
+
+The audit above describes commit dd13fd0. The Regie account has changed since, and the references to
+`Infrastructure/Security/AdminCredentials.cs` and to `Admin:Username`/`Admin:PasswordHash` in the findings are outdated:
+
+- The account is no longer a setting in `.env` or Compose: it is created in the first-run setup, stored in the table
+  `admin_account` (one row by primary key and check constraint) and hashed by `AdminPasswordHasher` (Identity v3,
+  PBKDF2). Backups hold the hash, never the password. Old `ADMIN__*` values are ignored with a startup warning.
+- The window between the start and the setup is closed by a one-time setup code (about 40 bits, memory only, written to
+  the server log only, new on every start, invalid after the setup, constant-time comparison). Wrong codes count towards
+  the same lockout as failed logins (5 per address, 20 in total in 15 minutes), so the lockout remark of auth-05 applies
+  to the setup as well: anyone who can reach the page can block the setup for 15 minutes, but not complete it.
+- Password rules: at least 12 characters, not the user name, not on a list of common passwords. A password change needs
+  the old password (counted like a failed login when wrong) and ends every other session at once (security stamp in the
+  cookie, hub connections closed). `reset-admin` needs shell access to the server.

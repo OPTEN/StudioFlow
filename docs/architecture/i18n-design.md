@@ -246,7 +246,7 @@ export function provideI18n(options?: InitOptions): EnvironmentProviders; // pro
 - **Not-found nouns:** `StudioFlowException.NotFound(string what)` takes an English noun ("Production", "Device", "Invite", "Request", "File") and produces "{what} was not found."
 - **Where German strings live:** about 45 string literals across `Domain/*`, `Application/Services/*`, `Application/MutationContextExtensions.cs`, `Application/SnapshotBuilder.cs`, `Infrastructure/Media/FileMediaStore.cs`, `Web/Errors/{Problems,StudioFlowExceptionHandler,JsonBindingErrors,DatabaseOutage}.cs`, `Web/Hosting/StudioFlowHost.cs`, `Web/Security/{RequestSecurity,OutputAuthenticationHandler}.cs`, `Web/Endpoints/DeviceAndMediaEndpoints.cs`, and `Hubs.cs` (the `{code}: {message}` HubException texts).
 - **Server defaults (D8):** `Production.DefaultSceneNames` = Welcome/Presentation/Break; `StandbySlate` = "Starting soon"; `EndSlate` = "Thanks for watching"; `Device.LabelOf` → "{Name} · Screen {n}" / "{Name} · Camera".
-- **Left alone:** `Slugs.cs` keeps its ä/ö/ü/ß transliteration table, which is allowlisted. The CLI output (`hash-password`, `broadcast-status`) is already English.
+- **Left alone:** `Slugs.cs` keeps its ä/ö/ü/ß transliteration table, which is allowlisted. The CLI output (`broadcast-status` and, since issue #4, `reset-admin`) is already English.
 - XML-doc comments quoting German UI strings are rewritten to English examples (the check's comment tier flags umlauts).
 
 **Log entries: recommendation is structured, with an English fallback.** Reasons:

@@ -335,7 +335,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 
 ### Themes
 
-The Regie has two appearances. **Dark** is the console described on this page and the default. **Light** is the same console for bright rooms and daylight. A setting in the settings popover chooses **Dark**, **Light** or **System** (follows the operating system live) and applies per browser (`localStorage['studioflow.theme']`, absent means Dark). The Regie, `/monitoring` and the login page follow it; the sender and the output page do not. Switching is a pure display setting and is allowed during a broadcast. "Reset layout" does not reset it.
+The Regie has two appearances. **Dark** is the console described on this page and the default. **Light** is the same console for bright rooms and daylight. A setting in the settings popover chooses **Dark**, **Light** or **System** (follows the operating system live) and applies per browser (`localStorage['studioflow.theme']`, absent means Dark). The Regie, `/monitoring`, the login page and the first-run setup page follow it; the sender and the output page do not. Switching is a pure display setting and is allowed during a broadcast. "Reset layout" does not reset it.
 
 **Mechanism.** Every colour is a semantic CSS custom property (`--panel`, `--red`, ...). `:root` carries the dark values; `:root[data-theme='light']` overrides all of them. `data-theme` is always the resolved theme, set before the first paint by `theme-init.js` and kept by `ThemeService`. Components use only the tokens and never branch on the theme. The Sass source is `$theme-dark` and `$theme-light` in `styles/_tokens.scss`.
 
