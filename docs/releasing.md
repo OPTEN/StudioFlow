@@ -95,9 +95,8 @@ There is no `:0` tag: before 1.0 a minor version may break things. Only `linux/a
 is one line in the `platforms` list of the `images` job plus a runner or QEMU.
 
 Each image carries OCI labels (`title`, `description`, `vendor`, `source`, `url`, `documentation`, `revision`,
-`version` as `0.4.2+1a2b3c4`, `created`), an SBOM and a SLSA provenance attestation (`mode=max`) in the image index,
-and a keyless **cosign** signature made by the Release workflow. The `licenses` label is missing because the repository
-has no licence file yet; set it in `release.yml` together with #5.
+`version` as `0.4.2+1a2b3c4`, `licenses` as `Apache-2.0`, `created`), an SBOM and a SLSA provenance attestation
+(`mode=max`) in the image index, and a keyless **cosign** signature made by the Release workflow.
 
 ## 4. How the Release workflow works
 
