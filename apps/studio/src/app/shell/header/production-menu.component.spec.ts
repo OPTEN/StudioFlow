@@ -50,6 +50,15 @@ describe('ProductionMenuComponent: change password', () => {
     expect(labels.slice(-2)).toEqual(['Change password', 'Sign out']);
   });
 
+  it('links to the audit log page', async () => {
+    await setup();
+
+    const link = element.querySelector<HTMLAnchorElement>('a.c-menu-item');
+
+    expect(link?.textContent?.trim()).toBe('Audit log');
+    expect(link?.getAttribute('href')).toBe('/audit');
+  });
+
   it('opens the form in the menu and goes back to the menu on cancel', async () => {
     await setup();
     item('Change password').click();

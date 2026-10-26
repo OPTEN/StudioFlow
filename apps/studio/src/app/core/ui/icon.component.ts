@@ -41,6 +41,7 @@ export type IconName =
   | 'trash'
   | 'upload'
   | 'gear'
+  | 'list'
   // The StudioFlow brand mark (22 × 18)
   | 'mark';
 
@@ -168,6 +169,9 @@ export type IconName =
         <svg:path
           d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"
         />
+      }
+      @case ('list') {
+        <svg:path d="M4 6.5h16M4 12h16M4 17.5h10" />
       }
       @case ('layout') {
         <svg:rect x="3" y="4" width="18" height="16" rx="1.5" />

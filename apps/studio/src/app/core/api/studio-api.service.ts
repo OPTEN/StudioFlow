@@ -46,7 +46,32 @@ export interface UploadOptions {
 /** Factory for the upload transport; replaced in tests. */
 export type XhrFactory = () => XMLHttpRequest;
 
+/** Filter, cursor and page size of `GET /api/audit`. */
+export type AuditQuery = NonNullable<operations['listAuditLog']['parameters']['query']>;
+
+/** Filter and separator of the audit exports. */
+export type AuditExportQuery = NonNullable<operations['exportAuditCsv']['parameters']['query']>;
+
+/** An exported audit log: the text of the file and its name. */
+export interface AuditExport {
+  readonly text: string;
+  readonly fileName: string;
+}
+
 const enc = encodeURIComponent;
+
+/** Query parameters of an object; a list becomes a repeated parameter, an unset value is left out. */
+function queryParams(query: object): HttpParams {
+  let params = new HttpParams();
+  for (const [name, value] of Object.entries(query) as [string, unknown][]) {
+    for (const item of Array.isArray(value) ? (value as unknown[]) : [value]) {
+      if (item !== undefined && item !== null && item !== '') {
+        params = params.append(name, String(item));
+      }
+    }
+  }
+  return params;
+}
 
 /**
  * Typed client for every REST operation the Regie uses (spec 5, `ApiSurface.cs`). Pure transport: no state, no
@@ -548,6 +573,33 @@ export class StudioApiService {
     return this.post<ApiResult<'regenerateOutputKey'>>(
       this.production(productionId, '/output/regenerate-key'),
     );
+  }
+
+  // ---------------------------------------------------------------- Audit log
+
+  /** `GET /api/audit`: a page of the audit log, newest first; pass `nextCursor` as `cursor` for the next page. 400 for an invalid filter. */
+  listAuditLog(query: AuditQuery): Promise<ApiResult<'listAuditLog'>> {
+    return this.call(
+      this.http.get<ApiResult<'listAuditLog'>>('/api/audit', { params: queryParams(query) }),
+    );
+  }
+
+  /**
+   * `GET /api/audit/export.csv|json`: the filtered entries as text. The file name comes from the server; 409
+   * `limit_reached` when the filter matches too many entries, 429 for too many exports.
+   */
+  async exportAuditLog(format: 'csv' | 'json', query: AuditExportQuery): Promise<AuditExport> {
+    const response = await this.call(
+      this.http.get(`/api/audit/export.${format}`, {
+        params: queryParams(query),
+        responseType: 'text',
+        observe: 'response',
+      }),
+    );
+    const fileName = /filename="?([^";]+)"?/.exec(
+      response.headers.get('Content-Disposition') ?? '',
+    )?.[1];
+    return { text: response.body ?? '', fileName: fileName ?? `studioflow-audit.${format}` };
   }
 
   // ---------------------------------------------------------------- Helpers

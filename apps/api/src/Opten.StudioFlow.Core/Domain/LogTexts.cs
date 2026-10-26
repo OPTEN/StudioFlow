@@ -126,13 +126,13 @@ public static class LogTexts
         var kind = Enum.TryParse<CameraLensKind>(entry.Detail(AuditDetails.Lens), out var parsed) ? parsed : CameraLensKind.Other;
         var (param, name) = kind switch
         {
-            CameraLensKind.Front => ("front", "front"),
-            CameraLensKind.UltraWide => ("ultraWide", "wide-angle"),
-            CameraLensKind.Standard => ("standard", "standard"),
-            CameraLensKind.Tele => ("tele", "tele"),
-            _ => ("other", "another"),
+            CameraLensKind.Front => ("front", "Front"),
+            CameraLensKind.UltraWide => ("ultraWide", "Wide-angle"),
+            CameraLensKind.Standard => ("standard", "Standard"),
+            CameraLensKind.Tele => ("tele", "Tele"),
+            _ => ("other", "Other"),
         };
-        return With(LogCode.CameraLensSwitched, $"{subject} switched to the {name} lens", (Param.Subject, subject), (Param.Lens, param));
+        return With(LogCode.CameraLensSwitched, $"{subject}: lens switched to {name}", (Param.Subject, subject), (Param.Lens, param));
     }
 
     private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Retention(AuditEntry entry)

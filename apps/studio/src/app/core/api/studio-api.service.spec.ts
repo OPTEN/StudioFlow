@@ -139,6 +139,54 @@ describe('StudioApiService', () => {
     await result;
   });
 
+  it('asks for a page of the audit log with the filter as query parameters', async () => {
+    const result = api.listAuditLog({
+      production: 'prd_1',
+      category: ['devices', 'media'],
+      action: [],
+      q: 'lena',
+      limit: 50,
+      cursor: undefined,
+    });
+    const request = http.expectOne((r) => r.url === '/api/audit');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.keys().sort()).toEqual(['category', 'limit', 'production', 'q']);
+    expect(request.request.params.getAll('category')).toEqual(['devices', 'media']);
+    expect(request.request.params.get('limit')).toBe('50');
+    expect(request.request.headers.has(CSRF_HEADER)).toBe(false);
+    request.flush({ entries: [], nextCursor: null });
+    await expect(result).resolves.toEqual({ entries: [], nextCursor: null });
+  });
+
+  it('exports the audit log as text and takes the file name from the server', async () => {
+    const result = api.exportAuditLog('csv', { production: 'prd_1', separator: 'semicolon' });
+    const request = http.expectOne((r) => r.url === '/api/audit/export.csv');
+    expect(request.request.params.get('separator')).toBe('semicolon');
+    expect(request.request.responseType).toBe('text');
+    request.flush('time;actor\r\n', {
+      headers: { 'Content-Disposition': 'attachment; filename="studioflow-audit-2026-10-26.csv"' },
+    });
+    await expect(result).resolves.toEqual({
+      text: 'time;actor\r\n',
+      fileName: 'studioflow-audit-2026-10-26.csv',
+    });
+  });
+
+  it('falls back to a plain file name and rejects a refused export with the problem code', async () => {
+    const plain = api.exportAuditLog('json', {});
+    http.expectOne('/api/audit/export.json').flush('[]');
+    await expect(plain).resolves.toEqual({ text: '[]', fileName: 'studioflow-audit.json' });
+
+    const refused = api.exportAuditLog('csv', {});
+    http
+      .expectOne('/api/audit/export.csv')
+      .flush(JSON.stringify({ status: 409, code: 'limit_reached' }), {
+        status: 409,
+        statusText: 'Conflict',
+      });
+    await expect(refused).rejects.toMatchObject({ status: 409, code: 'limit_reached' });
+  });
+
   it('resolves void for 204 answers', async () => {
     const result = api.acknowledgeIncident('prd_1', 'inc_1');
     http

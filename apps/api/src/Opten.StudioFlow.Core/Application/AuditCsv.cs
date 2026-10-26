@@ -24,7 +24,7 @@ public static class AuditCsv
 
     private static readonly char[] FormulaStarts = ['=', '+', '-', '@', '\t', '\r'];
 
-    // The details are read by people in a spreadsheet: umlauts stay readable instead of becoming ä.
+    // The details are read by people in a spreadsheet: umlauts stay readable instead of becoming escape sequences.
     private static readonly JsonSerializerOptions DetailsJson = new(JsonSerializerDefaults.Web) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     /// <summary>The header row.</summary>

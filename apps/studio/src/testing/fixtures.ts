@@ -3,6 +3,7 @@
  */
 import {
   DEFAULT_TEXT_THEME,
+  type AuditEntryDto,
   type DeviceDto,
   type IncidentDto,
   type LogEntryDto,
@@ -186,6 +187,27 @@ export function incidentFixture(
 /** A log entry: the scene `name` went live. */
 export function logFixture(text: string, at = '2026-10-22T09:30:00.000Z'): LogEntryDto {
   return { at, code: 'sceneLive', params: { scene: text }, text: `Scene “${text}” is live` };
+}
+
+/** An entry of the audit log: the scene `scene` went live (override anything else). */
+export function auditEntryFixture(
+  id: number,
+  overrides: Partial<AuditEntryDto> = {},
+): AuditEntryDto {
+  return {
+    id,
+    at: `2026-10-26T14:03:${String(id % 60).padStart(2, '0')}.000+00:00`,
+    actor: 'admin',
+    action: 'scene.live',
+    category: 'production',
+    productionId: PRODUCTION_ID,
+    productionName: 'Webinar',
+    code: 'sceneLive',
+    params: { scene: 'Break' },
+    text: 'Scene “Break” is live',
+    details: { scene: 'Break', via: 'take' },
+    ...overrides,
+  };
 }
 
 /** Default scenes: Welcome (K1), Presentation (S1 + K1), Break (empty). */
