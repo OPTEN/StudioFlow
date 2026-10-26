@@ -24,6 +24,7 @@ import { regieMedia } from './regie-media';
 import { regieMonitoring } from './regie-monitoring';
 import { regieOutput } from './regie-output';
 import { regiePairing } from './regie-pairing';
+import { regiePlaceholders } from './regie-placeholders';
 import { regieProperties } from './regie-properties';
 import { regieScenes } from './regie-scenes';
 import { regieSettings } from './regie-settings';
@@ -33,6 +34,7 @@ import { regieStage } from './regie-stage';
 import { regieStations } from './regie-stations';
 import { regieStatusline } from './regie-statusline';
 import { regieText } from './regie-text';
+import { regieTransfer } from './regie-transfer';
 import { regieWorkspace } from './regie-workspace';
 import { renderer } from './renderer';
 import { senderCameraProblem } from './sender-camera-problem';
@@ -68,6 +70,7 @@ export const en = {
   ...regieMonitoring,
   ...regieOutput,
   ...regiePairing,
+  ...regiePlaceholders,
   ...regieProperties,
   ...regieScenes,
   ...regieSettings,
@@ -77,6 +80,7 @@ export const en = {
   ...regieStations,
   ...regieStatusline,
   ...regieText,
+  ...regieTransfer,
   ...regieWorkspace,
   ...renderer,
   ...senderCameraProblem,

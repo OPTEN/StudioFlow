@@ -38,6 +38,7 @@ import {
   type SceneDto,
   type SceneHealth,
   type SourceDto,
+  type SourcePlaceholderDto,
   type SourceKind,
   type SourceStatus,
   type TallyState,
@@ -216,6 +217,13 @@ export class ProductionStoreService {
   readonly sources = computed<ReadonlyMap<string, SourceDto>>(
     () => this.stateSignal()?.sources ?? EMPTY_MAP,
   );
+  /**
+   * Device sources of the production this one was copied from that no source took over yet. Scene items point to
+   * them and show "Source missing"; their codes are reserved.
+   */
+  readonly placeholders = computed<readonly SourcePlaceholderDto[]>(
+    () => this.stateSignal()?.placeholders ?? EMPTY_LIST,
+  );
   /** Devices by id. */
   readonly devices = computed<ReadonlyMap<string, DeviceDto>>(
     () => this.stateSignal()?.devices ?? EMPTY_MAP,
@@ -386,14 +394,32 @@ export class ProductionStoreService {
     return this.sources().get(sourceId)?.text ?? undefined;
   }
 
-  /** Display name of a source; "Source missing" when it was deleted. */
-  sourceLabel(sourceId: string): string {
-    return this.sources().get(sourceId)?.label ?? t('model.scene.sourceMissing');
+  /** The placeholder an item points to (a device source of the original production), or null. */
+  placeholderOf(sourceId: string | null | undefined): SourcePlaceholderDto | null {
+    return sourceId ? (this.placeholders().find((p) => p.sourceId === sourceId) ?? null) : null;
   }
 
-  /** Slot code of a source (K1, S2, M3), or undefined. */
+  /** Display name of a source; the name of its placeholder, or "Source missing" when it was deleted. */
+  sourceLabel(sourceId: string): string {
+    return (
+      this.sources().get(sourceId)?.label ??
+      this.placeholderOf(sourceId)?.label ??
+      t('model.scene.sourceMissing')
+    );
+  }
+
+  /** Slot code of a source (K1, S2, M3) or of its placeholder, or undefined. */
   codeOf(sourceId: string): string | undefined {
-    return this.sources().get(sourceId)?.code;
+    return this.sources().get(sourceId)?.code ?? this.placeholderOf(sourceId)?.code;
+  }
+
+  /** True when an item or a fallback of any scene shows the source. */
+  isSourceUsed(sourceId: string): boolean {
+    return this.scenes().some((scene) =>
+      scene.items.some(
+        (item) => item.source === sourceId || item.onLost.fallbackSource === sourceId,
+      ),
+    );
   }
 
   /** Health of a source for the renderer's monitor alerts; undefined for deleted sources. */

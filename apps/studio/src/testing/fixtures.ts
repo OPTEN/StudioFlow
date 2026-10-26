@@ -16,6 +16,7 @@ import {
   type SceneItemDto,
   type SourceDto,
   type SourceKind,
+  type SourcePlaceholderDto,
   type SourceStatus,
   type TextSourceDto,
 } from '@studioflow/scene-model';
@@ -112,6 +113,27 @@ export function sourceFixture(
     status,
     statusSince: null,
     text: null,
+    ...overrides,
+  };
+}
+
+/**
+ * A placeholder of a copied production: the camera (`K…`) or screen (`S…`) of the original, with a fake device id that
+ * no device has. `label` is the name of the original device.
+ */
+export function placeholderFixture(
+  code: string,
+  label: string | null = null,
+  overrides: Partial<SourcePlaceholderDto> = {},
+): SourcePlaceholderDto {
+  const kind: SourceKind = code.startsWith('S') ? 'screen' : 'camera';
+  const key = code.toLowerCase().padEnd(16, '0');
+  return {
+    id: `plh_${key}`,
+    sourceId: `dev_${key}/${kind === 'camera' ? 'camera' : 'screen-1'}`,
+    code,
+    kind,
+    label,
     ...overrides,
   };
 }
@@ -241,6 +263,7 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
       sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { label: 'Phone stage left' }),
       sourceFixture('dev_bbbbbbbbbbbbbbbb', 'screen-1', 'S1', { label: 'Laptop Lea · Slides' }),
     ],
+    placeholders: [],
     devices: [
       deviceFixture('dev_aaaaaaaaaaaaaaaa', 'Phone stage left'),
       deviceFixture('dev_bbbbbbbbbbbbbbbb', 'Laptop Lea', {

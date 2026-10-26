@@ -1,5 +1,5 @@
 import { canvasDto } from './canvas';
-import type { OutputChangesDto, ProductionEvent } from './contracts';
+import type { OutputChangesDto, ProductionEvent, SourcePlaceholderDto } from './contracts';
 import {
   applyChanges,
   applyEvent,
@@ -101,6 +101,7 @@ describe('stateFromOutputSnapshot', () => {
     expect(state.serverOffsetMs).toBe(1500);
     expect(state.sources.size).toBe(1);
     expect(state.devices.size).toBe(0);
+    expect(state.placeholders).toEqual([]);
     expect(state.pairingRequests).toEqual([]);
     expect(state.invites).toEqual([]);
     expect(state.incidents).toEqual([]);
@@ -285,6 +286,32 @@ describe('applyEvent per event type', () => {
     expect(apply(removed, { type: 'sourceRemoved', sourceId: 'dev_x/camera' }).sources).toBe(
       removed.sources,
     );
+  });
+
+  it('keeps the placeholders of the snapshot and placeholderRemoved drops one', () => {
+    const k1: SourcePlaceholderDto = {
+      id: 'plh_k1',
+      sourceId: 'dev_gone1/camera',
+      code: 'K1',
+      kind: 'camera',
+      label: 'Stage phone',
+    };
+    const s1: SourcePlaceholderDto = {
+      id: 'plh_s1',
+      sourceId: 'dev_gone2/screen-1',
+      code: 'S1',
+      kind: 'screen',
+      label: null,
+    };
+    const state = stateFromSnapshot(snapshotFixture({ placeholders: [k1, s1] }), RECEIVED_AT);
+    expect(state.placeholders).toEqual([k1, s1]);
+    const next = apply(state, { type: 'placeholderRemoved', placeholderId: 'plh_k1' });
+    expect(next.placeholders).toEqual([s1]);
+    expect(state.placeholders).toHaveLength(2);
+    // An unknown id (a repeated event) changes nothing.
+    expect(
+      apply(next, { type: 'placeholderRemoved', placeholderId: 'plh_k1' }).placeholders,
+    ).toEqual([s1]);
   });
 
   it('deviceUpserted replaces the whole device and deviceRemoved removes it', () => {

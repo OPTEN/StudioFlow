@@ -1,64 +1,10 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { FakeXhr } from '../../../testing/fake-xhr';
 import { ApiError } from './api-error';
 import { CSRF_HEADER, csrfInterceptor, isSameOrigin } from './csrf.interceptor';
 import { StudioApiService } from './studio-api.service';
-
-/** Minimal XMLHttpRequest stand-in for upload tests. */
-class FakeXhr {
-  static last: FakeXhr | null = null;
-  method = '';
-  url = '';
-  headers: Record<string, string> = {};
-  body: unknown = null;
-  status = 0;
-  responseText = '';
-  withCredentials = false;
-  aborted = false;
-  readonly upload: { onprogress: ((event: ProgressEvent) => void) | null } = { onprogress: null };
-  onload: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  onabort: (() => void) | null = null;
-  private readonly responseHeaders: Record<string, string> = {};
-
-  constructor() {
-    FakeXhr.last = this;
-  }
-
-  open(method: string, url: string): void {
-    this.method = method;
-    this.url = url;
-  }
-
-  setRequestHeader(name: string, value: string): void {
-    this.headers[name] = value;
-  }
-
-  getResponseHeader(name: string): string | null {
-    return this.responseHeaders[name] ?? null;
-  }
-
-  send(body: unknown): void {
-    this.body = body;
-  }
-
-  abort(): void {
-    this.aborted = true;
-    this.onabort?.();
-  }
-
-  respond(status: number, body: string, headers: Record<string, string> = {}): void {
-    this.status = status;
-    this.responseText = body;
-    Object.assign(this.responseHeaders, headers);
-    this.onload?.();
-  }
-
-  progress(loaded: number, total: number): void {
-    this.upload.onprogress?.({ loaded, total, lengthComputable: true } as ProgressEvent);
-  }
-}
 
 describe('StudioApiService', () => {
   let api: StudioApiService;
@@ -284,6 +230,84 @@ describe('StudioApiService', () => {
     controller.abort();
     await expect(aborted).rejects.toMatchObject({ code: 'aborted' });
     expect((FakeXhr.last as FakeXhr).aborted).toBe(true);
+  });
+});
+
+describe('StudioApiService: duplicate, export, import and placeholders (issue #14)', () => {
+  let api: StudioApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([csrfInterceptor])),
+        provideHttpClientTesting(),
+      ],
+    });
+    api = TestBed.inject(StudioApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('duplicates a production with the name of the copy', async () => {
+    const result = api.duplicateProduction('prd_1', { name: 'Webinar (copy)' });
+    const request = http.expectOne('/api/productions/prd_1/duplicate');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ name: 'Webinar (copy)' });
+    request.flush({ id: 'prd_2' }, { status: 201, statusText: 'Created' });
+    await expect(result).resolves.toEqual({ id: 'prd_2' });
+  });
+
+  it('builds the export URL without a request', () => {
+    expect(api.exportUrl('prd_1')).toBe('/api/productions/prd_1/export');
+    http.expectNone(() => true);
+  });
+
+  it('uploads the file for the preview as a dry run and for the import, with progress', async () => {
+    api.xhrFactory = () => new FakeXhr() as unknown as XMLHttpRequest;
+    const file = new File(['PK'], 'Webinar.studioflow.zip', { type: 'application/zip' });
+    const fractions: (number | null)[] = [];
+
+    const preview = api.previewImport(file, { onProgress: (p) => fractions.push(p.fraction) });
+    const dryRun = FakeXhr.last as FakeXhr;
+    expect(dryRun.method).toBe('POST');
+    expect(dryRun.url).toBe('/api/productions/import?dryRun=true');
+    expect(dryRun.headers[CSRF_HEADER]).toBe('1');
+    expect((dryRun.body as FormData).get('file')).toBeInstanceOf(File);
+    dryRun.progress(25, 100);
+    dryRun.respond(200, '{"name":"Webinar","scenes":3}');
+    await expect(preview).resolves.toEqual({ name: 'Webinar', scenes: 3 });
+    expect(fractions).toEqual([0.25]);
+
+    const imported = api.importProduction(file);
+    const real = FakeXhr.last as FakeXhr;
+    expect(real).not.toBe(dryRun);
+    expect(real.url).toBe('/api/productions/import');
+    real.respond(201, '{"id":"prd_3","name":"Webinar"}');
+    await expect(imported).resolves.toEqual({ id: 'prd_3', name: 'Webinar' });
+  });
+
+  it('rejects a refused file with the code of the API', async () => {
+    api.xhrFactory = () => new FakeXhr() as unknown as XMLHttpRequest;
+    const result = api.previewImport(new File(['x'], 'a.zip'));
+    (FakeXhr.last as FakeXhr).respond(400, '{"code":"unsupported_format"}');
+    await expect(result).rejects.toMatchObject({ status: 400, code: 'unsupported_format' });
+  });
+
+  it('assigns a placeholder to a source and removes it', async () => {
+    const assigned = api.assignPlaceholder('prd_1', 'plh_1', { sourceId: 'dev_1/camera' });
+    const put = http.expectOne('/api/productions/prd_1/placeholders/plh_1/assignment');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ sourceId: 'dev_1/camera' });
+    put.flush({ scenes: 2, items: 3 });
+    await expect(assigned).resolves.toEqual({ scenes: 2, items: 3 });
+
+    const removed = api.removePlaceholder('prd_1', 'plh_1');
+    const del = http.expectOne('/api/productions/prd_1/placeholders/plh_1');
+    expect(del.request.method).toBe('DELETE');
+    del.flush({ scenes: 0, items: 0 });
+    await expect(removed).resolves.toEqual({ scenes: 0, items: 0 });
   });
 });
 

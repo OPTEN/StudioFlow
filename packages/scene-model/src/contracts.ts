@@ -14,6 +14,7 @@ export type {
   AllocateSlotRequest,
   AssetDto,
   AssetKind,
+  AssignPlaceholderRequest,
   AuditCategory,
   AuditEntryDto,
   AuditPageDto,
@@ -54,7 +55,12 @@ export type {
   DeviceState,
   DeviceTelemetryDto,
   DeviceTelemetryMessage,
+  DuplicateProductionRequest,
   HttpValidationProblemDetails,
+  ImportPlaceholderDto,
+  ImportPreviewDto,
+  ImportWarningCode,
+  ImportWarningDto,
   IncidentDto,
   IncidentKind,
   InviteDto,
@@ -74,6 +80,7 @@ export type {
   OutputState,
   OutputStatusDto,
   PairingMethod,
+  PlaceholderChangeDto,
   PairingRequestCreatedDto,
   PairingRequestDto,
   PairingRequestStatus,
@@ -101,6 +108,7 @@ export type {
   SlateDto,
   SlotState,
   SlotTelemetryDto,
+  SourcePlaceholderDto,
   SourceDto,
   SourceKind,
   SourceStatus,
@@ -132,6 +140,7 @@ export type SceneRemovedEvent = Api.ProductionEventSceneRemovedEvent;
 export type ScenesReorderedEvent = Api.ProductionEventScenesReorderedEvent;
 export type SourceUpsertedEvent = Api.ProductionEventSourceUpsertedEvent;
 export type SourceRemovedEvent = Api.ProductionEventSourceRemovedEvent;
+export type PlaceholderRemovedEvent = Api.ProductionEventPlaceholderRemovedEvent;
 export type DeviceUpsertedEvent = Api.ProductionEventDeviceUpsertedEvent;
 export type DeviceRemovedEvent = Api.ProductionEventDeviceRemovedEvent;
 export type AssetUpsertedEvent = Api.ProductionEventAssetUpsertedEvent;
@@ -198,6 +207,9 @@ export const ERROR_CODES = {
   setupCodeInvalid: 'setup_code_invalid',
   setupClosed: 'setup_closed',
   passwordIncorrect: 'password_incorrect',
+  invalidArchive: 'invalid_archive',
+  unsupportedFormat: 'unsupported_format',
+  archiveTooLarge: 'archive_too_large',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

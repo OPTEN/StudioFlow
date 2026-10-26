@@ -131,6 +131,21 @@ describe('toUserMessage', () => {
     expect(toUserMessage(new ApiError({ status: 418 }))).toBe('That did not work (error 418).');
   });
 
+  it('explains a refused production file in its own words, a 413 of a file too large included', () => {
+    expect(toUserMessage(new ApiError({ status: 413, code: 'archive_too_large' }))).toBe(
+      toUserMessage(new ApiError({ status: 0, code: 'archive_too_large' })),
+    );
+    expect(toUserMessage(new ApiError({ status: 413, code: 'archive_too_large' }))).not.toContain(
+      'Images may be at most',
+    );
+    expect(toUserMessage(new ApiError({ status: 400, code: 'invalid_archive' }))).toContain(
+      'StudioFlow',
+    );
+    expect(toUserMessage(new ApiError({ status: 400, code: 'unsupported_format' }))).toContain(
+      'newer',
+    );
+  });
+
   it('shows the server detail only for an unknown code without a text of its own', () => {
     expect(
       toUserMessage(new ApiError({ status: 418, code: 'teapot', detail: 'I am a teapot.' })),

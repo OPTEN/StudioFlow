@@ -30,6 +30,12 @@ export const errors = {
     'The setup code is not correct. After a restart the server shows a new one.',
   'errors.code.setup_closed': 'The first-run setup is already complete. Please sign in.',
   'errors.code.password_incorrect': 'The current password is not correct.',
+  'errors.code.invalid_archive':
+    'This file is not a valid StudioFlow export, or it is damaged. Nothing was imported.',
+  'errors.code.unsupported_format':
+    'This file was exported by a newer version of StudioFlow. Update this installation first. Nothing was imported.',
+  'errors.code.archive_too_large':
+    'This file is larger than this installation accepts. Nothing was imported.',
   'errors.code.network': 'No connection to the server. Please try again.',
   'errors.code.aborted': 'Cancelled.',
 

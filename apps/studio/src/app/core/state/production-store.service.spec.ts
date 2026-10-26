@@ -6,7 +6,9 @@ import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub
 import {
   deltaChanges,
   incidentFixture,
+  itemFixture,
   logFixture,
+  placeholderFixture,
   PRODUCTION_ID,
   productionFixture,
   sceneFixture,
@@ -104,6 +106,53 @@ describe('ProductionStoreService', () => {
     expect(store.canvasAspect()).toBe('720 / 1280');
     expect(store.production()?.canvas.format).toBe('portrait');
     expect(store.sceneById('scn_a')?.items).toEqual([]);
+  });
+
+  it('serves the placeholders of a copied production and names the items that point to them', async () => {
+    const k1 = placeholderFixture('K1', 'Stage phone');
+    const harness = await startStore(
+      hub,
+      snapshotFixture({
+        placeholders: [k1],
+        scenes: [sceneFixture('scn_a', 'Welcome', 0, [itemFixture('itm_1', k1.sourceId)])],
+      }),
+    );
+    const store = harness.store;
+    expect(store.placeholders()).toEqual([k1]);
+    expect(store.placeholderOf(k1.sourceId)).toEqual(k1);
+    expect(store.placeholderOf('dev_other/camera')).toBeNull();
+    expect(store.placeholderOf(null)).toBeNull();
+    expect(store.codeOf(k1.sourceId)).toBe('K1');
+    expect(store.sourceLabel(k1.sourceId)).toBe('Stage phone');
+    expect(store.sourceLabel('dev_other/camera')).toBe('Source missing');
+    expect(store.sourceById(k1.sourceId)).toBeNull();
+    expect(store.statusOf(k1.sourceId)).toBeUndefined();
+
+    harness.emitEvent({ type: 'placeholderRemoved', placeholderId: k1.id });
+    await harness.settle();
+    expect(store.placeholders()).toEqual([]);
+    expect(store.codeOf(k1.sourceId)).toBeUndefined();
+    expect(store.sourceLabel(k1.sourceId)).toBe('Source missing');
+  });
+
+  it('knows whether a scene shows a source, as an item or as a fallback', async () => {
+    const harness = await startStore(
+      hub,
+      snapshotFixture({
+        scenes: [
+          sceneFixture('scn_a', 'Welcome', 0, [
+            itemFixture('itm_1', 'dev_aaaaaaaaaaaaaaaa/camera', {
+              onLost: { holdMs: 0, fallbackSource: 'ast_fallback' },
+            }),
+          ]),
+          sceneFixture('scn_b', 'Break', 1),
+        ],
+      }),
+    );
+    const store = harness.store;
+    expect(store.isSourceUsed('dev_aaaaaaaaaaaaaaaa/camera')).toBe(true);
+    expect(store.isSourceUsed('ast_fallback')).toBe(true);
+    expect(store.isSourceUsed('dev_bbbbbbbbbbbbbbbb/screen-1')).toBe(false);
   });
 
   it('knows 1920 × 1080 before the first snapshot', () => {

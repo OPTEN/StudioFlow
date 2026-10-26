@@ -16,6 +16,7 @@ import type {
   ProductionSnapshot,
   SceneDto,
   SourceDto,
+  SourcePlaceholderDto,
 } from './contracts';
 
 /**
@@ -33,6 +34,11 @@ export interface ProductionState {
   readonly scenes: readonly SceneDto[];
   /** Sources by source reference (`{deviceId}/{slot}` or `{assetId}`). */
   readonly sources: ReadonlyMap<string, SourceDto>;
+  /**
+   * Device sources of the production this one was copied from that no source took over yet. Scene items point to them
+   * and show "Source missing". Empty for the output page, which never sees them.
+   */
+  readonly placeholders: readonly SourcePlaceholderDto[];
   readonly devices: ReadonlyMap<string, DeviceDto>;
   readonly assets: ReadonlyMap<string, AssetDto>;
   /** Pending knocks, oldest first. */
@@ -153,6 +159,7 @@ function stateFromBase(snapshot: SnapshotBase, receivedAtMs: number): Production
     production: snapshot.production,
     scenes: sortedScenes(snapshot.scenes),
     sources: toMap(snapshot.sources),
+    placeholders: [],
     devices: new Map(),
     assets: toMap(snapshot.assets),
     pairingRequests: [],
@@ -171,6 +178,7 @@ export function stateFromSnapshot(
 ): ProductionState {
   return {
     ...stateFromBase(snapshot, receivedAtMs),
+    placeholders: [...snapshot.placeholders],
     devices: toMap(snapshot.devices),
     pairingRequests: [...snapshot.pairingRequests].sort(comparePairingRequests),
     invites: [...snapshot.invites],
@@ -249,6 +257,8 @@ function reduceEvent(state: ProductionState, event: ProductionEvent): Production
       return { ...state, sources: mapWith(state.sources, event.source.id, event.source) };
     case 'sourceRemoved':
       return { ...state, sources: mapWithout(state.sources, event.sourceId) };
+    case 'placeholderRemoved':
+      return { ...state, placeholders: removeById(state.placeholders, event.placeholderId) };
     case 'deviceUpserted':
       return { ...state, devices: mapWith(state.devices, event.device.id, event.device) };
     case 'deviceRemoved':
