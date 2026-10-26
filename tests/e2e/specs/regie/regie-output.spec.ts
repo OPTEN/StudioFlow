@@ -103,7 +103,7 @@ test.describe('REGIE output popover', () => {
         await ipInput(pop).fill(text);
         await pop.getByRole('button', { name: 'Hinzufügen' }).click();
       };
-      const entries = () => pop.locator('.c-output-pop__ip .u-mono').allTextContents();
+      const entries = () => pop.locator('.c-output-link__ip .u-mono').allTextContents();
 
       // Invalid input: the message, nothing is added, nothing to save.
       for (const bad of [
@@ -154,7 +154,7 @@ test.describe('REGIE output popover', () => {
       await expect(pop).toBeHidden();
       const again = await openPopover(page);
       await expect
-        .poll(() => again.locator('.c-output-pop__ip .u-mono').allTextContents())
+        .poll(() => again.locator('.c-output-link__ip .u-mono').allTextContents())
         .toEqual(['10.0.0.42', '10.0.0.0/24']);
       // Removing everything and saving opens the output for every address again.
       await again.getByRole('button', { name: '10.0.0.42 entfernen' }).click();
@@ -184,7 +184,7 @@ test.describe('REGIE output popover', () => {
       expect(await output.slateText(), 'the output is not denied').not.toContain(DE.slateDenied);
 
       const save = async (list: string[]) => {
-        for (const entry of await pop.locator('.c-output-pop__ip .u-mono').allTextContents())
+        for (const entry of await pop.locator('.c-output-link__ip .u-mono').allTextContents())
           await pop.getByRole('button', { name: `${entry} entfernen` }).click();
         for (const entry of list) {
           await ipInput(pop).fill(entry);

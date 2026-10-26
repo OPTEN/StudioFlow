@@ -50,7 +50,7 @@ test.describe('LK tokens', () => {
     expect(studio.body.identity).toMatch(/^studio_[a-z2-7]{16}$/);
     expect(studioClaims['video']).toMatchObject({ roomJoin: true, room: production.id, canPublish: false, canSubscribe: true, canPublishData: false, hidden: true });
     // output: hidden subscriber named after the slug
-    expect(output.body.identity).toMatch(new RegExp(`^output_${production.slug}_[a-z2-7]{16}$`));
+    expect(output.body.identity).toMatch(new RegExp(`^output_${production.slug}_olk_[a-z2-7]{16}_[a-z2-7]{16}$`));
     expect(outputClaims['video']).toMatchObject({ roomJoin: true, room: production.id, canPublish: false, canSubscribe: true, canPublishData: false, hidden: true });
     // lifetime: spec 7 says a participant token lives 10 minutes (docs/testing.md says 2 h, see known-bugs.json DOC-03)
     for (const claims of [deviceClaims, studioClaims, outputClaims]) {
