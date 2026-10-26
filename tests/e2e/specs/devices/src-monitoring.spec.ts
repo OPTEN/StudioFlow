@@ -61,7 +61,7 @@ test(
     test.setTimeout(300_000);
     onCleanup(() => livekitCtl.clearNetem());
     const low = await livePhone({ openPhone }, pairContext, regie, 'Phone Battery', { profile: 'pixel7', init: (ctx) => installBatteryStub(ctx, 0.15, false) });
-    const normal = await livePhone({ openPhone }, pairContext, regie, 'Phone Normal', { profile: 'pixel7' });
+    const normal = await livePhone({ openPhone }, pairContext, regie, 'Phone Normal', { profile: 'pixel7', init: (ctx) => installBatteryStub(ctx, 0.8, false) });
     const laptop = await liveLaptop({ openLaptop }, pairContext, regie, 'Laptop Lea');
     const bare = await pairPhone(pairContext, { name: 'Phone without battery' });
     const fake = await new FakeStation(bare.credentials).connect({ camera: 'live' });

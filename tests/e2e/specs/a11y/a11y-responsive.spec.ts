@@ -374,7 +374,9 @@ test.describe('Regie responsive layout', () => {
       // scenes: a horizontal strip of 200 px cards
       const cards = await page.locator('button.c-scene').evaluateAll((buttons) => buttons.map((button) => { const r = button.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
       expect(cards, `${label}: seven scene cards`).toHaveLength(7);
-      expect(new Set(cards.map((card) => Math.round(card.y))).size, `${label}: the scene cards share one row`).toBe(1);
+      const rows = cards.map((card) => card.y);
+      // 2 px of tolerance: the cards sit on fractional pixels
+      expect(Math.max(...rows) - Math.min(...rows), `${label}: the scene cards share one row (y ${JSON.stringify(rows.map(Math.round))})`).toBeLessThanOrEqual(2);
       for (const [index, card] of cards.entries()) expect(card.w, `${label}: scene card ${index + 1} is 200 px wide`).toBeCloseTo(200, 0);
       const strip = await page.locator('sf-dock-slot[aria-label=Scenes] .c-dock-frame__body, sf-dock-slot[aria-label=Scenes] .c-scenes-dock__list').evaluateAll((elements) => elements.map((element) => ({ cls: element.className, scrollW: element.scrollWidth, clientW: element.clientWidth, overflowX: getComputedStyle(element).overflowX })));
       expect(strip.some((entry) => entry.scrollW > entry.clientW + 1 && /(auto|scroll)/.test(entry.overflowX)), `${label}: the scene strip scrolls horizontally inside its dock (${JSON.stringify(strip)})`).toBe(true);
