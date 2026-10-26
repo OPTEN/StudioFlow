@@ -99,7 +99,7 @@ export async function readPlaces(page: Page): Promise<Places> {
         health: text(button.querySelector('.c-scene__meta .c-state--bad, .c-scene__meta .c-state--warn')) || null,
         meta: text(button.querySelector('.c-scene__meta')),
       })),
-      sources: [...document.querySelectorAll('.c-src[role=listitem]')].map((row) => ({
+      sources: [...document.querySelectorAll('.c-src')].map((row) => ({
         code: text(row.querySelector('.c-code')),
         name: text(row.querySelector('.c-src__name')),
         state: text(row.querySelector('.c-src__state')),
