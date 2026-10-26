@@ -1,0 +1,18 @@
+// First-run setup: the login surface (login-page.component.scss is loaded first) plus the intro text and the code field.
+@use 'mixins' as *;
+
+.c-login__lead {
+  margin-bottom: 0;
+}
+
+.c-setup__intro {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+// The setup code is read off a log: capitals in the mono face, spaced out.
+.c-setup__code {
+  @include mono;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

@@ -21,12 +21,13 @@ import {
   PopoverTriggerDirective,
 } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
+import { ChangePasswordFormComponent } from './change-password-form.component';
 
 /** Id of the production menu popover. */
 export const PRODUCTION_POPOVER = 'production';
 
 /** Views of the production menu. */
-type MenuMode = 'menu' | 'rename' | 'slates' | 'create';
+type MenuMode = 'menu' | 'rename' | 'slates' | 'create' | 'password';
 
 function nameControl(): FormControl<string> {
   return new FormControl('', {
@@ -50,11 +51,18 @@ function textControl(required: boolean): FormControl<string> {
 
 /**
  * The production name in the header and its menu (spec 9.1): rename, edit the standby and end slates, switch to or
- * create another production (not while the broadcast is live) and sign out. Typed reactive forms for every input.
+ * create another production (not while the broadcast is live), change the password and sign out. Typed reactive forms
+ * for every input.
  */
 @Component({
   selector: 'sf-production-menu',
-  imports: [IconComponent, PopoverDirective, PopoverTriggerDirective, ReactiveFormsModule],
+  imports: [
+    ChangePasswordFormComponent,
+    IconComponent,
+    PopoverDirective,
+    PopoverTriggerDirective,
+    ReactiveFormsModule,
+  ],
   templateUrl: './production-menu.component.html',
   styleUrl: './production-menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -9,10 +9,18 @@ export type AuthStatus = 'unknown' | 'authenticated' | 'anonymous';
 
 /** Path of the login page. */
 export const LOGIN_PATH = '/login';
+/** Path of the first-run setup page. */
+export const SETUP_PATH = '/setup';
 
-/** Returns `next` when it is a safe in-app path (no scheme, no protocol-relative URL, not the login page). */
+/** Returns `next` when it is a safe in-app path (no scheme, no protocol-relative URL, not the login or setup page). */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith(LOGIN_PATH)) {
+  if (
+    !next ||
+    !next.startsWith('/') ||
+    next.startsWith('//') ||
+    next.startsWith(LOGIN_PATH) ||
+    next.startsWith(SETUP_PATH)
+  ) {
     return '/';
   }
   return next;
@@ -50,8 +58,7 @@ export class AuthService {
     this.pendingCheck ??= this.api
       .getSession()
       .then((session) => {
-        this.session.set(session);
-        this.status.set('authenticated');
+        this.startSession(session);
         return 'authenticated' as const;
       })
       .catch((error: unknown) => {
@@ -71,10 +78,35 @@ export class AuthService {
 
   /** Signs in. Rejects with an {@link ApiError} (401 wrong credentials, 429 lockout with `retryAfterSeconds`). */
   async login(username: string, password: string): Promise<SessionDto> {
-    const session = await this.api.login({ username, password });
-    this.session.set(session);
-    this.status.set('authenticated');
-    return session;
+    return this.startSession(await this.api.login({ username, password }));
+  }
+
+  /**
+   * Asks whether the first-run setup is open (no account exists yet). Null when the server cannot be reached, so a
+   * reload during a server restart neither opens the setup page nor hides it.
+   */
+  async fetchSetupRequired(): Promise<boolean | null> {
+    try {
+      return (await this.api.getSetupStatus()).setupRequired;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Creates the account in the first-run setup and signs it in. Rejects with an {@link ApiError}: 400 with the broken
+   * rules in the field errors, 403 wrong setup code, 409 setup already complete, 429 lockout.
+   */
+  async completeSetup(setupCode: string, username: string, password: string): Promise<SessionDto> {
+    return this.startSession(await this.api.completeSetup({ setupCode, username, password }));
+  }
+
+  /**
+   * Changes the password. The server ends every other session and renews the cookie of this one, so nothing changes
+   * here. Rejects with an {@link ApiError} (400 wrong current password or broken rule, 429 lockout).
+   */
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.api.changePassword({ currentPassword, newPassword });
   }
 
   /**
@@ -119,6 +151,12 @@ export class AuthService {
   onSignedOut(handler: () => void): () => void {
     this.signedOutHandlers.add(handler);
     return () => this.signedOutHandlers.delete(handler);
+  }
+
+  private startSession(session: SessionDto): SessionDto {
+    this.session.set(session);
+    this.status.set('authenticated');
+    return session;
   }
 
   /** Forgets the session and runs the sign-out handlers once (again only after a new sign-in or session check). */

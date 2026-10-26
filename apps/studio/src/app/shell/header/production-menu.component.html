@@ -149,6 +149,9 @@
             </div>
           </form>
         }
+        @case ('password') {
+          <sf-change-password-form (done)="mode.set('menu')" (cancelled)="mode.set('menu')" />
+        }
         @default {
           <div class="c-pop-h">{{ t('regie.header.production.dialog') }}</div>
           <button
@@ -203,6 +206,9 @@
             <svg sfIcon="plus"></svg>{{ t('regie.header.production.newMenu') }}
           </button>
           <div class="c-menu-sep"></div>
+          <button class="c-menu-item" type="button" (click)="show('password')">
+            <svg sfIcon="lock"></svg>{{ t('regie.account.change.menu') }}
+          </button>
           <button class="c-menu-item" type="button" (click)="logout()">
             <svg sfIcon="logout"></svg>{{ t('regie.header.production.signOut') }}
           </button>

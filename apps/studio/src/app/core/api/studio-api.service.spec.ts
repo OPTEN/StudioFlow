@@ -125,6 +125,38 @@ describe('StudioApiService', () => {
     await expect(result).resolves.toBeNull();
   });
 
+  it('asks for the first-run setup status without the CSRF header', async () => {
+    const result = api.getSetupStatus();
+    const request = http.expectOne('/api/auth/setup');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.headers.has(CSRF_HEADER)).toBe(false);
+    request.flush({ setupRequired: true });
+    await expect(result).resolves.toEqual({ setupRequired: true });
+  });
+
+  it('completes the first-run setup with code, username and password', async () => {
+    const result = api.completeSetup({ setupCode: 'K7QM-3XD2', username: 'regie', password: 'p' });
+    const request = http.expectOne('/api/auth/setup');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      setupCode: 'K7QM-3XD2',
+      username: 'regie',
+      password: 'p',
+    });
+    request.flush({ username: 'regie' });
+    await expect(result).resolves.toEqual({ username: 'regie' });
+  });
+
+  it('changes the password with the CSRF header and resolves void', async () => {
+    const result = api.changePassword({ currentPassword: 'old', newPassword: 'new' });
+    const request = http.expectOne('/api/auth/password');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ currentPassword: 'old', newPassword: 'new' });
+    expect(request.request.headers.get(CSRF_HEADER)).toBe('1');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(result).resolves.toBeNull();
+  });
+
   it('rejects with an ApiError carrying the problem code', async () => {
     const result = api.take('prd_1', { transition: { kind: 'cut', durationMs: 0 } });
     http

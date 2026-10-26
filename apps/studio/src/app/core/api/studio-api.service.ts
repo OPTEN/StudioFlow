@@ -79,6 +79,24 @@ export class StudioApiService {
     return this.call(this.http.get<ApiResult<'getSession'>>('/api/auth/me'));
   }
 
+  /** `GET /api/auth/setup`: whether the first-run setup is open (no account yet). Public. */
+  getSetupStatus(): Promise<ApiResult<'getSetupStatus'>> {
+    return this.call(this.http.get<ApiResult<'getSetupStatus'>>('/api/auth/setup'));
+  }
+
+  /**
+   * `POST /api/auth/setup`: creates the account and signs it in. 400 with the broken rules in the field errors,
+   * 403 wrong setup code, 409 setup already complete, 429 lockout.
+   */
+  completeSetup(body: ApiBody<'completeSetup'>): Promise<ApiResult<'completeSetup'>> {
+    return this.call(this.http.post<ApiResult<'completeSetup'>>('/api/auth/setup', body));
+  }
+
+  /** `POST /api/auth/password`: changes the password and ends every other session. 400 wrong current password or rule. */
+  changePassword(body: ApiBody<'changePassword'>): Promise<void> {
+    return this.call(this.http.post<void>('/api/auth/password', body));
+  }
+
   // ---------------------------------------------------------------- System
 
   /** `GET /api/system/info`: version and public base URL. */
