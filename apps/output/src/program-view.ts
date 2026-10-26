@@ -1,5 +1,7 @@
 import {
+  canvasOf,
   programScene,
+  type CanvasSize,
   type ProductionState,
   type SceneDto,
   type SlateDto,
@@ -11,7 +13,7 @@ import { noAccessSlate } from './slates';
 /** The renderer calls the view makes. */
 export type ProgramRenderer = Pick<
   SceneRenderer,
-  'show' | 'update' | 'transitionTo' | 'showSlate' | 'setPreloadScenes' | 'refresh'
+  'show' | 'update' | 'transitionTo' | 'showSlate' | 'setPreloadScenes' | 'refresh' | 'setCanvas'
 >;
 
 /** Slate for the broadcast state: standby slate before the start, end slate after the end, none while live. */
@@ -47,6 +49,8 @@ const NOTHING = Symbol('nothing');
 
 /**
  * Maps the production state to renderer calls (spec 9.3) and makes only the calls that change something:
+ * - the stage has the canvas of the production (format and resolution); a change reaches the renderer before the
+ *   rescaled scenes do;
  * - the program scene is always rendered (also under a slate, so going live only fades the slate out and the
  *   picture is already there); the first state and every catch-up after a reconnect are shown without transition,
  *   a live `programSwitched` plays its transition, changes of the shown scene are diffed in place (`update`);
@@ -59,6 +63,7 @@ const NOTHING = Symbol('nothing');
 export class ProgramView {
   #latest: ProductionState | null = null;
   #denied = false;
+  #canvas: CanvasSize | null = null;
   #scene: SceneDto | null | typeof NOTHING = NOTHING;
   #slateKey: string | null | typeof NOTHING = NOTHING;
   #preload: readonly SceneDto[] = [];
@@ -130,6 +135,7 @@ export class ProgramView {
   }
 
   #render(state: ProductionState, transition: TransitionDto | null): void {
+    this.#renderCanvas(state);
     this.#renderScene(programScene(state), transition);
     this.#renderSlate(slateFor(state));
     const preload = preloadScenesFor(state);
@@ -139,6 +145,14 @@ export class ProgramView {
     }
     this.#renderTexts(state);
     this.#rendered = true;
+  }
+
+  #renderCanvas(state: ProductionState): void {
+    const canvas = canvasOf(state.production);
+    if (canvas.width !== this.#canvas?.width || canvas.height !== this.#canvas.height) {
+      this.#canvas = canvas;
+      this.renderer.setCanvas(canvas);
+    }
   }
 
   #renderScene(scene: SceneDto | null, transition: TransitionDto | null): void {

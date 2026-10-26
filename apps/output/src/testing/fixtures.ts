@@ -196,6 +196,20 @@ export function productionChanged(
   return { type: 'productionChanged', production: production(overrides), revision };
 }
 
+/** The production changed its canvas; `scenes` are the rescaled scenes of the same revision. */
+export function canvasChanged(
+  revision: number,
+  canvas: ProductionDto['canvas'],
+  scenes: SceneDto[] = [],
+): ProductionEvent {
+  return {
+    type: 'productionCanvasChanged',
+    production: production({ canvas }),
+    scenes,
+    revision,
+  };
+}
+
 export function sceneUpserted(revision: number, upserted: SceneDto): ProductionEvent {
   return { type: 'sceneUpserted', scene: upserted, revision };
 }

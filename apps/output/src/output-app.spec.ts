@@ -1,4 +1,4 @@
-import { HUB, type OutputChangesDto, type OutputReport } from '@studioflow/scene-model';
+import { HUB, canvasDto, type OutputChangesDto, type OutputReport } from '@studioflow/scene-model';
 import type { ResilientHubOptions } from '@studioflow/realtime-client';
 import type { SceneRendererOptions } from '@studioflow/scene-renderer';
 import { ACCESS_RETRY_MS } from './access-guard';
@@ -14,6 +14,7 @@ import { REPORT_INTERVAL_MS, REST_REPORT_INTERVAL_MS } from './status-reporter';
 import { FakeHub, FakeRenderer, fakeApi, fakeMedia } from './testing/fakes';
 import {
   CAMERA,
+  canvasChanged,
   FADE,
   IMAGE,
   item,
@@ -163,6 +164,29 @@ describe('output app: boot', () => {
       'preload scn_b,scn_c',
     ]);
     expect(app.view.rendering).toBe(true);
+  });
+
+  it('draws the stage at the canvas of the production from the first snapshot', async () => {
+    const { renderer } = await boot();
+    expect(renderer.canvases).toEqual([{ width: 1920, height: 1080 }]);
+  });
+
+  it('follows a change of format live, with the rescaled scene of the same revision', async () => {
+    const { hub, renderer } = await boot();
+    renderer.reset();
+
+    hub.emit(
+      HUB.event,
+      canvasChanged(101, canvasDto('portrait', 'p1080'), [
+        scene('scn_a', 0, [item('itm_a1', CAMERA, { x: 0, y: 656, w: 1080, h: 608 })], {
+          version: 2,
+        }),
+      ]),
+    );
+    await flush();
+
+    expect(renderer.canvases.at(-1)).toEqual({ width: 1080, height: 1920 });
+    expect(renderer.summary()).toEqual(['update scn_a']);
   });
 
   it('creates the renderer in output mode with asset URLs that carry the key', async () => {
@@ -457,6 +481,7 @@ describe('output app: optional parts', () => {
     const text = document.querySelector('.c-debug')?.textContent ?? '';
     expect(text).toContain('Webinar · Scene “Scene A”');
     expect(text).toContain('Revision 100');
+    expect(text).toContain('Canvas 1920 × 1080 · 16:9 · 1080p');
     expect(text).toContain('Hub connected');
     expect(text).toContain('LiveKit connected');
     expect(text).toContain('K1 Handy Lea · 1280×720 · 30 fps · 1.5 Mbit/s');

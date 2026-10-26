@@ -1,5 +1,6 @@
 /*
- * Output page: one fixed 1920 × 1080 stage (scene renderer), letterboxed into the window or iframe.
+ * Output page: one stage of the size of the production's canvas (scene renderer, 1920 × 1080 by default), letterboxed
+ * into the window or iframe.
  * Fonts are self-hosted (spec 3, DESIGN.md “Font delivery”); Vite hashes them and the URLs work under /o/.
  * No `color-scheme` on purpose: an iframe whose colour scheme differs from its embedder gets an opaque backdrop in
  * Chromium, which would break ?bg=transparent.

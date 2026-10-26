@@ -493,6 +493,7 @@ export function startOutputApp(
       sceneName: scene?.name ?? null,
       broadcast: state?.production.broadcast ?? null,
       revision: state?.revision ?? null,
+      canvas: state?.production.canvas ?? null,
       hubState: hub.state,
       syncStatus: productionSync.status,
       mediaState: current?.session.state ?? null,

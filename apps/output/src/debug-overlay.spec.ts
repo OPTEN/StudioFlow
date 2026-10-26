@@ -1,3 +1,4 @@
+import { canvasDto } from '@studioflow/scene-model';
 import {
   DEBUG_REFRESH_MS,
   formatDebugLines,
@@ -10,6 +11,7 @@ const INFO: DebugInfo = {
   sceneName: 'Welcome',
   broadcast: 'live',
   revision: 1_761_127_200_000_123,
+  canvas: canvasDto('portrait', 'p1080'),
   hubState: 'connected',
   syncStatus: 'live',
   mediaState: 'connected',
@@ -38,6 +40,7 @@ describe('formatDebugLines', () => {
     expect(formatDebugLines(INFO)).toEqual([
       'Webinar · Scene “Welcome”',
       'Revision 1761127200000123 · Broadcast live',
+      'Canvas 1080 × 1920 · 9:16 · 1080p',
       'Hub connected · Sync up to date',
       'LiveKit connected',
       'Latency ≈ 62 ms · Renderer 60 fps',
@@ -52,6 +55,7 @@ describe('formatDebugLines', () => {
       sceneName: null,
       broadcast: null,
       revision: null,
+      canvas: null,
       hubState: 'reconnecting',
       syncStatus: 'offline',
       mediaState: null,
@@ -62,6 +66,7 @@ describe('formatDebugLines', () => {
     expect(lines).toEqual([
       'Unknown production · no scene',
       'Revision – · Broadcast –',
+      'Canvas unknown',
       'Hub reconnecting · Sync offline, last state',
       'LiveKit loading…',
       'Latency ≈ – · Renderer 0 fps',
@@ -73,7 +78,7 @@ describe('formatDebugLines', () => {
     const [line] = formatDebugLines({
       ...INFO,
       sources: [{ code: 'K2', label: null, availability: 'pending', stats: { width: 640 } }],
-    }).slice(5);
+    }).slice(6);
     expect(line).toBe('K2 · –×– · – fps · – Mbit/s · Loss – · Buffer – · no picture');
   });
 });

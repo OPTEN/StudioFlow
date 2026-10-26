@@ -1,9 +1,15 @@
-import { applyEvent, type ProductionEvent, type ProductionState } from '@studioflow/scene-model';
+import {
+  applyEvent,
+  canvasDto,
+  type ProductionEvent,
+  type ProductionState,
+} from '@studioflow/scene-model';
 import { preloadScenesFor, ProgramView, slateFor } from './program-view';
 import { noAccessSlate } from './slates';
 import { FakeRenderer } from './testing/fakes';
 import {
   CAMERA,
+  canvasChanged,
   deviceSource,
   FADE,
   IMAGE,
@@ -58,6 +64,50 @@ describe('preloadScenesFor', () => {
 });
 
 describe('ProgramView', () => {
+  it('gives the renderer the canvas of the production before it shows the scene', () => {
+    const { renderer, view } = setup();
+    view.apply(state({}, { canvas: canvasDto('portrait', 'p1080') }));
+    expect(renderer.canvases).toEqual([{ width: 1080, height: 1920 }]);
+    expect(renderer.summary()[0]).toBe('show scn_a');
+  });
+
+  it('tells the renderer about a changed canvas once, together with the rescaled scene', () => {
+    const { renderer, view } = setup();
+    let current = state();
+    view.apply(current);
+    renderer.reset();
+    const rescaled = scene(
+      'scn_a',
+      0,
+      [item('itm_a1', CAMERA, { x: 0, y: 656, w: 1080, h: 608 })],
+      {
+        version: 2,
+      },
+    );
+
+    current = next(
+      current,
+      canvasChanged(current.revision + 1, canvasDto('portrait', 'p1080'), [rescaled]),
+    );
+    view.apply(current);
+    view.apply(current);
+
+    expect(renderer.canvases).toEqual([
+      { width: 1920, height: 1080 },
+      { width: 1080, height: 1920 },
+    ]);
+    expect(renderer.summary()).toEqual(['update scn_a']);
+  });
+
+  it('does not touch the canvas for changes that keep it', () => {
+    const { renderer, view } = setup();
+    let current = state();
+    view.apply(current);
+    current = next(current, productionChanged(current.revision + 1, { name: 'Renamed' }));
+    view.apply(current);
+    expect(renderer.canvases).toHaveLength(1);
+  });
+
   it('shows the program scene under the standby slate on the first sync', () => {
     const { renderer, view } = setup();
     view.apply(state());

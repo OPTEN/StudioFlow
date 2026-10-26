@@ -1,10 +1,14 @@
 import { t } from '@studioflow/i18n';
 import {
+  canvasSizeLabel,
   formatDecimal,
   formatKbpsAsMbit,
+  formatRatioLabel,
   formatPercent,
   MISSING_VALUE,
+  resolutionLabel,
   type BroadcastState,
+  type CanvasDto,
 } from '@studioflow/scene-model';
 import type { HubState, SyncStatus } from '@studioflow/realtime-client';
 import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
@@ -33,6 +37,8 @@ export interface DebugInfo {
   readonly sceneName: string | null;
   readonly broadcast: BroadcastState | null;
   readonly revision: number | null;
+  /** The canvas of the production: what the stage is drawn at. */
+  readonly canvas: CanvasDto | null;
   readonly hubState: HubState;
   readonly syncStatus: SyncStatus;
   /** Null until livekit-client is loaded. */
@@ -83,6 +89,13 @@ export function formatDebugLines(info: DebugInfo): string[] {
   const lines = [
     `${info.productionName ?? t('output.debug.productionUnknown')} · ${scene}`,
     t('output.debug.revision', { revision: info.revision ?? MISSING_VALUE, state: broadcast }),
+    info.canvas === null
+      ? t('output.debug.canvasUnknown')
+      : t('output.debug.canvas', {
+          size: canvasSizeLabel(info.canvas),
+          format: formatRatioLabel(info.canvas.format),
+          resolution: resolutionLabel(info.canvas.resolution),
+        }),
     t('output.debug.connections', {
       hub: t(`output.debug.hub.${info.hubState}`),
       sync: t(`output.debug.sync.${info.syncStatus}`),
