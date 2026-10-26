@@ -78,6 +78,20 @@ decision deliberately: update this file and the code together.
 3. No timer or countdown here.
 4. No global overlays yet; text items live in scenes.
 
+Implementation details fixed with the work on #13 (spec 4.4, 8.3, 9.1):
+
+5. A text is a source of its own (kind `text`, code `T1`, id `txt_…`, stored with the production), shown by scene items
+   like a camera, so one lower third can be in several scenes and its content is edited in one place. Show and hide is the
+   item's `hidden` flag.
+6. A new text item starts **hidden**: the content is prepared before it goes on air, a typo never reaches the output by
+   accident. Showing and hiding is an operation, not an edit: it also works on the live scene in Studio Mode and leaves no
+   undo step.
+7. Deleting a text removes it from every scene (the Regie says how many); there is no `text_in_use` conflict like for media.
+8. The colours belong to the production (`textTheme`), not to a text; a contrast below 4.5 : 1 is a warning, never a block.
+9. Not built in this step, as the issue marks them optional: hiding a text automatically after N seconds, a list of entries
+   with "next" for one lower third, and a keyboard shortcut for show/hide (the digits are scenes and a hidden text has no
+   focus target). Follow-ups if the operators ask for them.
+
 ## #14 Duplicate and export/import
 
 1. Device items become placeholders.
