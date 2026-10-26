@@ -32,7 +32,7 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
 `OUT` output page · `NET` resilience and network · `DEV` devices, viewports, accessibility · `DOCK` dock layout and persistence · `MEDIA` assets · `OPS` operations ·
-`SYNC` realtime protocol and state model · `LK` LiveKit integration.
+`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds.
 
 Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1** must pass before a release (nightly full run); **P2** robustness and polish
 (weekly or on demand, a failure is a defect but not a blocker).
@@ -379,10 +379,11 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `OPS` Operations | 2 | 0 | 27 | 29 | 13 | 13 | 3 |
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
-| **Total** | **90** | **94** | **249** | **433** | **185** | **189** | **59** |
+| `TXT` Texts and lower thirds | 5 | 3 | 5 | 13 | 4 | 8 | 1 |
+| **Total** | **95** | **97** | **254** | **446** | **189** | **197** | **60** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds)
 
 ### 2.1 AUTH – Auth and security
 
@@ -945,7 +946,7 @@ Strings: knock card «{Name} möchte beitreten», «Steht derselbe Prüfcode auf
 - Expect: existing item elements and their `<video>` are the same DOM nodes (no re-creation, no `srcObject` reset), styles change in place, z-order follows the new array via order changes not re-creation, removed elements are detached once.
 
 **UNIT-SCENE-17** · P0 · vitest — Renderer: Auto-Grid availability and reflow
-- Steps: 4 camera items; statuses live → one `lost` inside hold time → one `lost` past hold → source back; media items; hidden item; call `setSourceStatuses()` / provider events.
+- Steps: 4 camera items; statuses live → one `lost` inside hold time → one `lost` past hold → source back; media items; hidden item; call `refresh()` / provider events.
 - Expect: arranged rectangles = `autoGridSlots(n)` with `n` = visible items whose source is live, or lost-inside-hold, or media; the dropped camera disappears from the grid when its hold expires (reflow to 3), returns to its item order position when back; `effectiveRects()` reports the computed rectangles per item id; geometry stored in the scene is untouched.
 
 **UNIT-SCENE-18** · P1 · ng — Editor math (studio)
@@ -2231,6 +2232,62 @@ API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when
 **E2E-LK-04** · P2 · pw (`@linux-netem`) — TCP fallback
 - Steps: drop UDP 7882 on the LiveKit container (`iptables -A INPUT -p udp --dport 7882 -j DROP` via the netshoot sidecar), start a sender.
 - Expect: media flows over TCP 7881, picture plays (higher latency recorded); removing the rule lets new sessions use UDP.
+
+### 2.14 TXT – Texts and lower thirds
+
+Issue #13. A text is a source (kind `text`, code `T1`, id `txt_…`) with two lines, one of three fixed styles (`lowerThird`, `title`, `note`) and an alignment; the colours (accent, background, text) belong to the production. Scene items show it; the item's `hidden` flag is the show/hide switch. The Regie of the E2E tests runs in English (`en-US`) in this area.
+
+**UNIT-TXT-01** · P0 · vitest (`scene-renderer.text.spec.ts`) — Text is drawn as HTML text, never interpreted
+- Steps: render items of texts with `<img src=x onerror=…>`, `<script>`, `"><svg onload=…>`, `&lt;b&gt;`, emoji sequences, Arabic and Hebrew, empty and malformed content, 120-character lines, a title with a long text, an unknown text; resize the item and the container; change the colours (valid, invalid, missing); `refresh()` after a content change; text in an Auto-Grid scene; replace a text by a camera on the same item.
+- Expect: the lines are set with `textContent` (no child elements, no `img`/`script` inside the item, `innerHTML` shows the escaped text); every line has `dir="auto"`; a lower third keeps both lines on one line with an ellipsis, a title wraps to two lines (`-webkit-line-clamp`), a word without spaces breaks (`overflow-wrap`); the font size follows the item height only (resizing the container changes the stage transform, not the font size); invalid colours fall back to the defaults; an empty or malformed text draws nothing and reports no error; `refresh()` rewrites only what changed and keeps the elements; an unknown text is "Source missing" on the monitor and nothing on the output; texts keep their own rectangle in the Auto-Grid.
+
+**UNIT-TXT-02** · P1 · vitest (`scene-renderer.text.spec.ts`, `presence.spec.ts`) — Show and hide animation
+- Steps: show a text of a new scene; toggle `hidden` with `update()` (show, hide, show–hide–show quickly); reduced motion; no Web Animations API; an animation that never reports its end; destroy while running.
+- Expect: the first state of a scene is set without animation (a scene cut or fade brings its texts along); a later change fades and slides for 300 ms (lower third from the left, title up, note down) and keeps the geometry until it has ended; every animation runs to completion (a new change finishes the running one first; a 100 ms safety timer ends one the browser does not report); with reduced motion or without the API the change is a cut; nothing is left behind (`opacity`, `transform`); the final state always equals the last `hidden`.
+
+**UNIT-TXT-03** · P1 · vitest (`packages/scene-model`, `packages/i18n`) — Text model
+- Steps: `TEXT_STYLES`, `defaultTextAlign`, `styleHasAlignment`, `textItemRect` (inside the safe margin), `contrastRatio`/`hasReadableContrast` (4.5 : 1 limit, `#767676`/`#777777` on white, invalid colours), `newItem` for a text, `parseSourceRef('txt_…')`, `applyLayoutTemplate` with a text, `LOG_MESSAGE_KEYS`, `countCharacters` (emoji sequence, flag, skin tone).
+- Expect: titles centre, the lower third ignores the alignment; a new text item is hidden, 0 corner radius and in the rectangle of its style; a text takes no template slot and keeps its geometry and a place in front; a theme with invalid colours is never "readable"; an emoji sequence counts once.
+
+**UNIT-TXT-04** · P0 · xunit (`TextSourceTests`) — Text validation
+- Steps: create and update with empty, whitespace, control characters, bidi overrides, line separators, a lone surrogate, 120/121 characters and 120/121 emoji, markup, Arabic/Hebrew/emoji, unknown style/alignment; 64 texts; colours `red`, `#fff`, `#ggg000`, `#ff000000`, empty; delete a text used by items in two scenes; a text as the fallback of a camera.
+- Expect: lines are trimmed and cleaned (control, bidi and line-separator characters removed, a lone surrogate becomes U+FFFD) and counted in text elements; markup and any Unicode text are kept literally; field errors name `line1`, `line2`, `style`, `align`, `textTheme.accent|background|foreground`; the 65th text is `limit_reached`; the freed code is reused; deleting removes the items from every scene and bumps their versions; a text cannot be a fallback source.
+
+**UNIT-TXT-05** · P1 · ng — Regie: Sources and Properties docks, editor service, production menu
+- Steps: "+ Source" menu (Texts group, three "New text" styles), create-and-add flow, rows of hidden texts, selection of a hidden text, show/hide on the live scene in Studio Mode, undo, the text editor (preview, counter, emoji count, empty first line, style/alignment, debounce, one request at a time, external change, delete confirmation, offline), the production colour form (hex fields, contrast warning at 4.4 and 4.5, invalid colour, reset, save).
+- Expect: a new text starts hidden, selected, in the rectangle of its style; a hidden text is selectable and shows the editor; show/hide of a text is allowed on the live scene in Studio Mode and records no undo step; typing is previewed at once and sent after 250 ms (or on blur/style/alignment), never while the first line is empty or a line is too long; the warning appears below 4.5 : 1 with the ratio rounded down; an invalid colour is not sent.
+
+**INT-TXT-01** · P1 · xunit (`TextServiceTests`) — Events, audit and log
+- Steps: create, update (same content, new content), delete a text used by two scenes; show and hide on the program scene, on another scene, through `ReplaceItems`, a camera; snapshot and output snapshot.
+- Expect: `sourceUpserted` (kind text, `text` content, status ok) for create/update, `sceneUpserted` per changed scene then `sourceRemoved` for delete; nothing for an unchanged update or a failed request; audit `text.created`/`text.deleted`; log "T1 “Name” created/deleted"; "T1 shown"/"T1 hidden" only when the visibility of a text of the program scene changes; the snapshot and the output snapshot carry the texts and the theme; the output sees the text events.
+
+**INT-TXT-02** · P0 · xunit (`TextApiTests`) — REST
+- Steps: `POST/PUT/DELETE /api/productions/{id}/texts`; invalid content; markup; unknown style; unknown production/text; 65 texts; parallel creates and updates; add an item of a text; `PATCH` with `textTheme`; no session, no CSRF header.
+- Expect: 201 with code `T1…`; 200/204; 400 `validation_failed` with field paths; markup stored as plain text; 404; 409 `limit_reached`; distinct codes and no lost update under parallel requests; a new text item is hidden; the theme validates and persists; 401/403 without session or CSRF header.
+
+**INT-TXT-03** · P0 · xunit (`TextApiTests`) — A show and a content change reach the output
+- Steps: output hub subscribed; toggle `hidden` of a text item; change the content.
+- Expect: `sceneUpserted` with the new flag and `sourceUpserted` with the new content arrive at the output within 2 s; the Regie hub gets the log entry "T1 shown".
+
+**E2E-TXT-01** · P1 · pw — Create, edit, show and hide a lower third
+- Steps: set the production colours by API; Regie in English; "+ Source" › "Lower third"; edit both lines; "Show"; edit line 1 while shown; "Hide"; read the output DOM and the stage pixels.
+- Expect: a hidden row `T1` with placeholder content and a preview that follows the typing; nothing on the output until "Show"; then within 2 s the text on the output (`.sf-r-text` with the typed lines, accent bar, background and letters in the production colours, no image or canvas); an edit changes the text of the same element (no recreation); "Hide" removes it and the scene shows again at the probed pixel.
+
+**E2E-TXT-02** · P1 · pw — Text editor and deletion
+- Steps: a shown text; select its row; style "Title"; alignment "Right"; empty line 1; "Delete text" and confirm.
+- Expect: counter "19 of 120"; the output follows style and alignment; an empty first line shows "Enter the first line." and nothing is sent; the confirmation names the scenes ("removed from 1 scene"); afterwards the row, the item and the output text are gone.
+
+**E2E-TXT-03** · P1 · pw — Production text colours
+- Steps: production menu › "Text colours…"; background `#ffffff`, text `#777777` and `#767676`; accent `orange`; accent `#00aa55`; save.
+- Expect: the warning "Contrast 4.4 : 1" at `#777777` and none at `#767676`; an invalid colour is refused and not sent; saving stores the theme and recolours the shown text on the output within 3 s.
+
+**E2E-TXT-04** · P1 · pw — Hostile and international text on the output
+- Steps: a text with `<img onerror>` and `<script>`, a 120-character second line, Arabic, Hebrew, emoji.
+- Expect: the markup is text (no element, `window.__pwned` stays undefined); the long line is cut with an ellipsis, not wrapped; right-to-left lines have `direction: rtl`; emoji sequences are shown.
+
+**E2E-TXT-05** · P2 · pw — Scales with the window
+- Steps: a lower third on the output; resize the window to 960 × 540 and 1920 × 1080.
+- Expect: the accent bar fills the same part of the stage at both sizes; the computed font size is a canvas value (61.2 px for a 180 px high item).
 
 ---
 

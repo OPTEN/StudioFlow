@@ -28,8 +28,8 @@ Implemented now (plan phases 0–2, everything that is software):
   battery), security review and runbook, Regie chat (short messages to devices).
 
 Prepared but not built (plan phases 3–4, confirmed as “later”): audio in StudioFlow (contracts and output page are
-audio-ready, no audio track is published), restream/recording (egress), Air mode (renderer + air room), overlays and
-lower thirds, multiview, Stream Deck, multi-tenancy UI (tenantId exists in the data model), auto-director,
+audio-ready, no audio track is published), restream/recording (egress), Air mode (renderer + air room), global
+overlays (texts and lower thirds exist, but live in scenes, 4.4), multiview, Stream Deck, multi-tenancy UI (tenantId exists in the data model), auto-director,
 greenscreen. Do not build them.
 
 ## 2. Repository layout and ownership
@@ -99,7 +99,10 @@ Secrets (device secret, output key, invite token, poll token) are 32 random byte
 Fields: id, tenantId (`opten`), name (1–80), slug (lowercase `[a-z0-9-]{1,48}`, unique per tenant, derived from the
 name on creation), isActive (exactly one active production per tenant), broadcast (standby | live | ended),
 liveSince, endedAt, programSceneId, previewSceneId, lastTransition, lastSwitchAt, standbySlate (default “Starting soon”,
-subtitle = production name), endSlate (default “Thanks for watching”), output key (+ createdAt), allowedIps, createdAt.
+subtitle = production name), endSlate (default “Thanks for watching”), textTheme (accent, background and text colour of
+all texts, `#rrggbb`, default `#1f6feb` / `#0d1117` / `#ffffff`, changed with `PATCH` and sent with the production),
+output key (+ createdAt), allowedIps, createdAt. The texts of the production (4.4) are stored with it (`text_sources`,
+`jsonb`).
 
 On first start the API creates the default production “Webinar” (slug `webinar`, active) with three scenes:
 “Welcome” (empty, layout free), “Presentation” (empty), “Break” (empty) – program = first scene, broadcast standby.
@@ -171,6 +174,31 @@ Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `s
 screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`).
 `DELETE /api/device/slots/{slot}` removes the source (the sender's “Remove”); a screen share that merely ended
 keeps its slot (state ended) so the Regie can ask for a reshare and the picture returns to the same place.
+
+**Texts and lower thirds** (issue #13, decisions «#13») are the fourth kind of source: kind `text`, code `T1`, `T2` …,
+source reference `txt_…` (16 base32 characters like the other ids). A text is `TextSourceDto { id, code, line1,
+line2?, style, align }` and reaches the clients inside `SourceDto.text` (label = line 1, status always `ok`), so a
+content change is a plain `sourceUpserted` and the output needs no other event.
+- Content: line 1 is required, line 2 optional, each 1–120 / 0–120 text elements (an emoji sequence counts once). Lines are trimmed and
+  cleaned: control characters, bidi formatting characters, line and paragraph separators are removed and a lone
+  surrogate becomes U+FFFD. Any other Unicode text and any markup is kept as typed; it is never interpreted (the renderer
+  creates text nodes only). Style: `lowerThird` (bar at the bottom left: name and role), `title` (large, centred) or
+  `note` (small, in a corner). Alignment `left | center | right` applies to title and note; the lower third follows the
+  reading direction of each line (right-to-left names sit at the right edge of the bar). Titles start centred.
+- Limits: 64 texts per production (`limit_reached`). Fixed fonts: the built-in Sofia Sans, no custom fonts, no timer, no global overlay.
+- API (all `Admin`, CSRF): `POST …/texts` (201 `TextSourceDto`), `PUT …/texts/{textId}` (replaces the content), `DELETE …/texts/{textId}`
+  (204). Deleting removes the text from every scene in the same mutation (`sceneUpserted` per changed scene, then
+  `sourceRemoved`); there is no `text_in_use` conflict, unlike for media. The production colours are `textTheme` of `PATCH …/productions/{id}`.
+- Items: a text is placed like any item (move, scale, layer). A new text item gets the rectangle of its style (lower
+  third 960 × 180 at 80/820, title 1600 × 300 at 160/390, note 540 × 96 at 1320/60: inside the safe margin), radius 0 and
+  **starts hidden**, so the content is prepared before it goes on air. Showing and hiding is the item's `hidden` flag
+  (`PUT …/items/{itemId}` as for every item), also on the live scene. Crop, fit, border, rotation and “On failure” do not apply
+  to a text; a text cannot be the fallback source of another item.
+- Auto grid: texts overlay the picture, they take no cell and keep their own rectangle. Layout templates skip texts the same way.
+- Audit and log: `text.created`, `text.deleted` (log “T1 “Mia Meier” created”), and “T1 shown” / “T1 hidden” whenever a
+  text item of the program scene changes its `hidden` flag (any route: item update, replace, undo).
+- Not built (decisions «#13»): custom fonts, timer/countdown, global overlays, auto-hide after N seconds and a quick-switch list of
+  entries per lower third.
 
 ### 4.5 Source status (server, in memory, see `SourceStatus`)
 
@@ -534,6 +562,8 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
 - `layout-templates.ts`: `LAYOUT_TEMPLATES` (id, name, slots), `autoGridSlots(count)`,
   `applyLayoutTemplate(items, templateId, kindOf: (sourceId) => SourceKind | undefined)` →
   `{ items, layoutMode }`.
+- `text.ts`: `TEXT_STYLES`, `TEXT_LIMITS`, `DEFAULT_TEXT_THEME`, `defaultTextAlign`, `styleHasAlignment`, `textItemRect(style)` (the
+  rectangle of a new text item), `contrastRatio` / `hasReadableContrast` (WCAG 2, limit 4.5 : 1, `MIN_TEXT_CONTRAST`).
 - `geometry.ts`: `clampItem(item)`, `validateItem(item)` → list of messages (resolved through `@studioflow/i18n`), `itemDefaults(source, kind)`,
   `rectsIntersect`, `CanvasRect` helpers.
 - `production-state.ts`: immutable `ProductionState` (revision, serverOffsetMs, production, scenes ordered,
@@ -588,7 +618,7 @@ interface SceneRenderer {
                                               // a new transition finishes a running fade instantly first
   showSlate(slate: SlateDto | null, assetUrl?: string | null): void;   // standby/end slate above everything (fade 300 ms)
   setPreloadScenes(scenes: readonly SceneDto[]): void;  // output: request LOW quality for their sources
-  setSourceStatuses(): void;                   // re-read statusOf for alerts
+  refresh(): void;                             // re-read statusOf, textOf and textTheme (sources or colours changed)
   effectiveRects(): ReadonlyMap<string, CanvasRect>;    // per item id, after Auto grid (for the edit overlay)
   stats(): { fps: number; items: number; videos: number };
   destroy(): void;
@@ -607,6 +637,23 @@ mode, a down source additionally gets a dashed outline (amber `#e3b341` reconnec
 filled label tab like the prototype. Desired sizes: each renderer reports the on-screen pixel size of every device
 source it shows (×devicePixelRatio, rounded to 16 px) via `provider.setDesiredSize`. Auto grid as in 4.3.
 Fades use the Web Animations API on opacity (new scene layer over old), `reducedMotion` turns fades into cuts.
+
+Texts (issue #13): an item whose source is `txt_…` is drawn as HTML by `text-block.ts`, never as a picture: sharp at every
+output resolution and scaled with the stage. The options `textOf(sourceId)` and `textTheme()` supply the content and the
+production colours; `refresh()` reads them again. The three lines of DOM are `.sf-r-text` (panel, background colour, padding),
+`.sf-r-text-accent` (bar at the start edge, or the rule below a title) and `.sf-r-text-line1` / `-line2`; lines are set with
+`textContent` only and carry `dir="auto"` and `unicode-bidi: plaintext`, so right-to-left text and emoji render correctly
+(font stack: Sofia Sans, then the system emoji fonts). All sizes are fractions of the item height in canvas pixels
+(`METRICS` per style), so the text scales with the item and the canvas and with nothing else. Long text: the lines of a lower
+third and a note stay on one line and end in an ellipsis; a title wraps to two lines (`-webkit-line-clamp`) and its second
+line stays on one; words without spaces break (`overflow-wrap: anywhere`); what still does not fit is clipped by the item.
+Invalid colours fall back to the defaults; an empty or unknown text draws nothing (the monitor says “Source missing”).
+Showing and hiding: the first state of a scene is set without animation (the text travels with its scene); a later change
+of `hidden` fades and slides the text for 300 ms (`DEFAULT_FADE_MS`; lower third from the left, title up, note down),
+keeps the item's last rectangle until the animation has ended, and always runs to completion (a newer change finishes a
+running animation first, a safety timer ends one the browser never reports); `reducedMotion` and a missing Web Animations
+API make it a cut. The Regie and the output start the animation when the event arrives, so both last the same time.
+Texts keep their own rectangle in an Auto grid scene.
 
 ### 8.4 `@studioflow/media-client` (livekit-client)
 
@@ -666,6 +713,21 @@ Properties offers “Bring to front” and “Send to back” next to “Bring f
 the monitor (dragging there moves the element). Editing: drag, corner resize (aspect ratio locked, Shift frees),
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
+
+Texts in the Regie (issue #13): “+ Source” lists the texts that are not in the scene (group “Texts”) and “New text” with the
+three styles; a new text is created with placeholder content (“Name” / “Role”, “Title”, “Note”) and added to the scene
+hidden and selected. A text row has the text icon, its code (T1) and its first line, no lamp, and the usual eye button:
+show and hide act at once and, unlike every other edit, also on the live scene in Studio Mode (no undo step, the row stays
+selected). A hidden text can be selected, so it can be prepared. For a selected text the Properties dock shows the text
+editor above position, size and layer: a live preview (the real renderer, the production colours, the item's rectangle,
+on a neutral ground, whether the text is shown or not), the show/hide button with its state, style, line 1 and line 2
+with a counter (user-perceived characters, “19 of 120”), alignment (title and note) and “Delete text” (dashed
+confirmation naming the number of scenes). Typing is previewed at once and sent after 250 ms (at once on leaving a
+field or choosing a style); one request at a time, the newest state wins; an empty first line or a line over 120
+characters is not sent; a change from another Regie replaces the fields unless something was typed. The production menu
+has “Text colours…”: three colour pickers with hex fields (`#rrggbb`), a sample, the warning “Contrast 4.4 : 1 …” below
+4.5 : 1 (the ratio is rounded down so it never reads 4.5), “Reset to defaults” and Save. There is no keyboard shortcut
+for show/hide: the digits are scenes and a hidden text has no focus target; the eye button is reachable with Tab.
 Studio Mode and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
 `studioflow.transition`; the language setting is `studioflow.locale`, shared with the sender; the appearance is
 `studioflow.theme` = `dark` | `light` | `system`, absent means dark, and applies to the Regie, `/monitoring` and the login
@@ -695,7 +757,8 @@ Design: same tokens as the Regie, large touch targets (≥ 44 px), works from 32
 
 ### 9.3 Output (`apps/output`, Vanilla TS + Vite, base `/o/`)
 
-`/o/{slug}?k=…[&bg=transparent][&debug=1][&lang=de-CH]`. No controls, no text except slates and hold messages (English
+`/o/{slug}?k=…[&bg=transparent][&debug=1][&lang=de-CH]`. No controls, no text except slates, hold messages and the
+texts of the scenes (content and colours from the synced state, the production's `textTheme`; English
 by default; `lang` selects `en` or `de-CH`, otherwise the browser language decides; the output ignores the stored
 setting). Boot: read slug
 and key, subscribe via output hub (`ProductionSync`), get a LiveKit token, start `MediaSession` (output role) and
