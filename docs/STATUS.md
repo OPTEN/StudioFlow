@@ -95,7 +95,6 @@ image no longer ships `gosu` (critical CVE in its Go runtime).
 - #13: in Studio Mode a text of the program scene can only be shown/hidden through the preview.
 - `apps/output/src/latency-probe.spec.ts` timed out once under load.
 - `stack.sh up` smoke H-STACK-01 timed out at 60 s under heavy machine load.
-- The Regie menu and the output `?debug=1` overlay do not show the API version yet (#18 follow-up).
 
 ## Known open bugs
 
