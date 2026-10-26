@@ -14,6 +14,10 @@ export interface SizeCall {
 export class FakeProvider implements SourceMediaProvider {
   readonly attachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> = [];
   readonly detachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> = [];
+  readonly assetAttachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> =
+    [];
+  readonly assetDetachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> =
+    [];
   readonly sizeCalls: SizeCall[] = [];
   readonly urls = new Map<string, string>();
   private readonly registrations = new Map<string, Set<HTMLVideoElement>>();
@@ -31,6 +35,14 @@ export class FakeProvider implements SourceMediaProvider {
   detach(sourceId: string, video: HTMLVideoElement): void {
     this.detachCalls.push({ sourceId, video });
     this.registrations.get(sourceId)?.delete(video);
+  }
+
+  attachAsset(sourceId: string, video: HTMLVideoElement): void {
+    this.assetAttachCalls.push({ sourceId, video });
+  }
+
+  detachAsset(sourceId: string, video: HTMLVideoElement): void {
+    this.assetDetachCalls.push({ sourceId, video });
   }
 
   availability(sourceId: string): SourceAvailability {

@@ -54,6 +54,14 @@ export interface SourceMediaProvider {
   setDesiredSize(sourceId: string, consumerId: string, size: DesiredSize | null): void;
   /** Absolute or relative URL for an image or video asset, or null if unknown. */
   assetUrl(assetId: string): string | null;
+  /**
+   * Optional: a looping `<video>` started to show a video asset (`sourceId` is the asset id). The audio mix takes the
+   * sound of the asset from this element, which stays muted so every browser lets it autoplay; the picture and the
+   * sound therefore start, loop and stop together.
+   */
+  attachAsset?(sourceId: string, video: HTMLVideoElement): void;
+  /** Optional: the element no longer shows the asset (counterpart of {@link attachAsset}). */
+  detachAsset?(sourceId: string, video: HTMLVideoElement): void;
 }
 
 /** Health a monitor uses to draw alert outlines and labels (Regie only). */

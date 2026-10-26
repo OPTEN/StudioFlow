@@ -88,11 +88,14 @@ export class MediaView {
         host.guard(() => host.provider.attach(source.sourceId, video));
         break;
       }
-      case 'video':
-        this.element = this.video = createAssetVideo(host.doc);
-        this.loader = new AssetLoader(this.video);
+      case 'video': {
+        const video = createAssetVideo(host.doc);
+        this.element = this.video = video;
+        this.loader = new AssetLoader(video);
         this.loader.load(source.url);
+        host.guard(() => host.provider.attachAsset?.(source.sourceId, video));
         break;
+      }
       case 'image':
         this.element = createImage(host.doc, 'sf-r-media sf-r-media--image', MEDIA_STYLES);
         this.video = null;
@@ -123,6 +126,7 @@ export class MediaView {
       this.host.guard(() => this.host.provider.detach(this.source.sourceId, video));
     } else if (video) {
       this.host.guard(() => {
+        this.host.provider.detachAsset?.(this.source.sourceId, video);
         video.pause();
         video.removeAttribute('src');
         video.load();
