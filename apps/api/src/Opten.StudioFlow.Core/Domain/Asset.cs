@@ -50,11 +50,18 @@ public sealed class Asset
 
     /// <summary>Creates an asset for stored content.</summary>
     public static Asset Create(string id, string productionId, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now, IEnumerable<string> codesInUse) =>
+        Create(id, productionId, SlotCodes.Allocate(SourceKind.Image, codesInUse), name, kind, contentType, sizeBytes, width, height, fileName, now);
+
+    /// <summary>
+    /// Creates an asset with a given slot code: the copy of a production keeps the codes of the original, so M2 stays M2
+    /// (the caller makes sure the codes are unique).
+    /// </summary>
+    public static Asset Create(string id, string productionId, string code, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now) =>
         new()
         {
             Id = id,
             ProductionId = productionId,
-            Code = SlotCodes.Allocate(SourceKind.Image, codesInUse),
+            Code = code,
             Kind = kind,
             Name = TextRules.RequireName(name, TextRules.NameMax, "name"),
             ContentType = contentType,

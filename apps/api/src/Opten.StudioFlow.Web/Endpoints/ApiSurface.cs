@@ -27,6 +27,7 @@ internal static class ApiSurface
         MapProductions(Admin(app.MapGroup("/api/productions").WithTags("Productions")));
         MapScenes(Admin(app.MapGroup("/api/productions/{productionId}/scenes").WithTags("Scenes")));
         MapTexts(Admin(app.MapGroup("/api/productions/{productionId}/texts").WithTags("Texts")));
+        MapPlaceholders(Admin(app.MapGroup("/api/productions/{productionId}/placeholders").WithTags("Placeholders")));
         MapDevices(Admin(app.MapGroup("/api/productions/{productionId}/devices").WithTags("Devices")));
         MapPairingAdmin(Admin(app.MapGroup("/api/productions/{productionId}/pairing").WithTags("Pairing")));
         MapAssets(Admin(app.MapGroup("/api/productions/{productionId}/assets").WithTags("Assets")));
@@ -96,6 +97,28 @@ internal static class ApiSurface
             .Produces<LiveKitTokenDto>();
         g.MapGet("/{productionId}/telemetry", ProductionEndpoints.GetTelemetryAsync).WithName("getTelemetry")
             .Produces<IReadOnlyList<DeviceTelemetryMessage>>();
+
+        // Duplicate, export and import (issue #14). The original is only read, so a live production can be copied. Neither
+        // result becomes the active production.
+        g.MapPost("/{productionId}/duplicate", ProductionEndpoints.DuplicateAsync).WithName("duplicateProduction")
+            .Produces<ProductionDto>(201).ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
+        g.MapGet("/{productionId}/export", ProductionEndpoints.ExportAsync).WithName("exportProduction")
+            .Produces(200, contentType: "application/zip").ProducesProblem(404).ProducesProblem(409);
+
+        // A ZIP file with the production and its media in the form field "file": answers 201 with the new production, or with
+        // ?dryRun=true 200 with what the import would do and nothing stored. 400 invalid_archive / unsupported_format, 409
+        // limit_reached, 413 archive_too_large, 415 unsupported_media for a medium of a type that is not allowed.
+        g.MapPost("/import", ProductionEndpoints.ImportAsync).WithName("importProduction").DisableAntiforgery()
+            .Produces<ProductionDto>(201).Produces<ImportPreviewDto>().ProducesValidationProblem().ProducesProblem(409).ProducesProblem(413).ProducesProblem(415)
+            .WithMetadata(RequestBodyLimit.Import).WithFormOptions(multipartBodyLengthLimit: long.MaxValue);
+    }
+
+    private static void MapPlaceholders(RouteGroupBuilder g)
+    {
+        g.MapPut("/{placeholderId}/assignment", PlaceholderEndpoints.AssignAsync).WithName("assignPlaceholder")
+            .Produces<PlaceholderChangeDto>().ProducesValidationProblem().ProducesProblem(404);
+        g.MapDelete("/{placeholderId}", PlaceholderEndpoints.RemoveAsync).WithName("removePlaceholder")
+            .Produces<PlaceholderChangeDto>().ProducesProblem(404);
     }
 
     private static void MapScenes(RouteGroupBuilder g)

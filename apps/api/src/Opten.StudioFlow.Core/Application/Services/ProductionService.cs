@@ -46,6 +46,7 @@ public sealed class ProductionService(
         {
             await using var unit = data.Create();
             var existing = await unit.Productions.ListAsync(cancellationToken);
+            RequireRoomForAnother(existing);
             var slugs = existing.Select(p => p.Slug).ToHashSet(StringComparer.Ordinal);
             var slug = Slugs.MakeUnique(Slugs.FromName(name), slugs.Contains);
             var now = clock.StorageNow();
@@ -64,6 +65,39 @@ public sealed class ProductionService(
         finally
         {
             tenantGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Runs a change that creates a production (a duplicate, an import) under the lock of the tenant, so its slug and name
+    /// are unique even when two productions are created at the same moment.
+    /// </summary>
+    public async Task<T> CreateExclusivelyAsync<T>(Func<IReadOnlyList<Production>, Task<T>> create, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(create);
+        await tenantGate.WaitAsync(cancellationToken);
+        try
+        {
+            IReadOnlyList<Production> existing;
+            await using (var unit = data.Create())
+            {
+                existing = await unit.Productions.ListAsync(cancellationToken);
+            }
+
+            RequireRoomForAnother(existing);
+            return await create(existing);
+        }
+        finally
+        {
+            tenantGate.Release();
+        }
+    }
+
+    private static void RequireRoomForAnother(IReadOnlyList<Production> existing)
+    {
+        if (existing.Count >= Production.MaxPerTenant)
+        {
+            throw StudioFlowException.LimitReached($"An installation can have at most {Production.MaxPerTenant} productions.");
         }
     }
 

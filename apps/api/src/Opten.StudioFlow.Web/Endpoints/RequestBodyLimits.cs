@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.Extensions.Options;
+using Opten.StudioFlow.Core.Application;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure.Media;
 using Opten.StudioFlow.Web.Errors;
@@ -9,22 +10,26 @@ using Opten.StudioFlow.Web.Errors;
 namespace Opten.StudioFlow.Web.Endpoints;
 
 /// <summary>Endpoint metadata that raises the request body limit (spec 5: JSON ≤ 256 KB, bandwidth test ≤ 4 MB, uploads).</summary>
-/// <param name="MaxBytes">Limit for this endpoint; ignored for uploads.</param>
+/// <param name="MaxBytes">Limit for this endpoint; ignored for uploads and imports.</param>
 /// <param name="IsUpload">Asset upload: the limit follows <see cref="MediaOptions.MaxBytes"/> and slow uploads are tolerated.</param>
-internal sealed record RequestBodyLimit(long MaxBytes, bool IsUpload = false)
+/// <param name="IsImport">Import of a production: the limit follows <see cref="TransferOptions.MaxImportBytes"/> and slow uploads are tolerated.</param>
+internal sealed record RequestBodyLimit(long MaxBytes, bool IsUpload = false, bool IsImport = false)
 {
     /// <summary>Default limit of every other request.</summary>
     public const long DefaultBytes = 256 * 1024;
 
     /// <summary>The asset upload.</summary>
     public static RequestBodyLimit Upload { get; } = new(0, IsUpload: true);
+
+    /// <summary>The import of a production (a ZIP file with its media).</summary>
+    public static RequestBodyLimit Import { get; } = new(0, IsImport: true);
 }
 
 /// <summary>
 /// Applies the body limit of the matched endpoint: requests that announce a larger body get 413 at once, Kestrel stops
 /// reading beyond the limit, and only the upload accepts a slow minimum data rate (phones on weak Wi-Fi).
 /// </summary>
-internal sealed class RequestBodyLimitMiddleware(RequestDelegate next, IOptions<MediaOptions> media)
+internal sealed class RequestBodyLimitMiddleware(RequestDelegate next, IOptions<MediaOptions> media, TransferOptions transfer)
 {
     // Multipart boundaries and part headers around the file.
     private const long MultipartOverhead = 1024 * 1024;
@@ -37,11 +42,18 @@ internal sealed class RequestBodyLimitMiddleware(RequestDelegate next, IOptions<
         var limit = metadata switch
         {
             { IsUpload: true } => media.Value.MaxBytes + MultipartOverhead,
+            { IsImport: true } => transfer.MaxImportBytes + MultipartOverhead,
             { } explicitLimit => explicitLimit.MaxBytes,
             null => RequestBodyLimit.DefaultBytes,
         };
         if (context.Request.ContentLength > limit)
         {
+            if (metadata?.IsImport == true)
+            {
+                await Problems.WriteAsync(context, StatusCodes.Status413PayloadTooLarge, ErrorCodes.ArchiveTooLarge, "The file is larger than this installation accepts.");
+                return;
+            }
+
             await Problems.WriteAsync(context, StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "The request is too large.");
             return;
         }
@@ -51,7 +63,7 @@ internal sealed class RequestBodyLimitMiddleware(RequestDelegate next, IOptions<
             size.MaxRequestBodySize = limit;
         }
 
-        if (metadata?.IsUpload == true && context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is { } rate)
+        if (metadata is { IsUpload: true } or { IsImport: true } && context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is { } rate)
         {
             rate.MinDataRate = SlowUploadRate;
         }

@@ -372,6 +372,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/productions/{productionId}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["duplicateProduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportProduction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["importProduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/scenes": {
         parameters: {
             query?: never;
@@ -495,6 +543,38 @@ export interface paths {
         put: operations["updateText"];
         post?: never;
         delete: operations["deleteText"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/placeholders/{placeholderId}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["assignPlaceholder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/placeholders/{placeholderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["removePlaceholder"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1139,6 +1219,11 @@ export interface components {
          * @enum {unknown}
          */
         AssetKind: "image" | "video";
+        /** @description Assigns a placeholder to a source: every scene item that shows the placeholder shows the source from now on. */
+        AssignPlaceholderRequest: {
+            /** @description The source: a device slot, an image or a video. A text cannot take the place of a camera. */
+            sourceId: string;
+        };
         /**
          * @description What an entry of the audit log is about: the category filter of the log view and a column of the export.
          * @enum {unknown}
@@ -1612,6 +1697,11 @@ export interface components {
             deviceId: string;
             telemetry: components["schemas"]["DeviceTelemetryDto"];
         };
+        /** @description Request to duplicate a production. */
+        DuplicateProductionRequest: {
+            /** @description Name of the copy; “{name} (copy)” when missing. A name that is taken gets “ (2)”, “ (3)” … appended. */
+            name: null | string;
+        };
         HttpValidationProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -1625,6 +1715,60 @@ export interface components {
         };
         /** Format: binary */
         IFormFile: string;
+        /** @description A device source of the imported production, which becomes a placeholder. */
+        ImportPlaceholderDto: {
+            /** @description Slot code. */
+            code: string;
+            /** @description Camera or screen. */
+            kind: components["schemas"]["SourceKind"];
+            /** @description Name of the source, or null. */
+            label: null | string;
+        };
+        /** @description What an import would do; the answer of `POST /api/productions/import?dryRun=true`. Nothing is stored. */
+        ImportPreviewDto: {
+            /** @description Name the production would get (with “ (2)” appended when the name is taken). */
+            name: string;
+            /** @description Version of StudioFlow that wrote the file. */
+            appVersion: string;
+            /**
+             * Format: int32
+             * @description Number of scenes.
+             */
+            scenes: number;
+            /**
+             * Format: int32
+             * @description Number of texts and lower thirds.
+             */
+            texts: number;
+            /**
+             * Format: int32
+             * @description Number of media files (images and videos).
+             */
+            media: number;
+            /**
+             * Format: int64
+             * @description Size of the media files together.
+             */
+            mediaBytes: number;
+            /** @description The device sources that become placeholders. */
+            placeholders: components["schemas"]["ImportPlaceholderDto"][];
+            /** @description What the operator should know before importing. */
+            warnings: components["schemas"]["ImportWarningDto"][];
+        };
+        /**
+         * @description What an ImportWarningDto reports.
+         * @enum {unknown}
+         */
+        ImportWarningCode: "nameChanged" | "placeholders";
+        /** @description A warning of the import preview. Clients show their own text for the code. */
+        ImportWarningDto: {
+            /** @description What the warning is about. */
+            code: components["schemas"]["ImportWarningCode"];
+            /** @description Values for the text of the code, keyed in camelCase. */
+            params: {
+                [key: string]: string;
+            };
+        };
         /** @description An incident in the message strip. Recovered incidents stay until someone acknowledges them (“Seen”). */
         IncidentDto: {
             /** @description Incident id. */
@@ -1701,7 +1845,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -1930,6 +2074,19 @@ export interface components {
             status: components["schemas"]["PairingRequestStatus"];
             credentials: null | components["schemas"]["DeviceCredentialsDto"];
         };
+        /** @description What assigning or removing a placeholder changed. */
+        PlaceholderChangeDto: {
+            /**
+             * Format: int32
+             * @description Scenes that changed.
+             */
+            scenes: number;
+            /**
+             * Format: int32
+             * @description Scene items that show the source now (assigned) or were removed (removed).
+             */
+            items: number;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -2000,7 +2157,7 @@ export interface components {
          *     Clients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync
          *     (new snapshot), a smaller revision is ignored.
          */
-        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProductionCanvasChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
+        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProductionCanvasChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventPlaceholderRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
         /** @description An asset was deleted. */
         ProductionEventAssetRemovedEvent: {
             /** @enum {string} */
@@ -2128,6 +2285,17 @@ export interface components {
             /** @enum {string} */
             type: "pairingRequestUpserted";
             request: components["schemas"]["PairingRequestDto"];
+            /**
+             * Format: int64
+             * @description Revision after this change.
+             */
+            revision: number;
+        };
+        /** @description A placeholder was assigned to a source or removed. The scenes that changed arrive as `sceneUpserted` before it. */
+        ProductionEventPlaceholderRemovedEvent: {
+            /** @enum {string} */
+            type: "placeholderRemoved";
+            placeholderId: string;
             /**
              * Format: int64
              * @description Revision after this change.
@@ -2268,6 +2436,8 @@ export interface components {
             scenes: components["schemas"]["SceneDto"][];
             /** @description All sources with health. */
             sources: components["schemas"]["SourceDto"][];
+            /** @description Device sources of the production this one was copied from, not assigned yet. */
+            placeholders: components["schemas"]["SourcePlaceholderDto"][];
             /** @description All paired devices. */
             devices: components["schemas"]["DeviceDto"][];
             /** @description Uploaded media. */
@@ -2509,6 +2679,25 @@ export interface components {
          */
         SourceKind: "camera" | "screen" | "image" | "video" | "text";
         /**
+         * @description A device source of the production this one was copied from (duplicate or import). Devices belong to one production
+         *     and are paired anew, so the copy keeps the place of the source as a placeholder: scene items point to
+         *     SourceId, which no device has, so they show “Source missing” until the placeholder is assigned to a
+         *     source (`PUT …/placeholders/{id}/assignment`), typically the new device that takes over the role, “Use as K1 ·
+         *     Stage phone”. A placeholder keeps its code, so no new source takes it.
+         */
+        SourcePlaceholderDto: {
+            /** @description Placeholder id, e.g. `plh_9x2k…`. */
+            id: string;
+            /** @description The source reference scene items use: `{deviceId}/{slot}` of a device that does not exist. */
+            sourceId: string;
+            /** @description Slot code of the original source: K1… for cameras, S1… for screens. */
+            code: string;
+            /** @description Camera or screen. */
+            kind: components["schemas"]["SourceKind"];
+            /** @description Name of the original source (“Stage phone”), or null when the copy did not know it. */
+            label: null | string;
+        };
+        /**
          * @description Health of a source as shown in the Regie (lamps, washes, message strip).
          * @enum {unknown}
          */
@@ -2655,6 +2844,7 @@ export type AddSceneItemRequest = components['schemas']['AddSceneItemRequest'];
 export type AllocateSlotRequest = components['schemas']['AllocateSlotRequest'];
 export type AssetDto = components['schemas']['AssetDto'];
 export type AssetKind = components['schemas']['AssetKind'];
+export type AssignPlaceholderRequest = components['schemas']['AssignPlaceholderRequest'];
 export type AuditCategory = components['schemas']['AuditCategory'];
 export type AuditEntryDto = components['schemas']['AuditEntryDto'];
 export type AuditPageDto = components['schemas']['AuditPageDto'];
@@ -2696,8 +2886,13 @@ export type DeviceSlotDto = components['schemas']['DeviceSlotDto'];
 export type DeviceState = components['schemas']['DeviceState'];
 export type DeviceTelemetryDto = components['schemas']['DeviceTelemetryDto'];
 export type DeviceTelemetryMessage = components['schemas']['DeviceTelemetryMessage'];
+export type DuplicateProductionRequest = components['schemas']['DuplicateProductionRequest'];
 export type HttpValidationProblemDetails = components['schemas']['HttpValidationProblemDetails'];
 export type IFormFile = components['schemas']['IFormFile'];
+export type ImportPlaceholderDto = components['schemas']['ImportPlaceholderDto'];
+export type ImportPreviewDto = components['schemas']['ImportPreviewDto'];
+export type ImportWarningCode = components['schemas']['ImportWarningCode'];
+export type ImportWarningDto = components['schemas']['ImportWarningDto'];
 export type IncidentDto = components['schemas']['IncidentDto'];
 export type IncidentKind = components['schemas']['IncidentKind'];
 export type InviteDto = components['schemas']['InviteDto'];
@@ -2721,6 +2916,7 @@ export type PairingRequestCreatedDto = components['schemas']['PairingRequestCrea
 export type PairingRequestDto = components['schemas']['PairingRequestDto'];
 export type PairingRequestStatus = components['schemas']['PairingRequestStatus'];
 export type PairingRequestStatusDto = components['schemas']['PairingRequestStatusDto'];
+export type PlaceholderChangeDto = components['schemas']['PlaceholderChangeDto'];
 export type ProblemDetails = components['schemas']['ProblemDetails'];
 export type ProductionChangesDto = components['schemas']['ProductionChangesDto'];
 export type ProductionDto = components['schemas']['ProductionDto'];
@@ -2737,6 +2933,7 @@ export type ProductionEventLogAppendedEvent = components['schemas']['ProductionE
 export type ProductionEventOutputStatusChangedEvent = components['schemas']['ProductionEventOutputStatusChangedEvent'];
 export type ProductionEventPairingRequestRemovedEvent = components['schemas']['ProductionEventPairingRequestRemovedEvent'];
 export type ProductionEventPairingRequestUpsertedEvent = components['schemas']['ProductionEventPairingRequestUpsertedEvent'];
+export type ProductionEventPlaceholderRemovedEvent = components['schemas']['ProductionEventPlaceholderRemovedEvent'];
 export type ProductionEventProductionCanvasChangedEvent = components['schemas']['ProductionEventProductionCanvasChangedEvent'];
 export type ProductionEventProductionChangedEvent = components['schemas']['ProductionEventProductionChangedEvent'];
 export type ProductionEventProgramSwitchedEvent = components['schemas']['ProductionEventProgramSwitchedEvent'];
@@ -2769,6 +2966,7 @@ export type SlotState = components['schemas']['SlotState'];
 export type SlotTelemetryDto = components['schemas']['SlotTelemetryDto'];
 export type SourceDto = components['schemas']['SourceDto'];
 export type SourceKind = components['schemas']['SourceKind'];
+export type SourcePlaceholderDto = components['schemas']['SourcePlaceholderDto'];
 export type SourceStatus = components['schemas']['SourceStatus'];
 export type SwitchProgramRequest = components['schemas']['SwitchProgramRequest'];
 export type SystemInfoDto = components['schemas']['SystemInfoDto'];
@@ -3614,6 +3812,170 @@ export interface operations {
             };
         };
     };
+    duplicateProduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateProductionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    exportProduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    importProduction: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     createScene: {
         parameters: {
             query?: never;
@@ -4132,6 +4494,83 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    assignPlaceholder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                placeholderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignPlaceholderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceholderChangeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    removePlaceholder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                placeholderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceholderChangeDto"];
+                };
             };
             /** @description Not Found */
             404: {

@@ -105,6 +105,24 @@ public static class SourceMonitor
         context.Emit(revision => new SourceUpsertedEvent(revision, dto));
     }
 
+    /// <summary>
+    /// A slot took over the code of a placeholder: the health (and an incident) keep their state with the new code, and the
+    /// source reaches the clients again.
+    /// </summary>
+    public static void Recoded(MutationContext context, Device device, DeviceSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(slot);
+        if (context.Runtime.Sources.TryGetValue(device.SourceIdOf(slot), out var health) && health.Recode(slot.Code) is { } incident)
+        {
+            context.Emit(revision => new IncidentUpsertedEvent(revision, incident));
+        }
+
+        var dto = SourceOf(context.Runtime, device, slot);
+        context.Emit(revision => new SourceUpsertedEvent(revision, dto));
+    }
+
     /// <summary>Emits <c>sourceUpserted</c> for every slot (labels changed after a rename; the output sees these).</summary>
     public static void PublishSources(MutationContext context, Device device)
     {

@@ -34,6 +34,7 @@ internal sealed class StartupInitializer(
     IOptions<DatabaseOptions> database,
     IOptions<BackupOptions> backup,
     IOptions<AuditOptions> audit,
+    IOptions<TransferOptions> transfer,
     ILogger<StartupInitializer> logger) : IHostedService
 {
     /// <summary>Keys of <c>Admin:</c> that older versions used for the account.</summary>
@@ -43,7 +44,7 @@ internal sealed class StartupInitializer(
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
         _ = (admin.Value, liveKit.Value, media.Value, studio.Value);
-        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value);
+        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value, transfer.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         await account.RefreshAsync(cancellationToken);

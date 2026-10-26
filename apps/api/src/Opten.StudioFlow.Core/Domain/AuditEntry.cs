@@ -35,6 +35,21 @@ public static class AuditActions
     /// <summary>A production became the active one.</summary>
     public const string ProductionActivated = "production.activated";
 
+    /// <summary>A production was created as a copy of another one.</summary>
+    public const string ProductionDuplicated = "production.duplicated";
+
+    /// <summary>A production was exported as a file.</summary>
+    public const string ProductionExported = "production.exported";
+
+    /// <summary>A production was imported from a file.</summary>
+    public const string ProductionImported = "production.imported";
+
+    /// <summary>A placeholder was assigned to a source.</summary>
+    public const string PlaceholderAssigned = "placeholder.assigned";
+
+    /// <summary>A placeholder was removed together with its scene items.</summary>
+    public const string PlaceholderRemoved = "placeholder.removed";
+
     /// <summary>The broadcast was reset to standby.</summary>
     public const string BroadcastReset = "broadcast.reset";
 
@@ -195,6 +210,9 @@ public static class AuditDetails
 
     /// <summary>The canvas after a change.</summary>
     public const string To = "to";
+
+    /// <summary>The source a placeholder was assigned to (slot code and name, e.g. <c>K3 Phone 1</c>).</summary>
+    public const string Target = "target";
 
     /// <summary>Kind of the lens a phone camera switched to (<c>Front</c>, <c>UltraWide</c>, <c>Standard</c>, <c>Tele</c>, <c>Other</c>).</summary>
     public const string Lens = "lens";

@@ -10,6 +10,12 @@ namespace Opten.StudioFlow.Core.Domain;
 /// <param name="At">Time of the change.</param>
 public sealed record ProgramChange(string? ProgramSceneId, string? PreviewSceneId, string? PreviousProgramSceneId, TransitionDto Transition, DateTimeOffset At);
 
+/// <summary>Result of assigning a placeholder to a source or removing it.</summary>
+/// <param name="Placeholder">The placeholder that is gone now.</param>
+/// <param name="Scenes">The scenes that changed (their version is incremented), in list order.</param>
+/// <param name="Items">Scene items that show the source now or were removed.</param>
+public sealed record PlaceholderChange(SourcePlaceholderDto Placeholder, IReadOnlyList<Scene> Scenes, int Items);
+
 /// <summary>
 /// A production (OBS: scene collection), the aggregate root of scenes and switching state (spec 4.2).
 /// </summary>
@@ -20,6 +26,9 @@ public sealed class Production
 
     /// <summary>Maximum number of scenes per production.</summary>
     public const int MaxScenes = 99;
+
+    /// <summary>Maximum number of productions of the installation; duplicating and importing stop here (<c>limit_reached</c>).</summary>
+    public const int MaxPerTenant = 100;
 
     /// <summary>Names of the scenes every new production starts with.</summary>
     public static IReadOnlyList<string> DefaultSceneNames { get; } = ["Welcome", "Presentation", "Break"];
@@ -80,6 +89,12 @@ public sealed class Production
     /// <summary>Texts and lower thirds of the production (source kind text), in creation order.</summary>
     public IReadOnlyList<TextSourceDto> TextSources { get; private set; } = [];
 
+    /// <summary>
+    /// Device sources of the production this one was copied from that no source took over yet (issue #14). Scene items
+    /// point to them and show “Source missing”; their codes are reserved.
+    /// </summary>
+    public IReadOnlyList<SourcePlaceholderDto> Placeholders { get; private set; } = [];
+
     /// <summary>Aspect ratio of the output canvas.</summary>
     public CanvasFormat CanvasFormat { get; private set; } = Canvases.DefaultFormat;
 
@@ -138,6 +153,47 @@ public sealed class Production
         }
 
         production.ProgramSceneId = production.OrderedScenes[0].Id;
+        return production;
+    }
+
+    /// <summary>
+    /// A production that is built from an export (duplicate, import; see <see cref="Transfer.TransferPlan"/>): the
+    /// content is validated already and carries its new ids. It starts in standby with the first scene on air, never active,
+    /// without a preview.
+    /// </summary>
+    internal static Production Restore(
+        string id,
+        string name,
+        string slug,
+        DateTimeOffset now,
+        CanvasFormat format,
+        CanvasResolution resolution,
+        SlateDto standbySlate,
+        SlateDto endSlate,
+        TextThemeDto textTheme,
+        IReadOnlyList<TextSourceDto> texts,
+        IReadOnlyList<SourcePlaceholderDto> placeholders,
+        IEnumerable<Scene> restoredScenes)
+    {
+        var production = new Production
+        {
+            Id = id,
+            Name = name,
+            Slug = slug,
+            IsActive = false,
+            Broadcast = BroadcastState.Standby,
+            CanvasFormat = format,
+            CanvasResolution = resolution,
+            StandbySlate = standbySlate,
+            EndSlate = endSlate,
+            TextTheme = textTheme,
+            TextSources = texts,
+            Placeholders = placeholders,
+            CreatedAt = now,
+        };
+        production.scenes.AddRange(restoredScenes);
+        var ordered = production.OrderedScenes;
+        production.ProgramSceneId = ordered.Count > 0 ? ordered[0].Id : null;
         return production;
     }
 
@@ -461,6 +517,51 @@ public sealed class Production
         var changed = scenes.Where(s => s.RemoveItemsOf(text.Id)).OrderBy(s => s.SortOrder).ToList();
         TextSources = [.. TextSources.Where(t => !ReferenceEquals(t, text))];
         return (text, changed);
+    }
+
+    /// <summary>The placeholder with the given id, or a <c>not_found</c> error.</summary>
+    public SourcePlaceholderDto GetPlaceholder(string placeholderId) =>
+        Placeholders.FirstOrDefault(p => string.Equals(p.Id, placeholderId, StringComparison.Ordinal)) ?? throw StudioFlowException.NotFound("Placeholder");
+
+    /// <summary>True when an item or a fallback of any scene shows the source.</summary>
+    public bool UsesSource(string sourceId) => scenes.Any(s => s.UsesSource(sourceId));
+
+    /// <summary>
+    /// Assigns a placeholder to a source: every item that shows the placeholder shows the source from now on, in every scene,
+    /// and the placeholder is gone. The source must exist and cannot be a text (<c>validation_failed</c>).
+    /// </summary>
+    public PlaceholderChange AssignPlaceholder(string placeholderId, string? sourceId, SourceCatalog catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var placeholder = GetPlaceholder(placeholderId);
+        var target = sourceId is null ? null : catalog.Find(sourceId);
+        if (target is null || target.Kind == SourceKind.Text)
+        {
+            throw StudioFlowException.Invalid("sourceId", "Choose a camera, a screen or a medium that exists.");
+        }
+
+        return Resolve(placeholder, target.Id);
+    }
+
+    /// <summary>Removes a placeholder together with every item that shows it and every fallback that names it.</summary>
+    public PlaceholderChange RemovePlaceholder(string placeholderId) => Resolve(GetPlaceholder(placeholderId), null);
+
+    private PlaceholderChange Resolve(SourcePlaceholderDto placeholder, string? sourceId)
+    {
+        var changed = new List<Scene>();
+        var items = 0;
+        foreach (var scene in OrderedScenes)
+        {
+            var (sceneChanged, count) = scene.ReplaceSource(placeholder.SourceId, sourceId);
+            if (sceneChanged)
+            {
+                changed.Add(scene);
+                items += count;
+            }
+        }
+
+        Placeholders = [.. Placeholders.Where(p => !ReferenceEquals(p, placeholder))];
+        return new PlaceholderChange(placeholder, changed, items);
     }
 
     private static SlateDto? ValidateSlate(SlateDto slate, string path, ValidationErrors errors, SourceCatalog catalog)

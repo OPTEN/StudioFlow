@@ -1027,6 +1027,216 @@
         }
       }
     },
+    "/api/productions/{productionId}/duplicate": {
+      "post": {
+        "tags": [
+          "Productions"
+        ],
+        "operationId": "duplicateProduction",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateProductionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/export": {
+      "get": {
+        "tags": [
+          "Productions"
+        ],
+        "operationId": "exportProduction",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/import": {
+      "post": {
+        "tags": [
+          "Productions"
+        ],
+        "operationId": "importProduction",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/scenes": {
       "post": {
         "tags": [
@@ -1772,6 +1982,122 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/placeholders/{placeholderId}/assignment": {
+      "put": {
+        "tags": [
+          "Placeholders"
+        ],
+        "operationId": "assignPlaceholder",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "placeholderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignPlaceholderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceholderChangeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/placeholders/{placeholderId}": {
+      "delete": {
+        "tags": [
+          "Placeholders"
+        ],
+        "operationId": "removePlaceholder",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "placeholderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceholderChangeDto"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -4013,6 +4339,19 @@
         ],
         "description": "Kind of an uploaded media asset."
       },
+      "AssignPlaceholderRequest": {
+        "required": [
+          "sourceId"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "description": "The source: a device slot, an image or a video. A text cannot take the place of a camera."
+          }
+        },
+        "description": "Assigns a placeholder to a source: every scene item that shows the placeholder shows the source from now on."
+      },
       "AuditCategory": {
         "enum": [
           "production",
@@ -5254,6 +5593,22 @@
         },
         "description": "Telemetry push to the Regie; not revisioned."
       },
+      "DuplicateProductionRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Name of the copy; “{name} (copy)” when missing. A name that is taken gets “ (2)”, “ (3)” … appended."
+          }
+        },
+        "description": "Request to duplicate a production."
+      },
       "HttpValidationProblemDetails": {
         "type": "object",
         "properties": {
@@ -5302,6 +5657,118 @@
       "IFormFile": {
         "type": "string",
         "format": "binary"
+      },
+      "ImportPlaceholderDto": {
+        "required": [
+          "code",
+          "kind",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Slot code."
+          },
+          "kind": {
+            "description": "Camera or screen.",
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Name of the source, or null."
+          }
+        },
+        "description": "A device source of the imported production, which becomes a placeholder."
+      },
+      "ImportPreviewDto": {
+        "required": [
+          "name",
+          "appVersion",
+          "scenes",
+          "texts",
+          "media",
+          "mediaBytes",
+          "placeholders",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name the production would get (with “ (2)” appended when the name is taken)."
+          },
+          "appVersion": {
+            "type": "string",
+            "description": "Version of StudioFlow that wrote the file."
+          },
+          "scenes": {
+            "type": "integer",
+            "description": "Number of scenes.",
+            "format": "int32"
+          },
+          "texts": {
+            "type": "integer",
+            "description": "Number of texts and lower thirds.",
+            "format": "int32"
+          },
+          "media": {
+            "type": "integer",
+            "description": "Number of media files (images and videos).",
+            "format": "int32"
+          },
+          "mediaBytes": {
+            "type": "integer",
+            "description": "Size of the media files together.",
+            "format": "int64"
+          },
+          "placeholders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportPlaceholderDto"
+            },
+            "description": "The device sources that become placeholders."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportWarningDto"
+            },
+            "description": "What the operator should know before importing."
+          }
+        },
+        "description": "What an import would do; the answer of `POST /api/productions/import?dryRun=true`. Nothing is stored."
+      },
+      "ImportWarningCode": {
+        "enum": [
+          "nameChanged",
+          "placeholders"
+        ],
+        "description": "What an ImportWarningDto reports."
+      },
+      "ImportWarningDto": {
+        "required": [
+          "code",
+          "params"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "description": "What the warning is about.",
+            "$ref": "#/components/schemas/ImportWarningCode"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Values for the text of the code, keyed in camelCase."
+          }
+        },
+        "description": "A warning of the import preview. Clients show their own text for the code."
       },
       "IncidentDto": {
         "required": [
@@ -5477,6 +5944,11 @@
           "productionCreated",
           "productionRenamed",
           "canvasChanged",
+          "productionDuplicated",
+          "productionExported",
+          "productionImported",
+          "placeholderAssigned",
+          "placeholderRemoved",
           "productionActivated",
           "broadcastReset",
           "standbySlateChanged",
@@ -6007,6 +6479,26 @@
         },
         "description": "Poll result for a knock. Credentials are present once the Regie approved."
       },
+      "PlaceholderChangeDto": {
+        "required": [
+          "scenes",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "scenes": {
+            "type": "integer",
+            "description": "Scenes that changed.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "integer",
+            "description": "Scene items that show the source now (assigned) or were removed (removed).",
+            "format": "int32"
+          }
+        },
+        "description": "What assigning or removing a placeholder changed."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -6224,6 +6716,9 @@
             "$ref": "#/components/schemas/ProductionEventSourceRemovedEvent"
           },
           {
+            "$ref": "#/components/schemas/ProductionEventPlaceholderRemovedEvent"
+          },
+          {
             "$ref": "#/components/schemas/ProductionEventDeviceUpsertedEvent"
           },
           {
@@ -6275,6 +6770,7 @@
             "scenesReordered": "#/components/schemas/ProductionEventScenesReorderedEvent",
             "sourceUpserted": "#/components/schemas/ProductionEventSourceUpsertedEvent",
             "sourceRemoved": "#/components/schemas/ProductionEventSourceRemovedEvent",
+            "placeholderRemoved": "#/components/schemas/ProductionEventPlaceholderRemovedEvent",
             "deviceUpserted": "#/components/schemas/ProductionEventDeviceUpsertedEvent",
             "deviceRemoved": "#/components/schemas/ProductionEventDeviceRemovedEvent",
             "assetUpserted": "#/components/schemas/ProductionEventAssetUpsertedEvent",
@@ -6583,6 +7079,30 @@
         },
         "description": "A device knocked on /join."
       },
+      "ProductionEventPlaceholderRemovedEvent": {
+        "required": [
+          "placeholderId",
+          "revision",
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "placeholderRemoved"
+            ],
+            "type": "string"
+          },
+          "placeholderId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Revision after this change.",
+            "format": "int64"
+          }
+        },
+        "description": "A placeholder was assigned to a source or removed. The scenes that changed arrive as `sceneUpserted` before it."
+      },
       "ProductionEventProductionCanvasChangedEvent": {
         "required": [
           "production",
@@ -6845,6 +7365,7 @@
           "production",
           "scenes",
           "sources",
+          "placeholders",
           "devices",
           "assets",
           "pairingRequests",
@@ -6883,6 +7404,13 @@
               "$ref": "#/components/schemas/SourceDto"
             },
             "description": "All sources with health."
+          },
+          "placeholders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourcePlaceholderDto"
+            },
+            "description": "Device sources of the production this one was copied from, not assigned yet."
           },
           "devices": {
             "type": "array",
@@ -7527,6 +8055,42 @@
         ],
         "description": "Kind of a source."
       },
+      "SourcePlaceholderDto": {
+        "required": [
+          "id",
+          "sourceId",
+          "code",
+          "kind",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Placeholder id, e.g. `plh_9x2k…`."
+          },
+          "sourceId": {
+            "type": "string",
+            "description": "The source reference scene items use: `{deviceId}/{slot}` of a device that does not exist."
+          },
+          "code": {
+            "type": "string",
+            "description": "Slot code of the original source: K1… for cameras, S1… for screens."
+          },
+          "kind": {
+            "description": "Camera or screen.",
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Name of the original source (“Stage phone”), or null when the copy did not know it."
+          }
+        },
+        "description": "A device source of the production this one was copied from (duplicate or import). Devices belong to one production\nand are paired anew, so the copy keeps the place of the source as a placeholder: scene items point to\nSourceId, which no device has, so they show “Source missing” until the placeholder is assigned to a\nsource (`PUT …/placeholders/{id}/assignment`), typically the new device that takes over the role, “Use as K1 ·\nStage phone”. A placeholder keeps its code, so no new source takes it."
+      },
       "SourceStatus": {
         "enum": [
           "ok",
@@ -7933,6 +8497,9 @@
     },
     {
       "name": "Texts"
+    },
+    {
+      "name": "Placeholders"
     },
     {
       "name": "Devices"

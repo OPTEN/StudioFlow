@@ -103,6 +103,61 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
         }
     }
 
+    public Stream? OpenRead(string productionId, string fileName)
+    {
+        var path = PathOf(productionId, fileName);
+        try
+        {
+            // FileShare.Delete: deleting the medium while it is read does not fail either side (on Windows hosts as well).
+            return path is null ? null : new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, CopyBufferSize, useAsync: true);
+        }
+        catch (FileNotFoundException)
+        {
+            return null;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    public async Task<string> CopyAsync(string productionId, string assetId, string extension, Stream content, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var folder = FolderOf(productionId);
+        var fileName = assetId + extension;
+        if (PathOf(productionId, fileName) is not { } finalPath)
+        {
+            throw new ArgumentException("Invalid asset id or extension.", nameof(assetId));
+        }
+
+        Directory.CreateDirectory(folder);
+        var tempPath = finalPath + ".part";
+        try
+        {
+            await using (var file = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, CopyBufferSize, useAsync: true))
+            {
+                await content.CopyToAsync(file, CopyBufferSize, cancellationToken);
+            }
+
+            File.Move(tempPath, finalPath);
+            return fileName;
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    public void DeleteProduction(string productionId)
+    {
+        var folder = FolderOf(productionId);
+        if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     private static StudioFlowException TooLarge(MediaType type) => new(
         ErrorKind.PayloadTooLarge,
         ErrorCodes.UnsupportedMedia,

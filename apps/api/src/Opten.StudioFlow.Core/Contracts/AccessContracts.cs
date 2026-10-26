@@ -105,6 +105,15 @@ public static class ErrorCodes
 
     /// <summary>The current password of a password change is wrong (400).</summary>
     public const string PasswordIncorrect = "password_incorrect";
+
+    /// <summary>The file of an import is no StudioFlow export, is damaged or is unsafe (zip slip, zip bomb, a wrong checksum) (400).</summary>
+    public const string InvalidArchive = "invalid_archive";
+
+    /// <summary>The file of an import was written by a newer version of StudioFlow; update this installation first (400).</summary>
+    public const string UnsupportedFormat = "unsupported_format";
+
+    /// <summary>The file of an import exceeds the limits of this installation: size, number of files or unpacked size (413).</summary>
+    public const string ArchiveTooLarge = "archive_too_large";
 }
 
 /// <summary>

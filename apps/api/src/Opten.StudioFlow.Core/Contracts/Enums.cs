@@ -449,6 +449,21 @@ public enum LogCode
     /// <summary>The format or resolution of the output changed. Params: <c>from</c>, <c>to</c> (size and ratio, e.g. "1080 × 1920 (9:16)").</summary>
     CanvasChanged,
 
+    /// <summary>A production was created as a copy of another one. Params: <c>from</c> (name of the original), <c>name</c> (name of the copy).</summary>
+    ProductionDuplicated,
+
+    /// <summary>A production was exported as a file. Params: <c>name</c>.</summary>
+    ProductionExported,
+
+    /// <summary>A production was imported from a file. Params: <c>name</c>.</summary>
+    ProductionImported,
+
+    /// <summary>A placeholder was assigned to a source. Params: <c>code</c> (of the placeholder), <c>target</c> (code and name of the source).</summary>
+    PlaceholderAssigned,
+
+    /// <summary>A placeholder was removed together with its scene items. Params: <c>code</c>.</summary>
+    PlaceholderRemoved,
+
     /// <summary>A production became the active one. Params: <c>name</c>.</summary>
     ProductionActivated,
 

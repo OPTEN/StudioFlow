@@ -17,12 +17,17 @@ public sealed record SourceEntry(string Id, string Code, SourceKind Kind, string
 public sealed class SourceCatalog
 {
     private readonly Dictionary<string, SourceEntry> entries = new(StringComparer.Ordinal);
+    private readonly string[] reservedCodes;
 
-    /// <summary>Builds the catalog.</summary>
-    public SourceCatalog(IEnumerable<Device> devices, IEnumerable<Asset> assets, IEnumerable<TextSourceDto>? texts = null)
+    /// <summary>
+    /// Builds the catalog. The codes of the placeholders are reserved: no new source gets one (a placeholder is not a source,
+    /// scene items that show it say “Source missing”).
+    /// </summary>
+    public SourceCatalog(IEnumerable<Device> devices, IEnumerable<Asset> assets, IEnumerable<TextSourceDto>? texts = null, IEnumerable<SourcePlaceholderDto>? placeholders = null)
     {
         ArgumentNullException.ThrowIfNull(devices);
         ArgumentNullException.ThrowIfNull(assets);
+        reservedCodes = [.. (placeholders ?? []).Select(p => p.Code)];
         foreach (var device in devices)
         {
             foreach (var slot in device.Slots)
@@ -53,8 +58,8 @@ public sealed class SourceCatalog
     /// <summary>Every source in a stable order: device slots by code, then media and texts by code.</summary>
     public IReadOnlyList<SourceEntry> All => [.. entries.Values.OrderBy(e => e.Device is null).ThenBy(e => e.Code[0]).ThenBy(e => e.Code.Length).ThenBy(e => e.Code, StringComparer.Ordinal)];
 
-    /// <summary>Every slot code in use (for the allocation of new codes).</summary>
-    public IEnumerable<string> CodesInUse => entries.Values.Select(e => e.Code);
+    /// <summary>Every slot code in use, placeholders included (for the allocation of new codes).</summary>
+    public IEnumerable<string> CodesInUse => entries.Values.Select(e => e.Code).Concat(reservedCodes);
 
     /// <summary>True when the source exists.</summary>
     public bool Contains(string sourceId) => entries.ContainsKey(sourceId);

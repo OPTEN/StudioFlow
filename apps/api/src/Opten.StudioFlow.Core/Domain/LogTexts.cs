@@ -37,6 +37,7 @@ public static class LogTexts
         public const string Lens = "lens";
         public const string From = "from";
         public const string To = "to";
+        public const string Target = "target";
         public const string Format = "format";
         public const string Rows = "rows";
         public const string Days = "days";
@@ -105,6 +106,11 @@ public static class LogTexts
             AuditActions.ProductionRenamed => With(LogCode.ProductionRenamed, $"Production “{entry.Detail(AuditDetails.From)}” renamed to “{name}”", (Param.From, entry.Detail(AuditDetails.From)), (Param.Name, name)),
             AuditActions.CanvasChanged => With(LogCode.CanvasChanged, $"Output changed from {entry.Detail(AuditDetails.From)} to {entry.Detail(AuditDetails.To)}", (Param.From, entry.Detail(AuditDetails.From)), (Param.To, entry.Detail(AuditDetails.To))),
             AuditActions.ProductionActivated => With(LogCode.ProductionActivated, $"Production “{name}” activated", (Param.Name, name)),
+            AuditActions.ProductionDuplicated => With(LogCode.ProductionDuplicated, $"Production “{entry.Detail(AuditDetails.From)}” duplicated as “{name}”", (Param.From, entry.Detail(AuditDetails.From)), (Param.Name, name)),
+            AuditActions.ProductionExported => With(LogCode.ProductionExported, $"Production “{name}” exported", (Param.Name, name)),
+            AuditActions.ProductionImported => With(LogCode.ProductionImported, $"Production “{name}” imported", (Param.Name, name)),
+            AuditActions.PlaceholderAssigned => With(LogCode.PlaceholderAssigned, $"{code} assigned to {entry.Detail(AuditDetails.Target)}", (Param.Code, code), (Param.Target, entry.Detail(AuditDetails.Target))),
+            AuditActions.PlaceholderRemoved => With(LogCode.PlaceholderRemoved, $"{code} removed from the scenes", (Param.Code, code)),
             AuditActions.BroadcastReset => With(LogCode.BroadcastReset, "Broadcast reset"),
             AuditActions.SlateChanged when string.Equals(entry.Detail(AuditDetails.Slate), AuditSlates.End, StringComparison.Ordinal) => With(LogCode.EndSlateChanged, "Slate after the broadcast changed"),
             AuditActions.SlateChanged => With(LogCode.StandbySlateChanged, "Slate before the broadcast changed"),

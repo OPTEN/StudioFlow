@@ -50,6 +50,22 @@ public sealed class Scene
         LayoutMode = SceneLayoutMode.Free,
     };
 
+    /// <summary>
+    /// A scene of a production that is built from an export (duplicate, import): every value is already validated and the
+    /// items carry their new ids. The version starts at 1 like any new scene.
+    /// </summary>
+    internal static Scene Restore(string productionId, string name, int sortOrder, SceneLayoutMode layoutMode, SceneBackgroundDto background, IReadOnlyList<SceneItemDto> items) => new()
+    {
+        Id = EntityIds.New(EntityIds.Scene),
+        ProductionId = productionId,
+        Name = name,
+        SortOrder = sortOrder,
+        Version = 1,
+        LayoutMode = layoutMode,
+        Background = background,
+        Items = items,
+    };
+
     /// <summary>Copies items (with new item ids), layout mode and background into a new scene.</summary>
     internal Scene CloneAs(string name, int sortOrder) => new()
     {
@@ -264,6 +280,61 @@ public sealed class Scene
     public bool UsesAsset(string assetId) =>
         string.Equals(Background.AssetId, assetId, StringComparison.Ordinal)
         || Items.Any(i => string.Equals(i.Source, assetId, StringComparison.Ordinal) || string.Equals(i.OnLost?.FallbackSource, assetId, StringComparison.Ordinal));
+
+    /// <summary>True when an item or the fallback of an item shows the source.</summary>
+    public bool UsesSource(string sourceId) =>
+        Items.Any(i => string.Equals(i.Source, sourceId, StringComparison.Ordinal) || string.Equals(i.OnLost.FallbackSource, sourceId, StringComparison.Ordinal));
+
+    /// <summary>
+    /// Lets every item that shows <paramref name="from"/> (a placeholder) show <paramref name="to"/> instead, as item and as
+    /// fallback; with a null <paramref name="to"/> the items are removed and the fallbacks cleared. A fallback that would
+    /// then equal the source of its item is cleared (an item cannot be its own fallback). Returns whether the scene changed
+    /// (its version is incremented) and how many items changed their source or were removed.
+    /// </summary>
+    internal (bool Changed, int Items) ReplaceSource(string from, string? to)
+    {
+        var items = new List<SceneItemDto>(Items.Count);
+        var affected = 0;
+        var changed = false;
+        foreach (var item in Items)
+        {
+            var next = item;
+            if (string.Equals(next.Source, from, StringComparison.Ordinal))
+            {
+                affected++;
+                changed = true;
+                if (to is null)
+                {
+                    continue;
+                }
+
+                next = next with { Source = to };
+            }
+
+            if (string.Equals(next.OnLost.FallbackSource, from, StringComparison.Ordinal))
+            {
+                next = next with { OnLost = next.OnLost with { FallbackSource = to } };
+                changed = true;
+            }
+
+            if (next.OnLost.FallbackSource is { } fallback && string.Equals(fallback, next.Source, StringComparison.Ordinal))
+            {
+                next = next with { OnLost = next.OnLost with { FallbackSource = null } };
+                changed = true;
+            }
+
+            items.Add(next);
+        }
+
+        if (!changed)
+        {
+            return (false, 0);
+        }
+
+        Items = items;
+        Version++;
+        return (true, affected);
+    }
 
     /// <summary>Removes every item that shows the source (a deleted text); returns false when there was none.</summary>
     internal bool RemoveItemsOf(string sourceId)
