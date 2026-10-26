@@ -51,6 +51,27 @@ describe('SenderSettingsService', () => {
     expect(create().settings()).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('keeps the lens and image settings of the control room, dropping corrupt fields one by one', () => {
+    expect(
+      parseSettings({
+        lens: 'back-wide',
+        image: {
+          zoom: 2.5,
+          focusMode: 'macro',
+          focusDistance: Number.NaN,
+          exposureCompensation: -1,
+          torch: 'on',
+        },
+      }),
+    ).toEqual({
+      ...DEFAULT_SETTINGS,
+      lens: 'back-wide',
+      image: { zoom: 2.5, exposureCompensation: -1 },
+    });
+    expect(parseSettings({ lens: '', image: 'zoom' })).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings({ lens: 'x'.repeat(513) }).lens).toBeNull();
+  });
+
   it('defaults phones to the back camera and laptops to the webcam', () => {
     const service = create();
     expect(service.facingFor('phone')).toBe('environment');

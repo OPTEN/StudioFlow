@@ -1,6 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import type { ResilientHubOptions } from '@studioflow/realtime-client';
-import type { DeviceReportDto, DeviceSelfDto, LiveKitTokenDto } from '@studioflow/scene-model';
+import type {
+  CameraStateDto,
+  DeviceReportDto,
+  DeviceSelfDto,
+  LiveKitTokenDto,
+} from '@studioflow/scene-model';
 import {
   FakeHub,
   FakeWakeLock,
@@ -28,6 +33,7 @@ import {
   DeviceSessionService,
   MESSAGE_DISMISS_MS,
   OUTAGE_PROBE_MS,
+  REMOTE_NOTICE_MS,
   REPORT_INTERVAL_MS,
   REPORT_STALE_MS,
 } from './device-session.service';
@@ -232,6 +238,7 @@ describe('DeviceSessionService', () => {
       network: 'wifi',
       rttMs: 14,
       techCheck: TECH_CHECK_WIRE,
+      camera: null,
     });
 
     await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
@@ -830,6 +837,132 @@ describe('DeviceSessionService', () => {
       state: 'failed',
       messageKey: 'media.slot.failure.permission-denied',
       failure: 'permission-denied',
+    });
+  });
+
+  describe('remote camera control (issue #11)', () => {
+    const CAMERA_STATE: CameraStateDto = {
+      v: 1,
+      capabilities: {
+        lenses: [],
+        zoom: { min: 1, max: 8, step: 0.1 },
+        focusModes: ['auto'],
+        focusDistance: null,
+        exposureCompensation: null,
+        torch: false,
+      },
+      settings: {
+        lensId: 'back-main',
+        zoom: 2,
+        focusMode: 'auto',
+        focusDistance: null,
+        exposureCompensation: null,
+        torch: null,
+      },
+      problem: null,
+    };
+
+    function cameraCommand(camera: Record<string, unknown>): Record<string, unknown> {
+      return { id: 'cmd_9', kind: 'cameraControl', slot: 'camera', text: null, at: '', camera };
+    }
+
+    it('applies the command, reports the actual settings at once and shows a short note', async () => {
+      const service = setup();
+      await online(service);
+      media.publisher.cameraState = CAMERA_STATE;
+      await settle();
+      hub.invoked.length = 0;
+
+      hub.emit('command', cameraCommand({ v: 1, zoom: 2 }));
+      await settle(10);
+
+      expect(media.publisher.controls).toEqual([expect.objectContaining({ v: 1, zoom: 2 })]);
+      expect(hub.reports()).toHaveLength(1);
+      expect(lastReport().camera).toEqual(CAMERA_STATE);
+      expect(service.remoteNotice()).toEqual({ kind: 'zoom', zoom: 2 });
+
+      await vi.advanceTimersByTimeAsync(REMOTE_NOTICE_MS);
+      expect(service.remoteNotice()).toBeNull();
+    });
+
+    it('says so when the camera refused the change', async () => {
+      const service = setup();
+      await online(service);
+      media.publisher.cameraState = { ...CAMERA_STATE, problem: 'overconstrained' };
+
+      hub.emit('command', cameraCommand({ v: 1, zoom: 9 }));
+      await settle(10);
+
+      expect(service.remoteNotice()).toEqual({ kind: 'refused' });
+    });
+
+    it.each([
+      ['another version', { v: 2, zoom: 2 }],
+      ['a zoom that is no number', { v: 1, zoom: 'max' }],
+      ['an empty lens', { v: 1, lensId: '' }],
+    ])('ignores a command with %s', async (_case, camera) => {
+      const service = setup();
+      await online(service);
+
+      hub.emit('command', cameraCommand(camera));
+      await settle(10);
+
+      expect(media.publisher.controls).toEqual([]);
+      expect(service.remoteNotice()).toBeNull();
+    });
+
+    it('leaves a laptop camera alone and reports no camera for it', async () => {
+      const service = setup({ self: laptopSelf() });
+      await online(service);
+      media.publisher.cameraState = CAMERA_STATE;
+
+      hub.emit('command', cameraCommand({ v: 1, zoom: 2 }));
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+      expect(media.publisher.controls).toEqual([]);
+      expect(lastReport().camera).toBeNull();
+    });
+
+    it('keeps what the control room set and restores it after a reload', async () => {
+      const service = setup();
+      await online(service);
+
+      media.publisher.emitCameraSettings({
+        facingMode: 'environment',
+        resolution: 720,
+        deviceId: 'back-wide',
+        image: { exposureCompensation: 1, torch: true },
+      });
+
+      expect(storage.readJson(STORAGE_KEYS.settings)).toEqual(
+        expect.objectContaining({
+          lens: 'back-wide',
+          image: { exposureCompensation: 1, torch: true },
+        }),
+      );
+      TestBed.resetTestingModule();
+      const settings = storage.readJson(STORAGE_KEYS.settings) as Record<string, unknown>;
+      const reloaded = setup({ settings });
+      await online(reloaded);
+      reloaded.startCamera();
+
+      expect(media.publisher.lastCamera).toEqual({
+        facingMode: 'environment',
+        resolution: 720,
+        deviceId: 'back-wide',
+        image: { exposureCompensation: 1, torch: true },
+      });
+    });
+
+    it('gives up the chosen lens and its zoom when the person at the phone switches front/back', async () => {
+      const service = setup({ settings: { lens: 'back-wide', image: { zoom: 3, torch: true } } });
+      await online(service);
+
+      service.setFacing('user');
+
+      expect(service.settings()).toEqual(
+        expect.objectContaining({ facing: 'user', lens: null, image: { torch: true } }),
+      );
     });
   });
 });

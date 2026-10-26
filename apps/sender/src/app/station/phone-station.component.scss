@@ -109,6 +109,33 @@
   white-space: nowrap;
 }
 
+// Unobtrusive note about a remote camera change, below the name; it stays out of the way of the picture.
+.c-phone__remote {
+  display: flex;
+  justify-content: center;
+  left: 0;
+  margin: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: calc(var(--safe-top) + 96px);
+  z-index: z(controls);
+
+  .has-tally & {
+    top: calc(var(--safe-top) + 144px);
+  }
+}
+
+.c-phone__remote-text {
+  background: rgba(5, 7, 10, 0.72);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  max-width: calc(100% - 2 * #{$SPACE_GUTTER});
+  padding: $SPACE_XS $SPACE_MD;
+  text-align: center;
+}
+
 .c-phone__problem {
   display: grid;
   gap: $SPACE_LG;

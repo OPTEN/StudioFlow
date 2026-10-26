@@ -1,7 +1,9 @@
+import { isCameraControl } from '@studioflow/media-client/device';
 import { hubErrorCode } from '@studioflow/realtime-client';
 import {
   ERROR_CODES,
   type DeviceCommandDto,
+  type DeviceCommandKind,
   type DeviceSelfDto,
   type DeviceSlotDto,
   type TallyDto,
@@ -37,24 +39,36 @@ export function parseTally(value: unknown): TallyDto | null {
   return { overall, slots: perSlot };
 }
 
-/** Validates a `command` message; null for malformed or unknown commands. */
+const COMMAND_KINDS = new Set<DeviceCommandKind>([
+  'reshare',
+  'switchCamera',
+  'message',
+  'cameraControl',
+]);
+
+/**
+ * Validates a `command` message; null for malformed or unknown commands, and for a camera control without a valid
+ * payload of the version this sender speaks.
+ */
 export function parseCommand(value: unknown): DeviceCommandDto | null {
   if (typeof value !== 'object' || value === null) {
     return null;
   }
   const command = value as Partial<Record<keyof DeviceCommandDto, unknown>>;
-  if (
-    typeof command.id !== 'string' ||
-    (command.kind !== 'reshare' && command.kind !== 'switchCamera' && command.kind !== 'message')
-  ) {
+  if (typeof command.id !== 'string' || !COMMAND_KINDS.has(command.kind as DeviceCommandKind)) {
+    return null;
+  }
+  const camera = isCameraControl(command.camera) ? command.camera : null;
+  if (command.kind === 'cameraControl' && camera === null) {
     return null;
   }
   return {
     id: command.id,
-    kind: command.kind,
+    kind: command.kind as DeviceCommandKind,
     slot: typeof command.slot === 'string' ? command.slot : null,
     text: typeof command.text === 'string' ? command.text : null,
     at: typeof command.at === 'string' ? command.at : new Date().toISOString(),
+    camera,
   };
 }
 

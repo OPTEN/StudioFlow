@@ -1,4 +1,4 @@
-import type { SlotTelemetryDto } from '@studioflow/scene-model';
+import type { CameraStateDto, SlotTelemetryDto } from '@studioflow/scene-model';
 import { TECH_CHECK_OK } from '../../testing/sender-fakes';
 import { buildDeviceReport, type DeviceReportInput } from './device-report';
 
@@ -23,9 +23,31 @@ function input(overrides: Partial<DeviceReportInput> = {}): DeviceReportInput {
     network: 'wifi',
     rttMs: 12.4,
     techCheck: TECH_CHECK_OK,
+    camera: null,
     ...overrides,
   };
 }
+
+const CAMERA_STATE: CameraStateDto = {
+  v: 1,
+  capabilities: {
+    lenses: [{ id: 'back-main', label: 'Back Camera', kind: 'standard' }],
+    zoom: { min: 1, max: 5, step: 0.1 },
+    focusModes: [],
+    focusDistance: null,
+    exposureCompensation: null,
+    torch: false,
+  },
+  settings: {
+    lensId: 'back-main',
+    zoom: 2,
+    focusMode: null,
+    focusDistance: null,
+    exposureCompensation: null,
+    torch: null,
+  },
+  problem: null,
+};
 
 describe('buildDeviceReport', () => {
   it('builds the hub report from media state, telemetry and device facts', () => {
@@ -37,7 +59,12 @@ describe('buildDeviceReport', () => {
       network: 'wifi',
       rttMs: 12,
       techCheck: { ...TECH_CHECK_OK, problems: undefined },
+      camera: null,
     });
+  });
+
+  it('carries what the phone camera can do and does now', () => {
+    expect(buildDeviceReport(input({ camera: CAMERA_STATE })).camera).toEqual(CAMERA_STATE);
   });
 
   it.each([

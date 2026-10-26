@@ -15,6 +15,7 @@ import {
   HUB,
   screenSlot,
   slotKind,
+  type CameraControlDto,
   type DeviceCommandDto,
   type DeviceKind,
   type DeviceReportDto,
@@ -40,6 +41,7 @@ import {
   type Resolution,
 } from '../core/sender-settings.service';
 import { buildDeviceReport } from './device-report';
+import { remoteCameraNotice, type RemoteCameraNotice } from './remote-camera-notice';
 import {
   OFF_TALLY,
   isBlockedHubError,
@@ -78,6 +80,8 @@ export const BLOCKED_RETRY_MS = 15_000;
 export const ACCESS_RETRY_MS = 5000;
 /** A Regie message disappears after this time unless confirmed earlier. */
 export const MESSAGE_DISMISS_MS = 15_000;
+/** The note about a remote camera change disappears after this time. */
+export const REMOTE_NOTICE_MS = 3000;
 /** The first technical check waits this long for the phone camera before it runs without it. */
 export const TECH_CHECK_CAMERA_WAIT_MS = 8000;
 
@@ -192,6 +196,8 @@ export class DeviceSessionService {
   readonly self = signal<DeviceSelfDto | null>(null);
   readonly tally = signal<TallyDto>(OFF_TALLY);
   readonly message = signal<RegieMessage | null>(null);
+  /** Short note that the control room changed the camera (“The control room zoomed: 2.0×”), null when none shows. */
+  readonly remoteNotice = signal<RemoteCameraNotice | null>(null);
   readonly reshareRequests = signal<ReadonlySet<string>>(new Set());
   /** The last technical check, with its problems as messages (the report to the Regie leaves them out). */
   readonly techCheck = signal<TechCheckResult | null>(null);
@@ -261,6 +267,7 @@ export class DeviceSessionService {
   private helloTimer: ReturnType<typeof setTimeout> | null = null;
   private messageTimer: ReturnType<typeof setTimeout> | null = null;
   private techCheckTimer: ReturnType<typeof setTimeout> | null = null;
+  private remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   private helloAttempt = 0;
   private helloFailures = 0;
   private everOnline = false;
@@ -323,6 +330,13 @@ export class DeviceSessionService {
       media.publisher.onSlotState((slot, state, messageKey, failure) =>
         this.onSlotState(slot, state, messageKey, failure),
       ),
+      media.publisher.onCameraSettings((camera) =>
+        this.settingsService.update({
+          facing: camera.facingMode,
+          lens: camera.deviceId ?? null,
+          image: camera.image ?? {},
+        }),
+      ),
       this.network.onWake(() => this.onWake()),
       this.network.onOnlineChange(() => this.refreshConnection()),
     );
@@ -362,11 +376,17 @@ export class DeviceSessionService {
       return;
     }
     const facing = this.facing();
-    const resolution = this.settingsService.settings().resolution;
+    const { resolution, lens, image } = this.settingsService.settings();
     this.setEnded('camera', false);
     this.settingsService.update({ cameraOn: true, facing });
     this.autoStartDone = true;
-    void media.publisher.publishCamera('camera', { facingMode: facing, resolution });
+    // The lens and image settings of the control room come back too: after an interruption a source returns as it was.
+    void media.publisher.publishCamera('camera', {
+      facingMode: facing,
+      resolution,
+      ...(lens === null ? {} : { deviceId: lens }),
+      image,
+    });
   }
 
   /**
@@ -383,12 +403,16 @@ export class DeviceSessionService {
     void media.publisher.unpublish('camera');
   }
 
-  /** Front or back camera; applied to the running camera without a new publication. */
+  /**
+   * Front or back camera; applied to the running camera without a new publication. A lens the control room chose is
+   * given up, and so is its zoom (the publisher does the same).
+   */
   setFacing(facing: Facing): void {
     if (facing === this.facing()) {
       return;
     }
-    this.settingsService.update({ facing });
+    const { zoom: _zoom, ...image } = this.settingsService.settings().image;
+    this.settingsService.update({ facing, lens: null, image });
     if (this.media !== null && SENDING.has(this.media.publisher.slotState('camera'))) {
       void this.media.publisher.switchCamera();
     }
@@ -651,7 +675,32 @@ export class DeviceSessionService {
       case 'switchCamera':
         this.toggleFacing();
         break;
+      case 'cameraControl':
+        if (command.camera) {
+          void this.controlCamera(command.camera);
+        }
+        break;
     }
+  }
+
+  /**
+   * Remote camera control (issue #11, phones only): applies the command, shows a short note and reports the actual
+   * settings at once, so the control room sees what the camera really did.
+   */
+  private async controlCamera(camera: CameraControlDto): Promise<void> {
+    const media = this.media;
+    if (media === null || this.kind() !== 'phone') {
+      return;
+    }
+    await media.publisher.controlCamera(camera);
+    const state = await media.publisher.getCameraState().catch(() => null);
+    if (this.isTerminal()) {
+      return;
+    }
+    this.remoteNotice.set(remoteCameraNotice(camera, state));
+    this.clearTimer('remoteNoticeTimer');
+    this.remoteNoticeTimer = setTimeout(() => this.remoteNotice.set(null), REMOTE_NOTICE_MS);
+    void this.sendReport();
   }
 
   private showMessage(command: DeviceCommandDto): void {
@@ -960,9 +1009,13 @@ export class DeviceSessionService {
     const seq = ++this.reportSeq;
     this.reportStartedAt = monotonicNow();
     try {
-      const [telemetry, battery] = await Promise.all([
+      const [telemetry, battery, camera] = await Promise.all([
         media.publisher.getSlotTelemetry().catch(() => []),
         this.env.battery().catch(() => null),
+        // Remote camera control is for phones only (no PTZ webcams).
+        this.kind() === 'phone'
+          ? media.publisher.getCameraState().catch(() => null)
+          : Promise.resolve(null),
       ]);
       const report = buildDeviceReport({
         mediaState: media.session.state,
@@ -973,6 +1026,7 @@ export class DeviceSessionService {
         network: this.env.networkType(),
         rttMs: this.rttMs(),
         techCheck: this.techCheck(),
+        camera,
       });
       if (seq !== this.reportSeq || this.phase() !== 'online' || hub.state !== 'connected') {
         return;
@@ -1218,7 +1272,9 @@ export class DeviceSessionService {
     }, delayMs);
   }
 
-  private clearTimer(name: 'accessTimer' | 'helloTimer' | 'messageTimer' | 'techCheckTimer'): void {
+  private clearTimer(
+    name: 'accessTimer' | 'helloTimer' | 'messageTimer' | 'techCheckTimer' | 'remoteNoticeTimer',
+  ): void {
     const timer = this[name];
     if (timer !== null) {
       clearTimeout(timer);
@@ -1231,6 +1287,7 @@ export class DeviceSessionService {
     this.clearTimer('helloTimer');
     this.clearTimer('messageTimer');
     this.clearTimer('techCheckTimer');
+    this.clearTimer('remoteNoticeTimer');
     for (const interval of this.intervals.splice(0)) {
       clearInterval(interval);
     }

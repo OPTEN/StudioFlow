@@ -51,6 +51,12 @@
     />
   </header>
 
+  <p class="c-phone__remote" role="status" data-testid="remote-camera-notice">
+    @if (session.remoteNotice(); as notice) {
+      <span class="c-phone__remote-text">{{ noticeText(notice) }}</span>
+    }
+  </p>
+
   @if (problem(); as issue) {
     <div class="c-phone__problem" role="alert">
       <div class="c-notice c-notice--bad">
