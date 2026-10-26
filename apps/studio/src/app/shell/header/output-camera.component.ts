@@ -9,15 +9,11 @@ import {
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import type { OutputLinkDto } from '@studioflow/scene-model';
+import { ProductionStoreService } from '../../core/state/production-store.service';
 import { DownloadService } from '../../core/ui/download.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
-import {
-  OBS_FPS,
-  obsCanvasSize,
-  obsSceneCollection,
-  obsSceneCollectionFileName,
-} from './obs-scene-collection';
+import { OBS_FPS, obsSceneCollection, obsSceneCollectionFileName } from './obs-scene-collection';
 
 /**
  * "Use as camera …" (issue #9): the short instructions to show a link as the camera "OBS Virtual Camera" in Teams, Zoom
@@ -58,6 +54,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OutputCameraComponent {
+  private readonly store = inject(ProductionStoreService);
   private readonly downloads = inject(DownloadService);
   private readonly toasts = inject(ToastService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -68,13 +65,13 @@ export class OutputCameraComponent {
   protected readonly t = t;
   /** The name OBS lists the imported collection under. */
   protected readonly collectionName = computed(() => `StudioFlow – ${this.link().name}`);
-  protected readonly stepThree = computed(() => ({ ...obsCanvasSize(), fps: OBS_FPS }));
+  protected readonly stepThree = computed(() => ({ ...this.store.canvas(), fps: OBS_FPS }));
 
   protected download(): void {
     const link = this.link();
     const file = obsSceneCollectionFileName(link.name);
     // The link is clicked inside the popover, so the click does not count as a click outside and close it.
-    this.downloads.saveText(file, obsSceneCollection(link.name, link.url), {
+    this.downloads.saveText(file, obsSceneCollection(link.name, link.url, this.store.canvas()), {
       container: this.host.nativeElement,
     });
     this.toasts.show(t('regie.output.camera.downloaded', { file }));

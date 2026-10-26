@@ -901,8 +901,8 @@ computer". The camera carries **video only**; the sound keeps coming from the mi
    link itself and delete it from shared places afterwards.
 3. **Install OBS Studio 31 or newer** on the camera computer (obsproject.com, "Download Installer" for Windows or
    macOS). On the first start OBS shows the "Auto-Configuration Wizard": choose "I will only be using the Virtual
-   Camera" and click "Next"; on the next page choose "Base (Canvas) Resolution" `1920x1080` and "FPS" `30`, then
-   finish the wizard. (You can open the wizard later under Tools → Auto-Configuration Wizard.)
+   Camera" and click "Next"; on the next page choose "Base (Canvas) Resolution" with the size from step 3 of the box "Use as camera" (`1920x1080`
+   for the default 16:9 at 1080p, see chapter 19 for other formats) and "FPS" `30`, then finish the wizard. (You can open the wizard later under Tools → Auto-Configuration Wizard.)
 4. **Import the collection.** In the OBS menu bar choose Scene Collection → Import. The dialog "Import Scene
    Collections" has a path field with a button "…" next to it; choose `StudioFlow-Teams-camera.json` and click "Import".
    Then open the "Scene Collection" menu again and click "StudioFlow – Teams camera". OBS shows one scene "StudioFlow"
@@ -910,9 +910,9 @@ computer". The camera carries **video only**; the sound keeps coming from the mi
    the broadcast starts). In the Regie the chip now reads "Output" with "Teams camera" next to it, and the popover
    says "Teams camera · connected".
 5. **Check the video settings.** In OBS choose Settings → Video. Set "Base (Canvas) Resolution" and "Output (Scaled)
-   Resolution" to `1920x1080` and "Common FPS Values" to `30`, then click "OK". A scene collection cannot carry
+   Resolution" to that size and "Common FPS Values" to `30`, then click "OK". A scene collection cannot carry
    these values, so this step is needed even after the wizard. The imported browser source is set up like this:
-   1920 × 1080, 30 fps, "Control audio via OBS" on, "Shutdown source when not visible" off, "Refresh browser when
+   the size of the production's canvas (1920 × 1080 by default), 30 fps, "Control audio via OBS" on, "Shutdown source when not visible" off, "Refresh browser when
    scene becomes active" off. Leave them as they are: they make the picture start once and keep running.
 6. **Start the camera.** In the "Controls" dock (bottom right) click "Start Virtual Camera". The button changes to
    "Stop Virtual Camera" and OBS now provides the camera "OBS Virtual Camera" to all programs.
@@ -934,7 +934,7 @@ removes the camera; Teams then shows no picture.
 - **Your own preview is not what the others see.** Teams mirrors your self-view (text appears reversed there) and
   shows it in its own quality; the picture the others see is not mirrored. Judge the picture on a second device.
 - **Teams reduces size and quality.** It downsizes the picture and compresses it hard, especially with motion. Text on
-  slides must be large: use at least about 3 % of the picture height (32 px on the 1080-pixel canvas) for body text,
+  slides must be large: use at least about 3 % of the picture height (32 px on a canvas with a short side of 1080 pixels) for body text,
   titles larger, and avoid thin fine print.
 - **Background effects off.** Blur, virtual backgrounds and "appearance" filters in Teams, Zoom or Webex change the
   picture (blur softens the whole frame). Switch them all off.
@@ -956,3 +956,51 @@ removes the camera; Teams then shows no picture.
 
 For a very large event, a Teams town hall or another platform that accepts RTMP directly can take the picture without
 a camera detour; that is not part of StudioFlow today (restream, plan phase 3).
+
+## 19. Format and resolution of the output
+
+Every production has one **format** (16:9, 9:16, 1:1 or 4:3) and one **target resolution** (720p or 1080p, counted on the
+short side). A new production is 16:9 at 1080p, which is 1920 × 1080: whoever changes nothing notices no difference.
+
+| Format | 720p | 1080p |
+|---|---|---|
+| 16:9 (widescreen) | 1280 × 720 | 1920 × 1080 |
+| 9:16 (portrait, for phones and social media) | 720 × 1280 | 1080 × 1920 |
+| 1:1 (square) | 720 × 720 | 1080 × 1080 |
+| 4:3 | 960 × 720 | 1440 × 1080 |
+
+**What the setting does.** The output page is a web page: it scales its picture to whatever window or iframe it runs in
+(with bars where the shapes differ). The target resolution therefore does not decide how many pixels arrive at the
+proxy; that depends on the proxy's window. Format and resolution set the **canvas** of the layouts: the coordinate system
+of all elements, the shape of the monitors and thumbnails in the Regie, and the size of the picture OBS gets from the
+"Use as camera" collection (chapter 18). The pictures the phones send do not depend on it: they follow the size of the
+element on the output.
+
+### 19.1 Choose it
+
+- **New production:** header → production name → "New production…". Pick format and resolution below the name.
+- **Existing production:** header → production name → "Format and resolution…".
+
+### 19.2 What happens to the scenes
+
+- **Same format, other resolution:** every element is scaled in proportion; nothing moves.
+- **Other format:** the Regie asks first when scenes have elements. Every element is scaled by one factor so that the old
+  picture fits into the new canvas, and centred; the Auto grid arranges itself for the new shape. Check the scenes
+  afterwards; "Apply template" in Properties lays a scene out again (on 9:16 and 1:1 the templates stack the pictures:
+  "Stacked", "Screen + camera row"). The undo history of the scenes is cleared, because it holds the old pixels, and
+  switching back does not restore the old positions.
+- **While the broadcast is live nothing can be changed:** the menu explains it, the API answers 409 `broadcast_live`.
+  End the broadcast first (or reset it to standby), change the format, start again. Open output pages follow a change
+  at once, without reloading.
+
+### 19.3 Embedding
+
+Give the iframe the shape of the canvas, or the output shows bars. For 9:16 at 1080p:
+
+```html
+<iframe src="https://studioflow.example/o/webinar?k=…" allow="autoplay; fullscreen"
+        style="border:0; width:100%; aspect-ratio: 1080 / 1920"></iframe>
+```
+
+OBS: the browser source and the canvas need the size of the canvas; the "Use as camera" box names it in step 3 and the
+downloaded scene collection already carries it (download it again after a change of format).

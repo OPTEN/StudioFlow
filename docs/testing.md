@@ -51,7 +51,7 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 
 ### 0.3 Common terms
 
-- **Error codes** (`ProblemDetails.code`, `ErrorCodes.cs`): `validation_failed` (400), `unauthorized` (401), `forbidden` (403, also `device_blocked`), `not_found` (404), `conflict`, `transition_running`, `scene_is_live`, `asset_in_use`, `limit_reached` (409), `pairing_expired` (410), `unsupported_media` (415), `rate_limited` (429), `internal_error` (500).
+- **Error codes** (`ProblemDetails.code`, `ErrorCodes.cs`): `validation_failed` (400), `unauthorized` (401), `forbidden` (403, also `device_blocked`), `not_found` (404), `conflict`, `transition_running`, `broadcast_live`, `scene_is_live`, `asset_in_use`, `limit_reached` (409), `pairing_expired` (410), `unsupported_media` (415), `rate_limited` (429), `internal_error` (500).
 
 - **Station**: one device slot source as listed in the Stationen dock (K1, S1, …), identified by its slot code.
 - **Six places** (outage language, DESIGN.md): header health chip, message strip, monitor element (Program/Preview), scene list row, Quellen dock row,
@@ -382,10 +382,11 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `TXT` Texts and lower thirds | 5 | 3 | 5 | 13 | 4 | 8 | 1 |
 | `AUDIT` Audit log | 6 | 7 | 4 | 17 | 10 | 7 | 0 |
 | `LINK` Output links and the camera | 5 | 4 | 3 | 12 | 9 | 2 | 1 |
-| **Total** | **106** | **108** | **261** | **475** | **208** | **206** | **61** |
+| `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
+| **Total** | **111** | **111** | **264** | **486** | **214** | **210** | **62** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution)
 
 ### 2.1 AUTH – Auth and security
 
@@ -1464,7 +1465,7 @@ Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bi
 
 **UNIT-OUT-01** · P0 · vitest — Stage scaling and letterboxing math
 - Steps: container sizes 1920×1080, 1280×720, 800×600, 1680×720, 160×90, 3840×2160, 600×1000, 10×10, 0×0, fractional (1279.5×719.5).
-- Expect: scale = min(w/1920, h/1080); stage 1920×1080 centred by CSS transform; resulting box has aspect 16:9 ±0.5 px; no negative or NaN values for degenerate sizes; re-fit on `ResizeObserver`.
+- Expect: scale = min(w/canvas width, h/canvas height) (1920×1080 unless the production has another format, then also 1080×1920, 1080×1080, 1440×1080 and the 720p sizes: UNIT-FMT-02); stage of the canvas size centred by CSS transform; resulting box has the aspect ratio of the canvas ±0.5 px; no negative or NaN values for degenerate sizes; re-fit on `ResizeObserver`.
 
 **UNIT-OUT-02** · P1 · vitest — Background modes
 - Steps: render with default, `background: 'transparent'`; scene colour `#102030`; item contain bars; missing source; slate.
@@ -2414,6 +2415,54 @@ Several named output links per production and the output as a camera in Teams, Z
 **E2E-LINK-03** · P0 · pw — Download the OBS scene collection
 - Steps: Regie in English; add «Teams camera»; «Use as camera …»; «Download OBS scene collection»; parse the file; open its URL in a new page, once with `bg=transparent`.
 - Expect: five steps naming 1920 × 1080; the file `StudioFlow-Teams-camera.json` is valid JSON with the browser source at 1920 × 1080, 30 fps, audio via OBS, shutdown off, refresh off, the URL of «Teams camera» (not the proxy key); the page of that URL turns the link «connected»; with `bg=transparent` the page and body are transparent.
+
+### 2.17 FMT – Format and resolution
+
+Issue #8, decisions «#8», spec 4.2 ("Canvas"), 4.3, 8.1, 8.3, 9.3, runbook 19. A production has one format (16:9, 9:16, 1:1, 4:3) and one resolution (720p, 1080p: the short side); 16:9 at 1080p is the default and what every earlier production is. E2E specs run in English (`en-US`); the E2E stacks need Docker.
+
+**UNIT-FMT-01** · P0 · vitest (`canvas.spec.ts`, `layout-templates.canvas.spec.ts`, `text.spec.ts`, `production-state.spec.ts`) — Canvas model of the scene model
+- Steps: `canvasSize` for the 8 combinations, labels, `canvasOf`, `isLandscape`, `safeMargin`, `placeOnCanvas` (new item, texts, centred title); every template and `autoGridSlots(0…12)` on every canvas; `applyLayoutTemplate` on 9:16; the names of the templates in both languages; `productionCanvasChanged` in the state reducer.
+- Expect: sizes 1280×720, 1920×1080, 720×1280, 1080×1920, 720×720, 1080×1080, 960×720, 1440×1080, all integers and inside the item bounds; the slots of 1920×1080 are those of the prototype; every slot lies inside every canvas, no two slots overlap except in Picture in picture, the slot counts are 1, 2, 2, 3, 3, 4, 9; 720p slots are 2/3 of the 1080p ones (±1 px); 4:3 narrows the 16:9 slots to 75 % with 16:9 tiles; 1:1 and 9:16 stack ("Stacked", "Screen + camera row", square grid cells); a new item keeps its shape and sits at the bottom right with scaled edge distances, a note stays in the top right corner and a title stays centred; the event replaces the production and the listed scenes in one step and keeps the identity of the others.
+
+**UNIT-FMT-02** · P0 · vitest (`scene-renderer.canvas.spec.ts`, `stage-fit.spec.ts`, `auto-grid.spec.ts`; `program-view.spec.ts`, `output-app.spec.ts`) — Renderer and output page
+- Steps: stage sizes per canvas and for unusable options; letterbox of a portrait canvas in a 16:9 window and of 16:9 in a portrait container; `setCanvas` (live, back, same, invalid, after destroy); Auto grid before and after a change; slates at 1080 and 720 pixels of short side; a text on a portrait canvas; the program view and the page on `productionCanvasChanged`; `?debug=1`.
+- Expect: the stage element has the canvas size and is fitted by one scale with bars on the long side; `setCanvas` resizes and re-fits without a new renderer and lays the Auto grid out for the new shape; unusable values fall back to 1920×1080 or are ignored; slate text scales with the short side; the font size of a text follows its item height only; the page sets the canvas before it shows the rescaled scene and not at all for changes that keep the size; the overlay line reads "Canvas 1080 × 1920 · 9:16 · 1080p".
+
+**UNIT-FMT-03** · P0 · xunit (`CanvasTests`) — Canvas domain
+- Steps: size table, `Create` with and without a format, unknown enum values, `ChangeCanvas` (same canvas, other resolution, other format, to square and back, empty scenes, live, unknown values, every canvas to every canvas), default placement of new items and texts.
+- Expect: `validation_failed` with the field names for unknown values; the same canvas changes nothing; another resolution scales position, size, radius and border by the ratio and leaves crop, rotation, mirror and flags; another format fits and centres the old canvas (1920×1080 → 1080×1920 gives 0/656/1080/608) and the round trip does not restore the old place; scenes without items keep their version; a live production is `broadcast_live` and unchanged; every result lies inside the new canvas and passes the item validation; the C# placement agrees with `placeOnCanvas`.
+
+**UNIT-FMT-04** · P1 · ng — Regie
+- Steps: production menu (picker, Save, resolution only, another format with and without elements, singular and plural, cancel, change after the question, live, server refusal, new production), monitors, scene thumbnails, template previews and tile names, edit overlay (percent boxes, safe area, drag in canvas pixels, snapping), editor service (new items, templates, undo history on a change), store, `monitorWidths`, output popover, OBS scene collection.
+- Expect: the picker offers 16:9 | 9:16 | 1:1 | 4:3 and 720p | 1080p and starts at 16:9 · 1080p; another format asks "The elements of N scenes are scaled to fit …" and sends nothing before the confirmation; a resolution change and an empty production send at once; live: choice and Save disabled, the reason in a status line, no request; the monitors and thumbnails take the aspect ratio of the canvas (a portrait monitor is narrow and sized from the stage height, stacked monitors are at most 720 px high, thumbnails are 36 px high); templates are named and laid out for the canvas; the undo history is dropped when the canvas changes; the OBS collection and the "Use as camera" step have the canvas size.
+
+**UNIT-FMT-05** · P1 · vitest, xunit — Names and codes
+- Steps: `broadcast_live` in the error messages (both languages) and the E2E constants; the audit log text, category and message of `production.canvas.changed`.
+- Expect: the toast reads "That is not possible while the broadcast is live. End the broadcast first."; the audit entry is in the category Production with the English text "Output changed from 1920 × 1080 (16:9) to 1080 × 1920 (9:16)" and is not part of "Recent events".
+
+**INT-FMT-01** · P0 · xunit (`CanvasApiTests`) — Create and default
+- Steps: the seeded production, a production without a format, with each format and resolution, with only a format, with unknown names and numbers.
+- Expect: 16:9 · 1080p (1920×1080) by default; the chosen canvas in the response, the snapshot and the table; 400 `validation_failed` naming `format` or `resolution` for unknown values; a portrait production adds items without geometry at 698/1695/338/190.
+
+**INT-FMT-02** · P0 · xunit (`CanvasApiTests`, `CanvasMigrationTests`) — Change
+- Steps: `PUT …/canvas` with another resolution, another format, the same canvas, while live, after the broadcast ended, with invalid or missing fields, an unknown production, without session and without CSRF header; the migration on a database with a production from before.
+- Expect: items of every scene rescaled and versions +1 (empty scenes unchanged), the Auto grid mode kept; no change and no event for the same canvas; 409 `broadcast_live` with nothing changed while live; 400 for every invalid body (a missing field is not a silent default); 404, 401, 403; one audit entry `production.canvas.changed` with `from` and `to`, none for a no-op; the migration sets `Widescreen` / `P1080` for existing rows and the model matches the migrations.
+
+**INT-FMT-03** · P0 · xunit (`CanvasApiTests`) — Sync
+- Steps: a Regie hub, an output hub and a client that reconnects with a revision, around a change; the wire format.
+- Expect: exactly one `productionCanvasChanged` with revision +1 carrying the production with its canvas and the rescaled scenes, also on the output hub; the output snapshot has the canvas; a delta since the old revision contains the event; camelCase type and enums (`standard`, `p720`).
+
+**E2E-FMT-01** · P1 · pw (`regie-format.spec.ts`) — 9:16 end to end
+- Steps: Regie in English; create a production as 9:16 in the new-production form; add a shown lower third; open its output in a 1080×1920 window; start the broadcast; open "Format and resolution…" while live; end it; change to 1:1 (confirm) with the output page open.
+- Expect: the Program monitor reads "1080 × 1920 · 30 fps" and is narrow (aspect ratio 0.5625); the output stage is 1080×1920 and the accent bar of the lower third is at 47/1824 in canvas pixels (pixel probe); live: the menu explains it, the controls are disabled, the API answers 409 `broadcast_live`; the confirmation names the scaling; the open output page becomes 1080×1080 without a reload, the monitor reads "1080 × 1080 · 30 fps" with aspect ratio 1, the item sits at 262/998/304/57 and the accent bar shows there; no page errors.
+
+**E2E-FMT-02** · P1 · pw (`regie-format.spec.ts`) — Default and resolution through the API
+- Steps: the default production; a shown lower third; the output at 1280×720; change to 720p; invalid bodies.
+- Expect: 16:9 · 1080p, stage 1920×1080; after 720p the open output has a 1280×720 stage and the item is at 53/547/640/120; unknown format, unknown resolution, a missing field and an empty body are 400 and change nothing.
+
+**E2E-FMT-03** · P2 · pw (`regie-format.spec.ts`) — The picker and the thumbnails
+- Steps: "Format and resolution…" on the default production; 720p; then 9:16 on a production without elements.
+- Expect: four formats and two resolutions, Save off until something changes; 720p is saved without a question and the monitor reads "1280 × 720 · 30 fps"; 9:16 is saved without a question when no scene has elements, the scene thumbnails are 36 px high and about 20 px wide.
 
 ---
 

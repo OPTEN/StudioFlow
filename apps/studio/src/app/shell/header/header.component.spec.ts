@@ -222,7 +222,7 @@ describe('HeaderComponent', () => {
     );
     element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
     await render();
-    harness.http.expectOne().flush({
+    harness.http.expectOne(`${BASE}/output`).flush({
       links: [],
       maxLinks: 10,
       frameAncestors: ["'self'"],

@@ -22,7 +22,7 @@ Implemented now (plan phases 0–2, everything that is software):
 - Phase 1 (MVP): admin login, productions, pairing (QR, code + approval, invite link), LiveKit tokens, SignalR hubs;
   sender PWA (camera, several screens, tally, auto-reconnect, wake lock, technical check); Regie after the prototype
   (scenes, layout templates incl. Auto grid, free editing with snapping, crop, Studio Mode with preview and take,
-  cut and fade, stations with state, freely arrangeable docks); images and videos as sources; output page 16:9 with
+  cut and fade, stations with state, freely arrangeable docks); images and videos as sources; output page in the format of the production (16:9 by default) with
   secret link.
 - Phase 2: backup/restore/update scripts, slates and per-item fallbacks, monitoring view (bitrate, packet loss,
   battery), security review and runbook, Regie chat (short messages to devices).
@@ -101,12 +101,30 @@ name on creation), isActive (exactly one active production per tenant), broadcas
 liveSince, endedAt, programSceneId, previewSceneId, lastTransition, lastSwitchAt, standbySlate (default “Starting soon”,
 subtitle = production name), endSlate (default “Thanks for watching”), textTheme (accent, background and text colour of
 all texts, `#rrggbb`, default `#1f6feb` / `#0d1117` / `#ffffff`, changed with `PATCH` and sent with the production),
-createdAt. Its output links (4.8) are stored in the table `output_links`. The texts of the production (4.4) are stored with it (`text_sources`,
+canvas (`format` widescreen | portrait | square | standard, `resolution` p720 | p1080, and the derived `width` × `height`, see
+“Canvas” below), createdAt. Its output links (4.8) are stored in the table `output_links`. The texts of the production (4.4) are stored with it (`text_sources`,
 `jsonb`).
 
 On first start the API creates the default production “Webinar” (slug `webinar`, active) with three scenes:
 “Welcome” (empty, layout free), “Presentation” (empty), “Break” (empty) – program = first scene, broadcast standby.
 Server-created texts like these are English in every UI language (a documented limitation of issue #6).
+
+Canvas: one format and one target resolution per production, from a fixed list (decision #8): 16:9 (1280 × 720,
+1920 × 1080), 9:16 (720 × 1280, 1080 × 1920), 1:1 (720 × 720, 1080 × 1080), 4:3 (960 × 720, 1440 × 1080); the
+resolution names the short side. Default for a new production and for every production that existed before: 16:9 at
+1080p (columns `canvas_format` `Widescreen`, `canvas_resolution` `P1080`, migration `AddCanvasFormat`). `CreateProductionRequest`
+takes optional `format` and `resolution`; `PUT /api/productions/{id}/canvas` (`changeCanvas`, body
+`{ format, resolution }`, both required) changes them: an unknown or missing value is 400 `validation_failed`, the same
+canvas is a no-op (200, no event), **while the broadcast is live 409 `broadcast_live`** (the program scene would jump in
+front of the audience). Scene items are stored in canvas pixels, so the change rewrites them: every item is scaled by
+one factor, the largest that lets the old canvas fit into the new one (position, size, corner radius and border width;
+crop is a fraction and stays), and centred. With the same format the factor is the resolution ratio and nothing leaves
+its place; with another format the old picture ends up as a centred rectangle in the new canvas (the Regie asks first when
+scenes have elements and offers "Apply template" afterwards; templates are not remembered per scene). Auto grid scenes
+keep their layout mode and arrange themselves for the new shape. Every scene with items gets a new `Version`; production and
+rescaled scenes travel in **one** `productionCanvasChanged` event (one revision, also for the output page), so no client
+shows the new canvas with old geometry. Audit: `production.canvas.changed` (details `from`, `to`, e.g. "1920 × 1080 (16:9)").
+The item bounds of 4.3 are absolute and cover every canvas (at most 1920 pixels on a side).
 
 Rules:
 - Broadcast: `start` (standby|ended → live, liveSince = now), `end` (live → ended, endedAt = now),
@@ -131,14 +149,21 @@ As in `SceneContracts.cs`. Validation (server authoritative, client clamps the s
   top+bottom < 0.9, left+right < 0.9; radius ∈ [0, 200]; rotation ∈ {0, 90, 180, 270}; border width ∈ [1, 40],
   colour hex; onLost.holdMs null or ∈ [0, 600000]; fallbackSource null or an existing source ≠ the item's source.
 - Every change increments `Version` and emits `sceneUpserted` with the full scene.
-- Defaults for a new item (`AddSceneItem` without geometry): x 1240, y 680, w 600, h 338, radius 12,
+- Defaults for a new item (`AddSceneItem` without geometry), on a 1920 × 1080 canvas: x 1240, y 680, w 600, h 338, radius 12;
+  other canvases get the same rectangle placed by `Canvases.Place`: the size scales with the smaller axis factor (the
+  shape stays), each axis keeps the distance to the edge it is nearest to (or the middle), so the picture sits at the
+  bottom right, a title stays centred and a note stays in the corner;
   fit contain for screens else cover, crop 0, rotation 0, onLost {holdMs 3000, fallback null}.
 - `UpdateSceneItem` replaces the whole item (last writer wins per item). Clients coalesce rapid edits (drag) and send
   sequentially (never more than one request in flight per item; send the newest state when the previous returns).
 
 Layout templates (client-side, `packages/scene-model`): Full screen, Side by side, Picture in picture,
-Screen + camera column, One plus two, 2 × 2, 3 × 3, Auto grid – slot rectangles exactly as `PRESETS` in the
-prototype. Applying a template orders the visible items by kind (screen, then image/video, then camera), assigns slots
+Screen + camera column, One plus two, 2 × 2, 3 × 3, Auto grid – on 1920 × 1080 the slot rectangles are exactly those of
+`PRESETS` in the prototype. Other canvases derive their slots from them (`layoutTemplates(canvas)`, `autoGridSlots(n, canvas)`):
+on 4:3 the 16:9 slots are narrowed to 75 % around the vertical centre (the tiles stay 16:9); on 1:1 and 9:16 the pictures
+are stacked instead (Side by side becomes "Stacked", the camera column a "Screen + camera row", the grids square cells,
+3 pictures in the Auto grid three stacked tiles). A 720p canvas scales the 1080p slots by 2/3. No slot leaves the canvas
+and only Picture in picture overlaps (unit tests per canvas). Applying a template orders the visible items by kind (screen, then image/video, then camera), assigns slots
 in order, sets fit contain for a screen in slot 0 (except Side by side and the grids), radius 0 for full-canvas slots
 else 12, and sends `ReplaceSceneItems`. Items beyond the slot count keep their geometry. The item order is the
 z-order (first = back), and slots may overlap (Picture in picture), so applying a template also re-orders the items: the
@@ -146,7 +171,7 @@ placed items first in slot order (slot 0 at the back, later slots in front), the
 items and items beyond the slot count) in front of them in their previous relative order – nothing that is or later
 becomes visible disappears behind a template slot. Undo restores the previous order. Auto grid sets
 `layoutMode = autoGrid` and keeps the item order (its slots never overlap): the renderer arranges all visible items
-whose source is available (live, or lost but still inside its hold time; media always) with `autoGridSlots(n)`
+whose source is available (live, or lost but still inside its hold time; media always) with `autoGridSlots(n, canvas)`
 (prototype `autoSlots`), in item order; editing an item's geometry in the editor switches the scene back to `free`
 with the current computed rectangles.
 
@@ -618,16 +643,19 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
 ### 8.1 `@studioflow/scene-model` (pure TypeScript, no DOM)
 
 - `contracts.ts` (exists): generated wire types under friendly names, `HUB`, `ERROR_CODES`.
-- `constants.ts`: `CANVAS_WIDTH = 1920`, `CANVAS_HEIGHT = 1080`, `SAFE_MARGIN = 40`, `FADE_DURATIONS_MS`,
+- `canvas.ts`: `CANVAS_FORMATS`, `CANVAS_RESOLUTIONS`, `canvasSize(format, resolution)` (the size table, mirrors
+  `Canvases.SizeOf`), `canvasOf(production)`, `canvasDto`, `DEFAULT_CANVAS` (1920 × 1080), `isLandscape`, `safeMargin(canvas)`,
+  `placeOnCanvas(canvas, rect)` (mirrors `Canvases.Place`), labels (`formatRatioLabel`, `resolutionLabel`, `canvasSizeLabel`).
+- `constants.ts`: `SAFE_MARGIN = 40` (at 1080p), `FADE_DURATIONS_MS`,
   `DEFAULT_FADE_MS = 300`, `HOLD_OPTIONS` ([{label:'Freeze frame 3 s, then dimmed', holdMs:3000},
   {…10 s…, 10000}, {label:'Hold freeze frame', holdMs:null}]; `label` resolves through `@studioflow/i18n`),
   limits (`MAX_ITEMS_PER_SCENE = 32`, …), item bounds.
 - `source-ref.ts`: `parseSourceRef(ref)` → `{kind:'device', deviceId, slot} | {kind:'asset', assetId} | null`,
   `deviceSourceRef(deviceId, slot)`, `isDeviceSourceRef`, `slotKind(slot)`.
-- `layout-templates.ts`: `LAYOUT_TEMPLATES` (id, name, slots), `autoGridSlots(count)`,
-  `applyLayoutTemplate(items, templateId, kindOf: (sourceId) => SourceKind | undefined)` →
+- `layout-templates.ts`: `layoutTemplates(canvas)` (id, name, slots), `autoGridSlots(count, canvas)`,
+  `applyLayoutTemplate(items, templateId, kindOf: (sourceId) => SourceKind | undefined, canvas)` →
   `{ items, layoutMode }`.
-- `text.ts`: `TEXT_STYLES`, `TEXT_LIMITS`, `DEFAULT_TEXT_THEME`, `defaultTextAlign`, `styleHasAlignment`, `textItemRect(style)` (the
+- `text.ts`: `TEXT_STYLES`, `TEXT_LIMITS`, `DEFAULT_TEXT_THEME`, `defaultTextAlign`, `styleHasAlignment`, `textItemRect(style, canvas)` (the
   rectangle of a new text item), `contrastRatio` / `hasReadableContrast` (WCAG 2, limit 4.5 : 1, `MIN_TEXT_CONTRAST`).
 - `geometry.ts`: `clampItem(item)`, `validateItem(item)` → list of messages (resolved through `@studioflow/i18n`), `itemDefaults(source, kind)`,
   `rectsIntersect`, `CanvasRect` helpers.
@@ -673,10 +701,12 @@ createSceneRenderer(container: HTMLElement, options: {
   statusOf?: (sourceId: string) => MonitorSourceStatus | undefined;  // monitor alerts (Regie)
   codeOf?: (sourceId: string) => string | undefined;                 // label “K2 · freeze frame 00:12”
   reducedMotion?: boolean;
+  canvas?: { width: number; height: number };    // the production's canvas, default 1920 × 1080
 }): SceneRenderer
 
 interface SceneRenderer {
-  readonly element: HTMLElement;               // 1920×1080 stage, scaled with CSS transform into the container (letterbox)
+  readonly element: HTMLElement;               // stage of the canvas size (1920×1080 by default), scaled with CSS transform into the container (letterbox)
+  setCanvas(canvas: { width: number; height: number }): void; // format or resolution changed: resize, re-fit, re-lay out Auto grid and slates
   show(scene: SceneDto | null): void;          // immediate
   update(scene: SceneDto): void;               // same scene changed: diff items in place (no flicker)
   transitionTo(scene: SceneDto | null, transition: TransitionDto): Promise<void>; // cut or fade; fade always completes;
@@ -835,6 +865,11 @@ program switches play the event's transition; preview scene and all other scenes
 Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate “No access” («Kein Zugang») (no retry loop faster
 than 30 s). `debug=1` shows a mono overlay (scene, revision, connection states, per source resolution/fps/bitrate,
 estimated latency). Reports `OutputReport` every 2 s (the report belongs to the link whose key opened the page).
+The stage has the canvas of the production (format and resolution): the program view hands it to the renderer before it
+shows a scene, so a `productionCanvasChanged` event resizes the open page at once and the rescaled scenes of the same
+revision are drawn on the new stage; `?debug=1` shows it ("Canvas 1080 × 1920 · 9:16 · 1080p"). The picture size that
+the output asks the sources for follows the size of an element on screen, not the canvas, so the phones' publish
+resolution (720p/1080p, simulcast layers) does not depend on the format.
 Bundle target: < 350 KB gzip incl. livekit-client.
 
 As an OBS browser source (9.4) the page needs nothing special, and this is what makes it work there: every video is
@@ -854,8 +889,7 @@ background effects off) and the download of a **ready-made OBS scene collection*
 The file is generated in the browser (`obs-scene-collection.ts`) from the link URL the Regie already holds, so there is no
 new endpoint and the key goes nowhere new; the unit tests cover its structure, the escaping of names and URLs and the
 file name. It holds one scene “StudioFlow” with one browser source “StudioFlow output” (`id: "browser_source"`) with
-`url` = the link, `width` × `height` = the stage size (`obsCanvasSize()`, one place: 1920 × 1080 until the production
-format #8 replaces it), `fps` 30 (`fps_custom`), `reroute_audio` true (“Control audio via OBS”, for #7), `shutdown` false
+`url` = the link, `width` × `height` = the canvas of the production (1920 × 1080 by default, 1080 × 1920 for 9:16, …), `fps` 30 (`fps_custom`), `reroute_audio` true (“Control audio via OBS”, for #7), `shutdown` false
 (keeps running while hidden) and `restart_when_active` false (no refresh when the scene becomes active). The layout of
 the file is the one OBS Studio 31 and 32 write (keys of a scene and of `obs-browser`; `prev_ver` is OBS 31.0.0); a
 scene collection does not carry the canvas size, so the instructions tell the operator to set Base and Output

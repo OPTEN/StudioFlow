@@ -125,7 +125,7 @@ test.describe('REGIE format and resolution', () => {
       expect((await screenRatios(page))[0]).toBeCloseTo(0.5625, 2);
 
       // The output page of the new production draws the 1080 × 1920 stage with bars left and right.
-      const { key } = parseOutputUrl((await api.getOutputSettings(created.id)).body.url);
+      const { key } = parseOutputUrl((await api.getOutputSettings(created.id)).body.links[0]!.url);
       const target = { slug: created.slug, outputKey: key };
       const { itemId, scene } = await seedLowerThird(api, created.id);
       expect((await api.startBroadcast(created.id)).status).toBe(200);

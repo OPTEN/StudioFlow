@@ -1,10 +1,5 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
-import {
-  OBS_FPS,
-  obsCanvasSize,
-  obsSceneCollection,
-  obsSceneCollectionFileName,
-} from './obs-scene-collection';
+import { DEFAULT_CANVAS, canvasSize, type CanvasSize } from '@studioflow/scene-model';
+import { OBS_FPS, obsSceneCollection, obsSceneCollectionFileName } from './obs-scene-collection';
 
 interface ObsSource {
   id: string;
@@ -25,8 +20,12 @@ interface ObsCollection {
 const URL_OF_LINK =
   'https://studioflow.example/o/webinar?k=Zk3-_9aQ0v7y2LdE5hN1bXo8cTg4uJmW6rSsPqAiYwU';
 
-function parse(name = 'Teams camera', url = URL_OF_LINK): ObsCollection {
-  return JSON.parse(obsSceneCollection(name, url)) as ObsCollection;
+function parse(
+  name = 'Teams camera',
+  url = URL_OF_LINK,
+  canvas: CanvasSize = DEFAULT_CANVAS,
+): ObsCollection {
+  return JSON.parse(obsSceneCollection(name, url, canvas)) as ObsCollection;
 }
 
 function browserSource(collection: ObsCollection): ObsSource {
@@ -84,12 +83,29 @@ describe('obsSceneCollection', () => {
     expect(browserSource(parse()).mixers).toBe(255);
   });
 
-  it('takes the size from one place, the stage of the scene model', () => {
-    expect(obsCanvasSize()).toEqual({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+  it('has the size of the canvas of the production: 1920 × 1080 by default', () => {
     expect(OBS_FPS).toBe(30);
-    const scene = parse().sources[0]!.settings as { items: { scale_ref: unknown }[] };
-    expect(scene.items[0]?.scale_ref).toEqual({ x: CANVAS_WIDTH, y: CANVAS_HEIGHT });
+    const collection = parse();
+    expect(browserSource(collection).settings).toMatchObject({ width: 1920, height: 1080 });
+    const scene = collection.sources[0]!.settings as { items: { scale_ref: unknown }[] };
+    expect(scene.items[0]?.scale_ref).toEqual({ x: 1920, y: 1080 });
   });
+
+  it.each([
+    ['portrait', 'p1080', 1080, 1920],
+    ['square', 'p720', 720, 720],
+    ['standard', 'p1080', 1440, 1080],
+    ['widescreen', 'p720', 1280, 720],
+  ] as const)(
+    'follows the format of the production: %s %s',
+    (format, resolution, width, height) => {
+      const collection = parse('Reel', URL_OF_LINK, canvasSize(format, resolution));
+
+      expect(browserSource(collection).settings).toMatchObject({ width, height });
+      const scene = collection.sources[0]!.settings as { items: { scale_ref: unknown }[] };
+      expect(scene.items[0]?.scale_ref).toEqual({ x: width, y: height });
+    },
+  );
 
   it('keeps the key of the link byte for byte', () => {
     const url = new URL(browserSource(parse()).settings['url'] as string);
@@ -103,18 +119,20 @@ describe('obsSceneCollection', () => {
 
   it('escapes a link name with quotes, backslashes, line breaks and emoji', () => {
     const name = 'Zoom "Raum 1" \\ C:\\tmp\nzweite Zeile 🎥';
-    const text = obsSceneCollection(name, URL_OF_LINK);
+    const text = obsSceneCollection(name, URL_OF_LINK, DEFAULT_CANVAS);
     expect(() => JSON.parse(text) as unknown).not.toThrow();
     expect(parse(name).name).toBe(`StudioFlow – ${name}`);
     expect(text).not.toContain('\nzweite Zeile');
   });
 
   it('is the same text for the same input', () => {
-    expect(obsSceneCollection('A', URL_OF_LINK)).toBe(obsSceneCollection('A', URL_OF_LINK));
+    expect(obsSceneCollection('A', URL_OF_LINK, DEFAULT_CANVAS)).toBe(
+      obsSceneCollection('A', URL_OF_LINK, DEFAULT_CANVAS),
+    );
   });
 
   it('does not repeat the key anywhere but in the URL', () => {
-    const text = obsSceneCollection('Teams camera', URL_OF_LINK);
+    const text = obsSceneCollection('Teams camera', URL_OF_LINK, DEFAULT_CANVAS);
     expect(text.split('Zk3-_9aQ0v7y2LdE5hN1bXo8cTg4uJmW6rSsPqAiYwU')).toHaveLength(2);
   });
 });
