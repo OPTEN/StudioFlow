@@ -22,7 +22,7 @@ internal sealed class StudioFlowExceptionHandler(IProblemDetailsService problems
             return true;
         }
 
-        var (status, code, detail, errors, retryAfter) = Describe(exception);
+        var (status, code, detail, errors, retryAfter) = Describe(exception, httpContext);
         if (status == StatusCodes.Status503ServiceUnavailable)
         {
             // An operational state, not a bug: no stack trace for every request while PostgreSQL is down.
@@ -68,14 +68,19 @@ internal sealed class StudioFlowExceptionHandler(IProblemDetailsService problems
         _ => StatusCodes.Status500InternalServerError,
     };
 
-    private (int Status, string Code, string Detail, IReadOnlyDictionary<string, string[]>? Errors, TimeSpan? RetryAfter) Describe(Exception exception) => exception switch
+    private (int Status, string Code, string Detail, IReadOnlyDictionary<string, string[]>? Errors, TimeSpan? RetryAfter) Describe(Exception exception, HttpContext httpContext) => exception switch
     {
         StudioFlowException e => (StatusOf(e.Kind), e.Code, e.Message, e.Errors, e.RetryAfter),
         _ when DatabaseOutage.IsOutage(exception) => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.ServiceUnavailable, DatabaseOutage.Message, null, DatabaseOutage.RetryAfter),
+        BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } when IsImport(httpContext) => (StatusCodes.Status413PayloadTooLarge, ErrorCodes.ArchiveTooLarge, "The file is larger than this installation accepts.", null, null),
         BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } => (StatusCodes.Status413PayloadTooLarge, ErrorCodes.UnsupportedMedia, "The request is too large.", null, null),
         BadHttpRequestException { StatusCode: StatusCodes.Status400BadRequest } e when JsonBindingErrors.From(e) is { } fields => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "The input is invalid.", fields, null),
         BadHttpRequestException e => (e.StatusCode, Problems.CodeFor(e.StatusCode), "The request is invalid.", null, null),
         JsonException or InvalidDataException or NotSupportedException { Source: "System.Text.Json" } => (StatusCodes.Status400BadRequest, ErrorCodes.ValidationFailed, "The request is invalid.", null, null),
         _ => (StatusCodes.Status500InternalServerError, ErrorCodes.InternalError, environment.IsDevelopment() ? exception.Message : "An unexpected error occurred.", null, null),
     };
+
+    /// <summary>The failed request was the import of a production: Kestrel stopped reading its body at the limit.</summary>
+    private static bool IsImport(HttpContext httpContext) =>
+        httpContext.Features.Get<IExceptionHandlerFeature>()?.Endpoint?.Metadata.GetMetadata<Endpoints.RequestBodyLimit>() is { IsImport: true };
 }
