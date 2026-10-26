@@ -108,7 +108,8 @@ public sealed class PinnedBehaviourTests : IDisposable
         Assert.Equal((ErrorKind.Conflict, ErrorCodes.Conflict), (open.Kind, open.Code));
         Assert.Equal(ErrorKind.NotFound, again.Kind);
         Assert.Contains(harness.Events, e => e is IncidentRemovedEvent r && r.IncidentId == incident.Id);
-        _ = device;
+        var audit = Assert.Single(harness.Data.Audit, a => a.Action == AuditActions.IncidentAcknowledged);
+        Assert.Equal((AuditActors.Admin, device.Slots[0].Code), (audit.Actor, audit.Detail(AuditDetails.Code)));
     }
 
     [Theory]

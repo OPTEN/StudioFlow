@@ -24,7 +24,10 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
                     return Dtos.Device(device, context.Runtime.FindDevice(device.Id));
                 }
 
+                var details = MutationContextExtensions.DeviceDetails(device);
+                details[AuditDetails.Name] = name;
                 device.Rename(name);
+                context.Audit(AuditActors.Admin, AuditActions.DeviceRenamed, details);
                 DeviceEvents.EmitDevice(context, device);
                 SourceMonitor.PublishSources(context, device);
                 await DeviceEvents.SendSelfAsync(context, device, cancellationToken);

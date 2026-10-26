@@ -50,6 +50,7 @@ public sealed class ProductionService(
             var slug = Slugs.MakeUnique(Slugs.FromName(name), slugs.Contains);
             var production = Production.Create(name, slug, isActive: !existing.Any(p => p.IsActive), clock.StorageNow());
             unit.Productions.Add(production);
+            unit.Audit.Add(ProductionCreatedEntry(production, AuditActors.Admin));
             await unit.SaveChangesAsync(CancellationToken.None);
             return Dtos.Production(production);
         }
@@ -71,7 +72,9 @@ public sealed class ProductionService(
                 return;
             }
 
-            unit.Productions.Add(Production.Create("Webinar", "webinar", isActive: true, clock.StorageNow()));
+            var production = Production.Create("Webinar", "webinar", isActive: true, clock.StorageNow());
+            unit.Productions.Add(production);
+            unit.Audit.Add(ProductionCreatedEntry(production, AuditActors.System));
             await unit.SaveChangesAsync(cancellationToken);
         }
         finally
@@ -98,9 +101,11 @@ public sealed class ProductionService(
             {
                 var production = await context.ProductionAsync(cancellationToken);
                 var catalog = await context.CatalogAsync(cancellationToken);
+                var (name, standbySlate, endSlate) = (production.Name, production.StandbySlate, production.EndSlate);
                 if (production.Update(request, catalog))
                 {
                     EmitProduction(context, production);
+                    AuditUpdate(context, production, name, standbySlate, endSlate);
                 }
 
                 return Dtos.Production(production);
@@ -159,27 +164,27 @@ public sealed class ProductionService(
 
     /// <summary>Resets the broadcast to standby.</summary>
     public Task<ProductionDto> ResetBroadcastAsync(string productionId, CancellationToken cancellationToken) =>
-        ChangeBroadcastAsync(productionId, (p, _) => p.ResetBroadcast(), null, cancellationToken);
+        ChangeBroadcastAsync(productionId, (p, _) => p.ResetBroadcast(), AuditActions.BroadcastReset, cancellationToken);
 
     /// <summary>Sets or clears the preview scene.</summary>
     public Task<ProductionDto> SetPreviewAsync(string productionId, SetPreviewRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return SwitchAsync(productionId, (p, now) => p.SetPreview(request.SceneId, now), cancellationToken);
+        return SwitchAsync(productionId, AuditVia.Click, (p, now) => p.SetPreview(request.SceneId, now), cancellationToken);
     }
 
     /// <summary>Direct program switch (Studio-Modus off).</summary>
     public Task<ProductionDto> SwitchProgramAsync(string productionId, SwitchProgramRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return SwitchAsync(productionId, (p, now) => p.SwitchProgram(request.SceneId, request.Transition, now), cancellationToken);
+        return SwitchAsync(productionId, AuditVia.Click, (p, now) => p.SwitchProgram(request.SceneId, request.Transition, now), cancellationToken);
     }
 
     /// <summary>Take: the preview goes on air, the old program becomes the preview.</summary>
     public Task<ProductionDto> TakeAsync(string productionId, TakeRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return SwitchAsync(productionId, (p, now) => p.Take(request.Transition, now), cancellationToken);
+        return SwitchAsync(productionId, AuditVia.Take, (p, now) => p.Take(request.Transition, now), cancellationToken);
     }
 
     /// <summary>
@@ -195,6 +200,7 @@ public sealed class ProductionService(
                     ?? throw StudioFlowException.NotFound("Message");
                 health.Acknowledge(incidentId);
                 context.Emit(revision => new IncidentRemovedEvent(revision, incidentId));
+                context.Audit(AuditActors.Admin, AuditActions.IncidentAcknowledged, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Code] = health.Code });
                 return Task.CompletedTask;
             },
             cancellationToken);
@@ -251,13 +257,17 @@ public sealed class ProductionService(
                 if (production.SetActive(active))
                 {
                     EmitProduction(context, production);
+                    if (active)
+                    {
+                        context.Audit(AuditActors.Admin, AuditActions.ProductionActivated, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Name] = production.Name });
+                    }
                 }
 
                 return Dtos.Production(production);
             },
             CancellationToken.None);
 
-    private Task<ProductionDto> ChangeBroadcastAsync(string productionId, Func<Production, DateTimeOffset, bool> change, string? auditAction, CancellationToken cancellationToken) =>
+    private Task<ProductionDto> ChangeBroadcastAsync(string productionId, Func<Production, DateTimeOffset, bool> change, string auditAction, CancellationToken cancellationToken) =>
         coordinator.ExecuteAsync(
             productionId,
             async context =>
@@ -267,17 +277,35 @@ public sealed class ProductionService(
                 {
                     EmitProduction(context, production);
                     context.UpdateOnAir(production);
-                    if (auditAction is not null)
-                    {
-                        context.Audit(AuditActors.Admin, auditAction);
-                    }
+                    context.Audit(AuditActors.Admin, auditAction);
                 }
 
                 return Dtos.Production(production);
             },
             cancellationToken);
 
-    private Task<ProductionDto> SwitchAsync(string productionId, Func<Production, DateTimeOffset, ProgramChange?> change, CancellationToken cancellationToken) =>
+    private static AuditEntry ProductionCreatedEntry(Production production, string actor) =>
+        AuditEntry.Create(production.Id, production.CreatedAt, actor, AuditActions.ProductionCreated, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Name] = production.Name });
+
+    private static void AuditUpdate(MutationContext context, Production production, string previousName, SlateDto previousStandbySlate, SlateDto previousEndSlate)
+    {
+        if (!string.Equals(production.Name, previousName, StringComparison.Ordinal))
+        {
+            context.Audit(AuditActors.Admin, AuditActions.ProductionRenamed, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.From] = previousName, [AuditDetails.Name] = production.Name });
+        }
+
+        if (production.StandbySlate != previousStandbySlate)
+        {
+            context.Audit(AuditActors.Admin, AuditActions.SlateChanged, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Slate] = AuditSlates.Standby });
+        }
+
+        if (production.EndSlate != previousEndSlate)
+        {
+            context.Audit(AuditActors.Admin, AuditActions.SlateChanged, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Slate] = AuditSlates.End });
+        }
+    }
+
+    private Task<ProductionDto> SwitchAsync(string productionId, string via, Func<Production, DateTimeOffset, ProgramChange?> change, CancellationToken cancellationToken) =>
         coordinator.ExecuteAsync(
             productionId,
             async context =>
@@ -289,7 +317,7 @@ public sealed class ProductionService(
                     context.UpdateOnAir(production);
                     if (!string.Equals(switched.ProgramSceneId, switched.PreviousProgramSceneId, StringComparison.Ordinal) && production.FindScene(switched.ProgramSceneId) is { } live)
                     {
-                        context.Audit(AuditActors.Admin, AuditActions.SceneLive, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Scene] = live.Name });
+                        context.Audit(AuditActors.Admin, AuditActions.SceneLive, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Scene] = live.Name, [AuditDetails.Via] = via });
                     }
                 }
 

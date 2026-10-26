@@ -3,17 +3,17 @@ using Opten.StudioFlow.Core.Contracts;
 namespace Opten.StudioFlow.Core.Domain;
 
 /// <summary>
-/// The entries of "Recent events" derived from audit entries (spec 4.9): a stable <see cref="LogCode"/>, the values
-/// the client puts into its own text, and an English fallback text such as "K2 reconnecting", "K2 is back, was gone
-/// for 9 s" or "Scene “Break” is live". Entries without a log entry (logins, phone QR renewals) are not shown in the
-/// Regie. Source outages follow spec 4.5: a slot stopped on purpose is "S1 sharing stopped" for a screen and
-/// "K1 camera stopped" for a camera (the kind is stored with the entry); a camera paused by the operating system is
-/// an outage that is expected back, "K1 reconnecting".
+/// The one source of the texts of audit entries (spec 4.9), for "Recent events" and the audit log: a stable
+/// <see cref="LogCode"/>, the values the client puts into its own text, and an English fallback text such as
+/// "K2 reconnecting", "K2 is back, was gone for 9 s" or "Scene “Break” is live". "Recent events" shows only the
+/// <see cref="RecentActions"/>; the audit log shows every entry that has a text. Source outages follow spec 4.5: a slot
+/// stopped on purpose is "S1 sharing stopped" for a screen and "K1 camera stopped" for a camera (the kind is stored
+/// with the entry); a camera paused by the operating system is an outage that is expected back, "K1 reconnecting".
 /// </summary>
 public static class LogTexts
 {
-    /// <summary>Actions that can have a log entry (pre-filter for database queries).</summary>
-    public static IReadOnlyCollection<string> Actions { get; } =
+    /// <summary>Actions that "Recent events" shows (pre-filter for database queries).</summary>
+    public static IReadOnlyCollection<string> RecentActions { get; } =
     [
         AuditActions.SceneLive, AuditActions.SceneCreated, AuditActions.SceneDeleted, AuditActions.BroadcastStarted,
         AuditActions.BroadcastEnded, AuditActions.DevicePaired, AuditActions.DeviceBlocked, AuditActions.DeviceUnblocked,
@@ -32,9 +32,26 @@ public static class LogTexts
         public const string Name = "name";
         public const string Code = "code";
         public const string DownSeconds = "downSeconds";
+        public const string Username = "username";
+        public const string From = "from";
+        public const string Format = "format";
+        public const string Rows = "rows";
+        public const string Days = "days";
+        public const string Deleted = "deleted";
+        public const string Anonymised = "anonymised";
     }
 
-    /// <summary>The log entry of an audit entry (code, parameters, English text), or null when the entry is not shown.</summary>
+    /// <summary>The log entry of an audit entry in "Recent events", or null when the entry is not shown there.</summary>
+    public static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text)? DescribeRecent(AuditEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return RecentActions.Contains(entry.Action) ? Describe(entry) : null;
+    }
+
+    /// <summary>
+    /// The log entry of an audit entry (code, parameters, English text), or null for an action without a text: an unknown
+    /// action, or an invite of a phone QR code (not audited any more; entries of older versions remain).
+    /// </summary>
     public static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text)? Describe(AuditEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -42,6 +59,7 @@ public static class LogTexts
         var scene = entry.Detail(AuditDetails.Scene);
         var code = entry.Detail(AuditDetails.Code);
         var name = entry.Detail(AuditDetails.Name);
+        var username = entry.Detail(AuditDetails.Username);
         var subject = Subject(entry);
         return entry.Action switch
         {
@@ -73,6 +91,20 @@ public static class LogTexts
             AuditActions.AccountSetUp => With(LogCode.AccountSetUp, "Account set up"),
             AuditActions.PasswordChanged => With(LogCode.PasswordChanged, "Password changed"),
             AuditActions.AccountReset => With(LogCode.AccountReset, "Account reset"),
+            AuditActions.LoginSucceeded => With(LogCode.LoginSucceeded, $"“{username}” signed in", (Param.Username, username)),
+            AuditActions.LoginFailed => With(LogCode.LoginFailed, $"Sign-in failed for “{username}”", (Param.Username, username)),
+            AuditActions.LoginLocked => With(LogCode.LoginLocked, "Sign-in locked after too many failed attempts"),
+            AuditActions.Logout => With(LogCode.LoggedOut, $"“{username}” signed out", (Param.Username, username)),
+            AuditActions.ProductionCreated => With(LogCode.ProductionCreated, $"Production “{name}” created", (Param.Name, name)),
+            AuditActions.ProductionRenamed => With(LogCode.ProductionRenamed, $"Production “{entry.Detail(AuditDetails.From)}” renamed to “{name}”", (Param.From, entry.Detail(AuditDetails.From)), (Param.Name, name)),
+            AuditActions.ProductionActivated => With(LogCode.ProductionActivated, $"Production “{name}” activated", (Param.Name, name)),
+            AuditActions.BroadcastReset => With(LogCode.BroadcastReset, "Broadcast reset"),
+            AuditActions.SlateChanged when string.Equals(entry.Detail(AuditDetails.Slate), AuditSlates.End, StringComparison.Ordinal) => With(LogCode.EndSlateChanged, "Slate after the broadcast changed"),
+            AuditActions.SlateChanged => With(LogCode.StandbySlateChanged, "Slate before the broadcast changed"),
+            AuditActions.IncidentAcknowledged => With(LogCode.IncidentAcknowledged, $"{code} message marked as seen", (Param.Code, code)),
+            AuditActions.DeviceRenamed => With(LogCode.DeviceRenamed, $"{subject} renamed to “{name}”", (Param.Subject, subject), (Param.Name, name)),
+            AuditActions.AuditExported => With(LogCode.AuditExported, $"Audit log exported as {entry.Detail(AuditDetails.Format)}, {entry.Detail(AuditDetails.Rows)} rows", (Param.Format, entry.Detail(AuditDetails.Format)), (Param.Rows, entry.Detail(AuditDetails.Rows))),
+            AuditActions.AuditRetention => Retention(entry),
             _ => null,
         };
     }
@@ -85,6 +117,17 @@ public static class LogTexts
         var downSeconds = AuditEntry.DowntimeSeconds(entry.Detail(AuditDetails.DownSeconds));
         var text = $"{code} is back, was gone for {AuditEntry.FormatDowntime(entry.Detail(AuditDetails.DownSeconds))}";
         return With(LogCode.SourceRecovered, text, (Param.Code, code), (Param.DownSeconds, downSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Retention(AuditEntry entry)
+    {
+        var (days, deleted, anonymised) = (entry.Detail(AuditDetails.Days), entry.Detail(AuditDetails.Deleted), entry.Detail(AuditDetails.Anonymised));
+        return With(
+            LogCode.AuditRetention,
+            $"Audit retention ({days} days): entries deleted {deleted}, IP addresses removed {anonymised}",
+            (Param.Days, days),
+            (Param.Deleted, deleted),
+            (Param.Anonymised, anonymised));
     }
 
     private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) With(LogCode code, string text, params (string Key, string Value)[] parameters) =>

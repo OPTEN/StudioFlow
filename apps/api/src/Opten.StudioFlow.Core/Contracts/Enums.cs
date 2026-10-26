@@ -392,4 +392,68 @@ public enum LogCode
 
     /// <summary>A text was hidden on the program scene. Params: <c>code</c>.</summary>
     TextHidden,
+
+    /// <summary>The Regie account signed in. Params: <c>username</c>.</summary>
+    LoginSucceeded,
+
+    /// <summary>A sign-in failed. Params: <c>username</c>.</summary>
+    LoginFailed,
+
+    /// <summary>Too many failed sign-ins locked the address or the account for a while.</summary>
+    LoginLocked,
+
+    /// <summary>The Regie account signed out. Params: <c>username</c>.</summary>
+    LoggedOut,
+
+    /// <summary>A production was created. Params: <c>name</c>.</summary>
+    ProductionCreated,
+
+    /// <summary>A production was renamed. Params: <c>from</c> (old name), <c>name</c> (new name).</summary>
+    ProductionRenamed,
+
+    /// <summary>A production became the active one. Params: <c>name</c>.</summary>
+    ProductionActivated,
+
+    /// <summary>The broadcast was reset to standby.</summary>
+    BroadcastReset,
+
+    /// <summary>The slate shown before the broadcast was changed.</summary>
+    StandbySlateChanged,
+
+    /// <summary>The slate shown after the broadcast was changed.</summary>
+    EndSlateChanged,
+
+    /// <summary>A recovered source message was marked as seen. Params: <c>code</c>.</summary>
+    IncidentAcknowledged,
+
+    /// <summary>A device was renamed. Params: <c>subject</c> (slot codes and old name), <c>name</c> (new name).</summary>
+    DeviceRenamed,
+
+    /// <summary>The audit log was exported. Params: <c>format</c>, <c>rows</c>.</summary>
+    AuditExported,
+
+    /// <summary>Old audit entries were deleted and old IP addresses removed. Params: <c>days</c>, <c>deleted</c>, <c>anonymised</c>.</summary>
+    AuditRetention,
+}
+
+/// <summary>What an entry of the audit log is about: the category filter of the log view and a column of the export.</summary>
+public enum AuditCategory
+{
+    /// <summary>Productions, broadcast, scenes and slates.</summary>
+    Production,
+
+    /// <summary>Devices, pairing, invites and source status changes.</summary>
+    Devices,
+
+    /// <summary>Sign-ins, the Regie account and the audit log itself.</summary>
+    Security,
+
+    /// <summary>Uploaded media.</summary>
+    Media,
+
+    /// <summary>The output link and its access rules.</summary>
+    Output,
+
+    /// <summary>Maintenance by the server.</summary>
+    System,
 }

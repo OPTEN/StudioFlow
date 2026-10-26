@@ -308,7 +308,12 @@ public sealed class PairingService(
     private static void RemoveInvite(MutationContext context, Invite invite, string actor)
     {
         context.Emit(revision => new InviteRemovedEvent(revision, invite.Id));
-        context.Audit(actor, AuditActions.InviteRevoked, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Kind] = invite.Kind.ToString() });
+
+        // The phone QR code is replaced every few minutes; only the invite links are worth an entry.
+        if (invite.Kind != InviteKind.PhoneQr)
+        {
+            context.Audit(actor, AuditActions.InviteRevoked, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Kind] = invite.Kind.ToString() });
+        }
     }
 
     private PairingRequest FindRequest(string productionId, string requestId)
@@ -325,7 +330,11 @@ public sealed class PairingService(
         context.Data.Invites.Add(invite);
         var dto = Dtos.Invite(invite, options.BaseUrl);
         context.Emit(revision => new InviteUpsertedEvent(revision, dto));
-        context.Audit(actor, AuditActions.InviteCreated, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Kind] = kind.ToString() });
+        if (kind != InviteKind.PhoneQr)
+        {
+            context.Audit(actor, AuditActions.InviteCreated, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Kind] = kind.ToString() });
+        }
+
         return dto;
     }
 

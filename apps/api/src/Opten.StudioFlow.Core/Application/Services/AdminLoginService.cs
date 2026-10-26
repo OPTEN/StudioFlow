@@ -57,6 +57,18 @@ public sealed class AdminLoginService(AdminAccountState account, LoginThrottle t
         return new LoginResult(LoginOutcome.Failed, null, null);
     }
 
+    /// <summary>Records that <paramref name="username"/> signed out from <paramref name="ip"/>.</summary>
+    public Task LogoutAsync(string username, string ip)
+    {
+        ArgumentNullException.ThrowIfNull(username);
+        ArgumentNullException.ThrowIfNull(ip);
+        return AuditAsync(AuditActions.Logout, new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [AuditDetails.Username] = username,
+            [AuditDetails.Ip] = ip,
+        });
+    }
+
     private async Task AuditAsync(string action, IReadOnlyDictionary<string, string> details)
     {
         // Login auditing must not depend on the caller staying connected.
