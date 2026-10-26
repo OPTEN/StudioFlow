@@ -366,35 +366,28 @@ public sealed class LiveKitRoomClientTests
     }
 }
 
-public sealed class AdminCredentialsTests
+public sealed class AdminPasswordHasherTests
 {
-    [Fact]
-    public void Verify_Hash_AcceptsOnlyTheRightPair()
-    {
-        var credentials = new AdminCredentials(Options.Create(new AdminOptions { Username = "regie", PasswordHash = AdminCredentials.HashPassword("secret") }));
+    private readonly AdminPasswordHasher hasher = new();
 
-        Assert.True(credentials.Verify("regie", "secret"));
-        Assert.True(credentials.Verify(" regie ", "secret"));
-        Assert.False(credentials.Verify("regie", "Secret"));
-        Assert.False(credentials.Verify("Regie", "secret"));
-        Assert.False(credentials.Verify(null, null));
+    [Fact]
+    public void Verify_Password_AcceptsOnlyTheRightOne()
+    {
+        var hash = hasher.Hash("correct horse battery");
+
+        Assert.True(hasher.Verify(hash, "correct horse battery"));
+        Assert.False(hasher.Verify(hash, "Correct horse battery"));
+        Assert.False(hasher.Verify(hash, string.Empty));
     }
 
     [Fact]
-    public void Verify_PlainPasswordForLocalSetups_Works()
-    {
-        var options = new AdminOptions { Username = "admin", Password = "admin" };
-
-        Assert.True(options.UsesPlainPassword);
-        Assert.True(new AdminCredentials(Options.Create(options)).Verify("admin", "admin"));
-    }
+    public void Verify_CorruptHash_IsFalse() => Assert.False(hasher.Verify("%%%not-base64%%%", "x"));
 
     [Fact]
-    public void Verify_CorruptHash_IsFalse() =>
-        Assert.False(new AdminCredentials(Options.Create(new AdminOptions { Username = "a", PasswordHash = "%%%not-base64%%%" })).Verify("a", "x"));
+    public void Hash_SamePassword_UsesRandomSalt() => Assert.NotEqual(hasher.Hash("x"), hasher.Hash("x"));
 
     [Fact]
-    public void HashPassword_SamePassword_UsesRandomSalt() => Assert.NotEqual(AdminCredentials.HashPassword("x"), AdminCredentials.HashPassword("x"));
+    public void Hash_IsAnIdentityV3Hash() => Assert.StartsWith("AQAAAA", hasher.Hash("x"), StringComparison.Ordinal);
 }
 
 public sealed class SnakeCaseTests

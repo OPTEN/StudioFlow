@@ -14,8 +14,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Core.Contracts;
-using Opten.StudioFlow.Infrastructure.Security;
 using Testcontainers.PostgreSql;
 
 [assembly: AssemblyFixture(typeof(Opten.StudioFlow.Web.Tests.Support.PostgresFixture))]
@@ -29,6 +29,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithDatabase("postgres")
         .WithUsername("postgres")
         .WithPassword("sf-test-only")
+        .WithCommand("-c", "max_connections=300")
         .Build();
 
     public async ValueTask InitializeAsync() => await container.StartAsync();
@@ -64,7 +65,6 @@ public class StudioFlowApp(PostgresFixture postgres) : WebApplicationFactory<Pro
     public const long MaxVideoBytes = 400_000;
     public const string PublicBaseUrl = "https://sf.test";
 
-    private static readonly string AdminHash = AdminCredentials.HashPassword(AdminPassword);
     private static int nextAddress;
 
     private string connectionString = string.Empty;
@@ -83,10 +83,17 @@ public class StudioFlowApp(PostgresFixture postgres) : WebApplicationFactory<Pro
 
     protected virtual string EnvironmentName => "Testing";
 
-    public async ValueTask InitializeAsync()
+    /// <summary>True when the app sets up the Regie account at start, like an operator who finished the first-run setup.</summary>
+    protected virtual bool SetUpAccount => true;
+
+    public virtual async ValueTask InitializeAsync()
     {
         connectionString = await postgres.CreateDatabaseAsync();
         _ = Server;
+        if (SetUpAccount && Service<AdminAccountState>().SetupRequired)
+        {
+            await Service<AdminAccountService>().SetUpAsync(new SetupRequest(Service<SetupCode>().Current!, AdminUser, AdminPassword), NextAddress(), CancellationToken.None);
+        }
     }
 
     public override async ValueTask DisposeAsync()
@@ -158,8 +165,6 @@ public class StudioFlowApp(PostgresFixture postgres) : WebApplicationFactory<Pro
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("ConnectionStrings:StudioFlow", connectionString);
-        builder.UseSetting("Admin:Username", AdminUser);
-        builder.UseSetting("Admin:PasswordHash", AdminHash);
         builder.UseSetting("LiveKit:ApiKey", LiveKitKey);
         builder.UseSetting("LiveKit:ApiSecret", LiveKitSecret);
         builder.UseSetting("LiveKit:InternalUrl", "http://livekit.invalid:7880");

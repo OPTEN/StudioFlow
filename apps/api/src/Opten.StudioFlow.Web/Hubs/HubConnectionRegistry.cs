@@ -165,6 +165,22 @@ public sealed class HubConnectionRegistry(RealtimeOptions options, TimeProvider 
         return closed;
     }
 
+    /// <summary>
+    /// Aborts every Regie connection except those of <paramref name="keepSessionId"/> (password change, account reset);
+    /// returns how many were closed.
+    /// </summary>
+    public int AbortSessionsExcept(string? keepSessionId)
+    {
+        var closed = 0;
+        foreach (var connection in connections.Values.Where(c => c.SessionId is not null && !string.Equals(c.SessionId, keepSessionId, StringComparison.Ordinal)).ToList())
+        {
+            Abort(connection.Context.ConnectionId);
+            closed++;
+        }
+
+        return closed;
+    }
+
     private void Enqueue(Connection connection, Func<Task> send)
     {
         if (connection.TryEnqueue(send))

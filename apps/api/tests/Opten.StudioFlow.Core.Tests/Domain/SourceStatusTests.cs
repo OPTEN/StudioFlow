@@ -414,6 +414,9 @@ public sealed class LogTextsTests
             (AuditActions.SourceEnded, [(AuditDetails.Code, "S1"), (AuditDetails.Kind, "Screen")], LogCode.ScreenEnded, "S1 sharing stopped", new() { ["code"] = "S1" }),
             (AuditActions.SourceLost, [(AuditDetails.Code, "K1")], LogCode.SourceLost, "K1 no picture", new() { ["code"] = "K1" }),
             (AuditActions.SourceRecovered, [(AuditDetails.Code, "K2"), (AuditDetails.DownSeconds, "9")], LogCode.SourceRecovered, "K2 is back, was gone for 9 s", new() { ["code"] = "K2", ["downSeconds"] = "9" }),
+            (AuditActions.AccountSetUp, [(AuditDetails.Username, "regie")], LogCode.AccountSetUp, "Account set up", new()),
+            (AuditActions.PasswordChanged, [(AuditDetails.Username, "regie")], LogCode.PasswordChanged, "Password changed", new()),
+            (AuditActions.AccountReset, [], LogCode.AccountReset, "Account reset", new()),
         };
 
         foreach (var (action, details, code, text, parameters) in rows)

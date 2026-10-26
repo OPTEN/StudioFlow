@@ -13,7 +13,7 @@ using Opten.StudioFlow.Web.Security;
 
 namespace Opten.StudioFlow.Web.Endpoints;
 
-/// <summary>Admin session: login with lockout, logout, current session.</summary>
+/// <summary>Regie session: first-run setup, login with lockout, logout, current session, password change.</summary>
 internal static class AuthEndpoints
 {
     public static async Task<IResult> LoginAsync([FromBody] LoginRequest body, AdminLoginService logins, HttpContext context)
@@ -22,8 +22,8 @@ internal static class AuthEndpoints
         switch (result.Outcome)
         {
             case LoginOutcome.Succeeded:
-                await context.SignInAsync(AuthSchemes.Admin, AdminSessions.Principal(result.Username!), new AuthenticationProperties { IsPersistent = true });
-                return TypedResults.Ok(new SessionDto(result.Username!));
+                await SignInAsync(context, result.Identity!);
+                return TypedResults.Ok(new SessionDto(result.Identity!.Username));
             case LoginOutcome.Locked:
                 var seconds = Math.Max(1, (int)Math.Ceiling(result.RetryAfter!.Value.TotalSeconds));
                 context.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
@@ -32,6 +32,30 @@ internal static class AuthEndpoints
                 return Problems.Result(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Username or password is incorrect.");
         }
     }
+
+    public static IResult GetSetupStatus(AdminAccountState account) => TypedResults.Ok(new SetupStatusDto(account.SetupRequired));
+
+    // The account is created and the new admin is signed in at once.
+    public static async Task<IResult> SetUpAsync([FromBody] SetupRequest body, AdminAccountService accounts, HttpContext context, CancellationToken cancellationToken)
+    {
+        var identity = await accounts.SetUpAsync(body, ClientAddress.Of(context), cancellationToken);
+        await SignInAsync(context, identity);
+        return TypedResults.Ok(new SessionDto(identity.Username));
+    }
+
+    // Every other session ends: the new stamp is only in this session's renewed cookie, and the other sessions' hub
+    // connections are closed.
+    public static async Task<IResult> ChangePasswordAsync([FromBody] ChangePasswordRequest body, AdminAccountService accounts, AdminSessions sessions, HttpContext context, CancellationToken cancellationToken)
+    {
+        var identity = await accounts.ChangePasswordAsync(context.User.Identity!.Name!, body, ClientAddress.Of(context), cancellationToken);
+        var sessionId = context.User.FindFirstValue(StudioFlowClaims.SessionId);
+        await SignInAsync(context, identity, sessionId);
+        sessions.EndAllExcept(sessionId);
+        return TypedResults.NoContent();
+    }
+
+    private static Task SignInAsync(HttpContext context, AdminIdentity identity, string? sessionId = null) =>
+        context.SignInAsync(AuthSchemes.Admin, AdminSessions.Principal(identity, sessionId), new AuthenticationProperties { IsPersistent = true });
 
     /// <summary>Detail of the answer to a locked login: the wait rounded up to whole minutes.</summary>
     internal static string LockoutDetail(int seconds)

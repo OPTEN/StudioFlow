@@ -17,6 +17,7 @@ export type {
   BandwidthTestResultDto,
   BorderDto,
   BroadcastState,
+  ChangePasswordRequest,
   CreateInviteRequest,
   CreatePairingRequest,
   CreateProductionRequest,
@@ -77,6 +78,8 @@ export type {
   SceneLayoutMode,
   SessionDto,
   SetPreviewRequest,
+  SetupRequest,
+  SetupStatusDto,
   SlateDto,
   SlotState,
   SlotTelemetryDto,
@@ -167,6 +170,23 @@ export const ERROR_CODES = {
   requestTimeout: 'request_timeout',
   internalError: 'internal_error',
   serviceUnavailable: 'service_unavailable',
+  setupCodeInvalid: 'setup_code_invalid',
+  setupClosed: 'setup_closed',
+  passwordIncorrect: 'password_incorrect',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
+/**
+ * Reasons in the field errors (`errors`) of a `validation_failed` answer to the first-run setup and the password change.
+ * Mirrors `FieldErrorCodes` in the C# contracts.
+ */
+export const FIELD_ERROR_CODES = {
+  usernameInvalid: 'username_invalid',
+  passwordTooShort: 'password_too_short',
+  passwordTooLong: 'password_too_long',
+  passwordEqualsUsername: 'password_equals_username',
+  passwordTooCommon: 'password_too_common',
+} as const;
+
+export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[keyof typeof FIELD_ERROR_CODES];

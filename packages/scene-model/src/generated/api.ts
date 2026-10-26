@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSetupStatus"];
+        put?: never;
+        post: operations["completeSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -1007,6 +1039,13 @@ export interface components {
          * @enum {unknown}
          */
         BroadcastState: "standby" | "live" | "ended";
+        /** @description Changes the password of the signed-in admin; every other session ends. */
+        ChangePasswordRequest: {
+            /** @description The password in use now. */
+            currentPassword: string;
+            /** @description The new password. */
+            newPassword: string;
+        };
         /** @description Creates an invite link. */
         CreateInviteRequest: {
             kind: components["schemas"]["InviteKind"];
@@ -1298,7 +1337,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -1953,6 +1992,20 @@ export interface components {
         SetPreviewRequest: {
             sceneId: null | string;
         };
+        /** @description First-run setup: creates the Regie account and signs it in. */
+        SetupRequest: {
+            /** @description The one-time code from the server log (`XXXX-XXXX`). */
+            setupCode: string;
+            /** @description User name of the new account. */
+            username: string;
+            /** @description Password of the new account. */
+            password: string;
+        };
+        /** @description Whether the Regie has no account yet. Public, because the Regie asks before anyone is signed in. */
+        SetupStatusDto: {
+            /** @description True while the first-run setup is open. */
+            setupRequired: boolean;
+        };
         /** @description A full-screen slate on the output. */
         SlateDto: {
             /** @description Main line, e.g. "Starting soon". */
@@ -2123,6 +2176,7 @@ export type AssetKind = components['schemas']['AssetKind'];
 export type BandwidthTestResultDto = components['schemas']['BandwidthTestResultDto'];
 export type BorderDto = components['schemas']['BorderDto'];
 export type BroadcastState = components['schemas']['BroadcastState'];
+export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
 export type CreatePairingRequest = components['schemas']['CreatePairingRequest'];
 export type CreateProductionRequest = components['schemas']['CreateProductionRequest'];
@@ -2205,6 +2259,8 @@ export type SceneItemDto = components['schemas']['SceneItemDto'];
 export type SceneLayoutMode = components['schemas']['SceneLayoutMode'];
 export type SessionDto = components['schemas']['SessionDto'];
 export type SetPreviewRequest = components['schemas']['SetPreviewRequest'];
+export type SetupRequest = components['schemas']['SetupRequest'];
+export type SetupStatusDto = components['schemas']['SetupStatusDto'];
 export type SlateDto = components['schemas']['SlateDto'];
 export type SlotState = components['schemas']['SlotState'];
 export type SlotTelemetryDto = components['schemas']['SlotTelemetryDto'];
@@ -2272,6 +2328,144 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getSetupStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupStatusDto"];
+                };
+            };
+        };
+    };
+    completeSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

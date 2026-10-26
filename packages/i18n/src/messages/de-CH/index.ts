@@ -13,6 +13,7 @@ import { modelStatus } from './model-status';
 import { outputClock } from './output-clock';
 import { outputDebug } from './output-debug';
 import { outputSlates } from './output-slates';
+import { regieAccount } from './regie-account';
 import { regieCore } from './regie-core';
 import { regieDocks } from './regie-docks';
 import { regieHeader } from './regie-header';
@@ -24,6 +25,7 @@ import { regiePairing } from './regie-pairing';
 import { regieProperties } from './regie-properties';
 import { regieScenes } from './regie-scenes';
 import { regieSettings } from './regie-settings';
+import { regieSetup } from './regie-setup';
 import { regieSources } from './regie-sources';
 import { regieStage } from './regie-stage';
 import { regieStations } from './regie-stations';
@@ -50,6 +52,7 @@ export const deCH: Translation<typeof en> = {
   ...outputClock,
   ...outputDebug,
   ...outputSlates,
+  ...regieAccount,
   ...regieCore,
   ...regieDocks,
   ...regieHeader,
@@ -61,6 +64,7 @@ export const deCH: Translation<typeof en> = {
   ...regieProperties,
   ...regieScenes,
   ...regieSettings,
+  ...regieSetup,
   ...regieSources,
   ...regieStage,
   ...regieStations,

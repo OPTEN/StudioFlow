@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Web.Hubs;
 
 namespace Opten.StudioFlow.Web.Security;
@@ -23,10 +23,24 @@ public sealed class AdminSessions(HubConnectionRegistry hubs, TimeProvider clock
     /// <summary>A new random session id.</summary>
     public static string NewSessionId() => Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16));
 
-    /// <summary>The principal of a new session.</summary>
-    public static ClaimsPrincipal Principal(string username) => new(new ClaimsIdentity(
-        [new Claim(ClaimTypes.Name, username), new Claim(StudioFlowClaims.SessionId, NewSessionId())],
-        AuthSchemes.Admin));
+    /// <summary>The principal of a new session, or of the session <paramref name="sessionId"/> when its stamp is renewed.</summary>
+    public static ClaimsPrincipal Principal(AdminIdentity identity, string? sessionId = null)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        return new(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Name, identity.Username),
+                new Claim(StudioFlowClaims.SessionId, sessionId ?? NewSessionId()),
+                new Claim(StudioFlowClaims.SecurityStamp, identity.SecurityStamp),
+            ],
+            AuthSchemes.Admin));
+    }
+
+    /// <summary>
+    /// Closes the Regie hub connections of every session except <paramref name="keepSessionId"/>. The cookies of those
+    /// sessions are refused already (their stamp is outdated); the open connections would otherwise live on.
+    /// </summary>
+    public void EndAllExcept(string? keepSessionId) => hubs.AbortSessionsExcept(keepSessionId);
 
     /// <summary>True when the session was ended by a logout.</summary>
     public bool IsRevoked(string sessionId)
@@ -59,16 +73,17 @@ public sealed class AdminSessions(HubConnectionRegistry hubs, TimeProvider clock
     }
 
     /// <summary>
-    /// Cookie validation: refuses sessions without id or with a revoked id, and sessions of a renamed admin user.
+    /// Cookie validation: refuses sessions without id or with a revoked id, and sessions that do not belong to the
+    /// current account state (no account, another user name, or a security stamp from before a password change).
     /// </summary>
     public static Task ValidateAsync(CookieValidatePrincipalContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         var services = context.HttpContext.RequestServices;
-        var admin = services.GetRequiredService<IAdminCredentials>();
+        var account = services.GetRequiredService<AdminAccountState>();
         var sessions = services.GetRequiredService<AdminSessions>();
         var sessionId = context.Principal?.FindFirstValue(StudioFlowClaims.SessionId);
-        if (!string.Equals(context.Principal?.Identity?.Name, admin.Username, StringComparison.Ordinal)
+        if (!account.IsCurrent(context.Principal?.Identity?.Name, context.Principal?.FindFirstValue(StudioFlowClaims.SecurityStamp))
             || string.IsNullOrEmpty(sessionId)
             || sessions.IsRevoked(sessionId))
         {

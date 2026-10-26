@@ -112,8 +112,27 @@ public interface IAuditRepository
     /// <summary>Adds an entry.</summary>
     void Add(AuditEntry entry);
 
-    /// <summary>The newest entries of a production that have a log text, newest first.</summary>
+    /// <summary>The newest entries of a production, and the global ones such as account changes, that have a log text, newest first.</summary>
     Task<IReadOnlyList<AuditEntry>> ListRecentAsync(string productionId, IReadOnlyCollection<string> actions, int count, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Persistence of the Regie account. Every change is written together with its audit entry in one transaction, and
+/// the database allows at most one account (<see cref="AdminAccount.OnlyId"/>).
+/// </summary>
+public interface IAdminAccountStore
+{
+    /// <summary>The account, or null while the first-run setup is open.</summary>
+    Task<AdminAccount?> GetAsync(CancellationToken cancellationToken);
+
+    /// <summary>Stores the account of the first-run setup; false when an account exists already (also when a concurrent setup won).</summary>
+    Task<bool> TryCreateAsync(AdminAccount account, AuditEntry audit, CancellationToken cancellationToken);
+
+    /// <summary>Stores the changed password of the account; false when the account is gone.</summary>
+    Task<bool> TryUpdateAsync(AdminAccount account, AuditEntry audit, CancellationToken cancellationToken);
+
+    /// <summary>Deletes the account so the first-run setup opens again; false when there was none.</summary>
+    Task<bool> TryDeleteAsync(AuditEntry audit, CancellationToken cancellationToken);
 }
 
 /// <summary>A device source that is live (or just stopped being live) at the time of a mutation.</summary>

@@ -5,6 +5,8 @@ import type { Namespace } from '../../types';
  * in `LogEntryDto.params`, except `{downtime}` of `sourceRecovered`, which the client formats from `downSeconds`.
  */
 export const regieLog = {
+  'regie.log.accountReset': 'Account reset',
+  'regie.log.accountSetUp': 'Account set up',
   'regie.log.assetDeleted': '{code} “{name}” deleted',
   'regie.log.assetUploaded': '{code} “{name}” uploaded',
   'regie.log.broadcastEnded': 'Broadcast ended',
@@ -19,6 +21,7 @@ export const regieLog = {
   'regie.log.outputAccessChanged': 'Output access changed',
   'regie.log.outputLinkRegenerated': 'Output link regenerated',
   'regie.log.pairingDenied': 'Request from {name} denied',
+  'regie.log.passwordChanged': 'Password changed',
   'regie.log.sceneCreated': 'Scene “{scene}” created',
   'regie.log.sceneDeleted': 'Scene “{scene}” deleted',
   'regie.log.sceneLive': 'Scene “{scene}” is live',

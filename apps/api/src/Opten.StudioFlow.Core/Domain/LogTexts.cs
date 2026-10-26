@@ -20,6 +20,7 @@ public static class LogTexts
         AuditActions.DeviceRemoved, AuditActions.PairingDenied, AuditActions.InviteCreated, AuditActions.InviteRevoked,
         AuditActions.OutputKeyRegenerated, AuditActions.OutputAccessChanged, AuditActions.AssetUploaded, AuditActions.AssetDeleted,
         AuditActions.SourceReconnecting, AuditActions.SourceEnded, AuditActions.SourceLost, AuditActions.SourceRecovered,
+        AuditActions.AccountSetUp, AuditActions.PasswordChanged, AuditActions.AccountReset,
     ];
 
     /// <summary>Parameter names of <see cref="LogEntryDto.Params"/>.</summary>
@@ -64,6 +65,9 @@ public static class LogTexts
             AuditActions.SourceEnded => With(LogCode.ScreenEnded, $"{code} sharing stopped", (Param.Code, code)),
             AuditActions.SourceLost => With(LogCode.SourceLost, $"{code} no picture", (Param.Code, code)),
             AuditActions.SourceRecovered => Recovered(entry, code),
+            AuditActions.AccountSetUp => With(LogCode.AccountSetUp, "Account set up"),
+            AuditActions.PasswordChanged => With(LogCode.PasswordChanged, "Password changed"),
+            AuditActions.AccountReset => With(LogCode.AccountReset, "Account reset"),
             _ => null,
         };
     }

@@ -79,6 +79,157 @@
         }
       }
     },
+    "/api/auth/setup": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "getSetupStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatusDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "completeSetup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/logout": {
       "post": {
         "tags": [
@@ -3140,6 +3291,24 @@
         ],
         "description": "Broadcast state of a production. Standby and Ended show a slate on the output."
       },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "The password in use now."
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "The new password."
+          }
+        },
+        "description": "Changes the password of the signed-in admin; every other session ends."
+      },
       "CreateInviteRequest": {
         "required": [
           "kind"
@@ -3894,7 +4063,10 @@
           "cameraEnded",
           "screenEnded",
           "sourceLost",
-          "sourceRecovered"
+          "sourceRecovered",
+          "accountSetUp",
+          "passwordChanged",
+          "accountReset"
         ],
         "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
@@ -5536,6 +5708,42 @@
           }
         },
         "description": "Sets or clears the preview scene."
+      },
+      "SetupRequest": {
+        "required": [
+          "setupCode",
+          "username",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "setupCode": {
+            "type": "string",
+            "description": "The one-time code from the server log (`XXXX-XXXX`)."
+          },
+          "username": {
+            "type": "string",
+            "description": "User name of the new account."
+          },
+          "password": {
+            "type": "string",
+            "description": "Password of the new account."
+          }
+        },
+        "description": "First-run setup: creates the Regie account and signs it in."
+      },
+      "SetupStatusDto": {
+        "required": [
+          "setupRequired"
+        ],
+        "type": "object",
+        "properties": {
+          "setupRequired": {
+            "type": "boolean",
+            "description": "True while the first-run setup is open."
+          }
+        },
+        "description": "Whether the Regie has no account yet. Public, because the Regie asks before anyone is signed in."
       },
       "SlateDto": {
         "required": [

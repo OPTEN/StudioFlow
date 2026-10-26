@@ -7,17 +7,21 @@ using Opten.StudioFlow.Infrastructure.Media;
 using Opten.StudioFlow.Infrastructure.Persistence;
 using Opten.StudioFlow.Infrastructure.Security;
 using Opten.StudioFlow.Web.Errors;
+using Opten.StudioFlow.Web.Security;
 
 namespace Opten.StudioFlow.Web.Hosting;
 
 /// <summary>
 /// Startup work that must finish before Kestrel listens (an <see cref="IHostedService"/>, not a background service):
 /// configuration validation (the host does not start with missing secrets or invalid durations and limits), migrations,
-/// the default production, and a warning when the plain admin password is in use.
+/// the default production, the Regie account (while there is none, the first-run setup code is logged) and a warning for
+/// the account settings that older versions read from the configuration and that are ignored now.
 /// </summary>
 internal sealed class StartupInitializer(
     IServiceProvider services,
     ProductionService productions,
+    AdminAccountState account,
+    IConfiguration configuration,
     IOptions<AdminOptions> admin,
     IOptions<LiveKitOptions> liveKit,
     IOptions<MediaOptions> media,
@@ -31,6 +35,9 @@ internal sealed class StartupInitializer(
     IOptions<BackupOptions> backup,
     ILogger<StartupInitializer> logger) : IHostedService
 {
+    /// <summary>Keys of <c>Admin:</c> that older versions used for the account.</summary>
+    private static readonly string[] IgnoredAccountSettings = ["Username", "Password", "PasswordHash"];
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
@@ -38,9 +45,19 @@ internal sealed class StartupInitializer(
         _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
-        if (admin.Value.UsesPlainPassword)
+        await account.RefreshAsync(cancellationToken);
+        WarnAboutIgnoredAccountSettings();
+    }
+
+    /// <summary>The Regie account moved into the database (issue #4); say so instead of silently ignoring the old settings.</summary>
+    private void WarnAboutIgnoredAccountSettings()
+    {
+        var ignored = IgnoredAccountSettings.Where(key => !string.IsNullOrEmpty(configuration[$"{AdminOptions.Section}:{key}"])).ToList();
+        if (ignored.Count > 0)
         {
-            logger.LogWarning("The admin password is configured in plain text (Admin:Password); use Admin:PasswordHash outside local setups");
+            logger.LogWarning(
+                "The settings {Settings} are ignored: the Regie account is created in the first-run setup and stored in the database. Remove them from the configuration",
+                string.Join(", ", ignored.Select(key => $"{AdminOptions.Section}:{key}")));
         }
     }
 
@@ -51,7 +68,7 @@ internal sealed class StartupInitializer(
 /// Periodic maintenance in independent loops, so a slow step (LiveKit unreachable, database down) never delays the
 /// others: every second output staleness, expired knocks, silent devices with held-back telemetry and the restart
 /// watch; invites every 10 s; LiveKit reconcile at startup and every 15 s; last-live times every
-/// <c>Sources:LiveMarkInterval</c>; lockout cleanup every minute. A failing step is logged and retried on the next tick.
+/// <c>Sources:LiveMarkInterval</c>; the Regie account every 5 s; lockout cleanup every minute. A failing step is logged and retried on the next tick.
 /// The loops end as soon as the host begins to stop (OBS-01): a tick during the shutdown would only see the hub
 /// connections closing and must not evaluate sources.
 /// </summary>
@@ -62,6 +79,8 @@ internal sealed class MaintenanceWorker(
     SourceRestartWatch restartWatch,
     LiveKitSyncService liveKit,
     LoginThrottle throttle,
+    AdminAccountState account,
+    AdminSessions adminSessions,
     SourceMonitorOptions sources,
     HostShutdown shutdown,
     TimeProvider clock,
@@ -70,6 +89,7 @@ internal sealed class MaintenanceWorker(
     private static readonly TimeSpan Second = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan InviteInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ReconcileInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan AccountInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan PruneInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OutageWarningInterval = TimeSpan.FromMinutes(1);
 
@@ -82,9 +102,19 @@ internal sealed class MaintenanceWorker(
         await Task.WhenAll(
             LoopAsync(Second, token, ("output status", outputs.TickAsync), ("pairing requests", pairing.ExpireRequestsAsync), ("devices", devices.TickAsync), ("restart watch", restartWatch.CheckAfterStartAsync)),
             LoopAsync(InviteInterval, token, ("invites", pairing.MaintainInvitesAsync)),
+            LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync)),
             ReconcileLoopAsync(token),
             LoopAsync(sources.LiveMarkInterval, token, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
             LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)));
+    }
+
+    /// <summary>Notices a <c>reset-admin</c> (or any change made in another process) and ends the sessions that are no longer valid.</summary>
+    private async Task RefreshAccountAsync(CancellationToken cancellationToken)
+    {
+        if (await account.RefreshAsync(cancellationToken))
+        {
+            adminSessions.EndAllExcept(null);
+        }
     }
 
     private Task PruneLockoutsAsync(CancellationToken cancellationToken)
