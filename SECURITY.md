@@ -46,7 +46,7 @@ anonymous.
 
 Only the **latest release** receives security fixes. StudioFlow is developed in the open on `main`; every release is
 published as container images with a signature and a software bill of materials (see
-[docs/releasing.md](docs/releasing.md)). Update with `./update.sh` (see [docs/runbook.md](docs/runbook.md)).
+[docs/releasing.md](docs/releasing.md)). Update with `docker compose pull && docker compose up -d` (see [docs/runbook.md](docs/runbook.md)).
 
 | Version | Supported |
 |---|---|

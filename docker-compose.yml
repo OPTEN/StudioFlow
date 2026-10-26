@@ -1,16 +1,20 @@
-# StudioFlow stack: Caddy (TLS, frontends, reverse proxy), API (ASP.NET Core), LiveKit (SFU), PostgreSQL.
+# StudioFlow stack built from the source: Caddy (TLS, frontends, reverse proxy), API (ASP.NET Core), LiveKit (SFU),
+# PostgreSQL, the backup service. For development, the E2E tests and servers that build themselves; the twin
+# docker-compose.release.yml pulls the ready-made images instead.
 #
-#   ./setup.sh            # or setup.ps1: writes .env with random secrets (never commit it)
 #   docker compose up -d --build
 #
-# Builds the images from the source. Servers normally run the ready-made images of a release instead, from the twin
-# file docker-compose.release.yml (docs/releasing.md): keep the two files in step, infra/release/check.mjs checks it.
+# No .env and no scripts are needed: the init service generates the internal secrets once into the volume "secrets", and
+# the first-run wizard in the Regie (https://<server-address>:8443/, setup code in docker compose logs api) sets address,
+# media address, certificate and embedding. Everything in .env.example is an optional override.
 #
-# Configuration contract: docs/architecture/implementation-spec.md section 10, every variable in .env.example.
-# Operations: docs/runbook.md. Published: 80/tcp, 443/tcp+udp (Caddy), 7881/tcp and 7882/udp (LiveKit media; movable
-# with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT).
-# Automatic backups are the profile "backup": COMPOSE_PROFILES=backup and BACKUP_SCHEDULE in .env (runbook section 7).
-# Required variables fail fast (${VAR:?...}); optional ones have their default here and nowhere else.
+# Keep the two files in step: infra/release/check.mjs fails CI when they drift apart (the build sections, the netem test
+# service and the image lines are the only differences).
+#
+# Published ports: 8443/tcp and 8443/udp (HTTPS and HTTP/3, STUDIOFLOW_HTTPS_PORT), 7881/tcp and 7882/udp (media,
+# STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT). Nothing listens on port 80. The admin API of Caddy (2019) is reachable on
+# the compose network only; no container has the Docker socket.
+# Configuration contract: docs/architecture/implementation-spec.md section 10. Operations: docs/runbook.md.
 
 name: studioflow
 
@@ -29,56 +33,98 @@ x-service-defaults: &service-defaults
     - studioflow
 
 services:
+  # Runs once per start and exits: generates the internal secrets into the volume "secrets" if they are not there yet and
+  # hands the shared volumes to the API (user 1654, the app user of the ASP.NET image). The secrets are never generated again
+  # (the database password belongs to the data of the PostgreSQL volume), never printed and never returned by any endpoint.
+  # A POSTGRES_PASSWORD, LIVEKIT_API_KEY and LIVEKIT_API_SECRET from an old .env are adopted on the first start, so an
+  # installation that was set up with the old scripts keeps its database.
+  init:
+    image: *postgres-image
+    restart: "no"
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+    read_only: true
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+    volumes:
+      - secrets:/secrets
+      - caddy_certs:/caddy-certs
+      - livekit_config:/livekit-config
+      - backup_config:/backup-config
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        umask 077
+        app_uid=1654
+        random() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$$1"; }
+        # name, value: creates /secrets/<name> once (mode 600, owner = the API) and keeps it afterwards
+        secret() {
+          file="/secrets/$$1"
+          if [ ! -s "$$file" ]; then
+            printf '%s' "$$2" >"$$file.new"
+            mv "$$file.new" "$$file"
+            echo "secrets: $$1 created"
+          fi
+          chown "$$app_uid:$$app_uid" "$$file"
+          chmod 600 "$$file"
+        }
+        secret postgres-password "$${POSTGRES_PASSWORD:-$$(random 32)}"
+        secret livekit-api-key "$${LIVEKIT_API_KEY:-API$$(random 12)}"
+        secret livekit-api-secret "$${LIVEKIT_API_SECRET:-sk$$(random 46)}"
+        # Folders the API writes into; the LiveKit supervisor (root, no capabilities) writes applied.json next to livekit.yaml.
+        chown "$$app_uid:$$app_uid" /caddy-certs /livekit-config /backup-config
+        chmod 755 /caddy-certs /backup-config
+        chmod 1777 /livekit-config
+        echo "secrets: ready"
+
   caddy:
     <<: *service-defaults
     build:
       context: .
       dockerfile: infra/caddy/Dockerfile
-    # Runs as an unprivileged user without capabilities; binding 80/443 needs only this (namespaced) sysctl.
+    # Runs as an unprivileged user without capabilities; binding a port below 1024 (STUDIOFLOW_HTTPS_PORT=443) needs only
+    # this (namespaced) sysctl.
     cap_drop:
       - ALL
     sysctls:
       net.ipv4.ip_unprivileged_port_start: 0
+    # Host and container port are the same number: HTTP/3 advertises the port Caddy listens on. The admin API (2019) is not
+    # published; the API reaches it on the compose network.
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${STUDIOFLOW_HTTPS_PORT:-8443}:${STUDIOFLOW_HTTPS_PORT:-8443}/tcp"
+      - "${STUDIOFLOW_HTTPS_PORT:-8443}:${STUDIOFLOW_HTTPS_PORT:-8443}/udp"
     environment:
-      STUDIOFLOW_DOMAIN: ${STUDIOFLOW_DOMAIN:?set it in .env - run ./setup.sh (or setup.ps1) first}
-      STUDIOFLOW_EXTRA_HOSTS: ${STUDIOFLOW_EXTRA_HOSTS:-}
-      STUDIOFLOW_DEFAULT_SNI: ${STUDIOFLOW_DEFAULT_SNI:-${STUDIOFLOW_DOMAIN:?set it in .env}}
-      STUDIOFLOW_TLS_MODE: ${STUDIOFLOW_TLS_MODE:?set it in .env (internal, acme, custom or dns-<provider>)}
-      STUDIOFLOW_ACME_EMAIL: ${STUDIOFLOW_ACME_EMAIL:-}
+      STUDIOFLOW_HTTPS_PORT: ${STUDIOFLOW_HTTPS_PORT:-8443}
       STUDIOFLOW_DNS_RESOLVERS: ${STUDIOFLOW_DNS_RESOLVERS:-1.1.1.1 9.9.9.9}
-      STUDIOFLOW_DNS_CHALLENGE_DOMAIN: ${STUDIOFLOW_DNS_CHALLENGE_DOMAIN:-_acme-challenge.${STUDIOFLOW_DOMAIN:?set it in .env}}
-      STUDIOFLOW_FRAME_ANCESTORS: ${STUDIOFLOW_FRAME_ANCESTORS:-}
-      STUDIOFLOW_HSTS_MAX_AGE: ${STUDIOFLOW_HSTS_MAX_AGE:-31536000}
       STUDIOFLOW_TRUSTED_PROXIES: ${STUDIOFLOW_TRUSTED_PROXIES:-127.0.0.1/32}
       STUDIOFLOW_MAX_UPLOAD: ${STUDIOFLOW_MAX_UPLOAD:-1100MiB}
       STUDIOFLOW_MAX_IMPORT: ${STUDIOFLOW_MAX_IMPORT:-4100MiB}
       STUDIOFLOW_MAX_BODY: ${STUDIOFLOW_MAX_BODY:-10MB}
-      # DNS provider credentials; only the ones of the selected dns-* mode are read.
-      CF_API_TOKEN: ${CF_API_TOKEN:-}
-      INFOMANIAK_API_TOKEN: ${INFOMANIAK_API_TOKEN:-}
-      HETZNER_API_TOKEN: ${HETZNER_API_TOKEN:-}
-      DESEC_TOKEN: ${DESEC_TOKEN:-}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_REGION: ${AWS_REGION:-}
-      GANDI_BEARER_TOKEN: ${GANDI_BEARER_TOKEN:-}
-      OVH_ENDPOINT: ${OVH_ENDPOINT:-}
-      OVH_APPLICATION_KEY: ${OVH_APPLICATION_KEY:-}
-      OVH_APPLICATION_SECRET: ${OVH_APPLICATION_SECRET:-}
-      OVH_CONSUMER_KEY: ${OVH_CONSUMER_KEY:-}
     volumes:
-      # Certificates, ACME account and (internal mode) the local CA: must survive every restart and update.
+      # Certificates, ACME account and the local CA: must survive every restart and update.
       - caddy_data:/data
       - caddy_config:/config
-    # healthcheck: from the image (loopback listener 127.0.0.1:2020/healthz, see infra/caddy/Dockerfile)
+      # The uploaded certificate (server settings, mode custom); written by the API.
+      - caddy_certs:/certs:ro
+    # healthcheck: from the image (loopback listener 127.0.0.1:2020/healthz, see infra/caddy/health.caddy)
     depends_on:
+      init:
+        condition: service_completed_successfully
       api:
-        condition: service_healthy
-      livekit:
         condition: service_healthy
 
   api:
@@ -88,30 +134,42 @@ services:
     cap_drop:
       - ALL
     environment:
-      STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?set it in .env}}
-      # The effective list Caddy enforces for /o/ (shown read-only in the Regie).
-      STUDIOFLOW__FRAMEANCESTORS: "'self'${STUDIOFLOW_FRAME_ANCESTORS:+ $STUDIOFLOW_FRAME_ANCESTORS}"
-      LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?set it in .env}
-      LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?set it in .env}
+      # How the stack is wired (Install section of the API). Address, certificate and embedding are not here: they are
+      # server settings in the database (first-run wizard, "Server settings").
+      INSTALL__HTTPSPORT: ${STUDIOFLOW_HTTPS_PORT:-8443}
+      INSTALL__SECRETSPATH: /secrets
+      INSTALL__CADDYADMINURL: http://caddy:2019
+      INSTALL__CADDYCERTSPATH: /caddy-certs
+      INSTALL__LIVEKITCONFIGPATH: /livekit-config
+      INSTALL__BACKUPCONFIGPATH: /backup-config
+      INSTALL__LIVEKITRTCTCPPORT: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
+      INSTALL__LIVEKITRTCUDPPORT: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
+      INSTALL__HSTSMAXAGE: ${STUDIOFLOW_HSTS_MAX_AGE:-31536000}
+      # The key pair of LiveKit and the database password are read from /secrets.
       LIVEKIT__INTERNALURL: http://livekit:7880
-      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Password=${POSTGRES_PASSWORD:?set it in .env}
+      CONNECTIONSTRINGS__STUDIOFLOW: Host=postgres;Database=studioflow;Username=studioflow;Application Name=studioflow-api
       MEDIA__PATH: /data/media
       MEDIA__MAXIMAGEBYTES: ${MEDIA__MAXIMAGEBYTES:-26214400}
       MEDIA__MAXVIDEOBYTES: ${MEDIA__MAXVIDEOBYTES:-1073741824}
       DATAPROTECTION__KEYSPATH: /data/keys
       # Only Caddy (inside this network) may set X-Forwarded-For / -Proto.
       FORWARDEDHEADERS__KNOWNNETWORKS__0: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
-      # Readiness check of the automatic backups: reads the status file of the backup service (empty schedule = off).
+      # Readiness check of the automatic backups: reads the status file of the backup service.
       BACKUP__STATUSFILE: /data/backup-status/backup-status.json
-      BACKUP__SCHEDULE: ${BACKUP_SCHEDULE:-}
       BACKUP__WARNAFTERHOURS: ${BACKUP_WARN_AFTER_HOURS:-48}
       # Audit log retention (runbook: What happened? View the audit log): entries and, earlier, their IP addresses are removed after this many days.
       AUDIT__RETENTIONDAYS: ${AUDIT_RETENTION_DAYS:-365}
       AUDIT__IPRETENTIONDAYS: ${AUDIT_IP_RETENTION_DAYS:-90}
     volumes:
       - media:/data/media
-      # ASP.NET Core Data Protection keys: logins survive restarts and updates.
+      # ASP.NET Core Data Protection keys: logins survive restarts and updates; they also decrypt the secrets of the settings.
       - keys:/data/keys
+      # Generated once by the init service; the API only reads them.
+      - secrets:/secrets:ro
+      # The API writes the configuration of the other services here.
+      - caddy_certs:/caddy-certs
+      - livekit_config:/livekit-config
+      - backup_config:/backup-config
       # Only the status file of the backup service, never the backups themselves.
       - backup_status:/data/backup-status:ro
     healthcheck:
@@ -122,12 +180,16 @@ services:
       start_period: 60s
       start_interval: 2s
     depends_on:
+      init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
   livekit:
     <<: *service-defaults
-    image: livekit/livekit-server:v1.13.10
+    build:
+      context: .
+      dockerfile: infra/livekit/Dockerfile
     cap_drop:
       - ALL
     # Media goes directly to the clients, never through Caddy. Signalling (7880) is only reachable via Caddy (/rtc).
@@ -135,34 +197,20 @@ services:
     ports:
       - "${STUDIOFLOW_RTC_TCP_PORT:-7881}:${STUDIOFLOW_RTC_TCP_PORT:-7881}/tcp"
       - "${STUDIOFLOW_RTC_UDP_PORT:-7882}:${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp"
-    environment:
-      # The address LiveKit announces to the devices: the server's LAN IPv4 (127.0.0.1 only for single-machine tests).
-      NODE_IP: ${STUDIOFLOW_NODE_IP:?set it in .env (LAN IPv4 of the server)}
-      # YAML "key: secret" - the secret starts with a letter (an all-digit value would be parsed as a number).
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?set it in .env}: ${LIVEKIT_API_SECRET:?set it in .env}"
-      LIVEKIT_CONFIG: |
-        port: 7880
-        rtc:
-          tcp_port: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
-          udp_port: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
-          use_external_ip: false
-        room:
-          auto_create: true
-          empty_timeout: 300
-          departure_timeout: 20
-        logging:
-          level: info
-        webhook:
-          api_key: ${LIVEKIT_API_KEY:?set it in .env}
-          urls:
-            - http://api:8080/api/livekit/webhook
+    volumes:
+      # livekit.yaml (written by the API: media address, key pair) is watched by the supervisor, which restarts the server
+      # when it changes; applied.json tells the API which file the running server was started with.
+      - livekit_config:/lk
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7880/"]
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      start_period: 30s
       start_interval: 1s
+    depends_on:
+      init:
+        condition: service_completed_successfully
 
   postgres:
     <<: *service-defaults
@@ -181,9 +229,11 @@ services:
     environment:
       POSTGRES_DB: studioflow
       POSTGRES_USER: studioflow
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
+      # The password is set only when the data directory is first initialised; it comes from the secrets volume and stays.
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - secrets:/run/secrets:ro
     # TCP, not the socket: during the first initialisation the server listens only on the socket.
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "studioflow", "-d", "studioflow"]
@@ -194,6 +244,9 @@ services:
       start_interval: 1s
     # Time for a clean shutdown (otherwise Docker kills it after 10 s and the next start runs crash recovery).
     stop_grace_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
 
   # Network impairment for tests: docker compose --profile chaos run --rm netem apply 100 10 0
   # Shares LiveKit's network namespace, so it affects media, signalling and the API <-> LiveKit traffic.
@@ -209,27 +262,16 @@ services:
       - NET_ADMIN
     restart: "no"
 
-  # Helper for backup.sh / restore.sh: archives and restores the volumes (no network, started on demand).
-  toolbox:
-    image: *postgres-image
-    profiles: ["tools"]
-    network_mode: none
-    security_opt:
-      - no-new-privileges:true
-    entrypoint: ["sleep"]
-    command: ["3600"]
-    volumes:
-      - media:/volumes/media
-      - keys:/volumes/keys
-      - caddy_data:/volumes/caddy_data
-    restart: "no"
-
-  # Automatic backups (runbook section 7): infra/backup/backup-job.sh on BACKUP_SCHEDULE. Inside the stack, so the same
-  # on Linux and in Docker Desktop. pg_dump connects over the network; the volumes are mounted read-only. The Caddy
-  # volume is readable for its own user only, hence DAC_READ_SEARCH (read access, no write access) instead of more.
+  # Backups (runbook section 7): the schedule and the off-site target come from the server settings (the API writes
+  # backup-settings.json; this service reads it and follows its changes). The same image runs the commands
+  #   docker compose run --rm backup backup-now
+  #   docker compose run --rm backup restore <folder> [--verify]
+  # Inside the stack, so the same on Linux, Windows and macOS. pg_dump connects over the network. The volumes are mounted for
+  # reading and writing because restore replaces their content (CHOWN, FOWNER and DAC_OVERRIDE for the files of the other
+  # users, DAC_READ_SEARCH for the Caddy volume, which only its own user may read); nothing but this service uses them.
+  # The image is built on the PostgreSQL image pinned above (same major version as the server).
   backup:
     <<: *service-defaults
-    profiles: ["backup"]
     build:
       context: .
       dockerfile: infra/backup/Dockerfile
@@ -238,33 +280,29 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
       - DAC_READ_SEARCH
+      - FOWNER
     read_only: true
     tmpfs:
       - /tmp
       # The PostgreSQL image declares a volume here; this one stores no data.
       - /var/lib/postgresql/data
     environment:
-      TZ: ${BACKUP_TIMEZONE:-UTC}
       PGHOST: postgres
       PGUSER: studioflow
       PGDATABASE: studioflow
-      PGPASSWORD: ${POSTGRES_PASSWORD:?set it in .env}
-      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-}
-      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-7}
-      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-4}
       BACKUP_LIVE_POLL_SECONDS: ${BACKUP_LIVE_POLL_SECONDS:-300}
-      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-}
-      BACKUP_RCLONE_CONFIG: ${BACKUP_RCLONE_CONFIG:-}
-      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
-      BACKUP_OFFSITE_UNENCRYPTED: ${BACKUP_OFFSITE_UNENCRYPTED:-false}
     volumes:
       # The dated backups and the incremental copy of the media (/backups/media).
       - backups:/backups
       - backup_status:/status
-      - media:/volumes/media:ro
-      - keys:/volumes/keys:ro
-      - caddy_data:/volumes/caddy_data:ro
+      - backup_config:/config:ro
+      - secrets:/run/secrets:ro
+      - media:/volumes/media
+      - keys:/volumes/keys
+      - caddy_data:/volumes/caddy_data
     healthcheck:
       test: ["CMD", "/opt/backup/healthcheck.sh"]
       interval: 30s
@@ -275,6 +313,8 @@ services:
     # A running backup is cut off after this time; the unfinished folder is removed by the next run.
     stop_grace_period: 30s
     depends_on:
+      init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
@@ -285,11 +325,19 @@ networks:
         - subnet: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
 
 volumes:
+  # Generated once by the init service: database password and LiveKit key pair (mode 600). Not part of a backup; never delete
+  # it without the database (the password belongs to the data of pgdata).
+  secrets:
   caddy_data:
   caddy_config:
+  # Shared with the API: the uploaded certificate (read by Caddy), livekit.yaml (read by the LiveKit supervisor) and the
+  # settings of the backup service.
+  caddy_certs:
+  livekit_config:
+  backup_config:
   media:
   keys:
   pgdata:
-  # Automatic backups and their status file (profile "backup"); the API mounts only backup_status.
+  # The dated backups, and the status file of the backup service (the API mounts only that).
   backups:
   backup_status:

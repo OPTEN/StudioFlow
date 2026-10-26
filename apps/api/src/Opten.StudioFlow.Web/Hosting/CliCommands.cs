@@ -5,8 +5,8 @@ using Opten.StudioFlow.Infrastructure;
 namespace Opten.StudioFlow.Web.Hosting;
 
 /// <summary>
-/// Command line modes used by the ops scripts and the operator, dispatched on <c>args[0]</c> before the web host is built:
-/// <c>reset-admin</c> (forgotten password, issue #4) and <c>broadcast-status</c> (update.sh refuses to update during a broadcast).
+/// Command line modes used by the operator and the ops tests, dispatched on <c>args[0]</c> before the web host is built:
+/// <c>reset-admin</c> (forgotten password, issue #4) and <c>broadcast-status</c> (is a broadcast live? check before an update).
 /// </summary>
 internal static class CliCommands
 {

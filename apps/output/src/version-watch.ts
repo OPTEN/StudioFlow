@@ -2,7 +2,7 @@
  * Reload after an update – once, and never on air.
  *
  * Decision: the page never reloads by itself, with one exception. A proxy may keep the page open for weeks; after an
- * update of the stack (update.sh refuses to run while a broadcast is live) the old code would keep running against a
+ * update of the stack (docker compose pull && up -d; the operator picks the time) the old code would keep running against a
  * newer API. So after every hub *re*connect (an update restarts the API) the page fetches its own `index.html`
  * (no-cache, about 1 KB) and compares the hashed entry script with the one it runs. When they differ it reloads –
  * but only while the broadcast is not live (standby, ended, or no state); if it is live, the reload waits until the
