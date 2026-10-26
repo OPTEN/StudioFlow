@@ -31,6 +31,17 @@ export interface ReceiverSnapshot {
   readonly decoderImplementation?: string;
 }
 
+/** What the receiver side of one audio track reports. */
+export interface AudioReceiverSnapshot {
+  readonly packetLossPct?: number;
+  /** Network jitter in ms (RFC 3550). */
+  readonly jitterMs?: number;
+  /** Average delay in the jitter buffer in ms over the last interval. */
+  readonly jitterBufferDelayMs?: number;
+  readonly codec?: string;
+  readonly rttMs?: number;
+}
+
 /** What the sender side of one (simulcast) track reports. */
 export interface SenderSnapshot {
   readonly width: number | null;
@@ -82,6 +93,20 @@ function findAll(index: ReadonlyMap<string, StatsRecord>, type: string): StatsRe
 export function inboundVideo(index: ReadonlyMap<string, StatsRecord>): StatsRecord | undefined {
   return findAll(index, 'inbound-rtp')
     .filter((record) => record['kind'] === 'video' || record['mediaType'] === 'video')
+    .reduce<StatsRecord | undefined>(
+      (best, record) =>
+        best === undefined ||
+        (numberField(record, 'bytesReceived') ?? 0) > (numberField(best, 'bytesReceived') ?? 0)
+          ? record
+          : best,
+      undefined,
+    );
+}
+
+/** The inbound audio RTP stream of a receiver report (the one with the most received bytes if several exist). */
+export function inboundAudio(index: ReadonlyMap<string, StatsRecord>): StatsRecord | undefined {
+  return findAll(index, 'inbound-rtp')
+    .filter((record) => record['kind'] === 'audio' || record['mediaType'] === 'audio')
     .reduce<StatsRecord | undefined>(
       (best, record) =>
         best === undefined ||
@@ -160,6 +185,18 @@ export class DeltaRatio {
 export class ReceiverStatsReader {
   readonly #loss = new DeltaRatio();
   readonly #jitterBuffer = new DeltaRatio();
+  readonly #audioLoss = new DeltaRatio();
+  readonly #audioJitterBuffer = new DeltaRatio();
+
+  /** Summarizes one report of the audio track identified by `key`. */
+  readAudio(key: object, report: StatsSource): AudioReceiverSnapshot {
+    return summarizeAudioReceiver(
+      indexStats(report),
+      key,
+      this.#audioLoss,
+      this.#audioJitterBuffer,
+    );
+  }
 
   /** Summarizes one report of the track identified by `key`. */
   read(key: object, report: StatsSource): ReceiverSnapshot {
@@ -196,6 +233,40 @@ export class ReceiverStatsReader {
       decoderImplementation: stringField(inbound, 'decoderImplementation'),
     };
   }
+}
+
+/**
+ * Reads the statistics of an audio receiver: packet loss and jitter-buffer delay over the interval since the last call
+ * for the same key, jitter, codec and round-trip time.
+ */
+export function summarizeAudioReceiver(
+  index: ReadonlyMap<string, StatsRecord>,
+  key: object,
+  loss: DeltaRatio,
+  jitterBuffer: DeltaRatio,
+): AudioReceiverSnapshot {
+  const inbound = inboundAudio(index);
+  const rttMs = roundTripTimeMs(index);
+  if (inbound === undefined) {
+    return rttMs === undefined ? {} : { rttMs: Math.round(rttMs) };
+  }
+  const lost = Math.max(0, numberField(inbound, 'packetsLost') ?? 0);
+  const received = numberField(inbound, 'packetsReceived') ?? 0;
+  const lossRatio = loss.ratio(key, lost, lost + received);
+  const delaySeconds = numberField(inbound, 'jitterBufferDelay');
+  const emitted = numberField(inbound, 'jitterBufferEmittedCount');
+  const bufferSeconds =
+    delaySeconds === undefined || emitted === undefined
+      ? undefined
+      : jitterBuffer.ratio(key, delaySeconds, emitted);
+  const jitter = numberField(inbound, 'jitter');
+  return {
+    packetLossPct: lossRatio === undefined ? undefined : roundTo(lossRatio * 100, 1),
+    jitterMs: jitter === undefined ? undefined : roundTo(jitter * 1000, 1),
+    jitterBufferDelayMs: bufferSeconds === undefined ? undefined : Math.round(bufferSeconds * 1000),
+    codec: codecOf(index, inbound),
+    rttMs: rttMs === undefined ? undefined : Math.round(rttMs),
+  };
 }
 
 /**

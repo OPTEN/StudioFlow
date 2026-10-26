@@ -5,6 +5,7 @@ import {
   codecOf,
   inboundVideo,
   indexStats,
+  inboundAudio,
   roundTripTimeMs,
   summarizeSenderStats,
 } from './media-stats';
@@ -169,6 +170,76 @@ describe('ReceiverStatsReader', () => {
       codec: undefined,
       rttMs: undefined,
     });
+  });
+});
+
+const AUDIO_RECEIVER = report({
+  IT02A: {
+    type: 'inbound-rtp',
+    kind: 'audio',
+    codecId: 'CIT02_111',
+    packetsLost: 1,
+    packetsReceived: 99,
+    jitter: 0.0042,
+    jitterBufferDelay: 2,
+    jitterBufferEmittedCount: 100,
+    bytesReceived: 40_000,
+  },
+  CIT02_111: { type: 'codec', mimeType: 'audio/opus' },
+  CP1: { type: 'candidate-pair', currentRoundTripTime: 0.02, nominated: true, state: 'succeeded' },
+});
+
+describe('audio receiver statistics', () => {
+  it('picks the inbound audio stream with the most bytes and ignores video', () => {
+    const index = indexStats(
+      report({
+        V: { type: 'inbound-rtp', kind: 'video', bytesReceived: 900_000 },
+        A1: { type: 'inbound-rtp', kind: 'audio', bytesReceived: 10 },
+        A2: { type: 'inbound-rtp', mediaType: 'audio', bytesReceived: 20 },
+      }),
+    );
+    expect(inboundAudio(index)?.['id']).toBe('A2');
+    expect(inboundAudio(indexStats(report({})))).toBeUndefined();
+  });
+
+  it('summarizes loss, jitter, buffer delay, codec and round-trip time', () => {
+    const reader = new ReceiverStatsReader();
+    expect(reader.readAudio({}, AUDIO_RECEIVER)).toEqual({
+      packetLossPct: 1,
+      jitterMs: 4.2,
+      jitterBufferDelayMs: 20,
+      codec: 'opus',
+      rttMs: 20,
+    });
+  });
+
+  it('computes loss over the last interval, separately from the video of the same key', () => {
+    const reader = new ReceiverStatsReader();
+    const key = {};
+    reader.readAudio(key, AUDIO_RECEIVER);
+    reader.read(key, CHROME_RECEIVER);
+    const later = report({
+      IT02A: {
+        type: 'inbound-rtp',
+        kind: 'audio',
+        packetsLost: 11,
+        packetsReceived: 189,
+        jitterBufferDelay: 3,
+        jitterBufferEmittedCount: 200,
+      },
+    });
+    expect(reader.readAudio(key, later)).toMatchObject({
+      packetLossPct: 10,
+      jitterBufferDelayMs: 10,
+    });
+  });
+
+  it('returns what is present', () => {
+    const reader = new ReceiverStatsReader();
+    expect(reader.readAudio({}, new Map())).toEqual({});
+    expect(
+      reader.readAudio({}, report({ R: { type: 'remote-outbound-rtp', roundTripTime: 0.1 } })),
+    ).toEqual({ rttMs: 100 });
   });
 });
 

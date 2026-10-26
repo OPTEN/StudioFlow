@@ -3,7 +3,7 @@
  * video tracks, keeps video elements on their last frame across track loss, chooses the simulcast layer from the
  * renderers' desired sizes, pauses what nobody needs and sets the playout delay per role.
  */
-import { deviceSourceRef, slotKind } from '@studioflow/scene-model';
+import { trackSource } from '@studioflow/scene-model';
 import type {
   DesiredSize,
   SourceAvailability,
@@ -24,7 +24,11 @@ import type {
 import { listenTo } from './livekit-port';
 import { consoleLogger, errorContext, type MediaLogger } from './logger';
 import type { RoomSource } from './media-session';
-import { ReceiverStatsReader, type ReceiverSnapshot } from './media-stats';
+import {
+  ReceiverStatsReader,
+  type AudioReceiverSnapshot,
+  type ReceiverSnapshot,
+} from './media-stats';
 
 /** Hardware or software decoding of the stream: the stats where the browser tells this page, else its capabilities. */
 export type StreamDecoder = DecoderKind;
@@ -46,6 +50,12 @@ export interface DecoderSummary {
   /** Frames the receivers dropped and received (the decoder cannot keep up when the share is high). */
   readonly framesDropped: number;
   readonly framesReceived: number;
+}
+
+/** Receive statistics of the sound of one source (output debug overlay, Regie monitoring). */
+export interface AudioSourceStats extends AudioReceiverSnapshot {
+  /** Receive bitrate over the last ~2 s. */
+  readonly bitrateKbps?: number;
 }
 
 /** Construction options of {@link LiveKitSourceProvider}. */
@@ -101,6 +111,8 @@ interface SourceEntry {
   readonly elements: Set<HTMLVideoElement>;
   readonly sizes: DesiredSizes;
   subscription: Subscription | null;
+  /** The sound of the source: a microphone, or the audio of a shared screen. */
+  audio: Subscription | null;
   availability: SourceAvailability;
   disableTimer: TimerHandle | null;
   /** The track is paused by us (nobody needs a picture): no frames arrive, the elements show nothing. */
@@ -116,9 +128,16 @@ interface DecoderMark {
   readonly framesReceived: number;
 }
 
-/** Source id of a remote publication, or null for track names that are not StudioFlow slots (e.g. audio, future). */
+/** Source id of the picture of a remote publication, or null for tracks that carry no picture (sound, other names). */
 function sourceIdOf(identity: string, trackName: string): string | null {
-  return slotKind(trackName) === null ? null : deviceSourceRef(identity, trackName);
+  const source = trackSource(identity, trackName);
+  return source?.carries === 'picture' ? source.sourceId : null;
+}
+
+/** Source id of the sound of a remote publication (`mic`, `screen-n-audio`), or null for other tracks. */
+function audioSourceIdOf(identity: string, trackName: string): string | null {
+  const source = trackSource(identity, trackName);
+  return source?.carries === 'sound' ? source.sourceId : null;
 }
 
 function defaultCreateStream(track: MediaStreamTrack): MediaStream {
@@ -162,6 +181,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #decoderMarks = new WeakMap<MediaRemoteTrack, DecoderMark>();
   readonly #entries = new Map<string, SourceEntry>();
   readonly #changes: Listeners<[string]>;
+  readonly #audioChanges: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
   readonly #stopRoomWatch: () => void;
   #events: RoomListenerGroup | null = null;
@@ -179,6 +199,9 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     this.#decoders = options.decoderCapability ?? new DecoderCapability();
     this.#changes = new Listeners((error) =>
       this.#logger.warn('source change listener failed', errorContext(error)),
+    );
+    this.#audioChanges = new Listeners((error) =>
+      this.#logger.warn('audio change listener failed', errorContext(error)),
     );
     this.#bind(session.room);
     this.#stopRoomWatch = session.onRoom((room) => this.#bind(room));
@@ -246,6 +269,43 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     } catch (error) {
       this.#logger.warn('asset URL resolver failed', errorContext(error));
       return null;
+    }
+  }
+
+  /**
+   * The sound of a source as a media stream (a microphone, the audio of a screen), or null while it has none. The stream
+   * is the same object as long as the track is, so a mix can compare it; it is never attached to an element here: the
+   * audio mix connects it to Web Audio.
+   */
+  audioStream(sourceId: string): MediaStream | null {
+    return this.#entries.get(sourceId)?.audio?.stream ?? null;
+  }
+
+  /** The sources that have a sound right now. */
+  audioSourceIds(): string[] {
+    return [...this.#entries]
+      .filter(([, entry]) => entry.audio !== null)
+      .map(([sourceId]) => sourceId);
+  }
+
+  /** Notifies when the sound of a source appears, is replaced or goes away. Returns an unsubscribe function. */
+  onAudioChange(listener: (sourceId: string) => void): () => void {
+    return this.#audioChanges.add(listener);
+  }
+
+  /** Receive statistics of the sound of a source (bitrate, loss, jitter, codec), else null. */
+  async getAudioStats(sourceId: string): Promise<AudioSourceStats | null> {
+    const track = this.#entries.get(sourceId)?.audio?.track;
+    if (track === undefined) {
+      return null;
+    }
+    try {
+      const report = await track.getRTCStatsReport();
+      const snapshot = report === undefined ? {} : this.#stats.readAudio(track, report);
+      return { ...snapshot, bitrateKbps: Math.round(track.currentBitrate / 1000) };
+    } catch (error) {
+      this.#logger.warn('audio receiver stats unavailable', errorContext(error));
+      return {};
     }
   }
 
@@ -340,6 +400,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
     this.#entries.clear();
     this.#changes.clear();
+    this.#audioChanges.clear();
   }
 
   #bind(room: MediaRoom | null): void {
@@ -349,8 +410,9 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     this.#boundRoom = room;
     this.#events?.dispose();
     this.#events = null;
-    for (const [sourceId, entry] of this.#entries) {
+    for (const [sourceId, entry] of [...this.#entries]) {
       this.#dropSubscription(sourceId, entry);
+      this.#dropAudio(sourceId, entry);
     }
     if (room === null || this.#disposed) {
       return;
@@ -399,6 +461,13 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     publication: MediaRemotePublication,
     identity: string,
   ): void {
+    const audioSourceId = audioSourceIdOf(identity, publication.trackName);
+    if (audioSourceId !== null) {
+      if (track.kind === 'audio') {
+        this.#onAudioSubscribed(audioSourceId, track, publication);
+      }
+      return;
+    }
     const sourceId = sourceIdOf(identity, publication.trackName);
     if (sourceId === null || track.kind !== 'video') {
       return;
@@ -428,11 +497,44 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
   }
 
+  #onAudioSubscribed(
+    sourceId: string,
+    track: MediaRemoteTrack,
+    publication: MediaRemotePublication,
+  ): void {
+    const entry = this.#entry(sourceId);
+    if (entry.audio?.track === track) {
+      entry.audio.publication = publication;
+      return;
+    }
+    entry.audio = { track, publication, stream: this.#createStream(track.mediaStreamTrack) };
+    this.#applyPlayout(track);
+    this.#audioChanges.emit(sourceId);
+  }
+
+  /** Forgets the sound of a source (the track went away); the mix mutes it on its own. */
+  #dropAudio(sourceId: string, entry: SourceEntry): void {
+    if (entry.audio === null) {
+      return;
+    }
+    entry.audio = null;
+    this.#audioChanges.emit(sourceId);
+    this.#prune(sourceId, entry);
+  }
+
   #onTrackGone(
     identity: string,
     trackName: string,
     matches: (subscription: Subscription) => boolean,
   ): void {
+    const audioSourceId = audioSourceIdOf(identity, trackName);
+    if (audioSourceId !== null) {
+      const audioEntry = this.#entries.get(audioSourceId);
+      if (audioEntry?.audio && matches(audioEntry.audio)) {
+        this.#dropAudio(audioSourceId, audioEntry);
+      }
+      return;
+    }
     const sourceId = sourceIdOf(identity, trackName);
     const entry = sourceId === null ? undefined : this.#entries.get(sourceId);
     if (sourceId !== null && entry?.subscription && matches(entry.subscription)) {
@@ -453,9 +555,10 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
 
   #onParticipantGone(identity: string): void {
     const prefix = `${identity}/`;
-    for (const [sourceId, entry] of this.#entries) {
+    for (const [sourceId, entry] of [...this.#entries]) {
       if (sourceId.startsWith(prefix)) {
         this.#dropSubscription(sourceId, entry);
+        this.#dropAudio(sourceId, entry);
       }
     }
   }
@@ -623,6 +726,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
         elements: new Set(),
         sizes: new DesiredSizes(),
         subscription: null,
+        audio: null,
         availability: PENDING,
         disableTimer: null,
         paused: false,
@@ -639,6 +743,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       entry.elements.size === 0 &&
       entry.sizes.isEmpty &&
       entry.subscription === null &&
+      entry.audio === null &&
       entry.availability.state === 'pending'
     ) {
       this.#entries.delete(sourceId);

@@ -50,6 +50,25 @@ export const SLOT_PROBLEMS = {
   shareCancelled: problemOf('cancelled'),
 } as const satisfies Readonly<Record<string, SlotProblem>>;
 
+/** The failures a microphone can have (the others are about screens). */
+export type MicFailure = Extract<
+  SlotFailure,
+  'permission-denied' | 'in-use' | 'not-found' | 'track-lost' | 'publish-failed'
+>;
+
+function micProblemOf(failure: MicFailure): SlotProblem {
+  return { failure, messageKey: `media.slot.mic.${failure}` };
+}
+
+/** Problems of the microphone that do not depend on a browser error. */
+export const MIC_PROBLEMS = {
+  lost: micProblemOf('track-lost'),
+  publishFailed: micProblemOf('publish-failed'),
+} as const satisfies Readonly<Record<string, SlotProblem>>;
+
+/** Message of a microphone that stopped delivering sound (unplugged, taken away): no failure, the slot is `ended`. */
+export const MIC_ENDED_MESSAGE = 'media.slot.mic.ended' satisfies SlotMessageKey;
+
 /** DOMException / Error name, '' for non-errors. */
 export function errorName(error: unknown): string {
   return error instanceof Error ? error.name : '';
@@ -74,6 +93,21 @@ export function describeCameraFailure(
       return { transient: false, ...problemOf('not-found') };
     default:
       return { transient: true, ...problemOf('in-use') };
+  }
+}
+
+/** Whether a microphone error may go away by retrying (busy device) and how to explain it. */
+export function describeMicFailure(error: unknown): SlotProblem & { readonly transient: boolean } {
+  switch (errorName(error)) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return { transient: false, ...micProblemOf('permission-denied') };
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+    case 'DeviceUnsupportedError':
+      return { transient: false, ...micProblemOf('not-found') };
+    default:
+      return { transient: true, ...micProblemOf('in-use') };
   }
 }
 

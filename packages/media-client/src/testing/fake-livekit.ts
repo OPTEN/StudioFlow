@@ -8,6 +8,9 @@ import {
   DisconnectReason,
   RoomEvent,
   TrackEvent,
+  type AudioCaptureOptions,
+  type AudioSenderStats,
+  type LocalAudioTrack,
   type LocalTrack,
   type LocalVideoTrack,
   type RoomConnectOptions,
@@ -67,7 +70,7 @@ let nextId = 1;
 /** Stand-in for a `MediaStreamTrack` with the members the media client reads. */
 export class FakeMediaStreamTrack {
   readonly id = `mst-${nextId++}`;
-  readonly kind = 'video';
+  readonly kind: 'video' | 'audio';
   readyState: MediaStreamTrackState = 'live';
   contentHint = '';
   settings: MediaTrackSettings = { width: 1280, height: 720, frameRate: 30 };
@@ -80,6 +83,11 @@ export class FakeMediaStreamTrack {
   readonly stop = vi.fn(() => {
     this.readyState = 'ended';
   });
+
+  constructor(kind: 'video' | 'audio' = 'video') {
+    this.kind = kind;
+  }
+
   /** Applies the first advanced constraint set to the settings, like a camera that supports it. */
   readonly applyConstraints = vi.fn(async (constraints?: MediaTrackConstraints): Promise<void> => {
     if (this.constraintError !== null) {
@@ -111,7 +119,7 @@ export class FakeMediaStreamTrack {
  */
 export class FakeMediaStream extends MediaStream {
   constructor(readonly track: MediaStreamTrack) {
-    super();
+    super([track]);
   }
 }
 
@@ -123,7 +131,7 @@ export function fakeCreateStream(track: MediaStreamTrack): MediaStream {
 /** Remote video track. */
 export class FakeRemoteTrack implements MediaRemoteTrack {
   readonly kind: string;
-  readonly mediaStreamTrack: MediaStreamTrack = new FakeMediaStreamTrack().asTrack;
+  readonly mediaStreamTrack: MediaStreamTrack;
   currentBitrate = 0;
   receiver: JitterBufferControl | undefined = { jitterBufferTarget: null };
   stats: Map<string, unknown> | undefined = new Map();
@@ -134,6 +142,7 @@ export class FakeRemoteTrack implements MediaRemoteTrack {
 
   constructor(kind = 'video') {
     this.kind = kind;
+    this.mediaStreamTrack = new FakeMediaStreamTrack(kind === 'audio' ? 'audio' : 'video').asTrack;
   }
 }
 
@@ -256,11 +265,16 @@ export class FakeRoom extends FakeEmitter implements MediaRoom {
     }
   }
 
-  /** Adds (or reuses) a participant and a subscribed video publication and emits TrackSubscribed. */
+  /** Adds (or reuses) a participant and a subscribed publication (video unless `kind` says audio) and emits TrackSubscribed. */
   subscribe(
     identity: string,
     trackName: string,
-    options: { track?: FakeRemoteTrack; muted?: boolean; emit?: boolean } = {},
+    options: {
+      track?: FakeRemoteTrack;
+      muted?: boolean;
+      emit?: boolean;
+      kind?: 'video' | 'audio';
+    } = {},
   ): {
     participant: FakeRemoteParticipant;
     publication: FakeRemotePublication;
@@ -272,9 +286,10 @@ export class FakeRoom extends FakeEmitter implements MediaRoom {
       this.remoteParticipants.set(identity, participant);
     }
     const publication =
-      participant.trackPublications.get(trackName) ?? new FakeRemotePublication(trackName);
+      participant.trackPublications.get(trackName) ??
+      new FakeRemotePublication(trackName, options.kind ?? 'video');
     participant.trackPublications.set(trackName, publication);
-    const track = options.track ?? new FakeRemoteTrack();
+    const track = options.track ?? new FakeRemoteTrack(options.kind ?? 'video');
     publication.track = track;
     publication.isSubscribed = true;
     publication.isMuted = options.muted ?? false;
@@ -373,6 +388,62 @@ export class FakeLocalVideoTrack extends FakeEmitter {
 /** The SDK type of a fake local track (test-only cast: the fake implements the members the publisher uses). */
 export function asLocalVideoTrack(track: FakeLocalVideoTrack): LocalVideoTrack {
   return track as unknown as LocalVideoTrack;
+}
+
+/** Local microphone / screen audio track. Cast with {@link asLocalAudioTrack} where the SDK type is expected. */
+export class FakeLocalAudioTrack extends FakeEmitter {
+  mediaStreamTrack: MediaStreamTrack = new FakeMediaStreamTrack('audio').asTrack;
+  isMuted = false;
+  currentBitrate = 0;
+  senderStats: AudioSenderStats | undefined = undefined;
+  /** Set to make restartTrack / unmute reject (device gone). */
+  restartError: Error | null = null;
+  /** Options of the last (re)start, to check which input and processing were asked for. */
+  lastOptions: AudioCaptureOptions | undefined;
+  readonly restartTrack = vi.fn(async (options?: AudioCaptureOptions): Promise<void> => {
+    if (this.restartError !== null) {
+      throw this.restartError;
+    }
+    this.lastOptions = options;
+    this.mediaStreamTrack = new FakeMediaStreamTrack('audio').asTrack;
+    this.emit(TrackEvent.Restarted, this);
+  });
+  readonly unmute = vi.fn(async (): Promise<this> => {
+    if (this.restartError !== null) {
+      throw this.restartError;
+    }
+    this.isMuted = false;
+    this.mediaStreamTrack = new FakeMediaStreamTrack('audio').asTrack;
+    this.emit(TrackEvent.Unmuted);
+    return this;
+  });
+  readonly stop = vi.fn(() => {
+    (this.mediaStreamTrack as unknown as FakeMediaStreamTrack).readyState = 'ended';
+  });
+  readonly getSenderStats = vi.fn(
+    async (): Promise<AudioSenderStats | undefined> => this.senderStats,
+  );
+
+  get fakeMediaTrack(): FakeMediaStreamTrack {
+    return this.mediaStreamTrack as unknown as FakeMediaStreamTrack;
+  }
+
+  /** The device stopped delivering (unplugged, taken away): readyState ended + TrackEvent.Ended. */
+  endFromDevice(): void {
+    this.fakeMediaTrack.readyState = 'ended';
+    this.emit(TrackEvent.Ended, this);
+  }
+
+  /** What the SDK does after a failed automatic restart. */
+  muteBySdk(): void {
+    this.isMuted = true;
+    this.emit(TrackEvent.Muted, this);
+  }
+}
+
+/** The SDK type of a fake local audio track (test-only cast). */
+export function asLocalAudioTrack(track: FakeLocalAudioTrack): LocalAudioTrack {
+  return track as unknown as LocalAudioTrack;
 }
 
 /** Page lifecycle the test controls. */

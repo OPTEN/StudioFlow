@@ -2,7 +2,7 @@
  * Telemetry of one publisher slot for the device report (`SlotTelemetryDto`).
  */
 import type { SlotState, SlotTelemetryDto } from '@studioflow/scene-model';
-import type { LocalVideoTrack, VideoSenderStats } from 'livekit-client';
+import type { LocalAudioTrack, LocalVideoTrack, VideoSenderStats } from 'livekit-client';
 import { summarizeEncoder, type EncoderCapability, type EncoderSnapshot } from './encoder-info';
 import { errorContext, type MediaLogger } from './logger';
 import { summarizeSenderStats, type DeltaRatio } from './media-stats';
@@ -102,4 +102,52 @@ function captureSize(track: MediaStreamTrack): {
   } catch {
     return { width: null, height: null, fps: null };
   }
+}
+
+/** What the telemetry of a microphone slot is computed from. */
+export interface AudioSlotTelemetryInput {
+  readonly slot: string;
+  readonly state: SlotState;
+  readonly track: LocalAudioTrack | null;
+  /** True while the track is published in the current room (only then sender stats and bitrate exist). */
+  readonly published: boolean;
+}
+
+/** Telemetry of a microphone: no picture, bitrate and loss of the sound from the sender statistics, codec Opus. */
+export async function audioSlotTelemetry(
+  input: AudioSlotTelemetryInput,
+  loss: DeltaRatio,
+  logger: MediaLogger,
+): Promise<SlotTelemetryDto> {
+  const { slot, state, track, published } = input;
+  const empty: SlotTelemetryDto = {
+    slot,
+    state,
+    width: null,
+    height: null,
+    fps: null,
+    bitrateKbps: null,
+    packetLossPct: null,
+    codec: null,
+  };
+  if (track === null || !published) {
+    return empty;
+  }
+  let packetLossPct: number | null = null;
+  try {
+    const stats = await track.getSenderStats();
+    const ratio =
+      stats === undefined
+        ? undefined
+        : loss.ratio(track, stats.packetsLost ?? 0, stats.packetsSent ?? 0);
+    packetLossPct = ratio === undefined ? null : Math.round(ratio * 1000) / 10;
+  } catch (error) {
+    logger.warn('microphone sender stats unavailable', errorContext(error));
+  }
+  return {
+    ...empty,
+    packetLossPct,
+    bitrateKbps: Math.round(track.currentBitrate / 1000),
+    codec: 'opus',
+  };
 }

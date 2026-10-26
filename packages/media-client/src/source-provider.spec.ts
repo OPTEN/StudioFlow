@@ -834,6 +834,155 @@ describe('LiveKitSourceProvider', () => {
     });
   });
 
+  describe('audio', () => {
+    const MIC = `${DEVICE}/mic`;
+    const SCREEN_AUDIO = `${DEVICE}/screen-1`;
+
+    function audioChanges(provider: LiveKitSourceProvider): string[] {
+      const seen: string[] = [];
+      provider.onAudioChange((sourceId) => seen.push(sourceId));
+      return seen;
+    }
+
+    it('exposes the microphone as the sound of the mic source, never as a picture', () => {
+      const { room, provider, changes } = setup();
+      const seen = audioChanges(provider);
+      const element = video();
+      provider.attach(MIC, element);
+
+      room.subscribe(DEVICE, 'mic', { kind: 'audio' });
+
+      expect(seen).toEqual([MIC]);
+      expect(provider.audioSourceIds()).toEqual([MIC]);
+      expect(provider.audioStream(MIC)).not.toBeNull();
+      expect(element.srcObject).toBeNull();
+      expect(changes).toEqual([]);
+      expect(provider.availability(MIC)).toEqual({ state: 'pending' });
+    });
+
+    it('maps the audio of a shared screen to the screen source and keeps its picture apart', () => {
+      const { room, provider } = setup();
+      const seen = audioChanges(provider);
+      room.subscribe(DEVICE, 'screen-1');
+      room.subscribe(DEVICE, 'screen-1-audio', { kind: 'audio' });
+
+      expect(seen).toEqual([SCREEN_AUDIO]);
+      expect(provider.audioStream(SCREEN_AUDIO)).not.toBeNull();
+      expect(provider.availability(SCREEN_AUDIO).state).toBe('live');
+    });
+
+    it('keeps one stream per track and replaces it when the track is replaced', () => {
+      const { room, provider } = setup();
+      const seen = audioChanges(provider);
+      const first = new FakeRemoteTrack('audio');
+      room.subscribe(DEVICE, 'mic', { track: first, kind: 'audio' });
+      const stream = provider.audioStream(MIC);
+      room.subscribe(DEVICE, 'mic', { track: first, kind: 'audio' });
+      expect(provider.audioStream(MIC)).toBe(stream);
+      expect(seen).toEqual([MIC]);
+
+      room.subscribe(DEVICE, 'mic', { track: new FakeRemoteTrack('audio'), kind: 'audio' });
+      expect(provider.audioStream(MIC)).not.toBe(stream);
+      expect(seen).toEqual([MIC, MIC]);
+    });
+
+    it('drops the sound when the track goes away and ignores the departure of a replaced track', () => {
+      const { room, provider } = setup();
+      const seen = audioChanges(provider);
+      const first = new FakeRemoteTrack('audio');
+      room.subscribe(DEVICE, 'mic', { track: first, kind: 'audio' });
+      const second = new FakeRemoteTrack('audio');
+      room.subscribe(DEVICE, 'mic', { track: second, kind: 'audio' });
+      const publication = room.remoteParticipants.get(DEVICE)!.trackPublications.get('mic')!;
+      room.emit(
+        RoomEvent.TrackUnsubscribed,
+        first,
+        publication,
+        room.remoteParticipants.get(DEVICE),
+      );
+      expect(provider.audioStream(MIC)).not.toBeNull();
+
+      room.unsubscribe(DEVICE, 'mic');
+      expect(provider.audioStream(MIC)).toBeNull();
+      expect(provider.audioSourceIds()).toEqual([]);
+      expect(seen).toEqual([MIC, MIC, MIC]);
+    });
+
+    it('drops every sound of a participant that leaves and of a room that is replaced', () => {
+      const { room, source, provider } = setup();
+      const seen = audioChanges(provider);
+      room.subscribe(DEVICE, 'mic', { kind: 'audio' });
+      room.subscribe(DEVICE, 'screen-1-audio', { kind: 'audio' });
+      expect(provider.audioSourceIds().sort()).toEqual([MIC, SCREEN_AUDIO].sort());
+
+      room.emit(RoomEvent.ParticipantDisconnected, room.remoteParticipants.get(DEVICE));
+      expect(provider.audioSourceIds()).toEqual([]);
+
+      room.subscribe(DEVICE, 'mic', { kind: 'audio' });
+      source.switchTo(new FakeRoom());
+      expect(provider.audioSourceIds()).toEqual([]);
+      expect(seen.filter((id) => id === MIC)).toHaveLength(4);
+    });
+
+    it('reads the sound that was subscribed before the provider existed', () => {
+      const room = new FakeRoom();
+      room.subscribe(DEVICE, 'mic', { kind: 'audio' });
+      const provider = new LiveKitSourceProvider(new FakeRoomSource('output', room), {
+        assetUrl: () => null,
+        logger: silentLogger,
+        clock: testClock,
+        createStream: fakeCreateStream,
+      });
+      expect(provider.audioStream(MIC)).not.toBeNull();
+    });
+
+    it('reports receive statistics of the sound', async () => {
+      const { room, provider } = setup();
+      await expect(provider.getAudioStats(MIC)).resolves.toBeNull();
+      const track = new FakeRemoteTrack('audio');
+      track.currentBitrate = 126_400;
+      track.stats = new Map<string, unknown>([
+        [
+          'IA',
+          {
+            type: 'inbound-rtp',
+            kind: 'audio',
+            packetsLost: 0,
+            packetsReceived: 400,
+            jitter: 0.003,
+            codecId: 'C',
+            bytesReceived: 1000,
+          },
+        ],
+        ['C', { type: 'codec', mimeType: 'audio/opus' }],
+      ]);
+      room.subscribe(DEVICE, 'mic', { track, kind: 'audio' });
+      await expect(provider.getAudioStats(MIC)).resolves.toMatchObject({
+        packetLossPct: 0,
+        jitterMs: 3,
+        codec: 'opus',
+        bitrateKbps: 126,
+      });
+      track.getRTCStatsReport.mockRejectedValue(new Error('closed'));
+      await expect(provider.getAudioStats(MIC)).resolves.toEqual({});
+    });
+
+    it('applies the playout delay target to the sound', () => {
+      const { room } = setup('output');
+      const track = new FakeRemoteTrack('audio');
+      room.subscribe(DEVICE, 'mic', { track, kind: 'audio' });
+      expect(track.setPlayoutDelay).toHaveBeenCalled();
+    });
+
+    it('stops notifying after dispose', () => {
+      const { room, provider } = setup();
+      const seen = audioChanges(provider);
+      provider.dispose();
+      room.subscribe(DEVICE, 'mic', { kind: 'audio' });
+      expect(seen).toEqual([]);
+    });
+  });
+
   describe('assets and lifecycle', () => {
     it('delegates asset URLs and survives a failing resolver', () => {
       const { provider } = setup();
