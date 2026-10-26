@@ -43,3 +43,29 @@ interface Navigator {
   getBattery?(): Promise<BatteryManager>;
   readonly connection?: NetworkInformation;
 }
+
+/**
+ * Image capture controls of a camera track (Media Capture and Streams extensions, Chromium on Android): present in
+ * `getCapabilities()` only for cameras that support them. `zoom` and `torch` are in `lib.dom` for settings only.
+ */
+interface MediaTrackCapabilities {
+  zoom?: MediaSettingsRange;
+  torch?: boolean;
+  focusMode?: string[];
+  focusDistance?: MediaSettingsRange;
+  exposureCompensation?: MediaSettingsRange;
+}
+
+interface MediaTrackConstraintSet {
+  zoom?: number;
+  torch?: boolean;
+  focusMode?: string;
+  focusDistance?: number;
+  exposureCompensation?: number;
+}
+
+interface MediaTrackSettings {
+  focusMode?: string;
+  focusDistance?: number;
+  exposureCompensation?: number;
+}
