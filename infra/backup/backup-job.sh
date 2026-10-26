@@ -1,38 +1,59 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # the jq filters use jq variables ($now, $name ...), which must not expand in the shell
-# StudioFlow backup service: one automatic backup run. supercronic starts it on BACKUP_SCHEDULE; by hand:
-#   docker compose exec backup /opt/backup/backup-job.sh
+# StudioFlow backup job: one backup run. The scheduler (serve.sh, through supercronic) starts it on the schedule of the
+# server settings with --label auto; the command backup-now and "Back up now" in the Regie start it with --label manual --now.
 #
-# The folder layout and the checksum file are those of backup.sh, but pg_dump connects over the network and the volumes
-# are mounted, so no docker is needed. Sequence: wait while a broadcast is live -> database dump and archives of keys
-# and caddy_data -> load the dump into a throwaway database (the backup must be restorable) -> checksums -> retention ->
-# incremental copy of the media -> optional off-site copy (rclone, encrypted with age). The media are not archived
-# again every day: files are immutable, so only new ones are copied. Texts are English and ASCII only.
+#   backup-job.sh [--label auto|manual|pre-restore] [--now]
+#
+# pg_dump connects over the network and the volumes are mounted, so no docker is needed. Sequence: wait while a broadcast is
+# live (not with --now: somebody asked for this backup) -> database dump and archives of keys and caddy_data -> load the dump
+# into a throwaway database (the backup must be restorable) -> checksums -> retention (folders labelled auto only) ->
+# incremental copy of the media -> optional off-site copy (rclone, encrypted with age). The media are not archived again every
+# day: files are immutable, so only new ones are copied. Texts are English and ASCII only.
 set -euo pipefail
 
 SF_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=infra/scripts/common.sh
+# shellcheck source=infra/backup/common.sh
 . "$SF_HOME/common.sh"
-# shellcheck source=infra/scripts/backup-core.sh
+# shellcheck source=infra/backup/backup-core.sh
 . "$SF_HOME/backup-core.sh"
 # shellcheck source=infra/backup/status.sh
 . "$SF_HOME/status.sh"
+# shellcheck source=infra/backup/settings.sh
+. "$SF_HOME/settings.sh"
+
+label=auto wait_for_broadcast=true
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--label)
+			[ $# -ge 2 ] || sf_die "--label needs a value."
+			label="$2"
+			shift
+			;;
+		--now) wait_for_broadcast=false ;;
+		*) sf_die "Unknown option: $1" ;;
+	esac
+	shift
+done
+[[ "$label" =~ ^[a-z][a-z-]{0,30}$ ]] || sf_die "The label may only contain lower case letters and hyphens."
 
 backup_dir="${BACKUP_DIR:-/backups}"
 volumes_dir="${BACKUP_VOLUMES_DIR:-/volumes}"
-keep_daily="${BACKUP_KEEP_DAILY:-7}"
-keep_weekly="${BACKUP_KEEP_WEEKLY:-4}"
 poll_seconds="${BACKUP_LIVE_POLL_SECONDS:-300}"
-remote="${BACKUP_RCLONE_REMOTE:-}"
+sf_settings_load
 remote_base="${remote%/}"
-recipients="${BACKUP_AGE_RECIPIENT:-}"
 # Media are copied, not archived, so the dated folders only hold what changes: the database and the small volumes.
 archive_volumes="keys caddy_data"
-# Folders of this service carry the label "auto"; retention touches nothing else.
+# Folders labelled auto are removed by the retention; nothing else is (manual and pre-restore backups stay until somebody
+# deletes them).
 readonly AUTO_NAME_PATTERN='^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}_auto(-[0-9]+)?$'
 
-# Only one run at a time (the schedule, or someone running the script by hand).
-exec 9>/tmp/backup.lock
+sf_load_database_password
+
+# Only one run at a time (the schedule, a command started with docker compose run, the Regie). The lock lives in the volume of
+# the backups, which every container of this service shares.
+mkdir -p "$backup_dir"
+exec 9>"$backup_dir/.backup.lock"
 flock -n 9 || sf_die "Another backup run is in progress."
 
 umask 077
@@ -105,12 +126,13 @@ wait_for_idle() {
 
 # --- the backup -------------------------------------------------------------------------------------------------
 
-# Folders left behind by a run that was killed (no checksum file) are removed; they are never restorable.
+# Folders left behind by a run that was killed (no checksum file) are removed; they are never restorable. Only one job runs at
+# a time (the lock), so a folder without checksums is never one that is being written.
 remove_incomplete() {
 	local dir
-	for dir in "$backup_dir"/*_auto*/; do
+	for dir in "$backup_dir"/*/; do
 		[ -d "$dir" ] || continue
-		[[ "$(basename "$dir")" =~ $AUTO_NAME_PATTERN ]] || continue
+		[[ "$(basename "$dir")" =~ $SF_BACKUP_NAME_PATTERN ]] || continue
 		[ -f "${dir}${SF_CHECKSUMS}" ] || rm -rf "$dir"
 	done
 }
@@ -154,7 +176,7 @@ verify_dump() {
 
 create_backup() {
 	local volume postgres_version bytes file archives=()
-	target="$(sf_backup_unique_dir "$backup_dir" "$(date '+%Y-%m-%d_%H%M')_auto")"
+	target="$(sf_backup_unique_dir "$backup_dir" "$(date '+%Y-%m-%d_%H%M')_$label")"
 	name="$(basename "$target")"
 	mkdir "$target"
 	sf_step "Backing up to $target"
@@ -248,7 +270,7 @@ offsite_media() {
 offsite_prune() {
 	local expired old
 	expired="$(rclone lsf -R --files-only --include "/*/$SF_CHECKSUMS" "$remote_base" 2>/dev/null | sed "s#/$SF_CHECKSUMS\$##" |
-		sf_backup_expired "$keep_daily" "$keep_weekly" | grep -vxF "$name" || true)"
+		grep -E "$AUTO_NAME_PATTERN" | sf_backup_expired "$keep_daily" "$keep_weekly" | grep -vxF "$name" || true)"
 	for old in $expired; do
 		if rclone purge "$remote_base/$old" -q; then
 			sf_info "Old off-site backup removed: $old"
@@ -284,16 +306,27 @@ main() {
 		for recipient in ${recipients//,/ }; do age_args+=(-r "$recipient"); done
 	fi
 
+	# rclone writes its configuration (tokens of some remotes are renewed) and the cache to /tmp; the settings volume is read-only.
+	if [ -n "$remote" ] && [ -s "$SF_RCLONE_CONF" ]; then
+		cp "$SF_RCLONE_CONF" "$RCLONE_CONFIG"
+		chmod 600 "$RCLONE_CONFIG"
+	fi
+
 	sf_status_update '.state = "running" | .postponedSince = null'
 	remove_incomplete
-	wait_for_idle
+	if [ "$wait_for_broadcast" = true ]; then
+		wait_for_idle
+	elif [ "$(broadcast_state)" = live ]; then
+		sf_warn "A broadcast is live. The backup runs anyway because it was asked for."
+	fi
 	create_backup
-	prune_local
+	[ "$label" != auto ] || prune_local
 
 	if ! copy_media_local; then
 		problems="The media could not be copied. "
 	fi
-	if [ -n "$remote" ]; then
+	# The safety backup before a restore is not worth an upload.
+	if [ -n "$remote" ] && [ "$label" != pre-restore ]; then
 		if offsite_copy; then
 			sf_status_update '.offsite.lastAttempt = {at: $now, ok: true, message: null} | .offsite.lastSuccess = {at: $now, name: $name}' --arg name "$name"
 		else
@@ -304,6 +337,7 @@ main() {
 	fi
 
 	finished=true
+	sf_status_backups "$backup_dir" || true
 	if [ -n "$problems" ]; then
 		sf_status_update '.lastAttempt = {at: $now, ok: false, message: $message}' --arg message "$(sf_status_text "${problems}The backup folder $name is complete. See: docker compose logs backup")"
 		sf_die "${problems% }"
