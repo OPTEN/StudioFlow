@@ -2611,6 +2611,325 @@
         }
       }
     },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "operationId": "listAuditLog",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "production",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/export.csv": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "operationId": "exportAuditCsv",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "production",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "separator",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/export.json": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "operationId": "exportAuditJson",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "production",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntryDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pairing/requests": {
       "post": {
         "tags": [
@@ -3420,6 +3739,125 @@
           "video"
         ],
         "description": "Kind of an uploaded media asset."
+      },
+      "AuditCategory": {
+        "enum": [
+          "production",
+          "devices",
+          "security",
+          "media",
+          "output",
+          "system"
+        ],
+        "description": "What an entry of the audit log is about: the category filter of the log view and a column of the export."
+      },
+      "AuditEntryDto": {
+        "required": [
+          "id",
+          "at",
+          "actor",
+          "action",
+          "category",
+          "productionId",
+          "productionName",
+          "code",
+          "params",
+          "text",
+          "details"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Database id; ascending in the order the entries were written.",
+            "format": "int64"
+          },
+          "at": {
+            "type": "string",
+            "description": "Time of the action.",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "string",
+            "description": "`admin`, `system` or `device:{id}`."
+          },
+          "action": {
+            "type": "string",
+            "description": "Action code such as `scene.live`."
+          },
+          "category": {
+            "description": "What the action is about.",
+            "$ref": "#/components/schemas/AuditCategory"
+          },
+          "productionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Production of the action; null for global actions such as sign-ins."
+          },
+          "productionName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Current name of the production, or null."
+          },
+          "code": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Log code for the text of the entry, or null for an action this version does not describe (then Text is the action code).",
+                "$ref": "#/components/schemas/LogCode"
+              }
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Values for the text of the code, keyed in camelCase; the same values as the params of a log entry."
+          },
+          "text": {
+            "type": "string",
+            "description": "English text for clients that do not know the code."
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "All details of the entry (device name, scene, IP address of a sign-in); never secrets."
+          }
+        },
+        "description": "An entry of the audit log as the Regie shows it."
+      },
+      "AuditPageDto": {
+        "required": [
+          "entries",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryDto"
+            },
+            "description": "The entries of the page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page."
+          }
+        },
+        "description": "One page of the audit log, newest first."
       },
       "BandwidthTestResultDto": {
         "required": [
@@ -4641,7 +5079,22 @@
           "textCreated",
           "textDeleted",
           "textShown",
-          "textHidden"
+          "textHidden",
+          "loginSucceeded",
+          "loginFailed",
+          "loginLocked",
+          "loggedOut",
+          "productionCreated",
+          "productionRenamed",
+          "productionActivated",
+          "broadcastReset",
+          "standbySlateChanged",
+          "endSlateChanged",
+          "incidentAcknowledged",
+          "deviceRenamed",
+          "cameraLensSwitched",
+          "auditExported",
+          "auditRetention"
         ],
         "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
@@ -6945,6 +7398,9 @@
     },
     {
       "name": "Output"
+    },
+    {
+      "name": "Audit"
     },
     {
       "name": "Pairing (public)"
