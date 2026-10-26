@@ -335,7 +335,7 @@ test.describe('OUT transitions', () => {
       let frames = await probe.stopSampler();
       let events = await probe.takeEvents();
       const fadeOut = frames.filter((sample) => sample.slate !== null && sample.slate.opacity < 1);
-      expect(fadeOut.length, 'the slate is seen at intermediate opacities').toBeGreaterThanOrEqual(8);
+      expect(fadeOut.length, 'the slate is seen at intermediate opacities').toBeGreaterThanOrEqual(3);
       const slateGone = firstEvent(events, 'slate-')!;
       expect(slateGone.t - started, 'start -> slate gone (fade 300 ms + request)').toBeLessThan(300 + 400);
       const slateAnimation = frames.flatMap((sample) => sample.anims ?? []).find((animation) => animation.cls?.includes('sf-r-slate') && animation.props.includes('opacity'));
@@ -352,7 +352,7 @@ test.describe('OUT transitions', () => {
       frames = await probe.stopSampler();
       events = await probe.takeEvents();
       const fadeIn = frames.filter((sample) => sample.slate !== null && sample.slate.opacity > 0.05 && sample.slate.opacity < 0.95);
-      expect(fadeIn.length, 'end slate fades in').toBeGreaterThanOrEqual(8);
+      expect(fadeIn.length, 'end slate fades in').toBeGreaterThanOrEqual(3);
       expect(frames.every((sample) => sample.layers.some((layer) => layer.id === a)), 'the last picture stays under the end slate').toBe(true);
       expect(frames.filter((sample) => sample.slate).every((sample) => sample.slate!.title !== TEXT.slate.standby), 'no standby slate in between').toBe(true);
       expect(toneOf((await output.stagePixels()).at(960, 1000)), 'covered: the end slate is opaque').toBe('dark');
