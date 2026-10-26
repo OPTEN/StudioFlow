@@ -116,6 +116,7 @@ export function asset(id: string, overrides: Partial<AssetDto> = {}): AssetDto {
     sizeBytes: 1024,
     width: 1920,
     height: 1080,
+    hasAudio: false,
     createdAt: FIXTURE_TIME,
     contentUrl: `/api/productions/prd_aaaaaaaaaaaaaaaa/assets/${id}/content`,
     ...overrides,
@@ -143,6 +144,7 @@ export function snapshot(
       deviceSource(CAMERA, 'K1', 'Handy Lea'),
       deviceSource(SCREEN, 'S1', 'Laptop Tom · Screen 1'),
     ],
+    audioChannels: [],
     assets: [asset(IMAGE)],
     ...overrides,
   };

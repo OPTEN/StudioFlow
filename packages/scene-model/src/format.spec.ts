@@ -3,6 +3,7 @@ import {
   formatBytes,
   formatCheckCode,
   formatClock,
+  formatDb,
   formatDecimal,
   formatDuration,
   formatHm,
@@ -184,6 +185,39 @@ describe('statusWord / incidentWord', () => {
     expect(incidentWord('ended', 'screen')).toBe('sharing stopped');
     expect(statusWord('reconnecting', 'camera')).toBe('reconnecting');
     expect(incidentWord('lost', 'camera')).toBe('no picture');
+  });
+});
+
+describe('microphones in statusWord', () => {
+  it('names an ended microphone and a lost one by what is missing: the sound', () => {
+    expect(statusWord('ended', 'audio')).toBe('microphone stopped');
+    expect(statusWord('lost', 'audio')).toBe('no sound');
+    expect(incidentWord('lost', 'audio')).toBe('no sound');
+    expect(incidentWord('ended', 'audio')).toBe('microphone stopped');
+    expect(statusWord('lost', 'camera')).toBe('no picture');
+  });
+});
+
+describe('formatDb', () => {
+  it.each([
+    [0, '0.0'],
+    [-0.04, '0.0'],
+    [-6, '−6.0'],
+    [-12.34, '−12.3'],
+    [3.5, '+3.5'],
+    [10, '+10.0'],
+    [-99.9, '−99.9'],
+    [-100, '−∞'],
+    [-250, '−∞'],
+    [Number.NEGATIVE_INFINITY, '−∞'],
+  ])('%s → %s', (db, text) => {
+    expect(formatDb(db)).toBe(text);
+  });
+
+  it('renders an unknown level as a dash', () => {
+    expect(formatDb(null)).toBe(MISSING_VALUE);
+    expect(formatDb(undefined)).toBe(MISSING_VALUE);
+    expect(formatDb(Number.NaN)).toBe(MISSING_VALUE);
   });
 });
 

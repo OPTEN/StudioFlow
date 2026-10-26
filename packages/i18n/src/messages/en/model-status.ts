@@ -7,10 +7,12 @@ import type { Namespace } from '../../types';
 export const modelStatus = {
   'model.status.blocked': 'blocked',
   'model.status.connecting': 'connecting…',
+  'model.status.endedAudio': 'microphone stopped',
   'model.status.endedCamera': 'camera stopped',
   'model.status.endedScreen': 'sharing stopped',
   'model.status.incidents': { one: '{count} incident', other: '{count} incidents' },
   'model.status.lost': 'no picture',
+  'model.status.lostAudio': 'no sound',
   'model.status.offline': 'not connected',
   'model.status.placeOff': 'not live',
   'model.status.placePreview': 'in Preview',

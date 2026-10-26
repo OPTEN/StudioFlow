@@ -276,6 +276,7 @@ function kindRank(kind: SourceKind | undefined): number {
     case 'camera':
       return 2;
     case 'text':
+    case 'audio':
     case undefined:
       return 3;
   }

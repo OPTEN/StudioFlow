@@ -397,6 +397,7 @@ describe('applyLayoutTemplate: z-order (item order, first = back)', () => {
         video: 1,
         camera: 2,
         text: 3,
+        audio: 3,
       };
       const expectedPlaced = visible
         .map((item, index) => ({ id: item.id, rank: rank[kindAt(index)], index }))

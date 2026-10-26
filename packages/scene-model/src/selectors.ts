@@ -9,6 +9,7 @@ import type {
   TallyState,
 } from './contracts';
 import { compareText, t } from '@studioflow/i18n';
+import { isChannelAudible } from './audio';
 import type { ProductionState } from './production-state';
 
 /** Worst outage among the visible items of a scene (scene list lamp, "K2 incident"). `bad` is false for amber. */
@@ -99,9 +100,16 @@ export function sceneHealth(
 
 /**
  * Tally of a source for the Regie (PGM/PVW tags): `program` when visible in the program scene, else `preview` when
- * visible in the preview scene, else `off`. Independent of the broadcast state.
+ * visible in the preview scene, else `off`. Independent of the broadcast state. A microphone has no picture: it is
+ * `program` while its channel would be audible in the program (not muted, fader up, its mode lets it through) and never
+ * `preview`.
  */
 export function tallyOf(state: ProductionState, sourceId: string): TallyState {
+  if (state.sources.get(sourceId)?.kind === 'audio') {
+    const channel = state.audioChannels.get(sourceId);
+    const program = new Set(sourcesInScene(programScene(state)));
+    return channel !== undefined && isChannelAudible(channel, 'live', program) ? 'program' : 'off';
+  }
   if (isSourceVisibleIn(programScene(state), sourceId)) {
     return 'program';
   }
@@ -109,8 +117,10 @@ export function tallyOf(state: ProductionState, sourceId: string): TallyState {
 }
 
 /**
- * Tally a device receives (spec 4.6): per slot like {@link tallyOf}, overall the highest slot tally; everything is
- * `off` while the broadcast is not live (nothing is on air during standby and after the end).
+ * Tally a device receives (spec 4.6): per slot like {@link tallyOf}, overall the highest tally of its pictures;
+ * everything is `off` while the broadcast is not live (nothing is on air during standby and after the end). The
+ * microphone slot has its own tally and does not count for the overall one: a phone whose microphone is on air but whose
+ * camera is not must not tell its owner that they are on camera.
  */
 export function deviceTally(state: ProductionState, deviceId: string): TallyDto {
   const live = state.production.broadcast === 'live';
@@ -122,7 +132,7 @@ export function deviceTally(state: ProductionState, deviceId: string): TallyDto 
     }
     const tally = live ? tallyOf(state, source.id) : 'off';
     slots[source.slot] = tally;
-    if (TALLY_RANK[tally] > TALLY_RANK[overall]) {
+    if (source.kind !== 'audio' && TALLY_RANK[tally] > TALLY_RANK[overall]) {
       overall = tally;
     }
   }

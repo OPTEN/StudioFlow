@@ -1,6 +1,6 @@
 import { tm, type MessageKey } from '@studioflow/i18n';
-import type { CameraLensKind, LogCode, LogEntryDto } from './contracts';
-import { formatDowntime } from './format';
+import type { AudioMode, CameraLensKind, LogCode, LogEntryDto } from './contracts';
+import { formatDb, formatDowntime } from './format';
 
 /**
  * The message of each log code (`regie.log.<code>`). The `satisfies` makes the compiler demand a message for every
@@ -64,7 +64,21 @@ export const LOG_MESSAGE_KEYS = {
   settingsEmbeddingChanged: 'regie.log.settingsEmbeddingChanged',
   settingsBackupChanged: 'regie.log.settingsBackupChanged',
   backupRequested: 'regie.log.backupRequested',
+  audioEnded: 'regie.log.audioEnded',
+  audioLost: 'regie.log.audioLost',
+  audioMuted: 'regie.log.audioMuted',
+  audioUnmuted: 'regie.log.audioUnmuted',
+  audioGainChanged: 'regie.log.audioGainChanged',
+  audioModeChanged: 'regie.log.audioModeChanged',
+  audioSyncOffsetChanged: 'regie.log.audioSyncOffsetChanged',
 } as const satisfies Record<LogCode, MessageKey>;
+
+/** The name of a mode in `audioModeChanged`, by the mode the API sends in `value`. */
+const AUDIO_MODE_NAME_KEYS = {
+  always: 'regie.log.audioModeAlways',
+  follow: 'regie.log.audioModeFollow',
+  off: 'regie.log.audioModeOff',
+} as const satisfies Record<AudioMode, MessageKey>;
 
 /** The name of a lens in `cameraLensSwitched`, by the kind the API sends in `lens` (the names of the camera panel). */
 const LENS_NAME_KEYS = {
@@ -94,6 +108,15 @@ export function logEntryText(entry: LogText): string {
   const params: Record<string, string> = { ...entry.params };
   if (entry.code === 'sourceRecovered') {
     params['downtime'] = formatDowntime(Number(entry.params['downSeconds']));
+  }
+  if (entry.code === 'audioGainChanged') {
+    params['value'] = formatDb(Number(entry.params['value']));
+  }
+  if (entry.code === 'audioModeChanged') {
+    const modeKey = (AUDIO_MODE_NAME_KEYS as Readonly<Record<string, MessageKey | undefined>>)[
+      entry.params['value'] ?? ''
+    ];
+    params['value'] = modeKey === undefined ? (entry.params['value'] ?? '') : tm({ key: modeKey });
   }
   if (entry.code === 'cameraLensSwitched') {
     const lensKey = (LENS_NAME_KEYS as Readonly<Record<string, MessageKey | undefined>>)[
