@@ -74,6 +74,12 @@ public sealed class Production
     /// <summary>Slate after the end.</summary>
     public SlateDto EndSlate { get; private set; } = new("Thanks for watching", null, null);
 
+    /// <summary>Colours of all texts and lower thirds.</summary>
+    public TextThemeDto TextTheme { get; private set; } = TextSourceRules.DefaultTheme;
+
+    /// <summary>Texts and lower thirds of the production (source kind text), in creation order.</summary>
+    public IReadOnlyList<TextSourceDto> TextSources { get; private set; } = [];
+
     /// <summary>Secret key of the output link (shown to the Regie, therefore not hashed).</summary>
     public string OutputKey { get; private set; } = string.Empty;
 
@@ -128,7 +134,7 @@ public sealed class Production
     /// <summary>The scene with the given id, if any.</summary>
     public Scene? FindScene(string? sceneId) => sceneId is null ? null : scenes.FirstOrDefault(s => string.Equals(s.Id, sceneId, StringComparison.Ordinal));
 
-    /// <summary>Applies a partial update of name and slates; returns false when nothing changed.</summary>
+    /// <summary>Applies a partial update of name, slates and text colours; returns false when nothing changed.</summary>
     public bool Update(UpdateProductionRequest request, SourceCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -137,6 +143,11 @@ public sealed class Production
         var name = request.Name is null ? null : TextRules.RequiredName(request.Name, TextRules.NameMax, "name", errors);
         var standby = request.StandbySlate is null ? null : ValidateSlate(request.StandbySlate, "standbySlate", errors, catalog);
         var end = request.EndSlate is null ? null : ValidateSlate(request.EndSlate, "endSlate", errors, catalog);
+        if (request.TextTheme is not null)
+        {
+            TextSourceRules.ValidateTheme(request.TextTheme, "textTheme", errors);
+        }
+
         errors.ThrowIfAny();
         var changed = false;
         if (name is not null && !string.Equals(name, Name, StringComparison.Ordinal))
@@ -154,6 +165,12 @@ public sealed class Production
         if (end is not null && end != EndSlate)
         {
             EndSlate = end;
+            changed = true;
+        }
+
+        if (request.TextTheme is { } theme && theme != TextTheme)
+        {
+            TextTheme = theme;
             changed = true;
         }
 
@@ -394,6 +411,55 @@ public sealed class Production
         string.Equals(StandbySlate.BackgroundAssetId, assetId, StringComparison.Ordinal)
         || string.Equals(EndSlate.BackgroundAssetId, assetId, StringComparison.Ordinal)
         || scenes.Any(s => s.UsesAsset(assetId));
+
+    /// <summary>The text source with the given id, or a <c>not_found</c> error.</summary>
+    public TextSourceDto GetTextSource(string textId) =>
+        TextSources.FirstOrDefault(t => string.Equals(t.Id, textId, StringComparison.Ordinal)) ?? throw StudioFlowException.NotFound("Text");
+
+    /// <summary>Adds a text source with the lowest free slot code T1, T2, … Throws <c>limit_reached</c> at 64 texts.</summary>
+    public TextSourceDto AddTextSource(CreateTextSourceRequest request, IEnumerable<string> codesInUse)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(codesInUse);
+        var align = request.Align ?? TextSourceRules.DefaultAlign(request.Style);
+        var (line1, line2) = TextSourceRules.ValidateContent(request.Line1, request.Line2, request.Style, align);
+        if (TextSources.Count >= TextSourceRules.MaxPerProduction)
+        {
+            throw StudioFlowException.LimitReached($"A production can have at most {TextSourceRules.MaxPerProduction} texts.");
+        }
+
+        var text = new TextSourceDto(EntityIds.New(EntityIds.Text), SlotCodes.Allocate(SourceKind.Text, codesInUse), line1, line2, request.Style, align);
+        TextSources = [.. TextSources, text];
+        return text;
+    }
+
+    /// <summary>Replaces the content of a text source; <c>Changed</c> is false when the request changes nothing.</summary>
+    public (TextSourceDto Text, bool Changed) UpdateTextSource(string textId, UpdateTextSourceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var existing = GetTextSource(textId);
+        var (line1, line2) = TextSourceRules.ValidateContent(request.Line1, request.Line2, request.Style, request.Align);
+        var updated = existing with { Line1 = line1, Line2 = line2, Style = request.Style, Align = request.Align };
+        if (updated == existing)
+        {
+            return (existing, false);
+        }
+
+        TextSources = [.. TextSources.Select(t => ReferenceEquals(t, existing) ? updated : t)];
+        return (updated, true);
+    }
+
+    /// <summary>
+    /// Deletes a text source together with every scene item that shows it. Returns the text and the scenes that lost items
+    /// (their version is incremented).
+    /// </summary>
+    public (TextSourceDto Text, IReadOnlyList<Scene> ChangedScenes) RemoveTextSource(string textId)
+    {
+        var text = GetTextSource(textId);
+        var changed = scenes.Where(s => s.RemoveItemsOf(text.Id)).OrderBy(s => s.SortOrder).ToList();
+        TextSources = [.. TextSources.Where(t => !ReferenceEquals(t, text))];
+        return (text, changed);
+    }
 
     private static SlateDto? ValidateSlate(SlateDto slate, string path, ValidationErrors errors, SourceCatalog catalog)
     {

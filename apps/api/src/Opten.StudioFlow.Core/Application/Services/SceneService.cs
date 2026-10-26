@@ -131,6 +131,31 @@ public sealed class SceneService(ProductionCoordinator coordinator)
             cancellationToken);
     }
 
+    /// <summary>Writes "T1 shown" and "T1 hidden" for the texts of the program scene whose visibility changed.</summary>
+    private static void AuditTextVisibility(MutationContext context, Production production, Scene scene, IReadOnlyList<SceneItemDto> before, SourceCatalog catalog)
+    {
+        if (!string.Equals(scene.Id, production.ProgramSceneId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        foreach (var item in scene.Items)
+        {
+            if (catalog.Find(item.Source) is not { Kind: SourceKind.Text } text)
+            {
+                continue;
+            }
+
+            var wasShown = before.Any(i => string.Equals(i.Id, item.Id, StringComparison.Ordinal) && !i.Hidden);
+            var isShown = !item.Hidden;
+            if (wasShown != isShown)
+            {
+                var action = isShown ? AuditActions.TextShown : AuditActions.TextHidden;
+                context.Audit(AuditActors.Admin, action, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Code] = text.Code });
+            }
+        }
+    }
+
     private static Dictionary<string, string> SceneDetails(Scene scene) => new(StringComparer.Ordinal) { [AuditDetails.Scene] = scene.Name };
 
     private static void EmitSwitch(MutationContext context, ProgramChange change) =>
@@ -150,11 +175,13 @@ public sealed class SceneService(ProductionCoordinator coordinator)
                 var production = await context.ProductionAsync(cancellationToken);
                 var scene = production.GetScene(sceneId);
                 var catalog = await context.CatalogAsync(cancellationToken);
+                var itemsBefore = scene.Items;
                 if (change(scene, catalog))
                 {
                     var dto = Dtos.Scene(scene);
                     context.Emit(revision => new SceneUpsertedEvent(revision, dto));
                     context.UpdateOnAir(production);
+                    AuditTextVisibility(context, production, scene, itemsBefore, catalog);
                 }
 
                 return Dtos.Scene(scene);

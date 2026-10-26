@@ -184,6 +184,7 @@ internal static class StudioFlowHost
         services.AddSingleton<DeviceSessionService>();
         services.AddSingleton<PairingService>();
         services.AddSingleton<AssetService>();
+        services.AddSingleton<TextService>();
         services.AddSingleton<OutputService>();
         services.AddSingleton<LiveKitSyncService>();
         services.AddSingleton<StudioSessionService>();

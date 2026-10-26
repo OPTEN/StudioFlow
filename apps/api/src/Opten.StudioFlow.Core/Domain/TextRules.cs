@@ -18,6 +18,9 @@ public static class TextRules
     /// <summary>Maximum length of a Regie message to a device.</summary>
     public const int MessageMax = 140;
 
+    /// <summary>Maximum length of one line of a text source.</summary>
+    public const int TextLineMax = 120;
+
     /// <summary>
     /// Trims a required name and checks its length (in text elements, so emoji count once). Adds an error and returns
     /// null when it is invalid.
@@ -64,7 +67,28 @@ public static class TextRules
     /// </summary>
     public static bool IsBidiControl(char c) => c is (>= '‪' and <= '‮') or (>= '⁦' and <= '⁩') or '‎' or '‏' or '؜';
 
-    /// <summary>Removes control and bidi formatting characters and surrounding whitespace; returns null for empty input.</summary>
+    /// <summary>
+    /// Trims an optional line of text and checks its length (in text elements). Adds an error and returns null when it is
+    /// too long; empty input is valid and becomes null.
+    /// </summary>
+    public static string? OptionalLine(string? value, int maxLength, string field, ValidationErrors errors)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+        var trimmed = Clean(value);
+        if (trimmed is not null && new StringInfo(trimmed).LengthInTextElements > maxLength)
+        {
+            errors.Add(field, $"Must be at most {maxLength} characters long.");
+            return null;
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Removes control characters, bidi formatting characters, line and paragraph separators and surrounding whitespace;
+    /// returns null for empty input. Invalid UTF-16 (a lone surrogate) becomes U+FFFD, so the result can always be stored
+    /// and encoded.
+    /// </summary>
     private static string? Clean(string? value)
     {
         if (value is null)
@@ -73,15 +97,20 @@ public static class TextRules
         }
 
         var builder = new StringBuilder(value.Length);
-        foreach (var c in value)
+        foreach (var rune in value.EnumerateRunes())
         {
-            if (!char.IsControl(c) && !IsBidiControl(c))
+            if (!IsDropped(rune))
             {
-                builder.Append(c);
+                builder.Append(rune.ToString());
             }
         }
 
         var cleaned = builder.ToString().Trim();
         return cleaned.Length == 0 ? null : cleaned;
     }
+
+    private static bool IsDropped(Rune rune) =>
+        Rune.IsControl(rune)
+        || (rune.IsBmp && IsBidiControl((char)rune.Value))
+        || Rune.GetUnicodeCategory(rune) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator;
 }

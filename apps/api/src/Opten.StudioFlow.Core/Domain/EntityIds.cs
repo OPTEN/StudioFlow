@@ -22,6 +22,9 @@ public static class EntityIds
     /// <summary>Prefix of asset ids.</summary>
     public const string Asset = "ast_";
 
+    /// <summary>Prefix of text source ids.</summary>
+    public const string Text = "txt_";
+
     /// <summary>Prefix of invite ids.</summary>
     public const string Invite = "inv_";
 

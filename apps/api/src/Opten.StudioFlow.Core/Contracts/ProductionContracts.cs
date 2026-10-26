@@ -15,6 +15,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="LastSwitchAt">Server time of the last program switch.</param>
 /// <param name="StandbySlate">Slate before the start.</param>
 /// <param name="EndSlate">Slate after the end.</param>
+/// <param name="TextTheme">Colours of all texts and lower thirds.</param>
 public sealed record ProductionDto(
     string Id,
     string TenantId,
@@ -29,7 +30,8 @@ public sealed record ProductionDto(
     TransitionDto? LastTransition,
     DateTimeOffset? LastSwitchAt,
     SlateDto StandbySlate,
-    SlateDto EndSlate);
+    SlateDto EndSlate,
+    TextThemeDto TextTheme);
 
 /// <summary>Short production entry for lists.</summary>
 public sealed record ProductionSummaryDto(string Id, string Name, string Slug, bool IsActive, DateTimeOffset CreatedAt);
@@ -85,7 +87,7 @@ public sealed record ProductionSnapshot(
 public sealed record CreateProductionRequest(string Name);
 
 /// <summary>Partial update of a production. Null fields stay unchanged.</summary>
-public sealed record UpdateProductionRequest(string? Name, SlateDto? StandbySlate, SlateDto? EndSlate);
+public sealed record UpdateProductionRequest(string? Name, SlateDto? StandbySlate, SlateDto? EndSlate, TextThemeDto? TextTheme = null);
 
 /// <summary>Request for a direct program switch (Studio-Modus off).</summary>
 /// <param name="SceneId">Scene to put on air.</param>

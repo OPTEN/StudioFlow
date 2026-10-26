@@ -60,23 +60,28 @@ public static partial class SceneItemRules
     /// <summary>Crop without cropping.</summary>
     public static CropDto NoCrop { get; } = new(0, 0, 0, 0);
 
-    /// <summary>Creates a new item with the server defaults for every value the request leaves open.</summary>
-    public static SceneItemDto CreateItem(AddSceneItemRequest request, SourceKind kind)
+    /// <summary>
+    /// Creates a new item with the server defaults for every value the request leaves open. A text starts hidden, so its
+    /// content can be prepared before it goes on air.
+    /// </summary>
+    public static SceneItemDto CreateItem(AddSceneItemRequest request, SourceEntry source)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(source);
+        var (x, y, w, h) = source.Text is { } text ? TextSourceRules.DefaultRect(text.Style) : (1240, 680, 600, 338);
         return new SceneItemDto(
             EntityIds.New(EntityIds.Item),
             request.Source,
-            request.X ?? 1240,
-            request.Y ?? 680,
-            request.W ?? 600,
-            request.H ?? 338,
-            request.Fit ?? (kind == SourceKind.Screen ? ItemFit.Contain : ItemFit.Cover),
+            request.X ?? x,
+            request.Y ?? y,
+            request.W ?? w,
+            request.H ?? h,
+            request.Fit ?? (source.Kind == SourceKind.Screen ? ItemFit.Contain : ItemFit.Cover),
             NoCrop,
-            request.Radius ?? 12,
+            request.Radius ?? (source.Kind == SourceKind.Text ? 0 : 12),
             Mirror: false,
             Rotation: 0,
-            Hidden: false,
+            Hidden: source.Kind == SourceKind.Text,
             Locked: false,
             Border: null,
             OnLost: new LostBehaviorDto(DefaultHoldMs, null));
@@ -238,7 +243,7 @@ public static partial class SceneItemRules
         }
         else if (!isFallbackAllowed(fallback))
         {
-            errors.Add($"{path}.fallbackSource", "This source does not exist.");
+            errors.Add($"{path}.fallbackSource", "This source does not exist or cannot be used as a fallback.");
         }
     }
 

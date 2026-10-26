@@ -25,7 +25,8 @@ public static class Dtos
             production.LastTransition,
             production.LastSwitchAt,
             production.StandbySlate,
-            production.EndSlate);
+            production.EndSlate,
+            production.TextTheme);
     }
 
     /// <summary>Short production entry.</summary>
@@ -90,13 +91,13 @@ public static class Dtos
             [.. device.Slots.Select(s => new DeviceSlotDto(s.Slot, s.Code, s.Kind))]);
     }
 
-    /// <summary>A source with its health (device slots) or always ok (media).</summary>
+    /// <summary>A source with its health (device slots) or always ok (media and texts).</summary>
     public static SourceDto Source(SourceEntry entry, SourceHealth? health)
     {
         ArgumentNullException.ThrowIfNull(entry);
         SourceStatus status;
         DateTimeOffset? since = null;
-        if (entry.Asset is not null)
+        if (entry.Device is null)
         {
             status = SourceStatus.Ok;
         }
@@ -110,6 +111,6 @@ public static class Dtos
             status = entry.Device!.IsBlocked ? SourceStatus.Blocked : SourceStatus.Offline;
         }
 
-        return new SourceDto(entry.Id, entry.Code, entry.Kind, entry.Label, entry.Device?.Id, entry.Slot?.Slot, entry.Asset?.Id, status, since);
+        return new SourceDto(entry.Id, entry.Code, entry.Kind, entry.Label, entry.Device?.Id, entry.Slot?.Slot, entry.Asset?.Id, status, since, entry.Text);
     }
 }

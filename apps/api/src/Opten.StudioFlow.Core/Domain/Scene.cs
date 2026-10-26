@@ -130,7 +130,7 @@ public sealed class Scene
             throw StudioFlowException.LimitReached("A scene can have at most 32 items.");
         }
 
-        var item = SceneItemRules.CreateItem(request, source!.Kind);
+        var item = SceneItemRules.CreateItem(request, source!);
         Items = [.. Items, item];
         Version++;
         return item;
@@ -249,11 +249,25 @@ public sealed class Scene
         string.Equals(Background.AssetId, assetId, StringComparison.Ordinal)
         || Items.Any(i => string.Equals(i.Source, assetId, StringComparison.Ordinal) || string.Equals(i.OnLost?.FallbackSource, assetId, StringComparison.Ordinal));
 
+    /// <summary>Removes every item that shows the source (a deleted text); returns false when there was none.</summary>
+    internal bool RemoveItemsOf(string sourceId)
+    {
+        var remaining = Items.Where(i => !string.Equals(i.Source, sourceId, StringComparison.Ordinal)).ToList();
+        if (remaining.Count == Items.Count)
+        {
+            return false;
+        }
+
+        Items = remaining;
+        Version++;
+        return true;
+    }
+
     private static bool IsKept(string source, SceneItemDto? existing, SourceCatalog catalog) =>
         catalog.Contains(source) || string.Equals(existing?.Source, source, StringComparison.Ordinal);
 
     private static bool IsKeptFallback(string fallback, SceneItemDto? existing, SourceCatalog catalog) =>
-        catalog.Contains(fallback) || string.Equals(existing?.OnLost?.FallbackSource, fallback, StringComparison.Ordinal);
+        (catalog.Contains(fallback) && !catalog.IsText(fallback)) || string.Equals(existing?.OnLost?.FallbackSource, fallback, StringComparison.Ordinal);
 
     private int IndexOf(string itemId)
     {

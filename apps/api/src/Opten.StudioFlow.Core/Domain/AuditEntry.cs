@@ -65,6 +65,18 @@ public static class AuditActions
     /// <summary>An asset was deleted.</summary>
     public const string AssetDeleted = "asset.deleted";
 
+    /// <summary>A text was created.</summary>
+    public const string TextCreated = "text.created";
+
+    /// <summary>A text was deleted.</summary>
+    public const string TextDeleted = "text.deleted";
+
+    /// <summary>A text was shown on the program scene.</summary>
+    public const string TextShown = "text.shown";
+
+    /// <summary>A text was hidden on the program scene.</summary>
+    public const string TextHidden = "text.hidden";
+
     /// <summary>A scene was created.</summary>
     public const string SceneCreated = "scene.created";
 

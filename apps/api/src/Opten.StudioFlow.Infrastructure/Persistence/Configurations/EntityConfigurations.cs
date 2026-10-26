@@ -30,6 +30,8 @@ internal sealed class ProductionConfiguration : IEntityTypeConfiguration<Product
         builder.Property(p => p.LastTransition).AsJson();
         builder.Property(p => p.StandbySlate).AsJson().IsRequired();
         builder.Property(p => p.EndSlate).AsJson().IsRequired();
+        builder.Property(p => p.TextTheme).AsJson().IsRequired();
+        builder.Property(p => p.TextSources).AsJson().IsRequired();
         builder.Property(p => p.OutputKey).HasMaxLength(Columns.Secret).IsRequired();
         builder.Property(p => p.AllowedIps).AsJson().IsRequired();
         builder.HasIndex(p => new { p.TenantId, p.Slug }).IsUnique();

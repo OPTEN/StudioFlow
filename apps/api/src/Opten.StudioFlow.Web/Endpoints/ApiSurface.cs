@@ -23,6 +23,7 @@ internal static class ApiSurface
         MapSystem(app.MapGroup("/api/system").WithTags("System"));
         MapProductions(Admin(app.MapGroup("/api/productions").WithTags("Productions")));
         MapScenes(Admin(app.MapGroup("/api/productions/{productionId}/scenes").WithTags("Scenes")));
+        MapTexts(Admin(app.MapGroup("/api/productions/{productionId}/texts").WithTags("Texts")));
         MapDevices(Admin(app.MapGroup("/api/productions/{productionId}/devices").WithTags("Devices")));
         MapPairingAdmin(Admin(app.MapGroup("/api/productions/{productionId}/pairing").WithTags("Pairing")));
         MapAssets(Admin(app.MapGroup("/api/productions/{productionId}/assets").WithTags("Assets")));
@@ -111,6 +112,16 @@ internal static class ApiSurface
             .WithName("reorderSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
         g.MapPut("/{sceneId}/items", SceneEndpoints.ReplaceItemsAsync)
             .WithName("replaceSceneItems").Produces<SceneDto>().ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
+    }
+
+    private static void MapTexts(RouteGroupBuilder g)
+    {
+        g.MapPost("/", TextEndpoints.CreateAsync).WithName("createText")
+            .Produces<TextSourceDto>(201).ProducesValidationProblem().ProducesProblem(404).ProducesProblem(409);
+        g.MapPut("/{textId}", TextEndpoints.UpdateAsync)
+            .WithName("updateText").Produces<TextSourceDto>().ProducesValidationProblem().ProducesProblem(404);
+        g.MapDelete("/{textId}", TextEndpoints.DeleteAsync).WithName("deleteText")
+            .Produces(204).ProducesProblem(404);
     }
 
     private static void MapDevices(RouteGroupBuilder g)
