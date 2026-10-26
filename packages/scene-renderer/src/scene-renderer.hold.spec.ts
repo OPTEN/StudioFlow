@@ -1,4 +1,4 @@
-import { autoGridSlots } from '@studioflow/scene-model';
+import { DEFAULT_CANVAS, autoGridSlots } from '@studioflow/scene-model';
 
 import {
   CAMERA,
@@ -17,7 +17,7 @@ import {
 } from './testing/fixtures';
 
 function slotRect(count: number, index: number): { x: number; y: number; w: number; h: number } {
-  const [x, y, w, h] = autoGridSlots(count)[index];
+  const [x, y, w, h] = autoGridSlots(count, DEFAULT_CANVAS)[index];
   return { x, y, w, h };
 }
 

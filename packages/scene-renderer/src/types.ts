@@ -4,6 +4,7 @@
  * {@link SourceMediaProvider}.
  */
 import type {
+  CanvasSize,
   SceneDto,
   SlateDto,
   TextSourceDto,
@@ -59,7 +60,7 @@ export interface SourceMediaProvider {
 export type MonitorSourceStatus =
   'ok' | 'connecting' | 'offline' | 'reconnecting' | 'ended' | 'lost' | 'blocked';
 
-/** Rectangle in canvas pixels (1920 × 1080 space). */
+/** Rectangle in canvas pixels (the space of the production's canvas). */
 export interface CanvasRect {
   readonly x: number;
   readonly y: number;
@@ -80,6 +81,8 @@ export type AssetMediaKind = 'image' | 'video';
 export interface SceneRendererOptions {
   readonly mode: RendererMode;
   readonly provider: SourceMediaProvider;
+  /** Size of the canvas in pixels: the production's format and resolution. Default 1920 × 1080; `setCanvas` changes it. */
+  readonly canvas?: CanvasSize;
   /**
    * Letterbox and canvas background. `transparent` (output `?bg=transparent`, overlays in OBS/vMix) also skips the
    * scene background colour; a scene background image is still drawn. Default `black`.
@@ -119,7 +122,7 @@ export interface RendererStats {
   readonly videos: number;
 }
 
-/** Placement of the 1920 × 1080 stage inside a container (letterbox, centred). */
+/** Placement of the stage inside a container (letterbox, centred). */
 export interface StageFit {
   /** Uniform scale from canvas pixels to container (CSS) pixels. */
   readonly scale: number;
@@ -135,7 +138,7 @@ export interface StageFit {
 
 /** Framework-free renderer of one picture (output page, Regie monitor or thumbnail). */
 export interface SceneRenderer {
-  /** The 1920 × 1080 stage, scaled with a CSS transform into the container (letterbox). */
+  /** The stage of the size of the canvas, scaled with a CSS transform into the container (letterbox). */
   readonly element: HTMLElement;
   /** Switches to a scene immediately (same scene id: diffs in place). A running fade is finished first. */
   show(scene: SceneDto | null): void;
@@ -156,6 +159,11 @@ export interface SceneRenderer {
   effectiveRects(): ReadonlyMap<string, CanvasRect>;
   /** Rendering statistics. */
   stats(): RendererStats;
+  /**
+   * The production's format or resolution changed: resizes the stage, re-fits it and lays out Auto-Grid scenes and slates
+   * for the new shape. Call it before showing the rescaled scenes. The same size changes nothing.
+   */
+  setCanvas(canvas: CanvasSize): void;
   /** Re-measures the container (called automatically by a ResizeObserver or the window `resize` event). */
   resize(): void;
   /** Removes the DOM and releases every provider registration, timer and listener. Idempotent. */

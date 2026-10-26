@@ -162,6 +162,7 @@ export class SceneLayer {
                   id: view.current.id,
                   available: isGridAvailable(state),
                 })),
+              this.ctx.canvas(),
             ),
             ...ownRects(visible.filter(({ view }) => view.isText)),
           ])

@@ -1,6 +1,6 @@
-import type { SlateDto } from '@studioflow/scene-model';
+import type { CanvasSize, SlateDto } from '@studioflow/scene-model';
 
-import { createElement, FILL, setStyle, setText, setVisible } from './dom';
+import { createElement, FILL, px, setStyle, setText, setVisible } from './dom';
 import { AssetLoader } from './asset-loader';
 import { fadeOpacity, type Fade } from './fade';
 import { createImage } from './media-view';
@@ -8,6 +8,11 @@ import { PALETTE, UI_FONT } from './palette';
 
 /** Fade of slates in and out. */
 const SLATE_FADE_MS = 300;
+/** Sizes of the slate text on a canvas with a short side of 1080 pixels; other canvases scale them with the short side. */
+const TITLE_PX = 72;
+const SUBTITLE_PX = 36;
+const GAP_PX = 24;
+const REFERENCE_SHORT_SIDE = 1080;
 
 /**
  * Full-stage slate (“Starting soon”, “Thanks for watching”) above all scene layers. Showing and hiding fade over
@@ -21,12 +26,17 @@ export class SlateView {
   private subtitle: HTMLDivElement | null = null;
   private fade: Fade | null = null;
   private visible = false;
+  /** Size of the slate text relative to a 1080 pixel short side. */
+  private scale: number;
 
   constructor(
     private readonly doc: Document,
     private readonly host: HTMLElement,
     private readonly reducedMotion: boolean,
-  ) {}
+    canvas: CanvasSize,
+  ) {
+    this.scale = Math.min(canvas.width, canvas.height) / REFERENCE_SHORT_SIDE;
+  }
 
   /** Shows (or updates) a slate; null hides it. */
   show(slate: SlateDto | null, imageUrl: string | null): void {
@@ -41,6 +51,12 @@ export class SlateView {
       const from = this.fade ? this.fade.stop() : 0;
       this.startFade(element, from, 1);
     }
+  }
+
+  /** The canvas changed: the text keeps its size relative to the short side. */
+  setCanvas(canvas: CanvasSize): void {
+    this.scale = Math.min(canvas.width, canvas.height) / REFERENCE_SHORT_SIDE;
+    this.applySizes();
   }
 
   /** Removes the slate at once (renderer teardown). */
@@ -86,7 +102,6 @@ export class SlateView {
       'flex-direction': 'column',
       'align-items': 'center',
       'justify-content': 'center',
-      gap: '24px',
       'background-color': PALETTE.ground,
       color: PALETTE.slateText,
       'font-family': UI_FONT,
@@ -103,13 +118,11 @@ export class SlateView {
     const title = createElement(this.doc, 'div', 'sf-r-slate-title', {
       ...textStyles,
       'font-weight': '600',
-      'font-size': '72px',
       'line-height': '1.1',
     });
     const subtitle = createElement(this.doc, 'div', 'sf-r-slate-subtitle', {
       ...textStyles,
       'font-weight': '400',
-      'font-size': '36px',
       'line-height': '1.25',
     });
     element.append(image, title, subtitle);
@@ -118,7 +131,18 @@ export class SlateView {
     this.image = image;
     this.title = title;
     this.subtitle = subtitle;
+    this.applySizes();
     return element;
+  }
+
+  private applySizes(): void {
+    const { element, title, subtitle } = this;
+    if (!element || !title || !subtitle) {
+      return;
+    }
+    setStyle(element, 'gap', px(Math.round(GAP_PX * this.scale)));
+    setStyle(title, 'font-size', px(Math.round(TITLE_PX * this.scale)));
+    setStyle(subtitle, 'font-size', px(Math.round(SUBTITLE_PX * this.scale)));
   }
 
   private applyContent(slate: SlateDto, imageUrl: string | null): void {

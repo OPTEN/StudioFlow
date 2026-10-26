@@ -1,4 +1,4 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
+import type { CanvasSize } from '@studioflow/scene-model';
 
 import type { StageFit } from './types';
 
@@ -8,15 +8,19 @@ function usableLength(value: number): number {
 }
 
 /**
- * Fits the 1920 × 1080 canvas into a container without distortion: uniform scale, centred, bars on the long side
- * (letterbox or pillarbox). Pure, so the monitor overlay of the Regie can use the same math.
+ * Fits the canvas into a container without distortion: uniform scale, centred, bars on the long side (letterbox or
+ * pillarbox). Pure, so the monitor overlay of the Regie can use the same math.
  */
-export function fitStage(containerWidth: number, containerHeight: number): StageFit {
+export function fitStage(
+  containerWidth: number,
+  containerHeight: number,
+  canvas: CanvasSize,
+): StageFit {
   const width = usableLength(containerWidth);
   const height = usableLength(containerHeight);
-  const scale = Math.min(width / CANVAS_WIDTH, height / CANVAS_HEIGHT);
-  const stageWidth = CANVAS_WIDTH * scale;
-  const stageHeight = CANVAS_HEIGHT * scale;
+  const scale = Math.min(width / canvas.width, height / canvas.height);
+  const stageWidth = canvas.width * scale;
+  const stageHeight = canvas.height * scale;
   return {
     scale,
     offsetX: (width - stageWidth) / 2,

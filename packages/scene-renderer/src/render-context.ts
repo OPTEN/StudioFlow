@@ -1,4 +1,4 @@
-import type { TextSourceDto, TextThemeDto } from '@studioflow/scene-model';
+import type { CanvasSize, TextSourceDto, TextThemeDto } from '@studioflow/scene-model';
 
 import { guarded, type ErrorSink } from './guard';
 import type { MediaHost } from './media-view';
@@ -18,6 +18,8 @@ export interface RenderContext extends MediaHost {
   readonly mode: RendererMode;
   /** Transparent output: no scene background colour. */
   readonly transparent: boolean;
+  /** The current size of the canvas. */
+  canvas(): CanvasSize;
   /** Resolves a source reference (device, image, video or missing). */
   resolve(ref: string): ResolvedSource;
   /** Availability of a device source (pending when the provider fails). */
@@ -55,7 +57,7 @@ export interface RenderFrame {
 /** Renderer services the context forwards to. */
 export type RenderContextHooks = Pick<
   RenderContext,
-  'statusSince' | 'requestRender' | 'holdFrameDonor'
+  'canvas' | 'statusSince' | 'requestRender' | 'holdFrameDonor'
 >;
 
 const PENDING: SourceAvailability = { state: 'pending' };
@@ -98,6 +100,7 @@ export function createRenderContext(
     textOf: (sourceId) => guarded(sink, () => textOf?.(sourceId), undefined),
     textTheme: () => guarded(sink, () => textTheme?.(), undefined),
     reducedMotion: options.reducedMotion === true,
+    canvas: () => hooks.canvas(),
     statusSince: (sourceId, status, now) => hooks.statusSince(sourceId, status, now),
     requestRender: () => hooks.requestRender(),
     holdFrameDonor: (sourceId, requester) => hooks.holdFrameDonor(sourceId, requester),
