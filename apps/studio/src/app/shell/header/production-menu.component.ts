@@ -12,12 +12,19 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { RouterLink } from '@angular/router';
 import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
+  DEFAULT_CANVAS_FORMAT,
+  DEFAULT_CANVAS_RESOLUTION,
   DEFAULT_TEXT_THEME,
   LIMITS,
+  canvasSize,
+  canvasSizeLabel,
   contrastRatio,
   formatDecimal,
+  formatRatioLabel,
   hasReadableContrast,
   isHexColor,
+  type CanvasFormat,
+  type CanvasResolution,
   type ProductionSummaryDto,
   type SlateDto,
   type TextThemeDto,
@@ -32,14 +39,16 @@ import {
   PopoverService,
   PopoverTriggerDirective,
 } from '../../core/ui/popover.directive';
+import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { ToastService } from '../../core/ui/toast.service';
+import { CanvasPickerComponent } from './canvas-picker.component';
 import { ChangePasswordFormComponent } from './change-password-form.component';
 
 /** Id of the production menu popover. */
 export const PRODUCTION_POPOVER = 'production';
 
 /** Views of the production menu. */
-type MenuMode = 'menu' | 'rename' | 'slates' | 'textColors' | 'create' | 'password';
+type MenuMode = 'menu' | 'rename' | 'slates' | 'textColors' | 'canvas' | 'create' | 'password';
 
 function nameControl(): FormControl<string> {
   return new FormControl('', {
@@ -76,14 +85,18 @@ function textControl(required: boolean): FormControl<string> {
 }
 
 /**
- * The production name in the header and its menu (spec 9.1): rename, edit the standby and end slates, switch to or
- * create another production (not while the broadcast is live), change the password and sign out. Typed reactive forms
+ * The production name in the header and its menu (spec 9.1): rename, edit the standby and end slates, set the text
+ * colours and the format and resolution of the output (not while the broadcast is live; another format asks first
+ * when scenes have elements), switch to or create another production (with its format; not while the broadcast is
+ * live), change the password and sign out. Typed reactive forms
  * for every input.
  */
 @Component({
   selector: 'sf-production-menu',
   imports: [
+    CanvasPickerComponent,
     ChangePasswordFormComponent,
+    ConfirmBoxComponent,
     IconComponent,
     PopoverDirective,
     PopoverTriggerDirective,
@@ -112,6 +125,34 @@ export class ProductionMenuComponent {
 
   protected readonly renameControl = nameControl();
   protected readonly createControl = nameControl();
+  /** Format and resolution of the production being created. */
+  protected readonly newFormat = signal<CanvasFormat>(DEFAULT_CANVAS_FORMAT);
+  protected readonly newResolution = signal<CanvasResolution>(DEFAULT_CANVAS_RESOLUTION);
+  /** Format and resolution being chosen for this production. */
+  protected readonly canvasFormat = signal<CanvasFormat>(DEFAULT_CANVAS_FORMAT);
+  protected readonly canvasResolution = signal<CanvasResolution>(DEFAULT_CANVAS_RESOLUTION);
+  /** The operator pressed Save and has to confirm what another format does to the scenes. */
+  protected readonly confirmingCanvas = signal(false);
+  private readonly canvasChange = computed(() => {
+    const current = this.store.production()?.canvas;
+    return {
+      formatChanged: this.canvasFormat() !== (current?.format ?? DEFAULT_CANVAS_FORMAT),
+      resolutionChanged:
+        this.canvasResolution() !== (current?.resolution ?? DEFAULT_CANVAS_RESOLUTION),
+    };
+  });
+  /** The chosen canvas differs from the one of the production. */
+  protected readonly canvasChanged = computed(
+    () => this.canvasChange().formatChanged || this.canvasChange().resolutionChanged,
+  );
+  /** Only the resolution changes: every element is scaled in proportion. */
+  protected readonly resolutionOnly = computed(
+    () => this.canvasChange().resolutionChanged && !this.canvasChange().formatChanged,
+  );
+  /** Scenes with elements, which another format fits into the new canvas. */
+  protected readonly scenesWithElements = computed(
+    () => this.store.scenes().filter((scene) => scene.items.length > 0).length,
+  );
   protected readonly slatesForm = new FormGroup({
     standbyTitle: textControl(true),
     standbySubtitle: textControl(false),
@@ -171,6 +212,8 @@ export class ProductionMenuComponent {
       this.renameControl.reset(production?.name ?? '');
     } else if (mode === 'create') {
       this.createControl.reset('');
+      this.newFormat.set(DEFAULT_CANVAS_FORMAT);
+      this.newResolution.set(DEFAULT_CANVAS_RESOLUTION);
     } else if (mode === 'slates' && production) {
       this.slatesForm.reset({
         standbyTitle: production.standbySlate.title,
@@ -183,6 +226,11 @@ export class ProductionMenuComponent {
     }
     if (mode === 'textColors') {
       this.textForm.reset(this.store.textTheme());
+    }
+    if (mode === 'canvas') {
+      this.canvasFormat.set(production?.canvas.format ?? DEFAULT_CANVAS_FORMAT);
+      this.canvasResolution.set(production?.canvas.resolution ?? DEFAULT_CANVAS_RESOLUTION);
+      this.confirmingCanvas.set(false);
     }
     this.mode.set(mode);
   }
@@ -254,6 +302,44 @@ export class ProductionMenuComponent {
     });
   }
 
+  protected setCanvasFormat(format: CanvasFormat): void {
+    this.canvasFormat.set(format);
+    this.confirmingCanvas.set(false);
+  }
+
+  protected setCanvasResolution(resolution: CanvasResolution): void {
+    this.canvasResolution.set(resolution);
+    this.confirmingCanvas.set(false);
+  }
+
+  /** Save: another format asks first when scenes have elements; a resolution change or an empty production does not. */
+  protected saveCanvas(event: Event): void {
+    event.preventDefault();
+    if (this.live() || !this.canvasChanged()) {
+      return;
+    }
+    if (this.canvasChange().formatChanged && this.scenesWithElements() > 0) {
+      this.confirmingCanvas.set(true);
+      return;
+    }
+    void this.applyCanvas();
+  }
+
+  protected async applyCanvas(): Promise<void> {
+    const format = this.canvasFormat();
+    const resolution = this.canvasResolution();
+    await this.run(async (id) => {
+      await this.api.changeCanvas(id, { format, resolution });
+      this.toasts.show(
+        t('regie.canvas.saved', {
+          size: canvasSizeLabel(canvasSize(format, resolution)),
+          ratio: formatRatioLabel(format),
+        }),
+      );
+      this.mode.set('menu');
+    });
+  }
+
   protected async create(event: Event): Promise<void> {
     event.preventDefault();
     const name = this.createControl.value.trim();
@@ -262,7 +348,11 @@ export class ProductionMenuComponent {
       return;
     }
     await this.run(async () => {
-      const created = await this.api.createProduction({ name });
+      const created = await this.api.createProduction({
+        name,
+        format: this.newFormat(),
+        resolution: this.newResolution(),
+      });
       if (this.live()) {
         this.toasts.show(t('regie.header.production.createdSwitchLater', { name: created.name }));
       } else {

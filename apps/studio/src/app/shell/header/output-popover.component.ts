@@ -16,8 +16,9 @@ import {
 } from '@angular/forms';
 import { formatDateTime, t, tm, type Msg } from '@studioflow/i18n';
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
+  DEFAULT_CANVAS_FORMAT,
+  canvasSizeLabel,
+  formatRatioLabel,
   type OutputLinkDto,
   type OutputSettingsDto,
   type OutputState,
@@ -76,8 +77,12 @@ export class OutputPopoverComponent {
   protected readonly popoverId = OUTPUT_POPOVER;
   protected readonly t = t;
   protected readonly tm = tm;
-  protected readonly format = `${CANVAS_WIDTH} × ${CANVAS_HEIGHT} · ${OBS_FPS} fps`;
   protected readonly nameMax = LINK_NAME_MAX;
+  /** "1080 × 1920 · 9:16 · 30 fps": the canvas of the production and the nominal frame rate. */
+  protected readonly format = computed(() => {
+    const ratio = formatRatioLabel(this.store.production()?.canvas.format ?? DEFAULT_CANVAS_FORMAT);
+    return `${canvasSizeLabel(this.store.canvas())} · ${ratio} · ${OBS_FPS} fps`;
+  });
   protected readonly settings = signal<OutputSettingsDto | null>(null);
   protected readonly loadError = signal<Msg | null>(null);
   protected readonly selectedId = signal<string | null>(null);

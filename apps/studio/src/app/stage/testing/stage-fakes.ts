@@ -2,7 +2,7 @@
  * Test doubles for the stage specs: a scriptable scene renderer and a manual animation-frame scheduler. Test-only
  * (imported by *.spec.ts files only).
  */
-import type { CanvasRect, SceneDto, TransitionDto } from '@studioflow/scene-model';
+import type { CanvasRect, CanvasSize, SceneDto, TransitionDto } from '@studioflow/scene-model';
 import type {
   RendererStats,
   SceneRenderer,
@@ -13,8 +13,9 @@ import type { SceneRendererFactory } from '../scene-view.component';
 
 /** One recorded renderer call. */
 export interface RendererCall {
-  readonly op: 'show' | 'update' | 'transitionTo' | 'refresh' | 'destroy';
+  readonly op: 'show' | 'update' | 'transitionTo' | 'refresh' | 'setCanvas' | 'destroy';
   readonly sceneId?: string | null;
+  readonly canvas?: CanvasSize;
   readonly transition?: TransitionDto;
 }
 
@@ -71,6 +72,10 @@ export class FakeSceneRenderer implements SceneRenderer {
     // Not used by the Regie monitors.
   }
 
+  setCanvas(canvas: CanvasSize): void {
+    this.calls.push({ op: 'setCanvas', canvas });
+  }
+
   refresh(): void {
     this.calls.push({ op: 'refresh' });
   }
@@ -100,10 +105,15 @@ export class FakeSceneRenderer implements SceneRenderer {
     this.element.remove();
   }
 
-  /** Recorded operations without status refreshes. */
+  /** The canvases the view set after the renderer was created, in order. */
+  get canvases(): CanvasSize[] {
+    return this.calls.flatMap((call) => (call.canvas ? [call.canvas] : []));
+  }
+
+  /** Recorded operations without status refreshes and canvas changes (see {@link canvases}). */
   ops(): string[] {
     return this.calls
-      .filter((call) => call.op !== 'refresh')
+      .filter((call) => call.op !== 'refresh' && call.op !== 'setCanvas')
       .map((call) => (call.sceneId === undefined ? call.op : `${call.op}:${call.sceneId}`));
   }
 }

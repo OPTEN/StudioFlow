@@ -13,6 +13,7 @@ import { t } from '@studioflow/i18n';
 import {
   isDown,
   rectOf,
+  safeMargin,
   type CanvasRect,
   type CropDto,
   type SceneItemDto,
@@ -165,6 +166,8 @@ function isHandle(value: string | undefined): value is Handle {
     '[class.is-locked]': 'editor.editLocked()',
     '[class.is-dragging]': 'dragging()',
     '[class.is-alt]': 'altHeld()',
+    '[style.--sf-safe-x]': 'safeArea().x',
+    '[style.--sf-safe-y]': 'safeArea().y',
     '(pointerdown)': 'onPointerDown($event)',
     '(keydown)': 'onKeyDown($event)',
     '(keyup)': 'onKeyUp($event)',
@@ -189,15 +192,24 @@ export class EditOverlayComponent {
   protected readonly edges = EDGES;
   protected readonly dragging = signal(false);
   protected readonly altHeld = signal(false);
+  /** The safe margin as a share of the canvas width and height (the faint dashed guide). */
+  protected readonly safeArea = computed(() => {
+    const canvas = this.store.canvas();
+    const margin = safeMargin(canvas);
+    return {
+      x: `${(margin / canvas.width) * 100}%`,
+      y: `${(margin / canvas.height) * 100}%`,
+    };
+  });
   /** Blue guide lines (canvas px) while snapping. */
   protected readonly guides = signal<Guides>(NO_GUIDES);
   protected readonly guideX = computed(() => {
     const x = this.guides().x;
-    return x === null ? null : toPercent({ x, y: 0, w: 0, h: 0 }).left;
+    return x === null ? null : toPercent({ x, y: 0, w: 0, h: 0 }, this.store.canvas()).left;
   });
   protected readonly guideY = computed(() => {
     const y = this.guides().y;
-    return y === null ? null : toPercent({ x: 0, y, w: 0, h: 0 }).top;
+    return y === null ? null : toPercent({ x: 0, y, w: 0, h: 0 }, this.store.canvas()).top;
   });
 
   /** A box for every visible element of the edit scene, in z-order (the last one is on top). */
@@ -206,6 +218,7 @@ export class EditOverlayComponent {
     if (!scene) {
       return [];
     }
+    const canvas = this.store.canvas();
     const locked = this.editor.editLocked();
     const selectedId = this.editor.selectedItemId();
     const autoRects = scene.layoutMode === 'autoGrid' ? (this.view()?.rects() ?? null) : null;
@@ -224,7 +237,7 @@ export class EditOverlayComponent {
       boxes.push({
         id: item.id,
         rect,
-        percent: toPercent(rect),
+        percent: toPercent(rect, canvas),
         label: boxLabel(
           this.store.codeOf(item.source) ?? t('model.scene.sourceMissing'),
           rect,
@@ -302,7 +315,8 @@ export class EditOverlayComponent {
     const handleValue = target?.closest<HTMLElement>('[data-handle]')?.dataset['handle'];
     const handle = isHandle(handleValue) ? handleValue : null;
     const screen = this.host.getBoundingClientRect();
-    const start = toCanvasPoint(event.clientX, event.clientY, screen);
+    const canvas = this.store.canvas();
+    const start = toCanvasPoint(event.clientX, event.clientY, screen, canvas);
     const others = this.boxes()
       .filter((entry) => entry.id !== id)
       .map((entry) => entry.rect);
@@ -315,7 +329,7 @@ export class EditOverlayComponent {
       screen: { left: screen.left, top: screen.top, width: screen.width, height: screen.height },
       origin: box.rect,
       crop: item.crop,
-      lines: snapLines(others),
+      lines: snapLines(others, canvas),
       threshold: snapThreshold(start.scale),
       autoRects: autoGrid ? (this.view()?.effectiveRects() ?? null) : null,
       moved: false,
@@ -419,7 +433,7 @@ export class EditOverlayComponent {
     if (this.drag !== drag || !sample) {
       return;
     }
-    const point = toCanvasPoint(sample.clientX, sample.clientY, drag.screen);
+    const point = toCanvasPoint(sample.clientX, sample.clientY, drag.screen, this.store.canvas());
     const dx = point.x - drag.start.x;
     const dy = point.y - drag.start.y;
     if (!drag.moved) {

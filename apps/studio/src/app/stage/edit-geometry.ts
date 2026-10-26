@@ -1,19 +1,19 @@
 /**
  * Pure geometry of the edit overlay (prototype "Overlay: edit items", spec 9.1): snapping, moving, resizing
  * from a corner (aspect ratio kept unless Shift), cropping from a corner or an edge (Alt, like OBS), keyboard nudges
- * and the label text of the selection box. Everything works in canvas pixels (1920 × 1080); thresholds that are
+ * and the label text of the selection box. Everything works in canvas pixels (the canvas of the production, 1920 × 1080
+ * by default); thresholds that are
  * defined in screen pixels are converted with the monitor scale by the caller.
  *
  * No Angular, no DOM: the overlay component feeds pointer deltas in and writes the results to the EditorService.
  */
 import { t } from '@studioflow/i18n';
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   ITEM_BOUNDS,
-  SAFE_MARGIN,
   formatPercent,
+  safeMargin,
   type CanvasRect,
+  type CanvasSize,
   type CropDto,
 } from '@studioflow/scene-model';
 
@@ -90,18 +90,13 @@ export function isCorner(handle: Handle): handle is Corner {
 }
 
 /**
- * Lines every element snaps to (prototype `snapLines`): the canvas edges, the safe margin (40 px) and the centre,
- * plus the edges and centres of the other visible elements.
+ * Lines every element snaps to (prototype `snapLines`): the canvas edges, the safe margin (40 px at 1080p) and the
+ * centre, plus the edges and centres of the other visible elements.
  */
-export function snapLines(others: readonly CanvasRect[]): SnapLines {
-  const xs: number[] = [0, SAFE_MARGIN, CANVAS_WIDTH / 2, CANVAS_WIDTH - SAFE_MARGIN, CANVAS_WIDTH];
-  const ys: number[] = [
-    0,
-    SAFE_MARGIN,
-    CANVAS_HEIGHT / 2,
-    CANVAS_HEIGHT - SAFE_MARGIN,
-    CANVAS_HEIGHT,
-  ];
+export function snapLines(others: readonly CanvasRect[], canvas: CanvasSize): SnapLines {
+  const margin = safeMargin(canvas);
+  const xs: number[] = [0, margin, canvas.width / 2, canvas.width - margin, canvas.width];
+  const ys: number[] = [0, margin, canvas.height / 2, canvas.height - margin, canvas.height];
   for (const rect of others) {
     xs.push(rect.x, rect.x + rect.w / 2, rect.x + rect.w);
     ys.push(rect.y, rect.y + rect.h / 2, rect.y + rect.h);
@@ -400,12 +395,12 @@ export interface PercentRect {
 }
 
 /** Converts canvas pixels to percentages of the canvas. */
-export function toPercent(rect: CanvasRect): PercentRect {
+export function toPercent(rect: CanvasRect, canvas: CanvasSize): PercentRect {
   return {
-    left: (rect.x / CANVAS_WIDTH) * 100,
-    top: (rect.y / CANVAS_HEIGHT) * 100,
-    width: (rect.w / CANVAS_WIDTH) * 100,
-    height: (rect.h / CANVAS_HEIGHT) * 100,
+    left: (rect.x / canvas.width) * 100,
+    top: (rect.y / canvas.height) * 100,
+    width: (rect.w / canvas.width) * 100,
+    height: (rect.h / canvas.height) * 100,
   };
 }
 
@@ -425,13 +420,18 @@ export interface ScreenBox {
 }
 
 /** Converts client coordinates to canvas pixels for an overlay at `box` (prototype `toCanvas`). */
-export function toCanvasPoint(clientX: number, clientY: number, box: ScreenBox): CanvasPointer {
+export function toCanvasPoint(
+  clientX: number,
+  clientY: number,
+  box: ScreenBox,
+  canvas: CanvasSize,
+): CanvasPointer {
   const width = box.width > 0 ? box.width : 1;
   const height = box.height > 0 ? box.height : 1;
   return {
-    x: ((clientX - box.left) / width) * CANVAS_WIDTH,
-    y: ((clientY - box.top) / height) * CANVAS_HEIGHT,
-    scale: width / CANVAS_WIDTH,
+    x: ((clientX - box.left) / width) * canvas.width,
+    y: ((clientY - box.top) / height) * canvas.height,
+    scale: width / canvas.width,
   };
 }
 

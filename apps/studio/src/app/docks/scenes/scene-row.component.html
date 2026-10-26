@@ -1,6 +1,6 @@
 @if (renaming()) {
   <div class="c-scene c-scene--editing">
-    <span class="c-scene__thumb" aria-hidden="true">
+    <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
         <span class="c-keycap">{{ view().key }}</span>
@@ -25,7 +25,7 @@
     (click)="choose.emit(view().id)"
     (keydown)="onRowKeyDown($event)"
   >
-    <span class="c-scene__thumb" aria-hidden="true">
+    <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
         <span class="c-keycap">{{ view().key }}</span>

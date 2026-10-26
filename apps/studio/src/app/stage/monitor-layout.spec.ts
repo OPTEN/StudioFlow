@@ -1,6 +1,12 @@
-import { monitorWidths, type MonitorLayoutInput } from './monitor-layout';
+import { DEFAULT_CANVAS, canvasSize } from '@studioflow/scene-model';
+import {
+  MAX_STACKED_MONITOR_HEIGHT_PX,
+  monitorWidths,
+  type MonitorLayoutInput,
+} from './monitor-layout';
 
 const DESKTOP: MonitorLayoutInput = {
+  canvas: DEFAULT_CANVAS,
   width: 1408,
   height: 431,
   studio: false,
@@ -56,6 +62,80 @@ describe('monitorWidths', () => {
     expect(monitorWidths({ ...DESKTOP, width: 358, fullWidth: true, studio: true })).toEqual({
       preview: 358,
       program: 358,
+    });
+  });
+
+  describe('other shapes of the canvas', () => {
+    const PORTRAIT = canvasSize('portrait', 'p1080');
+    const SQUARE = canvasSize('square', 'p1080');
+    const STANDARD = canvasSize('standard', 'p1080');
+
+    it('sizes a portrait Program monitor from the height: narrow, however wide the stage is', () => {
+      // (431 − 56) × 1080/1920 = 210.
+      expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT })).toEqual({ preview: 0, program: 210 });
+      expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT, width: 4000 })).toEqual({
+        preview: 0,
+        program: 210,
+      });
+    });
+
+    it('lets a portrait monitor grow with a taller stage and stops at the width', () => {
+      expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT, height: 800 })).toEqual({
+        preview: 0,
+        program: 418,
+      });
+      expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT, width: 300, height: 2000 })).toEqual({
+        preview: 0,
+        program: 108,
+      });
+    });
+
+    it('sizes square and 4:3 monitors by the same rules', () => {
+      expect(monitorWidths({ ...DESKTOP, canvas: SQUARE })).toEqual({ preview: 0, program: 375 });
+      expect(monitorWidths({ ...DESKTOP, canvas: STANDARD })).toEqual({ preview: 0, program: 500 });
+    });
+
+    it('shares the width in Studio Mode and limits each monitor by the height', () => {
+      expect(monitorWidths({ ...DESKTOP, canvas: PORTRAIT, studio: true })).toEqual({
+        preview: 210,
+        program: 210,
+      });
+    });
+
+    it('never makes a monitor taller than the stage, whatever the shape', () => {
+      for (const canvas of [DEFAULT_CANVAS, PORTRAIT, SQUARE, STANDARD]) {
+        for (const height of [160, 400, 700, 1000]) {
+          const { program } = monitorWidths({ ...DESKTOP, canvas, height, width: 1888 });
+          expect((program * canvas.height) / canvas.width + 56).toBeLessThanOrEqual(
+            Math.max(height, 56),
+          );
+        }
+      }
+    });
+
+    it('limits a stacked portrait monitor to 720 px of height', () => {
+      const stacked = { ...DESKTOP, heightBound: false, width: 1068 };
+
+      expect(MAX_STACKED_MONITOR_HEIGHT_PX).toBe(720);
+      expect(monitorWidths({ ...stacked, canvas: PORTRAIT })).toEqual({ preview: 0, program: 405 });
+      expect(monitorWidths({ ...stacked, canvas: DEFAULT_CANVAS })).toEqual({
+        preview: 0,
+        program: 876,
+      });
+    });
+
+    it('limits a narrow portrait monitor the same way and leaves 16:9 at the full width', () => {
+      const narrow = { ...DESKTOP, heightBound: false, fullWidth: true, studio: true };
+
+      expect(monitorWidths({ ...narrow, width: 358, canvas: PORTRAIT })).toEqual({
+        preview: 358,
+        program: 358,
+      });
+      expect(monitorWidths({ ...narrow, width: 800, canvas: PORTRAIT })).toEqual({
+        preview: 405,
+        program: 405,
+      });
+      expect(monitorWidths({ ...narrow, width: 800 })).toEqual({ preview: 800, program: 800 });
     });
   });
 

@@ -194,6 +194,50 @@
             </div>
           </form>
         }
+        @case ('canvas') {
+          <form class="c-prod__form" (submit)="saveCanvas($event)">
+            <div class="c-pop-h">{{ t('regie.canvas.title') }}</div>
+            <sf-canvas-picker
+              [format]="canvasFormat()"
+              [resolution]="canvasResolution()"
+              [disabled]="live() || busy()"
+              (formatChange)="setCanvasFormat($event)"
+              (resolutionChange)="setCanvasResolution($event)"
+            />
+            @if (live()) {
+              <p class="c-field-error" role="status">{{ t('regie.canvas.liveLocked') }}</p>
+            } @else if (confirmingCanvas()) {
+              <sf-confirm-box
+                [message]="t('regie.canvas.confirm', { count: scenesWithElements() })"
+                [confirmLabel]="t('regie.canvas.confirmButton')"
+                [busy]="busy()"
+                (confirm)="applyCanvas()"
+                (cancel)="confirmingCanvas.set(false)"
+              />
+            } @else {
+              @if (resolutionOnly()) {
+                <p class="c-hint">{{ t('regie.canvas.resolutionOnly') }}</p>
+              }
+              <div class="c-prod__row">
+                <button
+                  class="c-btn c-btn--sm c-btn--fill"
+                  type="submit"
+                  [disabled]="busy() || !canvasChanged()"
+                >
+                  {{ t('common.save') }}
+                </button>
+                <button
+                  class="c-btn c-btn--sm"
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="mode.set('menu')"
+                >
+                  {{ t('common.cancel') }}
+                </button>
+              </div>
+            }
+          </form>
+        }
         @case ('create') {
           <form class="c-prod__form" (submit)="create($event)">
             <div class="c-pop-h">{{ t('regie.header.production.new') }}</div>
@@ -212,6 +256,7 @@
             @if (createControl.invalid && createControl.touched) {
               <p class="c-field-error">{{ t('regie.header.production.nameInvalid') }}</p>
             }
+            <sf-canvas-picker [(format)]="newFormat" [(resolution)]="newResolution" />
             <div class="c-prod__row">
               <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
                 {{ t('regie.header.production.createSubmit') }}
@@ -255,6 +300,14 @@
             (click)="show('textColors')"
           >
             <svg sfIcon="text"></svg>{{ t('regie.header.production.textColors') }}
+          </button>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('canvas')"
+          >
+            <svg sfIcon="layout"></svg>{{ t('regie.canvas.menu') }}
           </button>
           <div class="c-menu-sep"></div>
           <div class="c-pop-h">{{ t('regie.header.production.switchTitle') }}</div>

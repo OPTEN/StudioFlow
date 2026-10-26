@@ -14,6 +14,7 @@ import {
   ERROR_CODES,
   HUB,
   applyChanges,
+  canvasOf,
   healthSummary,
   incidentPlace,
   sceneHealth,
@@ -21,6 +22,7 @@ import {
   stationOrder,
   tallyOf,
   type AssetDto,
+  type CanvasSize,
   type DeviceDto,
   type HealthSummary,
   type IncidentDto,
@@ -201,6 +203,15 @@ export class ProductionStoreService {
   readonly textTheme = computed<TextThemeDto>(
     () => this.production()?.textTheme ?? DEFAULT_TEXT_THEME,
   );
+  /**
+   * The canvas of the production: the coordinate system of every scene item and the shape of the monitors, the
+   * thumbnails and the output (1920 × 1080 before the first snapshot). A new object only when the size changes.
+   */
+  readonly canvas = computed<CanvasSize>(() => canvasOf(this.production()), {
+    equal: (a, b) => a.width === b.width && a.height === b.height,
+  });
+  /** The canvas as a CSS `aspect-ratio` value, "1080 / 1920". */
+  readonly canvasAspect = computed(() => `${this.canvas().width} / ${this.canvas().height}`);
   /** Sources by reference (`{deviceId}/{slot}`, `{assetId}` or `{textId}`). */
   readonly sources = computed<ReadonlyMap<string, SourceDto>>(
     () => this.stateSignal()?.sources ?? EMPTY_MAP,

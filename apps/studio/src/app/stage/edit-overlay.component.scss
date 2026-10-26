@@ -1,7 +1,7 @@
 // Edit overlay on the editable monitor (prototype .ovl, .box, .box-label, .hdl, .guide).
 @use 'mixins' as *;
 
-// The overlay covers the 16:9 screen exactly; percentages refer to the 1920 × 1080 canvas.
+// The overlay covers the screen exactly; percentages refer to the canvas of the production.
 :host {
   border-radius: var(--radius-screen);
   // Elements may reach beyond the canvas: their boxes are clipped at the screen (they must not cover the control
@@ -12,17 +12,17 @@
   // Panning the page stays possible on the empty area (stacked layouts scroll); boxes take every touch.
   touch-action: manipulation;
 
-  // Faint dashed safe-area guide (40 px margin), shown while hovering or dragging.
+  // Faint dashed safe-area guide (40 px margin at 1080p), shown while hovering or dragging.
   &::after {
     @include state-transition(border-color);
     border: 1px dashed transparent;
-    bottom: 3.704%;
+    bottom: var(--sf-safe-y, 3.704%);
     content: '';
-    left: 2.083%;
+    left: var(--sf-safe-x, 2.083%);
     pointer-events: none;
     position: absolute;
-    right: 2.083%;
-    top: 3.704%;
+    right: var(--sf-safe-x, 2.083%);
+    top: var(--sf-safe-y, 3.704%);
   }
 }
 

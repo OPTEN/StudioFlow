@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { LIMITS, type SceneDto } from '@studioflow/scene-model';
+import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
   PopoverDirective,
@@ -32,7 +33,8 @@ const MENU_WIDTH = 200;
 const MENU_HEIGHT = 168;
 
 /**
- * One row of the Scenes dock (prototype `.scene`): a button with the 16:9 thumbnail and keycap, name and meta
+ * One row of the Scenes dock (prototype `.scene`): a button with the thumbnail (in the shape of the canvas, 36 px high)
+ * and keycap, name and meta
  * (PGM/PVW tag, slot codes or "K2 disrupted"), `aria-pressed` and the prototype's `aria-label`. Next to it the "…"
  * button opens the scene's actions (Rename, Duplicate, Move up, Move down). Keyboard: F2 renames; Alt+↑/↓ move the
  * scene (handled by the surrounding sortable list). While renaming, the name is an inline field.
@@ -68,6 +70,7 @@ export class SceneRowComponent {
   /** The operator chose the scene (click, Enter, Space): the dock calls `SwitcherService.chooseScene`. */
   readonly choose = output<string>();
 
+  protected readonly store = inject(ProductionStoreService);
   protected readonly commands = inject(SceneCommandsService);
   protected readonly popovers = inject(PopoverService);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

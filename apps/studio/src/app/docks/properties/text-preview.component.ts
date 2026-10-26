@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import type { SceneDto, SceneItemDto, TextSourceDto } from '@studioflow/scene-model';
+import type { CanvasSize, SceneDto, SceneItemDto, TextSourceDto } from '@studioflow/scene-model';
 import type { SceneRenderer } from '@studioflow/scene-renderer';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { PlaceholderMediaProvider } from '../../stage/placeholder-media-provider';
@@ -25,7 +25,6 @@ import { SCENE_RENDERER_FACTORY } from '../../stage/scene-view.component';
   template: '',
   styles: `
     :host {
-      aspect-ratio: 16 / 9;
       background: var(--slot);
       border: 1px solid var(--seam);
       border-radius: var(--radius-md);
@@ -34,6 +33,7 @@ import { SCENE_RENDERER_FACTORY } from '../../stage/scene-view.component';
       position: relative;
     }
   `,
+  host: { '[style.aspect-ratio]': 'store.canvasAspect()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TextPreviewComponent {
@@ -42,7 +42,7 @@ export class TextPreviewComponent {
   /** The content to draw: the draft of the editor. */
   readonly text = input.required<TextSourceDto>();
 
-  private readonly store = inject(ProductionStoreService);
+  protected readonly store = inject(ProductionStoreService);
   private readonly factory = inject(SCENE_RENDERER_FACTORY);
   private readonly provider = inject(PlaceholderMediaProvider);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -54,15 +54,17 @@ export class TextPreviewComponent {
       // The effect redraws when the typed content or the production colours change.
       this.text();
       this.store.textTheme();
-      untracked(() => this.draw(item));
+      const canvas = this.store.canvas();
+      untracked(() => this.draw(item, canvas));
     });
     inject(DestroyRef).onDestroy(() => this.renderer?.destroy());
   }
 
-  private draw(item: SceneItemDto): void {
+  private draw(item: SceneItemDto, canvas: CanvasSize): void {
     this.renderer ??= this.factory(this.host, {
       mode: 'thumbnail',
       provider: this.provider,
+      canvas,
       textOf: () => this.text(),
       textTheme: () => this.store.textTheme(),
       background: 'transparent',
@@ -79,6 +81,7 @@ export class TextPreviewComponent {
       background: { color: '#000000', assetId: null },
       items: [{ ...item, hidden: false }],
     };
+    this.renderer.setCanvas(canvas);
     this.renderer.show(scene);
     this.renderer.refresh();
   }

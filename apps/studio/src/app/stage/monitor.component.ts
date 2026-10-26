@@ -8,12 +8,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
-  formatItemCount,
-  type SceneDto,
-} from '@studioflow/scene-model';
+import { canvasSizeLabel, formatItemCount, type SceneDto } from '@studioflow/scene-model';
+import { ProductionStoreService } from '../core/state/production-store.service';
 import { ViewportService } from '../core/ui/viewport.service';
 import { EditOverlayComponent } from './edit-overlay.component';
 import { SceneViewComponent, type SceneTransitionCue } from './scene-view.component';
@@ -33,7 +29,8 @@ let nextMonitorId = 0;
 /**
  * One monitor of the stage (prototype `.mon`): the header with tally dot and label (PREVIEW green, PROGRAM red), the
  * scene name, the meta on the right ("2 items" on the Preview, "1920 × 1080 · 30 fps" on the Program) and
- * "Changes go live immediately" when Studio Mode is off, then the 16:9 screen with its 2 px tally outline.
+ * "Changes go live immediately" when Studio Mode is off, then the screen with its 2 px tally outline. The screen has
+ * the shape of the production's canvas.
  *
  * The screen holds a {@link SceneViewComponent}; on the editable monitor also the {@link EditOverlayComponent}, and
  * the live note while editing is locked. The Program monitor flashes once whenever a cued program switch has been
@@ -70,6 +67,7 @@ export class MonitorComponent {
   /** Quiet text in the empty screen (loading, no scene). */
   readonly emptyText = input<string | null>(null);
 
+  protected readonly store = inject(ProductionStoreService);
   private readonly viewport = inject(ViewportService);
   private readonly screen = viewChild.required<ElementRef<HTMLElement>>('screen');
 
@@ -82,7 +80,7 @@ export class MonitorComponent {
   );
   protected readonly meta = computed(() => {
     if (this.kind() === 'program') {
-      return `${CANVAS_WIDTH} × ${CANVAS_HEIGHT} · 30 fps`;
+      return `${canvasSizeLabel(this.store.canvas())} · 30 fps`;
     }
     const scene = this.scene();
     return scene ? formatItemCount(scene.items.filter((item) => !item.hidden).length) : '';

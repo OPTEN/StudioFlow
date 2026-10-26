@@ -9,7 +9,8 @@
   min-width: 0;
 }
 
-// Widths come from the stage (monitor-layout.ts): 16:9 from the stage's width and height, never overflowing.
+// Widths come from the stage (monitor-layout.ts): the shape of the canvas from the stage's width and height, never
+// overflowing.
 :host(.c-monitor--preview) {
   width: var(--sf-preview-w, 50%);
 }
@@ -73,7 +74,8 @@
   font-size: 11.5px;
 }
 
-// The 16:9 well with the tally outline (2 px; the Program flashes on a switch, see MonitorComponent).
+// The well with the tally outline (2 px; the Program flashes on a switch, see MonitorComponent). It has the shape of
+// the canvas, which the component sets; 16:9 until it is known.
 .c-monitor__screen {
   aspect-ratio: 16 / 9;
   background: var(--well);
@@ -119,19 +121,22 @@
   right: 10px;
 }
 
-// ≤ 900 px: full width, priority order Program (1), controls (2), Preview (3); no meta.
+// ≤ 900 px: full width (a tall portrait monitor is limited and centred), priority order Program (1), controls (2),
+// Preview (3); no meta.
 @include narrow {
   :host(.c-monitor--preview),
   :host(.c-monitor--program) {
-    width: 100%;
+    align-self: center;
   }
 
   :host(.c-monitor--program) {
     order: 1;
+    width: var(--sf-program-w, 100%);
   }
 
   :host(.c-monitor--preview) {
     order: 3;
+    width: var(--sf-preview-w, 100%);
   }
 
   .c-monitor__head {

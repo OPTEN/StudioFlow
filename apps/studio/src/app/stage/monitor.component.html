@@ -8,7 +8,7 @@
     meta()
   }}</span>
 </div>
-<div class="c-monitor__screen" #screen>
+<div class="c-monitor__screen" #screen [style.aspect-ratio]="store.canvasAspect()">
   <sf-scene-view
     class="c-monitor__view"
     mode="monitor"

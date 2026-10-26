@@ -16,6 +16,7 @@ import { outputSlates } from './output-slates';
 import { regieAccount } from './regie-account';
 import { regieAudit } from './regie-audit';
 import { regieCamera } from './regie-camera';
+import { regieCanvas } from './regie-canvas';
 import { regieCore } from './regie-core';
 import { regieDocks } from './regie-docks';
 import { regieHeader } from './regie-header';
@@ -59,6 +60,7 @@ export const deCH: Translation<typeof en> = {
   ...regieAccount,
   ...regieAudit,
   ...regieCamera,
+  ...regieCanvas,
   ...regieCore,
   ...regieDocks,
   ...regieHeader,

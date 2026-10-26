@@ -232,6 +232,12 @@ export class EditorService {
       this.editSceneId();
       untracked(() => this.selectedItemIdSignal.set(null));
     });
+    // Undo steps hold item geometry in the pixels of the old canvas: after another format or resolution they would
+    // put items where they no longer belong.
+    effect(() => {
+      this.store.canvas();
+      untracked(() => this.forgetHistory());
+    });
     const off = this.store.onChange(() => this.settleDrafts());
     inject(DestroyRef).onDestroy(off);
   }
@@ -380,7 +386,8 @@ export class EditorService {
   }
 
   /**
-   * Adds a source to the edit scene with the prototype defaults (600 × 338 at 1240/680) and selects it. A text that
+   * Adds a source to the edit scene with the prototype defaults (600 × 338 at 1240/680 on a 1920 × 1080 canvas, in
+   * proportion on others) and selects it. A text that
    * was just created is passed along, because its source event may not have reached the store yet.
    */
   addSource(sourceId: string, text?: TextSourceDto): string | null {
@@ -394,7 +401,13 @@ export class EditorService {
     }
     const source = this.store.sourceById(sourceId);
     const known = text ?? source?.text ?? undefined;
-    const item = newItem(sourceId, known ? 'text' : source?.kind, createItemId(), known?.style);
+    const item = newItem(
+      sourceId,
+      known ? 'text' : source?.kind,
+      createItemId(),
+      this.store.canvas(),
+      known?.style,
+    );
     this.recordUndo(scene, true);
     this.enqueue(scene, { kind: 'replace', items: [...scene.items, item], layoutMode: null });
     this.select(item.id);
@@ -533,13 +546,17 @@ export class EditorService {
       this.toasts.show(t('regie.stage.editor.addSourceFirst'));
       return false;
     }
-    const result = applyLayoutTemplate(scene.items, templateId, (sourceId) =>
-      this.store.kindOf(sourceId),
+    const canvas = this.store.canvas();
+    const result = applyLayoutTemplate(
+      scene.items,
+      templateId,
+      (sourceId) => this.store.kindOf(sourceId),
+      canvas,
     );
     this.recordUndo(scene, true);
     this.enqueue(scene, { kind: 'replace', items: result.items, layoutMode: result.layoutMode });
     this.toasts.show(
-      t('regie.stage.editor.templateApplied', { name: layoutTemplate(templateId).name }),
+      t('regie.stage.editor.templateApplied', { name: layoutTemplate(templateId, canvas).name }),
       {
         label: t('regie.stage.editor.undo'),
         run: () => this.undo(scene.id),
@@ -658,6 +675,12 @@ export class EditorService {
       stack.splice(0, stack.length - UNDO_LIMIT);
     }
     stacks.set(sceneId, stack);
+    this.historyVersion.update((value) => value + 1);
+  }
+
+  private forgetHistory(): void {
+    this.undoStacks.clear();
+    this.redoStacks.clear();
     this.historyVersion.update((value) => value + 1);
   }
 

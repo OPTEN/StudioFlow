@@ -48,17 +48,20 @@
   cursor: default;
 }
 
+// The thumbnail is 36 px high (27 px on short laptops) and as wide as the shape of the canvas makes it: 64 px for
+// 16:9, narrower for 9:16. The component sets the aspect ratio; 16:9 until the canvas is known.
 .c-scene__thumb {
   aspect-ratio: 16 / 9;
   background: var(--well);
   border-radius: var(--radius-screen);
   display: block;
+  height: 36px;
+  justify-self: center;
   outline: 1px solid var(--seam-strong);
   position: relative;
-  width: 64px;
 
   @include short-laptop {
-    width: 48px;
+    height: 27px;
   }
 }
 
