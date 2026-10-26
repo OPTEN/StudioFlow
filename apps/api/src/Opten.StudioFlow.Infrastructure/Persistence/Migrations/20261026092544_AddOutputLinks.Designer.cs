@@ -12,7 +12,7 @@ using Opten.StudioFlow.Infrastructure.Persistence;
 namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(StudioFlowDbContext))]
-    [Migration("20261026084803_AddOutputLinks")]
+    [Migration("20261026092544_AddOutputLinks")]
     partial class AddOutputLinks
     {
         /// <inheritdoc />
@@ -442,6 +442,16 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<string>("TextSources")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("text_sources");
+
+                    b.Property<string>("TextTheme")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("text_theme");
 
                     b.HasKey("Id")
                         .HasName("pk_productions");

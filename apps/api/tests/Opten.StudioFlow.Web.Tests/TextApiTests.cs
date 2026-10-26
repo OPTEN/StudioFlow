@@ -218,11 +218,7 @@ public sealed class TextApiTests(StudioFlowApp app) : IClassFixture<StudioFlowAp
     private static async Task<ProductionSnapshot> SnapshotAsync(AdminSession admin, string productionId) =>
         await admin.Client.GetAsync($"/api/productions/{productionId}/snapshot").ExpectAsync<ProductionSnapshot>();
 
-    private static async Task<string> KeyAsync(AdminSession admin)
-    {
-        var settings = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output").ExpectAsync<OutputSettingsDto>();
-        return settings.Url[(settings.Url.IndexOf("?k=", StringComparison.Ordinal) + 3)..];
-    }
+    private static async Task<string> KeyAsync(AdminSession admin) => (await admin.GetOutputLinksAsync())[0].Key();
 
     private static async Task<List<string>> ErrorFieldsAsync(Task<HttpResponseMessage> request)
     {
