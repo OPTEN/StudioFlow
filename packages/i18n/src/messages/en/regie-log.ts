@@ -13,6 +13,7 @@ export const regieLog = {
   'regie.log.auditExported': 'Audit log exported as {format}, {rows} rows',
   'regie.log.auditRetention':
     'Audit retention ({days} days): entries deleted {deleted}, IP addresses removed {anonymised}',
+  'regie.log.backupRequested': 'Backup requested',
   'regie.log.broadcastEnded': 'Broadcast ended',
   'regie.log.broadcastReset': 'Broadcast reset',
   'regie.log.broadcastStarted': 'Broadcast started',
@@ -52,6 +53,10 @@ export const regieLog = {
   'regie.log.sceneDeleted': 'Scene “{scene}” deleted',
   'regie.log.sceneLive': 'Scene “{scene}” is live',
   'regie.log.screenEnded': '{code} sharing stopped',
+  'regie.log.settingsAddressChanged': 'Address and certificate changed ({mode})',
+  'regie.log.settingsBackupChanged': 'Backup settings changed',
+  'regie.log.settingsEmbeddingChanged': 'Embedding changed ({count} origins)',
+  'regie.log.settingsMediaChanged': 'Media address set to {address}',
   'regie.log.sourceLost': '{code} no picture',
   'regie.log.sourceReconnecting': '{code} reconnecting',
   'regie.log.sourceRecovered': '{code} is back, was gone for {downtime}',

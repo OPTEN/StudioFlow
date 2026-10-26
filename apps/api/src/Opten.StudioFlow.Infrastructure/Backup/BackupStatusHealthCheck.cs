@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
 
 namespace Opten.StudioFlow.Infrastructure.Backup;
 
@@ -18,22 +19,22 @@ namespace Opten.StudioFlow.Infrastructure.Backup;
 /// </list>
 /// Automatic backups that are switched off (<see cref="BackupOptions.IsEnabled"/>) are healthy.
 /// </summary>
-internal sealed class BackupStatusHealthCheck(BackupOptions options, TimeProvider clock) : IHealthCheck
+internal sealed class BackupStatusHealthCheck(BackupOptions options, TimeProvider clock, ServerSettingsState? settings = null) : IHealthCheck
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        if (!options.IsEnabled)
+        if (!IsEnabled)
         {
             return HealthCheckResult.Healthy("Automatic backups are off.");
         }
 
-        BackupStatus? status;
+        BackupServiceStatus? status;
         try
         {
             await using var stream = File.OpenRead(options.StatusFile);
-            status = await JsonSerializer.DeserializeAsync<BackupStatus>(stream, JsonOptions, cancellationToken);
+            status = await JsonSerializer.DeserializeAsync<BackupServiceStatus>(stream, JsonOptions, cancellationToken);
         }
         catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
         {
@@ -70,7 +71,7 @@ internal sealed class BackupStatusHealthCheck(BackupOptions options, TimeProvide
 
         if (status.Offsite is not { Configured: true } offsite)
         {
-            problems.Add("No off-site copy is configured: the backups stay on this server (BACKUP_RCLONE_REMOTE).");
+            problems.Add("No off-site copy is configured: the backups stay on this server (Server settings, Backups).");
         }
         else
         {
@@ -101,7 +102,7 @@ internal sealed class BackupStatusHealthCheck(BackupOptions options, TimeProvide
             : HealthCheckResult.Degraded(string.Join(' ', problems), data: data);
     }
 
-    private static string Summary(BackupStatus status, DateTimeOffset now) =>
+    private static string Summary(BackupServiceStatus status, DateTimeOffset now) =>
         status.LastSuccess is { } last
             ? string.Create(CultureInfo.InvariantCulture, $"Last backup {last.Name} ({last.Bytes / (1024 * 1024)} MB), {Hours(now - last.At)} hours ago; off-site copy ok.")
             : "No backup is due yet.";
@@ -114,23 +115,11 @@ internal sealed class BackupStatusHealthCheck(BackupOptions options, TimeProvide
         }
     }
 
-    private static string Describe(string what, BackupAttempt attempt) =>
+    private static string Describe(string what, BackupAttemptStatus attempt) =>
         string.IsNullOrWhiteSpace(attempt.Message) ? $"{what}." : $"{what}: {attempt.Message.Trim()}";
 
     private static long Hours(TimeSpan span) => (long)Math.Floor(span.TotalHours);
+
+    /// <summary>Automatic backups are on: the status file is known and a schedule is set (in the server settings once they were saved, else in the configuration).</summary>
+    private bool IsEnabled => !string.IsNullOrWhiteSpace(options.StatusFile) && !string.IsNullOrWhiteSpace(settings?.Row is not null ? settings.BackupSchedule : options.Schedule);
 }
-
-/// <summary>The status file of the backup service (infra/backup/status.sh describes every field).</summary>
-internal sealed record BackupStatus(DateTimeOffset? CreatedAt, BackupAttempt? LastAttempt, BackupSuccess? LastSuccess, OffsiteStatus? Offsite);
-
-/// <summary>The outcome of a run; <see cref="Message"/> tells why it failed.</summary>
-internal sealed record BackupAttempt(DateTimeOffset? At, bool Ok, string? Message);
-
-/// <summary>The last complete, verified backup folder.</summary>
-internal sealed record BackupSuccess(DateTimeOffset At, string? Name, long Bytes);
-
-/// <summary>The optional second target.</summary>
-internal sealed record OffsiteStatus(bool Configured, bool Encrypted, BackupAttempt? LastAttempt, OffsiteSuccess? LastSuccess);
-
-/// <summary>The last complete off-site copy.</summary>
-internal sealed record OffsiteSuccess(DateTimeOffset At, string? Name);

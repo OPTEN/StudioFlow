@@ -59,6 +59,11 @@ export const LOG_MESSAGE_KEYS = {
   cameraLensSwitched: 'regie.log.cameraLensSwitched',
   auditExported: 'regie.log.auditExported',
   auditRetention: 'regie.log.auditRetention',
+  settingsMediaChanged: 'regie.log.settingsMediaChanged',
+  settingsAddressChanged: 'regie.log.settingsAddressChanged',
+  settingsEmbeddingChanged: 'regie.log.settingsEmbeddingChanged',
+  settingsBackupChanged: 'regie.log.settingsBackupChanged',
+  backupRequested: 'regie.log.backupRequested',
 } as const satisfies Record<LogCode, MessageKey>;
 
 /** The name of a lens in `cameraLensSwitched`, by the kind the API sends in `lens` (the names of the camera panel). */

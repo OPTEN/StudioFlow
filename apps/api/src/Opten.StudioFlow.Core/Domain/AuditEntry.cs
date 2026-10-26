@@ -71,6 +71,21 @@ public static class AuditActions
     /// <summary>Old audit entries were deleted and old IP addresses removed.</summary>
     public const string AuditRetention = "audit.retention";
 
+    /// <summary>The media address of the server settings was saved.</summary>
+    public const string SettingsMediaChanged = "settings.media.changed";
+
+    /// <summary>The address or the certificate mode of the server settings changed.</summary>
+    public const string SettingsAddressChanged = "settings.address.changed";
+
+    /// <summary>The origins that may embed the output changed.</summary>
+    public const string SettingsEmbeddingChanged = "settings.embedding.changed";
+
+    /// <summary>The backup schedule or the off-site target changed.</summary>
+    public const string SettingsBackupChanged = "settings.backup.changed";
+
+    /// <summary>The Regie asked the backup service for a backup.</summary>
+    public const string BackupRequested = "backup.requested";
+
     /// <summary>A scene went on air.</summary>
     public const string SceneLive = "scene.live";
 
@@ -234,6 +249,15 @@ public static class AuditDetails
 
     /// <summary>The retention period in days.</summary>
     public const string Days = "days";
+
+    /// <summary>The media address that was saved.</summary>
+    public const string Address = "address";
+
+    /// <summary>The certificate mode of the address that was saved.</summary>
+    public const string Mode = "mode";
+
+    /// <summary>The domain that was saved.</summary>
+    public const string Domain = "domain";
 }
 
 /// <summary>Values of <see cref="AuditDetails.Via"/>.</summary>

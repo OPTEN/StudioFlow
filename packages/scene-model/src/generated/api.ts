@@ -916,6 +916,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getServerSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getServerSettingsStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateMediaSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/media/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMediaSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/media/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["startMediaTest"];
+        delete: operations["endMediaTest"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateAddressSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["uploadCertificate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/embedding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateEmbeddingSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateBackupSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listBackups"];
+        put?: never;
+        post: operations["requestBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pairing/requests": {
         parameters: {
             query?: never;
@@ -1160,6 +1320,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description The address and the certificate. */
+        AddressSettingsDto: {
+            /** @description `internal`, `custom` or `dns-*`. */
+            tlsMode: string;
+            /** @description The host name of the Regie, if one is set. */
+            domain: null | string;
+            /** @description E-mail of the Let's Encrypt account (dns-* modes). */
+            acmeEmail: null | string;
+            /** @description Delegation target of `_acme-challenge`, if one is set. */
+            dnsChallengeDomain: null | string;
+            /** @description Which credential fields are stored (names only). */
+            credentialFields: string[];
+            certificate: null | components["schemas"]["CertificateInfoDto"];
+        };
         /** @description Request to add a source to a scene. Missing values are chosen by the server (on a 1920 × 1080 canvas 1240/680, 600 × 338, radius 12, contain for screens; other canvases get the same layout in proportion). */
         AddSceneItemRequest: {
             source: string;
@@ -1178,6 +1352,22 @@ export interface components {
         /** @description Allocates a new slot on the device (another screen, or the optional laptop camera). */
         AllocateSlotRequest: {
             kind: components["schemas"]["SourceKind"];
+        };
+        /** @description Whether the services run the saved settings. */
+        ApplyStatusDto: {
+            /** @description The edge proxy. */
+            caddy: components["schemas"]["ApplyTargetDto"];
+            /** @description The media server. */
+            liveKit: components["schemas"]["ApplyTargetDto"];
+            /** @description The backup service. */
+            backup: components["schemas"]["ApplyTargetDto"];
+        };
+        /** @description State of one service. */
+        ApplyTargetDto: {
+            /** @description True when the service runs the saved settings. */
+            applied: boolean;
+            /** @description Why not, if the last attempt failed (English, no secrets). */
+            error: null | string;
         };
         /** @description An uploaded image or video. */
         AssetDto: {
@@ -1269,6 +1459,61 @@ export interface components {
             entries: components["schemas"]["AuditEntryDto"][];
             /** @description Pass as `cursor` to get the next page; null on the last page. */
             nextCursor: null | string;
+        };
+        /** @description A backup folder. */
+        BackupEntryDto: {
+            /** @description Folder name, e.g. `2026-10-26_0300_auto`; the argument of `restore`. */
+            name: string;
+            /**
+             * Format: date-time
+             * @description When it finished.
+             */
+            at: string;
+            /**
+             * Format: int64
+             * @description Size of the folder.
+             */
+            bytes: number;
+            /** @description `auto` or `manual`. */
+            kind: string;
+        };
+        /** @description The latest backups and the state of the backup service. */
+        BackupsDto: {
+            /** @description False when the backup service has not reported yet (not started, or the status file is missing). */
+            serviceSeen: boolean;
+            /** @description True while a backup runs or waits for the end of a broadcast. */
+            running: boolean;
+            /** @description True while a run waits for the end of a broadcast. */
+            postponed: boolean;
+            /** @description Why the last run failed, if it did. */
+            lastError: null | string;
+            /** @description The latest backups, newest first. */
+            backups: components["schemas"]["BackupEntryDto"][];
+        };
+        /** @description The backup schedule and the off-site target. */
+        BackupSettingsDto: {
+            /** @description Cron expression; null: automatic backups are off. */
+            schedule: null | string;
+            /** @description IANA time zone of the schedule; null: UTC. */
+            timezone: null | string;
+            /**
+             * Format: int32
+             * @description Daily backups kept.
+             */
+            keepDaily: number;
+            /**
+             * Format: int32
+             * @description Weekly backups kept.
+             */
+            keepWeekly: number;
+            /** @description The rclone remote of the off-site copy; null: none. */
+            rcloneRemote: null | string;
+            /** @description True when an rclone.conf is stored (it is never returned). */
+            rcloneConfigured: boolean;
+            /** @description Public age keys that encrypt the off-site copy. */
+            ageRecipients: string[];
+            /** @description The remote encrypts by itself, so the copy is not encrypted here. */
+            offsiteUnencrypted: boolean;
         };
         /** @description Result of the upload part of the technical check. */
         BandwidthTestResultDto: {
@@ -1450,6 +1695,20 @@ export interface components {
          * @enum {unknown}
          */
         CanvasResolution: "p720" | "p1080";
+        /** @description An uploaded certificate as the Regie shows it (never the key). */
+        CertificateInfoDto: {
+            /** @description Subject of the leaf certificate. */
+            subject: string;
+            /** @description The DNS names it covers. */
+            names: string[];
+            /**
+             * Format: date-time
+             * @description When it expires.
+             */
+            notAfter: string;
+            /** @description SHA-256 of the leaf certificate (hex). */
+            fingerprint: string;
+        };
         /**
          * @description Sets format and resolution of the output canvas. The same format with another resolution scales every scene item
          *     proportionally; another format fits the items into the new canvas (scaled uniformly, centred) and lets the Auto-Grid
@@ -1697,10 +1956,22 @@ export interface components {
             deviceId: string;
             telemetry: components["schemas"]["DeviceTelemetryDto"];
         };
+        /** @description A DNS provider and the credential fields it needs. */
+        DnsProviderDto: {
+            /** @description Certificate mode, e.g. `dns-cloudflare`. */
+            id: string;
+            /** @description Names of the credential fields (all secret, none is ever returned). */
+            fields: string[];
+        };
         /** @description Request to duplicate a production. */
         DuplicateProductionRequest: {
             /** @description Name of the copy; “{name} (copy)” when missing. A name that is taken gets “ (2)”, “ (3)” … appended. */
             name: null | string;
+        };
+        /** @description The origins that may embed the output. */
+        EmbeddingSettingsDto: {
+            /** @description The origins; `'self'` is always allowed and not listed. */
+            origins: string[];
         };
         HttpValidationProblemDetails: {
             type?: null | string;
@@ -1845,7 +2116,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -1876,6 +2147,41 @@ export interface components {
             holdMs: null | number;
             /** @description Optional replacement source reference (e.g. a pause slate image). */
             fallbackSource: null | string;
+        };
+        /** @description The media address. */
+        MediaSettingsDto: {
+            /** @description The IPv4 address LiveKit announces; null until the wizard saved it. */
+            address: null | string;
+        };
+        /** @description Where the media address could come from. */
+        MediaSuggestionsDto: {
+            /** @description The IPv4 address the admin opened the page with (the `Host` header), if it is one. */
+            fromHost: null | string;
+            /** @description IPv4 addresses of the interfaces the API sees (inside Docker these are not the addresses of the host). */
+            interfaces: string[];
+        };
+        /**
+         * @description What the browser needs for the round trip: two participants of a throw-away room. LiveKit announces the tested address
+         *     for the test (it was restarted with it); the browser connects over the same origin as the page and sends a message from
+         *     one participant to the other and back.
+         */
+        MediaTestDto: {
+            /** @description The throw-away room. */
+            room: string;
+            /** @description Token of the first participant. */
+            first: components["schemas"]["LiveKitTokenDto"];
+            /** @description Token of the second participant. */
+            second: components["schemas"]["LiveKitTokenDto"];
+            /**
+             * Format: date-time
+             * @description When the trial configuration of LiveKit ends if nobody saves the address.
+             */
+            expiresAt: string;
+        };
+        /** @description Asks for a test of a media address. */
+        MediaTestRequest: {
+            /** @description The IPv4 address to announce for the test. */
+            address: string;
         };
         /**
          * @description Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):
@@ -2596,6 +2902,28 @@ export interface components {
          * @enum {unknown}
          */
         SceneLayoutMode: "free" | "autoGrid";
+        /** @description Everything the wizard and the "Server settings" page show. */
+        ServerSettingsDto: {
+            /** @description True once the media address was saved; before that the wizard continues after the account step. */
+            configured: boolean;
+            /** @description The address devices open, e.g. `https://studioflow.opten.ch:8443`. */
+            baseUrl: string;
+            /**
+             * Format: int32
+             * @description The published HTTPS port (`STUDIOFLOW_HTTPS_PORT`, default 8443).
+             */
+            httpsPort: number;
+            /** @description The media address. */
+            media: components["schemas"]["MediaSettingsDto"];
+            /** @description The address and the certificate. */
+            address: components["schemas"]["AddressSettingsDto"];
+            /** @description The embedding origins. */
+            embedding: components["schemas"]["EmbeddingSettingsDto"];
+            /** @description The backup settings. */
+            backup: components["schemas"]["BackupSettingsDto"];
+            /** @description The DNS providers this version supports. */
+            dnsProviders: components["schemas"]["DnsProviderDto"][];
+        };
         /** @description The signed-in admin. */
         SessionDto: {
             username: string;
@@ -2805,6 +3133,56 @@ export interface components {
          * @enum {unknown}
          */
         TransitionKind: "cut" | "fade";
+        /** @description Sets the address and the certificate mode. */
+        UpdateAddressRequest: {
+            /** @description `internal`, `custom` or `dns-*`. */
+            tlsMode: string;
+            /** @description Host name; optional in mode `internal`, required in the others. */
+            domain: null | string;
+            /** @description E-mail of the Let's Encrypt account (dns-* modes); optional. */
+            acmeEmail: null | string;
+            /** @description Delegation target of `_acme-challenge` (dns-* modes); optional. */
+            dnsChallengeDomain: null | string;
+            /** @description The credentials of the provider; omitted: the stored ones stay. */
+            dnsCredentials: null | {
+                [key: string]: string;
+            };
+        };
+        /** @description Sets the backup schedule and the off-site target. */
+        UpdateBackupRequest: {
+            /** @description Cron expression of five fields; empty: off. */
+            schedule: null | string;
+            /** @description IANA time zone; empty: UTC. */
+            timezone: null | string;
+            /**
+             * Format: int32
+             * @description Daily backups kept (1 to 365).
+             */
+            keepDaily: number;
+            /**
+             * Format: int32
+             * @description Weekly backups kept (1 to 104).
+             */
+            keepWeekly: number;
+            /** @description The rclone remote `name:path`; empty: no off-site copy. */
+            rcloneRemote: null | string;
+            /** @description The text of the rclone.conf; omitted: the stored one stays. */
+            rcloneConfig: null | string;
+            /** @description Public age keys. */
+            ageRecipients: null | string[];
+            /** @description The remote encrypts by itself. */
+            offsiteUnencrypted: boolean;
+        };
+        /** @description Sets the origins that may embed the output. */
+        UpdateEmbeddingRequest: {
+            /** @description Origins such as `https://proxy.example.ch` or `https://*.example.com`. */
+            origins: string[];
+        };
+        /** @description Sets the media address. */
+        UpdateMediaRequest: {
+            /** @description The IPv4 address LiveKit announces to the devices. */
+            address: string;
+        };
         /** @description Sets the IP restriction of an output link. */
         UpdateOutputAccessRequest: {
             allowedIps: string[];
@@ -2833,6 +3211,13 @@ export interface components {
             /** @description Alignment. */
             align: components["schemas"]["TextAlign"];
         };
+        /** @description Uploads the certificate and the private key of the mode `custom` (PEM text). */
+        UploadCertificateRequest: {
+            /** @description The certificate chain, leaf first. */
+            certificatePem: string;
+            /** @description The unencrypted private key. */
+            privateKeyPem: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2840,14 +3225,20 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type AddressSettingsDto = components['schemas']['AddressSettingsDto'];
 export type AddSceneItemRequest = components['schemas']['AddSceneItemRequest'];
 export type AllocateSlotRequest = components['schemas']['AllocateSlotRequest'];
+export type ApplyStatusDto = components['schemas']['ApplyStatusDto'];
+export type ApplyTargetDto = components['schemas']['ApplyTargetDto'];
 export type AssetDto = components['schemas']['AssetDto'];
 export type AssetKind = components['schemas']['AssetKind'];
 export type AssignPlaceholderRequest = components['schemas']['AssignPlaceholderRequest'];
 export type AuditCategory = components['schemas']['AuditCategory'];
 export type AuditEntryDto = components['schemas']['AuditEntryDto'];
 export type AuditPageDto = components['schemas']['AuditPageDto'];
+export type BackupEntryDto = components['schemas']['BackupEntryDto'];
+export type BackupsDto = components['schemas']['BackupsDto'];
+export type BackupSettingsDto = components['schemas']['BackupSettingsDto'];
 export type BandwidthTestResultDto = components['schemas']['BandwidthTestResultDto'];
 export type BorderDto = components['schemas']['BorderDto'];
 export type BroadcastState = components['schemas']['BroadcastState'];
@@ -2862,6 +3253,7 @@ export type CameraStateDto = components['schemas']['CameraStateDto'];
 export type CanvasDto = components['schemas']['CanvasDto'];
 export type CanvasFormat = components['schemas']['CanvasFormat'];
 export type CanvasResolution = components['schemas']['CanvasResolution'];
+export type CertificateInfoDto = components['schemas']['CertificateInfoDto'];
 export type ChangeCanvasRequest = components['schemas']['ChangeCanvasRequest'];
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
@@ -2886,7 +3278,9 @@ export type DeviceSlotDto = components['schemas']['DeviceSlotDto'];
 export type DeviceState = components['schemas']['DeviceState'];
 export type DeviceTelemetryDto = components['schemas']['DeviceTelemetryDto'];
 export type DeviceTelemetryMessage = components['schemas']['DeviceTelemetryMessage'];
+export type DnsProviderDto = components['schemas']['DnsProviderDto'];
 export type DuplicateProductionRequest = components['schemas']['DuplicateProductionRequest'];
+export type EmbeddingSettingsDto = components['schemas']['EmbeddingSettingsDto'];
 export type HttpValidationProblemDetails = components['schemas']['HttpValidationProblemDetails'];
 export type IFormFile = components['schemas']['IFormFile'];
 export type ImportPlaceholderDto = components['schemas']['ImportPlaceholderDto'];
@@ -2903,6 +3297,10 @@ export type LogCode = components['schemas']['LogCode'];
 export type LogEntryDto = components['schemas']['LogEntryDto'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type LostBehaviorDto = components['schemas']['LostBehaviorDto'];
+export type MediaSettingsDto = components['schemas']['MediaSettingsDto'];
+export type MediaSuggestionsDto = components['schemas']['MediaSuggestionsDto'];
+export type MediaTestDto = components['schemas']['MediaTestDto'];
+export type MediaTestRequest = components['schemas']['MediaTestRequest'];
 export type OutputChangesDto = components['schemas']['OutputChangesDto'];
 export type OutputLinkDto = components['schemas']['OutputLinkDto'];
 export type OutputLinkStatusDto = components['schemas']['OutputLinkStatusDto'];
@@ -2957,6 +3355,7 @@ export type SceneBackgroundDto = components['schemas']['SceneBackgroundDto'];
 export type SceneDto = components['schemas']['SceneDto'];
 export type SceneItemDto = components['schemas']['SceneItemDto'];
 export type SceneLayoutMode = components['schemas']['SceneLayoutMode'];
+export type ServerSettingsDto = components['schemas']['ServerSettingsDto'];
 export type SessionDto = components['schemas']['SessionDto'];
 export type SetPreviewRequest = components['schemas']['SetPreviewRequest'];
 export type SetupRequest = components['schemas']['SetupRequest'];
@@ -2981,10 +3380,15 @@ export type TextStyle = components['schemas']['TextStyle'];
 export type TextThemeDto = components['schemas']['TextThemeDto'];
 export type TransitionDto = components['schemas']['TransitionDto'];
 export type TransitionKind = components['schemas']['TransitionKind'];
+export type UpdateAddressRequest = components['schemas']['UpdateAddressRequest'];
+export type UpdateBackupRequest = components['schemas']['UpdateBackupRequest'];
+export type UpdateEmbeddingRequest = components['schemas']['UpdateEmbeddingRequest'];
+export type UpdateMediaRequest = components['schemas']['UpdateMediaRequest'];
 export type UpdateOutputAccessRequest = components['schemas']['UpdateOutputAccessRequest'];
 export type UpdateProductionRequest = components['schemas']['UpdateProductionRequest'];
 export type UpdateSceneRequest = components['schemas']['UpdateSceneRequest'];
 export type UpdateTextSourceRequest = components['schemas']['UpdateTextSourceRequest'];
+export type UploadCertificateRequest = components['schemas']['UploadCertificateRequest'];
 export type $defs = Record<string, never>;
 export interface operations {
     receiveLiveKitWebhook: {
@@ -5488,6 +5892,347 @@ export interface operations {
             };
             /** @description Too Many Requests */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getServerSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+        };
+    };
+    getServerSettingsStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyStatusDto"];
+                };
+            };
+        };
+    };
+    updateMediaSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMediaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getMediaSuggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaSuggestionsDto"];
+                };
+            };
+        };
+    };
+    startMediaTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaTestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaTestDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    endMediaTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateAddressSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAddressRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    uploadCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadCertificateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    updateEmbeddingSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmbeddingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    updateBackupSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBackupRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    listBackups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupsDto"];
+                };
+            };
+        };
+    };
+    requestBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

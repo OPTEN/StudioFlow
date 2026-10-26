@@ -1,6 +1,9 @@
 using System.Globalization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging.Abstractions;
 using Opten.StudioFlow.Core.Application;
+using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Core.Domain;
 using Opten.StudioFlow.Infrastructure.Backup;
 using Opten.StudioFlow.Web.Hosting;
 
@@ -149,6 +152,51 @@ public sealed class BackupHealthTests : IDisposable
         var result = await CheckAsync();
 
         Assert.Equal(HealthStatus.Degraded, result.Status);
+    }
+
+    [Fact]
+    public async Task Check_TheScheduleOfTheServerSettings_TurnsTheCheckOn()
+    {
+        var settings = await SettingsWithScheduleAsync("0 3 * * *");
+
+        var result = await new BackupStatusHealthCheck(new BackupOptions { Schedule = "", StatusFile = StatusFile }, clock, settings).CheckHealthAsync(new HealthCheckContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HealthStatus.Degraded, result.Status);
+        Assert.Contains("has not reported yet", result.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Check_AutomaticBackupsSwitchedOffInTheServerSettings_AreHealthyEvenIfTheConfigurationHasASchedule()
+    {
+        var settings = await SettingsWithScheduleAsync(null);
+
+        var result = await new BackupStatusHealthCheck(Options(), clock, settings).CheckHealthAsync(new HealthCheckContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HealthStatus.Healthy, result.Status);
+        Assert.Contains("off", result.Description, StringComparison.Ordinal);
+    }
+
+    private static async Task<ServerSettingsState> SettingsWithScheduleAsync(string? schedule)
+    {
+        var store = new SingleRowStore();
+        var state = new ServerSettingsState(store, new InstallOptions(), NullLogger<ServerSettingsState>.Instance);
+        var row = await store.UpdateAsync(Now, s => s.ChangeBackup(schedule, null, 7, 4, null, null, [], false, Now), AuditEntry.Create(null, Now, AuditActors.Admin, AuditActions.SettingsBackupChanged), CancellationToken.None);
+        state.Replace(row);
+        return state;
+    }
+
+    private sealed class SingleRowStore : IServerSettingsStore
+    {
+        private ServerSettings? row;
+
+        public Task<ServerSettings?> GetAsync(CancellationToken cancellationToken) => Task.FromResult(row);
+
+        public Task<ServerSettings> UpdateAsync(DateTimeOffset now, Action<ServerSettings> change, AuditEntry audit, CancellationToken cancellationToken)
+        {
+            row ??= ServerSettings.CreateDefault(now);
+            change(row);
+            return Task.FromResult(row);
+        }
     }
 
     [Fact]

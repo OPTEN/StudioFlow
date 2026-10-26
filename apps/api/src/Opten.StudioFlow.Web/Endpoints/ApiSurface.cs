@@ -33,6 +33,7 @@ internal static class ApiSurface
         MapAssets(Admin(app.MapGroup("/api/productions/{productionId}/assets").WithTags("Assets")));
         MapOutputAdmin(Admin(app.MapGroup("/api/productions/{productionId}/output").WithTags("Output")));
         MapAudit(Admin(app.MapGroup("/api/audit").WithTags("Audit")));
+        MapSettings(Admin(app.MapGroup("/api/settings").WithTags("Settings")));
         MapPairingPublic(app.MapGroup("/api/pairing").WithTags("Pairing (public)"));
         MapDevice(app.MapGroup("/api/device").WithTags("Device (sender)").RequireAuthorization(Policies.Device));
         MapOutputPublic(app.MapGroup("/api/output/{slug}").WithTags("Output (public)"));
@@ -229,6 +230,33 @@ internal static class ApiSurface
         g.MapGet("/export.json", AuditEndpoints.ExportJsonAsync).WithName("exportAuditJson")
             .Produces<IReadOnlyList<AuditEntryDto>>().ProducesValidationProblem().ProducesProblem(409).ProducesProblem(429)
             .RequireRateLimiting(AuditExportLimit);
+    }
+
+    /// <summary>
+    /// Server settings (issue #27): the steps of the first-run wizard after the account and the "Server settings" page. The
+    /// answers never contain a secret (DNS credentials, the key of a certificate, the rclone configuration are only stored).
+    /// A change of the media address restarts LiveKit and is refused with 409 <c>broadcast_live</c> while a broadcast is live.
+    /// </summary>
+    private static void MapSettings(RouteGroupBuilder g)
+    {
+        g.MapGet("/", SettingsEndpoints.Get).WithName("getServerSettings").Produces<ServerSettingsDto>();
+        g.MapGet("/status", SettingsEndpoints.GetStatusAsync).WithName("getServerSettingsStatus").Produces<ApplyStatusDto>();
+        g.MapPut("/media", SettingsEndpoints.UpdateMediaAsync).WithName("updateMediaSettings")
+            .Produces<ServerSettingsDto>().ProducesValidationProblem().ProducesProblem(409);
+        g.MapGet("/media/suggestions", SettingsEndpoints.GetMediaSuggestions).WithName("getMediaSuggestions").Produces<MediaSuggestionsDto>();
+        g.MapPost("/media/test", SettingsEndpoints.StartMediaTestAsync).WithName("startMediaTest")
+            .Produces<MediaTestDto>().ProducesValidationProblem().ProducesProblem(409);
+        g.MapDelete("/media/test", SettingsEndpoints.EndMediaTestAsync).WithName("endMediaTest").Produces(204);
+        g.MapPut("/address", SettingsEndpoints.UpdateAddressAsync).WithName("updateAddressSettings")
+            .Produces<ServerSettingsDto>().ProducesValidationProblem();
+        g.MapPut("/certificate", SettingsEndpoints.UploadCertificateAsync).WithName("uploadCertificate")
+            .Produces<ServerSettingsDto>().ProducesValidationProblem();
+        g.MapPut("/embedding", SettingsEndpoints.UpdateEmbeddingAsync).WithName("updateEmbeddingSettings")
+            .Produces<ServerSettingsDto>().ProducesValidationProblem();
+        g.MapPut("/backup", SettingsEndpoints.UpdateBackupAsync).WithName("updateBackupSettings")
+            .Produces<ServerSettingsDto>().ProducesValidationProblem();
+        g.MapGet("/backups", SettingsEndpoints.ListBackupsAsync).WithName("listBackups").Produces<BackupsDto>();
+        g.MapPost("/backups", SettingsEndpoints.RequestBackupAsync).WithName("requestBackup").Produces(202).ProducesProblem(409);
     }
 
     private static void MapPairingPublic(RouteGroupBuilder g)

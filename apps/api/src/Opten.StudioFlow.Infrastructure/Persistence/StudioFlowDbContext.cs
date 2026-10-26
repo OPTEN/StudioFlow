@@ -35,6 +35,9 @@ public sealed class StudioFlowDbContext(DbContextOptions<StudioFlowDbContext> op
     /// <summary>The Regie account (at most one row).</summary>
     public DbSet<AdminAccount> AdminAccounts => Set<AdminAccount>();
 
+    /// <summary>The server settings of the wizard and the "Server settings" page (at most one row).</summary>
+    public DbSet<ServerSettings> ServerSettings => Set<ServerSettings>();
+
     /// <summary>Last-live times of device sources.</summary>
     internal DbSet<SourceActivity> SourceActivity => Set<SourceActivity>();
 

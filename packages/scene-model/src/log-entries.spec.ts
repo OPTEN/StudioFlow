@@ -47,6 +47,17 @@ describe('logEntryText', () => {
     expect(
       logEntryText(entry('auditRetention', { days: '365', deleted: '142', anonymised: '7' })),
     ).toBe('Audit retention (365 days): entries deleted 142, IP addresses removed 7');
+    expect(logEntryText(entry('settingsMediaChanged', { address: '192.168.1.50' }))).toBe(
+      'Media address set to 192.168.1.50',
+    );
+    expect(logEntryText(entry('settingsAddressChanged', { mode: 'internal' }))).toBe(
+      'Address and certificate changed (internal)',
+    );
+    expect(logEntryText(entry('settingsEmbeddingChanged', { count: '2' }))).toBe(
+      'Embedding changed (2 origins)',
+    );
+    expect(logEntryText(entry('settingsBackupChanged'))).toBe('Backup settings changed');
+    expect(logEntryText(entry('backupRequested'))).toBe('Backup requested');
     expect(logEntryText(entry('auditExported', { format: 'csv', rows: '42' }))).toBe(
       'Audit log exported as csv, 42 rows',
     );

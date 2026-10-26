@@ -330,4 +330,6 @@ internal sealed class FakeTokens : ILiveKitTokenIssuer
     public LiveKitTokenDto IssueSenderToken(string room, string identity, string name) => new("ws://lk", $"sender:{identity}", identity, room, Build.T0);
 
     public LiveKitTokenDto IssueViewerToken(string room, string identity, string name) => new("ws://lk", $"viewer:{identity}", identity, room, Build.T0);
+
+    public LiveKitTokenDto IssueMediaTestToken(string room, string identity) => new("ws://lk", $"mediatest:{identity}", identity, room, Build.T0);
 }

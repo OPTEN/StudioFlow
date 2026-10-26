@@ -57,6 +57,11 @@ public static class AuditCategories
         [AuditActions.OutputKeyRegenerated] = AuditCategory.Output,
         [AuditActions.OutputAccessChanged] = AuditCategory.Output,
         [AuditActions.AuditRetention] = AuditCategory.System,
+        [AuditActions.SettingsMediaChanged] = AuditCategory.System,
+        [AuditActions.SettingsAddressChanged] = AuditCategory.System,
+        [AuditActions.SettingsEmbeddingChanged] = AuditCategory.System,
+        [AuditActions.SettingsBackupChanged] = AuditCategory.System,
+        [AuditActions.BackupRequested] = AuditCategory.System,
     };
 
     /// <summary>Every action the audit log knows.</summary>

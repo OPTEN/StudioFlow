@@ -194,3 +194,33 @@ internal sealed class AdminAccountConfiguration : IEntityTypeConfiguration<Admin
         builder.Property(a => a.SecurityStamp).HasMaxLength(Columns.Secret).IsRequired();
     }
 }
+
+/// <summary>Table <c>server_settings</c> (issue #27): the one row of wizard and "Server settings". The key is the constant 1.</summary>
+internal sealed class ServerSettingsConfiguration : IEntityTypeConfiguration<ServerSettings>
+{
+    // A certificate chain, a private key and an rclone.conf are at most 64 KiB each (ServerSettingsRules.MaxTextLength).
+    public void Configure(EntityTypeBuilder<ServerSettings> builder)
+    {
+        builder.ToTable("server_settings", table => table.HasCheckConstraint("ck_server_settings_only_row", $"id = {ServerSettings.OnlyId}"));
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).ValueGeneratedNever();
+        builder.Property(s => s.Revision).IsConcurrencyToken();
+        builder.Property(s => s.MediaAddress).HasMaxLength(15);
+        builder.Property(s => s.TlsMode).HasMaxLength(Columns.Enum).IsRequired();
+        builder.Property(s => s.Domain).HasMaxLength(253);
+        builder.Property(s => s.AcmeEmail).HasMaxLength(254);
+        builder.Property(s => s.DnsChallengeDomain).HasMaxLength(253);
+        builder.Property(s => s.DnsCredentialsProtected).HasMaxLength(ServerSettingsRules.MaxTextLength);
+        builder.Property(s => s.CertificatePem).HasMaxLength(ServerSettingsRules.MaxTextLength);
+        builder.Property(s => s.PrivateKeyProtected).HasMaxLength(ServerSettingsRules.MaxTextLength);
+        builder.Property(s => s.FrameAncestors).HasMaxLength(ServerSettingsRules.MaxOrigins * 256).IsRequired();
+        builder.Property(s => s.BackupSchedule).HasMaxLength(100);
+        builder.Property(s => s.BackupTimezone).HasMaxLength(64);
+        builder.Property(s => s.RcloneRemote).HasMaxLength(240);
+        builder.Property(s => s.RcloneConfigProtected).HasMaxLength(ServerSettingsRules.MaxTextLength * 2);
+        builder.Property(s => s.AgeRecipients).HasMaxLength(ServerSettingsRules.MaxAgeRecipients * 64).IsRequired();
+        builder.Ignore(s => s.IsConfigured);
+        builder.Ignore(s => s.FrameAncestorList);
+        builder.Ignore(s => s.AgeRecipientList);
+    }
+}

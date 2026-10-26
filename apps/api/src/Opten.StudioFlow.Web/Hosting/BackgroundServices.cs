@@ -21,6 +21,8 @@ internal sealed class StartupInitializer(
     IServiceProvider services,
     ProductionService productions,
     AdminAccountState account,
+    ServerSettingsState serverSettings,
+    ServerConfigApplier serverConfig,
     IConfiguration configuration,
     IOptions<AdminOptions> admin,
     IOptions<LiveKitOptions> liveKit,
@@ -35,6 +37,7 @@ internal sealed class StartupInitializer(
     IOptions<BackupOptions> backup,
     IOptions<AuditOptions> audit,
     IOptions<TransferOptions> transfer,
+    IOptions<InstallOptions> install,
     ILogger<StartupInitializer> logger) : IHostedService
 {
     /// <summary>Keys of <c>Admin:</c> that older versions used for the account.</summary>
@@ -44,11 +47,29 @@ internal sealed class StartupInitializer(
     {
         // Reading the values runs the validators and throws OptionsValidationException for invalid settings.
         _ = (admin.Value, liveKit.Value, media.Value, studio.Value);
-        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value, transfer.Value);
+        _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value, transfer.Value, install.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         await account.RefreshAsync(cancellationToken);
+        await serverSettings.RefreshAsync(cancellationToken);
+        await ApplyServerSettingsAsync(cancellationToken);
         WarnAboutIgnoredAccountSettings();
+    }
+
+    /// <summary>
+    /// Brings Caddy, LiveKit and the backup service to the saved settings at once. They may still be starting; the
+    /// maintenance loop tries again every few seconds, so a failure here only delays the first apply.
+    /// </summary>
+    private async Task ApplyServerSettingsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await serverConfig.ApplyAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not OutOfMemoryException)
+        {
+            logger.LogWarning(exception, "The server settings could not be applied at startup; the maintenance loop tries again");
+        }
     }
 
     /// <summary>The Regie account moved into the database (issue #4); say so instead of silently ignoring the old settings.</summary>
@@ -83,6 +104,8 @@ internal sealed class MaintenanceWorker(
     LiveKitSyncService liveKit,
     LoginThrottle throttle,
     AdminAccountState account,
+    ServerSettingsState serverSettings,
+    ServerConfigApplier serverConfig,
     AdminSessions adminSessions,
     AuditRetentionService auditRetention,
     AuditOptions audit,
@@ -107,7 +130,7 @@ internal sealed class MaintenanceWorker(
         await Task.WhenAll(
             LoopAsync(Second, token, ("output status", outputs.TickAsync), ("pairing requests", pairing.ExpireRequestsAsync), ("devices", devices.TickAsync), ("restart watch", restartWatch.CheckAfterStartAsync)),
             LoopAsync(InviteInterval, token, ("invites", pairing.MaintainInvitesAsync)),
-            LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync)),
+            LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync), ("server settings", ApplyServerSettingsAsync)),
             ReconcileLoopAsync(token),
             LoopAsync(sources.LiveMarkInterval, token, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
             LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)),
@@ -121,6 +144,13 @@ internal sealed class MaintenanceWorker(
         {
             adminSessions.EndAllExcept(null);
         }
+    }
+
+    /// <summary>Notices settings saved by another process (a restore) and brings Caddy, LiveKit and the backup service to the saved state, also after one of them restarted.</summary>
+    private async Task ApplyServerSettingsAsync(CancellationToken cancellationToken)
+    {
+        await serverSettings.RefreshAsync(cancellationToken);
+        await serverConfig.ApplyAsync(cancellationToken);
     }
 
     private Task PruneLockoutsAsync(CancellationToken cancellationToken)

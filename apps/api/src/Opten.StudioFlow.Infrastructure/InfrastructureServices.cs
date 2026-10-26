@@ -5,7 +5,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Opten.StudioFlow.Core.Application;
 using Opten.StudioFlow.Core.Application.Ports;
+using Opten.StudioFlow.Infrastructure.Install;
 using Opten.StudioFlow.Infrastructure.LiveKit;
 using Opten.StudioFlow.Infrastructure.Media;
 using Opten.StudioFlow.Infrastructure.Persistence;
@@ -60,6 +62,7 @@ public static class InfrastructureServices
         services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
         services.AddSingleton<IAuditLog, AuditLog>();
         services.AddSingleton<IAdminAccountStore, AdminAccountStore>();
+        services.AddSingleton<IServerSettingsStore, ServerSettingsStore>();
         return services;
     }
 
@@ -79,6 +82,11 @@ public static class InfrastructureServices
             .Validate(o => Uri.TryCreate(o.InternalUrl, UriKind.Absolute, out _), "LiveKit:InternalUrl must be an absolute URL.")
             .Validate(o => o.TokenTtl >= TimeSpan.FromMinutes(1) && o.TokenTtl <= TimeSpan.FromHours(24), "LiveKit:TokenTtl must be between 00:01:00 and 1.00:00:00.")
             .Validate(o => o.RequestTimeout >= TimeSpan.FromMilliseconds(100) && o.RequestTimeout <= TimeSpan.FromMinutes(1), "LiveKit:RequestTimeout must be between 00:00:00.1 and 00:01:00.");
+        services.AddSingleton(sp =>
+        {
+            var keys = sp.GetRequiredService<IOptions<LiveKitOptions>>().Value;
+            return new LiveKitKeys(keys.ApiKey, keys.ApiSecret);
+        });
         services.AddSingleton<LiveKitTokenIssuer>();
         services.AddSingleton<ILiveKitTokenIssuer>(sp => sp.GetRequiredService<LiveKitTokenIssuer>());
         services.AddSingleton<LiveKitWebhookReceiver>();
@@ -88,6 +96,17 @@ public static class InfrastructureServices
             http.BaseAddress = new Uri(options.InternalUrl.TrimEnd('/') + "/");
             http.Timeout = options.RequestTimeout;
         });
+
+        // The other services of the stack, configured through the admin API of Caddy and shared volumes (issue #27).
+        services.AddHttpClient<ICaddyGateway, CaddyAdminClient>((sp, http) =>
+        {
+            var install = sp.GetRequiredService<InstallOptions>();
+            http.BaseAddress = new Uri(string.IsNullOrEmpty(install.CaddyAdminUrl) ? "http://caddy.invalid" : install.CaddyAdminUrl);
+            http.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddSingleton<ILiveKitConfigGateway, LiveKitConfigFiles>();
+        services.AddSingleton<ICertificateGateway, CaddyCertificateFiles>();
+        services.AddSingleton<IBackupGateway, BackupFiles>();
 
         services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.Section))
             .Validate(o => !string.IsNullOrWhiteSpace(o.Path), "Media:Path is required.")

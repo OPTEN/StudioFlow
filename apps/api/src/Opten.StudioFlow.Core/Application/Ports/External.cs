@@ -10,6 +10,12 @@ public interface ILiveKitTokenIssuer
 
     /// <summary>Token for the Regie or the output: hidden subscriber without publish rights.</summary>
     LiveKitTokenDto IssueViewerToken(string room, string identity, string name);
+
+    /// <summary>
+    /// Token of the media address test of the wizard: joins the throw-away room <paramref name="room"/>, sends and receives
+    /// data messages, publishes and subscribes to no media.
+    /// </summary>
+    LiveKitTokenDto IssueMediaTestToken(string room, string identity);
 }
 
 /// <summary>A participant in a LiveKit room as listed by the room service.</summary>
