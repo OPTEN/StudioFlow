@@ -18,6 +18,7 @@ import {
   type ComponentRef,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
+import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ViewportService } from '../../core/ui/viewport.service';
 import { StageComponent } from '../../stage/stage.component';
@@ -40,7 +41,7 @@ function clamp(value: number, min: number, max: number): number {
 
 /** Width of the control column plus the monitor split and gap (prototype fitStage: 212 px). */
 const STAGE_CHROME_PX = 212;
-/** Monitor header and stage padding above/below the 16:9 picture (prototype fitStage: 58 px). */
+/** Monitor header and stage padding above/below the picture (prototype fitStage: 58 px). */
 const STAGE_VERTICAL_CHROME_PX = 58;
 
 /**
@@ -70,6 +71,7 @@ const STAGE_VERTICAL_CHROME_PX = 58;
 export class WorkspaceComponent extends DockWorkspace {
   protected readonly layout = inject(DockLayoutService);
   protected readonly viewport = inject(ViewportService);
+  private readonly store = inject(ProductionStoreService);
   protected readonly drag = inject(DockDragService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
@@ -146,6 +148,7 @@ export class WorkspaceComponent extends DockWorkspace {
       this.zones();
       this.layout.layout();
       this.viewport.stacked();
+      this.store.canvas();
       untracked(() => this.fitStage());
     });
     this.observeSize();
@@ -291,7 +294,9 @@ export class WorkspaceComponent extends DockWorkspace {
       parseFloat(style.paddingRight || '0');
     const split = this.layout.split();
     const monitorWidth = Math.max(0, (contentWidth - STAGE_CHROME_PX) * Math.max(split, 1 - split));
-    const stageHeight = Math.ceil((monitorWidth * 9) / 16) + STAGE_VERTICAL_CHROME_PX;
+    const canvas = this.store.canvas();
+    const stageHeight =
+      Math.ceil((monitorWidth * canvas.height) / canvas.width) + STAGE_VERTICAL_CHROME_PX;
     const centerHeight = center.clientHeight;
     const defaultDock = clamp(window.innerHeight * 0.42, 240, 420);
     const dock = Math.max(defaultDock, centerHeight - 1 - stageHeight);

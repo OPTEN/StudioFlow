@@ -1,7 +1,7 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { tm } from '@studioflow/i18n';
-import { HUB } from '@studioflow/scene-model';
+import { HUB, canvasDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import {
   deltaChanges,
@@ -77,6 +77,37 @@ describe('ProductionStoreService', () => {
     expect(store.textTheme().accent).toBe('#ff8800');
     harness.emitEvent({ type: 'sourceRemoved', sourceId: 'txt_aaaaaaaaaaaaaaaa' });
     expect(store.textOf('txt_aaaaaaaaaaaaaaaa')).toBeUndefined();
+  });
+
+  it('serves the canvas of the production and follows a change of the format', async () => {
+    const harness = await startStore(hub);
+    const store = harness.store;
+    const initial = store.canvas();
+    expect(initial).toEqual({ width: 1920, height: 1080 });
+    expect(store.canvasAspect()).toBe('1920 / 1080');
+
+    harness.emitEvent({
+      type: 'productionChanged',
+      production: productionFixture({ name: 'Renamed' }),
+    });
+    await harness.settle();
+    expect(store.canvas()).toBe(initial);
+
+    harness.emitEvent({
+      type: 'productionCanvasChanged',
+      production: productionFixture({ canvas: canvasDto('portrait', 'p720') }),
+      scenes: [sceneFixture('scn_a', 'Welcome', 0)],
+    });
+    await harness.settle();
+
+    expect(store.canvas()).toEqual({ width: 720, height: 1280 });
+    expect(store.canvasAspect()).toBe('720 / 1280');
+    expect(store.production()?.canvas.format).toBe('portrait');
+    expect(store.sceneById('scn_a')?.items).toEqual([]);
+  });
+
+  it('knows 1920 × 1080 before the first snapshot', () => {
+    expect(TestBed.inject(ProductionStoreService).canvas()).toEqual({ width: 1920, height: 1080 });
   });
 
   it('applies live events and reports program switches', async () => {

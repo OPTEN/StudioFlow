@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
+import type { CanvasSize } from '@studioflow/scene-model';
 
 /** One block of a layout preview: a rectangle in canvas pixels, optionally emphasised (the main slot). */
 export interface PreviewBlock {
@@ -21,9 +21,8 @@ interface PercentBlock {
 }
 
 /**
- * A 16:9 well with slot blocks (prototype `.pv` / `presetThumb`): the template previews in "Apply template" and the
- * scene thumbnail before pictures are available. Purely decorative (`aria-hidden`); positions are percentages of the
- * 1920 × 1080 canvas.
+ * A well with slot blocks in the shape of the canvas (prototype `.pv` / `presetThumb`, 16:9 by default): the template
+ * previews in "Apply template". Purely decorative (`aria-hidden`); positions are percentages of the canvas.
  */
 @Component({
   selector: 'sf-layout-preview',
@@ -41,7 +40,6 @@ interface PercentBlock {
   `,
   styles: `
     :host {
-      aspect-ratio: 16 / 9;
       background: var(--well);
       border-radius: var(--radius-screen);
       display: block;
@@ -60,20 +58,26 @@ interface PercentBlock {
       background: var(--slot-strong);
     }
   `,
-  host: { 'aria-hidden': 'true' },
+  host: { 'aria-hidden': 'true', '[style.aspect-ratio]': 'aspectRatio()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LayoutPreviewComponent {
   /** Blocks in canvas pixels, back to front. */
   readonly blocks = input.required<readonly PreviewBlock[]>();
+  /** The canvas the blocks are placed on. */
+  readonly canvas = input.required<CanvasSize>();
+
+  protected readonly aspectRatio = computed(
+    () => `${this.canvas().width} / ${this.canvas().height}`,
+  );
 
   protected readonly percentBlocks = computed<readonly PercentBlock[]>(() =>
     this.blocks().map((block, key) => ({
       key,
-      left: (block.x / CANVAS_WIDTH) * 100,
-      top: (block.y / CANVAS_HEIGHT) * 100,
-      width: (block.w / CANVAS_WIDTH) * 100,
-      height: (block.h / CANVAS_HEIGHT) * 100,
+      left: (block.x / this.canvas().width) * 100,
+      top: (block.y / this.canvas().height) * 100,
+      width: (block.w / this.canvas().width) * 100,
+      height: (block.h / this.canvas().height) * 100,
       strong: block.strong === true,
     })),
   );

@@ -13,7 +13,7 @@ import {
   untracked,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import type { CanvasRect, SceneDto, TransitionDto } from '@studioflow/scene-model';
+import type { CanvasRect, CanvasSize, SceneDto, TransitionDto } from '@studioflow/scene-model';
 import {
   createSceneRenderer,
   type AssetMediaKind,
@@ -90,8 +90,9 @@ function sameRects(
  * <sf-scene-view mode="thumbnail" [scene]="scene" [label]="scene.name" />
  * ```
  *
- * - The host is the renderer's container: give it a definite size (e.g. `width: 64px; aspect-ratio: 16 / 9`, or
- *   `position: absolute; inset: 0` inside a 16:9 box). The 1920 × 1080 stage is letterboxed into it.
+ * - The host is the renderer's container: give it a definite size (e.g. `width: 64px` with the `aspect-ratio` of the
+ *   canvas, or `position: absolute; inset: 0` inside a box of that shape). The stage has the canvas of the production
+ *   and is letterboxed into the host; a change of format or resolution reaches the renderer before the rescaled scenes.
  * - Scene changes: the same scene id is diffed in place (`update`, no flicker; local edit drafts included), another
  *   scene is shown immediately (`show`), unless {@link cue} announces a program switch to exactly that scene: then
  *   the switch's transition is played (`transitionTo`, a fade always completes) and {@link transitionEnd} fires.
@@ -143,6 +144,8 @@ export class SceneViewComponent {
     equal: sameRects,
   });
   private renderer: SceneRenderer | null = null;
+  /** The canvas the renderer has (the store hands out the same object while the size stays). */
+  private canvas: CanvasSize | null = null;
   /** The scene the renderer shows; undefined before the first `show` of this renderer. */
   private shownScene: SceneDto | null | undefined = undefined;
   /** Sequence number of the last cue that was played or skipped. */
@@ -168,6 +171,11 @@ export class SceneViewComponent {
       const reducedMotion = this.viewport.reducedMotion();
       untracked(() => this.create(provider, mode, reducedMotion));
       onCleanup(() => this.release());
+    });
+    effect(() => {
+      // Before the scene effect: the stage has its new size when the rescaled scene arrives.
+      const canvas = this.store.canvas();
+      untracked(() => this.useCanvas(canvas));
     });
     effect(() => {
       const scene = this.scene();
@@ -200,9 +208,11 @@ export class SceneViewComponent {
 
   private create(provider: SourceMediaProvider, mode: SceneViewMode, reducedMotion: boolean): void {
     this.release();
+    this.canvas = this.store.canvas();
     this.renderer = this.factory(this.host, {
       mode,
       provider,
+      canvas: this.canvas,
       statusOf: (sourceId) => this.store.statusOf(sourceId),
       codeOf: (sourceId) => this.store.codeOf(sourceId),
       assetKindOf: (assetId) => this.assetKind(assetId),
@@ -219,6 +229,13 @@ export class SceneViewComponent {
     this.shownScene = scene;
     this.unsubscribeProvider = provider.onChange(() => this.scheduleRects());
     this.refreshRects();
+  }
+
+  private useCanvas(canvas: CanvasSize): void {
+    if (this.renderer && canvas !== this.canvas) {
+      this.canvas = canvas;
+      this.renderer.setCanvas(canvas);
+    }
   }
 
   private present(scene: SceneDto | null, cue: SceneTransitionCue | null): void {

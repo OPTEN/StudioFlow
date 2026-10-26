@@ -1,4 +1,10 @@
-import { ITEM_BOUNDS, type CanvasRect, type CropDto } from '@studioflow/scene-model';
+import {
+  DEFAULT_CANVAS as CANVAS,
+  ITEM_BOUNDS,
+  canvasSize,
+  type CanvasRect,
+  type CropDto,
+} from '@studioflow/scene-model';
 import {
   MIN_DRAG_HEIGHT,
   MIN_DRAG_WIDTH,
@@ -22,7 +28,7 @@ import {
 
 const NO_CROP: CropDto = { top: 0, right: 0, bottom: 0, left: 0 };
 const ITEM: CanvasRect = { x: 400, y: 300, w: 600, h: 338 };
-const CANVAS_ONLY = snapLines([]);
+const CANVAS_ONLY = snapLines([], CANVAS);
 
 /** Uncropped picture box of an item (the renderer's crop maths). */
 function pictureBox(rect: CanvasRect, crop: CropDto): CanvasRect {
@@ -39,7 +45,7 @@ describe('edit geometry', () => {
     });
 
     it('adds edges and centres of the other elements', () => {
-      const lines = snapLines([{ x: 100, y: 200, w: 300, h: 100 }]);
+      const lines = snapLines([{ x: 100, y: 200, w: 300, h: 100 }], CANVAS);
       expect(lines.xs).toEqual(expect.arrayContaining([100, 250, 400]));
       expect(lines.ys).toEqual(expect.arrayContaining([200, 250, 300]));
     });
@@ -90,7 +96,7 @@ describe('edit geometry', () => {
     });
 
     it('snaps to the edges of other elements', () => {
-      const lines = snapLines([{ x: 1200, y: 0, w: 400, h: 200 }]);
+      const lines = snapLines([{ x: 1200, y: 0, w: 400, h: 200 }], CANVAS);
       const result = moveRect(ITEM, 195, 0, { ...options, lines });
       // Right edge 400 + 600 + 195 = 1195 → 1200.
       expect(result.rect.x).toBe(600);
@@ -270,7 +276,7 @@ describe('edit geometry', () => {
     });
 
     it('converts canvas rectangles to percentages', () => {
-      expect(toPercent({ x: 960, y: 540, w: 480, h: 270 })).toEqual({
+      expect(toPercent({ x: 960, y: 540, w: 480, h: 270 }, CANVAS)).toEqual({
         left: 50,
         top: 50,
         width: 25,
@@ -279,11 +285,16 @@ describe('edit geometry', () => {
     });
 
     it('converts client coordinates to canvas pixels', () => {
-      const point = toCanvasPoint(150, 120, { left: 100, top: 70, width: 960, height: 540 });
-      expect(point).toEqual({ x: 100, y: 100, scale: 0.5 });
-      expect(toCanvasPoint(0, 0, { left: 0, top: 0, width: 0, height: 0 }).scale).toBeGreaterThan(
-        0,
+      const point = toCanvasPoint(
+        150,
+        120,
+        { left: 100, top: 70, width: 960, height: 540 },
+        CANVAS,
       );
+      expect(point).toEqual({ x: 100, y: 100, scale: 0.5 });
+      expect(
+        toCanvasPoint(0, 0, { left: 0, top: 0, width: 0, height: 0 }, CANVAS).scale,
+      ).toBeGreaterThan(0);
     });
 
     it('starts a drag after 2 screen px', () => {
@@ -295,6 +306,37 @@ describe('edit geometry', () => {
     it('tells corners from edges', () => {
       expect(isCorner('nw')).toBe(true);
       expect(isCorner('e')).toBe(false);
+    });
+  });
+
+  describe('on other canvases', () => {
+    const PORTRAIT = canvasSize('portrait', 'p1080');
+    const SQUARE_720 = canvasSize('square', 'p720');
+
+    it('snaps to the edges, the safe margin and the centre of the canvas', () => {
+      expect(snapLines([], PORTRAIT)).toEqual({
+        xs: [0, 40, 540, 1040, 1080],
+        ys: [0, 40, 960, 1880, 1920],
+      });
+      expect(snapLines([], SQUARE_720)).toEqual({
+        xs: [0, 27, 360, 693, 720],
+        ys: [0, 27, 360, 693, 720],
+      });
+    });
+
+    it('converts canvas rectangles to percentages of the canvas', () => {
+      expect(toPercent({ x: 540, y: 960, w: 270, h: 480 }, PORTRAIT)).toEqual({
+        left: 50,
+        top: 50,
+        width: 25,
+        height: 25,
+      });
+    });
+
+    it('converts client coordinates to canvas pixels of the canvas', () => {
+      const box = { left: 100, top: 70, width: 270, height: 480 };
+
+      expect(toCanvasPoint(235, 310, box, PORTRAIT)).toEqual({ x: 540, y: 960, scale: 0.25 });
     });
   });
 });

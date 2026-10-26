@@ -171,6 +171,16 @@ export class StudioApiService {
     );
   }
 
+  /** `PUT /api/productions/{id}/canvas`: format and resolution; 409 `broadcast_live` while the broadcast is live. */
+  changeCanvas(
+    productionId: string,
+    body: ApiBody<'changeCanvas'>,
+  ): Promise<ApiResult<'changeCanvas'>> {
+    return this.call(
+      this.http.put<ApiResult<'changeCanvas'>>(this.production(productionId, '/canvas'), body),
+    );
+  }
+
   /** `POST /api/productions/{id}/activate`: every Regie receives `resync` and follows. */
   activateProduction(productionId: string): Promise<ApiResult<'activateProduction'>> {
     return this.post<ApiResult<'activateProduction'>>(this.production(productionId, '/activate'));

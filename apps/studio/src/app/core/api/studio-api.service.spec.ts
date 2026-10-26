@@ -93,6 +93,24 @@ describe('StudioApiService', () => {
     await expect(result).resolves.toEqual({ id: 'prd_1' });
   });
 
+  it('changes the canvas with PUT …/canvas and the CSRF header', async () => {
+    const result = api.changeCanvas('prd_1', { format: 'portrait', resolution: 'p720' });
+    const request = http.expectOne('/api/productions/prd_1/canvas');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ format: 'portrait', resolution: 'p720' });
+    expect(request.request.headers.get(CSRF_HEADER)).toBe('1');
+    request.flush({ id: 'prd_1' });
+    await expect(result).resolves.toEqual({ id: 'prd_1' });
+  });
+
+  it('creates a production with its format and resolution', async () => {
+    const result = api.createProduction({ name: 'Reel', format: 'square', resolution: 'p1080' });
+    const request = http.expectOne('/api/productions');
+    expect(request.request.body).toEqual({ name: 'Reel', format: 'square', resolution: 'p1080' });
+    request.flush({ id: 'prd_2' });
+    await result;
+  });
+
   it('creates, updates and deletes texts under /texts', async () => {
     const body = { line1: 'Mia', line2: null, style: 'lowerThird', align: null } as const;
     const created = api.createText('prd_1', body);

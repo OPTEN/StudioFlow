@@ -1,4 +1,5 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { canvasDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import {
   PRODUCTION_ID,
@@ -170,7 +171,7 @@ describe('HeaderComponent', () => {
     await render();
     expect(text()).toContain('connected, 1 consumer');
     expect(text()).toContain('10.0.0.42');
-    expect(text()).toContain('1920 × 1080 · 30 fps');
+    expect(text()).toContain('1920 × 1080 · 16:9 · 30 fps');
     expect(text()).toContain('studioflow.opten.ch/o/webinar?k=••••••');
     expect(text()).not.toContain('secret123');
   });
@@ -213,6 +214,22 @@ describe('HeaderComponent', () => {
     await setup();
     expect(element.querySelector('.c-header__out-links')).toBeNull();
     expect(element.querySelector('.c-chipbtn')?.hasAttribute('title')).toBe(false);
+  });
+
+  it('shows the canvas of a portrait production in the output popover', async () => {
+    await setup(
+      snapshotFixture({ production: productionFixture({ canvas: canvasDto('portrait', 'p720') }) }),
+    );
+    element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
+    await render();
+    harness.http.expectOne().flush({
+      links: [],
+      maxLinks: 10,
+      frameAncestors: ["'self'"],
+    });
+    await render();
+
+    expect(text()).toContain('720 × 1280 · 9:16 · 30 fps');
   });
 
   it('masks output links and validates IP entries', () => {

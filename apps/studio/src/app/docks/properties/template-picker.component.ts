@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import {
-  LAYOUT_TEMPLATES,
   autoGridSlots,
+  layoutTemplates,
+  type CanvasSize,
   type LayoutTemplate,
   type LayoutTemplateId,
 } from '@studioflow/scene-model';
+import { ProductionStoreService } from '../../core/state/production-store.service';
 import { LayoutPreviewComponent, type PreviewBlock } from '../shared/layout-preview.component';
 
 /** Templates whose first slot is the main picture (prototype `presetThumb`: `full`, `pip`, `col`, `onetwo`). */
@@ -20,28 +22,31 @@ interface TemplateTile {
   readonly blocks: readonly PreviewBlock[];
 }
 
-const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
-  id: template.id,
-  template,
-  blocks: (template.slots ?? autoGridSlots(3)).map(([x, y, w, h], index) => ({
-    x,
-    y,
-    w,
-    h,
-    strong: index === 0 && STRONG_FIRST.has(template.id),
-  })),
-}));
+/** The eight tiles for a canvas: the slots follow its shape (side by side on 16:9, stacked on 9:16). */
+function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
+  return layoutTemplates(canvas).map((template) => ({
+    id: template.id,
+    template,
+    blocks: (template.slots ?? autoGridSlots(3, canvas)).map(([x, y, w, h], index) => ({
+      x,
+      y,
+      w,
+      h,
+      strong: index === 0 && STRONG_FIRST.has(template.id),
+    })),
+  }));
+}
 
 /**
- * "Apply template" (prototype `.presets`): the eight layout templates as 16:9 previews in a 4-column grid (2
- * columns at ≤ 900 px). Auto grid shows as pressed while the scene uses it. Emits the chosen template; the scene
+ * "Apply template" (prototype `.presets`): the eight layout templates as previews in the shape of the production's
+ * canvas in a 4-column grid (2 columns at ≤ 900 px). Auto grid shows as pressed while the scene uses it. Emits the chosen template; the scene
  * inspector applies it through `EditorService.applyTemplate`.
  */
 @Component({
   selector: 'sf-template-picker',
   imports: [LayoutPreviewComponent],
   template: `
-    @for (tile of tiles; track tile.id) {
+    @for (tile of tiles(); track tile.id) {
       <button
         class="c-preset"
         type="button"
@@ -51,7 +56,7 @@ const TILES: readonly TemplateTile[] = LAYOUT_TEMPLATES.map((template) => ({
         [disabled]="disabled()"
         (click)="pick.emit(tile.id)"
       >
-        <sf-layout-preview [blocks]="tile.blocks" />
+        <sf-layout-preview [blocks]="tile.blocks" [canvas]="canvas()" />
         <span class="c-preset__name">{{ tile.template.name }}</span>
       </button>
     }
@@ -68,5 +73,8 @@ export class TemplatePickerComponent {
   /** The operator chose a template. */
   readonly pick = output<LayoutTemplateId>();
 
-  protected readonly tiles = TILES;
+  private readonly store = inject(ProductionStoreService);
+
+  protected readonly canvas = this.store.canvas;
+  protected readonly tiles = computed(() => tilesFor(this.store.canvas()));
 }

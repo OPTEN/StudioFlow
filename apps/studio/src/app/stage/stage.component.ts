@@ -22,7 +22,7 @@ import { MonitorComponent } from './monitor.component';
 import type { SceneTransitionCue } from './scene-view.component';
 import { SwitcherService } from './switcher.service';
 
-/** The editable 16:9 surface: its overlay handles clicks itself (select, empty area deselects). */
+/** The editable surface: its overlay handles clicks itself (select, empty area deselects). */
 const EDITABLE_SCREEN = '.c-monitor.is-editable .c-monitor__screen';
 /** Controls inside the stage that keep their own pointer behaviour (no deselect). */
 const STAGE_CONTROLS =
@@ -43,6 +43,8 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
  *   locked (live note). The control column and the docks never move when the mode toggles.
  * - Both monitors show the scenes with local edit drafts (`EditorService.scenes`); the Program plays the transition of
  *   every program switch event and flashes.
+ * - The monitors have the shape of the production's canvas (16:9, 9:16, 1:1 or 4:3); a portrait monitor is narrow and
+ *   the free space stays empty beside it.
  * - Sizes: a ResizeObserver measures the stage and writes the monitor widths (`monitor-layout.ts`) as the custom
  *   properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing never runs change detection.
  * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
@@ -100,6 +102,8 @@ export class StageComponent {
       this.layout.split();
       this.viewport.stacked();
       this.viewport.narrow();
+      // Another format changes the shape of the monitors, and with it how wide they may be.
+      this.store.canvas();
       untracked(() => this.applyWidths());
     });
     this.observeSize();
@@ -124,6 +128,7 @@ export class StageComponent {
       return;
     }
     const widths = monitorWidths({
+      canvas: this.store.canvas(),
       width: this.size.width,
       height: this.size.height,
       studio: this.switcher.studioMode(),
