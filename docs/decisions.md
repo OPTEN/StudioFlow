@@ -52,6 +52,13 @@ decision deliberately: update this file and the code together.
 3. Several named output links per production, each individually revocable with its own IP restriction.
 4. OBS and Teams run on a separate machine, not on the Regie laptop; the runbook recommends this.
 
+Pinned details of the implementation: at most 10 links per production (`409 limit_reached`), names 1–40 characters and
+unique ignoring case; "revoke" deletes the link (its key is invalid at once and only its pages are disconnected); the old
+single key of a production became its first link "Proxy" in the migration; the OBS scene collection is generated in the
+Regie (browser) from the link URL, so no endpoint is needed and the key is not handled anywhere new; its size comes from
+one function (`obsCanvasSize()`), so the production format of #8 can replace 1920 × 1080 there; the target is OBS Studio
+31 and 32.
+
 ## #10 Light mode
 
 1. Default "Dark".

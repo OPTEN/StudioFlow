@@ -381,10 +381,11 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
 | `TXT` Texts and lower thirds | 5 | 3 | 5 | 13 | 4 | 8 | 1 |
 | `AUDIT` Audit log | 6 | 7 | 4 | 17 | 10 | 7 | 0 |
-| **Total** | **101** | **104** | **258** | **463** | **199** | **204** | **60** |
+| `LINK` Output links and the camera | 5 | 4 | 3 | 12 | 9 | 2 | 1 |
+| **Total** | **106** | **108** | **261** | **475** | **208** | **206** | **61** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera)
 
 ### 2.1 AUTH – Auth and security
 
@@ -395,13 +396,13 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 | `POST /api/auth/login` | anonymous, lockout-protected | – |
 | `POST /api/auth/logout`, `GET /api/auth/me`, `GET /api/system/info` | Admin cookie (+ CSRF on POST) | 401 ProblemDetails |
 | `/api/productions/**` (all verbs, snapshot, changes, telemetry, incident ack, livekit-token) and `/api/productions/{id}/(scenes\|devices\|pairing\|assets\|output)/**` except asset content | Admin cookie (+ CSRF on POST/PUT/PATCH/DELETE) | 401 |
-| `GET /api/productions/{id}/assets/{assetId}/content` | Admin cookie **or** `?k={outputKey}` of that production | none: 401; wrong/other key: 403 |
+| `GET /api/productions/{id}/assets/{assetId}/content` | Admin cookie **or** `?k={key}` of any output link of that production | none: 401; wrong/other key: 403 |
 | `POST /api/pairing/requests`, `GET\|DELETE /api/pairing/requests/{id}` (header `X-Pairing-Token`), `POST /api/pairing/invites/{token}/redeem` | anonymous, rate-limited | – |
 | `/api/device/**` | Device bearer | 401; blocked → 403 `device_blocked` |
-| `/api/output/{slug}/**` | Output key (`X-Output-Key`) + IP list | 403 (also unknown slug) |
+| `/api/output/{slug}/**` | Key of an output link (`X-Output-Key`) + the IP list of that link | 403 (also unknown slug and revoked key) |
 | `POST /api/livekit/webhook` | LiveKit JWT (HS256, `sha256` claim) | 401 |
 | `GET /health/live`, `GET /health/ready` | anonymous | – |
-| `/hubs/studio` · `/hubs/device` · `/hubs/output` | Admin cookie · device bearer in `access_token` · output key in `access_token` | 401 · 401/403 · 403 |
+| `/hubs/studio` · `/hubs/device` · `/hubs/output` | Admin cookie · device bearer in `access_token` · output link key in `access_token` | 401 · 401/403 · 403 |
 | `/openapi/**` | not mapped in Production | 404 |
 
 **UNIT-AUTH-01** · P0 · xunit — Password hash verification
@@ -516,9 +517,9 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 - Steps: `allowedIps=["10.1.2.3"]`; direct requests with remote `10.1.2.3` and `10.1.2.4`; with `10.1.2.0/24`; a request from the trusted proxy network carrying `X-Forwarded-For: 10.1.2.3` (as set by the proxy); the same where the client forged the first entry and the proxy appended the real peer (`X-Forwarded-For: 10.1.2.3, 203.0.113.7`); the forged header sent from an *untrusted* peer.
 - Expect: allowed/denied as listed (403 on deny); behind the trusted proxy the effective client address is the right-most entry added by the proxy (`203.0.113.7` in the forged case, so denied); `X-Forwarded-For` from an untrusted peer is ignored; hub negotiate and the asset `?k=` path enforce the same list.
 
-**INT-AUTH-17** · P0 · xunit — Output key regeneration
-- Steps: connect an output hub client with the key; `POST …/output/regenerate-key`; reuse the old key; connect again with the new key.
-- Expect: old key 403 immediately on REST and negotiate; the connected hub connection is closed within 2 s; the fake LiveKit service received `ListParticipants(room)` and `RemoveParticipant(room, identity)` for every identity matching `output_{slug}_*` and none other; the response carries the new URL; `KeyCreatedAt` advanced; audit `output.key.regenerated`; an `outputStatusChanged` event follows.
+**INT-AUTH-17** · P0 · xunit — Output link key regeneration
+- Steps: connect an output hub client with the key of a link; `POST …/output/links/{linkId}/regenerate-key`; reuse the old key; connect again with the new key (issue #9: per link; the other links are covered by `INT-LINK-02` and `INT-LINK-03`).
+- Expect: old key 403 immediately on REST and negotiate; the connected hub connection of that link is closed within 2 s; the fake LiveKit service received `ListParticipants(room)` and `RemoveParticipant(room, identity)` for every identity matching `output_{slug}_{linkId}_*` and none other; the response carries the new URL; `KeyCreatedAt` advanced; audit `output.key.regenerated`; an `outputStatusChanged` event follows.
 
 **INT-AUTH-18** · P1 · xunit — Allowed IP list validation and effect
 - Steps: `PUT …/output/access` with valid/invalid entries (`999.1.1.1`, `10.0.0.0/33`, `abc`, empty string, duplicates, 51 entries); change the list while an output hub is connected from an IP that is no longer allowed.
@@ -1459,7 +1460,7 @@ Remote camera control (issue #11, decisions «#11» in `docs/decisions.md`; the 
 
 ### 2.6 OUT – Output page
 
-Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bild kommt gleich zurück». The page has no other text and no controls. Preloading without black frames is tested by `E2E-SWITCH-09`; IP restriction and key rotation by `E2E-AUTH-23` and `E2E-AUTH-24`; assets via the key by `E2E-OUT-19`. Header chip «Output an Proxy» (lamp + mono latency), popover «Zustand» «verbunden, 1 Abnehmer», «Abnehmer» (IP), «Format» «1920 × 1080 · 30 fps», «Latenz» «<n> ms gemessen».
+Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bild kommt gleich zurück». The page has no other text and no controls. Preloading without black frames is tested by `E2E-SWITCH-09`; IP restriction and key rotation by `E2E-AUTH-23` and `E2E-AUTH-24`; assets via the key by `E2E-OUT-19`. Header chip «Output» (lamp + mono latency, and the names of the connected links, e.g. «Proxy + Teams camera»), popover «Zustand» «verbunden, 1 Abnehmer», «Abnehmer» (IP), «Format» «1920 × 1080 · 30 fps», «Latenz» «<n> ms gemessen», then the list of the output links («Proxy · verbunden») with the selected link below (issue #9, area `LINK`). As an OBS browser source the page needs no click: `E2E-OUT-02` (autoplay without a gesture, in an iframe too), `E2E-OUT-06` (hold frame) and `E2E-OUT-04` (`bg=transparent`) are the checks; `E2E-LINK-03` opens the URL of the downloaded OBS scene collection (also with `bg=transparent`), and `MAN-15` repeats it in OBS itself.
 
 **UNIT-OUT-01** · P0 · vitest — Stage scaling and letterboxing math
 - Steps: container sizes 1920×1080, 1280×720, 800×600, 1680×720, 160×90, 3840×2160, 600×1000, 10×10, 0×0, fractional (1279.5×719.5).
@@ -2362,6 +2363,58 @@ Spec 4.9, runbook 17. E2E specs run in English (`locale: 'en-US'`) on any stack;
 - Steps: open the page with one entry expanded; scan in the dark theme; switch to the light theme; scan.
 - Expect: no critical or serious violation (WCAG 2.1 A/AA) in either theme.
 
+### 2.16 LINK – Output links and the camera
+
+Several named output links per production and the output as a camera in Teams, Zoom and Webex through OBS (issue #9 stage 1, decisions «#9» in `docs/decisions.md`; spec 4.8, 9.1, 9.4; runbook section 17). The Regie runs in English (`en-US`) in the E2E specs.
+
+**UNIT-LINK-01** · P0 · ng (`obs-scene-collection.spec.ts`) — OBS scene collection generator
+- Steps: generate the collection for a link; parse it; names and URLs with quotes, backslashes, line breaks, emoji, query characters and non-ASCII text; file names of such link names.
+- Expect: valid JSON with one scene `StudioFlow` and one `browser_source` `StudioFlow output` (different names), the scene item points at the source, `url` is the link byte for byte, 1920 × 1080 from `obsCanvasSize()` (the only place), 30 fps, `reroute_audio` true, `shutdown` false, `restart_when_active` false; the key appears once; the file name has no path separator.
+
+**UNIT-LINK-02** · P0 · xunit (`OutputLinkTests`) — Output link domain rules
+- Steps: create with valid, empty, blank, 40/41 character and duplicate names (ignoring case); the 10th and 11th link; rename; regenerate; IP rules (normalised, duplicates, invalid index, more than 50, missing); `OutputLinkAccess.Find` with several keys.
+- Expect: 43-character keys that differ per link, names trimmed and unique per production, `limit_reached` at the limit, the IP list belongs to the link, regenerating changes only the key.
+
+**UNIT-LINK-03** · P1 · xunit (`OutputTrackerTests`) — Output tracker per link
+- Steps: two links with pages and reports; disconnect one page; `SetLinks` with a revoked and a renamed link; `TakeChange` after a state change, a rename and a metric change.
+- Expect: each link has its own state, consumers, addresses, latency and fps; the summary is connected if any link is, else stale; revoked links lose their pages; a link change is published at once, metric changes keep the 5 s / 20 % rule.
+
+**UNIT-LINK-04** · P1 · ng (`output-popover.component.spec.ts`, `header.component.spec.ts`) — Output popover and chip
+- Steps: popover with two links in different states; select, add (valid, empty, blank, 41 characters, duplicate in another case, at the limit, refused by the server), rename, IP editor, regenerate and revoke with confirmation and cancel; "Use as camera …" and the download; the status event of a link; the chip with two connected links.
+- Expect: «Proxy · connected» per link and «last seen» or «never connected»; nothing is requested for invalid names; each action calls its own link route; the unsaved IP list is dropped when another link is selected; the key is never shown unmasked; five steps with 1920 × 1080 and 30; the download holds the selected link; the chip names the connected links and its tooltip lists all.
+
+**UNIT-LINK-05** · P2 · ng (`download.service.spec.ts`) — File download from the Regie
+- Steps: save a text file.
+- Expect: the file has the given name and type, the object URL is released, no link stays in the page, and the click does not reach the page (an open popover stays open).
+
+**INT-LINK-01** · P0 · xunit (`OutputFlowTests`) — Output link use cases
+- Steps: authorise with the key of each link, wrong key, unknown slug, address outside one link's list; create (valid, invalid, duplicate, 10th, 11th); rename; regenerate and revoke with connected pages and LiveKit participants; connect after the link was revoked; last seen; a new production.
+- Expect: the key of any non-revoked link opens the output, the IP list applies per link, revoked and replaced keys are invalid at once; only the pages and `output_{slug}_{linkId}_*` participants of the changed link are aborted and removed; audit entries `output.link.created`, `output.link.renamed`, `output.link.revoked`, `output.key.regenerated` and `output.access.changed` with the link name and their log texts; every production starts with the link «Proxy».
+
+**INT-LINK-02** · P0 · xunit (`OutputLinkApiTests`) — Output link REST
+- Steps: `POST/PATCH/PUT/DELETE` of the link routes, invalid and duplicate names, 11 links, unknown links, links of another production, no session, no CSRF header; a revoked key on snapshot, changes, LiveKit token, report and the asset `?k=` route; a key of another production; `X-Forwarded-For` per link.
+- Expect: 201, 200, 204, 400 `validation_failed`, 409 `limit_reached`, 404, 401, 403 as specified; a revoked or regenerated key is refused everywhere at once while the other link works; per-link status and log entries in the snapshot.
+
+**INT-LINK-03** · P0 · xunit (`OutputLinkHubTests`) — Output hub per link
+- Steps: two links connected to the output hub; revoke one; regenerate the other; narrow the IP list of one; watch the Regie hub.
+- Expect: only the changed link's connections close within 15 s, the revoked key cannot reconnect (403), the Regie gets `outputStatusChanged` with the links by name and state, `lastSeenAt` is set for the link that was used.
+
+**INT-LINK-04** · P0 · xunit (`OutputLinkMigrationTests`) — Migration of the single output key
+- Steps: a database at the migration before `AddOutputLinks` with productions that have a key and an IP list and audit entries of the key; migrate up; migrate down with a second link.
+- Expect: every production has one link «Proxy» with the old key and IP list, so old URLs keep working; the audit entries of key and access changes get the name «Proxy»; down restores the oldest link as the production's key.
+
+**E2E-LINK-01** · P0 · pw — Two links, revoke one
+- Steps: Regie in English; add the link «Teams camera» in the popover; open one output page per link; look at the popover and the chip; revoke «Teams camera» in the popover; reload both pages.
+- Expect: «Proxy · connected» and «Teams camera · connected», the chip reads «Output Proxy + Teams camera»; after the confirmation the page of the revoked link shows «No access» within `T-KEY` (2 s) and stays denied after a reload, the other page keeps playing and stays connected; the row of the revoked link is gone.
+
+**E2E-LINK-02** · P0 · pw — Links on the hubs
+- Steps: three output hub connections (Proxy, two new links) and a Regie hub; revoke one link; regenerate another.
+- Expect: the status event lists the three links by name; only the revoked link's connection closes (within `T-KEY`), its key gets 403 on REST and negotiate; regenerating closes only that link's connection; the proxy connection stays open.
+
+**E2E-LINK-03** · P0 · pw — Download the OBS scene collection
+- Steps: Regie in English; add «Teams camera»; «Use as camera …»; «Download OBS scene collection»; parse the file; open its URL in a new page, once with `bg=transparent`.
+- Expect: five steps naming 1920 × 1080; the file `StudioFlow-Teams-camera.json` is valid JSON with the browser source at 1920 × 1080, 30 fps, audio via OBS, shutdown off, refresh off, the URL of «Teams camera» (not the proxy key); the page of that URL turns the link «connected»; with `bg=transparent` the page and body are transparent.
+
 ---
 
 ## 3. Browser and device matrix
@@ -2452,6 +2505,9 @@ Equipment: NVDA/JAWS (Windows), VoiceOver (macOS and iOS). Procedure: operate lo
 
 **MAN-14 · Remote camera control on real phones (issue #11, the spike).**
 Equipment: at least one Android phone (Chrome, with an ultra-wide camera if possible, e.g. Pixel 6+ or Samsung S21+) and one iPhone (Safari 17+); Regie laptop; stack as in MAN-01. Procedure per phone: pair it, start the camera and open «Stationen» → the phone → «Kamera». Write down what the panel offers (lenses, zoom range, focus, brightness range, light) next to the phone model and browser version: that is the capability matrix of the device and goes into the runbook table «Remote camera control». Then: drag the zoom slider slowly and quickly (the picture follows, the value shown is the one the phone reports, no flood on a weak Wi-Fi: throttle the phone to 3G in the browser's network panel or move away from the access point); lock the focus and unlock it, point the phone at a close and a far object; move brightness to −2, +2 and press «Automatisch»; switch the light on and off; pick every lens while the station is in preview and then in the program (the confirmation appears only in the program); change the zoom on the phone's screen is not offered, so check that a second Regie operator who moves the same slider wins over the first (the last command wins) and both Regies show the value the phone reports; press «Auf automatisch zurücksetzen»; reload the phone page, lock and unlock the screen, take a call: the lens, zoom, focus and brightness come back as they were; put the phone to sleep or switch the camera to another app and send a command (the panel shows the real value or the inline message, never a stuck slider). Pass: only controls the phone supports are shown (an iPhone typically only the lens list); every value in the panel equals what the phone does; a lens switch in the program interrupts the picture for less than 1 s and the output shows the hold frame, not black; after a reload the camera is back as it was within 5 s; no console errors on the sender.
+
+**MAN-15 · OBS virtual camera into Teams (issue #9, stage 1).**
+Equipment: a computer that is not the Regie laptop with OBS Studio 31 or 32 and the new Teams app (Windows 11, and the same on macOS), a second participant on another device, the stack as in MAN-01. Procedure: runbook section 18 from the start (link «Teams camera», download, import, Settings → Video, Start Virtual Camera, pick «OBS Virtual Camera», background effects off); check the browser source plays without a click and survives a scene switch in OBS; check «?bg=transparent» on the same link in a second browser source; switch scenes in the Regie and watch them in Teams; switch the Wi-Fi of the camera computer off for 30 s and on again; measure glass to glass (a stopwatch or a clock in the picture, filmed together with the second participant's screen) at least ten times; revoke the link and see the page in OBS turn to «No access». Pass: the import works without a message; the picture in Teams is the output picture, text readable at the size recommended in the runbook, no mirroring for the second participant; the picture is back within 10 s after the Wi-Fi returns without restarting the virtual camera; the latency is written down (median and worst) next to the OBS and Teams versions; revoking affects only this link.
 
 **MAN-13 · External security scan.**
 Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline scan against the Regie, sender and output (authenticated and not), `nmap -p- <server>`; review the security-review document. Pass: only the published ports (80, 443, 7881/tcp, 7882/udp) are open; TLS ≥ 1.2 with modern ciphers; no ZAP findings above Low that are not documented; the CSP invariants I-CSP hold.
