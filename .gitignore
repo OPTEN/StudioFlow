@@ -1,4 +1,4 @@
-# Secrets: the real .env is created by setup.sh / setup.ps1 and never committed.
+# Secrets: the real .env (optional overrides only) is created by hand and never committed.
 .env
 .env.*
 !.env.example

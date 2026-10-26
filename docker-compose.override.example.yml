@@ -1,21 +1,24 @@
 # Local development (example). Copy it as docker-compose.override.yml: docker compose loads that file
-# automatically in addition to docker-compose.yml. Do not commit it. On a server, take over only the caddy block for
-# TLS mode custom (at the bottom), never the published ports of api, livekit and postgres.
+# automatically in addition to docker-compose.yml. Do not commit it. On a server, take over only the options you need
+# (see the bottom), never the published ports of api, livekit and postgres.
 #
 #   cp docker-compose.override.example.yml docker-compose.override.yml
-#   ./setup.sh --domain localhost --node-ip 127.0.0.1 --tls-mode internal   # or setup.ps1
-#   docker compose up -d --build
-#   npm run start:studio      # http://localhost:4200, proxy as in proxy.conf.json
+#   docker compose up -d --build     # no .env, no setup script: the stack generates its own secrets
+#   npm run start:studio             # http://localhost:4200, proxy as in proxy.conf.json
 #
 # API, LiveKit and PostgreSQL then run in containers and are reachable only on this machine (127.0.0.1);
 # the frontends run with ng serve / vite and the proxy from proxy.conf.json (/api, /hubs -> 5298, /rtc -> 7880).
-# The first start logs a setup code (docker compose logs api); the Regie then asks for it to create the account.
+# The first start logs a setup code (docker compose logs api); the Regie then asks for it to create the account and
+# continues with the first-run wizard (media address, address and certificate, embedding).
 
 services:
   api:
     environment:
       # Development: cookie Secure = SameAsRequest (ng serve runs over http), detailed errors.
       ASPNETCORE_ENVIRONMENT: Development
+      # Time limits and API limits of the specification (keys as in appsettings.json; durations hh:mm:ss, numbers whole):
+      # PAIRING__INVITETTL: "00:02:00"
+      # LIVEKIT__TOKENTTL: "00:10:00"
     ports:
       - "127.0.0.1:5298:8080"
 
@@ -29,13 +32,8 @@ services:
       # psql, EF Core tools or a DB client on this machine.
       - "127.0.0.1:5432:5432"
 
-  # More options (uncomment as needed):
-  # caddy:
-  #   # Different host ports if 80/443 are in use. HTTP/3 (Alt-Svc) and the HTTP->HTTPS redirect assume 443;
-  #   # set STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:8443 in .env for this.
-  #   ports: !override
-  #     - "8080:80"
-  #     - "8443:443"
-  #   # TLS mode custom: own certificate (readable for UID 10001, e.g. chmod 644 fullchain.pem privkey.pem).
+  # Keep the backups in a folder of the host (uncomment):
+  # backup:
   #   volumes:
-  #     - ./certs:/certs:ro
+  #     # Keep the backups in a folder of the host instead of the volume "backups" (restore reads them from there as well).
+  #     - ./backups:/backups
