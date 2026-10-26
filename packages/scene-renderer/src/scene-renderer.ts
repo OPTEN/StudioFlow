@@ -1,9 +1,9 @@
 import { onLocaleChange, t } from '@studioflow/i18n';
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@studioflow/scene-model';
-import type { SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
+import { DEFAULT_CANVAS } from '@studioflow/scene-model';
+import type { CanvasSize, SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
 
 import { DesiredSizeCollector, DesiredSizeReporter, preloadRequests } from './desired-sizes';
-import { createElement, FILL, px, setStyle } from './dom';
+import { createElement, FILL, px, setStyle, setStyles } from './dom';
 import { fadeOpacity, type Fade } from './fade';
 import { FpsMeter } from './fps-meter';
 import { clampNumber } from './geometry';
@@ -28,6 +28,17 @@ const HOLD_FRAME_REFRESH_MS = 1000;
 const MAX_RENDER_PASSES = 4;
 
 let rendererCount = 0;
+
+/** A canvas the renderer can lay out: both sides a positive finite number. */
+function usableCanvas(canvas: CanvasSize | undefined): CanvasSize | null {
+  return canvas &&
+    Number.isFinite(canvas.width) &&
+    Number.isFinite(canvas.height) &&
+    canvas.width > 0 &&
+    canvas.height > 0
+    ? { width: canvas.width, height: canvas.height }
+    : null;
+}
 
 /** Unique consumer id per renderer instance (desired sizes are aggregated per consumer by the provider). */
 function nextConsumerId(): string {
@@ -55,7 +66,7 @@ interface RunningFade {
 
 /**
  * Creates a renderer for one picture inside `container` (spec 8.3). The renderer appends a viewport that fills the
- * container (the container needs a definite size) and the 1920 × 1080 stage inside it.
+ * container (the container needs a definite size) and the stage of the canvas size inside it.
  */
 export function createSceneRenderer(
   container: HTMLElement,
@@ -92,6 +103,7 @@ class DomSceneRenderer implements SceneRenderer {
   private retiring: SceneLayer | null = null;
   private runningFade: RunningFade | null = null;
   private preloadScenes: readonly SceneDto[] = [];
+  private canvas: CanvasSize;
   private scale = 0;
   private busy = 0;
   private renderRequested = false;
@@ -102,7 +114,9 @@ class DomSceneRenderer implements SceneRenderer {
     const provider = options.provider;
     this.sink = options.onError ?? consoleErrorSink;
     this.reducedMotion = options.reducedMotion === true;
+    this.canvas = usableCanvas(options.canvas) ?? DEFAULT_CANVAS;
     this.ctx = createRenderContext(doc, options, this.sink, {
+      canvas: () => this.canvas,
       statusSince: (sourceId, status, at) => this.statusClock.observe(sourceId, status, at),
       requestRender: () => this.requestRender(),
       holdFrameDonor: (sourceId, requester) => this.holdFrameDonor(sourceId, requester),
@@ -122,8 +136,8 @@ class DomSceneRenderer implements SceneRenderer {
       position: 'absolute',
       left: '0',
       top: '0',
-      width: px(CANVAS_WIDTH),
-      height: px(CANVAS_HEIGHT),
+      width: px(this.canvas.width),
+      height: px(this.canvas.height),
       overflow: 'hidden',
       'transform-origin': '0 0',
       'background-color': background,
@@ -138,7 +152,7 @@ class DomSceneRenderer implements SceneRenderer {
     this.element.append(this.scenesEl, slateHost);
     this.viewport.append(this.element);
     container.append(this.viewport);
-    this.slate = new SlateView(doc, slateHost, this.reducedMotion);
+    this.slate = new SlateView(doc, slateHost, this.reducedMotion, this.canvas);
 
     const consumerId = nextConsumerId();
     this.stageSizes = new DesiredSizeReporter(provider, consumerId, this.ctx.guard);
@@ -223,7 +237,7 @@ class DomSceneRenderer implements SceneRenderer {
 
   resize(): void {
     this.run(() => {
-      const fit = fitStage(this.viewport.clientWidth, this.viewport.clientHeight);
+      const fit = fitStage(this.viewport.clientWidth, this.viewport.clientHeight, this.canvas);
       this.scale = fit.scale;
       setStyle(
         this.element,
@@ -231,6 +245,19 @@ class DomSceneRenderer implements SceneRenderer {
         `translate(${px(fit.offsetX)}, ${px(fit.offsetY)}) scale(${fit.scale})`,
       );
       this.renderRequested = true;
+    });
+  }
+
+  setCanvas(canvas: CanvasSize): void {
+    this.run(() => {
+      const next = usableCanvas(canvas);
+      if (!next || (next.width === this.canvas.width && next.height === this.canvas.height)) {
+        return;
+      }
+      this.canvas = next;
+      setStyles(this.element, { width: px(next.width), height: px(next.height) });
+      this.slate.setCanvas(next);
+      this.resize();
     });
   }
 

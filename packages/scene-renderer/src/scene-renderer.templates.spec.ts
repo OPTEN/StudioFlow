@@ -1,4 +1,5 @@
 import {
+  DEFAULT_CANVAS,
   applyLayoutTemplate,
   layoutTemplate,
   type SceneItemDto,
@@ -41,7 +42,7 @@ describe('scene renderer: layout templates and z-order', () => {
 
   function showTemplate(items: SceneItemDto[]): void {
     mounted.renderer.show(scene('scn_a', items));
-    const applied = applyLayoutTemplate(items, 'pip', kindOf);
+    const applied = applyLayoutTemplate(items, 'pip', kindOf, DEFAULT_CANVAS);
     mounted.renderer.update(
       scene('scn_a', applied.items, { version: 2, layoutMode: applied.layoutMode }),
     );
@@ -50,7 +51,7 @@ describe('scene renderer: layout templates and z-order', () => {
   it('Picture in picture after adding the camera first: the small camera is painted above the full screen', () => {
     mounted = mount();
     showTemplate([sceneItem('itm_k1', CAMERA), sceneItem('itm_s1', SCREEN)]);
-    const [full, corner] = layoutTemplate('pip').slots ?? [];
+    const [full, corner] = layoutTemplate('pip', DEFAULT_CANVAS).slots ?? [];
     expect(mounted.renderer.effectiveRects().get('itm_s1')).toEqual({
       x: full[0],
       y: full[1],
@@ -89,7 +90,7 @@ describe('scene renderer: layout templates and z-order', () => {
   it('Auto-Grid keeps the item order and places the items side by side (no overlap)', () => {
     mounted = mount();
     const items = [sceneItem('itm_k1', CAMERA), sceneItem('itm_s1', SCREEN)];
-    const applied = applyLayoutTemplate(items, 'auto', kindOf);
+    const applied = applyLayoutTemplate(items, 'auto', kindOf, DEFAULT_CANVAS);
     mounted.renderer.show(scene('scn_a', applied.items, { layoutMode: applied.layoutMode }));
     mounted.provider.live(CAMERA);
     mounted.provider.live(SCREEN);

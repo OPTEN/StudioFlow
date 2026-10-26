@@ -1,4 +1,9 @@
-import { fitStage } from './stage-fit';
+import { DEFAULT_CANVAS } from '@studioflow/scene-model';
+
+import { fitStage as fit } from './stage-fit';
+
+/** The 16:9 canvas of the default production. */
+const fitStage = (width: number, height: number) => fit(width, height, DEFAULT_CANVAS);
 
 describe('fitStage', () => {
   it('fills a 16:9 container exactly', () => {
