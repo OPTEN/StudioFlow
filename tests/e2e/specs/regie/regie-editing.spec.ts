@@ -83,14 +83,14 @@ const SLOTS: Record<string, ReadonlyArray<readonly [number, number, number, numb
   auto: null,
 };
 const NAMES: Record<string, string> = {
-  full: 'Vollbild',
-  two: 'Nebeneinander',
-  pip: 'Bild-in-Bild',
-  col: 'Screen + Kamera-Spalte',
-  onetwo: 'Eins plus zwei',
+  full: 'Full screen',
+  two: 'Side by side',
+  pip: 'Picture in picture',
+  col: 'Screen + camera column',
+  onetwo: 'One plus two',
   grid: '2 × 2',
   grid3: '3 × 3',
-  auto: 'Auto-Grid',
+  auto: 'Auto grid',
 };
 
 async function phones(
@@ -119,21 +119,21 @@ test.describe('REGIE editing: templates', () => {
   for (const templateId of Object.keys(SETUPS)) {
     const smoke = ['full', 'two', 'pip'].includes(templateId);
     test(
-      `E2E-SCENE-05 [${templateId}] «${NAMES[templateId]}» through the inspector: rectangles, order, fit and radius in the API, in the monitor DOM and in the X/Y/B/H fields`,
+      `E2E-SCENE-05 [${templateId}] “${NAMES[templateId]}” through the inspector: rectangles, order, fit and radius in the API, in the monitor DOM and in the X/Y/B/H fields`,
       smoke ? t.smoke : t.p0,
       async ({ regie, api, production, pairContext }) => {
         await production.seed([...SCENES]);
         const sceneA = production.sceneIds[0]!;
         const page = regie.page;
         const [one, two, three] = await phones(pairContext, [
-          'Handy Eins',
-          'Handy Zwei',
-          'Handy Drei',
+          'Phone One',
+          'Phone Two',
+          'Phone Three',
         ]);
         const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Lea' });
         const images = await Promise.all(
           [COLOR.red, COLOR.green, COLOR.blue, COLOR.yellow].map((rgb, index) =>
-            uploadSolid(api, production, `Bild${index + 1}`, rgb),
+            uploadSolid(api, production, `Image${index + 1}`, rgb),
           ),
         );
         // codes: K1..K3 phones, S1 laptop, M1..M4 images
@@ -162,18 +162,18 @@ test.describe('REGIE editing: templates', () => {
         await inspector(page)
           .getByRole('button', { name: NAMES[templateId]!, exact: true })
           .click();
-        await expectToast(page, `Vorlage «${NAMES[templateId]}» angewendet`);
-        await expect(toastOf(page).getByRole('button', { name: 'Rückgängig' })).toBeVisible();
+        await expectToast(page, `Template “${NAMES[templateId]}” applied`);
+        await expect(toastOf(page).getByRole('button', { name: 'Undo' })).toBeVisible();
 
         const slots = SLOTS[templateId];
         if (slots === null) {
-          // Auto-Grid: the mode changes, the items stay (order and geometry); the renderer arranges the four images in a 2 x 2 grid.
+          // Auto grid: the mode changes, the items stay (order and geometry); the renderer arranges the four images in a 2 x 2 grid.
           const after = await expectScene(
             api,
             production,
             sceneA,
             (entry) => entry.layoutMode === 'autoGrid',
-            'the scene is in Auto-Grid mode',
+            'the scene is in Auto grid mode',
           );
           expect(after.items.map((entry) => entry.id)).toEqual(
             scene.items.map((entry) => entry.id),
@@ -181,8 +181,8 @@ test.describe('REGIE editing: templates', () => {
           expect(after.items.map((entry) => [entry.x, entry.y, entry.w, entry.h])).toEqual(
             scene.items.map((entry) => [entry.x, entry.y, entry.w, entry.h]),
           );
-          await expect(inspector(page)).toContainText('Auto-Grid aktiv');
-          await expect(inspector(page).getByRole('button', { name: 'Auto-Grid' })).toHaveAttribute(
+          await expect(inspector(page)).toContainText('Auto grid active');
+          await expect(inspector(page).getByRole('button', { name: 'Auto grid' })).toHaveAttribute(
             'aria-pressed',
             'true',
           );
@@ -268,20 +268,20 @@ test.describe('REGIE editing: templates', () => {
         for (const slotIndex of [0, placed.length - 1]) {
           const code = placed[slotIndex]!.code;
           const row = sourcesDock(page).getByRole('button', {
-            name: new RegExp(`^Auswählen: ${code} `),
+            name: new RegExp(`^Select: ${code} `),
           });
           await row.click();
-          await expect(inspectorTitle(page)).toHaveText('Element');
+          await expect(inspectorTitle(page)).toHaveText('Item');
           const slot = slots[slotIndex]!;
           await expect(field(page, 'x')).toHaveValue(String(slot[0]));
           await expect(field(page, 'y')).toHaveValue(String(slot[1]));
           await expect(field(page, 'w')).toHaveValue(String(slot[2]));
           await expect(field(page, 'h')).toHaveValue(String(slot[3]));
           await row.click(); // a second click clears the selection again
-          await expect(inspectorTitle(page)).toHaveText('Szene');
+          await expect(inspectorTitle(page)).toHaveText('Scene');
         }
 
-        // «Rückgängig» of the toast restores the previous rectangles and order.
+        // “Undo” of the toast restores the previous rectangles and order.
         await page.keyboard.press('Control+z');
         await expectScene(
           api,
@@ -298,29 +298,29 @@ test.describe('REGIE editing: templates', () => {
   }
 
   test(
-    'E2E-SCENE-05 [empty, locked] a scene without visible elements says «Erst eine Quelle hinzufügen»; in Studio-Modus on the live scene the templates are disabled',
+    'E2E-SCENE-05 [empty, locked] a scene without visible elements says “Add a source first”; in Studio Mode on the live scene the templates are disabled',
     t.p0,
     async ({ regie, api, production, pairContext }) => {
       await production.seed([...SCENES]);
       const page = regie.page;
-      await inspector(page).getByRole('button', { name: 'Vollbild', exact: true }).click();
-      await expectToast(page, 'Erst eine Quelle hinzufügen');
+      await inspector(page).getByRole('button', { name: 'Full screen', exact: true }).click();
+      await expectToast(page, 'Add a source first');
       expect((await getScene(api, production, production.sceneIds[0]!)).items).toEqual([]);
 
-      const [phone] = await phones(pairContext, ['Handy Eins']);
+      const [phone] = await phones(pairContext, ['Phone One']);
       await addItems(api, production, production.sceneIds[0]!, [phone!.sourceId()]);
       await regie.setStudioMode(true);
-      await regie.clickScene('Szene A'); // preview = program: the live scene is locked
+      await regie.clickScene('Scene A'); // preview = program: the live scene is locked
       await expect(monitorOf(page, 'preview')).toContainText(
-        'Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.',
+        'This scene is live right now. Editing is possible once another scene is on Program.',
       );
       for (const name of Object.values(NAMES))
         await expect(inspector(page).getByRole('button', { name, exact: true })).toBeDisabled();
-      // Another scene in the preview: not live, so the templates are usable again (empty scene: «Erst eine Quelle hinzufügen»).
-      await regie.clickScene('Szene B');
-      await expect(regie.scene('Szene B')).toHaveAttribute('aria-pressed', 'true');
+      // Another scene in the preview: not live, so the templates are usable again (empty scene: “Add a source first”).
+      await regie.clickScene('Scene B');
+      await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
       await expect(
-        inspector(page).getByRole('button', { name: 'Vollbild', exact: true }),
+        inspector(page).getByRole('button', { name: 'Full screen', exact: true }),
       ).toBeEnabled();
       await expect(monitorOf(page, 'preview').locator('.c-monitor__live-note')).toHaveCount(0);
     },
@@ -335,7 +335,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one, two] = await phones(pairContext, ['Handy Eins', 'Handy Zwei']);
+      const [one, two] = await phones(pairContext, ['Phone One', 'Phone Two']);
       const scene = await replaceItems(api, production, sceneA, [
         item('itm_dragone', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
         item('itm_dragtwo', two!.sourceId(), { x: 1500, y: 700, w: 300, h: 169 }),
@@ -394,7 +394,7 @@ test.describe('REGIE editing: monitor gestures', () => {
         (entry) => entry.items[0]!.x === 200 && entry.items[0]!.y === 150,
         'one Ctrl+Z reverts the whole drag',
       );
-      await expectToast(page, 'Rückgängig gemacht');
+      await expectToast(page, 'Undone');
 
       // Snap to the left canvas edge: target x = 8 is within 7 screen px (20 canvas px) of 0 -> exactly 0, blue guide while held.
       await dragTo(-192, 0, {
@@ -476,7 +476,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_resize1', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
       ]);
@@ -591,7 +591,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_crop1', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
       ]);
@@ -631,7 +631,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       expect(current.items[0]).toMatchObject({ x: 200, y: 150, h: 338 });
       expect(near(current.items[0]!.w, 480, 3), `visible width ${current.items[0]!.w}`).toBe(true);
       await expect(overlay.locator('.c-edit-box.is-sel .c-edit-box__label')).toContainText(
-        'Zuschnitt R 20 %',
+        'Crop R 20%',
       );
       // The renderer draws the cropped part at the same picture size: the uncropped box stays 600 wide.
       const cropBox = await page
@@ -716,7 +716,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_nudge1', one!.sourceId(), { x: 600, y: 300, w: 600, h: 338 }),
       ]);
@@ -725,7 +725,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 600, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Element');
+      await expect(inspectorTitle(page)).toHaveText('Item');
       const read = async () => (await getScene(api, production, sceneA)).items[0]!;
 
       for (let index = 0; index < 3; index++) await page.keyboard.press('ArrowRight');
@@ -776,16 +776,16 @@ test.describe('REGIE editing: monitor gestures', () => {
         'one Ctrl+Z undoes the whole burst',
       );
 
-      // Escape deselects (inspector back to «Szene»); a click on the empty monitor area deselects as well.
+      // Escape deselects (inspector back to “Scene”); a click on the empty monitor area deselects as well.
       await page.keyboard.press('Escape');
-      await expect(inspectorTitle(page)).toHaveText('Szene');
+      await expect(inspectorTitle(page)).toHaveText('Scene');
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 600, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Element');
+      await expect(inspectorTitle(page)).toHaveText('Item');
       const empty = space.client(80, 1000);
       await page.mouse.click(empty.x, empty.y);
-      await expect(inspectorTitle(page)).toHaveText('Szene');
+      await expect(inspectorTitle(page)).toHaveText('Scene');
       expect(regie.problems.pageErrors).toEqual([]);
     },
   );
@@ -797,12 +797,12 @@ test.describe('REGIE editing: monitor gestures', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_fields1', one!.sourceId(), { x: 300, y: 200, w: 600, h: 338 }, { radius: 12 }),
       ]);
       await regie.waitForConvergence(production.id);
-      await selectViaRow(page, 'K1 Handy Eins');
+      await selectViaRow(page, 'K1 Phone One');
       const read = async () => (await getScene(api, production, sceneA)).items[0]!;
       const label = overlayOf(page).locator('.c-edit-box.is-sel .c-edit-box__label');
 
@@ -935,7 +935,7 @@ test.describe('REGIE editing: monitor gestures', () => {
       const saved = await read();
       await page.reload();
       await regie.waitReady();
-      await selectViaRow(page, 'K1 Handy Eins');
+      await selectViaRow(page, 'K1 Phone One');
       await expect(field(page, 'x')).toHaveValue(String(saved.x));
       await expect(field(page, 'y')).toHaveValue(String(saved.y));
       await expect(field(page, 'w')).toHaveValue(String(saved.w));
@@ -954,7 +954,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await production.seed([...SCENES]);
       const [sceneA] = production.sceneIds as [string, string, string];
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       const image = await uploadSolid(api, production, 'Logo', COLOR.violet);
       await replaceItems(api, production, sceneA, [
         item('itm_undo01', one!.sourceId(), { x: 300, y: 200, w: 600, h: 338 }),
@@ -1004,16 +1004,16 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       // 3 template (scene view: deselect first)
       await settle(async () => {
         await page.keyboard.press('Escape');
-        await inspector(page).getByRole('button', { name: 'Bild-in-Bild', exact: true }).click();
+        await inspector(page).getByRole('button', { name: 'Picture in picture', exact: true }).click();
       });
       // 4 fit
       await settle(async () => {
         await sourceRow(page, 'M1 Logo').click();
-        await inspector(page).getByRole('button', { name: 'Ganz zeigen' }).click();
+        await inspector(page).getByRole('button', { name: 'Show all' }).click();
       });
       // 5 delete the element
       await settle(async () => {
-        await inspector(page).getByRole('button', { name: 'Aus Szene entfernen' }).click();
+        await inspector(page).getByRole('button', { name: 'Remove from scene' }).click();
       });
       expect(new Set(states).size, 'five different states').toBe(6);
 
@@ -1021,27 +1021,27 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       for (let step = states.length - 2; step >= 0; step--) {
         await page.keyboard.press('Control+z');
         await expect.poll(items, { message: `undo to state ${step}` }).toBe(states[step]);
-        await expectToast(page, 'Rückgängig gemacht');
+        await expectToast(page, 'Undone');
       }
       // The stack is empty: the message, and the undo button is disabled.
       await page.keyboard.press('Control+z');
-      await expectToast(page, 'Nichts zum Rückgängigmachen');
-      await expect(page.getByRole('button', { name: 'Rückgängig (Ctrl+Z)' })).toBeDisabled();
+      await expectToast(page, 'Nothing to undo');
+      await expect(page.getByRole('button', { name: 'Undo (Ctrl+Z)' })).toBeDisabled();
       // Redo goes forward again (Ctrl+Shift+Z and Ctrl+Y).
       await page.keyboard.press('Control+Shift+z');
       await expect.poll(items).toBe(states[1]);
-      await expectToast(page, 'Wiederholt');
+      await expectToast(page, 'Redone');
       await page.keyboard.press('Control+y');
       await expect.poll(items).toBe(states[2]);
       // Redo once more, then a new edit clears the redo stack.
       await page.keyboard.press('Control+Shift+z');
       await expect.poll(items).toBe(states[3]);
-      await sourceRow(page, /^Auswählen: K1 /).click();
+      await sourceRow(page, /^Select: K1 /).click();
       await field(page, 'x').fill('123');
       await field(page, 'x').blur();
       await expect.poll(items).not.toBe(states[3]);
       await page.keyboard.press('Control+Shift+z');
-      await expectToast(page, 'Nichts zum Wiederholen');
+      await expectToast(page, 'Nothing to redo');
     },
   );
 
@@ -1052,39 +1052,39 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await production.seed([...SCENES]);
       const [sceneA] = production.sceneIds as [string, string, string];
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_limit1', one!.sourceId(), { x: 400, y: 300, w: 600, h: 338 }),
       ]);
       await regie.waitForConvergence(production.id);
-      await regie.transitionOption('Schnitt').click();
+      await regie.transitionOption('Cut').click();
       const space = await canvasSpace(page);
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 400, y: 300, w: 600, h: 338 })) as [number, number]),
       );
-      await expect(inspectorTitle(page)).toHaveText('Element');
+      await expect(inspectorTitle(page)).toHaveText('Item');
       const x = async () => (await getScene(api, production, sceneA)).items[0]!.x;
 
       for (let index = 0; index < 65; index++) await page.keyboard.press('ArrowRight');
       await expect.poll(x, { timeout: 20_000 }).toBe(465);
       for (let index = 0; index < 70; index++) await page.keyboard.press('Control+z');
       await expect.poll(x, { message: 'only the last 60 edits revert', timeout: 20_000 }).toBe(405);
-      await expectToast(page, 'Nichts zum Rückgängigmachen');
+      await expectToast(page, 'Nothing to undo');
 
       // Undo is per scene: an edit in scene A, then scene B becomes the edit scene; Ctrl+Z there changes nothing in A.
       await page.keyboard.press('Shift+ArrowDown');
       await expect
         .poll(async () => (await getScene(api, production, sceneA)).items[0]!.y)
         .toBe(310);
-      await regie.clickScene('Szene B');
-      await expect(regie.scene('Szene B')).toHaveAttribute('aria-pressed', 'true');
+      await regie.clickScene('Scene B');
+      await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('Control+z');
-      await expectToast(page, 'Nichts zum Rückgängigmachen');
+      await expectToast(page, 'Nothing to undo');
       expect((await getScene(api, production, sceneA)).items[0]!.y, 'scene A is untouched').toBe(
         310,
       );
-      await regie.clickScene('Szene A');
-      await expect(regie.scene('Szene A')).toHaveAttribute('aria-pressed', 'true');
+      await regie.clickScene('Scene A');
+      await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('Control+z');
       await expect
         .poll(async () => (await getScene(api, production, sceneA)).items[0]!.y, {
@@ -1096,21 +1096,21 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await page.reload();
       await regie.waitReady();
       await page.keyboard.press('Control+z');
-      await expectToast(page, 'Nichts zum Rückgängigmachen');
+      await expectToast(page, 'Nothing to undo');
     },
   );
 
   test(
-    'E2E-SCENE-13 [regie] layers: «Nach vorne» / «Nach hinten» move one place, clamped at the ends; list, DOM order and the overlap pixels follow',
+    'E2E-SCENE-13 [regie] layers: “Bring forward” / “Send backward” move one place, clamped at the ends; list, DOM order and the overlap pixels follow',
     t.p1,
     async ({ regie, api, production }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
       const [red, green, blue] = await Promise.all([
-        uploadSolid(api, production, 'Rot', COLOR.red),
-        uploadSolid(api, production, 'Gruen', COLOR.green),
-        uploadSolid(api, production, 'Blau', COLOR.blue),
+        uploadSolid(api, production, 'Red', COLOR.red),
+        uploadSolid(api, production, 'Green', COLOR.green),
+        uploadSolid(api, production, 'Blue', COLOR.blue),
       ]);
       const scene = await replaceItems(api, production, sceneA, [
         item('itm_layera', red.id, { x: 100, y: 100, w: 600, h: 338 }),
@@ -1137,13 +1137,13 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await expect
         .poll(async () => (await colorAtOverlap()).blue, { message: 'blue is in front first' })
         .toBeGreaterThan(0.9);
-      await selectViaRow(page, /^Auswählen: M\d Gruen/);
-      const front = inspector(page).getByRole('button', { name: 'Nach vorne' });
-      const back = inspector(page).getByRole('button', { name: 'Nach hinten' });
+      await selectViaRow(page, /^Select: M\d Green/);
+      const front = inspector(page).getByRole('button', { name: 'Bring forward', exact: true });
+      const back = inspector(page).getByRole('button', { name: 'Send backward', exact: true });
       await front.click();
       await expect.poll(order).toEqual(['a', 'c', 'b']);
       await expect(front, 'at the front the button is disabled').toBeDisabled();
-      // The Quellen list shows the front element first.
+      // The Sources list shows the front element first.
       await expect
         .poll(() =>
           sourcesDock(page)
@@ -1152,7 +1152,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
               rows.map((row) => row.getAttribute('aria-label')?.split(' ').pop()),
             ),
         )
-        .toEqual(['Gruen', 'Blau', 'Rot']);
+        .toEqual(['Green', 'Blue', 'Red']);
       await expect
         .poll(async () =>
           (await renderedItems(page, 'program')).map((entry) => `${entry.id.slice(-1)}${entry.z}`),
@@ -1178,7 +1178,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one, two] = await phones(pairContext, ['Handy Eins', 'Handy Zwei']);
+      const [one, two] = await phones(pairContext, ['Phone One', 'Phone Two']);
       await replaceItems(api, production, sceneA, [
         item('itm_hideone', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
         item('itm_hidetwo', two!.sourceId(), { x: 1000, y: 500, w: 500, h: 281 }),
@@ -1199,9 +1199,9 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .poll(overall, { message: 'K1 is in the program scene of a live broadcast' })
           .toBe('program');
 
-        const eye = page.getByRole('button', { name: 'Ausblenden: Handy Eins' });
+        const eye = page.getByRole('button', { name: 'Hide: Phone One' });
         await eye.click();
-        await expect(page.getByRole('button', { name: 'Einblenden: Handy Eins' })).toHaveAttribute(
+        await expect(page.getByRole('button', { name: 'Show: Phone One' })).toHaveAttribute(
           'aria-pressed',
           'false',
         );
@@ -1229,16 +1229,16 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         ).toHaveCount(0);
         // The row is greyed and not selectable.
         const hiddenRow = sourcesDock(page).getByRole('button', {
-          name: 'Auswählen: K1 Handy Eins',
+          name: 'Select: K1 Phone One',
         });
         await expect(hiddenRow).toHaveAttribute('aria-disabled', 'true');
         await hiddenRow.click({ force: true });
-        await expect(inspectorTitle(page)).toHaveText('Szene');
+        await expect(inspectorTitle(page)).toHaveText('Scene');
         await expect(
-          operatorB.page.getByRole('button', { name: 'Einblenden: Handy Eins' }),
+          operatorB.page.getByRole('button', { name: 'Show: Phone One' }),
           'the other operator sees it hidden',
         ).toBeVisible({ timeout: 2000 });
-        await page.getByRole('button', { name: 'Einblenden: Handy Eins' }).click();
+        await page.getByRole('button', { name: 'Show: Phone One' }).click();
         await expect.poll(overall).toBe('program');
         await expect
           .poll(
@@ -1250,15 +1250,15 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .toBe(true);
 
         // Lock K2: selectable, but no drag, no nudge; the inspector still works.
-        await page.getByRole('button', { name: 'Sperren: Handy Zwei' }).click();
-        await expect(page.getByRole('button', { name: 'Entsperren: Handy Zwei' })).toHaveAttribute(
+        await page.getByRole('button', { name: 'Lock: Phone Two' }).click();
+        await expect(page.getByRole('button', { name: 'Unlock: Phone Two' })).toHaveAttribute(
           'aria-pressed',
           'true',
         );
         await expect(
-          operatorB.page.getByRole('button', { name: 'Entsperren: Handy Zwei' }),
+          operatorB.page.getByRole('button', { name: 'Unlock: Phone Two' }),
         ).toBeVisible({ timeout: 2000 });
-        await selectViaRow(page, 'K2 Handy Zwei');
+        await selectViaRow(page, 'K2 Phone Two');
         const box = overlayOf(page).locator('.c-edit-box[data-item-id="itm_hidetwo"]');
         await expect(box).toHaveClass(/is-locked/);
         const space = await canvasSpace(page);
@@ -1293,16 +1293,16 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
   );
 
   test(
-    'E2E-SCENE-15 [regie] «Aus Szene entfernen» with the undo toast: the element returns with the same id, position and z-order',
+    'E2E-SCENE-15 [regie] “Remove from scene” with the undo toast: the element returns with the same id, position and z-order',
     t.p1,
     async ({ regie, api, production }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
       const [red, green, blue] = await Promise.all([
-        uploadSolid(api, production, 'Rot', COLOR.red),
-        uploadSolid(api, production, 'Gruen', COLOR.green),
-        uploadSolid(api, production, 'Blau', COLOR.blue),
+        uploadSolid(api, production, 'Red', COLOR.red),
+        uploadSolid(api, production, 'Green', COLOR.green),
+        uploadSolid(api, production, 'Blue', COLOR.blue),
       ]);
       const before = await replaceItems(api, production, sceneA, [
         item('itm_removea', red.id, { x: 100, y: 100, w: 600, h: 338 }),
@@ -1310,9 +1310,9 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         item('itm_removec', blue.id, { x: 500, y: 300, w: 600, h: 338 }),
       ]);
       await regie.waitForConvergence(production.id);
-      await selectViaRow(page, /^Auswählen: M\d Gruen/);
-      await inspector(page).getByRole('button', { name: 'Aus Szene entfernen' }).click();
-      await expectToast(page, /M\d aus «Szene A» entfernt/);
+      await selectViaRow(page, /^Select: M\d Green/);
+      await inspector(page).getByRole('button', { name: 'Remove from scene' }).click();
+      await expectToast(page, /M\d removed from “Scene A”/);
       await expectScene(
         api,
         production,
@@ -1320,8 +1320,8 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         (scene) => scene.items.length === 2,
         'the element is gone',
       );
-      await expect(inspectorTitle(page)).toHaveText('Szene');
-      await toastOf(page).getByRole('button', { name: 'Rückgängig' }).click();
+      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await toastOf(page).getByRole('button', { name: 'Undo' }).click();
       const after = await expectScene(
         api,
         production,
@@ -1334,25 +1334,25 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
   );
 
   test(
-    'E2E-SCENE-16 [regie] fit, mirror, corner radius and «Bei Ausfall» reach the API, the Program monitor and the output',
+    'E2E-SCENE-16 [regie] fit, mirror, corner radius and “On failure” reach the API, the Program monitor and the output',
     t.p1,
     async ({ regie, openOutput, api, production }) => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const image = await uploadSolid(api, production, 'Rot', COLOR.red);
+      const image = await uploadSolid(api, production, 'Red', COLOR.red);
       await replaceItems(api, production, sceneA, [
         item('itm_look1', image.id, { x: 300, y: 200, w: 600, h: 338 }, { radius: 12 }),
       ]);
       await regie.waitForConvergence(production.id);
       const output = await openOutput(production);
       await output.stage();
-      await selectViaRow(page, /^Auswählen: M1 Rot/);
+      await selectViaRow(page, /^Select: M1 Red/);
       const itemApi = async () => (await getScene(api, production, sceneA)).items[0]!;
       const outputItem = async () =>
         (await renderedItems(output.page, '#output')).find((entry) => entry.id === 'itm_look1');
 
-      await inspector(page).getByRole('button', { name: 'Ganz zeigen' }).click();
+      await inspector(page).getByRole('button', { name: 'Show all' }).click();
       await expectScene(
         api,
         production,
@@ -1362,7 +1362,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       );
       await expect.poll(async () => (await renderedItems(page, 'program'))[0]!.fit).toBe('contain');
       await expect.poll(async () => (await outputItem())?.fit).toBe('contain');
-      await inspector(page).getByRole('button', { name: 'Füllen' }).click();
+      await inspector(page).getByRole('button', { name: 'Fill' }).click();
       await expectScene(
         api,
         production,
@@ -1372,11 +1372,11 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
       );
       await expect.poll(async () => (await outputItem())?.fit).toBe('cover');
 
-      await inspector(page).getByLabel('Spiegeln').check();
+      await inspector(page).getByLabel('Mirror').check();
       await expectScene(api, production, sceneA, (scene) => scene.items[0]!.mirror, 'mirror');
       await expect.poll(async () => (await renderedItems(page, 'program'))[0]!.mirrored).toBe(true);
       await expect.poll(async () => (await outputItem())?.mirrored).toBe(true);
-      await inspector(page).getByLabel('Spiegeln').uncheck();
+      await inspector(page).getByLabel('Mirror').uncheck();
       await expect.poll(async () => (await outputItem())?.mirrored).toBe(false);
 
       for (const radius of [0, 24, 200]) {
@@ -1397,13 +1397,13 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .toBe(radius === 0 ? '' : `${radius}px`);
       }
 
-      const hold = inspector(page).getByLabel('Bei Ausfall');
+      const hold = inspector(page).getByLabel('On failure');
       await expect(hold.locator('option')).toHaveText([
-        'Standbild 3 s, dann abgedunkelt',
-        'Standbild 10 s, dann abgedunkelt',
-        'Standbild halten',
+        'Freeze frame 3 s, then dim',
+        'Freeze frame 10 s, then dim',
+        'Hold freeze frame',
       ]);
-      await hold.selectOption({ label: 'Standbild 10 s, dann abgedunkelt' });
+      await hold.selectOption({ label: 'Freeze frame 10 s, then dim' });
       expect(
         (
           await expectScene(
@@ -1415,7 +1415,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           )
         ).items[0]!.onLost.holdMs,
       ).toBe(10000);
-      await hold.selectOption({ label: 'Standbild halten' });
+      await hold.selectOption({ label: 'Hold freeze frame' });
       await expectScene(
         api,
         production,
@@ -1423,7 +1423,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         (scene) => scene.items[0]!.onLost.holdMs === null,
         'holdMs null (hold the frame)',
       );
-      await hold.selectOption({ label: 'Standbild 3 s, dann abgedunkelt' });
+      await hold.selectOption({ label: 'Freeze frame 3 s, then dim' });
       await expectScene(
         api,
         production,
@@ -1445,7 +1445,7 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const pageA = regie.page;
-      const [one, two] = await phones(pairContext, ['Handy Eins', 'Handy Zwei']);
+      const [one, two] = await phones(pairContext, ['Phone One', 'Phone Two']);
       await replaceItems(api, production, sceneA, [
         item('itm_twoone', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
         item('itm_twotwo', two!.sourceId(), { x: 1100, y: 500, w: 500, h: 281 }),
@@ -1459,7 +1459,7 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
 
       // A drags element 1 while B types a new X for element 2.
       const spaceA = await canvasSpace(pageA);
-      await selectViaRow(pageB, 'K2 Handy Zwei');
+      await selectViaRow(pageB, 'K2 Phone Two');
       await pageA.mouse.click(
         ...(Object.values(centerOf(spaceA, { x: 200, y: 150, w: 600, h: 338 })) as [
           number,
@@ -1499,7 +1499,7 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
       }
 
       // The same element: A types 100, B types 200 at the same moment.
-      await selectViaRow(pageA, 'K2 Handy Zwei');
+      await selectViaRow(pageA, 'K2 Phone Two');
       await Promise.all([
         (async () => {
           await field(pageA, 'x').fill('100');
@@ -1544,7 +1544,7 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
       await production.seed([...SCENES]);
       const sceneA = production.sceneIds[0]!;
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_coalesce', one!.sourceId(), { x: 100, y: 200, w: 500, h: 281 }),
       ]);
@@ -1621,13 +1621,13 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
   );
 
   test(
-    'E2E-SCENE-19 [regie] live scene: Studio-Modus with preview = program locks editing (banner, inert overlay, disabled controls, toast); without it a drag is live and the output follows',
+    'E2E-SCENE-19 [regie] live scene: Studio Mode with preview = program locks editing (banner, inert overlay, disabled controls, toast); without it a drag is live and the output follows',
     t.p1,
     async ({ regie, openOutput, api, production, pairContext }) => {
       await production.seed([...SCENES]);
       const [sceneA] = production.sceneIds as [string, string, string];
       const page = regie.page;
-      const [one] = await phones(pairContext, ['Handy Eins']);
+      const [one] = await phones(pairContext, ['Phone One']);
       await replaceItems(api, production, sceneA, [
         item('itm_live1', one!.sourceId(), { x: 200, y: 150, w: 600, h: 338 }),
       ]);
@@ -1638,33 +1638,33 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
         (await renderedItems(output.page, '#output')).find((entry) => entry.id === 'itm_live1');
       await expect.poll(async () => (await outputItem())?.x).toBe(200);
 
-      // Studio-Modus with the program scene in the preview: locked.
+      // Studio Mode with the program scene in the preview: locked.
       await regie.setStudioMode(true);
-      await regie.clickScene('Szene A');
+      await regie.clickScene('Scene A');
       const preview = monitorOf(page, 'preview');
       await expect(preview.locator('.c-monitor__live-note')).toHaveText(
-        'Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.',
+        'This scene is live right now. Editing is possible once another scene is on Program.',
       );
       await expect(overlayOf(page, 'preview')).toHaveClass(/is-locked/);
       await expect(
-        inspector(page).getByRole('button', { name: 'Vollbild', exact: true }),
+        inspector(page).getByRole('button', { name: 'Full screen', exact: true }),
       ).toBeDisabled();
-      await expect(sourcesDock(page).getByRole('button', { name: /^Quelle$/ })).toBeVisible();
+      await expect(sourcesDock(page).getByRole('button', { name: /^Source$/ })).toBeVisible();
       const space = await canvasSpace(page, 'preview');
       await page.mouse.click(
         ...(Object.values(centerOf(space, { x: 200, y: 150, w: 600, h: 338 })) as [number, number]),
       );
-      await expectToast(page, 'Diese Szene ist live. Erst eine andere Szene ins Program schalten.');
+      await expectToast(page, 'This scene is live. Switch another scene to Program first.');
       await page.keyboard.press('ArrowRight');
       await sleep(300);
       expect((await getScene(api, production, sceneA)).items[0]!.x, 'locked: nothing changed').toBe(
         200,
       );
 
-      // Without Studio-Modus the Program monitor edits live: «Änderungen gehen sofort live», and the output follows the drag.
+      // Without Studio Mode the Program monitor edits live: “Changes go live immediately”, and the output follows the drag.
       await regie.setStudioMode(false);
       await expect(monitorOf(page, 'program').locator('.c-monitor__live-edit')).toHaveText(
-        'Änderungen gehen sofort live',
+        'Changes go live immediately',
       );
       const space2 = await canvasSpace(page, 'program');
       await page.mouse.click(

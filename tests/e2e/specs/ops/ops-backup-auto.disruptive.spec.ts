@@ -238,7 +238,7 @@ test.describe('OPS automatic backups', () => {
     await startBackup({ BACKUP_RCLONE_REMOTE: `offsite:${TARGET}`, BACKUP_RCLONE_CONFIG: config, BACKUP_AGE_RECIPIENT: recipient });
 
     const samples = await generateSamples();
-    const uploaded = await api.uploadAsset(production.id, { fileName: 'bild.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
+    const uploaded = await api.uploadAsset(production.id, { fileName: 'image.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
     expect(uploaded.status).toBe(201);
     const first = await runJob();
     expect(first.code, first.output.slice(-1500)).toBe(0);
@@ -297,9 +297,9 @@ test.describe('OPS automatic backups', () => {
     test.setTimeout(900_000);
     await startBackup();
     const samples = await generateSamples();
-    const uploaded = await api.uploadAsset(production.id, { fileName: 'bild.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
+    const uploaded = await api.uploadAsset(production.id, { fileName: 'image.jpg', contentType: 'image/jpeg', data: samples.photoJpg });
     expect(uploaded.status).toBe(201);
-    await production.seed(['Eins', 'Zwei']);
+    await production.seed(['One', 'Two']);
     expect((await runJob()).code).toBe(0);
     const folder = (await completeBackups())[0]!;
     const copy = await copyOut(folder, true);

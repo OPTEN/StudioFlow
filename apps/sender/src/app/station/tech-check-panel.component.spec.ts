@@ -34,21 +34,6 @@ describe('TechCheckPanelComponent', () => {
     expect(element.querySelector('button.c-button--primary')?.textContent).toContain('Check again');
   });
 
-  it('follows a language switch without a new check', async () => {
-    const fixture = TestBed.createComponent(TechCheckPanelComponent);
-    fixture.componentRef.setInput('result', SLOW);
-    await fixture.whenStable();
-    const element = fixture.nativeElement as HTMLElement;
-    const select = element.querySelector('select') as HTMLSelectElement;
-    select.value = 'de-CH';
-    select.dispatchEvent(new Event('change'));
-    await fixture.whenStable();
-    expect(element.querySelector('.c-check__note')?.textContent).toBe(
-      'Upload: nur 2,8 Mbit/s (empfohlen ab 6 Mbit/s).',
-    );
-    expect(element.querySelector('h2')?.textContent).toContain('Technik-Check');
-  });
-
   it('offers the language select at the bottom of the sheet', () => {
     expect(render(null).querySelector('sf-language-select select')).not.toBeNull();
   });
@@ -56,8 +41,8 @@ describe('TechCheckPanelComponent', () => {
 
 describe('techCheckNote', () => {
   it('falls back to the note of a check stored by an older version', () => {
-    const stored: TechCheckResult = { ...SLOW, note: 'Upload: nur 2,8 Mbit/s.', problems: [] };
-    expect(techCheckNote(stored)).toBe('Upload: nur 2,8 Mbit/s.');
+    const stored: TechCheckResult = { ...SLOW, note: 'Upload: only 2.8 Mbit/s.', problems: [] };
+    expect(techCheckNote(stored)).toBe('Upload: only 2.8 Mbit/s.');
     expect(techCheckNote(null)).toBeNull();
     expect(techCheckNote(TECH_CHECK_OK)).toBeNull();
   });

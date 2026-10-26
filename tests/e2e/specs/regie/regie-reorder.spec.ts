@@ -23,7 +23,7 @@ import type { AdminApi } from '../../support/api';
  * rows, `.c-sortable__handle`), not texts, so the specs hold in every language; the live region is read in English.
  */
 
-test.use({ viewport: { width: 1440, height: 900 }, locale: 'en-GB' });
+test.use({ viewport: { width: 1440, height: 900 } });
 
 const SCENE_NAMES = ['Scene A', 'Scene B', 'Scene C'];
 /** Inside all three elements (red 100/100, green 300/200, blue 500/300, each 600 x 338). */

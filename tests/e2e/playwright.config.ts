@@ -17,6 +17,9 @@ const baseURL = process.env['E2E_BASE_URL'] ?? originFor('localhost', SETTINGS.h
 /** Specs that need their own stack mode never run in the generic projects. */
 const SPECIAL = ['**/*.short-ttl.spec.ts', '**/*.disruptive.spec.ts', '**/*.firefox.spec.ts', '**/*.webkit.spec.ts', '**/*.mobile.spec.ts', '**/*.soak.spec.ts'];
 
+/** Specs that run the product in German: only the `i18n` project (locale `de-CH`) runs them. */
+const GERMAN = ['**/specs/i18n/**', '**/*.de.spec.ts'];
+
 const chromiumUse = {
   launchOptions: { args: CHROMIUM_ARGS },
   permissions: ['clipboard-read', 'clipboard-write', 'camera', 'microphone'],
@@ -32,14 +35,19 @@ const projects: Project[] = [
   {
     name: 'smoke',
     grep: /@smoke/,
-    testIgnore: SPECIAL,
+    testIgnore: [...SPECIAL, ...GERMAN],
     use: { ...devices['Desktop Chrome'], ...chromiumUse },
   },
   {
     name: 'desktop-chromium',
     grepInvert: /@smoke/,
-    testIgnore: SPECIAL,
+    testIgnore: [...SPECIAL, ...GERMAN],
     use: { ...devices['Desktop Chrome'], ...chromiumUse },
+  },
+  {
+    name: 'i18n',
+    testMatch: GERMAN,
+    use: { ...devices['Desktop Chrome'], ...chromiumUse, locale: 'de-CH' },
   },
   {
     name: 'short-ttl',
@@ -106,7 +114,7 @@ export default defineConfig({
   use: {
     baseURL,
     ignoreHTTPSErrors: true,
-    locale: 'de-CH',
+    locale: 'en-US',
     timezoneId: 'Europe/Zurich',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',

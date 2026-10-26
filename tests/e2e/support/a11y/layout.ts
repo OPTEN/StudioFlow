@@ -126,7 +126,7 @@ export interface Overlap {
 
 /**
  * Pairs of interactive controls whose boxes intersect (more than `tolerance` px² of overlap) inside the scope. A
- * control inside another one (descendant) and the by-design pairs are skipped: the scene-row «Aktionen» button sits on
+ * control inside another one (descendant) and the by-design pairs are skipped: the scene-row “Actions for scene” button sits on
  * the row, a splitter's widened hit area overlaps its neighbours, labels wrap their inputs.
  */
 export async function findOverlaps(page: Page, scope: string, options: { tolerance?: number } = {}): Promise<Overlap[]> {
@@ -137,7 +137,7 @@ export async function findOverlaps(page: Page, scope: string, options: { toleran
       const selector = 'button, a[href], input, select, textarea, [role=switch], [role=tab], [role=menuitem], [role=checkbox], summary';
       const describe = (element: Element) => {
         const name = element.getAttribute('aria-label') || (element as HTMLElement).innerText?.replace(/\s+/g, ' ').trim() || element.getAttribute('title') || element.className;
-        return `${element.tagName.toLowerCase()} «${String(name).slice(0, 40)}»`;
+        return `${element.tagName.toLowerCase()} “${String(name).slice(0, 40)}”`;
       };
       const visible = Array.from(root.querySelectorAll(selector)).filter((element) => {
         const style = getComputedStyle(element);

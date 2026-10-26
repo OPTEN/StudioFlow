@@ -22,12 +22,12 @@ import {
 /**
  * Regression tests of the two GitHub issues found in the Regie.
  *
- *  - Issue #1, E2E-SCENE-25: with the camera added before the screen, applying «Bild-in-Bild» left the small picture
+ *  - Issue #1, E2E-SCENE-25: with the camera added before the screen, applying “Picture in picture” left the small picture
  *    behind the full-canvas one (the template did not re-order the elements). The item order is the z-order (spec 4.3), so
  *    the API order must put the full-canvas element first and the small picture must be visible in front on the Program
  *    monitor and on the output page (pixel check of the bottom-right region).
- *  - Issue #2, E2E-SCENE-26: after «Vollbild» the element fills the whole editable monitor, so the scene inspector with the
- *    templates could not be reached again (nothing on the monitor was left to click). The ways back: «Zur Szene», a second
+ *  - Issue #2, E2E-SCENE-26: after “Full screen” the element fills the whole editable monitor, so the scene inspector with the
+ *    templates could not be reached again (nothing on the monitor was left to click). The ways back: “Back to scene”, a second
  *    click on the selected source row, a click on the current scene, a click beside the monitor, Escape.
  */
 
@@ -35,7 +35,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 test.describe('REGIE regressions', () => {
   test(
-    'E2E-SCENE-25 [issue #1] camera added before the screen, then «Bild-in-Bild»: the API puts the full-canvas element first and the small camera picture is in front on the Program monitor and on the output',
+    'E2E-SCENE-25 [issue #1] camera added before the screen, then “Picture in picture”: the API puts the full-canvas element first and the small camera picture is in front on the Program monitor and on the output',
     t.p0,
     async ({ regie, openPhone, openLaptop, openOutput, api, production, pairContext }) => {
       test.setTimeout(180_000);
@@ -45,7 +45,7 @@ test.describe('REGIE regressions', () => {
 
       // A webcam with a moving gradient (never red) and a laptop screen that is flat red (S1, #e5484d).
       const phone = await openPhone({ profile: 'desktop', camera: 'stamp' });
-      const camera = await pairViaApi(pairContext, phone, { name: 'Kamera Eins' });
+      const camera = await pairViaApi(pairContext, phone, { name: 'Camera One' });
       await phone.waitForCamera('live');
       const laptop = await openLaptop();
       const screen = await pairViaApi(pairContext, laptop, { name: 'Laptop Lea' });
@@ -58,13 +58,13 @@ test.describe('REGIE regressions', () => {
       // Camera first, then the screen: the order that put the camera behind the screen.
       const add = async (code: string) => {
         await sourcesDock(page)
-          .getByRole('button', { name: /^Quelle$/ })
+          .getByRole('button', { name: /^Source$/ })
           .click();
         await page
-          .getByRole('menu', { name: 'Quelle hinzufügen' })
+          .getByRole('menu', { name: 'Add source' })
           .getByRole('menuitem', { name: new RegExp(code) })
           .click();
-        await expectToast(page, `${code} in «Szene A» eingefügt`);
+        await expectToast(page, `${code} added to “Scene A”`);
       };
       await add('K1');
       await expectScene(
@@ -88,9 +88,9 @@ test.describe('REGIE regressions', () => {
       ).toEqual([camera.sourceId(), screen.sourceId()]);
 
       await page.keyboard.press('Escape'); // the new element is selected: back to the scene view
-      await expect(inspectorTitle(page)).toHaveText('Szene');
-      await inspector(page).getByRole('button', { name: 'Bild-in-Bild', exact: true }).click();
-      await expectToast(page, 'Vorlage «Bild-in-Bild» angewendet');
+      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await inspector(page).getByRole('button', { name: 'Picture in picture', exact: true }).click();
+      await expectToast(page, 'Template “Picture in picture” applied');
 
       // API: the full-canvas element (the screen) is first, the small picture (the camera) last.
       const after = await expectScene(
@@ -179,7 +179,7 @@ test.describe('REGIE regressions', () => {
   );
 
   test(
-    'E2E-SCENE-26 [issue #2] «Vollbild» fills the editable monitor: «Zur Szene», a second click on the source row, a click on the current scene, a click beside the monitor and Escape all lead back to the scene inspector with the templates',
+    'E2E-SCENE-26 [issue #2] “Full screen” fills the editable monitor: “Back to scene”, a second click on the source row, a click on the current scene, a click beside the monitor and Escape all lead back to the scene inspector with the templates',
     t.p0,
     async ({ regie, api, production }) => {
       await production.seed([...SCENES]);
@@ -189,8 +189,8 @@ test.describe('REGIE regressions', () => {
       await addItems(api, production, sceneA, [image.id]);
       await regie.waitForConvergence(production.id);
 
-      // «Vollbild»: the element covers the whole editable screen (nothing is left to click on the monitor).
-      await inspector(page).getByRole('button', { name: 'Vollbild', exact: true }).click();
+      // “Full screen”: the element covers the whole editable screen (nothing is left to click on the monitor).
+      await inspector(page).getByRole('button', { name: 'Full screen', exact: true }).click();
       await expectScene(
         api,
         production,
@@ -198,22 +198,22 @@ test.describe('REGIE regressions', () => {
         (scene) => scene.items[0]!.w === 1920 && scene.items[0]!.h === 1080,
         'the element is full canvas',
       );
-      const row = sourcesDock(page).getByRole('button', { name: /^Auswählen: M\d Logo/ });
+      const row = sourcesDock(page).getByRole('button', { name: /^Select: M\d Logo/ });
       const overlay = overlayOf(page, 'program');
 
       const toSceneInspector = async (way: string) => {
         await expect(inspectorTitle(page), `${way}: the inspector shows the scene`).toHaveText(
-          'Szene',
+          'Scene',
           { timeout: 3000 },
         );
         await expect(
           inspector(page)
-            .getByRole('button', { name: 'Vorlage anwenden' })
-            .or(inspector(page).getByText('Vorlage anwenden')),
-          `${way}: «Vorlage anwenden»`,
+            .getByRole('button', { name: 'Apply template' })
+            .or(inspector(page).getByText('Apply template')),
+          `${way}: “Apply template”`,
         ).toBeVisible();
         await expect(
-          inspector(page).getByRole('button', { name: 'Nebeneinander', exact: true }),
+          inspector(page).getByRole('button', { name: 'Side by side', exact: true }),
           `${way}: the templates are there`,
         ).toBeEnabled();
       };
@@ -221,18 +221,18 @@ test.describe('REGIE regressions', () => {
         // The element fills the monitor: a click anywhere on the editable screen selects it.
         const box = (await overlay.boundingBox())!;
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        await expect(inspectorTitle(page)).toHaveText('Element');
+        await expect(inspectorTitle(page)).toHaveText('Item');
         await expect(row).toHaveAttribute('aria-pressed', 'true');
       };
 
-      // 1. «Zur Szene» in the dock header.
+      // 1. “Back to scene” in the dock header.
       await selectElement();
       await inspector(page)
-        .getByRole('button', { name: 'Auswahl aufheben, zurück zur Szene' })
+        .getByRole('button', { name: 'Clear selection, back to scene' })
         .click();
-      await toSceneInspector('«Zur Szene»');
+      await toSceneInspector('“Back to scene”');
       await expect(
-        inspector(page).getByRole('button', { name: 'Auswahl aufheben, zurück zur Szene' }),
+        inspector(page).getByRole('button', { name: 'Clear selection, back to scene' }),
       ).toHaveCount(0);
 
       // 2. A second click on the selected source row.
@@ -240,21 +240,21 @@ test.describe('REGIE regressions', () => {
       await row.click();
       await toSceneInspector('second click on the source row');
 
-      // 3. A click on the current scene in Szenen.
+      // 3. A click on the current scene in Scenes.
       await selectElement();
-      await regie.scene('Szene A').click();
+      await regie.scene('Scene A').click();
       await toSceneInspector('click on the current scene');
-      await expect(regie.scene('Szene A'), 'still the live scene').toHaveAttribute(
+      await expect(regie.scene('Scene A'), 'still the live scene').toHaveAttribute(
         'aria-pressed',
         'true',
       );
 
-      // 4. A click beside the monitor (the free stage area, here the quiet «Preview aus» space and the monitor header).
+      // 4. A click beside the monitor (the free stage area, here the quiet “Preview off” space and the monitor header).
       await selectElement();
       const preview = page.locator('.c-stage__preview-off');
       await expect(preview).toBeVisible();
       await preview.click();
-      await toSceneInspector('click beside the monitor (Preview aus space)');
+      await toSceneInspector('click beside the monitor (Preview off space)');
       await selectElement();
       await monitorOf(page, 'program').locator('.c-monitor__head').click();
       await toSceneInspector('click on the monitor header');
@@ -264,9 +264,9 @@ test.describe('REGIE regressions', () => {
       await page.keyboard.press('Escape');
       await toSceneInspector('Escape');
 
-      // And from there the templates work again: «Nebeneinander» applies.
-      await inspector(page).getByRole('button', { name: 'Nebeneinander', exact: true }).click();
-      await expectToast(page, 'Vorlage «Nebeneinander» angewendet');
+      // And from there the templates work again: “Side by side” applies.
+      await inspector(page).getByRole('button', { name: 'Side by side', exact: true }).click();
+      await expectToast(page, 'Template “Side by side” applied');
       const scene = await getScene(api, production, sceneA);
       expect([scene.items[0]!.x, scene.items[0]!.y, scene.items[0]!.w, scene.items[0]!.h]).toEqual([
         40, 287, 900, 506,

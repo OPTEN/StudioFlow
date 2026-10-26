@@ -130,7 +130,7 @@ export async function describeActiveSettled(page: Page, timeoutMs = 700): Promis
 
 /** One line for a failure message or a report. */
 export function labelOf(info: FocusInfo | null): string {
-  return info ? `${info.role} «${info.name.slice(0, 60)}» (${info.area})` : 'nothing (document)';
+  return info ? `${info.role} “${info.name.slice(0, 60)}” (${info.area})` : 'nothing (document)';
 }
 
 export interface TabStop {

@@ -110,7 +110,7 @@ test.describe('OPS compose file', () => {
 
   const { required } = composeVariables();
   for (const [name, message] of required) {
-    test(`E2E-OPS-01 [static] ${name} missing: docker compose config fails fast with the German hint`, t.p1, async () => {
+    test(`E2E-OPS-01 [static] ${name} missing: docker compose config fails fast with the English hint`, t.p1, async () => {
       const env = parseEnvFile(ENV_FILE);
       delete env[name];
       const dir = fs.mkdtempSync(path.join(path.dirname(ENV_FILE), '.ops-env-'));
@@ -296,14 +296,14 @@ test.describe('OPS setup.sh', () => {
     const box = sandbox();
     fs.mkdirSync(box.path('legacy'));
     const file = box.path('legacy', '.env');
-    fs.writeFileSync(file, ['STUDIOFLOW_DOMAIN=localhost', 'ADMIN__USERNAME=regie', 'ADMIN__PASSWORD=Altes-Passwort-2026', 'ADMIN__PASSWORDHASH=AQAAAAEAACcQAAAAEExample', ''].join('\n'));
+    fs.writeFileSync(file, ['STUDIOFLOW_DOMAIN=localhost', 'ADMIN__USERNAME=regie', 'ADMIN__PASSWORD=Old-Password-2026', 'ADMIN__PASSWORDHASH=AQAAAAEAACcQAAAAEExample', ''].join('\n'));
     const result = await box.run('setup.sh', ['--non-interactive', '--domain', 'localhost', '--node-ip', '127.0.0.1', '--tls-mode', 'internal', '--force', '--env-file', file]);
     expect(result.code, result.output.slice(-1500)).toBe(0);
     const text = fs.readFileSync(file, 'utf8');
     expect(text, 'the old account settings are gone').not.toMatch(/ADMIN__/);
-    expect(text, 'the old password is gone').not.toContain('Altes-Passwort-2026');
+    expect(text, 'the old password is gone').not.toContain('Old-Password-2026');
     expect(result.stdout, 'the notice says they are no longer used').toMatch(/no longer used/);
-    expect(result.output, 'the old password is never printed').not.toContain('Altes-Passwort-2026');
+    expect(result.output, 'the old password is never printed').not.toContain('Old-Password-2026');
   });
 
   test('E2E-OPS-02 [setup.sh] the options of older versions that asked for a password are unknown now', t.p1, async () => {

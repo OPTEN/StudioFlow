@@ -75,7 +75,7 @@ test.describe('DEV sender, orientation', () => {
             const overflow = await readOverflow(page);
             const need = overflow.scroll.height > overflow.viewport.height;
             notes.push(`form ${orientation}: document ${overflow.scroll.height} px high in ${overflow.viewport.height} px (${need ? 'scrolls' : 'fits'})`);
-            // The kind switch and «Weiter» are reachable, with a scroll where the page is higher than the viewport.
+            // The kind switch and “Continue” are reachable, with a scroll where the page is higher than the viewport.
             for (const selector of ['.c-segmented__options', 'button[type=submit]']) {
               await page.locator(selector).first().scrollIntoViewIfNeeded();
               expect((await reachable(page, selector)).hit, `${selector} reachable (${orientation})`).toBe(true);
@@ -93,7 +93,7 @@ test.describe('DEV sender, orientation', () => {
     t.p0,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
-      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Handy Eins', { profile: 'pixel7', context: { viewport: portrait } });
+      const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7', context: { viewport: portrait } });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await api.startBroadcast(production.id);
       await k1.phone.waitForTally('program');
@@ -188,7 +188,7 @@ test.describe('DEV sender, orientation', () => {
       const page = await context.newPage();
       const invite = (await api.getPhoneInvite(production.id)).body;
       await page.goto('/join/');
-      await expect(page.getByRole('radio', { name: 'Handy (Kamera)' })).toBeChecked();
+      await expect(page.getByRole('radio', { name: 'Phone (camera)' })).toBeChecked();
       for (const [orientation, size] of [['portrait', { width: 810, height: 1080 }], ['landscape', { width: 1080, height: 810 }]] as const) {
         await page.setViewportSize(size);
         await sleep(250);
@@ -232,7 +232,7 @@ test.describe('DEV sender, 320 px and tap targets', () => {
             const box = element.getBoundingClientRect();
             return { text: element.textContent?.trim() ?? '', fontSize: style.fontSize, letterSpacing: style.letterSpacing, family: style.fontFamily, height: box.height, width: box.width, lineHeight: parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2 };
           });
-          expect(code.text, 'check code «47 12»').toMatch(/^\d{2} \d{2}$/);
+          expect(code.text, 'check code “47 12”').toMatch(/^\d{2} \d{2}$/);
           expect(parseFloat(code.fontSize), 'mono, 24 px at least (DESIGN: Mono pairing code)').toBeGreaterThanOrEqual(24);
           expect(parseFloat(code.letterSpacing) / parseFloat(code.fontSize), 'letter spacing 0.14 em').toBeCloseTo(0.14, 2);
           expect(code.family.toLowerCase(), 'monospace').toContain('mono');
@@ -243,7 +243,7 @@ test.describe('DEV sender, 320 px and tap targets', () => {
           for (const button of await page.locator('main .c-button--block').all()) {
             const box = (await button.boundingBox())!;
             const column = (await button.locator('xpath=..').boundingBox())!;
-            expect(box.width, `${label}: full-width button «${(await button.textContent())?.trim()}»`).toBeGreaterThanOrEqual(column.width - 2);
+            expect(box.width, `${label}: full-width button “${(await button.textContent())?.trim()}”`).toBeGreaterThanOrEqual(column.width - 2);
           }
         }
         if (label === 'banner' || label === 'station-banner') {
@@ -283,10 +283,10 @@ test.describe('DEV sender, 320 px and tap targets', () => {
           const small = smallTargets(targets);
           const crowded = crowdedTargets(targets);
           const buttons = targets.filter((target) => target.tag === 'button' && target.touchAction !== 'manipulation');
-          report[label] = { targets: targets.length, small: small.map((target) => `${target.tag} «${target.label}» ${target.width}x${target.height}`), crowded: crowded.map(([a, b, gap]) => `«${a.label}» | «${b.label}» ${gap}px`), notManipulation: buttons.map((target) => target.label) };
-          expect(small.map((target) => `${target.tag} «${target.label}» ${target.width}x${target.height}`), `${label}: targets under 44 px`).toEqual([]);
+          report[label] = { targets: targets.length, small: small.map((target) => `${target.tag} “${target.label}” ${target.width}x${target.height}`), crowded: crowded.map(([a, b, gap]) => `“${a.label}” | “${b.label}” ${gap}px`), notManipulation: buttons.map((target) => target.label) };
+          expect(small.map((target) => `${target.tag} “${target.label}” ${target.width}x${target.height}`), `${label}: targets under 44 px`).toEqual([]);
           expect(buttons.map((target) => target.label), `${label}: buttons without touch-action: manipulation`).toEqual([]);
-          expect(crowded.map(([a, b, gap]) => `«${a.label}» | «${b.label}» ${gap}px`), `${label}: controls closer than 8 px`).toEqual([]);
+          expect(crowded.map(([a, b, gap]) => `“${a.label}” | “${b.label}” ${gap}px`), `${label}: controls closer than 8 px`).toEqual([]);
           const facts = await readTextFacts(page);
           expect(facts.viewportMeta, `${label}: the viewport can be zoomed`).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale\s*=\s*1(\.0)?\b/);
         };
@@ -301,7 +301,7 @@ test.describe('DEV sender, 320 px and tap targets', () => {
 
 test('E2E-DEV-18 [ui, sender] long text does not break the sender: a 60-character name, a 140-character message and an 80-character production name at 320 and 900 px', t.p2, async ({ regie, openPhone, openLaptop, api, production, pairContext }) => {
   test.setTimeout(300_000);
-  await api.updateProduction(production.id, { name: ('P'.repeat(10) + ' Produktion mit einem sehr langen Namen fuer die Probe am Freitag Abend im Studio').slice(0, 80) });
+  await api.updateProduction(production.id, { name: ('P'.repeat(10) + ' Production with a very long name for the rehearsal on Friday evening in the studio').slice(0, 80) });
   const sizes = [{ width: 320, height: 568 }, { width: 900, height: 700 }];
   for (const size of sizes) {
     await visitPhoneStates(env({ api, production, pairContext, openPhone, openLaptop }), async (label, page) => {

@@ -1,0 +1,31 @@
+import { TestBed } from '@angular/core/testing';
+import { msg } from '@studioflow/i18n';
+import type { TechCheckResult } from '@studioflow/media-client/device';
+import { TECH_CHECK_OK } from '../../testing/sender-fakes';
+import { TechCheckPanelComponent } from './tech-check-panel.component';
+
+const SLOW: TechCheckResult = {
+  ...TECH_CHECK_OK,
+  overall: 'warn',
+  bandwidth: 'warn',
+  uploadKbps: 2800,
+  note: 'Upload: only 2.8 Mbit/s (recommended from 6 Mbit/s).',
+  problems: [msg('media.techcheck.upload.slow', { rate: 2.8, recommended: 6 })],
+};
+
+describe('TechCheckPanelComponent in German', () => {
+  it('follows a language switch without a new check', async () => {
+    const fixture = TestBed.createComponent(TechCheckPanelComponent);
+    fixture.componentRef.setInput('result', SLOW);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const select = element.querySelector('select') as HTMLSelectElement;
+    select.value = 'de-CH';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(element.querySelector('.c-check__note')?.textContent).toBe(
+      'Upload: nur 2,8 Mbit/s (empfohlen ab 6 Mbit/s).',
+    );
+    expect(element.querySelector('h2')?.textContent).toContain('Technik-Check');
+  });
+});

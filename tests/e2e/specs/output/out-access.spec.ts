@@ -1,5 +1,5 @@
 import { OutputApi } from '../../support/api';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
 import { livekitAdmin } from '../../support/livekit';
 import { cleanupProduction, createProduction } from '../../support/production';
 import { expect, test } from '../../support/ui/fixtures';
@@ -13,11 +13,11 @@ import { t } from '../../support/tags';
 
 /**
  * Who may see the output, and how it behaves when access is taken away or the page is reloaded (docs/testing.md
- * E2E-OUT-10, -12, -25 with E2E-AUTH-23 and -24 from the output's point of view). «Kein Zugang» is the only thing a
+ * E2E-OUT-10, -12, -25 with E2E-AUTH-23 and -24 from the output's point of view). “No access” is the only thing a
  * refused page shows; it retries at most every 30 s; a corrected link or address brings the picture back.
  */
 
-const DENIED_SUBTITLE = 'Der Output-Link ist ungültig oder abgelaufen.';
+const DENIED_SUBTITLE = 'The output link is invalid or has expired.';
 
 function outputParticipants(production: { id: string }) {
   return livekitAdmin.listParticipants(production.id).then((participants) => participants.filter((participant) => participant.identity.startsWith('output_')));
@@ -25,16 +25,16 @@ function outputParticipants(production: { id: string }) {
 
 test.describe('OUT access and reload', () => {
   test(
-    'E2E-OUT-12 [output, access denied] wrong key, missing key, unknown slug, key of another production: the same «Kein Zugang» slate, no picture, at most one attempt every 30 s; the corrected link works',
+    'E2E-OUT-12 [output, access denied] wrong key, missing key, unknown slug, key of another production: the same “No access” slate, no picture, at most one attempt every 30 s; the corrected link works',
     t.p0,
     async ({ browser, api, production, config, onCleanup }) => {
       test.setTimeout(240_000);
-      const other = await createProduction(api, 'OUT-12 fremd');
+      const other = await createProduction(api, 'OUT-12 foreign');
       onCleanup(() => cleanupProduction(other));
       const cases = [
         { name: 'wrong key', path: `/o/${production.slug}?k=${'A'.repeat(43)}`, network: true },
         { name: 'missing key', path: `/o/${production.slug}`, network: false },
-        { name: 'unknown slug', path: `/o/gibt-es-nicht-xyz?k=${production.outputKey}`, network: true },
+        { name: 'unknown slug', path: `/o/does-not-exist-xyz?k=${production.outputKey}`, network: true },
         { name: 'key of another production', path: `/o/${production.slug}?k=${other.outputKey}`, network: true },
       ];
       const opened = [];
@@ -59,7 +59,7 @@ test.describe('OUT access and reload', () => {
       for (const entry of opened) {
         await expect
           .poll(() => entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: `${entry.name}: slate` })
-          .toBe(DE.slateDenied);
+          .toBe(TEXT.slate.denied);
         await sleep(500);
         facts.push(await entry.page.evaluate(() => ({
           text: document.body.innerText.replace(/\s+/g, ' ').trim(),
@@ -73,7 +73,7 @@ test.describe('OUT access and reload', () => {
         })));
       }
       for (const [index, entry] of opened.entries()) {
-        expect(facts[index]!.title, `${entry.name}: title`).toBe(DE.slateDenied);
+        expect(facts[index]!.title, `${entry.name}: title`).toBe(TEXT.slate.denied);
         expect(facts[index]!.subtitle, `${entry.name}: subtitle`).toBe(DENIED_SUBTITLE);
         expect(facts[index]!.layers + facts[index]!.videos + facts[index]!.items, `${entry.name}: no scene content`).toBe(0);
         expect(facts[index], `${entry.name} looks exactly like the first case`).toEqual(facts[0]);
@@ -87,7 +87,7 @@ test.describe('OUT access and reload', () => {
       }
       // REST: the answer for a wrong key and an unknown slug is byte-identical (no hint whether the slug exists).
       const wrongKey = await new OutputApi(config.baseURL, production.slug, 'A'.repeat(43)).getOutputSnapshot();
-      const unknownSlug = await new OutputApi(config.baseURL, 'gibt-es-nicht-xyz', production.outputKey).getOutputSnapshot();
+      const unknownSlug = await new OutputApi(config.baseURL, 'does-not-exist-xyz', production.outputKey).getOutputSnapshot();
       expect(wrongKey.status).toBe(403);
       expect(unknownSlug.status).toBe(403);
       const withoutTrace = (text: string) => text.replace(/"traceId":"[^"]*"/, '"traceId":"-"');
@@ -110,7 +110,7 @@ test.describe('OUT access and reload', () => {
       }
       await recordMeasurement(test.info(), 'out-12-attempts', { attemptsAtSeconds: attempts }, Object.entries(attempts).map(([name, times]) => `${name}: ${times.join('/') || 'none'} s`).join('; '));
       for (const entry of opened) {
-        expect(await entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(DE.slateDenied);
+        expect(await entry.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent), `${entry.name}: still denied`).toBe(TEXT.slate.denied);
       }
 
       // The corrected link works after a reload.
@@ -118,17 +118,17 @@ test.describe('OUT access and reload', () => {
       await fixed.page.goto(`/o/${production.slug}?k=${production.outputKey}`);
       await expect
         .poll(() => fixed.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000, message: 'the corrected link shows the standby slate' })
-        .toBe(DE.slateStandby);
+        .toBe(TEXT.slate.standby);
     },
   );
 
   test(
-    'E2E-OUT-25 [output, key rotation] a new key kicks the open page within T-KEY: only «Kein Zugang» is left, LiveKit has no old output, the old link stays refused and the new link plays',
+    'E2E-OUT-25 [output, key rotation] a new key kicks the open page within T-KEY: only “No access” is left, LiveKit has no old output, the old link stays refused and the new link plays',
     t.p0,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       await placeItem(api, production, production.sceneIds[0]!, screens.sources[0]!, FULL);
       await goLive(api, production);
       const opened = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
@@ -142,14 +142,14 @@ test.describe('OUT access and reload', () => {
       const rotated = await api.regenerateOutputKey(production.id);
       expect(rotated.status).toBe(200);
       await expect
-        .poll(async () => (await probe.snapshot()).slate?.title, { timeout: 4000, intervals: [50], message: 'the open page shows «Kein Zugang»' })
-        .toBe(DE.slateDenied);
+        .poll(async () => (await probe.snapshot()).slate?.title, { timeout: 4000, intervals: [50], message: 'the open page shows “No access”' })
+        .toBe(TEXT.slate.denied);
       const events = await probe.takeEvents();
-      const denied = events.find((event) => event.type === 'slate+' && event.title === DE.slateDenied) ?? { t: Date.now() };
+      const denied = events.find((event) => event.type === 'slate+' && event.title === TEXT.slate.denied) ?? { t: Date.now() };
       const keyMs = denied.t - sentAt;
       await expect.poll(async () => (await outputParticipants(production)).length, { timeout: 4000, intervals: [100], message: 'no output participant of the old key in LiveKit' }).toBe(0);
       const gone = Date.now() - sentAt;
-      await recordMeasurement(test.info(), 'out-25-key', { requestToSlateMs: keyMs, requestToLiveKitGoneMs: gone }, `key regenerated -> «Kein Zugang» after ${Math.round(keyMs)} ms, LiveKit participant gone after ${gone} ms`);
+      await recordMeasurement(test.info(), 'out-25-key', { requestToSlateMs: keyMs, requestToLiveKitGoneMs: gone }, `key regenerated -> “No access” after ${Math.round(keyMs)} ms, LiveKit participant gone after ${gone} ms`);
       expect(keyMs, 'T-KEY: connected outputs are kicked (hard 2 s)').toBeLessThanOrEqual(2000);
       expect(gone, 'T-KEY: LiveKit participant removed (hard 2 s)').toBeLessThanOrEqual(2500);
 
@@ -167,9 +167,9 @@ test.describe('OUT access and reload', () => {
 
       // The old link stays refused (also after a reload), the open page does not come back by itself with the old key.
       const stillDenied = await output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent);
-      expect(stillDenied).toBe(DE.slateDenied);
+      expect(stillDenied).toBe(TEXT.slate.denied);
       await output.page.goto(oldUrl);
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(TEXT.slate.denied);
       await sleep(2000);
       expect((await outputParticipants(production)).length, 'a refused page joins no room').toBe(0);
 
@@ -190,7 +190,7 @@ test.describe('OUT access and reload', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 1);
+      const screens = await addScreens(deps, 'Laptop Colours', 1);
       await placeItem(api, production, production.sceneIds[0]!, screens.sources[0]!, FULL);
       await goLive(api, production);
       const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
@@ -201,24 +201,24 @@ test.describe('OUT access and reload', () => {
 
       const sentAt = Date.now();
       expect((await api.updateOutputAccess(production.id, { allowedIps: ['203.0.113.9'] })).status).toBe(200);
-      await expect.poll(async () => (await probe.snapshot()).slate?.title, { timeout: 5000, intervals: [50], message: '«Kein Zugang» after the list changed' }).toBe(DE.slateDenied);
+      await expect.poll(async () => (await probe.snapshot()).slate?.title, { timeout: 5000, intervals: [50], message: '“No access” after the list changed' }).toBe(TEXT.slate.denied);
       const kickedMs = Date.now() - sentAt;
       expect(kickedMs, 'kicked within 2 s of saving (+ polling)').toBeLessThanOrEqual(2500);
       const snapshot = await probe.snapshot();
       expect(snapshot.layers.length + snapshot.videos, 'only the slate is left').toBe(0);
-      await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 8000, message: 'the Regie shows «nicht verbunden»' }).toBe('none');
+      await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 8000, message: 'the Regie shows “not connected”' }).toBe('none');
       await expect.poll(async () => (await outputParticipants(production)).length, { timeout: 5000, message: 'the refused page left LiveKit' }).toBe(0);
 
       // A reload with the foreign list stays refused.
       await output.page.reload();
-      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(DE.slateDenied);
+      await expect.poll(() => output.page.evaluate(() => document.querySelector('.sf-r-slate-title')?.textContent ?? ''), { timeout: 10_000 }).toBe(TEXT.slate.denied);
 
       // Allowed again: the page that is still open (after the reload, with the stored key) retries on its own.
       const allowedAt = Date.now();
       expect((await api.updateOutputAccess(production.id, { allowedIps: [address] })).status).toBe(200);
       await expect
         .poll(async () => (await new OutputProbe(output).snapshot()).slate?.title ?? 'none', { timeout: 45_000, intervals: [500], message: 'the page recovers within the 30 s retry' })
-        .not.toBe(DE.slateDenied);
+        .not.toBe(TEXT.slate.denied);
       const recoveredMs = Date.now() - allowedAt;
       await output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
       await recordMeasurement(test.info(), 'out-25-ip', { kickedMs, recoveredMs }, `list changed -> kicked after ${kickedMs} ms; address allowed -> recovered by itself after ${recoveredMs} ms`);
@@ -233,7 +233,7 @@ test.describe('OUT access and reload', () => {
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
-      const screens = await addScreens(deps, 'Laptop Farben', 2);
+      const screens = await addScreens(deps, 'Laptop Colours', 2);
       const [a, b] = production.sceneIds as [string, string];
       await placeItem(api, production, a, screens.sources[0]!, FULL);
       await placeItem(api, production, b, screens.sources[1]!, FULL);

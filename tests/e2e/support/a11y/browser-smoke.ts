@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '../fixtures';
-import { DE } from '../constants';
+import { TEXT } from '../text';
 import { OUTPUT_DIR } from '../env';
 import { OutputPage } from '../ui/output';
 import { RegiePage } from '../ui/regie';
@@ -21,7 +21,7 @@ import {
 
 /**
  * E2E-DEV-19 [Browsers for the Regie]: the same flows as in Chromium in Firefox and WebKit (docs/testing.md 2.8):
- * login, scene switch, Studio-Modus and Take, dragging an element and a dock with the pointer, a splitter, the pairing
+ * login, scene switch, Studio Mode and Take, dragging an element and a dock with the pointer, a splitter, the pairing
  * dock with its QR code, the layouts of 1180, 900 and 390 px, and the output page. Registered by the `*.firefox.spec.ts`
  * and `*.webkit.spec.ts` files (project desktop-firefox, webkit). WebKit has no WebRTC in Playwright on Windows: its
  * media connection warnings are the known difference below (UI only, docs/testing.md 1.3).
@@ -32,7 +32,7 @@ const SCREEN_PREFIX = (name: string) => `${name}`;
 
 const KNOWN: Record<string, KnownDifference[]> = {
   firefox: [],
-  webkit: [{ pattern: /LiveKit connect failed.*(doesn't seem to be supported|webRTC)/i, reason: 'Playwright WebKit on Windows has no RTCPeerConnection (typeof RTCPeerConnection === "undefined"): LiveKit cannot connect; the Regie shows «Videoverbindung unterbrochen»' }],
+  webkit: [{ pattern: /LiveKit connect failed.*(doesn't seem to be supported|webRTC)/i, reason: 'Playwright WebKit on Windows has no RTCPeerConnection (typeof RTCPeerConnection === "undefined"): LiveKit cannot connect; the Regie shows “Video connection interrupted”' }],
 };
 
 const EXPECTED_STATUSES = [
@@ -51,13 +51,13 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       onCleanup(() => session.context.close());
       const page = await session.context.newPage();
       await page.goto('/login');
-      await expect(page.getByLabel('Benutzername')).toBeVisible();
-      expect(await page.evaluate(() => document.documentElement.lang)).toBe('de-CH');
-      await page.getByLabel('Benutzername').fill(config.admin.username);
-      await page.getByLabel('Passwort').fill(config.admin.password);
-      await page.getByRole('button', { name: 'Anmelden' }).click();
+      await expect(page.getByLabel('Username')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
+      await page.getByLabel('Username').fill(config.admin.username);
+      await page.getByLabel('Password').fill(config.admin.password);
+      await page.getByRole('button', { name: 'Sign in' }).click();
       await page.waitForURL((url) => !url.pathname.startsWith('/login'));
-      await expect(page.getByRole('button', { name: 'Docks und Layout' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Docks and layout' })).toBeVisible();
       expect(await loadedFontFamilies(page), 'the web fonts are loaded').toEqual(expect.arrayContaining(['Sofia Sans Semi Condensed', 'JetBrains Mono']));
       for (const request of session.watch.requests.filter((entry) => entry.type === 'font')) expect(new URL(request.url).origin, `font ${request.url}`).toBe(session.origin);
       await expectStackOnly(session.watch, session.origin, `${browserName} login`);
@@ -65,7 +65,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       expect(problems.unexpected, 'console: no error or warning').toEqual([]);
     });
 
-    test(`${label('regie')} scenes, Studio-Modus, Take, an element dragged and a dock dragged with the pointer, a splitter, the pairing dock with a readable QR code`, tags, async ({ browser, api, production, pairContext, onCleanup }) => {
+    test(`${label('regie')} scenes, Studio Mode, Take, an element dragged and a dock dragged with the pointer, a splitter, the pairing dock with a readable QR code`, tags, async ({ browser, api, production, pairContext, onCleanup }) => {
       test.setTimeout(240_000);
       const seeded = await seedBusyConsole(pairContext, onCleanup, { incident: 'reconnecting' });
       const session = await newBrowserContext(browser, browserName, { cookie: api.cookie });
@@ -74,7 +74,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       const { page } = regie;
       const program = async () => (await api.getSnapshot(production.id)).body.production.programSceneId;
       const preview = async () => (await api.getSnapshot(production.id)).body.production.previewSceneId;
-      await expect(regie.station('Handy Eingang')).toBeVisible({ timeout: 20_000 });
+      await expect(regie.station('Phone Entrance')).toBeVisible({ timeout: 20_000 });
       await settle(page);
       await saveScreen(page, SCREEN_PREFIX(`${browserName}-regie-direct`));
 
@@ -85,16 +85,16 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await expectNoOverflow(page, { vertical: false, label: `${browserName} Regie` });
 
       // switch a scene (cut first, so a second switch is not ignored by the fade guard)
-      await regie.transitionOption('Schnitt').click();
-      await regie.clickScene('Pause');
+      await regie.transitionOption('Cut').click();
+      await regie.clickScene('Break');
       await expect.poll(program, { message: 'a scene click switches the Program' }).toBe(seeded.scenes[2]!.id);
-      await regie.clickScene('Begrüssung');
+      await regie.clickScene('Welcome');
       await expect.poll(program).toBe(seeded.scenes[0]!.id);
 
-      // Studio-Modus, preview, Take
+      // Studio Mode, preview, Take
       await regie.setStudioMode(true);
-      await regie.clickScene('Präsentation');
-      await expect.poll(preview, { message: 'in Studio-Modus a scene click loads the Preview' }).toBe(seeded.scenes[1]!.id);
+      await regie.clickScene('Presentation');
+      await expect.poll(preview, { message: 'in Studio Mode a scene click loads the Preview' }).toBe(seeded.scenes[1]!.id);
       // drag an element in the Preview with the pointer (pointer events, capture)
       const scene = () => api.getSnapshot(production.id).then((snapshot) => snapshot.body.scenes.find((entry) => entry.id === seeded.scenes[1]!.id)!);
       const item = (await scene()).items.find((entry) => entry.w === 600)!;
@@ -111,11 +111,11 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
 
       await regie.take().click();
       await expect.poll(program, { message: 'Take puts the Preview on air' }).toBe(seeded.scenes[1]!.id);
-      await regie.clickScene('Begrüssung');
+      await regie.clickScene('Welcome');
       await expect.poll(preview).toBe(seeded.scenes[0]!.id);
 
       // drag a dock to the left zone with the pointer
-      const grip = page.getByRole('button', { name: 'Dock Szenen verschieben, mit Pfeiltasten' });
+      const grip = page.getByRole('button', { name: 'Move dock Scenes with the arrow keys' });
       const gripBox = (await grip.boundingBox())!;
       await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
       await page.mouse.down();
@@ -123,13 +123,13 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await page.mouse.move(40, 300, { steps: 10 });
       await expect(page.locator('.c-drop-zone--left, .c-drop-zone')).not.toHaveCount(0);
       await page.mouse.up();
-      await expect(page.locator('[data-zone=left] sf-dock-slot[aria-label=Szenen]'), 'the dock moved to the left zone').toHaveCount(1);
+      await expect(page.locator('[data-zone=left] sf-dock-slot[aria-label=Scenes]'), 'the dock moved to the left zone').toHaveCount(1);
       await saveScreen(page, SCREEN_PREFIX(`${browserName}-regie-dock-left`));
-      await page.getByRole('button', { name: 'Layout zurücksetzen' }).click();
-      await expect(page.locator('[data-zone=bottom] sf-dock-slot[aria-label=Szenen]')).toHaveCount(1);
+      await page.getByRole('button', { name: 'Reset layout' }).click();
+      await expect(page.locator('[data-zone=bottom] sf-dock-slot[aria-label=Scenes]')).toHaveCount(1);
 
       // drag a splitter: the docks grow
-      const split = page.getByRole('separator', { name: 'Höhe der Docks unten' });
+      const split = page.getByRole('separator', { name: 'Height of the docks at the bottom' });
       const zoneHeight = async () => Math.round((await page.locator('[data-zone=bottom]').boundingBox())!.height);
       const before = await zoneHeight();
       const splitBox = (await split.boundingBox())!;
@@ -149,11 +149,11 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await regie.closePairing();
 
       // keyboard in this browser: Escape layers and the popover focus
-      await page.getByRole('button', { name: 'Docks und Layout' }).focus();
+      await page.getByRole('button', { name: 'Docks and layout' }).focus();
       await page.keyboard.press('Enter');
-      await expect(page.getByRole('dialog', { name: 'Docks und Layout' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Docks and layout' })).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog', { name: 'Docks und Layout' })).toBeHidden();
+      await expect(page.getByRole('dialog', { name: 'Docks and layout' })).toBeHidden();
 
       await expectStackOnly(session.watch, session.origin, `${browserName} Regie`);
       const problems = consoleProblems(session.watch, known, EXPECTED_STATUSES);
@@ -176,7 +176,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
         for (const studio of [false, true]) {
           await regie.setStudioMode(studio);
           await settle(page);
-          const l = `${browserName} ${name} ${studio ? 'Studio-Modus' : 'direct'}`;
+          const l = `${browserName} ${name} ${studio ? 'Studio Mode' : 'direct'}`;
           await expectNoOverflow(page, { label: l });
           const programBox = (await page.locator('sf-monitor[kind=program] .c-monitor__screen').boundingBox())!;
           expect(Math.abs(programBox.width / programBox.height - 16 / 9), `${l}: Program is 16:9`).toBeLessThan(0.012);
@@ -196,17 +196,17 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       const session = await newBrowserContext(browser, browserName, { viewport: { width: 1280, height: 720 } });
       onCleanup(() => session.context.close());
       const output = await OutputPage.open(session.context, production, { debug: true });
-      await expect.poll(() => output.slateText(), { message: 'standby slate', timeout: 20_000 }).toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { message: 'standby slate', timeout: 20_000 }).toContain(TEXT.slate.standby);
       expect(await loadedFontFamilies(output.page), 'the slate font is loaded').toContain('Sofia Sans Semi Condensed');
       await saveScreen(output.page, SCREEN_PREFIX(`${browserName}-output-standby`));
       const stage = (await output.page.locator('.sf-r-stage').boundingBox())!;
       expect(Math.abs(stage.width / stage.height - 16 / 9), 'the stage is 16:9').toBeLessThan(0.012);
       expect((await api.startBroadcast(production.id)).status).toBe(200);
-      await expect.poll(() => output.slateText(), { message: 'the slate is gone while live', timeout: 20_000 }).not.toContain(DE.slateStandby);
+      await expect.poll(() => output.slateText(), { message: 'the slate is gone while live', timeout: 20_000 }).not.toContain(TEXT.slate.standby);
       await expect(output.page.locator('.c-debug'), 'the debug overlay shows').toBeVisible();
       await saveScreen(output.page, SCREEN_PREFIX(`${browserName}-output-live`));
       expect((await api.endBroadcast(production.id)).status).toBe(200);
-      await expect.poll(() => output.slateText(), { message: 'end slate', timeout: 20_000 }).toContain(DE.slateEnd);
+      await expect.poll(() => output.slateText(), { message: 'end slate', timeout: 20_000 }).toContain(TEXT.slate.end);
       for (const request of session.watch.requests.filter((entry) => entry.type === 'font')) expect(new URL(request.url).origin).toBe(session.origin);
       await expectStackOnly(session.watch, session.origin, `${browserName} output`);
       const problems = consoleProblems(session.watch, known);

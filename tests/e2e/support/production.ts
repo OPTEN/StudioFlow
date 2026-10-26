@@ -194,7 +194,7 @@ export async function pairPhone(context: PairContext, options: { name?: string; 
     platform: options.platform ?? 'Pixel 7 · Chrome',
   });
   if (redeemed.status !== 200) throw new Error(`redeem failed: ${redeemed.status} ${redeemed.raw.text()}`);
-  const device = makeDevice(redeemed.body, options.name ?? 'Handy', 'phone', 'qr', stack.anonymousBase, ip, {});
+  const device = makeDevice(redeemed.body, options.name ?? 'Phone', 'phone', 'qr', stack.anonymousBase, ip, {});
   device.codes = await describeSlots(device.api);
   const self = await device.api.getDeviceSelf();
   device.name = self.body.name;

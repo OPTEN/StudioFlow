@@ -60,7 +60,7 @@ test.describe('OUT many sources', () => {
       test.setTimeout((MINUTES + 12) * 60_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const cameras: Camera[] = [];
-      for (let index = 1; index <= 8; index++) cameras.push(await addCamera(deps, `Handy ${index}`));
+      for (let index = 1; index <= 8; index++) cameras.push(await addCamera(deps, `Phone ${index}`));
       const laptopA = await addScreens(deps, 'Laptop A', 1);
       const laptopB = await addScreens(deps, 'Laptop B', 1);
       const sources = [...cameras.map((camera) => camera.source), laptopA.sources[0]!, laptopB.sources[0]!];

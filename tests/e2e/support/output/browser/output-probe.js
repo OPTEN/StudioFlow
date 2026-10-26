@@ -9,7 +9,7 @@
  * The output page has no data-state / data-slate hooks (docs/testing.md 1.7 lists them, the product has none), so the
  * state of an item is derived from the computed styles of the elements the renderer toggles:
  *   fallback  .sf-r-fallback is displayed (the fallback source instead of the lost picture)
- *   held      .sf-r-held is displayed (blurred picture, dark scrim, «Bild kommt gleich zurück»)
+ *   held      .sf-r-held is displayed (blurred picture, dark scrim, “Picture returns shortly”)
  *   hold      the hold-frame canvas (.sf-r-hold-frame) is displayed (last picture of a lost source, sharp)
  *   live      a device video with a decoded picture
  *   connecting a device video without a picture yet
@@ -37,14 +37,14 @@
     /** navigator.userActivation.hasBeenActive when the document started. */
     activationAtStart: navigator.userActivation ? navigator.userActivation.hasBeenActive : null,
   });
-  const STANDBY = "Gleich geht's los";
-  const DENIED = 'Kein Zugang';
+  const STANDBY = 'Starting soon';
+  const DENIED = 'No access';
 
   function log(type, data) {
     if (probe.events.length < MAX_EVENTS) probe.events.push(Object.assign({ t: epoch(), type: type }, data || {}));
   }
 
-  // Playwright's evaluate() counts as a user gesture for the page, so the question «did autoplay need a gesture» has to be
+  // Playwright's evaluate() counts as a user gesture for the page, so the question “did autoplay need a gesture” has to be
   // answered at the moment the first video starts playing, before the test talks to the page.
   document.addEventListener(
     'playing',

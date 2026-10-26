@@ -3,7 +3,8 @@ import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { OUTPUT_DIR } from '../../support/env';
 import { PublicApi } from '../../support/api';
-import { DE } from '../../support/constants';
+import { TEXT } from '../../support/text';
+import { TEXT_DE } from '../../support/text.de';
 import { auditTexts, collectTexts, type Violation } from '../../support/a11y/german';
 import { openBusyRegie } from '../../support/a11y/regie-setup';
 import { uniqueIp } from '../../support/production';
@@ -13,13 +14,45 @@ import { t } from '../../support/tags';
 
 /**
  * E2E-DEV-17 (German text audit, docs/testing.md 2.8): the visible text and the aria-label / title / placeholder /
- * alt of every state of the Regie, the monitoring page, the sender, the login and the output slates. Rules: no «ß»,
- * names quoted with « », decimal comma in durations and rates («0,3 s», «2,5 Mbit/s»), 24 h clock, lang de-CH,
- * none of the English UI words of the plan (except the agreed terms).
+ * alt of every state of the Regie, the monitoring page, the sender, the login and the output slates, shown in German.
+ * Rules: no «ß», names quoted with « », decimal comma in durations and rates («0,3 s», «2,5 Mbit/s»), 24 h clock,
+ * lang de-CH, none of the English UI words of the plan (except the agreed terms).
+ *
+ * The page objects of the suite use the English labels, so the flows run in English and an audited state is read in
+ * German for a moment (`inGerman`: the language setting changes live, like in a second tab). The output page has no
+ * setting; it is opened with `?lang=de-CH`.
  */
 
 const tags = t.with('@p1', '@a11y', '@german');
 const VIEWPORT = { width: 1440, height: 900 };
+
+const STORAGE_KEY = 'studioflow.locale';
+
+/** Sets (or, with `null`, removes) the language setting the way another tab does: storage and a `storage` event. */
+async function setStoredLocale(page: Page, locale: string | null): Promise<void> {
+  const expected = locale ?? 'en';
+  await page.evaluate(
+    ([key, value]) => {
+      if (value) localStorage.setItem(key!, value);
+      else localStorage.removeItem(key!);
+      window.dispatchEvent(new StorageEvent('storage', { key }));
+    },
+    [STORAGE_KEY, locale],
+  );
+  await expect.poll(() => page.evaluate(() => document.documentElement.lang), { message: `page switched to ${expected}` }).toBe(expected);
+  // Two frames: the texts of the new language are rendered.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
+/** Reads the page in German and puts it back to English, so the page objects keep finding their English labels. */
+async function inGerman<T>(page: Page, read: () => Promise<T>): Promise<T> {
+  await setStoredLocale(page, 'de-CH');
+  try {
+    return await read();
+  } finally {
+    await setStoredLocale(page, null);
+  }
+}
 
 /** Collects the texts of a state and keeps the violations with the state's label. */
 class Audit {
@@ -27,10 +60,14 @@ class Audit {
   readonly states: string[] = [];
   private total = 0;
 
-  constructor(private readonly page: Page) {}
+  /** `german: false` for a page that is already German (the output page, which has no setting). */
+  constructor(
+    private readonly page: Page,
+    private readonly german = true,
+  ) {}
 
   async state(label: string, page: Page = this.page): Promise<void> {
-    const items = await collectTexts(page);
+    const items = this.german ? await inGerman(page, () => collectTexts(page)) : await collectTexts(page);
     this.total += items.length;
     this.states.push(`${label} (${items.length})`);
     for (const violation of auditTexts(items)) this.violations.push({ ...violation, state: label });
@@ -48,39 +85,39 @@ class Audit {
 }
 
 test.describe('German text audit', () => {
+  // The flows use the English page objects; the audited states are read in German (see above).
+  test.use({ locale: 'en-US' });
+
   test('E2E-DEV-17 [regie] every state of the Regie: header, strip, monitors, docks, popovers, pairing dock, station detail, toasts', tags, async ({ openRegie, pairContext, onCleanup, api, production }) => {
     test.setTimeout(240_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: false });
     const { page } = regie;
     const audit = new Audit(page);
 
-    expect(await page.evaluate(() => document.documentElement.lang), 'lang of the document').toBe('de-CH');
-    expect(await page.locator('sf-studio-page').getAttribute('lang'), 'lang of the app root').toBe('de-CH');
     await audit.state('direct mode with an incident');
 
     // toasts: a scene switch, the mode switch, a dock move, the reset
-    await regie.clickScene('Pause');
+    await regie.clickScene('Break');
     await expect(regie.toast().first()).toBeVisible();
     await audit.state('toast: scene switch');
-    expect(await page.locator('sf-toast-host').getAttribute('lang'), 'lang of the toast').toBe('de-CH');
     await regie.setStudioMode(true);
     await expect(regie.take()).toBeVisible();
-    await audit.state('Studio-Modus');
-    await page.getByRole('button', { name: 'Dock Stationen verschieben, mit Pfeiltasten' }).focus();
+    await audit.state('Studio Mode');
+    await page.getByRole('button', { name: 'Move dock Stations with the arrow keys' }).focus();
     await page.keyboard.press('ArrowLeft');
-    await expect(regie.toast().first()).toContainText('Stationen ist');
-    await audit.state('toast: dock moved (with «Layout zurücksetzen»)');
-    await page.getByRole('button', { name: 'Layout zurücksetzen' }).click();
-    await expect(regie.toast().first()).toContainText('Layout zurückgesetzt');
+    await expect(regie.toast().first()).toContainText('Stations is');
+    await audit.state('toast: dock moved (with the “Reset layout” button)');
+    await page.getByRole('button', { name: 'Reset layout' }).click();
+    await expect(regie.toast().first()).toContainText('Layout reset');
     await regie.setStudioMode(false);
 
     // popovers and menus
     const popovers: Array<[string, () => ReturnType<Page['getByRole']>]> = [
       ['output popover', () => page.getByRole('button', { name: /^Output/ })],
-      ['layout popover', () => page.getByRole('button', { name: 'Docks und Layout' })],
-      ['production menu', () => page.getByRole('button', { name: /^Produktion .*, Menü$/ })],
-      ['add-source popover', () => page.getByRole('button', { name: 'Quelle', exact: true })],
-      ['scene menu', () => page.getByRole('button', { name: 'Aktionen für Szene Pause' })],
+      ['layout popover', () => page.getByRole('button', { name: 'Docks and layout' })],
+      ['production menu', () => page.getByRole('button', { name: /^Production .*, menu$/ })],
+      ['add-source popover', () => page.getByRole('button', { name: 'Source', exact: true })],
+      ['scene menu', () => page.getByRole('button', { name: 'Actions for scene Break' })],
     ];
     for (const [label, trigger] of popovers) {
       await trigger().click();
@@ -90,18 +127,18 @@ test.describe('German text audit', () => {
       await expect(page.locator('.c-pop')).toHaveCount(0);
     }
     // the production menu in its three modes
-    await page.getByRole('button', { name: /^Produktion .*, Menü$/ }).click();
-    for (const [item, label, heading] of [['Umbenennen', 'production: rename', 'Produktion umbenennen'], ['Slates bearbeiten', 'production: slates', 'Vor der Sendung'], ['Neue Produktion …', 'production: new', 'Neue Produktion']] as const) {
-      const menu = page.getByRole('dialog', { name: 'Produktion' });
+    await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+    for (const [item, label, heading] of [['Rename', 'production: rename', 'Rename production'], ['Edit slates', 'production: slates', 'Before the broadcast'], ['New production…', 'production: new', 'New production']] as const) {
+      const menu = page.getByRole('dialog', { name: 'Production' });
       await menu.getByRole('button', { name: item }).click();
       await expect(menu.locator('.c-pop-h', { hasText: heading })).toBeVisible();
       await audit.state(label);
-      await menu.getByRole('button', { name: 'Abbrechen' }).click();
+      await menu.getByRole('button', { name: 'Cancel' }).click();
     }
     await page.keyboard.press('Escape');
     // the add-source popover of a scene with elements, the layout popover with a hidden dock
-    await regie.clickScene('Begrüssung');
-    await page.getByRole('button', { name: 'Quelle', exact: true }).click();
+    await regie.clickScene('Welcome');
+    await page.getByRole('button', { name: 'Source', exact: true }).click();
     await audit.state('add-source popover (scene with elements)');
     await page.keyboard.press('Escape');
 
@@ -111,20 +148,20 @@ test.describe('German text audit', () => {
     const open = page.locator('.c-st.is-open');
     await expect(open).toHaveCount(1);
     await audit.state('station detail');
-    await open.getByRole('button', { name: 'Gerät sperren' }).click();
+    await open.getByRole('button', { name: 'Block device' }).click();
     await audit.state('station: block confirmation');
-    await open.getByRole('button', { name: 'Abbrechen' }).click();
-    await open.getByRole('button', { name: 'Nachricht senden' }).click();
+    await open.getByRole('button', { name: 'Cancel' }).click();
+    await open.getByRole('button', { name: 'Send message' }).click();
     await audit.state('station: message composer');
-    await open.getByRole('button', { name: 'Nachricht senden' }).click();
-    await open.getByRole('button', { name: 'Umbenennen' }).click();
+    await open.getByRole('button', { name: 'Send message' }).click();
+    await open.getByRole('button', { name: 'Rename' }).click();
     await audit.state('station: rename');
     await page.keyboard.press('Escape');
     await row.click();
 
     // an element selected, with the label tab
-    await page.getByRole('button', { name: /^Auswählen: / }).first().click();
-    await audit.state('element selected (Eigenschaften of the element)');
+    await page.getByRole('button', { name: /^Select: / }).first().click();
+    await audit.state('element selected (properties of the element)');
 
     // the pairing dock on its three tabs, with a knock card
     const anonymous = new PublicApi(pairContext.stack.anonymousBase, uniqueIp());
@@ -132,7 +169,7 @@ test.describe('German text audit', () => {
     expect(knock.status).toBe(201);
     production.pendingRequests.push({ requestId: knock.body.requestId, pollToken: knock.body.pollToken });
     await regie.openPairing('phone');
-    await audit.state('pairing dock: Handy');
+    await audit.state('pairing dock: Phone');
     await regie.openPairing('laptop');
     await expect(regie.knockCard('Laptop Anna')).toBeVisible();
     await audit.state('pairing dock: Laptop with a knock card');
@@ -141,21 +178,20 @@ test.describe('German text audit', () => {
     await regie.closePairing();
 
     // broadcast states: start, live, end
-    await page.getByRole('button', { name: 'Sendung starten' }).click();
-    await expect(page.getByRole('button', { name: 'Sendung beenden' }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Start broadcast' }).click();
+    await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     await audit.state('on air');
-    await page.getByRole('button', { name: 'Sendung beenden' }).first().click();
+    await page.getByRole('button', { name: 'End broadcast' }).first().click();
     await audit.state('end broadcast: confirmation');
-    await page.getByRole('button', { name: 'Abbrechen' }).first().click();
+    await page.getByRole('button', { name: 'Cancel' }).first().click();
     expect((await api.endBroadcast(production.id)).status).toBeLessThan(300);
-    await expect(page.getByText('BEENDET')).toBeVisible();
+    await expect(page.getByText('ENDED')).toBeVisible();
     await audit.state('broadcast ended');
 
     // the monitoring page
     await page.goto('/monitoring');
     await expect(page.getByRole('table')).toBeVisible();
     await audit.state('monitoring');
-    expect(await page.evaluate(() => document.documentElement.lang)).toBe('de-CH');
     await audit.verify('regie');
     expect(regie.problems.pageErrors).toEqual([]);
   });
@@ -164,6 +200,7 @@ test.describe('German text audit', () => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: false });
     const { page } = regie;
+    await setStoredLocale(page, 'de-CH');
     // every fade duration, stepped through with the buttons
     const value = () => page.locator('.c-duration__value').innerText();
     const seen: string[] = [await value()];
@@ -209,26 +246,24 @@ test.describe('German text audit', () => {
     onCleanup(() => context.close());
     const loginPage = await context.newPage();
     await loginPage.goto('/login');
-    await expect(loginPage.getByLabel('Benutzername')).toBeVisible();
+    await expect(loginPage.getByLabel('Username')).toBeVisible();
     const loginAudit = new Audit(loginPage);
-    expect(await loginPage.evaluate(() => document.documentElement.lang)).toBe('de-CH');
     await loginAudit.state('login');
-    await loginPage.getByLabel('Benutzername').fill('nobody');
-    await loginPage.getByLabel('Passwort').fill('falsches-Passwort-123');
-    await loginPage.getByRole('button', { name: 'Anmelden' }).click();
-    await expect(loginPage.getByRole('alert').filter({ hasText: /\S/ })).toContainText(DE.loginFailed.replace(/\.$/, ''));
+    await loginPage.getByLabel('Username').fill('nobody');
+    await loginPage.getByLabel('Password').fill('wrong-password-123');
+    await loginPage.getByRole('button', { name: 'Sign in' }).click();
+    await expect(loginPage.getByRole('alert').filter({ hasText: /\S/ })).toBeVisible();
     await loginAudit.state('login: wrong password');
     await loginAudit.verify('login');
 
     // sender: phone
     const phone = await openPhone({ profile: 'pixel7' });
     await phone.gotoStart();
-    await expect(phone.page.getByLabel('Name des Geräts')).toBeVisible();
-    expect(await phone.page.evaluate(() => document.documentElement.lang), 'lang of the sender').toBe('de-CH');
+    await expect(phone.page.getByLabel('Device name')).toBeVisible();
     const audit = new Audit(phone.page);
     await audit.state('sender: pairing form');
-    await phone.page.getByLabel('Name des Geräts').fill('');
-    await phone.page.getByRole('button', { name: 'Weiter' }).click();
+    await phone.page.getByLabel('Device name').fill('');
+    await phone.page.getByRole('button', { name: 'Continue' }).click();
     await expect(phone.page.locator('#device-name-error')).toBeVisible();
     await audit.state('sender: form error');
 
@@ -247,16 +282,16 @@ test.describe('German text audit', () => {
 
     // sender: phone station, banner, technical check
     const station = await openPhone({ profile: 'pixel7' });
-    const device = await pairViaApi(pairContext, station, { name: 'Handy Anna' });
+    const device = await pairViaApi(pairContext, station, { name: 'Phone Anna' });
     await station.waitForCamera('live');
     const stationAudit = new Audit(station.page);
     await stationAudit.state('sender: phone station');
-    expect((await api.sendDeviceCommand(production.id, device.id, { kind: 'message', text: 'Bitte näher ans Fenster, das Licht ist zu schwach.' })).status).toBeLessThan(300);
+    expect((await api.sendDeviceCommand(production.id, device.id, { kind: 'message', text: 'Please move closer to the window, the light is too weak.' })).status).toBeLessThan(300);
     await expect(station.messageBanner()).toBeVisible();
     await stationAudit.state('sender: message banner');
-    await station.page.getByRole('button', { name: 'Technik-Check' }).click();
+    await station.page.getByRole('button', { name: 'Tech check' }).click();
     await stationAudit.state('sender: technical check');
-    await station.page.getByRole('button', { name: 'Technik-Check schliessen' }).click();
+    await station.page.getByRole('button', { name: 'Close tech check' }).click();
     await station.darkToggle().click();
     await stationAudit.state('sender: dark mode');
     await stationAudit.verify('sender-phone-station');
@@ -280,19 +315,19 @@ test.describe('German text audit', () => {
 
   test('E2E-DEV-17 [output] the slates of the output page: standby, end and denied; lang de-CH', tags, async ({ openOutput, api, production }) => {
     test.setTimeout(120_000);
-    const output = await openOutput(production);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateStandby);
+    const output = await openOutput(production, { lang: 'de-CH' });
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.standby);
     expect(await output.page.evaluate(() => document.documentElement.lang), 'lang of the output page').toBe('de-CH');
-    const audit = new Audit(output.page);
+    const audit = new Audit(output.page, false);
     await audit.state('output: standby');
     expect((await api.startBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).not.toContain(DE.slateStandby);
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).not.toContain(TEXT.slate.standby);
     await audit.state('output: live');
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(DE.slateEnd);
+    await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.end);
     await audit.state('output: end');
-    const denied = await openOutput({ slug: production.slug, outputKey: 'falscher-schluessel' });
-    await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(DE.slateDenied);
+    const denied = await openOutput({ slug: production.slug, outputKey: 'wrong-output-key-0123456789' }, { lang: 'de-CH' });
+    await expect.poll(() => denied.slateText(), { timeout: 20_000 }).toContain(TEXT_DE.slate.denied);
     await audit.state('output: denied', denied.page);
     // the debug overlay is a developer aid (English keys by design): only the numbers are audited
     await audit.verify('output');

@@ -23,21 +23,21 @@ import { t } from '../../support/tags';
 test.describe('PAIR phone, QR code', () => {
   for (const profile of ['pixel7', 'iphone15'] as const) {
     test(
-      `E2E-PAIR-01 [ui, ${profile}] the QR code of the pairing dock pairs a phone: «Handy 1», «Verbunden», station K1 in the Regie, the code is replaced`,
+      `E2E-PAIR-01 [ui, ${profile}] the QR code of the pairing dock pairs a phone: “Phone 1”, “Connected”, station K1 in the Regie, the code is replaced`,
       profile === 'pixel7' ? t.smoke : t.p0,
       async ({ regie, openPhone, api, production }, testInfo) => {
         test.setTimeout(120_000);
         const invite = (await api.getPhoneInvite(production.id)).body;
         await openPairingTab(regie, 'phone');
-        await expect(regie.page.getByRole('tab', { name: 'Handy' })).toHaveAttribute('aria-selected', 'true');
-        // The title «Handy als Kamera» is hidden on short laptops (height <= 820 px, by design): the text under it is the check.
-        await expect(regie.page.locator('sf-phone-tab')).toContainText('Mit der Kamera-App scannen. Das Handy öffnet StudioFlow und erscheint danach unter Stationen.');
-        // The countdown: «Gilt einmal, noch 29:5x min.» and it runs down.
+        await expect(regie.page.getByRole('tab', { name: 'Phone' })).toHaveAttribute('aria-selected', 'true');
+        // The title “Phone as a camera” is hidden on short laptops (height <= 820 px, by design): the text under it is the check.
+        await expect(regie.page.locator('sf-phone-tab')).toContainText('Scan with the camera app. The phone opens StudioFlow and then appears under Stations.');
+        // The countdown: “Valid once, 29:5x min left.” and it runs down.
         const countdown = regie.page.locator('.c-pair__qr-side .c-hint .u-mono');
         await expect(countdown).toHaveText(/^(30:00|29:[0-5]\d)$/);
         const first = await countdown.textContent();
         await expect.poll(async () => countdown.textContent(), { message: 'the countdown runs down', timeout: 5000 }).not.toBe(first);
-        await expect(regie.page.locator('.c-pair__qr-side .c-hint')).toContainText(/Gilt einmal, noch \d\d:\d\d min\./);
+        await expect(regie.page.locator('.c-pair__qr-side .c-hint')).toContainText(/Valid once, \d\d:\d\d min left\./);
 
         const qr = await regie.readPairingQr();
         expect(qr.url, 'the QR code decodes to the invite URL of the API').toBe(invite.url);
@@ -52,20 +52,20 @@ test.describe('PAIR phone, QR code', () => {
         const connectedMs = Date.now() - redeemedAt;
         const stored = await phone.waitForStoredDevice();
         expect(new URL(phone.page.url()).pathname, 'the token left the address bar').toBe('/join/station');
-        await expect(phone.page.getByRole('heading', { name: 'Handy 1' })).toBeVisible();
-        await expect(phone.page.getByText('Gekoppelt als K1. Die Kamera startet, die Regie sieht das Bild jetzt.')).toBeVisible();
+        await expect(phone.page.getByRole('heading', { name: 'Phone 1' })).toBeVisible();
+        await expect(phone.page.getByText('Paired as K1. The camera is starting and the control room can see the picture now.')).toBeVisible();
         const row = regie.page.locator(`.c-st[data-device="${stored.deviceId}"]`);
         await expect(row).toBeVisible({ timeout: THRESHOLD.pairHardMs + 3000 });
         const stationMs = Date.now() - redeemedAt;
-        testInfo.annotations.push({ type: 'measurement', description: `T-PAIR (${profile}): redeem response -> «Verbunden» ${connectedMs} ms, -> station row ${stationMs} ms` });
-        expect(connectedMs, 'T-PAIR phone redeem -> «Verbunden» hard limit 3 s').toBeLessThanOrEqual(3000);
+        testInfo.annotations.push({ type: 'measurement', description: `T-PAIR (${profile}): redeem response -> “Connected” ${connectedMs} ms, -> station row ${stationMs} ms` });
+        expect(connectedMs, 'T-PAIR phone redeem -> “Connected” hard limit 3 s').toBeLessThanOrEqual(3000);
         expect(stationMs, 'T-PAIR redeem -> station in the Regie hard limit 2 s (plus the first telemetry poll of the test)').toBeLessThanOrEqual(THRESHOLD.pairHardMs + 1000);
         await expect(row.locator('.c-code')).toHaveText('K1');
-        await expect(row.locator('.c-st__name')).toHaveText('Handy 1');
+        await expect(row.locator('.c-st__name')).toHaveText('Phone 1');
         // The platform text sent by the browser.
         const device = (await snapshotOf(api, production.id)).devices[0]!;
         expect(device.platform, 'platform text').toMatch(/^[\w .()-]+ · (Chrome|Edge|Firefox|Safari)$/);
-        testInfo.annotations.push({ type: 'device', description: `${profile}: platform «${device.platform}», kind ${device.kind}` });
+        testInfo.annotations.push({ type: 'device', description: `${profile}: platform “${device.platform}”, kind ${device.kind}` });
         expect(device.kind).toBe('phone');
         // The QR code in the dock was replaced by a different one.
         await expect.poll(async () => (await regie.readPairingQr()).url, { message: 'a fresh QR code', timeout: 10_000 }).not.toBe(qr.url);
@@ -75,13 +75,13 @@ test.describe('PAIR phone, QR code', () => {
   }
 
   test(
-    'E2E-PAIR-01 [ui, dock tabs] at 1280 x 720 the tabs «Laptop» and «Link» of the pairing dock can be clicked while the Handy tab shows its QR code (DEV-04)',
+    'E2E-PAIR-01 [ui, dock tabs] at 1280 x 720 the tabs “Laptop” and “Link” of the pairing dock can be clicked while the Phone tab shows its QR code (DEV-04)',
     t.p1,
     async ({ regie }) => {
-      knownDevBug('DEV-04', 'the tab row of the pairing dock collapses to 2 px height on the Handy tab and its buttons are covered by the panel');
+      knownDevBug('DEV-04', 'the tab row of the pairing dock collapses to 2 px height on the Phone tab and its buttons are covered by the panel');
       expect(regie.page.viewportSize(), 'the smallest Regie size of the plan').toEqual({ width: 1280, height: 720 });
       await regie.pairButton().click();
-      // The dock opens on «Laptop» (the short panel: the tab row is 34 px high); «Handy» is reachable with a real click.
+      // The dock opens on “Laptop” (the short panel: the tab row is 34 px high); “Phone” is reachable with a real click.
       await regie.pairingTab('phone').click();
       await expect(regie.pairingQr()).toBeVisible();
       const geometry = await regie.page.evaluate(() => {
@@ -108,8 +108,8 @@ test.describe('PAIR phone, QR code', () => {
     async ({ regie, openPhone, api, production }, testInfo) => {
       test.setTimeout(120_000);
       const phone = await openPhone({ profile: 'pixel7' });
-      // The station line of the new row, sampled every 50 ms from before the phone opens the QR link: «nicht verbunden» /
-      // «verbindet …» first, the metrics once the camera is live.
+      // The station line of the new row, sampled every 50 ms from before the phone opens the QR link: “not connected” /
+      // “connecting…” first, the metrics once the camera is live.
       const lines: string[] = [];
       let sampling = true;
       const sampler = (async () => {
@@ -122,11 +122,11 @@ test.describe('PAIR phone, QR code', () => {
       })();
       const paired = await pairPhoneViaQr(regie, phone);
       await phone.waitForCamera('live', 45_000);
-      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+,\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 20_000 });
+      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 20_000 });
       sampling = false;
       await sampler;
       testInfo.annotations.push({ type: 'measurement', description: `station line while the phone connects: ${lines.join(' -> ')}` });
-      expect(lines[0], 'the station first shows that it is not there yet').toMatch(/nicht verbunden|verbindet …|Mbit/);
+      expect(lines[0], 'the station first shows that it is not there yet').toMatch(/not connected|connecting…|Mbit/);
       expect(lines.at(-1), 'then the metrics').toMatch(/Mbit\/s/);
       const liveAt = Date.now();
       const item = await putInScene(api, production, 0, `${paired.stored.deviceId}/camera`, FULL);
@@ -136,7 +136,7 @@ test.describe('PAIR phone, QR code', () => {
       const videoMs = Date.now() - liveAt;
       testInfo.annotations.push({ type: 'measurement', description: `T-VIDEO-START (source already live, item added -> playing picture in the Program monitor): ${videoMs} ms` });
       await expect(paired.row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
-      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+,\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
+      await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
       await expect(paired.row.locator('.c-st__tag, .c-tag--pgm')).toHaveText('PGM');
       expect((await readPlaces(regie.page)).strip).toHaveLength(0);
       // The sender's own preview and tally agree: K1 is in the program scene, the broadcast has not started.
@@ -146,14 +146,14 @@ test.describe('PAIR phone, QR code', () => {
   );
 
   test(
-    'E2E-PAIR-12 [ui] «Neuen Code erzeugen»: the toast, the old code opens the expired page, the new one pairs, the countdown restarts at 30:00',
+    'E2E-PAIR-12 [ui] “Generate new code”: the toast, the old code opens the expired page, the new one pairs, the countdown restarts at 30:00',
     t.p1,
     async ({ regie, openPhone, api, production }) => {
       test.setTimeout(120_000);
       await openPairingTab(regie, 'phone');
       const old = await regie.readPairingQr();
-      await regie.page.getByRole('button', { name: 'Neuen Code erzeugen' }).click();
-      await expect(regie.toast()).toContainText('Neuer QR-Code, der alte gilt nicht mehr');
+      await regie.page.getByRole('button', { name: 'Generate new code' }).click();
+      await expect(regie.toast()).toContainText('New QR code, the old one is no longer valid');
       await expect.poll(async () => (await regie.readPairingQr()).url, { message: 'the QR code changed', timeout: 10_000 }).not.toBe(old.url);
       const fresh = await regie.readPairingQr();
       await expect(regie.page.locator('.c-pair__qr-side .c-hint .u-mono'), 'countdown restarts').toHaveText(/^(30:00|29:5\d)$/);
@@ -162,7 +162,7 @@ test.describe('PAIR phone, QR code', () => {
       const stale = await openPhone({ profile: 'pixel7' });
       await stale.gotoInvite(old.url);
       await expect(stale.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 20_000 });
-      await expect(stale.page.getByRole('heading', { name: 'Einladung abgelaufen' })).toBeVisible();
+      await expect(stale.page.getByRole('heading', { name: 'Invite expired' })).toBeVisible();
       expect(await stale.storedDevice(), 'the old code paired nothing').toBeNull();
       const phone = await openPhone({ profile: 'pixel7' });
       await phone.gotoInvite(fresh.url);
@@ -174,42 +174,42 @@ test.describe('PAIR phone, QR code', () => {
 
 test.describe('PAIR laptop, check code', () => {
   test(
-    'E2E-PAIR-03 [ui] a laptop pairs with a check code: form, the same code on both screens, «Zulassen», station S1 «Laptop Anna»',
+    'E2E-PAIR-03 [ui] a laptop pairs with a check code: form, the same code on both screens, “Allow”, station S1 “Laptop Anna”',
     t.smoke,
     async ({ regie, openLaptop, api, production }, testInfo) => {
       test.setTimeout(120_000);
       const laptop = await openLaptop();
-      // The entry points: /join, /join/ and the deep link /join/warten (no pending request: back to the form).
-      for (const entry of ['/join', '/join/', '/join/warten']) {
+      // The entry points: /join, /join/ and the deep link /join/waiting (no pending request: back to the form).
+      for (const entry of ['/join', '/join/', '/join/waiting']) {
         const response = await laptop.page.goto(entry);
         expect(response?.status(), entry).toBeLessThan(400);
-        await expect(laptop.page.getByRole('heading', { name: 'Gerät koppeln' }), entry).toBeVisible();
+        await expect(laptop.page.getByRole('heading', { name: 'Pair device' }), entry).toBeVisible();
       }
       expect(await laptop.defaultKind(), 'a desktop browser defaults to a laptop').toBe('laptop');
-      await expect(laptop.page.getByLabel('Name des Geräts'), 'a name is suggested from the platform').toHaveValue(/^Laptop /);
+      await expect(laptop.page.getByLabel('Device name'), 'a name is suggested from the platform').toHaveValue(/^Laptop /);
 
       const posted = laptop.page.waitForResponse((response) => /\/api\/pairing\/requests$/.test(response.url()) && response.request().method() === 'POST');
       await laptop.submitPairingForm('Laptop Anna', 'laptop');
       expect((await posted).status()).toBe(201);
       const requestedAt = Date.now();
       const code = await laptop.checkCode();
-      expect(code, 'check code «47 12»').toMatch(/^\d{2} \d{2}$/);
-      await expect(laptop.page.getByText('Prüfcode für die Regie')).toBeVisible();
-      expect(new URL(laptop.page.url()).pathname).toBe('/join/warten');
+      expect(code, 'check code “47 12”').toMatch(/^\d{2} \d{2}$/);
+      await expect(laptop.page.getByText('Check code for the control room')).toBeVisible();
+      expect(new URL(laptop.page.url()).pathname).toBe('/join/waiting');
 
       await openPairingTab(regie, 'laptop');
       await expect(regie.knockCard('Laptop Anna')).toBeVisible({ timeout: 5000 });
       const cardMs = Date.now() - requestedAt;
       expect(await regie.knockCheckCode('Laptop Anna'), 'the same code on the knock card').toBe(code);
-      await expect(regie.knockCard('Laptop Anna')).toContainText('Laptop Anna möchte beitreten');
-      await expect(regie.knockCard('Laptop Anna')).toContainText('Steht derselbe Prüfcode auf dem Laptop? Dann zulassen.');
+      await expect(regie.knockCard('Laptop Anna')).toContainText('Laptop Anna wants to join');
+      await expect(regie.knockCard('Laptop Anna')).toContainText('Does the laptop show the same check code? Then allow.');
       const approvedAt = Date.now();
       await regie.approveKnock('Laptop Anna');
       await laptop.waitConnected();
       const connectedMs = Date.now() - approvedAt;
-      testInfo.annotations.push({ type: 'measurement', description: `T-PAIR: request -> knock card ${cardMs} ms; «Zulassen» -> laptop connected ${connectedMs} ms` });
+      testInfo.annotations.push({ type: 'measurement', description: `T-PAIR: request -> knock card ${cardMs} ms; “Allow” -> laptop connected ${connectedMs} ms` });
       expect(cardMs, 'T-PAIR request -> knock card hard limit 1.5 s (+ the first poll of the test)').toBeLessThanOrEqual(2500);
-      expect(connectedMs, 'T-PAIR «Zulassen» -> laptop connected hard limit 3.5 s').toBeLessThanOrEqual(5000);
+      expect(connectedMs, 'T-PAIR “Allow” -> laptop connected hard limit 3.5 s').toBeLessThanOrEqual(5000);
       expect(new URL(laptop.page.url()).pathname).toBe('/join/station');
       const stored = await laptop.waitForStoredDevice();
       const row = regie.page.locator(`.c-st[data-device="${stored.deviceId}"]`);
@@ -219,12 +219,12 @@ test.describe('PAIR laptop, check code', () => {
       const sources = (await snapshotOf(api, production.id)).sources;
       expect(sources.find((source) => source.deviceId === stored.deviceId)!.label, 'source label').toBe('Laptop Anna · Screen 1');
       await expect(regie.page.locator('.c-knock')).toHaveCount(0);
-      expect((await logTexts(api, production)).some((text) => /^S1 Laptop Anna gekoppelt$/.test(text))).toBe(true);
+      expect((await logTexts(api, production)).some((text) => /^S1 Laptop Anna paired$/.test(text))).toBe(true);
     },
   );
 
   test(
-    'E2E-PAIR-04 [ui] «Ablehnen»: the card is gone, the log says so, the laptop shows the denial with «Neue Anfrage», no device is created',
+    'E2E-PAIR-04 [ui] “Deny”: the card is gone, the log says so, the laptop shows the denial with “New request”, no device is created',
     t.p1,
     async ({ regie, openLaptop, api, production }) => {
       test.setTimeout(120_000);
@@ -237,13 +237,13 @@ test.describe('PAIR laptop, check code', () => {
       await regie.denyKnock('Laptop Anna');
       await expect(regie.knockCard('Laptop Anna')).toHaveCount(0);
       await expect(laptop.page.getByTestId('pairing-denied')).toBeVisible({ timeout: 10_000 });
-      await expect(laptop.page.getByTestId('pairing-denied')).toContainText('Die Regie hat die Anfrage von «Laptop Anna» abgelehnt.');
-      await expect(laptop.page.getByRole('button', { name: 'Neue Anfrage' })).toBeVisible();
-      expect(await logTexts(api, production)).toContain('Anfrage von Laptop Anna abgelehnt');
+      await expect(laptop.page.getByTestId('pairing-denied')).toContainText('The control room denied the request from “Laptop Anna”.');
+      await expect(laptop.page.getByRole('button', { name: 'New request' })).toBeVisible();
+      expect(await logTexts(api, production)).toContain('Request from Laptop Anna denied');
       expect((await snapshotOf(api, production.id)).devices, 'no device was created').toHaveLength(0);
       expect(await laptop.storedDevice()).toBeNull();
-      await laptop.page.getByRole('button', { name: 'Neue Anfrage' }).click();
-      await expect(laptop.page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
+      await laptop.page.getByRole('button', { name: 'New request' }).click();
+      await expect(laptop.page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
     },
   );
 
@@ -291,8 +291,8 @@ test.describe('PAIR laptop, check code', () => {
       await laptop.submitPairingForm('Laptop', 'laptop');
       const code = await laptop.checkCode();
       await openPairingTab(regie, 'laptop');
-      const cards = regie.page.getByRole('group', { name: 'Kopplungsanfrage' });
-      // The pairing dock holds every card once (the Stationen dock shows them only while the dock is closed).
+      const cards = regie.page.getByRole('group', { name: 'Pairing request' });
+      // The pairing dock holds every card once (the Stations dock shows them only while the dock is closed).
       await expect.poll(() => cards.count(), { message: 'nine cards', timeout: 15_000 }).toBe(9);
       const codes = await regie.page.locator('.c-knock__code').allTextContents();
       expect(new Set(codes.map((text) => text.trim())).size, 'nine distinct codes').toBe(9);
@@ -300,7 +300,7 @@ test.describe('PAIR laptop, check code', () => {
 
       const own = cards.filter({ has: regie.page.locator('.c-knock__code', { hasText: code }) });
       await expect(own).toHaveCount(1);
-      await own.getByRole('button', { name: 'Zulassen' }).click();
+      await own.getByRole('button', { name: 'Allow' }).click();
       await laptop.waitConnected();
       const stored = await laptop.waitForStoredDevice();
       expect((await snapshotOf(api, production.id)).devices.map((device) => device.id)).toEqual([stored.deviceId]);
@@ -309,7 +309,7 @@ test.describe('PAIR laptop, check code', () => {
   );
 
   test(
-    'E2E-PAIR-09 [ui] double approve: two operators click «Zulassen» at once, exactly one device, no error toast, the card is gone for both within 1 s',
+    'E2E-PAIR-09 [ui] double approve: two operators click “Allow” at once, exactly one device, no error toast, the card is gone for both within 1 s',
     t.p0,
     async ({ regie, openRegie, openLaptop, api, production }) => {
       test.setTimeout(120_000);
@@ -331,7 +331,7 @@ test.describe('PAIR laptop, check code', () => {
       await expect(other.knockCard('Laptop Anna')).toHaveCount(0, { timeout: 1500 });
       await expect.poll(() => statuses.length, { message: 'both operators answered', timeout: 5000 }).toBe(2);
       expect(statuses.sort(), 'one wins (200), the loser is told the card is gone (404)').toEqual([200, 404]);
-      for (const operator of [regie, other]) await expect(operator.toast().filter({ hasText: /Fehler|nicht geklappt|Unbekannt/i }), 'no error toast').toHaveCount(0);
+      for (const operator of [regie, other]) await expect(operator.toast().filter({ hasText: /error|did not work|unknown/i }), 'no error toast').toHaveCount(0);
       await laptop.waitConnected();
       expect((await snapshotOf(api, production.id)).devices, 'exactly one device').toHaveLength(1);
       await expect(regie.page.locator('.c-st[data-device]')).toHaveCount(1);
@@ -376,7 +376,7 @@ test.describe('PAIR laptop, check code', () => {
       await net.restore(regie.page.context());
       await regie.waitForHub('connected', 30_000);
       await expect(regie.knockCard('Laptop Anna')).toBeVisible({ timeout: 10_000 });
-      await expect(regie.page.getByRole('group', { name: 'Kopplungsanfrage' }), 'no duplicate card').toHaveCount(1);
+      await expect(regie.page.getByRole('group', { name: 'Pairing request' }), 'no duplicate card').toHaveCount(1);
     },
   );
 });
@@ -388,14 +388,14 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
     async ({ regie, openLaptop, api, production, config }) => {
       test.setTimeout(120_000);
       await openPairingTab(regie, 'link');
-      await regie.page.getByRole('button', { name: 'Link erstellen' }).click();
-      await expect(regie.toast()).toContainText('Einladungslink erstellt');
+      await regie.page.getByRole('button', { name: 'Create link' }).click();
+      await expect(regie.toast()).toContainText('Invite link created');
       const shown = regie.page.locator('.c-pair__url--wrap');
       await expect(shown).toHaveText(/\/j\/[A-Za-z0-9_-]{20,}$/);
       const text = (await shown.textContent())!.trim();
-      await expect(regie.page.locator('.c-hint').filter({ hasText: 'Gilt einmal und' })).toHaveText(/Gilt einmal und läuft in (30|29) Minuten ab\. Wer ihn öffnet, ist direkt gekoppelt\./);
-      await regie.page.getByRole('button', { name: 'Kopieren' }).click();
-      await expect(regie.toast()).toContainText(`Kopiert: ${text}`);
+      await expect(regie.page.locator('.c-hint').filter({ hasText: 'Valid once and' })).toHaveText(/Valid once and expires in (30|29) minutes\. Whoever opens it is paired straight away\./);
+      await regie.page.getByRole('button', { name: 'Copy' }).click();
+      await expect(regie.toast()).toContainText(`Copied: ${text}`);
       const clipboard = await regie.page.evaluate(() => navigator.clipboard.readText());
       expect(clipboard, 'the clipboard holds the full link').toBe(`${config.baseURL}/j/${text.split('/j/')[1]}`);
       const invites = (await snapshotOf(api, production.id)).invites.filter((invite) => invite.kind === 'laptopLink');
@@ -414,7 +414,7 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
 
       await second.gotoInvite(clipboard);
       await expect(second.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 20_000 });
-      await expect(second.page.getByRole('link', { name: 'Mit Prüfcode koppeln' })).toHaveAttribute('href', /\/join\/?$/);
+      await expect(second.page.getByRole('link', { name: 'Pair with a check code' })).toHaveAttribute('href', /\/join\/?$/);
       expect(await second.storedDevice()).toBeNull();
       // The used link left the Regie.
       await expect(regie.page.locator('.c-pair__big-url'), 'a used link is gone from the Regie').toHaveCount(0);
@@ -422,27 +422,27 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
   );
 
   test(
-    'E2E-PAIR-11 [ui] «Link widerrufen»: toast, the link opens the expired page, no invite is listed, the creation is in the log',
+    'E2E-PAIR-11 [ui] “Revoke link”: toast, the link opens the expired page, no invite is listed, the creation is in the log',
     t.p1,
     async ({ regie, openLaptop, api, production }) => {
       test.setTimeout(120_000);
       await openPairingTab(regie, 'link');
-      await regie.page.getByRole('button', { name: 'Link erstellen' }).click();
+      await regie.page.getByRole('button', { name: 'Create link' }).click();
       const invite = (await snapshotOf(api, production.id)).invites.find((candidate) => candidate.kind === 'laptopLink')!;
-      await regie.page.getByRole('button', { name: 'Link widerrufen' }).click();
-      await expect(regie.toast()).toContainText('Einladungslink widerrufen');
+      await regie.page.getByRole('button', { name: 'Revoke link' }).click();
+      await expect(regie.toast()).toContainText('Invite link revoked');
       await expect(regie.page.locator('.c-pair__big-url')).toHaveCount(0);
       await expect(regie.page.locator('.c-pair__invites')).toHaveCount(0);
       expect((await snapshotOf(api, production.id)).invites.filter((candidate) => candidate.kind === 'laptopLink')).toHaveLength(0);
       const laptop = await openLaptop();
       await laptop.gotoInvite(invite.url);
       await expect(laptop.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 20_000 });
-      expect(await logTexts(api, production)).toContain('Einladungslink erstellt');
+      expect(await logTexts(api, production)).toContain('Invite link created');
       // Another link in the list can be revoked from the list as well.
-      await regie.page.getByRole('button', { name: 'Link erstellen' }).click();
-      await regie.page.getByRole('button', { name: 'Weiteren Link erstellen' }).click();
+      await regie.page.getByRole('button', { name: 'Create link' }).click();
+      await regie.page.getByRole('button', { name: 'Create another link' }).click();
       await expect(regie.page.locator('.c-pair__invites li')).toHaveCount(1);
-      await regie.page.locator('.c-pair__invites').getByRole('button', { name: /Einladung widerrufen/ }).click();
+      await regie.page.locator('.c-pair__invites').getByRole('button', { name: /Revoke invite/ }).click();
       await expect(regie.page.locator('.c-pair__invites li')).toHaveCount(0);
     },
   );
@@ -471,8 +471,8 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
         sessionStorage.clear();
       });
       await phone.page.goto('/join/');
-      await expect(phone.page.getByRole('heading', { name: 'Gerät koppeln' })).toBeVisible();
-      await expect(phone.page.getByLabel('Name des Geräts')).toBeVisible();
+      await expect(phone.page.getByRole('heading', { name: 'Pair device' })).toBeVisible();
+      await expect(phone.page.getByLabel('Device name')).toBeVisible();
       await expect.poll(async () => (await readPlaces(regie.page)).stations.length, { message: 'the old station stays listed', timeout: 10_000 }).toBe(1);
       expect((await snapshotOf(api, production.id)).devices, 'the old station is not removed').toHaveLength(1);
     },
@@ -513,13 +513,13 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
 test.describe('PAIR kind detection', () => {
   const cases = [
     { name: 'Desktop Chrome', options: devices['Desktop Chrome'], kind: 'laptop', os: /^Laptop / },
-    { name: 'Pixel 7', options: devices['Pixel 7'], kind: 'phone', os: /^Handy / },
+    { name: 'Pixel 7', options: devices['Pixel 7'], kind: 'phone', os: /^Phone / },
     { name: 'iPhone 15', options: devices['iPhone 15'], kind: 'phone', os: /^iPhone/ },
-    { name: 'iPad (gen 7)', options: devices['iPad (gen 7)'], kind: 'phone', os: /^(iPad|Handy)/, noDisplayMedia: true },
+    { name: 'iPad (gen 7)', options: devices['iPad (gen 7)'], kind: 'phone', os: /^(iPad|Phone)/, noDisplayMedia: true },
   ] as const;
   for (const entry of cases) {
     test(
-      `E2E-PAIR-15 [ui, ${entry.name}] kind detection: the default is a ${entry.kind}, the toggle changes it, the platform text is «<system> · <browser>»`,
+      `E2E-PAIR-15 [ui, ${entry.name}] kind detection: the default is a ${entry.kind}, the toggle changes it, the platform text is “<system> · <browser>”`,
       t.p1,
       async ({ browser, api, production, onCleanup }, testInfo) => {
         const { defaultBrowserType: _ignored, ...options } = entry.options;
@@ -531,21 +531,21 @@ test.describe('PAIR kind detection', () => {
         if ('noDisplayMedia' in entry) await context.addInitScript(() => Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', { value: undefined, configurable: true }));
         const page = await context.newPage();
         await page.goto('/join/');
-        const phoneRadio = page.getByRole('radio', { name: 'Handy (Kamera)' });
-        const laptopRadio = page.getByRole('radio', { name: 'Laptop (Bildschirm)' });
+        const phoneRadio = page.getByRole('radio', { name: 'Phone (camera)' });
+        const laptopRadio = page.getByRole('radio', { name: 'Laptop (screen)' });
         await expect(phoneRadio).toBeVisible();
         expect(await phoneRadio.isChecked(), `${entry.name} defaults to ${entry.kind}`).toBe(entry.kind === 'phone');
-        await expect(page.getByLabel('Name des Geräts')).toHaveValue(entry.os);
+        await expect(page.getByLabel('Device name')).toHaveValue(entry.os);
         // The toggle switches the kind.
         const other = entry.kind === 'phone' ? laptopRadio : phoneRadio;
         await other.check();
         await expect(other).toBeChecked();
         await (entry.kind === 'phone' ? phoneRadio : laptopRadio).check();
-        await page.getByLabel('Name des Geräts').fill(`Test ${entry.name}`.slice(0, 40));
-        await page.getByRole('button', { name: 'Weiter' }).click();
+        await page.getByLabel('Device name').fill(`Test ${entry.name}`.slice(0, 40));
+        await page.getByRole('button', { name: 'Continue' }).click();
         await expect(page.getByTestId('check-code')).toBeVisible();
         const request = (await snapshotOf(api, production.id)).pairingRequests.at(-1)!;
-        testInfo.annotations.push({ type: 'device', description: `${entry.name}: platform «${request.platform}», kind ${request.kind}` });
+        testInfo.annotations.push({ type: 'device', description: `${entry.name}: platform “${request.platform}”, kind ${request.kind}` });
         expect(request.platform, 'platform text').toMatch(/^[\w .()-]+ · (Chrome|Edge|Firefox|Safari)$/);
         expect(request.kind).toBe(entry.kind);
         const pending = (await snapshotOf(api, production.id)).pairingRequests;
@@ -553,7 +553,7 @@ test.describe('PAIR kind detection', () => {
           const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem('studioflow.pairing') ?? '{}').pollToken as string | undefined);
           if (token) production.pendingRequests.push({ requestId: candidate.id, pollToken: token });
         }
-        await page.getByRole('button', { name: 'Abbrechen' }).click();
+        await page.getByRole('button', { name: 'Cancel' }).click();
       },
     );
   }
@@ -561,7 +561,7 @@ test.describe('PAIR kind detection', () => {
 
 test.describe('PAIR fleet', () => {
   test(
-    'E2E-PAIR-17 [ui] probe-webinar fleet: three phones by QR, two laptops (code and link), all five live in one scene on the output, one chip «Alle 5 Stationen ok»',
+    'E2E-PAIR-17 [ui] rehearsal webinar fleet: three phones by QR, two laptops (code and link), all five live in one scene on the output, one chip “All 5 stations ok”',
     t.p0,
     async ({ regie, openPhone, openLaptop, openOutput, api, production }, testInfo) => {
       test.setTimeout(300_000);
@@ -574,7 +574,7 @@ test.describe('PAIR fleet', () => {
       const viaCode = await pairLaptopViaKnock(regie, byCode, 'Laptop Code');
       // Laptop 2 by invite link.
       await openPairingTab(regie, 'link');
-      await regie.page.getByRole('button', { name: 'Link erstellen' }).click();
+      await regie.page.getByRole('button', { name: 'Create link' }).click();
       const inviteUrl = (await snapshotOf(api, production.id)).invites.find((invite) => invite.kind === 'laptopLink')!.url;
       const byLink = await openLaptop();
       await byLink.gotoInvite(inviteUrl);
@@ -589,9 +589,9 @@ test.describe('PAIR fleet', () => {
       const snapshot = await snapshotOf(api, production.id);
       const codes = snapshot.sources.map((source) => source.code).sort();
       expect(codes).toEqual(['K1', 'K2', 'K3', 'S1', 'S2']);
-      // Scene «Probe» with all five sources.
+      // Scene “Rehearsal” with all five sources.
       const sceneId = production.sceneIds[0]!;
-      await api.updateScene(production.id, sceneId, { name: 'Probe' });
+      await api.updateScene(production.id, sceneId, { name: 'Rehearsal' });
       const rects = [
         { x: 0, y: 0, w: 640, h: 360 },
         { x: 640, y: 0, w: 640, h: 360 },
@@ -606,7 +606,7 @@ test.describe('PAIR fleet', () => {
       const startedAt = Date.now();
       await output.waitForPlayingVideos(5, { timeout: 60_000, minFps: 5 });
       testInfo.annotations.push({ type: 'measurement', description: `five playing videos on the output after ${Date.now() - startedAt} ms (output opened with all five live)` });
-      await expect.poll(async () => (await readPlaces(regie.page)).header.text, { message: 'health chip', timeout: 20_000 }).toBe('Alle 5 Stationen ok');
+      await expect.poll(async () => (await readPlaces(regie.page)).header.text, { message: 'health chip', timeout: 20_000 }).toBe('All 5 stations ok');
       expect((await readPlaces(regie.page)).strip, 'no incident').toHaveLength(0);
     },
   );
@@ -614,16 +614,16 @@ test.describe('PAIR fleet', () => {
 
 test.describe('PAIR entry points', () => {
   test(
-    'E2E-PAIR-20 [ui] the short URLs serve the sender: /join, /join/, /join/warten, /join/station and a deep link show the pairing form or the expired page, /j/{token} redirects to /join/i/{token}',
+    'E2E-PAIR-20 [ui] the short URLs serve the sender: /join, /join/, /join/waiting, /join/station and a deep link show the pairing form or the expired page, /j/{token} redirects to /join/i/{token}',
     t.p1,
     async ({ openPhone, config }) => {
       const phone = await openPhone({ profile: 'pixel7' });
       const page = phone.page;
-      for (const entry of ['/join', '/join/', '/join/warten', '/join/station', '/join/irgendwas/unbekannt']) {
+      for (const entry of ['/join', '/join/', '/join/waiting', '/join/station', '/join/anything/unknown']) {
         const response = await page.goto(entry);
         expect(response?.status(), `${entry} is served`).toBeLessThan(400);
         expect(await page.title(), `${entry}: the sender shell`).toBe('StudioFlow Sender');
-        await expect(page.getByRole('heading', { name: 'Gerät koppeln' }), `${entry}: an unpaired browser sees the pairing form, not a server error`).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Pair device' }), `${entry}: an unpaired browser sees the pairing form, not a server error`).toBeVisible();
       }
       const token = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
       const invite = await page.goto(`/join/i/${token}`);

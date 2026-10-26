@@ -52,8 +52,8 @@ async function runSoak(
 ): Promise<void> {
   const { browser, deps, onCleanup } = fx;
   const { api, production } = deps;
-  const k1 = await addCamera(deps, 'Kamera Eins');
-  const k2 = await addCamera(deps, 'Kamera Zwei');
+  const k1 = await addCamera(deps, 'Camera One');
+  const k2 = await addCamera(deps, 'Camera Two');
   const [a, b] = production.sceneIds as [string, string];
   await placeItem(api, production, a, k1.source, FULL);
   await placeItem(api, production, b, k2.source, FULL);
@@ -124,7 +124,7 @@ async function runSoak(
   await output.waitForPlayingVideos(1, { minFps: 8, timeout: 30_000 });
   const latencyEnd = await latencyAt();
 
-  // T-MEM compares «minute 10 -> end»: from the middle of the run to the end.
+  // T-MEM compares “minute 10 -> end”: from the middle of the run to the end.
   const middleIndex = Math.max(1, samples.findIndex((sample) => sample.minute >= minutes / 2));
   const first = samples[0]!;
   const middle = samples[middleIndex]!;

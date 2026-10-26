@@ -31,7 +31,7 @@ async function waitSource(studio: HubSession, sourceId: string, status: string, 
 test.describe('SRC device hub', () => {
   test('INT-SRC-03 [stack] the source status follows the device report: connecting, ok, ended, lost, recovered, reconnecting', t.p0, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy 1' });
+    const phone = await pairPhone(pairContext, { name: 'Phone 1' });
     const id = phone.sourceId();
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
@@ -49,15 +49,15 @@ test.describe('SRC device hub', () => {
     expect(ok.source.statusSince).not.toBeNull();
 
     // Decided 2026-10-22 (implementation spec 4.5, DOC-06): a camera the operating system paused is not live but expected
-    // back - reconnecting, amber incident, «K1 verbindet neu». (docs/testing.md still pins paused = ended.)
+    // back - reconnecting, amber incident, “K1 reconnecting”. (docs/testing.md still pins paused = ended.)
     let from = studio.received.length;
     await device.report({ rtc: 'connected', slots: [slotReport('camera', 'paused')] });
     await waitSource(studio, id, 'reconnecting', from);
     const incidentPaused = await studio.waitForEvent('incidentUpserted', (event) => event.incident.sourceId === id && event.incident.kind === 'reconnecting', { from });
     expect(incidentPaused.incident.endedAt).toBeNull();
-    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 verbindet neu', { from })).entry.text).toBe('K1 verbindet neu');
+    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 reconnecting', { from })).entry.text).toBe('K1 reconnecting');
 
-    // The user stops the camera on purpose: the open incident keeps its id and start and turns into «ended» (red).
+    // The user stops the camera on purpose: the open incident keeps its id and start and turns into “ended” (red).
     from = studio.received.length;
     await device.report({ rtc: 'connected', slots: [slotReport('camera', 'ended')] });
     await waitSource(studio, id, 'ended', from);
@@ -65,7 +65,7 @@ test.describe('SRC device hub', () => {
     expect(incidentEnded.incident.id, 'the open incident is escalated, not replaced').toBe(incidentPaused.incident.id);
     expect(incidentEnded.incident.startedAt).toBe(incidentPaused.incident.startedAt);
     expect(incidentEnded.incident.endedAt).toBeNull();
-    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('Kamera beendet'), { from })).entry.text).toBe('K1 Kamera beendet');
+    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('camera stopped'), { from })).entry.text).toBe('K1 camera stopped');
 
     // Back to live: the incident is recovered (endedAt) and stays until acknowledged.
     from = studio.received.length;
@@ -74,9 +74,9 @@ test.describe('SRC device hub', () => {
     await waitSource(studio, id, 'ok', from);
     const recovered = await studio.waitForEvent('incidentUpserted', (event) => event.incident.id === incidentEnded.incident.id && event.incident.endedAt !== null, { from });
     expect(new Date(recovered.incident.endedAt!).getTime()).toBeGreaterThan(new Date(recovered.incident.startedAt).getTime());
-    const recoveredLog = await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('wieder da'), { from });
-    expect(recoveredLog.entry.text).toMatch(/^K1 wieder da, war [1-9]\d* s weg$/);
-    expect((await production.snapshot()).incidents.map((incident) => incident.id), 'recovered incidents stay until «Gesehen»').toEqual([incidentEnded.incident.id]);
+    const recoveredLog = await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('is back'), { from });
+    expect(recoveredLog.entry.text).toMatch(/^K1 is back, was gone for [1-9]\d* s$/);
+    expect((await production.snapshot()).incidents.map((incident) => incident.id), 'recovered incidents stay until “Seen”').toEqual([incidentEnded.incident.id]);
 
     // A new outage replaces the recovered incident of the same source: removed first, then upserted.
     from = studio.received.length;
@@ -85,7 +85,7 @@ test.describe('SRC device hub', () => {
     const lost = await studio.waitForEvent('incidentUpserted', (event) => event.incident.kind === 'lost', { from });
     const removedOld = await studio.waitForEvent('incidentRemoved', (event) => event.incidentId === incidentEnded.incident.id, { from });
     expect(removedOld.revision, 'incidentRemoved(old) comes before incidentUpserted(new)').toBeLessThan(lost.revision);
-    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('kein Bild'), { from })).entry.text).toBe('K1 kein Bild');
+    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('no picture'), { from })).entry.text).toBe('K1 no picture');
 
     // Acknowledging an open incident is a conflict.
     expectProblem(await api.acknowledgeIncident(production.id, lost.incident.id), 409, ERROR.conflict);
@@ -98,7 +98,7 @@ test.describe('SRC device hub', () => {
     await device.report({ rtc: 'reconnecting', slots: [slotReport('camera', 'live')] });
     const reconnecting = await waitSource(studio, id, 'reconnecting', from, THRESHOLD.detectCleanHardMs);
     expect(reconnecting.source.statusSince).not.toBeNull();
-    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 verbindet neu', { from })).entry.text).toBe('K1 verbindet neu');
+    expect((await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 reconnecting', { from })).entry.text).toBe('K1 reconnecting');
     await device.reportLive(['camera']);
     await waitSource(studio, id, 'ok', from);
     expectConsecutive(studio.events());
@@ -107,7 +107,7 @@ test.describe('SRC device hub', () => {
   // The slot-state rules decided on 2026-10-22 (implementation spec 4.5, DOC-06).
   test('INT-SRC-03 [stack, paused before live] a slot that is paused before it ever went live stays connecting, without an incident', t.p1, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Pause' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Paused' });
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
     await device.open();
@@ -123,7 +123,7 @@ test.describe('SRC device hub', () => {
 
   test('INT-SRC-03 [stack, replace] a report replaces all earlier slot states: a slot missing from the report is no longer live', t.p1, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Ersatz' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Spare' });
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
     await device.open();
@@ -139,7 +139,7 @@ test.describe('SRC device hub', () => {
 
   test('INT-SRC-03 [stack, new session] a page reload starts without slot states: what the previous page reported does not make the slot look live', t.p1, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Neuladen' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Reload' });
     const before = deviceHub(stack, phone, undefined, 'tab-before');
     onCleanup(() => before.stop());
     await before.open();
@@ -158,7 +158,7 @@ test.describe('SRC device hub', () => {
   test('INT-SRC-03 [stack, silent session] a connected session that reports nothing for 6 s counts as rtc disconnected (GAP-29)', t.p1, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(60_000);
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Stumm' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Silent' });
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
     await device.open();
@@ -177,7 +177,7 @@ test.describe('SRC device hub', () => {
   });
 
   test('INT-SRC-03 [stack, validation] invalid reports are refused with 400 and a flood does not hurt the server', t.p0, async ({ production, pairContext, stack }) => {
-    const phone = await pairPhone(pairContext, { name: 'Handy Flood' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Flood' });
     const device = phone.api;
     for (const body of [
       { rtc: 'sideways', slots: [] },
@@ -201,11 +201,11 @@ test.describe('SRC device hub', () => {
 
   test('INT-SRC-06 [stack] tech check in the report reaches the Regie; telemetry endpoint lists the last values', t.p2, async ({ api, production, pairContext, stack, config, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Check' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Check' });
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
     await device.open();
-    const techCheck = { overall: 'warn', camera: 'ok', network: 'ok', bandwidth: 'warn', uploadKbps: 4200, rttMs: 18, at: new Date().toISOString(), note: 'Upload nur 4,2 Mbit/s' };
+    const techCheck = { overall: 'warn', camera: 'ok', network: 'ok', bandwidth: 'warn', uploadKbps: 4200, rttMs: 18, at: new Date().toISOString(), note: 'Upload only 4.2 Mbit/s' };
     await device.report({ rtc: 'connected', slots: [slotReport('camera', 'live')], batteryPct: 77, charging: false, network: 'wifi', rttMs: 18, techCheck: techCheck as never });
     const updated = await studio.waitForEvent('deviceUpserted', (event) => event.device.id === phone.id && event.device.techCheck !== null);
     expect(updated.device.techCheck).toMatchObject({ overall: 'warn', bandwidth: 'warn', uploadKbps: 4200, rttMs: 18 });
@@ -217,7 +217,7 @@ test.describe('SRC device hub', () => {
   });
 
   test('INT-SRC-04 [stack] session replacement: the newer Hello wins, a late Hello of the replaced tab does not ping-pong (GAP-21)', t.smoke, async ({ api, production, pairContext, stack, onCleanup }) => {
-    const phone = await pairPhone(pairContext, { name: 'Handy Tabs' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Tabs' });
     const make = (sessionId: string) => {
       const hub = deviceHub(stack, phone, undefined, sessionId);
       onCleanup(() => hub.stop());
@@ -259,12 +259,12 @@ test.describe('SRC device hub', () => {
   });
 
   test('INT-SRC-05 [stack] commands: delivered once to a connected device, dropped otherwise, validated', t.p1, async ({ api, production, pairContext, stack, onCleanup }) => {
-    const phone = await pairPhone(pairContext, { name: 'Handy Befehl' });
-    const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Befehl' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Command' });
+    const laptop = await pairLaptopByLink(pairContext, { name: 'Laptop Command' });
     const send = (deviceId: string, body: Record<string, unknown>) => api.sendDeviceCommand(production.id, deviceId, body);
 
     // Offline: 202 and nothing is delivered later.
-    const offline = await send(phone.id, { kind: 'message', text: 'In 10 s live' });
+    const offline = await send(phone.id, { kind: 'message', text: 'Live in 10 s' });
     expect(offline.status).toBe(202);
     expect(offline.body.id).toMatch(/^cmd_[a-z2-7]{16}$/);
     const device = deviceHub(stack, phone);
@@ -274,12 +274,12 @@ test.describe('SRC device hub', () => {
     expect(device.commands(), 'a command to an offline device is never queued').toHaveLength(0);
 
     // Connected: exactly one command message with the same id.
-    const message = await send(phone.id, { kind: 'message', text: '  In 10 s live  ' });
+    const message = await send(phone.id, { kind: 'message', text: '  Live in 10 s  ' });
     expect(message.status).toBe(202);
     await device.waitFor('command', (entry) => entry.method === 'command');
     await sleep(300);
     expect(device.commands()).toHaveLength(1);
-    expect(device.commands()[0]).toMatchObject({ id: message.body.id, kind: 'message', text: 'In 10 s live' });
+    expect(device.commands()[0]).toMatchObject({ id: message.body.id, kind: 'message', text: 'Live in 10 s' });
     const switchCamera = await send(phone.id, { kind: 'switchCamera' });
     expect(switchCamera.status).toBe(202);
     await device.waitFor('switchCamera command', (entry) => entry.method === 'command' && (entry.args[0] as { kind: string }).kind === 'switchCamera');
@@ -298,13 +298,13 @@ test.describe('SRC device hub', () => {
 
     // Blocked devices get 202 but nothing is delivered either.
     await api.blockDevice(production.id, phone.id);
-    expect((await send(phone.id, { kind: 'message', text: 'Gesperrt' })).status).toBe(202);
+    expect((await send(phone.id, { kind: 'message', text: 'Blocked' })).status).toBe(202);
   });
 
   test('INT-SWITCH-03 [stack] tally over the device hub: Hello carries it, changes follow within T-TALLY, standby is off', t.smoke, async ({ api, production, pairContext, stack, onCleanup }) => {
     const [sceneA, sceneB] = production.sceneIds as [string, string];
-    const one = await pairPhone(pairContext, { name: 'Handy Eins' });
-    const two = await pairPhone(pairContext, { name: 'Handy Zwei' });
+    const one = await pairPhone(pairContext, { name: 'Phone One' });
+    const two = await pairPhone(pairContext, { name: 'Phone Two' });
     await api.addSceneItem(production.id, sceneA, { source: one.sourceId() });
     await api.addSceneItem(production.id, sceneB, { source: two.sourceId() });
     const hubOne = deviceHub(stack, one);
@@ -365,13 +365,13 @@ test.describe('SRC device hub', () => {
 });
 
 test.describe('SRC outage detection', () => {
-  test('E2E-SRC-02 [api] clean connection loss: outage in the Regie within T-DETECT-CLEAN, recovery with «wieder da», «Gesehen» is shared', t.smoke, async ({ config, api, production, pairContext, stack, onCleanup }) => {
+  test('E2E-SRC-02 [api] clean connection loss: outage in the Regie within T-DETECT-CLEAN, recovery with “back”, “Seen” is shared', t.smoke, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     test.setTimeout(90_000);
     const proxy = await new TcpProxy(new URL(stack.direct).hostname, Number(new URL(stack.direct).port)).start();
     onCleanup(() => proxy.stop());
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
     const second = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Netz' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Network' });
     const id = phone.sourceId();
     const device = DeviceHub.connect(proxy.url, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
     onCleanup(() => device.stop());
@@ -391,7 +391,7 @@ test.describe('SRC outage detection', () => {
     const incident = await studio.waitForEvent('incidentUpserted', (event) => event.incident.sourceId === id, { from });
     expect(incident.incident).toMatchObject({ kind: 'reconnecting', code: 'K1', endedAt: null });
     expect(down.source.statusSince).not.toBeNull();
-    await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 verbindet neu', { from });
+    await studio.waitForEvent('logAppended', (event) => event.entry.text === 'K1 reconnecting', { from });
     const connection = await studio.waitForEvent('deviceUpserted', (event) => event.device.id === phone.id && event.device.connection === 'reconnecting', { from });
     expect(connection.device.connectionSince).not.toBeNull();
 
@@ -403,15 +403,15 @@ test.describe('SRC outage detection', () => {
     const reportedAt = Date.now();
     await back.reportLive(['camera']);
     await waitSource(studio, id, 'ok', from, 3000);
-    expect(Date.now() - reportedAt, 'report -> «ok» in the Regie (T-RECOVER-SHORT, 1 s)').toBeLessThanOrEqual(1500);
+    expect(Date.now() - reportedAt, 'report -> “ok” in the Regie (T-RECOVER-SHORT, 1 s)').toBeLessThanOrEqual(1500);
     const recovered = await studio.waitForEvent('incidentUpserted', (event) => event.incident.id === incident.incident.id && event.incident.endedAt !== null, { from });
     const outage = (new Date(recovered.incident.endedAt!).getTime() - new Date(recovered.incident.startedAt).getTime()) / 1000;
     expect(outage, 'the incident covers the outage').toBeGreaterThanOrEqual(5.5);
     expect(outage).toBeLessThanOrEqual(10);
-    const log = await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('wieder da'), { from });
-    expect(log.entry.text).toBe(`K1 wieder da, war ${Math.round(outage)} s weg`);
+    const log = await studio.waitForEvent('logAppended', (event) => event.entry.text.includes('is back'), { from });
+    expect(log.entry.text).toBe(`K1 is back, was gone for ${Math.round(outage)} s`);
 
-    // The recovered incident stays (the Regie shows «wieder da»), and «Gesehen» is shared between two operators.
+    // The recovered incident stays (the Regie shows “back”), and “Seen” is shared between two operators.
     await sleep(3000);
     expect((await production.snapshot()).incidents.map((entry) => entry.id), 'the recovered entry stays until acknowledged').toEqual([incident.incident.id]);
     const results = await Promise.all([api.acknowledgeIncident(production.id, incident.incident.id), api.acknowledgeIncident(production.id, incident.incident.id)]);
@@ -428,7 +428,7 @@ test.describe('SRC outage detection', () => {
     const proxy = await new TcpProxy(apiUrl.hostname, Number(apiUrl.port)).start();
     onCleanup(() => proxy.stop());
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Stumm' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Silent' });
     const id = phone.sourceId();
     const samples: number[] = [];
     for (let round = 0; round < 3; round++) {
@@ -454,7 +454,7 @@ test.describe('SRC outage detection', () => {
         proxy.resume();
         await device.stop();
       }
-      // Recovery through a new connection so the next round starts from «ok».
+      // Recovery through a new connection so the next round starts from “ok”.
       const back = DeviceHub.connect(proxy.url, phone.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} });
       await back.open();
       await back.reportLive(['camera']);
@@ -467,9 +467,9 @@ test.describe('SRC outage detection', () => {
     expect(Math.max(...samples), `silent loss detection ${samples.join(', ')} ms vs hard limit ${THRESHOLD.detectSilentHardMs} ms`).toBeLessThanOrEqual(THRESHOLD.detectSilentHardMs);
   });
 
-  test('E2E-SRC-10 [api] blocking removes the incident, shows «blocked» in the source, and unblocking leads to offline without an incident', t.p0, async ({ config, api, production, pairContext, stack, onCleanup }) => {
+  test('E2E-SRC-10 [api] blocking removes the incident, shows “blocked” in the source, and unblocking leads to offline without an incident', t.p0, async ({ config, api, production, pairContext, stack, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Sperre' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Block' });
     const id = phone.sourceId();
     const device = deviceHub(stack, phone);
     onCleanup(() => device.stop());
@@ -488,7 +488,7 @@ test.describe('SRC outage detection', () => {
     expect(Date.now() - blockedAt, 'T-BLOCK').toBeLessThanOrEqual(THRESHOLD.blockHardMs + 500);
     expect((await production.snapshot()).incidents, 'blocking clears the incidents of the device').toHaveLength(0);
     expect(device.selfMessages().at(-1)?.state).toBe('blocked');
-    // The blocked sender retries: every attempt is 403 (the sender shows «Gesperrt»).
+    // The blocked sender retries: every attempt is 403 (the sender shows “Blocked”).
     await expect(deviceHub(stack, phone).start()).rejects.toThrow(/403/);
     expectProblem(await phone.api.getDeviceSelf(), 403, ERROR.deviceBlocked);
     // Unblock: offline, no incident; the sender reconnects and publishes again.
@@ -504,8 +504,8 @@ test.describe('SRC outage detection', () => {
 
   test('E2E-SRC-20 [api] a returning source keeps its item, rectangle, z-order and code', t.smoke, async ({ api, production, pairContext, stack, config, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Platz' });
-    const other = await pairPhone(pairContext, { name: 'Handy Zwei' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Place' });
+    const other = await pairPhone(pairContext, { name: 'Phone Two' });
     const scene = production.sceneIds[0]!;
     await api.addSceneItem(production.id, scene, { source: other.sourceId(), x: 0, y: 0, w: 400, h: 225 });
     const added = await api.addSceneItem(production.id, scene, { source: phone.sourceId(), x: 321, y: 123, w: 640, h: 360 });
@@ -533,7 +533,7 @@ test.describe('SRC outage detection', () => {
 
   test('E2E-SRC-22 [api] deleting a connected device closes its hub, removes the station and keeps the scene items', t.p2, async ({ api, production, pairContext, stack, config, onCleanup }) => {
     const { hub: studio } = await openStudio(config.baseURL, api, production, onCleanup);
-    const phone = await pairPhone(pairContext, { name: 'Handy Weg' });
+    const phone = await pairPhone(pairContext, { name: 'Phone Gone' });
     const scene = production.sceneIds[0]!;
     await api.addSceneItem(production.id, scene, { source: phone.sourceId() });
     const device = deviceHub(stack, phone);

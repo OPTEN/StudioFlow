@@ -30,14 +30,14 @@ export const senderCameraProblem = {
     'In Safari, tap “aA” on the left of the address bar, then “Website Settings”.',
   'sender.camera.problem.iosStep2': 'Next to “Camera”, choose “Allow”.',
   'sender.camera.problem.iosStep3':
-    'Reload the page. If that does not help: Settings › Apps › Safari › Camera › “Allow”.',
+    'Reload the page. If that does not help: Settings > Apps > Safari > Camera > “Allow”.',
   'sender.camera.problem.lostStep1': 'Perhaps a call or another app has taken over the camera.',
   'sender.camera.problem.lostTitle': 'The camera no longer delivers a picture',
   'sender.camera.problem.macosSafariStep1':
     'In the “Safari” menu, open “Settings for This Website”.',
   'sender.camera.problem.macosSafariStep2': 'Next to “Camera”, choose “Allow”.',
   'sender.camera.problem.macosSafariStep3':
-    'Reload the page. Safari must be allowed in System Settings › Privacy & Security › Camera.',
+    'Reload the page. Safari must be allowed in System Settings > Privacy & Security > Camera.',
   'sender.camera.problem.missingStep1': 'Check that a camera is connected and switched on.',
   'sender.camera.problem.missingTitle': 'No camera found',
   'sender.camera.problem.otherStep1':

@@ -59,16 +59,16 @@ async function metrics(page: Page): Promise<Metrics> {
 function criticalControls(regie: RegiePage, studio: boolean): Array<[string, Locator]> {
   const page = regie.page;
   const controls: Array<[string, Locator]> = [
-    ['Studio-Modus switch', regie.studioModeSwitch()],
-    ['Schnitt', regie.transitionOption('Schnitt')],
-    ['Blende', regie.transitionOption('Blende')],
-    ['Blende kürzer', page.getByRole('button', { name: 'Blende kürzer' })],
-    ['Blende länger', page.getByRole('button', { name: 'Blende länger' })],
-    ['Gerät koppeln', regie.pairButton()],
+    ['Studio Mode switch', regie.studioModeSwitch()],
+    ['Cut', regie.transitionOption('Cut')],
+    ['Fade', regie.transitionOption('Fade')],
+    ['Shorter fade', page.getByRole('button', { name: 'Shorter fade' })],
+    ['Longer fade', page.getByRole('button', { name: 'Longer fade' })],
+    ['Pair device', regie.pairButton()],
     ['output chip', page.getByRole('button', { name: /^Output/ })],
-    ['health chip', page.getByRole('button', { name: /Störung|Station|ok/ }).first()],
-    ['Docks und Layout', page.getByRole('button', { name: 'Docks und Layout' })],
-    ['+ Quelle', page.getByRole('button', { name: 'Quelle', exact: true })],
+    ['health chip', page.getByRole('button', { name: /incident|station|ok/ }).first()],
+    ['Docks and layout', page.getByRole('button', { name: 'Docks and layout' })],
+    ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
   ];
   if (studio) controls.push(['Take', regie.take()]);
   return controls;
@@ -84,7 +84,7 @@ async function checkMonitors(regie: RegiePage, studio: boolean, label: string): 
     expect(box.x, `${label}: ${name} monitor starts inside the viewport`).toBeGreaterThanOrEqual(-0.5);
     expect(box.x + box.w, `${label}: ${name} monitor ends inside the viewport width`).toBeLessThanOrEqual(viewport.width + 0.5);
   }
-  if (studio) expect(m.preview, `${label}: the Preview monitor is rendered in Studio-Modus`).not.toBeNull();
+  if (studio) expect(m.preview, `${label}: the Preview monitor is rendered in Studio Mode`).not.toBeNull();
   return { program: m.program!, preview: m.preview };
 }
 
@@ -101,7 +101,7 @@ const tags = (priority: 'p0' | 'p1' | 'p2') => t.with(`@${priority}`, '@a11y', '
 async function checkDesktop(regie: RegiePage, options: { name: string; studio: boolean; compact: boolean }): Promise<void> {
   const { page } = regie;
   const viewport = page.viewportSize()!;
-  const label = `${options.name} ${options.studio ? 'Studio-Modus' : 'direct'}`;
+  const label = `${options.name} ${options.studio ? 'Studio Mode' : 'direct'}`;
 
   // no page scroll at all (the Regie is one screen)
   await expectNoOverflow(page, { vertical: false, label });
@@ -113,7 +113,7 @@ async function checkDesktop(regie: RegiePage, options: { name: string; studio: b
   expect(monitors.program.y + monitors.program.h, `${label}: the monitors end above the docks`).toBeLessThanOrEqual(m.bottomZone!.y + 0.5);
 
   // four docks side by side at the bottom
-  expect(m.docks.map((dock) => dock.name), `${label}: four docks`).toEqual(['Szenen', 'Quellen der Szene', 'Eigenschaften', 'Stationen']);
+  expect(m.docks.map((dock) => dock.name), `${label}: four docks`).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
   const tops = m.docks.map((dock) => Math.round(dock.box.y));
   expect(new Set(tops).size, `${label}: the docks share one top edge (${tops.join(', ')})`).toBe(1);
   for (let index = 1; index < m.docks.length; index++)
@@ -141,13 +141,13 @@ async function checkDesktop(regie: RegiePage, options: { name: string; studio: b
     expect(row.y, `${label}: scene ${index + 1} starts below the dock header`).toBeGreaterThanOrEqual(zone.y + m.dockHeadHeight! - 1);
     expect(row.y + row.h, `${label}: scene ${index + 1} ends inside the viewport`).toBeLessThanOrEqual(viewport.height + 0.5);
   }
-  const scrolls = await page.locator('sf-dock-slot[aria-label=Szenen] .c-dock-frame__body').evaluate((body) => ({ scrollable: body.scrollHeight > body.clientHeight + 1, scrollHeight: body.scrollHeight, clientHeight: body.clientHeight }));
-  expect(scrolls.scrollable, `${label}: the Szenen dock does not scroll (${scrolls.scrollHeight} > ${scrolls.clientHeight})`).toBe(false);
+  const scrolls = await page.locator('sf-dock-slot[aria-label=Scenes] .c-dock-frame__body').evaluate((body) => ({ scrollable: body.scrollHeight > body.clientHeight + 1, scrollHeight: body.scrollHeight, clientHeight: body.clientHeight }));
+  expect(scrolls.scrollable, `${label}: the Scenes dock does not scroll (${scrolls.scrollHeight} > ${scrolls.clientHeight})`).toBe(false);
 
   // the critical controls are inside the viewport and not covered
   for (const [name, locator] of criticalControls(regie, options.studio)) await expectInViewport(locator.first(), `${label}: ${name}`);
-  await expectInViewport(regie.scene('Begrüssung'), `${label}: first scene`);
-  await expectInViewport(regie.scene('Abspann'), `${label}: last scene`);
+  await expectInViewport(regie.scene('Welcome'), `${label}: first scene`);
+  await expectInViewport(regie.scene('Credits'), `${label}: last scene`);
 
   await expectNoOverlappingControls(page, label);
 }
@@ -157,8 +157,8 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
   const viewport = page.viewportSize()!;
   const triggers: Array<[string, Locator]> = [
     ['Output', page.getByRole('button', { name: /^Output/ })],
-    ['Docks und Layout', page.getByRole('button', { name: 'Docks und Layout' })],
-    ['+ Quelle', page.getByRole('button', { name: 'Quelle', exact: true })],
+    ['Docks and layout', page.getByRole('button', { name: 'Docks and layout' })],
+    ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
   ];
   for (const [name, trigger] of triggers) {
     await trigger.click();
@@ -180,7 +180,7 @@ test.describe('Regie responsive layout', () => {
     test(`E2E-DEV-01 [regie-${name}] one screen without scroll: header 50 px, strip, 16:9 monitors, four docks at the bottom, compact scene rows, critical controls in the viewport`, tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
       test.setTimeout(120_000);
       const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
-      await expect(regie.page.getByRole('region', { name: 'Meldungen' }), 'the incident is visible in the message strip').toContainText('verbindet neu');
+      await expect(regie.page.getByRole('region', { name: 'Messages' }), 'the incident is visible in the message strip').toContainText('reconnecting');
       await checkDesktop(regie, { name, studio: false, compact: true });
       await saveScreen(regie.page, `regie-${name}-direct`);
       await openPopoversAndCheck(regie, `${name} direct`);
@@ -189,7 +189,7 @@ test.describe('Regie responsive layout', () => {
       await settle(regie.page);
       await checkDesktop(regie, { name, studio: true, compact: true });
       await saveScreen(regie.page, `regie-${name}-studio`);
-      await openPopoversAndCheck(regie, `${name} Studio-Modus`);
+      await openPopoversAndCheck(regie, `${name} Studio Mode`);
       expect(regie.problems.pageErrors, 'no uncaught error').toEqual([]);
     });
   }
@@ -207,7 +207,7 @@ test.describe('Regie responsive layout', () => {
     await settle(regie.page);
     await checkDesktop(regie, { name: '1440x900', studio: true, compact: false });
     const studio = await metrics(regie.page);
-    expect(studio.control!.w, 'the control column is still 172 px wide in Studio-Modus').toBeCloseTo(172, 0);
+    expect(studio.control!.w, 'the control column is still 172 px wide in Studio Mode').toBeCloseTo(172, 0);
     expect(studio.take!.w, 'Take is as wide as the column').toBeCloseTo(172, 0);
     expect(studio.take!.h, 'Take is at least 56 px high').toBeGreaterThanOrEqual(56);
     await saveScreen(regie.page, 'regie-1440x900-studio');
@@ -224,7 +224,7 @@ test.describe('Regie responsive layout', () => {
     // the monitor never exceeds the stage region (monitors left of the control column)
     expect(direct.program!.x + direct.program!.w, 'Program ends before the control column').toBeLessThanOrEqual(direct.control!.x + 0.5);
     // inspector rows keep their layout: label left of its field, one row, the field not wider than the dock
-    const inspector = await regie.page.locator('sf-dock-slot[aria-label=Eigenschaften]').evaluate((dock) => {
+    const inspector = await regie.page.locator('sf-dock-slot[aria-label=Properties]').evaluate((dock) => {
       const dockBox = dock.getBoundingClientRect();
       const field = dock.querySelector<HTMLElement>('input[type=text], input:not([type])');
       const label = field?.closest('label, div, sf-scene-inspector')?.querySelector('span, label');
@@ -251,7 +251,7 @@ test.describe('Regie responsive layout', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
     const { page } = regie;
     for (const studio of [false, true]) {
-      const label = `1180x800 ${studio ? 'Studio-Modus' : 'direct'}`;
+      const label = `1180x800 ${studio ? 'Studio Mode' : 'direct'}`;
       if (studio) {
         await regie.setStudioMode(true);
         await settle(page);
@@ -262,16 +262,16 @@ test.describe('Regie responsive layout', () => {
 
       const m = await metrics(page);
       await checkMonitors(regie, studio, label);
-      // two-column grid below the stage: Szenen | Quellen over Eigenschaften | Stationen, hairline separated
+      // two-column grid below the stage: Scenes | Sources over Properties | Stations, hairline separated
       const byName = Object.fromEntries(m.docks.map((dock) => [dock.name, dock.box]));
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Szenen', 'Quellen der Szene', 'Eigenschaften', 'Stationen']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
       const stageBottom = m.program!.y + m.program!.h;
-      expect(byName['Szenen']!.y, `${label}: the docks start below the stage`).toBeGreaterThan(stageBottom);
-      expect(Math.abs(byName['Szenen']!.y - byName['Quellen der Szene']!.y), `${label}: Szenen and Quellen share the first row`).toBeLessThan(2);
-      expect(Math.abs(byName['Eigenschaften']!.y - byName['Stationen']!.y), `${label}: Eigenschaften and Stationen share the second row`).toBeLessThan(2);
-      expect(byName['Eigenschaften']!.y, `${label}: the second row is below the first`).toBeGreaterThan(byName['Szenen']!.y + byName['Szenen']!.h - 2);
-      expect(byName['Quellen der Szene']!.x, `${label}: two columns`).toBeGreaterThan(byName['Szenen']!.x + byName['Szenen']!.w - 2);
-      expect(Math.abs(byName['Szenen']!.x - byName['Eigenschaften']!.x), `${label}: the columns line up`).toBeLessThan(2);
+      expect(byName['Scenes']!.y, `${label}: the docks start below the stage`).toBeGreaterThan(stageBottom);
+      expect(Math.abs(byName['Scenes']!.y - byName['Sources of the scene']!.y), `${label}: Scenes and Sources share the first row`).toBeLessThan(2);
+      expect(Math.abs(byName['Properties']!.y - byName['Stations']!.y), `${label}: Properties and Stations share the second row`).toBeLessThan(2);
+      expect(byName['Properties']!.y, `${label}: the second row is below the first`).toBeGreaterThan(byName['Scenes']!.y + byName['Scenes']!.h - 2);
+      expect(byName['Sources of the scene']!.x, `${label}: two columns`).toBeGreaterThan(byName['Scenes']!.x + byName['Scenes']!.w - 2);
+      expect(Math.abs(byName['Scenes']!.x - byName['Properties']!.x), `${label}: the columns line up`).toBeLessThan(2);
 
       // grips and workspace splitters are hidden (display: none), not merely inert
       const hidden = await page.evaluate(() => {
@@ -292,7 +292,7 @@ test.describe('Regie responsive layout', () => {
         await expectInViewport(regie.take(), `${label}: Take after scrolling`);
       }
       await regie.pairButton().scrollIntoViewIfNeeded();
-      await expectInViewport(regie.pairButton(), `${label}: Gerät koppeln after scrolling`);
+      await expectInViewport(regie.pairButton(), `${label}: Pair device after scrolling`);
       await page.evaluate(() => window.scrollTo(0, 0));
       await saveScreen(page, `regie-1180x800-${studio ? 'studio' : 'direct'}`);
       await saveScreen(page, `regie-1180x800-${studio ? 'studio' : 'direct'}-full`, { fullPage: true });
@@ -322,10 +322,10 @@ test.describe('Regie responsive layout', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORTS.w1440, incident: null });
     const { page } = regie;
     // move a dock to the right zone with the grip keys, remember the stored layout
-    const grip = page.getByRole('button', { name: 'Dock Stationen verschieben, mit Pfeiltasten' });
+    const grip = page.getByRole('button', { name: 'Move dock Stations with the arrow keys' });
     await grip.focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stationen]')).toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stations]')).toHaveCount(1);
     const stored = await page.evaluate(() => localStorage.getItem('studioflow.layout'));
     expect(stored, 'the layout is stored').not.toBeNull();
     await page.setViewportSize(VIEWPORTS.w1180);
@@ -334,7 +334,7 @@ test.describe('Regie responsive layout', () => {
     expect(await page.evaluate(() => localStorage.getItem('studioflow.layout')), 'the stacked view leaves the stored layout alone').toBe(stored);
     await page.setViewportSize(VIEWPORTS.w1440);
     await settle(page);
-    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stationen]'), 'the dock is on the right again at the wide size').toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stations]'), 'the dock is on the right again at the wide size').toHaveCount(1);
   });
 
   test('E2E-DEV-05 [regie-900x700] one column by priority: Program, controls (Take full width, >= 48 px), Preview, docks in one column; scenes as a 200 px card strip; strip shows only ok and incidents', tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -343,7 +343,7 @@ test.describe('Regie responsive layout', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
     const { page } = regie;
     for (const studio of [false, true]) {
-      const label = `900x700 ${studio ? 'Studio-Modus' : 'direct'}`;
+      const label = `900x700 ${studio ? 'Studio Mode' : 'direct'}`;
       if (studio) {
         await regie.setStudioMode(true);
         await settle(page);
@@ -365,39 +365,41 @@ test.describe('Regie responsive layout', () => {
       // docks in one column
       expect(new Set(m.docks.map((dock) => Math.round(dock.box.x))).size, `${label}: docks share one column`).toBe(1);
       for (let index = 1; index < m.docks.length; index++) expect(m.docks[index]!.box.y, `${label}: ${m.docks[index]!.name} below ${m.docks[index - 1]!.name}`).toBeGreaterThanOrEqual(m.docks[index - 1]!.box.y + m.docks[index - 1]!.box.h - 1);
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Szenen', 'Quellen der Szene', 'Eigenschaften', 'Stationen']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
       // the controls are two columns: the segmented control and the stepper side by side
-      const transition = (await boxOf(page.getByRole('group', { name: 'Art des Übergangs' })))!;
-      const stepper = (await boxOf(page.getByRole('group', { name: 'Dauer der Blende' })))!;
-      expect(Math.abs(transition.y - stepper.y), `${label}: Übergang and the duration stepper share a row`).toBeLessThan(6);
-      expect(stepper.x, `${label}: the stepper is right of the Übergang control`).toBeGreaterThan(transition.x + transition.w - 2);
+      const transition = (await boxOf(page.getByRole('group', { name: 'Transition type' })))!;
+      const stepper = (await boxOf(page.getByRole('group', { name: 'Fade duration' })))!;
+      expect(Math.abs(transition.y - stepper.y), `${label}: Transition and the duration stepper share a row`).toBeLessThan(6);
+      expect(stepper.x, `${label}: the stepper is right of the Transition control`).toBeGreaterThan(transition.x + transition.w - 2);
       // scenes: a horizontal strip of 200 px cards
       const cards = await page.locator('button.c-scene').evaluateAll((buttons) => buttons.map((button) => { const r = button.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
       expect(cards, `${label}: seven scene cards`).toHaveLength(7);
-      expect(new Set(cards.map((card) => Math.round(card.y))).size, `${label}: the scene cards share one row`).toBe(1);
+      const rows = cards.map((card) => card.y);
+      // 2 px of tolerance: the cards sit on fractional pixels
+      expect(Math.max(...rows) - Math.min(...rows), `${label}: the scene cards share one row (y ${JSON.stringify(rows.map(Math.round))})`).toBeLessThanOrEqual(2);
       for (const [index, card] of cards.entries()) expect(card.w, `${label}: scene card ${index + 1} is 200 px wide`).toBeCloseTo(200, 0);
-      const strip = await page.locator('sf-dock-slot[aria-label=Szenen] .c-dock-frame__body, sf-dock-slot[aria-label=Szenen] .c-scenes-dock__list').evaluateAll((elements) => elements.map((element) => ({ cls: element.className, scrollW: element.scrollWidth, clientW: element.clientWidth, overflowX: getComputedStyle(element).overflowX })));
+      const strip = await page.locator('sf-dock-slot[aria-label=Scenes] .c-dock-frame__body, sf-dock-slot[aria-label=Scenes] .c-scenes-dock__list').evaluateAll((elements) => elements.map((element) => ({ cls: element.className, scrollW: element.scrollWidth, clientW: element.clientWidth, overflowX: getComputedStyle(element).overflowX })));
       expect(strip.some((entry) => entry.scrollW > entry.clientW + 1 && /(auto|scroll)/.test(entry.overflowX)), `${label}: the scene strip scrolls horizontally inside its dock (${JSON.stringify(strip)})`).toBe(true);
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}`);
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}-full`, { fullPage: true });
     }
     // the message strip: the incident is shown
-    await expect(page.getByRole('region', { name: 'Meldungen' })).toContainText('verbindet neu');
+    await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
   });
 
   test('E2E-DEV-05 [regie-900x700, message strip] without an incident the strip shows only the ok state, the log is hidden', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORTS.w900, incident: null });
-    const strip = regie.page.getByRole('region', { name: 'Meldungen' });
-    await expect(strip).toContainText('Keine offenen Meldungen');
+    const strip = regie.page.getByRole('region', { name: 'Messages' });
+    await expect(strip).toContainText('No open messages');
     // the log exists in the DOM at a wide size ...
     await regie.page.setViewportSize(VIEWPORTS.w1440);
-    await expect(strip.getByText('Letzte Ereignisse'), 'the log of recent events is shown at 1440 px').toBeVisible();
+    await expect(strip.getByText('Recent events'), 'the log of recent events is shown at 1440 px').toBeVisible();
     // ... and is hidden at 900 px
     await regie.page.setViewportSize(VIEWPORTS.w900);
     await settle(regie.page);
-    await expect(strip.getByText('Keine offenen Meldungen')).toBeVisible();
-    await expect(strip.getByText('Letzte Ereignisse'), 'the log is hidden at 900 px').toBeHidden();
+    await expect(strip.getByText('No open messages')).toBeVisible();
+    await expect(strip.getByText('Recent events'), 'the log is hidden at 900 px').toBeHidden();
     expect((await boxOf(strip))!.h, 'the strip stays a single line').toBeLessThan(60);
   });
 
@@ -411,11 +413,11 @@ test.describe('Regie responsive layout', () => {
     await saveScreen(page, 'regie-390x844-direct-full', { fullPage: true });
     await expectNoOverlappingControlsAt390(page);
 
-    // switch a scene by tap: Studio-Modus off -> the Program changes at once, the toast fits the viewport
-    const target = regie.scene('Pause');
+    // switch a scene by tap: Studio Mode off -> the Program changes at once, the toast fits the viewport
+    const target = regie.scene('Break');
     await target.scrollIntoViewIfNeeded();
     await target.tap();
-    await expect(regie.scene('Pause')).toHaveAttribute('aria-pressed', 'true');
+    await expect(regie.scene('Break')).toHaveAttribute('aria-pressed', 'true');
     const toast = regie.toast().first();
     await expect(toast, 'a toast confirms the switch').toBeVisible();
     const toastBox = (await boxOf(toast))!;
@@ -427,7 +429,7 @@ test.describe('Regie responsive layout', () => {
 
     await regie.setStudioMode(true);
     await settle(page);
-    await expectNoOverflow(page, { label: '390x844 Studio-Modus' });
+    await expectNoOverflow(page, { label: '390x844 Studio Mode' });
     const m = await metrics(page);
     expect(m.take!.h, 'Take is at least 48 px high').toBeGreaterThanOrEqual(48);
     const cards = await page.locator('button.c-scene').evaluateAll((buttons) => buttons.map((button) => { const r = button.getBoundingClientRect(); return { w: r.width, h: r.height }; }));
@@ -463,7 +465,7 @@ test.describe('Regie responsive layout', () => {
     await regie.pairButton().scrollIntoViewIfNeeded();
     await regie.pairButton().tap();
     await expect(regie.pairingTab('phone')).toBeVisible();
-    await regie.pairingDock().getByRole('button', { name: 'Gerät koppeln schliessen' }).tap();
+    await regie.pairingDock().getByRole('button', { name: 'Close pair device' }).tap();
     const station = regie.page.locator('.c-st__row').first();
     await station.scrollIntoViewIfNeeded();
     await station.tap();

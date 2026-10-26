@@ -36,7 +36,7 @@ export function randomClientIp(): string {
 export const hex = (rgb: Rgb): string =>
   `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 
-export const SCENES = ['Szene A', 'Szene B', 'Szene C'] as const;
+export const SCENES = ['Scene A', 'Scene B', 'Scene C'] as const;
 
 // --- seeding --------------------------------------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ export async function expectScene(
 
 /**
  * Like {@link expectScene}, and the scene version must stay the same for `quietMs` after the predicate holds: a drag sends
- * coalesced requests, so a predicate such as «crop.right > 0.15» can be true for an intermediate state long before the
+ * coalesced requests, so a predicate such as “crop.right > 0.15” can be true for an intermediate state long before the
  * last request has landed.
  */
 export async function expectStableScene(
@@ -477,26 +477,26 @@ export async function expectToast(page: Page, text: string | RegExp): Promise<vo
 // --- Regie regions --------------------------------------------------------------------------------------------------
 
 export const scenesDock = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Szenen', exact: true });
+  page.getByRole('region', { name: 'Scenes', exact: true });
 export const sourcesDock = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Quellen der Szene' });
+  page.getByRole('region', { name: 'Sources of the scene' });
 export const inspector = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Eigenschaften' });
+  page.getByRole('region', { name: 'Properties' });
 export const stationsDock = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Stationen', exact: true });
+  page.getByRole('region', { name: 'Stations', exact: true });
 
-/** A row of the Quellen dock by the accessible name of its select button, e.g. `K1 Handy Eins`. */
+/** A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`. */
 export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
   sourcesDock(page).getByRole('button', {
-    name: typeof codeAndName === 'string' ? `Auswählen: ${codeAndName}` : codeAndName,
+    name: typeof codeAndName === 'string' ? `Select: ${codeAndName}` : codeAndName,
   });
 
 /** A number field of the element inspector: `x`, `y`, `w`, `h`. */
 export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>
   page.locator(`#sf-insp-${key}`);
-export const radiusField = (page: Page): Locator => page.getByLabel('Eckenradius');
+export const radiusField = (page: Page): Locator => page.getByLabel('Corner radius');
 
-/** Dock title text in the inspector header (`Szene` or `Element`) and its subtitle. */
+/** Dock title text in the inspector header (`Scene` or `Item`) and its subtitle. */
 export const inspectorTitle = (page: Page): Locator =>
   inspector(page).locator('.c-dock-frame__title');
 export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c-dock-frame__sub');
@@ -505,12 +505,12 @@ export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c
 export const near = (actual: number, expected: number, tolerance = 1): boolean =>
   Math.abs(actual - expected) <= tolerance;
 
-/** Selects an item through its Quellen row and waits until the inspector shows the element. */
+/** Selects an item through its Sources row and waits until the inspector shows the element. */
 export async function selectViaRow(page: Page, codeAndName: string | RegExp): Promise<void> {
   const row = sourceRow(page, codeAndName);
   if ((await row.getAttribute('aria-pressed')) !== 'true') await row.click();
   await expect(row).toHaveAttribute('aria-pressed', 'true');
-  await expect(inspectorTitle(page)).toHaveText('Element');
+  await expect(inspectorTitle(page)).toHaveText('Item');
 }
 
 // --- animations, toasts and probes (installed into a page at run time) ---------------------------------------------
