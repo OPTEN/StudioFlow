@@ -4,7 +4,13 @@
  * by republishing every slot that should be live into the new room.
  */
 import { backoffDelay } from '@studioflow/realtime-client';
-import { slotKind, type SlotState, type SlotTelemetryDto } from '@studioflow/scene-model';
+import {
+  slotKind,
+  type CameraControlDto,
+  type CameraStateDto,
+  type SlotState,
+  type SlotTelemetryDto,
+} from '@studioflow/scene-model';
 import {
   RoomEvent,
   TrackEvent,
@@ -13,6 +19,19 @@ import {
   type TrackPublishOptions,
   type VideoCaptureOptions,
 } from 'livekit-client';
+import {
+  CAMERA_PROTOCOL_VERSION,
+  applyCommand,
+  cameraProblemOf,
+  imageConstraints,
+  listLenses,
+  mapCapabilities,
+  mapSettings,
+  mergeCameraControl,
+  settleImage,
+  type CameraImageSettings,
+  type CameraProblem,
+} from './camera-control';
 import { captureCamera, captureScreen, setContentHint } from './capture';
 import {
   cancellableDelay,
@@ -34,6 +53,7 @@ import {
   screenPublishOptions,
   type CameraResolution,
   type CameraSettings,
+  type FacingMode,
 } from './publish-options';
 import {
   SLOT_PROBLEMS,
@@ -74,6 +94,8 @@ export interface PublisherOptions {
   readonly random?: () => number;
   /** Time the SDK gets to restart an ended camera by itself before the publisher re-acquires it (default 3 s). */
   readonly cameraRestartGraceMs?: number;
+  /** Lists the media devices for the lens picker (default `navigator.mediaDevices.enumerateDevices`). */
+  readonly listDevices?: () => Promise<readonly MediaDeviceInfo[]>;
 }
 
 /** Local track events the publisher reacts to. */
@@ -111,6 +133,10 @@ interface SlotRecord {
   detachTrack: (() => void) | null;
   graceTimer: TimerHandle | null;
   preview: { readonly source: MediaStreamTrack; readonly stream: MediaStream } | null;
+  /** Remote camera commands waiting for the slot's queue, merged (the last command wins). */
+  pendingControl: CameraControlDto | null;
+  /** Why the camera refused the last remote command, null once one works again. */
+  cameraProblem: CameraProblem | null;
 }
 
 function defaultCreateStream(track: MediaStreamTrack): MediaStream {
@@ -118,7 +144,40 @@ function defaultCreateStream(track: MediaStreamTrack): MediaStream {
 }
 
 function sameCamera(a: CameraSettings | null, b: CameraSettings | null): boolean {
-  return a !== null && b !== null && a.facingMode === b.facingMode && a.resolution === b.resolution;
+  return (
+    a !== null &&
+    b !== null &&
+    a.facingMode === b.facingMode &&
+    a.resolution === b.resolution &&
+    a.deviceId === b.deviceId
+  );
+}
+
+function defaultListDevices(): Promise<readonly MediaDeviceInfo[]> {
+  return typeof navigator === 'undefined' || navigator.mediaDevices === undefined
+    ? Promise.resolve([])
+    : navigator.mediaDevices.enumerateDevices();
+}
+
+/** `getCapabilities()` where the browser has it (Firefox has none): unknown means no remote controls. */
+function capabilitiesOf(track: MediaStreamTrack): MediaTrackCapabilities {
+  try {
+    return typeof track.getCapabilities === 'function' ? track.getCapabilities() : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The facing mode a camera reports (`user` / `environment`), else null. */
+function facingOf(track: MediaStreamTrack): FacingMode | null {
+  const facing = track.getSettings().facingMode;
+  return facing === 'user' || facing === 'environment' ? facing : null;
+}
+
+/** Image settings without the zoom: another lens frames differently, so its zoom starts over. */
+function withoutZoom(image: CameraImageSettings | undefined): CameraImageSettings {
+  const { zoom: _zoom, ...rest } = image ?? {};
+  return rest;
 }
 
 /** Camera first, then screens by number. */
@@ -154,7 +213,9 @@ export class Publisher {
   readonly #clock: Clock;
   readonly #random: () => number;
   readonly #graceMs: number;
+  readonly #listDevices: () => Promise<readonly MediaDeviceInfo[]>;
   readonly #records = new Map<string, SlotRecord>();
+  readonly #cameraListeners: Listeners<[CameraSettings]>;
   readonly #slotListeners: Listeners<
     [string, LocalSlotState, SlotMessageKey | undefined, SlotFailure | undefined]
   >;
@@ -173,8 +234,12 @@ export class Publisher {
     this.#clock = options.clock ?? systemClock;
     this.#random = options.random ?? Math.random;
     this.#graceMs = options.cameraRestartGraceMs ?? DEFAULT_CAMERA_RESTART_GRACE_MS;
+    this.#listDevices = options.listDevices ?? defaultListDevices;
     this.#slotListeners = new Listeners((error) =>
       this.#logger.warn('slot state listener failed', errorContext(error)),
+    );
+    this.#cameraListeners = new Listeners((error) =>
+      this.#logger.warn('camera settings listener failed', errorContext(error)),
     );
     this.#bindRoom(session.room);
     this.#unsubscribe = [
@@ -228,17 +293,62 @@ export class Publisher {
     return this.#enqueue(record, () => this.#startCamera(record, epoch));
   }
 
-  /** Toggles front/back camera of the running camera (keeps the slot and the publication; rapid taps coalesce). */
+  /**
+   * Toggles front/back camera of the running camera (keeps the slot and the publication; rapid taps coalesce). A lens
+   * chosen remotely is given up, and so is its zoom.
+   */
   switchCamera(): Promise<void> {
     const record = this.#records.get('camera');
     if (record === undefined || record.camera === null) {
       return Promise.resolve();
     }
+    const { deviceId: _lens, ...camera } = record.camera;
     record.camera = {
-      ...record.camera,
-      facingMode: record.camera.facingMode === 'user' ? 'environment' : 'user',
+      ...camera,
+      facingMode: camera.facingMode === 'user' ? 'environment' : 'user',
+      image: withoutZoom(camera.image),
     };
     return this.#enqueue(record, () => this.#applyCameraSettings(record));
+  }
+
+  /** Notifies when a remote camera command changed the camera settings (lens, image), so the sender can keep them. */
+  onCameraSettings(listener: (settings: CameraSettings) => void): () => void {
+    return this.#cameraListeners.add(listener);
+  }
+
+  /**
+   * Applies a remote camera command (issue #11) to the camera: the lens is switched in place (restartTrack, no
+   * republish), zoom, focus, brightness and light with `applyConstraints`, only where the camera supports them.
+   * Commands arriving while one is applied merge, so the newest value of each setting wins. Never rejects: a refusal
+   * shows up as `problem` in {@link getCameraState}.
+   */
+  controlCamera(command: CameraControlDto): Promise<void> {
+    const record = this.#records.get('camera');
+    if (this.#disposed || record === undefined || record.camera === null) {
+      return Promise.resolve();
+    }
+    record.pendingControl =
+      record.pendingControl === null ? command : mergeCameraControl(record.pendingControl, command);
+    return this.#enqueue(record, () => this.#applyControl(record));
+  }
+
+  /**
+   * What the running camera can do and does now, for the device report (null without a live camera). Read fresh every
+   * time, so a lens switch or a changed capability shows up with the next report.
+   */
+  async getCameraState(): Promise<CameraStateDto | null> {
+    const record = this.#records.get('camera');
+    const media = record?.track?.mediaStreamTrack;
+    if (record === undefined || media === undefined || media.readyState !== 'live') {
+      return null;
+    }
+    const lenses = await listLenses(this.#listDevices);
+    return {
+      v: CAMERA_PROTOCOL_VERSION,
+      capabilities: mapCapabilities(capabilitiesOf(media), lenses),
+      settings: mapSettings(media.getSettings()),
+      problem: record.cameraProblem,
+    };
   }
 
   /** Changes the camera resolution in place (restartTrack, no republish, no gap for the Regie). */
@@ -345,6 +455,7 @@ export class Publisher {
     }
     this.#delays.clear();
     this.#slotListeners.clear();
+    this.#cameraListeners.clear();
     for (const record of this.#records.values()) {
       record.epoch += 1;
       void this.#releaseTrack(record);
@@ -370,6 +481,8 @@ export class Publisher {
       detachTrack: null,
       graceTimer: null,
       preview: null,
+      pendingControl: null,
+      cameraProblem: null,
     };
     this.#records.set(slot, record);
     return record;
@@ -401,6 +514,7 @@ export class Publisher {
     }
     this.#adoptTrack(record, acquired.track);
     record.appliedCamera = acquired.settings;
+    await this.#applyImage(record);
     await this.#publish(record);
   }
 
@@ -425,6 +539,13 @@ export class Publisher {
       } catch (error) {
         if (this.#isStale(record, epoch)) {
           return null;
+        }
+        if (settings.deviceId !== undefined && cameraProblemOf(error) === 'overconstrained') {
+          // The chosen lens is gone (another browser profile, a reset device): fall back to the facing mode.
+          this.#logger.warn('chosen lens not available', errorContext(error));
+          const { deviceId: _gone, ...fallback } = settings;
+          record.camera = { ...fallback, image: withoutZoom(fallback.image) };
+          continue;
         }
         const failure = describeCameraFailure(error);
         this.#logger.warn('camera acquisition failed', { attempt, ...errorContext(error) });
@@ -491,6 +612,7 @@ export class Publisher {
       }
       this.#logger.warn('camera restart with new settings failed', errorContext(error));
       record.camera = record.appliedCamera;
+      record.cameraProblem = cameraProblemOf(error);
       if (track.mediaStreamTrack.readyState === 'live') {
         this.#setState(record, record.state, 'media.slot.cameraSwitchFailed');
       } else {
@@ -501,7 +623,12 @@ export class Publisher {
     if (this.#isStale(record, epoch) || record.track !== track) {
       return;
     }
-    record.appliedCamera = target;
+    // A lens chosen by id faces wherever it faces: the front/back toggle continues from there.
+    const facing = target.deviceId === undefined ? null : facingOf(track.mediaStreamTrack);
+    record.appliedCamera = facing === null ? target : { ...target, facingMode: facing };
+    if (record.camera === target) {
+      record.camera = record.appliedCamera;
+    }
     setContentHint(track.mediaStreamTrack, 'motion');
     this.#notifyPreview(record);
   }
@@ -711,6 +838,83 @@ export class Publisher {
     this.#clearGrace(record);
     setContentHint(track.mediaStreamTrack, 'motion');
     this.#notifyPreview(record);
+    // A restarted capture starts with the camera's defaults: bring back zoom, focus, brightness and light.
+    void this.#enqueue(record, () => this.#applyImage(record));
+  }
+
+  /**
+   * Applies one remote command (the merged pending ones): reset, lens switch in place (its zoom starts over unless the
+   * command sets one), then the image settings. Tells the listeners what the camera now keeps.
+   */
+  async #applyControl(record: SlotRecord): Promise<void> {
+    const command = record.pendingControl;
+    const before = record.camera;
+    record.pendingControl = null;
+    if (command === null || before === null || this.#isStale(record, record.epoch)) {
+      return;
+    }
+    const currentLens = before.deviceId ?? record.track?.mediaStreamTrack.getSettings().deviceId;
+    const lensId = command.lensId ?? undefined;
+    const switchLens = lensId !== undefined && lensId !== currentLens;
+    const image = applyCommand(before.image ?? {}, command);
+    record.camera = {
+      ...before,
+      ...(switchLens ? { deviceId: lensId } : {}),
+      image: switchLens && command.zoom == null ? withoutZoom(image) : image,
+    };
+    if (switchLens) {
+      await this.#applyCameraSettings(record);
+    }
+    const lensProblem =
+      switchLens && record.camera?.deviceId !== lensId ? record.cameraProblem : null;
+    await this.#applyImage(record, command.reset === true);
+    if (lensProblem !== null) {
+      record.cameraProblem = lensProblem;
+    }
+    if (record.camera !== null) {
+      this.#cameraListeners.emit(record.camera);
+    }
+  }
+
+  /**
+   * Applies the requested image settings (`record.camera.image`) to the running camera, clamped to what it can do;
+   * with `reset` the others go back to automatic. Afterwards the settings follow what the camera really did, and a
+   * refusal (an `OverconstrainedError`, or a value the camera silently ignored) is kept as `cameraProblem`.
+   */
+  async #applyImage(record: SlotRecord, reset = false): Promise<void> {
+    const { track, camera } = record;
+    if (track === null || camera === null) {
+      return;
+    }
+    const media = track.mediaStreamTrack;
+    const capabilities = capabilitiesOf(media);
+    const constraints = imageConstraints(
+      camera.image ?? {},
+      capabilities,
+      media.getSettings(),
+      reset,
+    );
+    if (constraints === null) {
+      return;
+    }
+    let problem: CameraProblem | null = null;
+    try {
+      await media.applyConstraints({ advanced: [constraints] });
+    } catch (error) {
+      this.#logger.warn('camera control refused', errorContext(error));
+      problem = cameraProblemOf(error);
+    }
+    if (record.track !== track || record.camera === null) {
+      return;
+    }
+    const settled = settleImage(constraints, media.getSettings(), capabilities);
+    record.cameraProblem = problem ?? (settled.refused ? 'overconstrained' : null);
+    // After a reset only what the command set stays requested; the automatic values are the camera's own.
+    const requested = record.camera.image ?? {};
+    const kept = reset
+      ? Object.fromEntries(Object.entries(settled.image).filter(([key]) => key in requested))
+      : settled.image;
+    record.camera = { ...record.camera, image: { ...requested, ...kept } };
   }
 
   /** The SDK mutes a camera whose automatic restart failed (the publisher never mutes itself). */

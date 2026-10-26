@@ -11,6 +11,7 @@ import {
   type VideoCaptureOptions,
   type VideoEncoding,
 } from 'livekit-client';
+import type { CameraImageSettings } from './camera-control';
 
 /** Camera picture height the sender can choose. */
 export type CameraResolution = 720 | 1080;
@@ -18,10 +19,14 @@ export type CameraResolution = 720 | 1080;
 /** Front (`user`) or back (`environment`) camera. */
 export type FacingMode = 'user' | 'environment';
 
-/** Camera settings chosen on the phone. */
+/** Camera settings chosen on the phone or by the Regie. */
 export interface CameraSettings {
   readonly facingMode: FacingMode;
   readonly resolution: CameraResolution;
+  /** A specific lens (browser device id, issue #11); wins over `facingMode`. */
+  readonly deviceId?: string;
+  /** Zoom, focus, brightness and light requested remotely; restored after every camera restart. */
+  readonly image?: CameraImageSettings;
 }
 
 /** True for a structurally valid {@link CameraSettings} value (guards public API input). */
@@ -29,10 +34,12 @@ export function isCameraSettings(value: unknown): value is CameraSettings {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
-  const { facingMode, resolution } = value as Record<string, unknown>;
+  const { facingMode, resolution, deviceId, image } = value as Record<string, unknown>;
   return (
     (facingMode === 'user' || facingMode === 'environment') &&
-    (resolution === 720 || resolution === 1080)
+    (resolution === 720 || resolution === 1080) &&
+    (deviceId === undefined || (typeof deviceId === 'string' && deviceId !== '')) &&
+    (image === undefined || (typeof image === 'object' && image !== null))
   );
 }
 
@@ -44,10 +51,12 @@ const CAMERA_LAYERS: Readonly<Record<CameraResolution, readonly VideoPreset[]>> 
   1080: [H270, VideoPresets.h540],
 };
 
-/** getUserMedia constraints for the camera. */
+/** getUserMedia constraints for the camera: a chosen lens by its device id, otherwise by facing mode. */
 export function cameraCaptureOptions(settings: CameraSettings): VideoCaptureOptions {
   const preset = settings.resolution === 1080 ? VideoPresets.h1080 : VideoPresets.h720;
-  return { facingMode: settings.facingMode, resolution: preset.resolution };
+  return settings.deviceId === undefined
+    ? { facingMode: settings.facingMode, resolution: preset.resolution }
+    : { deviceId: { exact: settings.deviceId }, resolution: preset.resolution };
 }
 
 /** Publish options of the camera: H.264 simulcast with three layers, no backup codec. */

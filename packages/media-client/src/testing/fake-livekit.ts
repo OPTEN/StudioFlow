@@ -71,12 +71,32 @@ export class FakeMediaStreamTrack {
   readyState: MediaStreamTrackState = 'live';
   contentHint = '';
   settings: MediaTrackSettings = { width: 1280, height: 720, frameRate: 30 };
+  /** What `getCapabilities()` reports (a desktop webcam: no image controls). */
+  capabilities: MediaTrackCapabilities = { width: { min: 1, max: 1920 } };
+  /** Set to make `applyConstraints` reject (e.g. an `OverconstrainedError`). */
+  constraintError: Error | null = null;
+  /** Controls the camera silently ignores (applyConstraints resolves, the setting stays). */
+  ignored = new Set<string>();
   readonly stop = vi.fn(() => {
     this.readyState = 'ended';
+  });
+  /** Applies the first advanced constraint set to the settings, like a camera that supports it. */
+  readonly applyConstraints = vi.fn(async (constraints?: MediaTrackConstraints): Promise<void> => {
+    if (this.constraintError !== null) {
+      throw this.constraintError;
+    }
+    const set = Object.entries(constraints?.advanced?.[0] ?? {}).filter(
+      ([key]) => !this.ignored.has(key),
+    );
+    this.settings = { ...this.settings, ...Object.fromEntries(set) };
   });
 
   getSettings(): MediaTrackSettings {
     return this.settings;
+  }
+
+  getCapabilities(): MediaTrackCapabilities {
+    return this.capabilities;
   }
 
   /** Typed view for APIs that expect the DOM type. */
@@ -292,11 +312,10 @@ export class FakeLocalVideoTrack extends FakeEmitter {
   /** Set to make restartTrack / unmute reject (device gone). */
   restartError: Error | null = null;
   readonly restartTrack = vi.fn(async (options?: VideoCaptureOptions): Promise<void> => {
-    void options;
     if (this.restartError !== null) {
       throw this.restartError;
     }
-    this.replaceMediaTrack();
+    this.replaceMediaTrack(options);
   });
   readonly unmute = vi.fn(async (): Promise<this> => {
     if (this.restartError !== null) {
@@ -328,8 +347,12 @@ export class FakeLocalVideoTrack extends FakeEmitter {
     this.emit(TrackEvent.Muted, this);
   }
 
-  private replaceMediaTrack(): void {
-    this.mediaStreamTrack = new FakeMediaStreamTrack().asTrack;
+  /** Creates the capture after a restart (tests give it the capabilities of another lens). */
+  createMediaTrack: (options?: VideoCaptureOptions) => FakeMediaStreamTrack = () =>
+    new FakeMediaStreamTrack();
+
+  private replaceMediaTrack(options?: VideoCaptureOptions): void {
+    this.mediaStreamTrack = this.createMediaTrack(options).asTrack;
     this.emit(TrackEvent.Restarted, this);
   }
 }
