@@ -1539,6 +1539,183 @@
         }
       }
     },
+    "/api/productions/{productionId}/texts": {
+      "post": {
+        "tags": [
+          "Texts"
+        ],
+        "operationId": "createText",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTextSourceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextSourceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/productions/{productionId}/texts/{textId}": {
+      "put": {
+        "tags": [
+          "Texts"
+        ],
+        "operationId": "updateText",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "textId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTextSourceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextSourceDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Texts"
+        ],
+        "operationId": "deleteText",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "textId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/devices/{deviceId}": {
       "patch": {
         "tags": [
@@ -3683,6 +3860,44 @@
         },
         "description": "Request to create a scene."
       },
+      "CreateTextSourceRequest": {
+        "required": [
+          "line1",
+          "line2",
+          "style",
+          "align"
+        ],
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "description": "Main line."
+          },
+          "line2": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional second line."
+          },
+          "style": {
+            "description": "Design of the text.",
+            "$ref": "#/components/schemas/TextStyle"
+          },
+          "align": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Alignment; the style's default when missing.",
+                "$ref": "#/components/schemas/TextAlign"
+              }
+            ]
+          }
+        },
+        "description": "Request to create a text source."
+      },
       "CropDto": {
         "required": [
           "top",
@@ -4422,7 +4637,11 @@
           "sourceRecovered",
           "accountSetUp",
           "passwordChanged",
-          "accountReset"
+          "accountReset",
+          "textCreated",
+          "textDeleted",
+          "textShown",
+          "textHidden"
         ],
         "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
@@ -4919,7 +5138,8 @@
           "lastTransition",
           "lastSwitchAt",
           "standbySlate",
-          "endSlate"
+          "endSlate",
+          "textTheme"
         ],
         "type": "object",
         "properties": {
@@ -5003,6 +5223,10 @@
           "endSlate": {
             "description": "Slate after the end.",
             "$ref": "#/components/schemas/SlateDto"
+          },
+          "textTheme": {
+            "description": "Colours of all texts and lower thirds.",
+            "$ref": "#/components/schemas/TextThemeDto"
           }
         },
         "description": "Production (OBS: scene collection): one event with its own devices, scenes and output."
@@ -6213,7 +6437,8 @@
           "slot",
           "assetId",
           "status",
-          "statusSince"
+          "statusSince",
+          "text"
         ],
         "type": "object",
         "properties": {
@@ -6226,12 +6451,12 @@
             "description": "Slot code shown everywhere: K1… cameras, S1… screens, M1… media."
           },
           "kind": {
-            "description": "Camera, screen, image or video.",
+            "description": "Camera, screen, image, video or text.",
             "$ref": "#/components/schemas/SourceKind"
           },
           "label": {
             "type": "string",
-            "description": "Display name, e.g. “Laptop Lea · Screen 1”."
+            "description": "Display name, e.g. “Laptop Lea · Screen 1”; the first line of a text."
           },
           "deviceId": {
             "type": [
@@ -6265,6 +6490,17 @@
             ],
             "description": "Time of the last status change (timers in the Regie).",
             "format": "date-time"
+          },
+          "text": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Content of a text source; null for every other kind.",
+                "$ref": "#/components/schemas/TextSourceDto"
+              }
+            ]
           }
         },
         "description": "A source that scene items can show."
@@ -6274,7 +6510,8 @@
           "camera",
           "screen",
           "image",
-          "video"
+          "video",
+          "text"
         ],
         "description": "Kind of a source."
       },
@@ -6440,6 +6677,86 @@
         ],
         "description": "Traffic light used by the technical check."
       },
+      "TextAlign": {
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "description": "Horizontal alignment of a text source (the lower third always follows the reading direction)."
+      },
+      "TextSourceDto": {
+        "required": [
+          "id",
+          "code",
+          "line1",
+          "line2",
+          "style",
+          "align"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Source reference, e.g. `txt_…`."
+          },
+          "code": {
+            "type": "string",
+            "description": "Slot code T1, T2, …"
+          },
+          "line1": {
+            "type": "string",
+            "description": "Main line (a name or a title), 1–120 characters."
+          },
+          "line2": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional second line (a role), at most 120 characters."
+          },
+          "style": {
+            "description": "Design of the text.",
+            "$ref": "#/components/schemas/TextStyle"
+          },
+          "align": {
+            "description": "Horizontal alignment; the lower third ignores it.",
+            "$ref": "#/components/schemas/TextAlign"
+          }
+        },
+        "description": "A text or lower third (source kind SourceKind.Text). Scene items reference it by its `Id`, so\nediting the text changes every scene that shows it. The renderer draws it as HTML text, never as a picture."
+      },
+      "TextStyle": {
+        "enum": [
+          "lowerThird",
+          "title",
+          "note"
+        ],
+        "description": "Fixed design of a text source; the colours come from the production's TextThemeDto."
+      },
+      "TextThemeDto": {
+        "required": [
+          "accent",
+          "background",
+          "foreground"
+        ],
+        "type": "object",
+        "properties": {
+          "accent": {
+            "type": "string",
+            "description": "Accent bar or rule."
+          },
+          "background": {
+            "type": "string",
+            "description": "Bar behind the text."
+          },
+          "foreground": {
+            "type": "string",
+            "description": "Text colour."
+          }
+        },
+        "description": "Colours of all texts of a production (accent, background and text colour), each `#rrggbb`."
+      },
       "TransitionDto": {
         "required": [
           "kind",
@@ -6514,6 +6831,16 @@
                 "$ref": "#/components/schemas/SlateDto"
               }
             ]
+          },
+          "textTheme": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TextThemeDto"
+              }
+            ]
           }
         },
         "description": "Partial update of a production. Null fields stay unchanged."
@@ -6554,6 +6881,37 @@
           }
         },
         "description": "Partial update of scene settings. Null fields stay unchanged."
+      },
+      "UpdateTextSourceRequest": {
+        "required": [
+          "line1",
+          "line2",
+          "style",
+          "align"
+        ],
+        "type": "object",
+        "properties": {
+          "line1": {
+            "type": "string",
+            "description": "Main line."
+          },
+          "line2": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional second line."
+          },
+          "style": {
+            "description": "Design of the text.",
+            "$ref": "#/components/schemas/TextStyle"
+          },
+          "align": {
+            "description": "Alignment.",
+            "$ref": "#/components/schemas/TextAlign"
+          }
+        },
+        "description": "Replaces the content of a text source (last writer wins)."
       }
     }
   },
@@ -6572,6 +6930,9 @@
     },
     {
       "name": "Scenes"
+    },
+    {
+      "name": "Texts"
     },
     {
       "name": "Devices"

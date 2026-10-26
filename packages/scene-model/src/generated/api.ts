@@ -452,6 +452,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/productions/{productionId}/texts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/texts/{textId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateText"];
+        post?: never;
+        delete: operations["deleteText"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/devices/{deviceId}": {
         parameters: {
             query?: never;
@@ -1192,6 +1224,16 @@ export interface components {
             /** @description Copy items, layout mode and background from this scene. */
             cloneFromSceneId: null | string;
         };
+        /** @description Request to create a text source. */
+        CreateTextSourceRequest: {
+            /** @description Main line. */
+            line1: string;
+            /** @description Optional second line. */
+            line2: null | string;
+            /** @description Design of the text. */
+            style: components["schemas"]["TextStyle"];
+            align: null | components["schemas"]["TextAlign"];
+        };
         /** @description Crop per side as a fraction (0–0.45) of the source picture. Opposite sides sum to less than 0.9. */
         CropDto: {
             /** Format: double */
@@ -1470,7 +1512,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -1707,6 +1749,8 @@ export interface components {
             standbySlate: components["schemas"]["SlateDto"];
             /** @description Slate after the end. */
             endSlate: components["schemas"]["SlateDto"];
+            /** @description Colours of all texts and lower thirds. */
+            textTheme: components["schemas"]["TextThemeDto"];
         };
         /**
          * @description A revisioned change of the production state, pushed over SignalR (method string HubMethods.Event).
@@ -2175,9 +2219,9 @@ export interface components {
             id: string;
             /** @description Slot code shown everywhere: K1… cameras, S1… screens, M1… media. */
             code: string;
-            /** @description Camera, screen, image or video. */
+            /** @description Camera, screen, image, video or text. */
             kind: components["schemas"]["SourceKind"];
-            /** @description Display name, e.g. “Laptop Lea · Screen 1”. */
+            /** @description Display name, e.g. “Laptop Lea · Screen 1”; the first line of a text. */
             label: string;
             /** @description Device for device slots. */
             deviceId: null | string;
@@ -2192,12 +2236,13 @@ export interface components {
              * @description Time of the last status change (timers in the Regie).
              */
             statusSince: null | string;
+            text: null | components["schemas"]["TextSourceDto"];
         };
         /**
          * @description Kind of a source.
          * @enum {unknown}
          */
-        SourceKind: "camera" | "screen" | "image" | "video";
+        SourceKind: "camera" | "screen" | "image" | "video" | "text";
         /**
          * @description Health of a source as shown in the Regie (lamps, washes, message strip).
          * @enum {unknown}
@@ -2264,6 +2309,43 @@ export interface components {
          * @enum {unknown}
          */
         TechCheckLevel: "unknown" | "ok" | "warn" | "bad";
+        /**
+         * @description Horizontal alignment of a text source (the lower third always follows the reading direction).
+         * @enum {unknown}
+         */
+        TextAlign: "left" | "center" | "right";
+        /**
+         * @description A text or lower third (source kind SourceKind.Text). Scene items reference it by its `Id`, so
+         *     editing the text changes every scene that shows it. The renderer draws it as HTML text, never as a picture.
+         */
+        TextSourceDto: {
+            /** @description Source reference, e.g. `txt_…`. */
+            id: string;
+            /** @description Slot code T1, T2, … */
+            code: string;
+            /** @description Main line (a name or a title), 1–120 characters. */
+            line1: string;
+            /** @description Optional second line (a role), at most 120 characters. */
+            line2: null | string;
+            /** @description Design of the text. */
+            style: components["schemas"]["TextStyle"];
+            /** @description Horizontal alignment; the lower third ignores it. */
+            align: components["schemas"]["TextAlign"];
+        };
+        /**
+         * @description Fixed design of a text source; the colours come from the production's TextThemeDto.
+         * @enum {unknown}
+         */
+        TextStyle: "lowerThird" | "title" | "note";
+        /** @description Colours of all texts of a production (accent, background and text colour), each `#rrggbb`. */
+        TextThemeDto: {
+            /** @description Accent bar or rule. */
+            accent: string;
+            /** @description Bar behind the text. */
+            background: string;
+            /** @description Text colour. */
+            foreground: string;
+        };
         /** @description Transition used for a program switch. */
         TransitionDto: {
             /** @description Cut or fade. */
@@ -2288,12 +2370,24 @@ export interface components {
             name: null | string;
             standbySlate: null | components["schemas"]["SlateDto"];
             endSlate: null | components["schemas"]["SlateDto"];
+            textTheme?: null | components["schemas"]["TextThemeDto"];
         };
         /** @description Partial update of scene settings. Null fields stay unchanged. */
         UpdateSceneRequest: {
             name: null | string;
             layoutMode: null | components["schemas"]["SceneLayoutMode"];
             background: null | components["schemas"]["SceneBackgroundDto"];
+        };
+        /** @description Replaces the content of a text source (last writer wins). */
+        UpdateTextSourceRequest: {
+            /** @description Main line. */
+            line1: string;
+            /** @description Optional second line. */
+            line2: null | string;
+            /** @description Design of the text. */
+            style: components["schemas"]["TextStyle"];
+            /** @description Alignment. */
+            align: components["schemas"]["TextAlign"];
         };
     };
     responses: never;
@@ -2322,6 +2416,7 @@ export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
 export type CreatePairingRequest = components['schemas']['CreatePairingRequest'];
 export type CreateProductionRequest = components['schemas']['CreateProductionRequest'];
 export type CreateSceneRequest = components['schemas']['CreateSceneRequest'];
+export type CreateTextSourceRequest = components['schemas']['CreateTextSourceRequest'];
 export type CropDto = components['schemas']['CropDto'];
 export type DeviceCommandDto = components['schemas']['DeviceCommandDto'];
 export type DeviceCommandKind = components['schemas']['DeviceCommandKind'];
@@ -2415,11 +2510,16 @@ export type TallyDto = components['schemas']['TallyDto'];
 export type TallyState = components['schemas']['TallyState'];
 export type TechCheckDto = components['schemas']['TechCheckDto'];
 export type TechCheckLevel = components['schemas']['TechCheckLevel'];
+export type TextAlign = components['schemas']['TextAlign'];
+export type TextSourceDto = components['schemas']['TextSourceDto'];
+export type TextStyle = components['schemas']['TextStyle'];
+export type TextThemeDto = components['schemas']['TextThemeDto'];
 export type TransitionDto = components['schemas']['TransitionDto'];
 export type TransitionKind = components['schemas']['TransitionKind'];
 export type UpdateOutputAccessRequest = components['schemas']['UpdateOutputAccessRequest'];
 export type UpdateProductionRequest = components['schemas']['UpdateProductionRequest'];
 export type UpdateSceneRequest = components['schemas']['UpdateSceneRequest'];
+export type UpdateTextSourceRequest = components['schemas']['UpdateTextSourceRequest'];
 export type $defs = Record<string, never>;
 export interface operations {
     receiveLiveKitWebhook: {
@@ -3587,6 +3687,134 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    createText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTextSourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TextSourceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                textId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTextSourceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TextSourceDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                textId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
