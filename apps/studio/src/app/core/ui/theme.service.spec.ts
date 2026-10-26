@@ -145,6 +145,62 @@ describe('ThemeService', () => {
     expect(service.setting()).toBe('dark');
   });
 
+  describe('browser chrome colour', () => {
+    let meta: HTMLMetaElement;
+
+    beforeEach(() => {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = '#0d1117';
+      document.head.append(meta);
+    });
+
+    afterEach(() => meta.remove());
+
+    it('is the Panel colour of the dark theme', () => {
+      start();
+      expect(meta.content).toBe('#151a22');
+    });
+
+    it('is the Panel colour of the light theme, at start and after a choice', () => {
+      storage.setItem(PREFERENCE_KEYS.theme, 'light');
+      const service = start();
+      expect(meta.content).toBe('#f3f5f8');
+      service.choose('dark');
+      TestBed.tick();
+      expect(meta.content).toBe('#151a22');
+      service.choose('light');
+      TestBed.tick();
+      expect(meta.content).toBe('#f3f5f8');
+    });
+
+    it('follows the system setting live while System is chosen', () => {
+      storage.setItem(PREFERENCE_KEYS.theme, 'system');
+      start();
+      expect(meta.content).toBe('#151a22');
+      system.flip(true);
+      TestBed.tick();
+      expect(meta.content).toBe('#f3f5f8');
+      system.flip(false);
+      TestBed.tick();
+      expect(meta.content).toBe('#151a22');
+    });
+
+    it('follows a change made in another tab', () => {
+      start();
+      storage.setItem(PREFERENCE_KEYS.theme, 'light');
+      window.dispatchEvent(new StorageEvent('storage', { key: PREFERENCE_KEYS.theme }));
+      TestBed.tick();
+      expect(meta.content).toBe('#f3f5f8');
+    });
+
+    it('is not created when the page has no theme-color meta', () => {
+      meta.remove();
+      start();
+      expect(document.querySelector('meta[name="theme-color"]')).toBeNull();
+    });
+  });
+
   it('works without matchMedia', () => {
     (window as { matchMedia?: unknown }).matchMedia = undefined;
     storage.setItem(PREFERENCE_KEYS.theme, 'system');
