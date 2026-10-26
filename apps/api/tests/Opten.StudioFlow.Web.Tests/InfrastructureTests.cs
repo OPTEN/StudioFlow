@@ -268,7 +268,7 @@ public sealed class LiveKitTokenIssuerTests
         Assert.True(video.RootElement.GetProperty("canPublish").GetBoolean());
         Assert.False(video.RootElement.GetProperty("canSubscribe").GetBoolean());
         Assert.False(video.RootElement.GetProperty("canPublishData").GetBoolean());
-        Assert.Equal(["camera", "screen_share"], video.RootElement.GetProperty("canPublishSources").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(["camera", "screen_share", "microphone", "screen_share_audio"], video.RootElement.GetProperty("canPublishSources").EnumerateArray().Select(e => e.GetString()));
         Assert.False(video.RootElement.TryGetProperty("hidden", out _));
     }
 

@@ -12,6 +12,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 [JsonDerivedType(typeof(ProductionChangedEvent), "productionChanged")]
 [JsonDerivedType(typeof(ProductionCanvasChangedEvent), "productionCanvasChanged")]
 [JsonDerivedType(typeof(ProgramSwitchedEvent), "programSwitched")]
+[JsonDerivedType(typeof(AudioChannelsChangedEvent), "audioChannelsChanged")]
 [JsonDerivedType(typeof(SceneUpsertedEvent), "sceneUpserted")]
 [JsonDerivedType(typeof(SceneRemovedEvent), "sceneRemoved")]
 [JsonDerivedType(typeof(ScenesReorderedEvent), "scenesReordered")]
@@ -59,6 +60,12 @@ public sealed record ProgramSwitchedEvent(
     string? PreviousProgramSceneId,
     TransitionDto Transition,
     DateTimeOffset At) : ProductionEvent(Revision);
+
+/// <summary>
+/// Channels of the audio mixer were created or changed; each listed channel replaces the one of the same source. A channel
+/// disappears with its source (<see cref="SourceRemovedEvent"/>), there is no separate removal event.
+/// </summary>
+public sealed record AudioChannelsChangedEvent(long Revision, IReadOnlyList<AudioChannelDto> Channels) : ProductionEvent(Revision);
 
 /// <summary>A scene was created or changed.</summary>
 public sealed record SceneUpsertedEvent(long Revision, SceneDto Scene) : ProductionEvent(Revision);

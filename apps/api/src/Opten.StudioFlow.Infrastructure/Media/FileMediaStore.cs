@@ -80,8 +80,15 @@ internal sealed class FileMediaStore(IOptions<MediaOptions> options) : IMediaSto
                 }
             }
 
+            var hasAudio = false;
+            if (type.Kind == AssetKind.Video)
+            {
+                await using var video = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: false);
+                hasAudio = MediaTrackReader.HasAudio(video, type);
+            }
+
             File.Move(tempPath, finalPath);
-            return new StoredMedia(type.Kind, type.ContentType, fileName, written, size?.Width, size?.Height);
+            return new StoredMedia(type.Kind, type.ContentType, fileName, written, size?.Width, size?.Height, hasAudio);
         }
         finally
         {

@@ -48,7 +48,7 @@ public static class Dtos
     public static AssetDto Asset(Asset asset)
     {
         ArgumentNullException.ThrowIfNull(asset);
-        return new AssetDto(asset.Id, asset.Code, asset.Kind, asset.Name, asset.ContentType, asset.SizeBytes, asset.Width, asset.Height, asset.CreatedAt, asset.ContentUrl);
+        return new AssetDto(asset.Id, asset.Code, asset.Kind, asset.Name, asset.ContentType, asset.SizeBytes, asset.Width, asset.Height, asset.HasAudio, asset.CreatedAt, asset.ContentUrl);
     }
 
     /// <summary>An invite with its absolute URL.</summary>

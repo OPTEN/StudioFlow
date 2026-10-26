@@ -268,6 +268,13 @@ internal static class TextEndpoints
     }
 }
 
+/// <summary>The audio mixer.</summary>
+internal static class AudioEndpoints
+{
+    public static async Task<IResult> SetChannelsAsync(string productionId, [FromBody] SetAudioChannelsRequest body, AudioMixerService mixer, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await mixer.SetChannelsAsync(productionId, body, cancellationToken));
+}
+
 /// <summary>Regie actions on devices.</summary>
 internal static class DeviceAdminEndpoints
 {

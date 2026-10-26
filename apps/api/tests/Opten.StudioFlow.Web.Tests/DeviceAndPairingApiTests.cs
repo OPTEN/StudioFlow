@@ -39,7 +39,7 @@ public sealed class DeviceApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     }
 
     [Fact]
-    public async Task LiveKitToken_Sender_PublishesCameraAndScreenOnly()
+    public async Task LiveKitToken_Sender_PublishesPictureAndSoundOnly()
     {
         var admin = await app.AdminAsync();
         var credentials = await app.PairPhoneAsync(admin);
@@ -50,7 +50,7 @@ public sealed class DeviceApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
         Assert.Equal((credentials.DeviceId, admin.ProductionId), (token.Identity, token.Room));
         Assert.True(video.GetProperty("canPublish").GetBoolean());
         Assert.False(video.GetProperty("canSubscribe").GetBoolean());
-        Assert.Equal(["camera", "screen_share"], video.GetProperty("canPublishSources").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(["camera", "screen_share", "microphone", "screen_share_audio"], video.GetProperty("canPublishSources").EnumerateArray().Select(e => e.GetString()));
     }
 
     [Fact]

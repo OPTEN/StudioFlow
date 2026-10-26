@@ -88,6 +88,41 @@ public enum SourceKind
 
     /// <summary>Text or lower third rendered as HTML. Slot code T1, T2, …</summary>
     Text,
+
+    /// <summary>
+    /// Audio only: the microphone of a device or the feed of an audio station (slot <c>mic</c>). Slot code A1, A2, …
+    /// It has no picture, so no scene item can show it; it is a channel of the audio mixer.
+    /// </summary>
+    Audio,
+}
+
+/// <summary>How an audio channel of the mixer is switched (spec 4.4, issue #7).</summary>
+public enum AudioMode
+{
+    /// <summary>Audible whenever the broadcast is live, on every scene (OBS: Mic/Aux).</summary>
+    Always,
+
+    /// <summary>Audible as long as a visible item of the source (or of its device) is in the program scene.</summary>
+    Follow,
+
+    /// <summary>Never audible.</summary>
+    Off,
+}
+
+/// <summary>What the output page reports about its sound.</summary>
+public enum OutputAudioState
+{
+    /// <summary>Switched off on purpose (<c>?audio=off</c>), e.g. when the proxy takes the sound separately. No warning.</summary>
+    Off,
+
+    /// <summary>The audio context runs; the page produces sound.</summary>
+    Running,
+
+    /// <summary>The browser blocks audio until someone interacts with the page (autoplay policy): the consumer hears nothing.</summary>
+    Blocked,
+
+    /// <summary>The browser cannot mix audio (no Web Audio) or the audio context could not be created.</summary>
+    Unavailable,
 }
 
 /// <summary>Fixed design of a text source; the colours come from the production's <see cref="TextThemeDto"/>.</summary>
@@ -149,6 +184,9 @@ public enum DeviceKind
 
     /// <summary>Laptop sharing one or more screens, optionally a camera.</summary>
     Laptop,
+
+    /// <summary>Laptop at the mixing desk that sends the finished mix and nothing else (issue #7). Its only source is the microphone slot.</summary>
+    AudioStation,
 }
 
 /// <summary>Administrative state of a device.</summary>
@@ -505,6 +543,27 @@ public enum LogCode
 
     /// <summary>The Regie asked the backup service for a backup.</summary>
     BackupRequested,
+
+    /// <summary>The sender stopped a microphone on purpose. Params: <c>code</c>.</summary>
+    AudioEnded,
+
+    /// <summary>A live microphone failed (device gone, permission revoked). Params: <c>code</c>.</summary>
+    AudioLost,
+
+    /// <summary>A channel was muted. Params: <c>code</c>.</summary>
+    AudioMuted,
+
+    /// <summary>A channel was unmuted. Params: <c>code</c>.</summary>
+    AudioUnmuted,
+
+    /// <summary>The gain of a channel changed. Params: <c>code</c>, <c>value</c> (dB as an invariant number; -100 is silence).</summary>
+    AudioGainChanged,
+
+    /// <summary>The mode of a channel changed. Params: <c>code</c>, <c>value</c> (<see cref="AudioMode"/>, camelCase).</summary>
+    AudioModeChanged,
+
+    /// <summary>The sync offset of a channel changed. Params: <c>code</c>, <c>value</c> (milliseconds).</summary>
+    AudioSyncOffsetChanged,
 }
 
 /// <summary>What an entry of the audit log is about: the category filter of the log view and a column of the export.</summary>

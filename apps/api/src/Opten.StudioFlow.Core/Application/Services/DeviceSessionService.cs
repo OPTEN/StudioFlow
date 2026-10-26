@@ -288,7 +288,7 @@ public sealed class DeviceSessionService(
         }
     }
 
-    /// <summary>Allocates another screen or the optional camera.</summary>
+    /// <summary>Allocates another screen, the optional camera or the microphone.</summary>
     public Task<DeviceSlotDto> AllocateSlotAsync(DeviceIdentity identity, AllocateSlotRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(identity);
@@ -301,6 +301,7 @@ public sealed class DeviceSessionService(
                 var catalog = await context.CatalogAsync(cancellationToken);
                 var slot = device.AllocateSlot(request.Kind, catalog.CodesInUse);
                 SourceMonitor.Introduce(context, device, slot);
+                await AudioMixerSync.AddAsync(context, device, [slot], cancellationToken);
                 await SlotsChangedAsync(context, device, cancellationToken);
                 return new DeviceSlotDto(slot.Slot, slot.Code, slot.Kind);
             },
@@ -323,6 +324,7 @@ public sealed class DeviceSessionService(
                 var sourceId = device.SourceIdOf(released);
                 SourceMonitor.Forget(context, sourceId);
                 context.Emit(revision => new SourceRemovedEvent(revision, sourceId));
+                await AudioMixerSync.RemoveAsync(context, [sourceId], cancellationToken);
                 context.Runtime.Device(device.Id).ForgetSlot(released.Slot);
                 await SlotsChangedAsync(context, device, cancellationToken);
             },
@@ -335,7 +337,7 @@ public sealed class DeviceSessionService(
         ArgumentNullException.ThrowIfNull(identity);
         await coordinator.ExecuteAsync(
             identity.ProductionId,
-            async context => DeviceEvents.Remove(context, await context.DeviceAsync(identity.DeviceId, cancellationToken), AuditActors.Device(identity.DeviceId)),
+            async context => await DeviceEvents.RemoveAsync(context, await context.DeviceAsync(identity.DeviceId, cancellationToken), AuditActors.Device(identity.DeviceId), cancellationToken),
             cancellationToken);
         await kicker.KickAsync(identity.ProductionId, identity.DeviceId);
     }

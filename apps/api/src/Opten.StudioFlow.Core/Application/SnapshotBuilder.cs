@@ -28,6 +28,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             [.. production.OrderedScenes.Select(Dtos.Scene)],
             [.. catalog.All.Select(e => Dtos.Source(e, runtime.Sources.GetValueOrDefault(e.Id)))],
             production.Placeholders,
+            production.AudioChannels,
             [.. devices.Select(d => Dtos.Device(d, runtime.FindDevice(d.Id)))],
             [.. assets.Select(Dtos.Asset)],
             [.. pairingRequests.Pending(production.Id, context.Now).Select(r => r.ToDto())],
@@ -50,6 +51,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             Dtos.Production(production),
             [.. production.OrderedScenes.Select(Dtos.Scene)],
             [.. catalog.All.Select(e => OutputView.WithoutHealth(Dtos.Source(e, null)))],
+            production.AudioChannels,
             [.. assets.Select(Dtos.Asset)]);
     }
 

@@ -19,7 +19,9 @@ namespace Opten.StudioFlow.Infrastructure.LiveKit;
 internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOptions<StudioFlowOptions> studio, TimeProvider clock, IHttpContextAccessor? requests = null) : ILiveKitTokenIssuer
 {
     private static readonly TimeSpan AdminLifetime = TimeSpan.FromMinutes(1);
-    private static readonly string[] SenderSources = ["camera", "screen_share"];
+
+    /// <summary>What a sender may publish: picture and sound. The Regie and the output page publish nothing (<c>canPublish</c> false).</summary>
+    private static readonly string[] SenderSources = ["camera", "screen_share", "microphone", "screen_share_audio"];
 
     private readonly JsonWebTokenHandler handler = new() { SetDefaultTimesOnTokenCreation = false };
 

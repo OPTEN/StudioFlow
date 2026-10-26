@@ -35,6 +35,7 @@ internal sealed class ProductionConfiguration : IEntityTypeConfiguration<Product
         builder.Property(p => p.TextTheme).AsJson().IsRequired();
         builder.Property(p => p.TextSources).AsJson().IsRequired();
         builder.Property(p => p.Placeholders).AsJson().IsRequired();
+        builder.Property(p => p.AudioChannels).AsJson().IsRequired();
         builder.HasIndex(p => new { p.TenantId, p.Slug }).IsUnique();
         builder.HasIndex(p => p.TenantId).IsUnique().HasFilter("is_active");
         builder.HasMany(p => p.Scenes).WithOne().HasForeignKey(s => s.ProductionId).OnDelete(DeleteBehavior.Cascade);

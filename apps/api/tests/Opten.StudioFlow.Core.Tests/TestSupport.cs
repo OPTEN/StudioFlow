@@ -34,8 +34,11 @@ internal static class Build
     public static Asset Image(Production production, string name = "Pause", IEnumerable<string>? codes = null) =>
         Asset.Create(EntityIds.New(EntityIds.Asset), production.Id, name, AssetKind.Image, "image/png", 1000, 1920, 1080, "x.png", T0, codes ?? []);
 
-    public static Asset Video(Production production, string name = "Intro", IEnumerable<string>? codes = null) =>
-        Asset.Create(EntityIds.New(EntityIds.Asset), production.Id, name, AssetKind.Video, "video/mp4", 1000, null, null, "x.mp4", T0, codes ?? []);
+    public static Device AudioStation(Production production, string name = "Mixing desk", IEnumerable<string>? codes = null) =>
+        Device.Pair(production.Id, name, DeviceKind.AudioStation, "Windows · Chrome", PairingMethod.Code, T0, codes ?? []).Device;
+
+    public static Asset Video(Production production, string name = "Intro", IEnumerable<string>? codes = null, bool hasAudio = false) =>
+        Asset.Create(EntityIds.New(EntityIds.Asset), production.Id, name, AssetKind.Video, "video/mp4", 1000, null, null, "x.mp4", T0, codes ?? [], hasAudio);
 
     public static SceneItemDto Item(string source, string? id = null) => new(
         id ?? EntityIds.New(EntityIds.Item),

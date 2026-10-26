@@ -23,6 +23,7 @@ public static class AuditCategories
         [AuditActions.SceneLive] = AuditCategory.Production,
         [AuditActions.SceneCreated] = AuditCategory.Production,
         [AuditActions.SceneDeleted] = AuditCategory.Production,
+        [AuditActions.AudioChanged] = AuditCategory.Production,
         [AuditActions.TextCreated] = AuditCategory.Production,
         [AuditActions.TextDeleted] = AuditCategory.Production,
         [AuditActions.TextShown] = AuditCategory.Production,

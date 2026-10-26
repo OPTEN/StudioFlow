@@ -14,12 +14,13 @@ namespace Opten.StudioFlow.Web.Hosting;
 /// <summary>
 /// Startup work that must finish before Kestrel listens (an <see cref="IHostedService"/>, not a background service):
 /// configuration validation (the host does not start with missing secrets or invalid durations and limits), migrations,
-/// the default production, the Regie account (while there is none, the first-run setup code is logged) and a warning for
+/// the default production, the channels of the audio mixer (productions that exist since before it get theirs), the Regie account (while there is none, the first-run setup code is logged) and a warning for
 /// the account settings that older versions read from the configuration and that are ignored now.
 /// </summary>
 internal sealed class StartupInitializer(
     IServiceProvider services,
     ProductionService productions,
+    AudioMixerService audioMixer,
     AdminAccountState account,
     ServerSettingsState serverSettings,
     ServerConfigApplier serverConfig,
@@ -50,6 +51,7 @@ internal sealed class StartupInitializer(
         _ = (pairing.Value, lockout.Value, sources.Value, output.Value, realtime.Value, database.Value, backup.Value, audit.Value, transfer.Value, install.Value);
         await DatabaseMaintenance.MigrateAsync(services, cancellationToken);
         await productions.EnsureDefaultProductionAsync(cancellationToken);
+        await audioMixer.SyncAllAsync(cancellationToken);
         await account.RefreshAsync(cancellationToken);
         await serverSettings.RefreshAsync(cancellationToken);
         await ApplyServerSettingsAsync(cancellationToken);

@@ -2112,6 +2112,69 @@
         }
       }
     },
+    "/api/productions/{productionId}/audio/channels": {
+      "put": {
+        "tags": [
+          "Audio"
+        ],
+        "operationId": "setAudioChannels",
+        "parameters": [
+          {
+            "name": "productionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAudioChannelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AudioChannelDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/productions/{productionId}/devices/{deviceId}": {
       "patch": {
         "tags": [
@@ -4747,6 +4810,7 @@
           "sizeBytes",
           "width",
           "height",
+          "hasAudio",
           "createdAt",
           "contentUrl"
         ],
@@ -4793,6 +4857,10 @@
             "description": "Pixel height where known.",
             "format": "int32"
           },
+          "hasAudio": {
+            "type": "boolean",
+            "description": "The file has an audio track (videos only); it becomes a channel of the audio mixer."
+          },
           "createdAt": {
             "type": "string",
             "description": "Upload time.",
@@ -4824,6 +4892,49 @@
           }
         },
         "description": "Assigns a placeholder to a source: every scene item that shows the placeholder shows the source from now on."
+      },
+      "AudioChannelDto": {
+        "required": [
+          "sourceId",
+          "gainDb",
+          "muted",
+          "mode",
+          "syncOffsetMs"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "description": "The source the channel belongs to."
+          },
+          "gainDb": {
+            "type": "number",
+            "description": "Fader in dB, −100 (silence, shown as −∞) to +10. 0 is unity gain.",
+            "format": "double"
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Mute switch; a muted channel is silent whatever the mode."
+          },
+          "mode": {
+            "description": "Always audible, follows the picture, or off.",
+            "$ref": "#/components/schemas/AudioMode"
+          },
+          "syncOffsetMs": {
+            "type": "integer",
+            "description": "Delay in milliseconds, 0 to 500, to bring the sound in step with a picture that arrives later.",
+            "format": "int32"
+          }
+        },
+        "description": "One channel of the audio mixer of a production (issue #7): the level, the mute switch, the mode and the sync offset of\none audio source. The mixer is one global state per production, revisioned like the scenes; the output page mixes the\nsound itself (Web Audio) from this state. There is one channel for every source that can carry sound: a microphone\nslot (`{deviceId}/mic`, source kind audio), a screen (`{deviceId}/screen-n`, the audio of the shared tab or\nsystem) and a video with sound (`{assetId}`)."
+      },
+      "AudioMode": {
+        "enum": [
+          "always",
+          "follow",
+          "off"
+        ],
+        "description": "How an audio channel of the mixer is switched (spec 4.4, issue #7)."
       },
       "AuditCategory": {
         "enum": [
@@ -5974,7 +6085,8 @@
       "DeviceKind": {
         "enum": [
           "phone",
-          "laptop"
+          "laptop",
+          "audioStation"
         ],
         "description": "Kind of a paired device."
       },
@@ -6635,7 +6747,14 @@
           "settingsAddressChanged",
           "settingsEmbeddingChanged",
           "settingsBackupChanged",
-          "backupRequested"
+          "backupRequested",
+          "audioEnded",
+          "audioLost",
+          "audioMuted",
+          "audioUnmuted",
+          "audioGainChanged",
+          "audioModeChanged",
+          "audioSyncOffsetChanged"
         ],
         "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
@@ -6793,6 +6912,37 @@
           }
         },
         "description": "Asks for a test of a media address."
+      },
+      "OutputAudioDto": {
+        "required": [
+          "state",
+          "levelDb"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "description": "Off (on purpose), running, blocked by the browser or unavailable.",
+            "$ref": "#/components/schemas/OutputAudioState"
+          },
+          "levelDb": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Peak level of the program mix in dBFS over the report interval; null without signal (below −90 dBFS) or without audio.",
+            "format": "double"
+          }
+        },
+        "description": "The sound of an output page as it reports it."
+      },
+      "OutputAudioState": {
+        "enum": [
+          "off",
+          "running",
+          "blocked",
+          "unavailable"
+        ],
+        "description": "What the output page reports about its sound."
       },
       "OutputChangesDto": {
         "required": [
@@ -6961,6 +7111,17 @@
             ],
             "description": "Number of those streams decoded in software.",
             "format": "int32"
+          },
+          "audio": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The sound of the page that reported last: off, running, blocked by the browser or unavailable, with its level; null before any report.",
+                "$ref": "#/components/schemas/OutputAudioDto"
+              }
+            ]
           }
         },
         "description": "Live state of one output link (a consumer such as the proxy or the Teams camera)."
@@ -7024,6 +7185,17 @@
             ],
             "description": "Of those, the number decoded in software.",
             "format": "int32"
+          },
+          "audio": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "State and level of the sound; null from a page that predates audio.",
+                "$ref": "#/components/schemas/OutputAudioDto"
+              }
+            ]
           }
         },
         "description": "Status report of an output page, sent about every two seconds."
@@ -7065,6 +7237,7 @@
           "production",
           "scenes",
           "sources",
+          "audioChannels",
           "assets"
         ],
         "type": "object",
@@ -7096,6 +7269,13 @@
               "$ref": "#/components/schemas/SourceDto"
             },
             "description": "Sources without health."
+          },
+          "audioChannels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioChannelDto"
+            },
+            "description": "The channels of the audio mixer; the output page mixes the sound from them."
           },
           "assets": {
             "type": "array",
@@ -7533,6 +7713,9 @@
             "$ref": "#/components/schemas/ProductionEventProgramSwitchedEvent"
           },
           {
+            "$ref": "#/components/schemas/ProductionEventAudioChannelsChangedEvent"
+          },
+          {
             "$ref": "#/components/schemas/ProductionEventSceneUpsertedEvent"
           },
           {
@@ -7597,6 +7780,7 @@
             "productionChanged": "#/components/schemas/ProductionEventProductionChangedEvent",
             "productionCanvasChanged": "#/components/schemas/ProductionEventProductionCanvasChangedEvent",
             "programSwitched": "#/components/schemas/ProductionEventProgramSwitchedEvent",
+            "audioChannelsChanged": "#/components/schemas/ProductionEventAudioChannelsChangedEvent",
             "sceneUpserted": "#/components/schemas/ProductionEventSceneUpsertedEvent",
             "sceneRemoved": "#/components/schemas/ProductionEventSceneRemovedEvent",
             "scenesReordered": "#/components/schemas/ProductionEventScenesReorderedEvent",
@@ -7666,6 +7850,33 @@
           }
         },
         "description": "An asset was uploaded or renamed."
+      },
+      "ProductionEventAudioChannelsChangedEvent": {
+        "required": [
+          "channels",
+          "revision",
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "audioChannelsChanged"
+            ],
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioChannelDto"
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Revision after this change.",
+            "format": "int64"
+          }
+        },
+        "description": "Channels of the audio mixer were created or changed; each listed channel replaces the one of the same source. A channel\ndisappears with its source (SourceRemovedEvent), there is no separate removal event."
       },
       "ProductionEventDeviceRemovedEvent": {
         "required": [
@@ -8198,6 +8409,7 @@
           "scenes",
           "sources",
           "placeholders",
+          "audioChannels",
           "devices",
           "assets",
           "pairingRequests",
@@ -8243,6 +8455,13 @@
               "$ref": "#/components/schemas/SourcePlaceholderDto"
             },
             "description": "Device sources of the production this one was copied from, not assigned yet."
+          },
+          "audioChannels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioChannelDto"
+            },
+            "description": "The channels of the audio mixer, one for every source that can carry sound."
           },
           "devices": {
             "type": "array",
@@ -8698,6 +8917,27 @@
         },
         "description": "The signed-in admin."
       },
+      "SetAudioChannelsRequest": {
+        "required": [
+          "channels"
+        ],
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioChannelDto"
+            },
+            "description": "The channels to set; at most one entry per source."
+          },
+          "adjusting": {
+            "type": "boolean",
+            "description": "True while a fader is being dragged: the change is applied and sent at once, but not written to the audit log. The last\nrequest of the drag is sent with false.",
+            "default": false
+          }
+        },
+        "description": "Sets channels of the mixer (`PUT …/audio/channels`). Every listed channel replaces the stored one in full; channels\nthat are not listed stay as they are, so two Regie seats that move different faders do not overwrite each other.\nUndo and redo send the previous state of the channels they touched."
+      },
       "SetPreviewRequest": {
         "required": [
           "sceneId"
@@ -8964,7 +9204,8 @@
           "screen",
           "image",
           "video",
-          "text"
+          "text",
+          "audio"
         ],
         "description": "Kind of a source."
       },
@@ -9583,6 +9824,9 @@
     },
     {
       "name": "Placeholders"
+    },
+    {
+      "name": "Audio"
     },
     {
       "name": "Devices"

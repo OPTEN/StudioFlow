@@ -46,9 +46,10 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
                 async context =>
                 {
                     var catalog = await context.CatalogAsync(cancellationToken);
-                    var asset = Asset.Create(assetId, productionId, Asset.NameFromFileName(fileName), stored.Kind, stored.ContentType, stored.SizeBytes, stored.Width, stored.Height, stored.FileName, context.Now, catalog.CodesInUse);
+                    var asset = Asset.Create(assetId, productionId, Asset.NameFromFileName(fileName), stored.Kind, stored.ContentType, stored.SizeBytes, stored.Width, stored.Height, stored.FileName, context.Now, catalog.CodesInUse, stored.HasAudio);
                     context.Data.Assets.Add(asset);
                     EmitAsset(context, asset);
+                    await AudioMixerSync.AddAsync(context, asset, cancellationToken);
                     context.Audit(AuditActors.Admin, AuditActions.AssetUploaded, Details(asset));
                     return Dtos.Asset(asset);
                 },
@@ -98,6 +99,7 @@ public sealed class AssetService(ProductionCoordinator coordinator, IUnitOfWorkF
                 context.Data.Assets.Remove(asset);
                 context.Emit(revision => new AssetRemovedEvent(revision, asset.Id));
                 context.Emit(revision => new SourceRemovedEvent(revision, asset.Id));
+                await AudioMixerSync.RemoveAsync(context, [asset.Id], cancellationToken);
                 context.Audit(AuditActors.Admin, AuditActions.AssetDeleted, Details(asset));
                 context.OnCommitted(() => DeleteFile(asset));
             },

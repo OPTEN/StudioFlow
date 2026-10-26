@@ -91,7 +91,7 @@ public sealed class DeviceAdminService(ProductionCoordinator coordinator, LiveKi
     {
         await coordinator.ExecuteAsync(
             productionId,
-            async context => DeviceEvents.Remove(context, await context.DeviceAsync(deviceId, cancellationToken), AuditActors.Admin),
+            async context => await DeviceEvents.RemoveAsync(context, await context.DeviceAsync(deviceId, cancellationToken), AuditActors.Admin, cancellationToken),
             cancellationToken);
         await kicker.KickAsync(productionId, deviceId);
     }
@@ -232,8 +232,8 @@ internal static class DeviceEvents
         });
     }
 
-    /// <summary>Deletes a device with its sources and session.</summary>
-    public static void Remove(MutationContext context, Device device, string actor)
+    /// <summary>Deletes a device with its sources (and their mixer channels) and session.</summary>
+    public static async Task RemoveAsync(MutationContext context, Device device, string actor, CancellationToken cancellationToken)
     {
         foreach (var slot in device.Slots)
         {
@@ -241,6 +241,8 @@ internal static class DeviceEvents
             SourceMonitor.Forget(context, sourceId);
             context.Emit(revision => new SourceRemovedEvent(revision, sourceId));
         }
+
+        await AudioMixerSync.RemoveAsync(context, device.Slots.Select(device.SourceIdOf), cancellationToken);
 
         Disconnect(context, device.Id);
         context.Data.Devices.Remove(device);

@@ -211,6 +211,7 @@ internal static class StudioFlowHost
             sp.GetRequiredService<TimeProvider>(),
             AppVersion.Current,
             sp.GetRequiredService<ILogger<ProductionTransferService>>()));
+        services.AddSingleton<AudioMixerService>();
         services.AddSingleton<OutputService>();
         services.AddSingleton<LiveKitSyncService>();
         services.AddSingleton<StudioSessionService>();
