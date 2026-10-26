@@ -949,7 +949,7 @@ Images and versions (issue #18, process in `docs/releasing.md`):
   `npm run build:output`), and the `?debug=1` overlay prints `StudioFlow 0.4.2+1a2b3c4` as its last line (just the
   version when the build does not know its commit).
 - Published images (GHCR, `linux/amd64`): `ghcr.io/opten/studioflow-web` (the `caddy` service: Caddy, Caddyfile,
-  frontends), `ghcr.io/opten/studioflow-api` and `ghcr.io/opten/studioflow-backup` (the `backup` service, profile `backup`). Tags `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`,
+  frontends, licence files under `/licenses/` and `/3rdpartylicenses.txt`), `ghcr.io/opten/studioflow-api` and `ghcr.io/opten/studioflow-backup` (the `backup` service, profile `backup`). Tags `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`,
   `latest`. OCI labels, SBOM, provenance and a keyless cosign signature on every image.
 - `docker-compose.release.yml` is the twin of `docker-compose.yml` with `image:` instead of `build:` and without `netem`:
   `${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-{web,api,backup}:${STUDIOFLOW_IMAGE_TAG:-<release>}`. The release
@@ -1008,7 +1008,7 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 
 | Variable (`.env`) | Used by | Meaning / default |
 |---|---|---|
-| `STUDIOFLOW_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `studioflow.opten.ch` (tests: `localhost`; in mode `internal` also an IP) |
+| `STUDIOFLOW_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `studioflow.example.com` (tests: `localhost`; in mode `internal` also an IP) |
 | `STUDIOFLOW_NODE_IP` | livekit | **Required.** IPv4 that LiveKit announces for media (`NODE_IP`): the server's LAN IP (VPS: public IP); `127.0.0.1` only for single-machine tests |
 | `STUDIOFLOW_TLS_MODE` | caddy | **Required.** `internal` \| `acme` \| `custom` \| `dns-cloudflare` \| `dns-infomaniak` \| `dns-hetzner` \| `dns-desec` \| `dns-route53` \| `dns-gandi` \| `dns-ovh` |
 | `STUDIOFLOW_EXTRA_HOSTS` | caddy | Further site addresses, space-separated (mode `internal`, e.g. the IP); default empty |

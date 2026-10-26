@@ -76,7 +76,7 @@ docs: describe the update procedure
 
 | Image | Content |
 |---|---|
-| `ghcr.io/opten/studioflow-web` | Caddy with the DNS modules, the Caddyfile and the three built frontends (Regie, sender, output). Built from `infra/caddy/Dockerfile` with the repository as context |
+| `ghcr.io/opten/studioflow-web` | Caddy with the DNS modules, the Caddyfile and the three built frontends (Regie, sender, output), plus the licence files (`/licenses/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, `/3rdpartylicenses.txt`). Built from `infra/caddy/Dockerfile` with the repository as context |
 | `ghcr.io/opten/studioflow-api` | The ASP.NET Core API including its commands (`reset-admin`, `broadcast-status`). Built from `apps/api/Dockerfile` |
 | `ghcr.io/opten/studioflow-backup` | The backup service of the Compose profile `backup` (scheduled `pg_dump` and volume copies, runbook section 7). Built from `infra/backup/Dockerfile` on the PostgreSQL image pinned in `docker-compose.yml` (the `plan` job reads the pin), so `pg_dump` matches the server |
 
