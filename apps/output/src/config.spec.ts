@@ -74,7 +74,7 @@ describe('parseRoute', () => {
       slug: 'webinar',
       key: KEY,
       keyFromUrl: true,
-      flags: { background: 'black', debug: false, latency: false },
+      flags: { background: 'black', audio: true, debug: false, latency: false },
     });
   });
 
@@ -135,15 +135,23 @@ describe('parseRoute', () => {
 
 describe('parseFlags', () => {
   it.each([
-    ['', { background: 'black', debug: false, latency: false }],
-    ['?bg=transparent', { background: 'transparent', debug: false, latency: false }],
-    ['?bg=TRANSPARENT', { background: 'transparent', debug: false, latency: false }],
-    ['?bg=black', { background: 'black', debug: false, latency: false }],
-    ['?bg=red', { background: 'black', debug: false, latency: false }],
-    ['?debug=1', { background: 'black', debug: true, latency: false }],
-    ['?debug=true&latency=1', { background: 'black', debug: true, latency: true }],
-    ['?debug=0&latency=no', { background: 'black', debug: false, latency: false }],
-    ['?debug', { background: 'black', debug: false, latency: false }],
+    ['', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?bg=transparent', { background: 'transparent', audio: true, debug: false, latency: false }],
+    ['?bg=TRANSPARENT', { background: 'transparent', audio: true, debug: false, latency: false }],
+    ['?bg=black', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?bg=red', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?debug=1', { background: 'black', audio: true, debug: true, latency: false }],
+    ['?debug=true&latency=1', { background: 'black', audio: true, debug: true, latency: true }],
+    ['?debug=0&latency=no', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?debug', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?audio=off', { background: 'black', audio: false, debug: false, latency: false }],
+    [
+      '?audio=OFF&bg=transparent',
+      { background: 'transparent', audio: false, debug: false, latency: false },
+    ],
+    ['?audio=0', { background: 'black', audio: false, debug: false, latency: false }],
+    ['?audio=on', { background: 'black', audio: true, debug: false, latency: false }],
+    ['?audio=loud', { background: 'black', audio: true, debug: false, latency: false }],
   ])('parses %j', (search, expected) => {
     expect(parseFlags(search)).toEqual(expected);
   });

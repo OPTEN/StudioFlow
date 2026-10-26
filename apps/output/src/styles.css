@@ -79,6 +79,33 @@ html.is-cursor-idle * {
   user-select: none;
 }
 
+/* The browser blocks the sound until the page is clicked: a small button, only while sound is expected. */
+.c-sound-on {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 11;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #1f6feb;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.c-sound-on[hidden] {
+  display: none;
+}
+
+.c-sound-on:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* /o/_clock: running clock for glass-to-glass measurements (plan phase 0). */
 .c-clock {
   position: fixed;

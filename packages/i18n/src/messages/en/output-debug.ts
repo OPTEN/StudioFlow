@@ -6,6 +6,15 @@ import type { Namespace } from '../../types';
  * and `ms` are written by the code. The last line names the build (`StudioFlow 0.1.0+1a2b3c4`).
  */
 export const outputDebug = {
+  'output.debug.audio': 'Audio {state} · Program {level}',
+  'output.debug.audioChannel': '{name} · {level} · {state}',
+  'output.debug.audioChannelState.audible': 'audible',
+  'output.debug.audioChannelState.noSound': 'no sound',
+  'output.debug.audioChannelState.silent': 'silent',
+  'output.debug.audioState.blocked': 'blocked (click the page)',
+  'output.debug.audioState.off': 'off',
+  'output.debug.audioState.running': 'running',
+  'output.debug.audioState.unavailable': 'unavailable',
   'output.debug.availability.live': 'live',
   'output.debug.availability.lost': 'freeze frame',
   'output.debug.availability.pending': 'no picture',
@@ -29,6 +38,7 @@ export const outputDebug = {
   'output.debug.hub.stopped': 'stopped',
   'output.debug.hub.unauthorized': 'no access',
 
+  'output.debug.jitter': 'Jitter {value}',
   'output.debug.latency': 'Latency ≈ {latency} · Renderer {fps} fps',
   'output.debug.livekit': 'LiveKit {state}',
   'output.debug.livekitLoading': 'loading…',

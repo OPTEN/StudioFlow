@@ -2,6 +2,15 @@ import type { Translation } from '../../types';
 import type { outputDebug as en } from '../en/output-debug';
 
 export const outputDebug: Translation<typeof en> = {
+  'output.debug.audio': 'Ton {state} · Programm {level}',
+  'output.debug.audioChannel': '{name} · {level} · {state}',
+  'output.debug.audioChannelState.audible': 'hörbar',
+  'output.debug.audioChannelState.noSound': 'kein Ton',
+  'output.debug.audioChannelState.silent': 'still',
+  'output.debug.audioState.blocked': 'gesperrt (Seite anklicken)',
+  'output.debug.audioState.off': 'aus',
+  'output.debug.audioState.running': 'läuft',
+  'output.debug.audioState.unavailable': 'nicht verfügbar',
   'output.debug.availability.live': 'live',
   'output.debug.availability.lost': 'Standbild',
   'output.debug.availability.pending': 'kein Bild',
@@ -25,6 +34,7 @@ export const outputDebug: Translation<typeof en> = {
   'output.debug.hub.stopped': 'gestoppt',
   'output.debug.hub.unauthorized': 'kein Zugang',
 
+  'output.debug.jitter': 'Jitter {value}',
   'output.debug.latency': 'Latenz ≈ {latency} · Renderer {fps} fps',
   'output.debug.livekit': 'LiveKit {state}',
   'output.debug.livekitLoading': 'lädt …',

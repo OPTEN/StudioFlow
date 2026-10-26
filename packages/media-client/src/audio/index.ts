@@ -1,3 +1,4 @@
+export { AssetAudioTap, type AssetAudioOptions } from './asset-audio';
 export {
   AudioGraph,
   type ApplyOptions,

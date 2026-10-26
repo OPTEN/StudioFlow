@@ -207,10 +207,15 @@ export class AudioGraph {
   }
 
   /**
-   * Sets the sound of a channel: the remote audio stream of a microphone, a screen or the audio of a video. `null` or a
-   * stream without an audio track removes it; the strip stays, so the gain is already right when the sound returns.
+   * Sets the sound of a channel: the remote audio stream of a microphone or a screen, or the captured audio of a video.
+   * `null` or a stream without an audio track removes it; the strip stays, so the gain is already right when the sound
+   * returns. A stream that does not come from WebRTC (a captured video) needs no keep-alive: `keepAlive: false`.
    */
-  setInput(sourceId: string, stream: MediaStream | null): void {
+  setInput(
+    sourceId: string,
+    stream: MediaStream | null,
+    options: { readonly keepAlive?: boolean } = {},
+  ): void {
     const context = this.#context;
     if (context === null || this.#disposed) {
       return;
@@ -236,7 +241,11 @@ export class AudioGraph {
       const source = context.createMediaStreamSource(wanted);
       source.connect(strip.input);
       const keepAlive = this.#options.keepAlive ?? defaultKeepAlive;
-      strip.feed = { stream: wanted, source, release: keepAlive(wanted) };
+      strip.feed = {
+        stream: wanted,
+        source,
+        release: options.keepAlive === false ? () => undefined : keepAlive(wanted),
+      };
     } catch (error) {
       this.#logger.warn('audio input could not be connected', errorContext(error));
     }
@@ -311,6 +320,11 @@ export class AudioGraph {
       program:
         this.#masterMeter === null ? SILENCE_DB : analyserPeakDb(this.#masterMeter, this.#buffer),
     };
+  }
+
+  /** Peak level of the program mix alone (cheaper than {@link levels} when no channel meter is needed). */
+  programLevel(): number {
+    return this.#masterMeter === null ? SILENCE_DB : analyserPeakDb(this.#masterMeter, this.#buffer);
   }
 
   /**

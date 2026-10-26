@@ -18,7 +18,12 @@ import type {
   SceneRenderer,
   SourceAvailability,
 } from '@studioflow/scene-renderer';
-import type { DecoderSummary, MediaSessionState, SourceStats } from '@studioflow/media-client';
+import type {
+  AudioSourceStats,
+  DecoderSummary,
+  MediaSessionState,
+  SourceStats,
+} from '@studioflow/media-client';
 import type { OutputApi } from '../api';
 import type { OutputHub } from '../output-app';
 import type { OutputMedia, OutputMediaProvider, OutputMediaSession } from '../media';
@@ -308,6 +313,34 @@ export class FakeMediaProvider implements OutputMediaProvider {
   }
   getStats(sourceId: string): Promise<SourceStats | null> {
     return Promise.resolve(this.stats.get(sourceId) ?? null);
+  }
+  /** The sound of sources: a test gives a source a stream with `giveSound`. */
+  readonly sounds = new Map<string, MediaStream>();
+  readonly audioStats = new Map<string, AudioSourceStats>();
+  readonly #audioListeners = new Set<(sourceId: string) => void>();
+  getAudioStats(sourceId: string): Promise<AudioSourceStats | null> {
+    return Promise.resolve(this.audioStats.get(sourceId) ?? null);
+  }
+  audioStream(sourceId: string): MediaStream | null {
+    return this.sounds.get(sourceId) ?? null;
+  }
+  audioSourceIds(): string[] {
+    return [...this.sounds.keys()];
+  }
+  onAudioChange(listener: (sourceId: string) => void): () => void {
+    this.#audioListeners.add(listener);
+    return () => this.#audioListeners.delete(listener);
+  }
+  /** Gives a source a sound (or takes it away with `null`) and notifies the listeners. */
+  giveSound(sourceId: string, stream: MediaStream | null): void {
+    if (stream === null) {
+      this.sounds.delete(sourceId);
+    } else {
+      this.sounds.set(sourceId, stream);
+    }
+    for (const listener of [...this.#audioListeners]) {
+      listener(sourceId);
+    }
   }
   estimateLatencyMs(): Promise<number | null> {
     return Promise.resolve(this.latency);

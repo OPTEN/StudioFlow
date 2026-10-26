@@ -20,6 +20,8 @@ export class DeferredSourceProvider implements SourceMediaProvider {
   readonly #sizes = new Map<string, Map<string, DesiredSize>>();
   readonly #listeners = new Set<(sourceId: string) => void>();
   readonly #videoListeners = new Set<VideoListener>();
+  readonly #assetVideos = new Map<string, Set<HTMLVideoElement>>();
+  readonly #assetListeners = new Set<VideoListener>();
   #inner: SourceMediaProvider | null = null;
   #unsubscribeInner: (() => void) | null = null;
 
@@ -81,6 +83,28 @@ export class DeferredSourceProvider implements SourceMediaProvider {
     this.#emitVideo(sourceId, video, false);
   }
 
+  /** A looping video shows a video asset: the audio mix takes the sound of the asset from this element. */
+  attachAsset(sourceId: string, video: HTMLVideoElement): void {
+    let videos = this.#assetVideos.get(sourceId);
+    if (!videos) {
+      videos = new Set();
+      this.#assetVideos.set(sourceId, videos);
+    }
+    videos.add(video);
+    this.#emitAsset(sourceId, video, true);
+  }
+
+  detachAsset(sourceId: string, video: HTMLVideoElement): void {
+    const videos = this.#assetVideos.get(sourceId);
+    if (!videos?.delete(video)) {
+      return;
+    }
+    if (videos.size === 0) {
+      this.#assetVideos.delete(sourceId);
+    }
+    this.#emitAsset(sourceId, video, false);
+  }
+
   availability(sourceId: string): SourceAvailability {
     return this.#inner ? this.#inner.availability(sourceId) : PENDING;
   }
@@ -131,17 +155,37 @@ export class DeferredSourceProvider implements SourceMediaProvider {
     return () => this.#videoListeners.delete(listener);
   }
 
+  /** Video elements that currently show a video asset, with the asset id. */
+  assetVideos(): [string, HTMLVideoElement][] {
+    return [...this.#assetVideos].flatMap(([sourceId, videos]) =>
+      [...videos].map((video): [string, HTMLVideoElement] => [sourceId, video]),
+    );
+  }
+
+  /** Notifies when an element starts or stops showing a video asset; returns the unsubscribe function. */
+  onAssetVideosChange(listener: VideoListener): () => void {
+    this.#assetListeners.add(listener);
+    return () => this.#assetListeners.delete(listener);
+  }
+
   /** Stops forwarding changes of the real provider. */
   dispose(): void {
     this.#unsubscribeInner?.();
     this.#unsubscribeInner = null;
     this.#listeners.clear();
     this.#videoListeners.clear();
+    this.#assetListeners.clear();
   }
 
   #emit(sourceId: string): void {
     for (const listener of [...this.#listeners]) {
       this.#call(() => listener(sourceId));
+    }
+  }
+
+  #emitAsset(sourceId: string, video: HTMLVideoElement, attached: boolean): void {
+    for (const listener of [...this.#assetListeners]) {
+      this.#call(() => listener(sourceId, video, attached));
     }
   }
 
