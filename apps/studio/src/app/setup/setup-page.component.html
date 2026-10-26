@@ -1,0 +1,104 @@
+<main class="c-login">
+  <div class="c-login__col">
+    <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
+      <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
+      <h2 class="c-login__lead">{{ t('regie.setup.lead') }}</h2>
+      <p class="c-setup__intro">{{ t('regie.setup.intro') }}</p>
+
+      <div class="c-login__field">
+        <label class="c-login__label" for="setup-code">{{ t('regie.setup.code.label') }}</label>
+        <input
+          id="setup-code"
+          class="c-input c-setup__code"
+          type="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          formControlName="code"
+          aria-describedby="setup-code-hint setup-code-error"
+          [class.is-invalid]="fieldError('code')"
+          [attr.aria-invalid]="fieldError('code') ? 'true' : null"
+        />
+        <p class="c-hint" id="setup-code-hint">{{ t('regie.setup.code.hint') }}</p>
+        @if (fieldError('code'); as message) {
+          <p class="c-field-error" id="setup-code-error" role="alert">{{ message }}</p>
+        }
+      </div>
+
+      <div class="c-login__field">
+        <label class="c-login__label" for="setup-username">{{
+          t('regie.setup.username.label')
+        }}</label>
+        <input
+          id="setup-username"
+          class="c-input"
+          type="text"
+          autocomplete="username"
+          autocapitalize="off"
+          spellcheck="false"
+          [attr.maxlength]="limits.usernameLength"
+          formControlName="username"
+          aria-describedby="setup-username-error"
+          [class.is-invalid]="fieldError('username')"
+          [attr.aria-invalid]="fieldError('username') ? 'true' : null"
+        />
+        @if (fieldError('username'); as message) {
+          <p class="c-field-error" id="setup-username-error" role="alert">{{ message }}</p>
+        }
+      </div>
+
+      <div class="c-login__field">
+        <label class="c-login__label" for="setup-password">{{
+          t('regie.setup.password.label')
+        }}</label>
+        <input
+          id="setup-password"
+          class="c-input"
+          type="password"
+          autocomplete="new-password"
+          formControlName="password"
+          aria-describedby="setup-password-hint setup-password-error"
+          [class.is-invalid]="fieldError('password')"
+          [attr.aria-invalid]="fieldError('password') ? 'true' : null"
+        />
+        <p class="c-hint" id="setup-password-hint">
+          {{ t('regie.account.password.hint', { min: passwordMin }) }}
+        </p>
+        @if (fieldError('password'); as message) {
+          <p class="c-field-error" id="setup-password-error" role="alert">{{ message }}</p>
+        }
+      </div>
+
+      <div class="c-login__field">
+        <label class="c-login__label" for="setup-repeat">{{ t('regie.setup.repeat.label') }}</label>
+        <input
+          id="setup-repeat"
+          class="c-input"
+          type="password"
+          autocomplete="new-password"
+          formControlName="repeat"
+          aria-describedby="setup-repeat-error"
+          [class.is-invalid]="fieldError('repeat')"
+          [attr.aria-invalid]="fieldError('repeat') ? 'true' : null"
+        />
+        @if (fieldError('repeat'); as message) {
+          <p class="c-field-error" id="setup-repeat-error" role="alert">{{ message }}</p>
+        }
+      </div>
+
+      <p class="c-login__error" role="alert" aria-live="assertive">
+        @if (message(); as text) {
+          <svg sfIcon="alert" [size]="14"></svg>{{ text }}
+        }
+      </p>
+
+      <button class="c-btn c-btn--fill c-login__submit" type="submit" [disabled]="submitting()">
+        {{ submitting() ? t('regie.setup.submitting') : t('regie.setup.submit') }}
+      </button>
+    </form>
+
+    <footer class="c-login__footer">
+      <sf-language-select />
+    </footer>
+  </div>
+</main>

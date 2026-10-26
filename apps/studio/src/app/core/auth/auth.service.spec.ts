@@ -54,6 +54,8 @@ describe('AuthService and authGuard', () => {
     http
       .expectOne('/api/auth/me')
       .flush({ code: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+    await flushMicrotasks();
+    http.expectOne('/api/auth/setup').flush({ setupRequired: false });
     const tree = (await result) as UrlTree;
     expect(router.serializeUrl(tree)).toBe('/login?next=%2Fmonitoring');
   });
@@ -146,11 +148,77 @@ describe('AuthService and authGuard', () => {
     expect(stopped).toHaveBeenCalledTimes(1);
   });
 
+  it('reports whether the first-run setup is open', async () => {
+    const open = auth.fetchSetupRequired();
+    http.expectOne('/api/auth/setup').flush({ setupRequired: true });
+    await expect(open).resolves.toBe(true);
+
+    const closed = auth.fetchSetupRequired();
+    http.expectOne('/api/auth/setup').flush({ setupRequired: false });
+    await expect(closed).resolves.toBe(false);
+  });
+
+  it('reports an unreachable server as unknown instead of throwing', async () => {
+    const result = auth.fetchSetupRequired();
+    http.expectOne('/api/auth/setup').error(new ProgressEvent('error'), { status: 0 });
+    await expect(result).resolves.toBeNull();
+  });
+
+  it('signs the new account in after the first-run setup', async () => {
+    const done = auth.completeSetup('K7QM-3XD2', 'regie', 'a-long-passphrase');
+    const request = http.expectOne('/api/auth/setup');
+    expect(request.request.body).toEqual({
+      setupCode: 'K7QM-3XD2',
+      username: 'regie',
+      password: 'a-long-passphrase',
+    });
+    request.flush({ username: 'regie' });
+    await expect(done).resolves.toEqual({ username: 'regie' });
+    expect(auth.status()).toBe('authenticated');
+    expect(auth.session()).toEqual({ username: 'regie' });
+  });
+
+  it('stays signed out when the first-run setup is refused, and passes the reason on', async () => {
+    const done = auth
+      .completeSetup('AAAA-AAAA', 'regie', 'a-long-passphrase')
+      .catch((e: unknown) => e);
+    http
+      .expectOne('/api/auth/setup')
+      .flush({ code: 'setup_code_invalid' }, { status: 403, statusText: 'Forbidden' });
+    await expect(done).resolves.toMatchObject({ status: 403, code: 'setup_code_invalid' });
+    expect(auth.status()).toBe('unknown');
+  });
+
+  it('does not treat a refused first-run setup as an expired session', async () => {
+    const stopped = vi.fn();
+    auth.onSignedOut(stopped);
+    const setup = auth.completeSetup('x', 'regie', 'y').catch(() => undefined);
+    http
+      .expectOne('/api/auth/setup')
+      .flush({ code: 'setup_code_invalid' }, { status: 403, statusText: 'Forbidden' });
+    await setup;
+    expect(stopped).not.toHaveBeenCalled();
+  });
+
+  it('changes the password and keeps the session', async () => {
+    await signIn();
+    const done = auth.changePassword('old-passphrase-1', 'new-passphrase-2');
+    const request = http.expectOne('/api/auth/password');
+    expect(request.request.body).toEqual({
+      currentPassword: 'old-passphrase-1',
+      newPassword: 'new-passphrase-2',
+    });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+    expect(auth.status()).toBe('authenticated');
+  });
+
   it('accepts only in-app paths as next', () => {
     expect(safeNextPath('/monitoring')).toBe('/monitoring');
     expect(safeNextPath('https://evil.test')).toBe('/');
     expect(safeNextPath('//evil.test')).toBe('/');
     expect(safeNextPath('/login?next=/x')).toBe('/');
+    expect(safeNextPath('/setup')).toBe('/');
     expect(safeNextPath(null)).toBe('/');
   });
 });

@@ -48,6 +48,9 @@ export const ERROR_CODE_MESSAGES = {
   request_timeout: 'errors.code.request_timeout',
   internal_error: 'errors.code.internal_error',
   service_unavailable: 'errors.code.service_unavailable',
+  setup_code_invalid: 'errors.code.setup_code_invalid',
+  setup_closed: 'errors.code.setup_closed',
+  password_incorrect: 'errors.code.password_incorrect',
   network: 'errors.code.network',
   aborted: 'errors.code.aborted',
 } as const satisfies Readonly<Record<ApiErrorCode | ClientErrorCode, MessageKey>>;
