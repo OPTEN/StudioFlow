@@ -10,7 +10,7 @@ import {
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
 import { StationFocusService } from '../station-focus.service';
 import { HeaderComponent } from './header.component';
-import { maskOutputUrl } from './output-popover.component';
+import { maskOutputUrl } from './output-link.component';
 import { isIpOrCidr } from './ip-address';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
@@ -58,7 +58,7 @@ describe('HeaderComponent', () => {
     expect(text()).toContain('Webinar');
     expect(text()).toContain('READY');
     expect(button('Start broadcast').disabled).toBe(false);
-    expect(text()).toContain('Output to proxy');
+    expect(text()).toContain('Output');
     expect(text()).toContain('All 2 stations ok');
     expect(text()).toContain('1 in the control room');
     expect(element.querySelector('.c-header__clock')?.textContent).toMatch(/^\d\d:\d\d:\d\d$/);
@@ -133,16 +133,37 @@ describe('HeaderComponent', () => {
           latencyMs: 148,
           fps: 30,
           lastReportAt: null,
+          links: [
+            {
+              linkId: 'olk_proxy',
+              name: 'Proxy',
+              state: 'connected',
+              consumers: 1,
+              addresses: ['10.0.0.42'],
+              latencyMs: 148,
+              fps: 30,
+              lastReportAt: null,
+            },
+          ],
         },
       }),
     );
     expect(text()).toContain('148 ms');
+    expect(element.querySelector('.c-header__out-label')?.textContent).toBe('Proxy');
     element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
     await render();
     harness.http.expectOne(`${BASE}/output`).flush({
-      url: 'https://studioflow.opten.ch/o/webinar?k=secret123',
-      keyCreatedAt: '2026-10-22T08:00:00Z',
-      allowedIps: [],
+      links: [
+        {
+          id: 'olk_proxy',
+          name: 'Proxy',
+          url: 'https://studioflow.opten.ch/o/webinar?k=secret123',
+          keyCreatedAt: '2026-10-22T08:00:00Z',
+          lastSeenAt: null,
+          allowedIps: [],
+        },
+      ],
+      maxLinks: 10,
       frameAncestors: ["'self'"],
     });
     await render();

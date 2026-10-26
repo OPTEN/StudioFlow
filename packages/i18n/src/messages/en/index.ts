@@ -21,6 +21,7 @@ import { regieLog } from './regie-log';
 import { regieLogin } from './regie-login';
 import { regieMedia } from './regie-media';
 import { regieMonitoring } from './regie-monitoring';
+import { regieOutput } from './regie-output';
 import { regiePairing } from './regie-pairing';
 import { regieProperties } from './regie-properties';
 import { regieScenes } from './regie-scenes';
@@ -63,6 +64,7 @@ export const en = {
   ...regieLogin,
   ...regieMedia,
   ...regieMonitoring,
+  ...regieOutput,
   ...regiePairing,
   ...regieProperties,
   ...regieScenes,

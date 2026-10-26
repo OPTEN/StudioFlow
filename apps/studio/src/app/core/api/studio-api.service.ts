@@ -548,30 +548,66 @@ export class StudioApiService {
 
   // ---------------------------------------------------------------- Output
 
-  /** `GET …/output`: URL with key, allowed IPs, frame ancestors. */
+  /** `GET …/output`: the output links with their URLs, the limit and the frame ancestors. */
   getOutputSettings(productionId: string): Promise<ApiResult<'getOutputSettings'>> {
     return this.call(
       this.http.get<ApiResult<'getOutputSettings'>>(this.production(productionId, '/output')),
     );
   }
 
-  /** `PUT …/output/access`: IP restriction (empty list = every address). */
-  updateOutputAccess(
+  /** `POST …/output/links`: a named link with its own key; 409 `limit_reached` at the limit. */
+  createOutputLink(
     productionId: string,
-    body: ApiBody<'updateOutputAccess'>,
-  ): Promise<ApiResult<'updateOutputAccess'>> {
+    body: ApiBody<'createOutputLink'>,
+  ): Promise<ApiResult<'createOutputLink'>> {
+    return this.post<ApiResult<'createOutputLink'>>(
+      this.production(productionId, '/output/links'),
+      body,
+    );
+  }
+
+  /** `PATCH …/output/links/{linkId}`: rename; the key stays. */
+  renameOutputLink(
+    productionId: string,
+    linkId: string,
+    body: ApiBody<'renameOutputLink'>,
+  ): Promise<ApiResult<'renameOutputLink'>> {
     return this.call(
-      this.http.put<ApiResult<'updateOutputAccess'>>(
-        this.production(productionId, '/output/access'),
+      this.http.patch<ApiResult<'renameOutputLink'>>(
+        this.production(productionId, `/output/links/${enc(linkId)}`),
         body,
       ),
     );
   }
 
-  /** `POST …/output/regenerate-key`: the old link stops immediately. */
-  regenerateOutputKey(productionId: string): Promise<ApiResult<'regenerateOutputKey'>> {
-    return this.post<ApiResult<'regenerateOutputKey'>>(
-      this.production(productionId, '/output/regenerate-key'),
+  /** `PUT …/output/links/{linkId}/access`: IP restriction of the link (empty list = every address). */
+  updateOutputLinkAccess(
+    productionId: string,
+    linkId: string,
+    body: ApiBody<'updateOutputLinkAccess'>,
+  ): Promise<ApiResult<'updateOutputLinkAccess'>> {
+    return this.call(
+      this.http.put<ApiResult<'updateOutputLinkAccess'>>(
+        this.production(productionId, `/output/links/${enc(linkId)}/access`),
+        body,
+      ),
+    );
+  }
+
+  /** `POST …/output/links/{linkId}/regenerate-key`: the old URL of this link stops immediately. */
+  regenerateOutputLinkKey(
+    productionId: string,
+    linkId: string,
+  ): Promise<ApiResult<'regenerateOutputLinkKey'>> {
+    return this.post<ApiResult<'regenerateOutputLinkKey'>>(
+      this.production(productionId, `/output/links/${enc(linkId)}/regenerate-key`),
+    );
+  }
+
+  /** `DELETE …/output/links/{linkId}`: revokes the link; its pages are disconnected. */
+  revokeOutputLink(productionId: string, linkId: string): Promise<void> {
+    return this.call(
+      this.http.delete<void>(this.production(productionId, `/output/links/${enc(linkId)}`)),
     );
   }
 

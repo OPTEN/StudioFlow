@@ -31,108 +31,83 @@
       </button>
     </div>
   } @else {
-    <div class="c-linkbox">
-      <span class="c-linkbox__text" #url>{{
-        displayUrl() ?? t('regie.header.output.linkLoading')
-      }}</span>
-      <button class="c-btn c-btn--sm" type="button" [disabled]="!settings()" (click)="copy()">
-        <svg sfIcon="copy" [size]="14"></svg>{{ t('common.copy') }}
-      </button>
-    </div>
-  }
-
-  <section class="c-output-pop__section" aria-labelledby="sf-output-access">
-    <div class="c-pop-h" id="sf-output-access">{{ t('regie.header.output.access') }}</div>
-    <p class="c-pop-note">
-      @if (ips().length === 0) {
-        {{ t('regie.header.output.accessNoRestriction') }}
+    <section class="c-output-pop__section" aria-labelledby="sf-output-links">
+      <div class="c-pop-h" id="sf-output-links">{{ t('regie.output.links.title') }}</div>
+      <p class="c-pop-note">{{ t('regie.output.links.hint') }}</p>
+      @if (settings() === null) {
+        <p class="c-pop-note">{{ t('regie.header.output.linkLoading') }}</p>
+      } @else if (rows().length === 0) {
+        <p class="c-pop-note">{{ t('regie.output.links.empty') }}</p>
       } @else {
-        {{ t('regie.header.output.accessRestricted') }}
+        <ul class="c-output-pop__links">
+          @for (row of rows(); track row.link.id) {
+            <li>
+              <button
+                class="c-output-pop__link"
+                type="button"
+                [class.is-selected]="row.link.id === selected()?.id"
+                [attr.aria-current]="row.link.id === selected()?.id ? 'true' : null"
+                (click)="selectedId.set(row.link.id)"
+              >
+                <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
+                <span class="c-output-pop__link-text">
+                  <span class="c-output-pop__link-line">{{
+                    t('regie.output.link.line', { name: row.link.name, state: row.stateText })
+                  }}</span>
+                  @if (row.detail) {
+                    <span class="c-output-pop__muted c-output-pop__link-detail">{{
+                      row.detail
+                    }}</span>
+                  }
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
       }
-    </p>
-    @if (ips().length > 0) {
-      <ul class="c-output-pop__ips">
-        @for (ip of ips(); track ip) {
-          <li class="c-output-pop__ip">
-            <span class="u-mono">{{ ip }}</span>
-            <button
-              class="c-ibtn"
-              type="button"
-              [attr.aria-label]="t('regie.header.output.removeIp', { ip })"
-              (click)="removeIp(ip)"
-            >
-              <svg sfIcon="close" [size]="14"></svg>
-            </button>
-          </li>
-        }
-      </ul>
-    }
-    <form class="c-output-pop__add" (submit)="addIp($event)">
-      <input
-        class="c-input"
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        [placeholder]="t('regie.header.output.ipPlaceholder')"
-        [attr.aria-label]="t('regie.header.output.ipLabel')"
-        [class.is-invalid]="ipControl.invalid && ipControl.touched"
-        [formControl]="ipControl"
-      />
-      <button class="c-btn c-btn--sm" type="submit" [disabled]="!settings()">
-        {{ t('common.add') }}
-      </button>
-    </form>
-    @if (ipControl.invalid && ipControl.touched) {
-      <p class="c-field-error c-output-pop__note">{{ t('regie.header.output.ipInvalid') }}</p>
-    }
-    @if (ipsDirty()) {
-      <div class="c-output-pop__row">
-        <button
-          class="c-btn c-btn--sm c-btn--fill"
-          type="button"
-          [disabled]="savingIps()"
-          (click)="saveIps()"
-        >
-          {{ t('common.save') }}
-        </button>
+      <form class="c-output-pop__add" (submit)="addLink($event)">
+        <input
+          class="c-input"
+          type="text"
+          autocomplete="off"
+          [placeholder]="t('regie.output.link.namePlaceholder')"
+          [attr.aria-label]="t('regie.output.link.nameLabel')"
+          [class.is-invalid]="newName.invalid && newName.touched"
+          [formControl]="newName"
+        />
         <button
           class="c-btn c-btn--sm"
-          type="button"
-          [disabled]="savingIps()"
-          (click)="discardIps()"
+          type="submit"
+          [disabled]="settings() === null || atLimit() || adding()"
         >
-          {{ t('regie.header.output.discard') }}
+          {{ t('regie.output.link.add') }}
         </button>
-      </div>
+      </form>
+      @if (newName.invalid && newName.touched) {
+        <p class="c-field-error c-output-pop__note">
+          @if (newName.hasError('taken')) {
+            {{ t('regie.output.link.nameTaken') }}
+          } @else {
+            {{ t('regie.output.link.nameInvalid', { max: nameMax }) }}
+          }
+        </p>
+      }
+      @if (atLimit()) {
+        <p class="c-pop-note">
+          {{ t('regie.output.link.limit', { max: settings()?.maxLinks ?? 0 }) }}
+        </p>
+      }
+    </section>
+
+    @for (link of selectedList(); track link.id) {
+      <sf-output-link [link]="link" (updated)="onUpdated($event)" (revoked)="onRevoked($event)" />
     }
+
     @if (settings()?.frameAncestors?.length) {
       <p class="c-pop-note">
         {{ t('regie.header.output.embedAllowed') }}
         <span class="u-mono">{{ settings()?.frameAncestors?.join(' ') }}</span>
       </p>
     }
-  </section>
-
-  @if (confirming()) {
-    <sf-confirm-box
-      [label]="t('regie.header.output.regenerate')"
-      [message]="t('regie.header.output.regenerateMessage')"
-      [confirmLabel]="t('regie.header.output.regenerateConfirm')"
-      [busy]="regenerating()"
-      (confirm)="regenerate()"
-      (cancel)="confirming.set(false)"
-    />
-  } @else {
-    <div class="c-output-pop__danger">
-      <span class="c-hint">{{ t('regie.header.output.dangerHint') }}</span>
-      <button
-        class="c-btn c-btn--sm c-btn--danger"
-        type="button"
-        [disabled]="!settings()"
-        (click)="confirming.set(true)"
-      >
-        {{ t('regie.header.output.regenerate') }}
-      </button>
-    </div>
   }
 </div>

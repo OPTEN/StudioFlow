@@ -241,6 +241,7 @@ export function outputStatusFixture(overrides: Partial<OutputStatusDto> = {}): O
     latencyMs: null,
     fps: null,
     lastReportAt: null,
+    links: [],
     ...overrides,
   };
 }

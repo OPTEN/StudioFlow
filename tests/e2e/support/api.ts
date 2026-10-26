@@ -18,6 +18,7 @@ import type {
   DeviceTelemetryMessage,
   InviteDto,
   LiveKitTokenDto,
+  OutputLinkDto,
   OutputReport,
   OutputSettingsDto,
   OutputSnapshot,
@@ -44,6 +45,9 @@ import type {
 } from '../../../packages/scene-model/src/contracts';
 import { multipart, send, type HttpResponse } from './http';
 import { stackConfig } from './env';
+
+/** The settings with every link, plus the fields of the first link ("Proxy"): what the specs call "the output URL". */
+export type ProxyOutputSettings = OutputSettingsDto & OutputLinkDto & Problem;
 
 export type {
   AssetDto,
@@ -230,9 +234,22 @@ export class AdminApi extends HttpApi {
     this.call<unknown>(options.method ?? 'GET', `/api/productions/${id}/assets/${assetId}/content`, options);
 
   // --- output (admin side) ----------------------------------------------------------------------------------------
-  getOutputSettings = (id: string) => this.call<OutputSettingsDto & Problem>('GET', `/api/productions/${id}/output/`);
-  updateOutputAccess = (id: string, body: UpdateOutputAccessRequest) => this.call<OutputSettingsDto & Problem>('PUT', `/api/productions/${id}/output/access`, { json: body });
-  regenerateOutputKey = (id: string) => this.call<OutputSettingsDto & Problem>('POST', `/api/productions/${id}/output/regenerate-key`);
+  /** The settings with all links; the fields of the first link ("Proxy") are merged in, because most specs mean "the output URL". */
+  getOutputSettings = async (id: string): Promise<ApiResult<ProxyOutputSettings>> => {
+    const result = await this.call<OutputSettingsDto & Problem>('GET', `/api/productions/${id}/output/`);
+    return { ...result, body: { ...result.body, ...result.body.links?.[0] } as ProxyOutputSettings };
+  };
+  /** IP restriction of the first link ("Proxy"). */
+  updateOutputAccess = async (id: string, body: UpdateOutputAccessRequest) =>
+    this.updateOutputLinkAccess(id, (await this.getOutputSettings(id)).body.id, body);
+  /** New key of the first link ("Proxy"). */
+  regenerateOutputKey = async (id: string) => this.regenerateOutputLinkKey(id, (await this.getOutputSettings(id)).body.id);
+  createOutputLink = (id: string, name: string) => this.call<OutputLinkDto & Problem>('POST', `/api/productions/${id}/output/links`, { json: { name } });
+  renameOutputLink = (id: string, linkId: string, name: string) => this.call<OutputLinkDto & Problem>('PATCH', `/api/productions/${id}/output/links/${linkId}`, { json: { name } });
+  updateOutputLinkAccess = (id: string, linkId: string, body: UpdateOutputAccessRequest) =>
+    this.call<OutputLinkDto & Problem>('PUT', `/api/productions/${id}/output/links/${linkId}/access`, { json: body });
+  regenerateOutputLinkKey = (id: string, linkId: string) => this.call<OutputLinkDto & Problem>('POST', `/api/productions/${id}/output/links/${linkId}/regenerate-key`);
+  revokeOutputLink = (id: string, linkId: string) => this.call<Problem>('DELETE', `/api/productions/${id}/output/links/${linkId}`);
 }
 
 /** Anonymous pairing routes. */

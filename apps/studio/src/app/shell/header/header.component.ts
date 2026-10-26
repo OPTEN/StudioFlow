@@ -9,7 +9,7 @@ import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../station-focus.service';
 import { BroadcastControlComponent } from './broadcast-control.component';
 import { LAYOUT_POPOVER, LayoutPopoverComponent } from './layout-popover.component';
-import { OUTPUT_POPOVER, OutputPopoverComponent } from './output-popover.component';
+import { OUTPUT_POPOVER, OutputPopoverComponent, linkStateText } from './output-popover.component';
 import { ProductionMenuComponent } from './production-menu.component';
 import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
 
@@ -58,6 +58,24 @@ export class HeaderComponent {
       default:
         return 'is-idle';
     }
+  });
+  /** The chip names the connected links ("Proxy + Teams camera"); without one it just says "Output". */
+  protected readonly outputLabel = computed(() => {
+    const connected = (this.store.outputStatus()?.links ?? [])
+      .filter((link) => link.state === 'connected')
+      .map((link) => link.name);
+    return connected.length > 0 ? connected.join(' + ') : t('regie.header.output.label');
+  });
+  /** Tooltip of the chip: every link with its state ("Proxy · connected"). */
+  protected readonly outputTitle = computed(() => {
+    const links = this.store.outputStatus()?.links ?? [];
+    return links.length > 0
+      ? links
+          .map((link) =>
+            t('regie.output.link.line', { name: link.name, state: linkStateText(link.state) }),
+          )
+          .join('\n')
+      : null;
   });
   protected readonly outputLatency = computed(() => {
     const latency = this.store.outputStatus()?.latencyMs;
