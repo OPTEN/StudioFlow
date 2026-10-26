@@ -55,8 +55,8 @@ export function licenseBlock(licenses) {
 /** Banner (fixed, dismissable) that says the data is synthetic. Own class names, so it cannot clash with the page. */
 export function noteBlock() {
   return `<style>
-.sf-proto-note { position: fixed; z-index: 2147483000; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 16px); padding: 5px 6px 5px 14px; border: 1px solid #353d4a; border-radius: 999px; background: rgba(13, 17, 23, .94); color: #e6edf3; font: 600 12.5px/1.35 "Sofia Sans Semi Condensed", system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); }
-.sf-proto-note button { flex: none; border: 0; border-radius: 999px; padding: 3px 10px; background: #232a36; color: #e6edf3; font: inherit; cursor: pointer; }
+.sf-proto-note { position: fixed; z-index: 2147483000; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 16px); padding: 5px 6px 5px 14px; border: 1px solid #353d4a; border-radius: 16px; background: rgba(13, 17, 23, .94); color: #e6edf3; font: 600 12.5px/1.35 "Sofia Sans Semi Condensed", system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); }
+.sf-proto-note button { flex: none; border: 0; border-radius: 12px; padding: 3px 10px; background: #232a36; color: #e6edf3; font: inherit; cursor: pointer; }
 .sf-proto-note button:hover { background: #353d4a; }
 .sf-proto-note button:focus-visible { outline: 2px solid #79c0ff; outline-offset: 2px; }
 .sf-proto-note[hidden] { display: none; }

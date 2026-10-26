@@ -656,7 +656,10 @@ docker compose ps api --format '{{.Image}}'
 ```
 
 The API (`GET /api/system/info`, signed in as admin) and the file `backup-info.txt` of every backup report the
-version as `0.4.2+1a2b3c4`: the release and the commit the image was built from.
+version as `0.4.2+1a2b3c4`: the release and the commit the image was built from. The Regie shows it in the last row of
+the settings menu (the gear in the header), and the output page prints its own build as the last line of the `?debug=1`
+overlay (`StudioFlow 0.4.2+1a2b3c4`), so a technician at the proxy can read what runs without a login. Pass it in a bug
+report. A local build (`docker compose up --build`) has the version without the commit.
 
 | `STUDIOFLOW_IMAGE_TAG` | Meaning |
 |---|---|
