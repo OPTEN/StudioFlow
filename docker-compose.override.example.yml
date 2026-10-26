@@ -3,13 +3,13 @@
 # TLS mode custom (at the bottom), never the published ports of api, livekit and postgres.
 #
 #   cp docker-compose.override.example.yml docker-compose.override.yml
-#   ./setup.sh --domain localhost --node-ip 127.0.0.1 --tls-mode internal --plain-password   # or setup.ps1
+#   ./setup.sh --domain localhost --node-ip 127.0.0.1 --tls-mode internal   # or setup.ps1
 #   docker compose up -d --build
 #   npm run start:studio      # http://localhost:4200, proxy as in proxy.conf.json
 #
 # API, LiveKit and PostgreSQL then run in containers and are reachable only on this machine (127.0.0.1);
 # the frontends run with ng serve / vite and the proxy from proxy.conf.json (/api, /hubs -> 5298, /rtc -> 7880).
-# --plain-password writes ADMIN__PASSWORD instead of the hash: convenient locally, never on a VPS.
+# The first start logs a setup code (docker compose logs api); the Regie then asks for it to create the account.
 
 services:
   api:

@@ -250,6 +250,38 @@ function Start-SfStackAndWait
     finally { Pop-Location }
 }
 
+# Shows the state of the Regie account from the API log: the setup code while the first-run setup is open, or that the
+# account exists. The newest of the two log lines counts (a reset-admin reopens the setup with a new code). Retries for
+# up to TimeoutSeconds, because the API writes the line during its start. Returns $true when the state was found.
+function Show-SfSetupCode
+{
+    param([int] $TimeoutSeconds = 60)
+    $waited = 0
+    while ($true)
+    {
+        $logs = Get-SfComposeOutput -Arguments @('logs', '--no-color', '--no-log-prefix', 'api')
+        $line = @($logs.Lines | Where-Object { $_ -cmatch 'Setup code: [A-Z0-9]{4}-[A-Z0-9]{4}|The Regie account exists' }) | Select-Object -Last 1
+        if ($line -cmatch 'Setup code: ([A-Z0-9]{4}-[A-Z0-9]{4})')
+        {
+            Write-SfInfo "Setup code:  $($Matches[1])"
+            Write-SfInfo 'Open the Regie and enter it in the first-run setup to create the account (valid until a restart).'
+            return $true
+        }
+        if ($line)
+        {
+            Write-SfInfo 'The Regie account exists already. Forgotten password: reset-admin (docs/runbook.md).'
+            return $true
+        }
+        if ($waited -ge $TimeoutSeconds)
+        {
+            Write-SfWarn "The API has not logged the setup code yet. Read it later with: docker compose logs api | Select-String 'Setup code'"
+            return $false
+        }
+        Start-Sleep -Seconds 2
+        $waited += 2
+    }
+}
+
 # Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes. RunArguments (for
 # example -v host:container) go to `docker compose run`.
 function Start-SfToolbox

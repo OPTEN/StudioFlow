@@ -185,6 +185,34 @@ sf_up_and_wait() {
 	fi
 }
 
+# Shows the state of the Regie account from the API log: the setup code while the first-run setup is open, or that the
+# account exists. The newest of the two log lines counts (a reset-admin reopens the setup with a new code). Retries for
+# up to $1 seconds (default 60), because the API writes the line during its start.
+sf_show_setup_code() {
+	local timeout="${1:-60}" waited=0 line
+	while :; do
+		line="$(sf_compose logs --no-color --no-log-prefix api 2>/dev/null |
+			grep -E 'Setup code: [A-Z0-9]{4}-[A-Z0-9]{4}|The Regie account exists' | tail -n 1 || true)"
+		case "$line" in
+			*"Setup code: "*)
+				sf_info "Setup code:  ${line##*Setup code: }"
+				sf_info "Open the Regie and enter it in the first-run setup to create the account (valid until a restart)."
+				return 0
+				;;
+			*"The Regie account exists"*)
+				sf_info "The Regie account exists already. Forgotten password: reset-admin (docs/runbook.md)."
+				return 0
+				;;
+		esac
+		if [ "$waited" -ge "$timeout" ]; then
+			sf_warn "The API has not logged the setup code yet. Read it later with: docker compose logs api | grep 'Setup code'"
+			return 1
+		fi
+		sleep 2
+		waited=$((waited + 2))
+	done
+}
+
 # Toolbox container (profile "tools") with the media, keys and caddy_data volumes under /volumes. Arguments (for
 # example -v host:container) go to `docker compose run`. Prints the container id; the caller removes it with
 # sf_toolbox_stop.

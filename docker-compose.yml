@@ -90,10 +90,6 @@ services:
       STUDIOFLOW__PUBLICBASEURL: ${STUDIOFLOW_PUBLIC_BASE_URL:-https://${STUDIOFLOW_DOMAIN:?set it in .env}}
       # The effective list Caddy enforces for /o/ (shown read-only in the Regie).
       STUDIOFLOW__FRAMEANCESTORS: "'self'${STUDIOFLOW_FRAME_ANCESTORS:+ $STUDIOFLOW_FRAME_ANCESTORS}"
-      ADMIN__USERNAME: ${ADMIN__USERNAME:?set it in .env}
-      # One of the two must be set (the API refuses to start otherwise); setup writes the hash.
-      ADMIN__PASSWORDHASH: ${ADMIN__PASSWORDHASH:-}
-      ADMIN__PASSWORD: ${ADMIN__PASSWORD:-}
       LIVEKIT__APIKEY: ${LIVEKIT_API_KEY:?set it in .env}
       LIVEKIT__APISECRET: ${LIVEKIT_API_SECRET:?set it in .env}
       LIVEKIT__INTERNALURL: http://livekit:7880

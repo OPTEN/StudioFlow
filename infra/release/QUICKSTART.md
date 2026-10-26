@@ -17,8 +17,9 @@ docker compose up -d          # pulls the images of @VERSION@ and starts the sta
 docker compose ps             # all four services "healthy"
 ```
 
-Then open `https://<your domain>/` and sign in with the admin account that `setup` created. Put the `.env` file into
-your password vault: it holds the secrets and is not part of any backup.
+Then read the setup code with `docker compose logs api` (the line "Setup code: XXXX-XXXX"; `./setup.sh --start` starts
+the stack and shows it), open `https://<your domain>/` and create the Regie account in the first-run setup. Put the
+`.env` file into your password vault: it holds the secrets and is not part of any backup.
 
 ## Update and roll back
 

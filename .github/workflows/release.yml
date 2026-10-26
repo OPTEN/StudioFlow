@@ -89,7 +89,7 @@ jobs:
     strategy:
       matrix:
         include:
-          # The API: ASP.NET Core with its CLI (hash-password, broadcast-status).
+          # The API: ASP.NET Core with its CLI (reset-admin, broadcast-status).
           - image: api
             description: StudioFlow API (ASP.NET Core)
             context: apps/api
@@ -400,7 +400,7 @@ jobs:
         run: |
           tar -xzf "$RUNNER_TEMP/release/assets/studioflow-$VERSION.tar.gz" -C "$RUNNER_TEMP"
           cd "$RUNNER_TEMP/studioflow-$VERSION"
-          printf '%s\n' STUDIOFLOW_DOMAIN=localhost STUDIOFLOW_NODE_IP=127.0.0.1 STUDIOFLOW_TLS_MODE=internal ADMIN__USERNAME=admin \
+          printf '%s\n' STUDIOFLOW_DOMAIN=localhost STUDIOFLOW_NODE_IP=127.0.0.1 STUDIOFLOW_TLS_MODE=internal \
             LIVEKIT_API_KEY=studioflow LIVEKIT_API_SECRET=sk0123456789abcdef0123456789abcdef POSTGRES_PASSWORD=0123456789abcdef > check.env
           images="$(docker compose --env-file check.env config --images)"
           echo "$images"
