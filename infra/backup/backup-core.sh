@@ -1,15 +1,20 @@
 # shellcheck shell=bash
-# Backup logic shared by backup.sh, restore.sh and the backup service (infra/backup/). Sourced after common.sh, never
-# executed. It works on folders only (no docker), so the same code runs on the host and inside the backup container.
-# The PowerShell scripts keep their own implementation of the manual backup (backup.ps1, restore.ps1).
+# Backup logic shared by the backup job, the restore command and the scheduler of the backup image. Sourced after common.sh,
+# never executed. It works on folders only.
 #
 # Backup folder: <base>/YYYY-MM-DD_HHMM[_label][-N]/ with database.dump, one <volume>.tar.gz per archived volume,
-# backup-info.txt and SHA256SUMS. A folder without SHA256SUMS is not complete and is never touched by retention.
+# backup-info.txt and SHA256SUMS. A folder without SHA256SUMS is not complete and is never touched by retention. The label
+# is auto (the schedule), manual (backup-now, the Regie) or pre-restore (the safety backup of restore); only auto folders
+# are removed by the retention.
+
+# Layout of a backup (volumes in archive order, files of the folder).
+# shellcheck disable=SC2034 # used by the sourcing scripts
+readonly SF_BACKUP_VOLUMES="media keys caddy_data" SF_DB_DUMP=database.dump SF_CHECKSUMS=SHA256SUMS SF_BACKUP_INFO=backup-info.txt
 
 # Folder names written by the backup scripts: date, time, optional label, optional collision counter.
 readonly SF_BACKUP_NAME_PATTERN='^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}'
 
-# Verification (restore.sh --verify, backup service): the dump is loaded into this throwaway database of the running
+# Verification (restore --verify, the backup job): the dump is loaded into this throwaway database of the running
 # PostgreSQL, and the query must then report the tables and the newest EF Core migration (it prints nothing for an
 # empty database). The query has no double quotes (chr(34) builds the identifiers), so no shell mangles it as an argument.
 # shellcheck disable=SC2034 # used by the sourcing scripts
