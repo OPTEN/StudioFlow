@@ -207,7 +207,7 @@ test.describe('LK grants and publisher', () => {
     expect(Date.now() - backAt, 'rejoin -> ok in the Regie').toBeLessThanOrEqual(THRESHOLD.videoStartHardMs + 3000);
     const recovered = await studio.waitForEvent('incidentUpserted', (event) => event.incident.id === incident.incident.id && event.incident.endedAt !== null, { from: leaveFrom });
     expect(recovered.incident.endedAt).not.toBeNull();
-    await studio.waitForEvent('logAppended', (event) => /^K1 wieder da, war \d+ s weg$/.test(event.entry.text), { from: leaveFrom });
+    await studio.waitForEvent('logAppended', (event) => /^K1 is back, was gone for \d+ s$/.test(event.entry.text), { from: leaveFrom });
   });
 
   test('INT-SRC-01 [stack, media-only loss] a device report “media reconnecting” marks a published source reconnecting within seconds (spec 12, GAP-08 a)', t.p1, async ({ context, config, api, production, pairContext, stack, onCleanup }) => {
