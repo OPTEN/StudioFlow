@@ -10,6 +10,7 @@ public static class AuditCategories
         [AuditActions.ProductionCreated] = AuditCategory.Production,
         [AuditActions.ProductionRenamed] = AuditCategory.Production,
         [AuditActions.ProductionActivated] = AuditCategory.Production,
+        [AuditActions.CanvasChanged] = AuditCategory.Production,
         [AuditActions.BroadcastStarted] = AuditCategory.Production,
         [AuditActions.BroadcastEnded] = AuditCategory.Production,
         [AuditActions.BroadcastReset] = AuditCategory.Production,

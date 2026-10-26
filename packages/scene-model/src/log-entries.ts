@@ -44,6 +44,7 @@ export const LOG_MESSAGE_KEYS = {
   loggedOut: 'regie.log.loggedOut',
   productionCreated: 'regie.log.productionCreated',
   productionRenamed: 'regie.log.productionRenamed',
+  canvasChanged: 'regie.log.canvasChanged',
   productionActivated: 'regie.log.productionActivated',
   broadcastReset: 'regie.log.broadcastReset',
   standbySlateChanged: 'regie.log.standbySlateChanged',

@@ -216,7 +216,7 @@ public sealed class CanvasApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
     }
 
     [Fact]
-    public async Task ChangeCanvas_WritesOneAuditEntryWithoutAnAnnouncementInTheLog()
+    public async Task ChangeCanvas_WritesOneAuditEntryAndNoRecentEvent()
     {
         var admin = await app.AdminAsync();
         var production = await CreateAsync(admin);
@@ -227,7 +227,7 @@ public sealed class CanvasApiTests(StudioFlowApp app) : IClassFixture<StudioFlow
 
         Assert.Equal("production.canvas.changed", audit.Action);
         Assert.Equal(AuditActors.Admin, audit.Actor);
-        Assert.Equal(("Widescreen 1920x1080", "Portrait 720x1280"), (audit.Detail(AuditDetails.From), audit.Detail(AuditDetails.To)));
+        Assert.Equal(("1920 × 1080 (16:9)", "720 × 1280 (9:16)"), (audit.Detail(AuditDetails.From), audit.Detail(AuditDetails.To)));
     }
 
     [Fact]

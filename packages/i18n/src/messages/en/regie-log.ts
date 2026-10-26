@@ -39,6 +39,7 @@ export const regieLog = {
   'regie.log.outputLinkRevoked': 'Output link “{name}” revoked',
   'regie.log.pairingDenied': 'Request from {name} denied',
   'regie.log.passwordChanged': 'Password changed',
+  'regie.log.canvasChanged': 'Output changed from {from} to {to}',
   'regie.log.productionActivated': 'Production “{name}” activated',
   'regie.log.productionCreated': 'Production “{name}” created',
   'regie.log.productionRenamed': 'Production “{from}” renamed to “{name}”',

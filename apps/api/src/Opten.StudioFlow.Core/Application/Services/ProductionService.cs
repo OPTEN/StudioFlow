@@ -141,7 +141,7 @@ public sealed class ProductionService(
             async context =>
             {
                 var production = await context.ProductionAsync(cancellationToken);
-                var from = CanvasText(production);
+                var from = Canvases.Describe(production.CanvasFormat, production.CanvasResolution);
                 if (production.ChangeCanvas(format, resolution) is { } rescaled)
                 {
                     var dto = Dtos.Production(production);
@@ -150,7 +150,7 @@ public sealed class ProductionService(
                     context.Audit(
                         AuditActors.Admin,
                         AuditActions.CanvasChanged,
-                        new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.From] = from, [AuditDetails.To] = CanvasText(production) });
+                        new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.From] = from, [AuditDetails.To] = Canvases.Describe(production.CanvasFormat, production.CanvasResolution) });
                 }
 
                 return Dtos.Production(production);
@@ -272,9 +272,6 @@ public sealed class ProductionService(
 
     /// <inheritdoc />
     public void Dispose() => tenantGate.Dispose();
-
-    /// <summary>The canvas for the audit log, e.g. <c>Widescreen 1920x1080</c>.</summary>
-    private static string CanvasText(Production production) => $"{production.CanvasFormat} {production.Canvas.Width}x{production.Canvas.Height}";
 
     private static void EmitProduction(MutationContext context, Production production)
     {

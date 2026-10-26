@@ -35,6 +35,11 @@ describe('logEntryText', () => {
     expect(logEntryText(entry('productionRenamed', { from: 'Spring', name: 'Autumn' }))).toBe(
       'Production “Spring” renamed to “Autumn”',
     );
+    expect(
+      logEntryText(
+        entry('canvasChanged', { from: '1920 × 1080 (16:9)', to: '1080 × 1920 (9:16)' }),
+      ),
+    ).toBe('Output changed from 1920 × 1080 (16:9) to 1080 × 1920 (9:16)');
     expect(logEntryText(entry('deviceRenamed', { subject: 'K1 Phone', name: 'Stage' }))).toBe(
       'K1 Phone renamed to “Stage”',
     );
@@ -97,7 +102,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(46);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(47);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }

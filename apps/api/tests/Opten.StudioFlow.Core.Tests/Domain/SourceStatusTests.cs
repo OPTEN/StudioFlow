@@ -452,6 +452,7 @@ public sealed class LogTextsTests
             (AuditActions.Logout, [(AuditDetails.Username, "regie")], LogCode.LoggedOut, "“regie” signed out", new() { ["username"] = "regie" }),
             (AuditActions.ProductionCreated, [(AuditDetails.Name, "Spring")], LogCode.ProductionCreated, "Production “Spring” created", new() { ["name"] = "Spring" }),
             (AuditActions.ProductionRenamed, [(AuditDetails.From, "Spring"), (AuditDetails.Name, "Autumn")], LogCode.ProductionRenamed, "Production “Spring” renamed to “Autumn”", new() { ["from"] = "Spring", ["name"] = "Autumn" }),
+            (AuditActions.CanvasChanged, [(AuditDetails.From, "1920 × 1080 (16:9)"), (AuditDetails.To, "1080 × 1920 (9:16)")], LogCode.CanvasChanged, "Output changed from 1920 × 1080 (16:9) to 1080 × 1920 (9:16)", new() { ["from"] = "1920 × 1080 (16:9)", ["to"] = "1080 × 1920 (9:16)" }),
             (AuditActions.ProductionActivated, [(AuditDetails.Name, "Autumn")], LogCode.ProductionActivated, "Production “Autumn” activated", new() { ["name"] = "Autumn" }),
             (AuditActions.BroadcastReset, [], LogCode.BroadcastReset, "Broadcast reset", new()),
             (AuditActions.SlateChanged, [(AuditDetails.Slate, AuditSlates.Standby)], LogCode.StandbySlateChanged, "Slate before the broadcast changed", new()),
