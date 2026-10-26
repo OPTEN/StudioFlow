@@ -149,6 +149,30 @@ describe('StationsDockComponent', () => {
     );
   });
 
+  it('offers the camera panel for a phone only, and closes it with the details', async () => {
+    await setup();
+    rows()[1].click();
+    await render();
+    expect(button(station(LAPTOP), 'Camera')).toBeUndefined();
+    rows()[0].click();
+    await render();
+    const open = button(station(PHONE), 'Camera') as HTMLButtonElement;
+    expect(open.getAttribute('aria-expanded')).toBe('false');
+
+    open.click();
+    await render();
+    expect(open.getAttribute('aria-expanded')).toBe('true');
+    expect(station(PHONE).querySelector('sf-camera-panel')).not.toBeNull();
+    expect(text(station(PHONE).querySelector('[data-testid="camera-status"]'))).toBe(
+      'The phone has not reported its camera yet.',
+    );
+
+    rows()[0].click();
+    await render();
+    await render();
+    expect(station(PHONE).querySelector('sf-camera-panel')).toBeNull();
+  });
+
   it('shows knock cards and approves a request exactly once', async () => {
     await setup([knock()]);
     const card = element.querySelector('.c-knock') as HTMLElement;

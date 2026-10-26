@@ -1,0 +1,186 @@
+<section
+  class="c-cam"
+  role="group"
+  [attr.aria-label]="t('regie.camera.panel.label', { name: device().name })"
+  [attr.data-testid]="'camera-panel'"
+>
+  @let current = view();
+  @switch (current.kind) {
+    @case ('offline') {
+      <p class="c-cam__status" data-testid="camera-status">
+        {{ t('regie.camera.status.offline') }}
+      </p>
+    }
+    @case ('notReported') {
+      <p class="c-cam__status" data-testid="camera-status">
+        {{ t('regie.camera.status.notReported') }}
+      </p>
+    }
+    @case ('unavailable') {
+      <p class="c-cam__status" data-testid="camera-status">
+        {{ t('regie.camera.status.unavailable') }}
+      </p>
+    }
+    @case ('controls') {
+      @if (current.lenses.length > 0) {
+        <div class="c-cam__row">
+          <span class="c-cam__label" id="sf-cam-lens-{{ device().id }}">{{
+            t('regie.camera.lens.label')
+          }}</span>
+          <div class="c-seg" role="group" [attr.aria-labelledby]="'sf-cam-lens-' + device().id">
+            @for (lens of current.lenses; track lens.id) {
+              <button
+                type="button"
+                [attr.aria-pressed]="lens.active"
+                (click)="chooseLens(lens.id, lens.label)"
+              >
+                {{ lens.label }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (lensToConfirm(); as lens) {
+          <sf-confirm-box
+            [label]="t('regie.camera.lens.label')"
+            [confirmLabel]="t('regie.camera.lens.confirmNow')"
+            [flush]="true"
+            [message]="t('regie.camera.lens.confirmMessage', { label: label() || device().name })"
+            (confirm)="confirmLens()"
+            (cancel)="lensToConfirm.set(null)"
+          />
+        }
+      }
+
+      @if (current.zoom; as zoom) {
+        <div class="c-cam__row">
+          <label class="c-cam__label" [for]="'sf-cam-zoom-' + device().id">{{
+            t('regie.camera.zoom.label')
+          }}</label>
+          <input
+            class="c-cam__slider"
+            type="range"
+            data-testid="camera-zoom"
+            [id]="'sf-cam-zoom-' + device().id"
+            [min]="zoom.range.min"
+            [max]="zoom.range.max"
+            [step]="zoom.range.step"
+            [value]="shown('zoom', zoom.value)"
+            [attr.aria-valuetext]="shownText('zoom', zoom.value)"
+            (input)="move('zoom', $event)"
+          />
+          <output class="c-cam__value" [attr.for]="'sf-cam-zoom-' + device().id">{{
+            shownText('zoom', zoom.value)
+          }}</output>
+        </div>
+      }
+
+      @if (current.focus; as focus) {
+        <div class="c-cam__row">
+          <span class="c-cam__label" id="sf-cam-focus-{{ device().id }}">{{
+            t('regie.camera.focus.label')
+          }}</span>
+          <div class="c-seg" role="group" [attr.aria-labelledby]="'sf-cam-focus-' + device().id">
+            @if (focus.canAuto) {
+              <button
+                type="button"
+                [attr.aria-pressed]="focus.mode === 'auto'"
+                (click)="setFocus('auto')"
+              >
+                {{ t('regie.camera.focus.auto') }}
+              </button>
+            }
+            @if (focus.canLock) {
+              <button
+                type="button"
+                [attr.aria-pressed]="focus.mode === 'manual'"
+                (click)="setFocus('manual')"
+              >
+                {{ t('regie.camera.focus.lock') }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (focus.distance; as distance) {
+          <div class="c-cam__row">
+            <label class="c-cam__label" [for]="'sf-cam-distance-' + device().id">{{
+              t('regie.camera.focus.distance')
+            }}</label>
+            <input
+              class="c-cam__slider"
+              type="range"
+              data-testid="camera-distance"
+              [id]="'sf-cam-distance-' + device().id"
+              [min]="distance.range.min"
+              [max]="distance.range.max"
+              [step]="distance.range.step"
+              [value]="shown('distance', distance.value)"
+              [attr.aria-valuetext]="shownText('distance', distance.value)"
+              (input)="move('distance', $event)"
+            />
+            <output class="c-cam__value" [attr.for]="'sf-cam-distance-' + device().id">{{
+              shownText('distance', distance.value)
+            }}</output>
+          </div>
+        }
+      }
+
+      @if (current.brightness; as brightness) {
+        <div class="c-cam__row">
+          <label class="c-cam__label" [for]="'sf-cam-brightness-' + device().id">{{
+            t('regie.camera.brightness.label')
+          }}</label>
+          <input
+            class="c-cam__slider"
+            type="range"
+            data-testid="camera-brightness"
+            [id]="'sf-cam-brightness-' + device().id"
+            [min]="brightness.range.min"
+            [max]="brightness.range.max"
+            [step]="brightness.range.step"
+            [value]="shown('brightness', brightness.value)"
+            [attr.aria-valuetext]="shownText('brightness', brightness.value)"
+            (input)="move('brightness', $event)"
+          />
+          <output class="c-cam__value" [attr.for]="'sf-cam-brightness-' + device().id">{{
+            shownText('brightness', brightness.value)
+          }}</output>
+          <button
+            class="c-btn c-btn--sm"
+            type="button"
+            [disabled]="shown('brightness', brightness.value) === 0"
+            [attr.aria-label]="t('regie.camera.brightness.autoLabel')"
+            (click)="setBrightnessAuto()"
+          >
+            {{ t('regie.camera.brightness.auto') }}
+          </button>
+        </div>
+      }
+
+      @if (current.torch; as torch) {
+        <div class="c-cam__row">
+          <span class="c-cam__label" id="sf-cam-torch-{{ device().id }}">{{
+            t('regie.camera.torch.label')
+          }}</span>
+          <div class="c-seg" role="group" [attr.aria-labelledby]="'sf-cam-torch-' + device().id">
+            <button type="button" [attr.aria-pressed]="!torch.on" (click)="setTorch(false)">
+              {{ t('regie.camera.torch.off') }}
+            </button>
+            <button type="button" [attr.aria-pressed]="torch.on" (click)="setTorch(true)">
+              {{ t('regie.camera.torch.on') }}
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="c-cam__row c-cam__row--end">
+        <button class="c-btn c-btn--sm" type="button" data-testid="camera-reset" (click)="reset()">
+          {{ t('regie.camera.reset') }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (failure(); as message) {
+    <p class="c-cam__problem" role="status" data-testid="camera-problem">{{ message }}</p>
+  }
+</section>

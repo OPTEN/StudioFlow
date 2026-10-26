@@ -71,6 +71,8 @@ export interface StationView {
   readonly endedScreens: readonly SourceDto[];
   /** "Switch camera" is offered (phone camera that is live). */
   readonly canSwitchCamera: boolean;
+  /** The "Camera" panel is offered (a phone with a camera source, issue #11). */
+  readonly canControlCamera: boolean;
   readonly blocked: boolean;
   /** Not connected to the server (no control connection). */
   readonly offline: boolean;
@@ -246,6 +248,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     recovered,
     endedScreens: sources.filter((source) => source.kind === 'screen' && source.status === 'ended'),
     canSwitchCamera: device.kind === 'phone' && !!camera && camera.status === 'ok',
+    canControlCamera: device.kind === 'phone' && !!camera && !blocked,
     blocked,
     offline: device.connection === 'offline',
     ariaLabel:

@@ -1,0 +1,57 @@
+// Camera panel of a phone station: labelled rows (label, control, violet value).
+:host {
+  display: block;
+}
+
+.c-cam {
+  display: grid;
+  gap: 8px;
+}
+
+.c-cam__row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 74px minmax(0, 1fr) auto auto;
+
+  // A row without a slider (segmented control) only needs label and control.
+  > .c-seg {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+}
+
+.c-cam__row--end {
+  grid-template-columns: 1fr;
+}
+
+.c-cam__label {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-cam__slider {
+  accent-color: var(--blue);
+  min-width: 0;
+  width: 100%;
+}
+
+.c-cam__value {
+  color: var(--violet);
+  font: 500 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+  text-align: right;
+}
+
+.c-cam__status {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin: 0;
+}
+
+.c-cam__problem {
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin: 0;
+}

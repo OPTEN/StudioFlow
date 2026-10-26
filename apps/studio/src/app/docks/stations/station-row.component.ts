@@ -22,6 +22,7 @@ import {
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ElapsedComponent } from '../shared/elapsed.component';
+import { CameraPanelComponent } from './camera-panel.component';
 import { InlineEditComponent } from '../shared/inline-edit.component';
 import { messageParts } from '../shared/message-parts';
 import { toneClass, type StateTone } from '../shared/source-view';
@@ -43,6 +44,7 @@ type Confirmation = 'block' | 'remove' | null;
 @Component({
   selector: 'sf-station-row',
   imports: [
+    CameraPanelComponent,
     ConfirmBoxComponent,
     ElapsedComponent,
     IconComponent,
@@ -79,8 +81,10 @@ export class StationRowComponent {
   protected readonly confirm = signal<Confirmation>(null);
   protected readonly composing = signal(false);
   protected readonly renaming = signal(false);
+  protected readonly cameraOpen = signal(false);
 
   protected readonly detailId = computed(() => `sf-station-${this.view().id}`);
+  protected readonly cameraPanelId = computed(() => `sf-camera-${this.view().id}`);
   protected readonly down = computed(() => isDown(this.view().status));
   protected readonly label = computed(() =>
     this.view().codes.length > 0 ? this.view().codes.join(' ') : this.view().name,
@@ -101,6 +105,7 @@ export class StationRowComponent {
           this.confirm.set(null);
           this.composing.set(false);
           this.renaming.set(false);
+          this.cameraOpen.set(false);
         });
       }
     });
@@ -141,6 +146,10 @@ export class StationRowComponent {
     this.composing.set(false);
     this.renaming.set(false);
     this.confirm.set(kind);
+  }
+
+  protected toggleCamera(): void {
+    this.cameraOpen.update((value) => !value);
   }
 
   protected toggleComposer(): void {
