@@ -120,6 +120,40 @@ public sealed class AuditEventTests : IDisposable
     }
 
     [Fact]
+    public async Task CameraControl_LensSwitch_IsRecordedButSlidersAndTheSameLensAreNot()
+    {
+        var (device, identity) = await harness.PairPhoneAsync("Phone 1");
+        await harness.Devices.HelloAsync(identity, "c1", new DeviceHelloDto("tab-1", "Android", "1.0"), CancellationToken.None);
+        var capabilities = new CameraCapabilitiesDto(
+            [new CameraLensDto("back-main", "main", CameraLensKind.Standard), new CameraLensDto("back-wide", "wide", CameraLensKind.UltraWide)],
+            new CameraRangeDto(1, 8, 0.1),
+            [],
+            null,
+            null,
+            Torch: false);
+        var report = ServiceHarness.Report("camera", SlotState.Live) with
+        {
+            Camera = new CameraStateDto(1, capabilities, new CameraSettingsDto("back-main", 1, null, null, null, null), null),
+        };
+        await harness.Devices.ReportAsync(identity, "c1", report, CancellationToken.None);
+        harness.Data.Audit.Clear();
+
+        Task Send(string? lens, double? zoom) => harness.DeviceAdmin.SendCommandAsync(
+            harness.Production.Id,
+            device.Id,
+            new DeviceCommandRequest(DeviceCommandKind.CameraControl, "camera", null, new CameraControlDto(1, lens, zoom, null, null, null, null, null)),
+            CancellationToken.None);
+        await Send(null, 2);
+        await Send("back-main", null);
+        Assert.Empty(harness.Data.Audit);
+
+        await Send("back-wide", null);
+
+        var entry = Single(AuditActions.CameraLensSwitched);
+        Assert.Equal((AuditActors.Admin, "Phone 1", "UltraWide"), (entry.Actor, entry.Detail(AuditDetails.Device), entry.Detail(AuditDetails.Lens)));
+    }
+
+    [Fact]
     public async Task PhoneQrInvites_AreNotRecordedButInviteLinksAre()
     {
         await harness.Pairing.GetPhoneInviteAsync(harness.Production.Id, CancellationToken.None);

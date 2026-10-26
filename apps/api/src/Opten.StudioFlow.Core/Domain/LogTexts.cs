@@ -33,6 +33,7 @@ public static class LogTexts
         public const string Code = "code";
         public const string DownSeconds = "downSeconds";
         public const string Username = "username";
+        public const string Lens = "lens";
         public const string From = "from";
         public const string Format = "format";
         public const string Rows = "rows";
@@ -103,6 +104,7 @@ public static class LogTexts
             AuditActions.SlateChanged => With(LogCode.StandbySlateChanged, "Slate before the broadcast changed"),
             AuditActions.IncidentAcknowledged => With(LogCode.IncidentAcknowledged, $"{code} message marked as seen", (Param.Code, code)),
             AuditActions.DeviceRenamed => With(LogCode.DeviceRenamed, $"{subject} renamed to “{name}”", (Param.Subject, subject), (Param.Name, name)),
+            AuditActions.CameraLensSwitched => Lens(entry, subject),
             AuditActions.AuditExported => With(LogCode.AuditExported, $"Audit log exported as {entry.Detail(AuditDetails.Format)}, {entry.Detail(AuditDetails.Rows)} rows", (Param.Format, entry.Detail(AuditDetails.Format)), (Param.Rows, entry.Detail(AuditDetails.Rows))),
             AuditActions.AuditRetention => Retention(entry),
             _ => null,
@@ -117,6 +119,20 @@ public static class LogTexts
         var downSeconds = AuditEntry.DowntimeSeconds(entry.Detail(AuditDetails.DownSeconds));
         var text = $"{code} is back, was gone for {AuditEntry.FormatDowntime(entry.Detail(AuditDetails.DownSeconds))}";
         return With(LogCode.SourceRecovered, text, (Param.Code, code), (Param.DownSeconds, downSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Lens(AuditEntry entry, string subject)
+    {
+        var kind = Enum.TryParse<CameraLensKind>(entry.Detail(AuditDetails.Lens), out var parsed) ? parsed : CameraLensKind.Other;
+        var (param, name) = kind switch
+        {
+            CameraLensKind.Front => ("front", "front"),
+            CameraLensKind.UltraWide => ("ultraWide", "wide-angle"),
+            CameraLensKind.Standard => ("standard", "standard"),
+            CameraLensKind.Tele => ("tele", "tele"),
+            _ => ("other", "another"),
+        };
+        return With(LogCode.CameraLensSwitched, $"{subject} switched to the {name} lens", (Param.Subject, subject), (Param.Lens, param));
     }
 
     private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Retention(AuditEntry entry)

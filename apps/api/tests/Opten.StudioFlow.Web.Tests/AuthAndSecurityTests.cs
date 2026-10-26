@@ -123,6 +123,9 @@ public sealed class SecurityTests(StudioFlowApp app) : IClassFixture<StudioFlowA
         { "GET", "/api/productions/prd_x/pairing/phone-invite" },
         { "GET", "/api/productions/prd_x/assets" },
         { "POST", "/api/productions/prd_x/output/regenerate-key" },
+        { "GET", "/api/audit" },
+        { "GET", "/api/audit/export.csv" },
+        { "GET", "/api/audit/export.json" },
     };
 
     [Theory]

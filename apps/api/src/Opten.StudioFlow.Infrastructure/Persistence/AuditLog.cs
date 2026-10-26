@@ -25,6 +25,8 @@ internal sealed class AuditLog(IDbContextFactory<StudioFlowDbContext> contexts) 
         LEFT JOIN productions p ON p.id = a.production_id
         """;
 
+    private const int StreamBatchSize = 1_000;
+
     private const string NewestFirst = "ORDER BY a.at DESC, a.id DESC";
 
     // Phone QR codes used to be audited on every renewal (every half hour); the entries that remain are noise.
@@ -49,15 +51,27 @@ internal sealed class AuditLog(IDbContextFactory<StudioFlowDbContext> contexts) 
             .SingleAsync(cancellationToken);
     }
 
+    // The execution strategy of the context retries failed statements, so EF buffers all rows of a statement. An export
+    // therefore reads in keyset batches, like the view pages through the log, and only one batch is in memory at a time.
     public async IAsyncEnumerable<AuditRow> StreamAsync(AuditFilter filter, int limit, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (where, parameters) = Where(filter, after: null);
-        parameters.Add(new NpgsqlParameter("limit", limit));
-        await using var db = await contexts.CreateDbContextAsync(cancellationToken);
-        var records = db.Database.SqlQueryRaw<AuditRecord>(PageSql(where), [.. parameters]).AsAsyncEnumerable();
-        await foreach (var record in records.WithCancellation(cancellationToken))
+        AuditCursor? after = null;
+        for (var remaining = limit; remaining > 0;)
         {
-            yield return ToRow(record);
+            var size = Math.Min(StreamBatchSize, remaining);
+            var batch = await QueryAsync(filter, after, size, cancellationToken);
+            foreach (var row in batch)
+            {
+                yield return row;
+            }
+
+            if (batch.Count < size)
+            {
+                yield break;
+            }
+
+            remaining -= batch.Count;
+            after = new AuditCursor(batch[^1].At, batch[^1].Id);
         }
     }
 
