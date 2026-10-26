@@ -8,6 +8,7 @@ colors:
   raised-2: "#232a36"
   seam: "#262c36"
   seam-strong: "#353d4a"
+  control-edge: "#636d7b"
   well: "#05070a"
   text: "#e6edf3"
   text-2: "#b4bdc8"
@@ -16,7 +17,7 @@ colors:
   blue-fill: "#1f6feb"
   blue-fill-hover: "#1a5fd0"
   green: "#56d364"
-  red: "#f85149"
+  red: "#ff6a63"
   amber: "#e3b341"
   violet: "#c678dd"
   slot: "#3a4352"
@@ -44,14 +45,15 @@ colors-light:
   float: "#ffffff"
   seam: "#d8dde4"
   seam-strong: "#818b99"
+  control-edge: "#7c8694"
   text: "#17202b"
   text-2: "#3a4552"
   muted: "#566170"
   blue: "#0a5cc7"
   blue-fill: "#1f6feb"
   blue-fill-hover: "#1a5fd0"
-  green: "#16722e"
-  red: "#c4202b"
+  green: "#146a2a"
+  red: "#b71c28"
   amber: "#8a5800"
   violet: "#7a3fd0"
   on-fill: "#ffffff"
@@ -323,7 +325,8 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 - **Panel Graphite** (panel): the console surface for the header, message strip, stage and docks.
 - **Raised** (raised) and **Raised Higher** (raised-2): hover and active rows, popovers, the toast, slot-code chips and pressed buttons.
 - **Seam** (seam): every region hairline and divider between rows inside a dock.
-- **Strong Seam** (seam-strong): borders of controls (buttons, inputs, segmented groups), popover and toast borders, the switch track when off, and scrollbar thumbs.
+- **Strong Seam** (seam-strong): borders of buttons and segmented groups, popover and toast borders, separators in menus and popovers, and scrollbar thumbs. A label or a fill identifies these, so the border is quiet.
+- **Control Edge** (control-edge): the border of text fields, selects, number fields, the link box and the drop zone, and the switch track when off. There the edge is the only thing that shows where the control is, so it meets 3:1.
 - **Text** (text), **Secondary Text** (text-2), **Muted** (muted): primary content, supporting values, and labels or hints.
 - **Slot** (slot) and **Strong Slot** (slot-strong): the blocks inside layout-template previews.
 - **On Fill** (on-fill) is the text colour on Action Blue. **On State** (on-state) is the text colour on green or red fills and on the blue element label.
@@ -341,13 +344,13 @@ The Regie has two appearances. **Dark** is the console described on this page an
 
 **The light ladder.** Same tonal logic, mirrored: depth still comes from steps, not from shadows.
 - Ground `#ffffff` (inputs, link box), Panel `#f3f5f8` (the console surface), Raised `#e9edf2` and Raised Higher `#dfe4eb` (hover, active, chips, toast), Float `#ffffff` (popovers; in dark theme Float equals Raised).
-- Seam `#d8dde4` for hairlines. Strong Seam `#818b99` for control borders, which meets 3:1 on Panel and Ground.
+- Seam `#d8dde4` for hairlines. Strong Seam `#818b99` for the quiet borders of buttons, segments and popovers. Control Edge `#7c8694` for field edges and the switch track, which meets 3:1 on Panel, Ground and Float.
 - Text `#17202b`, Secondary Text `#3a4552`, Muted `#566170`.
 - On State is white in the light theme, because green and red fills are dark there.
 
-**The light state hues.** The same five meanings, darkened so text and lamps pass on a light surface. Blue `#0a5cc7`, Green `#16722e`, Red `#c4202b`, Amber `#8a5800`, Violet `#7a3fd0`. Action Blue (`#1f6feb`, hover `#1a5fd0`) is unchanged and carries white text. The washes keep the Wash Rule and are tuned for light: red 9%, amber 13%, green 8%, blue 7% alpha of the light hues. An incident stands out in light exactly as in dark: the lamp, the wash and the dashed outline appear, flash once and stay.
+**The light state hues.** The same five meanings, darkened so text and lamps pass on a light surface. Blue `#0a5cc7`, Green `#146a2a`, Red `#b71c28`, Amber `#8a5800`, Violet `#7a3fd0`. Action Blue (`#1f6feb`, hover `#1a5fd0`) is unchanged and carries white text. The washes keep the Wash Rule and are tuned for light: red 9%, amber 13%, green 8%, blue 7% alpha of the light hues. An incident stands out in light exactly as in dark: the lamp, the wash and the dashed outline appear, flash once and stay.
 
-**Contrast.** Text and state text meet 4.5:1 on every surface and on their own wash. Lamps, tally outlines, focus rings and control borders meet 3:1. `tools/lib/studio-theme-contrast.spec.ts` reads the compiled tokens and checks these pairs in both themes, so a changed value that breaks them fails the unit tests.
+**Contrast.** Text and state text meet 4.5:1 on every surface and on their own wash. The PGM and PVW tags stay readable on a current row and on a row washed in their own hue. Lamps, tally outlines and focus rings meet 3:1 on every surface, and so does the Control Edge on the surfaces fields sit on. In the dark theme Tally Red is `#ff6a63` (5.15:1 on Raised Higher) and Control Edge `#636d7b` (3.3:1 on Panel); the dark Strong Seam `#353d4a` stays a hairline-weight border (1.6:1) for things that a label or a fill identifies, which keeps the console from turning into boxes (WCAG 1.4.11 asks for the border only where it is the sole indicator). `tools/lib/studio-theme-contrast.spec.ts` reads the compiled tokens and checks these pairs in both themes, so a changed value that breaks them fails the unit tests.
 
 **Picture areas stay dark.** Monitors, scene thumbnails, station and source previews, layout-template previews and the well stay near black in the light theme as well. A video picture on a white background looks flat and too dark, and broadcast tools do the same. The picture tokens (`--well`, `--slot`, `--slot-strong`, and `--pic-ink`, `--pic-text`, `--pic-text-2`, `--pic-muted`, `--pic-blue`, `--pic-red`, `--pic-amber`, `--pic-scrim`) are one set for both themes. Everything drawn on a picture (the edit box and its handles, snapping guides, the live note, thumbnail keycaps, the "Preview off" note) uses these `--pic-*` tokens and never the themed ones, so selection blue and alert dashes keep their dark-theme brightness. The renderer's canvas colours (`packages/scene-renderer/src/palette.ts`) are unchanged. The tally outline around a picture sits on the console surface and uses the themed red or green.
 
@@ -438,10 +441,10 @@ Quiet outlines on the surface. Fills are reserved for the action that matters.
 - **Icon button:** 28px square, muted, raised on hover. Icons are inline 16px SVG strokes (1.6 stroke width).
 
 ### Take
-The only large filled control. It is 172px wide and at least 56px tall, Action Blue with uppercase "TAKE" and a small "Space" hint. It exists only in Studio Mode. It presses down by 1px when active and is disabled while a transition runs.
+The only large filled control. It is 172px wide and at least 56px tall, Action Blue with uppercase "TAKE" and a small "Space" hint in the same white (never faded, it must stay 4.5:1 on the blue). It exists only in Studio Mode. It presses down by 1px when active and is disabled while a transition runs.
 
 ### Studio Mode switch and Transition
-- **Switch:** 36 × 20px track, Strong Seam when off and Action Blue when on, with a 14px thumb that slides in 150ms. It sits at the top of the control column.
+- **Switch:** 36 × 20px track, Control Edge when off and Action Blue when on, with a 14px thumb that slides in 150ms. It sits at the top of the control column.
 - **Transition:** a two-segment control (Cut | Fade) with strong-seam dividers. The active segment gets blue-wash, blue text and a 2px blue underline.
 - **Duration stepper:** minus and plus buttons around a violet mono value. The steps are 0.2 / 0.3 / 0.5 / 0.8 / 1 / 1.5 / 2 s (default 0.3 s; 0,3 s in the German UI). It is muted and disabled under Cut. There is no T-bar: a fade always runs to completion, and new switches are ignored while it runs.
 
