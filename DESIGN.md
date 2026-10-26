@@ -487,6 +487,7 @@ Texts are part of the picture, not of the console, so the **production** chooses
 
 ### Popovers, menus and toast
 - **Popovers:** Float (Raised in the dark theme), strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
+- **Output popover:** below the summary (state, consumers, format, latency) the links are a list of 44px rows, one per output link: a lamp (green connected, amber no current picture, Muted not connected), "Name · state" and, for a link that is not connected, its last-seen time in Muted. The selected row sits on Raised Higher with a Control Edge border and `aria-current`. The selected link opens below a strong-seam separator: name with "Rename", the masked link box, the IP restriction, "Use as camera …" and two quiet red buttons "Regenerate link" and "Revoke link" that open the dashed red confirmation. "Use as camera …" unfolds a numbered list of five steps, notes in Muted and a filled "Download OBS scene collection" button. The popover scrolls inside the viewport (`max-height`) and is 440px wide, full width minus 24px below 480px. It uses only existing tokens, so both themes work.
 - **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("‘Lea presents’ is live"; German: "«Lea präsentiert» ist live") and dock moves, with an optional undo action.
 
 ### Audit log page
@@ -496,7 +497,7 @@ Texts are part of the picture, not of the console, so the **production** chooses
 - **States:** loading, empty ("No entries match.", with a hint) and error ("Try again") use the plain empty block; a failed "Load more" keeps the loaded entries and says so next to the button. No new colours or tokens: Panel, Raised, seam, text and the blue wash in both themes.
 
 ### Header
-50px tall on Panel. On the left are the mark and brand, then the production name in text-2. On the right are LIVE with a red dot and mono runtime, output status to the proxy with a lamp and mono latency, station health, the Docks and layout and presence icon buttons, and the mono clock.
+50px tall on Panel. On the left are the mark and brand, then the production name in text-2. On the right are LIVE with a red dot and mono runtime, the output chip "Output" with the names of the connected links in text-2 (for example "Proxy + Teams camera", cut with an ellipsis; the tooltip lists every link with its state), a lamp and mono latency, station health, the Docks and layout and presence icon buttons, and the mono clock.
 
 ## Do's and Don'ts
 

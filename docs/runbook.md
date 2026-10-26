@@ -431,6 +431,9 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 - [ ] Output link tested at the proxy: the page loads in the iframe, the picture runs, the proxy's domain is in
       `STUDIOFLOW_FRAME_ANCESTORS`; if the IP restriction is active: proxy IP entered (on Docker Desktop the API only
       sees the internal Docker address – the IP restriction only works reliably on a Linux server).
+- [ ] If the picture goes into Teams, Zoom or Webex through OBS (section 18): the link "Teams camera" shows "connected"
+      in the output chip, a second participant sees the picture, background effects are off, and the computer with OBS
+      and Teams is not the Regie laptop.
 
 **On site, 60 minutes before**
 
@@ -562,7 +565,9 @@ The setting stays until `clear` or until the LiveKit container is recreated.
   Caddy.
 - Never set `STUDIOFLOW_TRUSTED_PROXIES` to the LAN – otherwise the IP restriction of the output can be bypassed with a
   forged `X-Forwarded-For`.
-- Give the output link only to the proxy; if you suspect it has leaked, regenerate the key in the Regie.
+- Give every output link only to the one consumer it is named after (the proxy, the Teams camera, …) and enter that
+  consumer's address as the IP restriction of the link. If you suspect a link has leaked, regenerate its key; if the
+  consumer is gone, revoke the link. Both only affect that link, the other consumers keep running (section 18).
 - Create the Regie account right after the first start: until then the first-run setup is open to whoever knows the
   setup code, and the code is in the API log (anyone with access to Docker on the server can read it, nobody else).
   Do not open a new installation to the internet before the account exists. The log, the backups and the database
@@ -871,3 +876,83 @@ protection law), use SQL on the database after a backup:
 - The page is empty after "Last broadcast": the production has had no broadcast yet, or choose another production.
 - The table grows although retention is on: check the API log for "Maintenance step audit retention failed" (database
   problem) and that `AUDIT_RETENTION_DAYS` is what you expect (`docker compose exec api printenv AUDIT__RETENTIONDAYS`).
+
+## 18. Output as a camera in Teams/Zoom
+
+Teams, Zoom and Webex cannot embed a web page, but they can use a **camera**. OBS Studio (free) turns the output page into
+the camera "OBS Virtual Camera" that all three list on Windows and macOS. Nothing has to be installed on the StudioFlow
+server for this.
+
+**Use a separate computer for OBS and Teams** (a laptop or mini PC on the same Wi-Fi or, better, on a cable). Teams, OBS,
+the output page and the Regie together load a laptop heavily, and the output must not depend on the Regie laptop: if
+the Regie browser or the laptop fails, the picture in Teams keeps running. In this chapter that computer is "the camera
+computer". The camera carries **video only**; the sound keeps coming from the mixing desk into Teams as before.
+
+### 18.1 Set it up (about 10 minutes)
+
+1. **A link of its own for the camera.** In the Regie click the chip "Output" in the header. In the "Links" section
+   type `Teams camera` into the field "Name of the new link" and click "Add link". The new link is selected and shows
+   its masked address. Optional but recommended: under "Access" type the IP address of the camera computer, click "Add",
+   then "Save"; from then on only that computer can open this link. Every consumer has its own link, so the proxy
+   link (named "Proxy") is not touched.
+2. **Download the OBS scene collection.** Click "Use as camera …" and then "Download OBS scene collection". The file
+   `StudioFlow-Teams-camera.json` lands in the Downloads folder of the computer that runs the Regie. Copy it to the
+   camera computer (USB stick, shared folder or mail to yourself). It contains the secret link: treat it like the
+   link itself and delete it from shared places afterwards.
+3. **Install OBS Studio 31 or newer** on the camera computer (obsproject.com, "Download Installer" for Windows or
+   macOS). On the first start OBS shows the "Auto-Configuration Wizard": choose "I will only be using the Virtual
+   Camera" and click "Next"; on the next page choose "Base (Canvas) Resolution" `1920x1080` and "FPS" `30`, then
+   finish the wizard. (You can open the wizard later under Tools → Auto-Configuration Wizard.)
+4. **Import the collection.** In the OBS menu bar choose Scene Collection → Import. The dialog "Import Scene
+   Collections" has a path field with a button "…" next to it; choose `StudioFlow-Teams-camera.json` and click "Import".
+   Then open the "Scene Collection" menu again and click "StudioFlow – Teams camera". OBS shows one scene "StudioFlow"
+   with one source "StudioFlow output"; within a few seconds the preview shows the output (the standby slate before
+   the broadcast starts). In the Regie the chip now reads "Output" with "Teams camera" next to it, and the popover
+   says "Teams camera · connected".
+5. **Check the video settings.** In OBS choose Settings → Video. Set "Base (Canvas) Resolution" and "Output (Scaled)
+   Resolution" to `1920x1080` and "Common FPS Values" to `30`, then click "OK". A scene collection cannot carry
+   these values, so this step is needed even after the wizard. The imported browser source is set up like this:
+   1920 × 1080, 30 fps, "Control audio via OBS" on, "Shutdown source when not visible" off, "Refresh browser when
+   scene becomes active" off. Leave them as they are: they make the picture start once and keep running.
+6. **Start the camera.** In the "Controls" dock (bottom right) click "Start Virtual Camera". The button changes to
+   "Stop Virtual Camera" and OBS now provides the camera "OBS Virtual Camera" to all programs.
+7. **Pick the camera in the meeting program.**
+   - **Teams (new Teams app):** click your profile picture → Settings → Devices, and under "Camera" choose "OBS Virtual
+     Camera". In a meeting's pre-join screen use the same list next to "Camera". **Switch background effects off**
+     ("Background effects" → "No effect"/"Don't apply any background effect", including "Blur"): Teams would otherwise
+     alter the picture.
+   - **Zoom:** Settings → Video → "Camera" → "OBS Virtual Camera"; switch off "Touch up my appearance" and any
+     virtual background, and switch off "Mirror my video" if you want to see the picture as the others see it.
+   - **Webex:** Settings → Video → "Camera" → "OBS Virtual Camera", virtual background off.
+8. **Test with a second participant** (another phone or computer in the same meeting) before the real one.
+
+If the program does not list the camera: first "Start Virtual Camera" in OBS, then restart the program. Closing OBS
+removes the camera; Teams then shows no picture.
+
+### 18.2 Good to know
+
+- **Your own preview is not what the others see.** Teams mirrors your self-view (text appears reversed there) and
+  shows it in its own quality; the picture the others see is not mirrored. Judge the picture on a second device.
+- **Teams reduces size and quality.** It downsizes the picture and compresses it hard, especially with motion. Text on
+  slides must be large: use at least about 3 % of the picture height (32 px on the 1080-pixel canvas) for body text,
+  titles larger, and avoid thin fine print.
+- **Background effects off.** Blur, virtual backgrounds and "appearance" filters in Teams, Zoom or Webex change the
+  picture (blur softens the whole frame). Switch them all off.
+- **Interruptions.** If the Wi-Fi of the camera computer drops, the output page keeps the last picture and returns by
+  itself when the connection is back; the virtual camera does not have to be restarted. During the gap the Regie shows
+  the link as "not connected" with the time it was last seen.
+- **Latency.** OBS and the meeting program add delay on top of the output; plan about one second end to end and
+  measure it as described in `docs/testing.md` (MAN-15) before relying on it for a live Q&A.
+- **Audio.** The browser source is set to "Control audio via OBS" so that OBS owns its audio; the output page has no sound
+  yet, so the meter of "StudioFlow output" stays silent. Keep sending the sound from the mixing desk into the meeting.
+- **The camera computer is gone or the link leaked.** In the popover select "Teams camera" and click "Revoke link"
+  (the page in OBS shows "No access" at once, all other links keep running), or "Regenerate link" to keep the name and
+  get a new address; import the new collection afterwards. Revoke or regenerate never affects the proxy.
+- **OBS shows a black picture.** Open the properties of "StudioFlow output" (double click) and check the URL; "No
+  access" on the picture means the link was revoked, regenerated or the camera computer's address is not allowed.
+  "Refresh cache of current page" in the same dialog reloads the page.
+- **Which OBS versions.** The file is written in the format of OBS Studio 31 and 32. Older versions may refuse the
+  import: update OBS.
+
+For a very large event, a Teams town hall or another platform that accepts RTMP directly can take the picture without
+a camera detour; that is not part of StudioFlow today (restream, plan phase 3).

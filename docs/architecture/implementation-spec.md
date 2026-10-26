@@ -101,7 +101,7 @@ name on creation), isActive (exactly one active production per tenant), broadcas
 liveSince, endedAt, programSceneId, previewSceneId, lastTransition, lastSwitchAt, standbySlate (default “Starting soon”,
 subtitle = production name), endSlate (default “Thanks for watching”), textTheme (accent, background and text colour of
 all texts, `#rrggbb`, default `#1f6feb` / `#0d1117` / `#ffffff`, changed with `PATCH` and sent with the production),
-output key (+ createdAt), allowedIps, createdAt. The texts of the production (4.4) are stored with it (`text_sources`,
+createdAt. Its output links (4.8) are stored in the table `output_links`. The texts of the production (4.4) are stored with it (`text_sources`,
 `jsonb`).
 
 On first start the API creates the default production “Webinar” (slug `webinar`, active) with three scenes:
@@ -338,17 +338,34 @@ background, a slate or a fallback → 409 `asset_in_use`.
 
 ### 4.8 Output access
 
-The output URL is `{PublicBaseUrl}/o/{slug}?k={outputKey}`. The key is sent by the page as `X-Output-Key` (REST) and
-as `access_token` (output hub). Wrong key → 403 (no hint whether the slug exists). If `allowedIps` is not empty, the
-client IP (from `X-Forwarded-For`, trusted only from the Caddy network) must match one entry (IP or CIDR), else 403.
-`regenerate-key` invalidates the old key immediately: connected output pages are disconnected (hub abort + LiveKit
-`RemoveParticipant` for identity `output_{slug}_*`). Embedding is limited by `frame-ancestors` from
-`STUDIOFLOW_FRAME_ANCESTORS` (Caddy; shown read-only in the Regie).
+A production has up to 10 **output links** (decision #9.3), one per consumer: the proxy, the Teams camera, a second
+webinar tool, … Table `output_links` (id `olk_…`, productionId, name 1–40 characters and unique per production ignoring
+case, key, keyCreatedAt, allowedIps, createdAt, lastSeenAt). Every production starts with one link named “Proxy”; the
+migration turns the former single output key (and its IP restriction) of an existing production into its “Proxy” link, so
+existing proxies keep working. REST (admin): `GET …/output` (links with URL, `maxLinks`, frame ancestors),
+`POST …/output/links` (create, 409 `limit_reached` at the limit), `PATCH …/output/links/{linkId}` (rename),
+`PUT …/output/links/{linkId}/access` (IP restriction), `POST …/output/links/{linkId}/regenerate-key`,
+`DELETE …/output/links/{linkId}` (revoke: the link is deleted).
 
-Output status: the API tracks output hub connections (count, remote IPs) and reports (`OutputReport` every 2 s).
-State `connected` if ≥ 1 page connected and reported `rendering` within 6 s, `stale` if connected but no fresh
-rendering report, `none` otherwise. Changes emit `outputStatusChanged` (latency/fps updates at most every 5 s or when
-the value changes by > 20 %).
+The URL of a link is `{PublicBaseUrl}/o/{slug}?k={key}`. The key is sent by the page as `X-Output-Key` (REST) and as
+`access_token` (output hub); the asset content route accepts it as `?k=`. The key of **any** link of the production is
+accepted; the comparison with every key is constant time, so the time does not depend on which link matches. Wrong,
+missing or revoked key → 403 (no hint whether the slug exists). If the link's `allowedIps` is not empty, the client IP
+(from `X-Forwarded-For`, trusted only from the Caddy network) must match one entry (IP or CIDR), else 403; the
+restriction belongs to the link, not to the production. Keys are 32 random bytes and never logged.
+Regenerating or revoking a link invalidates its key immediately and disconnects **only the pages of that link** (hub
+abort of the link's connections + LiveKit `RemoveParticipant` for identities `output_{slug}_{linkId}_*`); the other
+links are not affected. Narrowing the IP restriction disconnects the link's pages from addresses that are no longer
+allowed. Embedding is limited by `frame-ancestors` from `STUDIOFLOW_FRAME_ANCESTORS` (Caddy; shown read-only in the
+Regie).
+
+Output status: the API tracks output hub connections (count, remote IPs) and reports (`OutputReport` every 2 s) **per
+link**. A link is `connected` if ≥ 1 of its pages is connected and reported `rendering` within 6 s, `stale` if
+connected but no fresh rendering report, `none` otherwise. `OutputStatusDto` carries the summary (connected if any link
+is, else stale if any is) and `links`: every link of the production with its id, name, state, consumers, addresses,
+latency and fps. Changes (also a link created, renamed or revoked) emit `outputStatusChanged` (latency/fps updates at
+most every 5 s or when the value changes by > 20 %). `lastSeenAt` of a link is written when one of its pages connects or
+disconnects.
 
 ### 4.9 Audit log
 
@@ -367,7 +384,7 @@ de-CH).
 | `devices` | device.paired, device.renamed, device.blocked, device.unblocked, device.removed, device.camera.lens, pairing.denied, invite.created, invite.revoked (invite links only), incident.acknowledged, source.reconnecting, source.ended, source.lost, source.recovered |
 | `security` | login.succeeded, login.failed, login.locked, logout, account.setup, account.password.changed, account.reset, audit.exported |
 | `media` | asset.uploaded, asset.deleted |
-| `output` | output.key.regenerated, output.access.changed |
+| `output` | output.link.created, output.link.renamed, output.link.revoked, output.key.regenerated, output.access.changed (every one with the link `name`; the key itself is never recorded) |
 | `system` | audit.retention |
 
 Not audited: the preview (too frequent), the phone QR invite (renewed every half hour; entries of older versions stay and
@@ -520,7 +537,7 @@ once more right after a camera command.
 ## 7. LiveKit
 
 - One room per production: `prd_{id}` («backstage»). `auto_create` on, `empty_timeout` 300 s.
-- Identities: device id for senders; `studio_{random}` for Regie sessions; `output_{slug}_{random}` for output pages.
+- Identities: device id for senders; `studio_{random}` for Regie sessions; `output_{slug}_{linkId}_{random}` for output pages.
 - Grants: sender – roomJoin, canPublish, canPublishSources [camera, screen_share], canSubscribe false,
   canPublishData false; studio and output – roomJoin, canSubscribe, canPublish false, canPublishData false,
   hidden true. TTL 10 min: the server refreshes tokens of connected participants every 5 min (validity
@@ -542,7 +559,7 @@ once more right after a camera command.
   fast signal. Never log webhook bodies (they contain `turnPassword`).
 - Room service (Twirp, `POST http://livekit:7880/twirp/livekit.RoomService/{Method}`, `Authorization: Bearer
   {admin JWT}`, JSON; requests camelCase or snake_case, **responses snake_case**, int64 as strings):
-  RemoveParticipant (block, output key rotation; 404 if absent is fine), ListParticipants (seed + reconcile).
+  RemoveParticipant (block, regenerating or revoking an output link; 404 if absent is fine), ListParticipants (seed + reconcile).
 - Server: `livekit/livekit-server:v1.13.10`, config passed as `LIVEKIT_CONFIG` (YAML body; compose interpolates the
   key) – `port 7880`, `rtc.tcp_port 7881`, `rtc.udp_port 7882`, `rtc.use_external_ip false`, node IP via `NODE_IP`
   env, `room.empty_timeout 300`, `room.departure_timeout 20`, `webhook.api_key` (must equal the key) +
@@ -739,8 +756,11 @@ exists and `/setup` to `/login` once it does), `/login`, `/` (Regie), `/monitori
 (full-page station metrics: bitrate, fps, resolution, packet loss, RTT, battery, network, tech check; live).
 Header: brand, production name (menu: rename, switch/create production, slates, change password, sign out), “Start broadcast” / “End broadcast”
 (start/end/reset broadcast, confirmation for ending), LIVE runtime (while live; else “READY” / “ENDED”),
-output chip with popover (state, consumers, IPs, format, latency, link copy, IP restriction editor, regenerate key
-with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
+output chip (“Output”, lamp, latency and the names of the connected links, e.g. “Proxy + Teams camera”; its tooltip
+lists every link with its state) with popover (summary: state, consumers, IPs, format, latency; the list of output links,
+each as “Proxy · connected” or “not connected” with its last-seen time; adding a link by name; for the selected link:
+rename, link copy (masked), IP restriction editor, “Use as camera …” with the download of an OBS scene collection (9.4),
+“Regenerate link” and “Revoke link” with dashed red confirmation), station health chip, “Docks and layout” popover, a settings (gear) popover with the
 language and appearance (Dark | Light | System) settings, presence, clock, logout.
 Everything in the prototype menu “Prototype” is replaced by real events (no demo data).
 State: one `ProductionStore` service wrapping `ProductionSync` in signals; commands go through `StudioApi` (typed
@@ -814,7 +834,33 @@ and key, subscribe via output hub (`ProductionSync`), get a LiveKit token, start
 program switches play the event's transition; preview scene and all other scenes are preloaded at LOW/HIGH as in 7.
 Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate “No access” («Kein Zugang») (no retry loop faster
 than 30 s). `debug=1` shows a mono overlay (scene, revision, connection states, per source resolution/fps/bitrate,
-estimated latency). Reports `OutputReport` every 2 s. Bundle target: < 350 KB gzip incl. livekit-client.
+estimated latency). Reports `OutputReport` every 2 s (the report belongs to the link whose key opened the page).
+Bundle target: < 350 KB gzip incl. livekit-client.
+
+As an OBS browser source (9.4) the page needs nothing special, and this is what makes it work there: every video is
+muted and inline, so Chromium (CEF) plays it without a user gesture; nothing on the page asks for a click; a source that
+goes away keeps its last picture (hold frame, 8.3); `?bg=transparent` makes the page, the stage and the letterbox
+transparent; the page keeps running while the source is hidden (`visibilitychange` resumes paused videos).
+
+### 9.4 Output as a camera (OBS bridge, issue #9 stage 1)
+
+Teams, Zoom and Webex cannot embed a web page, but they list the camera “OBS Virtual Camera”. The Regie therefore offers
+“Use as camera …” for every output link (9.1): the short instructions (install OBS Studio 31 or newer on the computer
+that runs Teams, import the collection, set the video resolution, Start Virtual Camera, pick the camera and switch
+background effects off) and the download of a **ready-made OBS scene collection**, `StudioFlow-{link name}.json`
+(Scene Collection → Import in OBS). OBS and Teams run on a computer of their own, not on the Regie laptop (decision
+#9.4); the camera carries video only, the sound stays on the mixing desk (decision #9.2).
+
+The file is generated in the browser (`obs-scene-collection.ts`) from the link URL the Regie already holds, so there is no
+new endpoint and the key goes nowhere new; the unit tests cover its structure, the escaping of names and URLs and the
+file name. It holds one scene “StudioFlow” with one browser source “StudioFlow output” (`id: "browser_source"`) with
+`url` = the link, `width` × `height` = the stage size (`obsCanvasSize()`, one place: 1920 × 1080 until the production
+format #8 replaces it), `fps` 30 (`fps_custom`), `reroute_audio` true (“Control audio via OBS”, for #7), `shutdown` false
+(keeps running while hidden) and `restart_when_active` false (no refresh when the scene becomes active). The layout of
+the file is the one OBS Studio 31 and 32 write (keys of a scene and of `obs-browser`; `prev_ver` is OBS 31.0.0); a
+scene collection does not carry the canvas size, so the instructions tell the operator to set Base and Output
+Resolution and the frame rate under Settings → Video. The step list is in `docs/runbook.md` (“Output as a camera in
+Teams/Zoom”).
 
 ## 10. Infrastructure
 
