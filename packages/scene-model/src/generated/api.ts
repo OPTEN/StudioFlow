@@ -196,6 +196,22 @@ export interface paths {
         patch: operations["updateProduction"];
         trace?: never;
     };
+    "/api/productions/{productionId}/canvas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeCanvas"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/activate": {
         parameters: {
             query?: never;
@@ -1064,7 +1080,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Request to add a source to a scene. Missing values are chosen by the server (1240/680, 600 × 338, radius 12, contain for screens). */
+        /** @description Request to add a source to a scene. Missing values are chosen by the server (on a 1920 × 1080 canvas 1240/680, 600 × 338, radius 12, contain for screens; other canvases get the same layout in proportion). */
         AddSceneItemRequest: {
             source: string;
             /** Format: int32 */
@@ -1319,6 +1335,45 @@ export interface components {
             /** @description The last command the camera refused (`overconstrained`, `failed`); null once a command works again. */
             problem: null | string;
         };
+        /**
+         * @description The output canvas of a production: the coordinate system of all scene items and the shape of the output page, the
+         *     monitors and the thumbnails. One canvas per production.
+         */
+        CanvasDto: {
+            /** @description Aspect ratio. */
+            format: components["schemas"]["CanvasFormat"];
+            /** @description Target resolution (short side). */
+            resolution: components["schemas"]["CanvasResolution"];
+            /**
+             * Format: int32
+             * @description Width in canvas pixels, derived from format and resolution.
+             */
+            width: number;
+            /**
+             * Format: int32
+             * @description Height in canvas pixels, derived from format and resolution.
+             */
+            height: number;
+        };
+        /**
+         * @description Format (aspect ratio) of the output canvas. One format per production; the list is fixed so the layouts fit.
+         * @enum {unknown}
+         */
+        CanvasFormat: "widescreen" | "portrait" | "square" | "standard";
+        /**
+         * @description Target resolution of the output canvas, named after the short side. Together with the format it gives the canvas size.
+         * @enum {unknown}
+         */
+        CanvasResolution: "p720" | "p1080";
+        /**
+         * @description Sets format and resolution of the output canvas. The same format with another resolution scales every scene item
+         *     proportionally; another format fits the items into the new canvas (scaled uniformly, centred) and lets the Auto-Grid
+         *     arrange itself for the new shape. Not possible while the broadcast is live (409 `broadcast_live`).
+         */
+        ChangeCanvasRequest: {
+            format: null | components["schemas"]["CanvasFormat"];
+            resolution: null | components["schemas"]["CanvasResolution"];
+        };
         /** @description Changes the password of the signed-in admin; every other session ends. */
         ChangePasswordRequest: {
             /** @description The password in use now. */
@@ -1346,7 +1401,10 @@ export interface components {
         };
         /** @description Request to create a production. */
         CreateProductionRequest: {
+            /** @description Display name. */
             name: string;
+            format?: null | components["schemas"]["CanvasFormat"];
+            resolution?: null | components["schemas"]["CanvasResolution"];
         };
         /** @description Request to create a scene. */
         CreateSceneRequest: {
@@ -1934,13 +1992,15 @@ export interface components {
             endSlate: components["schemas"]["SlateDto"];
             /** @description Colours of all texts and lower thirds. */
             textTheme: components["schemas"]["TextThemeDto"];
+            /** @description Format and resolution of the output canvas; every scene item is placed in its pixels. */
+            canvas: components["schemas"]["CanvasDto"];
         };
         /**
          * @description A revisioned change of the production state, pushed over SignalR (method string HubMethods.Event).
          *     Clients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync
          *     (new snapshot), a smaller revision is ignored.
          */
-        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
+        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProductionCanvasChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
         /** @description An asset was deleted. */
         ProductionEventAssetRemovedEvent: {
             /** @enum {string} */
@@ -2068,6 +2128,23 @@ export interface components {
             /** @enum {string} */
             type: "pairingRequestUpserted";
             request: components["schemas"]["PairingRequestDto"];
+            /**
+             * Format: int64
+             * @description Revision after this change.
+             */
+            revision: number;
+        };
+        /**
+         * @description The output canvas changed. Production and the rescaled scenes arrive in one revision, so no client ever shows the new
+         *     canvas with the geometry of the old one.
+         */
+        ProductionEventProductionCanvasChangedEvent: {
+            /** @enum {string} */
+            type: "productionCanvasChanged";
+            /** @description The production with its new canvas. */
+            production: components["schemas"]["ProductionDto"];
+            /** @description The scenes whose items were rescaled (scenes without items are unchanged and not listed). */
+            scenes: components["schemas"]["SceneDto"][];
             /**
              * Format: int64
              * @description Revision after this change.
@@ -2271,7 +2348,7 @@ export interface components {
             /** @description Optional image asset, drawn with cover fit. */
             assetId: null | string;
         };
-        /** @description Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back). */
+        /** @description Scene: ordered items on the canvas of the production (its `canvas` field). Item order is the z-order (first = back). */
         SceneDto: {
             /** @description Scene id, e.g. `scn_…`. */
             id: string;
@@ -2449,16 +2526,6 @@ export interface components {
             version: string;
             /** @description Public base URL, e.g. https://studioflow.opten.ch. */
             publicBaseUrl: string;
-            /**
-             * Format: int32
-             * @description Canvas width (1920).
-             */
-            canvasWidth: number;
-            /**
-             * Format: int32
-             * @description Canvas height (1080).
-             */
-            canvasHeight: number;
         };
         /** @description Request for a take (Studio-Modus): the preview goes on air and the old program moves to the preview. */
         TakeRequest: {
@@ -2602,6 +2669,10 @@ export type CameraLensKind = components['schemas']['CameraLensKind'];
 export type CameraRangeDto = components['schemas']['CameraRangeDto'];
 export type CameraSettingsDto = components['schemas']['CameraSettingsDto'];
 export type CameraStateDto = components['schemas']['CameraStateDto'];
+export type CanvasDto = components['schemas']['CanvasDto'];
+export type CanvasFormat = components['schemas']['CanvasFormat'];
+export type CanvasResolution = components['schemas']['CanvasResolution'];
+export type ChangeCanvasRequest = components['schemas']['ChangeCanvasRequest'];
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
 export type CreateOutputLinkRequest = components['schemas']['CreateOutputLinkRequest'];
@@ -2666,6 +2737,7 @@ export type ProductionEventLogAppendedEvent = components['schemas']['ProductionE
 export type ProductionEventOutputStatusChangedEvent = components['schemas']['ProductionEventOutputStatusChangedEvent'];
 export type ProductionEventPairingRequestRemovedEvent = components['schemas']['ProductionEventPairingRequestRemovedEvent'];
 export type ProductionEventPairingRequestUpsertedEvent = components['schemas']['ProductionEventPairingRequestUpsertedEvent'];
+export type ProductionEventProductionCanvasChangedEvent = components['schemas']['ProductionEventProductionCanvasChangedEvent'];
 export type ProductionEventProductionChangedEvent = components['schemas']['ProductionEventProductionChangedEvent'];
 export type ProductionEventProgramSwitchedEvent = components['schemas']['ProductionEventProgramSwitchedEvent'];
 export type ProductionEventRevisionOnlyEvent = components['schemas']['ProductionEventRevisionOnlyEvent'];
@@ -3200,6 +3272,59 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    changeCanvas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeCanvasRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

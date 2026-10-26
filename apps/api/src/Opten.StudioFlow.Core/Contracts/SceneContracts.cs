@@ -1,6 +1,6 @@
 namespace Opten.StudioFlow.Core.Contracts;
 
-/// <summary>Scene: ordered items on a fixed 1920 × 1080 canvas. Item order is the z-order (first = back).</summary>
+/// <summary>Scene: ordered items on the canvas of the production (its <c>canvas</c> field). Item order is the z-order (first = back).</summary>
 /// <param name="Id">Scene id, e.g. <c>scn_…</c>.</param>
 /// <param name="Name">Display name, 1–80 characters.</param>
 /// <param name="SortOrder">Position in the scene list, 0-based (keys 1–9 select the first nine).</param>
@@ -79,7 +79,7 @@ public sealed record UpdateSceneRequest(string? Name, SceneLayoutMode? LayoutMod
 /// <summary>New order of all scenes; must contain every scene id exactly once.</summary>
 public sealed record ReorderScenesRequest(IReadOnlyList<string> SceneIds);
 
-/// <summary>Request to add a source to a scene. Missing values are chosen by the server (1240/680, 600 × 338, radius 12, contain for screens).</summary>
+/// <summary>Request to add a source to a scene. Missing values are chosen by the server (on a 1920 × 1080 canvas 1240/680, 600 × 338, radius 12, contain for screens; other canvases get the same layout in proportion).</summary>
 public sealed record AddSceneItemRequest(
     string Source,
     int? X,

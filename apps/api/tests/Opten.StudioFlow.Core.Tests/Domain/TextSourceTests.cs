@@ -177,9 +177,9 @@ public sealed class TextSourceTests
         var other = production.AddTextSource(Create("Other"), [text.Code]);
         var catalog = new SourceCatalog([], [], production.TextSources);
         var scenes = production.OrderedScenes;
-        scenes[0].AddItem(Build.Add(text.Id), catalog);
-        scenes[0].AddItem(Build.Add(other.Id), catalog);
-        scenes[2].AddItem(Build.Add(text.Id), catalog);
+        scenes[0].AddItem(Build.Add(text.Id), catalog, CanvasSize.FullHd);
+        scenes[0].AddItem(Build.Add(other.Id), catalog, CanvasSize.FullHd);
+        scenes[2].AddItem(Build.Add(text.Id), catalog, CanvasSize.FullHd);
         var versions = scenes.Select(s => s.Version).ToList();
 
         var (removed, changedScenes) = production.RemoveTextSource(text.Id);
@@ -247,7 +247,7 @@ public sealed class TextSourceTests
         var catalog = new SourceCatalog([], [], production.TextSources);
         var scene = production.OrderedScenes[0];
 
-        var items = new[] { lowerThird, title, note }.Select(t => scene.AddItem(Build.Add(t.Id), catalog)).ToList();
+        var items = new[] { lowerThird, title, note }.Select(t => scene.AddItem(Build.Add(t.Id), catalog, CanvasSize.FullHd)).ToList();
 
         Assert.All(items, item => Assert.True(item.Hidden));
         Assert.All(items, item => Assert.Equal(0, item.Radius));
@@ -260,7 +260,7 @@ public sealed class TextSourceTests
         var text = production.AddTextSource(Create(), []);
         var catalog = new SourceCatalog([], [], production.TextSources);
 
-        var item = production.OrderedScenes[0].AddItem(new AddSceneItemRequest(text.Id, 10, 20, 300, 100, null, null), catalog);
+        var item = production.OrderedScenes[0].AddItem(new AddSceneItemRequest(text.Id, 10, 20, 300, 100, null, null), catalog, CanvasSize.FullHd);
 
         Assert.Equal((10, 20, 300, 100), (item.X, item.Y, item.W, item.H));
     }
@@ -272,7 +272,7 @@ public sealed class TextSourceTests
         var text = production.AddTextSource(Create(), []);
         var catalog = new SourceCatalog([phone], [], production.TextSources);
         var scene = production.OrderedScenes[0];
-        var camera = scene.AddItem(Build.Add(phone.SourceIdOf(phone.Slots[0])), catalog);
+        var camera = scene.AddItem(Build.Add(phone.SourceIdOf(phone.Slots[0])), catalog, CanvasSize.FullHd);
 
         var error = Assert.Throws<StudioFlowException>(() => scene.UpdateItem(camera.Id, camera with { OnLost = new LostBehaviorDto(3000, text.Id) }, catalog));
 

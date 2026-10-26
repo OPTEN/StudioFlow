@@ -26,7 +26,8 @@ public static class Dtos
             production.LastSwitchAt,
             production.StandbySlate,
             production.EndSlate,
-            production.TextTheme);
+            production.TextTheme,
+            Canvases.Dto(production.CanvasFormat, production.CanvasResolution));
     }
 
     /// <summary>Short production entry.</summary>

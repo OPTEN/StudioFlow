@@ -32,9 +32,7 @@ public sealed record LiveKitTokenDto(string Url, string Token, string Identity, 
 /// <summary>Static information about the installation.</summary>
 /// <param name="Version">Build version.</param>
 /// <param name="PublicBaseUrl">Public base URL, e.g. https://studioflow.opten.ch.</param>
-/// <param name="CanvasWidth">Canvas width (1920).</param>
-/// <param name="CanvasHeight">Canvas height (1080).</param>
-public sealed record SystemInfoDto(string Version, string PublicBaseUrl, int CanvasWidth, int CanvasHeight);
+public sealed record SystemInfoDto(string Version, string PublicBaseUrl);
 
 /// <summary>Machine readable error codes in <c>ProblemDetails.extensions.code</c>.</summary>
 public static class ErrorCodes
@@ -47,6 +45,9 @@ public static class ErrorCodes
 
     /// <summary>A program switch is rejected while a fade runs.</summary>
     public const string TransitionRunning = "transition_running";
+
+    /// <summary>The output canvas cannot be changed while the broadcast is live (409).</summary>
+    public const string BroadcastLive = "broadcast_live";
 
     /// <summary>The live scene cannot be deleted.</summary>
     public const string SceneIsLive = "scene_is_live";

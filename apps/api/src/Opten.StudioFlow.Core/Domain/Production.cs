@@ -80,6 +80,15 @@ public sealed class Production
     /// <summary>Texts and lower thirds of the production (source kind text), in creation order.</summary>
     public IReadOnlyList<TextSourceDto> TextSources { get; private set; } = [];
 
+    /// <summary>Aspect ratio of the output canvas.</summary>
+    public CanvasFormat CanvasFormat { get; private set; } = Canvases.DefaultFormat;
+
+    /// <summary>Target resolution of the output canvas.</summary>
+    public CanvasResolution CanvasResolution { get; private set; } = Canvases.DefaultResolution;
+
+    /// <summary>Size of the output canvas in pixels, the coordinate system of all scene items.</summary>
+    public CanvasSize Canvas => Canvases.SizeOf(CanvasFormat, CanvasResolution);
+
     /// <summary>Creation time.</summary>
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -89,14 +98,27 @@ public sealed class Production
     /// <summary>Scenes ordered by <see cref="Scene.SortOrder"/>.</summary>
     public IReadOnlyList<Scene> OrderedScenes => [.. scenes.OrderBy(s => s.SortOrder)];
 
-    /// <summary>Creates a production with the default scenes; the first scene is on air, the broadcast is in standby.</summary>
-    public static Production Create(string name, string slug, bool isActive, DateTimeOffset now)
+    /// <summary>
+    /// Creates a production with the default scenes; the first scene is on air, the broadcast is in standby. The canvas
+    /// is 16:9 at 1080p unless the caller chooses another one from the fixed list.
+    /// </summary>
+    public static Production Create(
+        string name,
+        string slug,
+        bool isActive,
+        DateTimeOffset now,
+        CanvasFormat format = Canvases.DefaultFormat,
+        CanvasResolution resolution = Canvases.DefaultResolution)
     {
         var validName = TextRules.RequireName(name, TextRules.NameMax, "name");
         if (!Slugs.IsValid(slug))
         {
             throw new ArgumentException("Invalid slug.", nameof(slug));
         }
+
+        var errors = new ValidationErrors();
+        Canvases.Validate(format, resolution, errors);
+        errors.ThrowIfAny();
 
         var production = new Production
         {
@@ -105,6 +127,8 @@ public sealed class Production
             Slug = slug,
             IsActive = isActive,
             Broadcast = BroadcastState.Standby,
+            CanvasFormat = format,
+            CanvasResolution = resolution,
             StandbySlate = new SlateDto("Starting soon", validName, null),
             CreatedAt = now,
         };
@@ -164,6 +188,33 @@ public sealed class Production
         }
 
         return changed;
+    }
+
+    /// <summary>
+    /// Sets format and resolution of the canvas and moves every scene item onto it (see <see cref="CanvasFit"/>). Returns
+    /// the scenes whose items moved, or null when the canvas stays the same. Throws <c>broadcast_live</c> while the
+    /// broadcast is live: the output shows the program scene, which would jump in front of the audience.
+    /// </summary>
+    public IReadOnlyList<Scene>? ChangeCanvas(CanvasFormat format, CanvasResolution resolution)
+    {
+        var errors = new ValidationErrors();
+        Canvases.Validate(format, resolution, errors);
+        errors.ThrowIfAny();
+        if (format == CanvasFormat && resolution == CanvasResolution)
+        {
+            return null;
+        }
+
+        if (Broadcast == BroadcastState.Live)
+        {
+            throw StudioFlowException.Conflict(ErrorCodes.BroadcastLive, "The format cannot be changed while the broadcast is live.");
+        }
+
+        var from = Canvas;
+        CanvasFormat = format;
+        CanvasResolution = resolution;
+        var to = Canvas;
+        return [.. OrderedScenes.Where(scene => scene.FitTo(from, to))];
     }
 
     /// <summary>Sets the active flag; returns false when it was already set.</summary>

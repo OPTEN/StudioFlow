@@ -82,7 +82,7 @@ public sealed class SceneService(ProductionCoordinator coordinator)
     public Task<SceneDto> AddItemAsync(string productionId, string sceneId, AddSceneItemRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return MutateAsync(productionId, sceneId, (scene, catalog) => scene.AddItem(request, catalog) is not null, cancellationToken);
+        return MutateAsync(productionId, sceneId, (scene, catalog, canvas) => scene.AddItem(request, catalog, canvas) is not null, cancellationToken);
     }
 
     /// <summary>Replaces one item.</summary>
@@ -168,6 +168,10 @@ public sealed class SceneService(ProductionCoordinator coordinator)
     }
 
     private Task<SceneDto> MutateAsync(string productionId, string sceneId, Func<Scene, SourceCatalog, bool> change, CancellationToken cancellationToken) =>
+        MutateAsync(productionId, sceneId, (scene, catalog, _) => change(scene, catalog), cancellationToken);
+
+    /// <summary>Applies a change to a scene; <paramref name="change"/> also gets the canvas, which decides where new items land.</summary>
+    private Task<SceneDto> MutateAsync(string productionId, string sceneId, Func<Scene, SourceCatalog, CanvasSize, bool> change, CancellationToken cancellationToken) =>
         coordinator.ExecuteAsync(
             productionId,
             async context =>
@@ -176,7 +180,7 @@ public sealed class SceneService(ProductionCoordinator coordinator)
                 var scene = production.GetScene(sceneId);
                 var catalog = await context.CatalogAsync(cancellationToken);
                 var itemsBefore = scene.Items;
-                if (change(scene, catalog))
+                if (change(scene, catalog, production.Canvas))
                 {
                     var dto = Dtos.Scene(scene);
                     context.Emit(revision => new SceneUpsertedEvent(revision, dto));

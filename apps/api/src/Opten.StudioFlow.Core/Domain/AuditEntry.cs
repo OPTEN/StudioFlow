@@ -65,6 +65,9 @@ public static class AuditActions
     /// <summary>Broadcast ended.</summary>
     public const string BroadcastEnded = "broadcast.ended";
 
+    /// <summary>The output format or resolution changed.</summary>
+    public const string CanvasChanged = "production.canvas.changed";
+
     /// <summary>A device was paired.</summary>
     public const string DevicePaired = "device.paired";
 
@@ -187,8 +190,11 @@ public static class AuditDetails
     /// <summary>How a scene went on air, see <see cref="AuditVia"/>.</summary>
     public const string Via = "via";
 
-    /// <summary>The previous name of a renamed production.</summary>
+    /// <summary>The previous name of a renamed production, or the canvas before a change (e.g. <c>Widescreen 1920x1080</c>).</summary>
     public const string From = "from";
+
+    /// <summary>The canvas after a change.</summary>
+    public const string To = "to";
 
     /// <summary>Kind of the lens a phone camera switched to (<c>Front</c>, <c>UltraWide</c>, <c>Standard</c>, <c>Tele</c>, <c>Other</c>).</summary>
     public const string Lens = "lens";

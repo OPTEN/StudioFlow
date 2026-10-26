@@ -6,7 +6,9 @@ namespace Opten.StudioFlow.Core.Domain;
 /// <summary>
 /// Validation bounds and defaults of scene items and backgrounds (spec 4.3). The server is authoritative; the clients
 /// clamp with the same numbers (<c>ITEM_BOUNDS</c> in <c>packages/scene-model</c>). The item contract records are
-/// immutable value objects and serve as the domain's item type, so there is no parallel copy of the same shape.
+/// immutable value objects and serve as the domain's item type, so there is no parallel copy of the same shape. The
+/// geometry bounds are absolute and wide enough for every canvas of <see cref="Canvases"/> (at most 1920 pixels on a side),
+/// so they do not depend on the production.
 /// </summary>
 public static partial class SceneItemRules
 {
@@ -61,14 +63,16 @@ public static partial class SceneItemRules
     public static CropDto NoCrop { get; } = new(0, 0, 0, 0);
 
     /// <summary>
-    /// Creates a new item with the server defaults for every value the request leaves open. A text starts hidden, so its
-    /// content can be prepared before it goes on air.
+    /// Creates a new item with the server defaults for every value the request leaves open; the default rectangle is the
+    /// one of a 1920 × 1080 canvas placed on <paramref name="canvas"/>. A text starts hidden, so its content can be
+    /// prepared before it goes on air.
     /// </summary>
-    public static SceneItemDto CreateItem(AddSceneItemRequest request, SourceEntry source)
+    public static SceneItemDto CreateItem(AddSceneItemRequest request, SourceEntry source, CanvasSize canvas)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(source);
-        var (x, y, w, h) = source.Text is { } text ? TextSourceRules.DefaultRect(text.Style) : (1240, 680, 600, 338);
+        (int X, int Y, int W, int H) reference = source.Text is { } text ? TextSourceRules.DefaultRect(text.Style) : (1240, 680, 600, 338);
+        var (x, y, w, h) = Canvases.Place(canvas, reference.X, reference.Y, reference.W, reference.H);
         return new SceneItemDto(
             EntityIds.New(EntityIds.Item),
             request.Source,

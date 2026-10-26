@@ -86,7 +86,7 @@ internal static class AuthEndpoints
 internal static class SystemEndpoints
 {
     public static IResult GetInfo(StudioFlowOptions options) =>
-        TypedResults.Ok(new SystemInfoDto(AppVersion.Current, options.BaseUrl, 1920, 1080));
+        TypedResults.Ok(new SystemInfoDto(AppVersion.Current, options.BaseUrl));
 }
 
 /// <summary>Productions, broadcast, switching, incidents.</summary>
@@ -112,6 +112,9 @@ internal static class ProductionEndpoints
 
     public static async Task<IResult> UpdateAsync(string productionId, [FromBody] UpdateProductionRequest body, ProductionService productions, CancellationToken cancellationToken) =>
         TypedResults.Ok(await productions.UpdateAsync(productionId, body, cancellationToken));
+
+    public static async Task<IResult> ChangeCanvasAsync(string productionId, [FromBody] ChangeCanvasRequest body, ProductionService productions, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await productions.ChangeCanvasAsync(productionId, body, cancellationToken));
 
     public static async Task<IResult> ActivateAsync(string productionId, ProductionService productions, CancellationToken cancellationToken) =>
         TypedResults.Ok(await productions.ActivateAsync(productionId, cancellationToken));
