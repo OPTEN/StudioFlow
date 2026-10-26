@@ -417,6 +417,10 @@ public sealed class LogTextsTests
             (AuditActions.AccountSetUp, [(AuditDetails.Username, "regie")], LogCode.AccountSetUp, "Account set up", new()),
             (AuditActions.PasswordChanged, [(AuditDetails.Username, "regie")], LogCode.PasswordChanged, "Password changed", new()),
             (AuditActions.AccountReset, [], LogCode.AccountReset, "Account reset", new()),
+            (AuditActions.TextCreated, [(AuditDetails.Code, "T1"), (AuditDetails.Name, "Mia Meier")], LogCode.TextCreated, "T1 “Mia Meier” created", new() { ["code"] = "T1", ["name"] = "Mia Meier" }),
+            (AuditActions.TextDeleted, [(AuditDetails.Code, "T1"), (AuditDetails.Name, "Mia Meier")], LogCode.TextDeleted, "T1 “Mia Meier” deleted", new() { ["code"] = "T1", ["name"] = "Mia Meier" }),
+            (AuditActions.TextShown, [(AuditDetails.Code, "T2")], LogCode.TextShown, "T2 shown", new() { ["code"] = "T2" }),
+            (AuditActions.TextHidden, [(AuditDetails.Code, "T2")], LogCode.TextHidden, "T2 hidden", new() { ["code"] = "T2" }),
         };
 
         foreach (var (action, details, code, text, parameters) in rows)

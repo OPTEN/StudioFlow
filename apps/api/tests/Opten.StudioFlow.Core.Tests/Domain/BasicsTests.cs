@@ -99,6 +99,17 @@ public sealed class SourceRefTests
         Assert.Equal("ast_abcd1234", parsed.AssetId);
     }
 
+    [Fact]
+    public void TryParse_Text_ReturnsText()
+    {
+        Assert.True(SourceRef.TryParse("txt_abcd1234", out var parsed));
+
+        Assert.False(parsed.IsDevice);
+        Assert.Equal("txt_abcd1234", parsed.TextId);
+        Assert.Null(parsed.AssetId);
+        Assert.Equal("txt_abcd1234", parsed.ToString());
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(null)]
@@ -108,6 +119,9 @@ public sealed class SourceRefTests
     [InlineData("dev_abcd1234/mic")]
     [InlineData("dev_abcd1234/camera/x")]
     [InlineData("ast_abcd1234/camera")]
+    [InlineData("txt_abcd1234/camera")]
+    [InlineData("txt_ab")]
+    [InlineData("txt_ABCD1234")]
     [InlineData("scn_abcd1234")]
     [InlineData("../etc/passwd")]
     public void TryParse_Malformed_ReturnsFalse(string? value) => Assert.False(SourceRef.TryParse(value, out _));

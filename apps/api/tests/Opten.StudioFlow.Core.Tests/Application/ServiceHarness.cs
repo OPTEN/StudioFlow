@@ -23,6 +23,7 @@ internal sealed class ServiceHarness : IDisposable
         Productions = new ProductionService(Coordinator, Data, Snapshots, new FakeTokens(), Requests, Clock);
         Scenes = new SceneService(Coordinator);
         DeviceAdmin = new DeviceAdminService(Coordinator, kicker, SourceOptions);
+        Texts = new TextService(Coordinator);
         Devices = new DeviceSessionService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, SourceOptions);
         Pairing = new PairingService(Coordinator, Data, Requests, Options, PairingOptions, Clock);
         Outputs = new OutputService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, Options);
@@ -60,6 +61,8 @@ internal sealed class ServiceHarness : IDisposable
     public ProductionService Productions { get; }
 
     public SceneService Scenes { get; }
+
+    public TextService Texts { get; }
 
     public DeviceAdminService DeviceAdmin { get; }
 
