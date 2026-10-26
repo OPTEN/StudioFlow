@@ -407,7 +407,7 @@ public sealed class OutputViewTests
     [Fact]
     public void ForOutput_SourceUpserted_HasNoHealth()
     {
-        var source = new SourceDto("dev_a/camera", "K1", SourceKind.Camera, "Phone", "dev_a", "camera", null, SourceStatus.Reconnecting, Build.T0);
+        var source = new SourceDto("dev_a/camera", "K1", SourceKind.Camera, "Phone", "dev_a", "camera", null, SourceStatus.Reconnecting, Build.T0, null);
 
         var output = Assert.IsType<SourceUpsertedEvent>(OutputView.ForOutput(new SourceUpsertedEvent(3, source)));
 
