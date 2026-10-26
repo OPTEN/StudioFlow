@@ -9,8 +9,6 @@ import { COLOR, getScene, item, recordRequests, replaceItems, uploadSolid } from
  * Playwright has no touch drag, so the finger is a CDP touch stream.
  */
 
-test.use({ locale: 'en-GB' });
-
 const IDS = ['itm_layera', 'itm_layerb', 'itm_layerc'];
 
 const rows = (page: Page): Locator => page.locator('sf-sources-dock .c-sortable__row');
