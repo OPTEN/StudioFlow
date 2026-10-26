@@ -47,11 +47,11 @@ test.describe('OUT media and reports', () => {
         .toBeGreaterThanOrEqual(7);
       const lines = await output.debugLines();
       expect(lines[0], 'production and scene').toBe(`${production.name} · Scene “${sceneName}”`);
-      expect(lines[1], 'revision and broadcast').toMatch(/^Revision d+ · Broadcast live$/);
+      expect(lines[1], 'revision and broadcast').toMatch(/^Revision \d+ · Broadcast live$/);
       expect(lines[2], 'canvas of the production').toBe('Canvas 1920 × 1080 · 16:9 · 1080p');
       expect(lines[3], 'hub and sync state').toBe('Hub connected · Sync up to date');
       expect(lines[4], 'LiveKit state').toBe('LiveKit connected');
-      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ d+ ms · Renderer d+ fps$/);
+      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Renderer \d+ fps$/);
       expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms$`));
 
       // Values match the video element and the API (the picture size may still grow through simulcast layers).
