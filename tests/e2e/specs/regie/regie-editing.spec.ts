@@ -1138,8 +1138,8 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
         .poll(async () => (await colorAtOverlap()).blue, { message: 'blue is in front first' })
         .toBeGreaterThan(0.9);
       await selectViaRow(page, /^Select: M\d Green/);
-      const front = inspector(page).getByRole('button', { name: 'Bring forward' });
-      const back = inspector(page).getByRole('button', { name: 'Send backward' });
+      const front = inspector(page).getByRole('button', { name: 'Bring forward', exact: true });
+      const back = inspector(page).getByRole('button', { name: 'Send backward', exact: true });
       await front.click();
       await expect.poll(order).toEqual(['a', 'c', 'b']);
       await expect(front, 'at the front the button is disabled').toBeDisabled();

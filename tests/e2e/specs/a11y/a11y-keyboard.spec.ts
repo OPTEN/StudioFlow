@@ -53,7 +53,7 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.type('wrong-password-12345');
     await page.keyboard.press('Enter');
     const error = page.getByRole('alert').filter({ hasText: /\S/ });
-    await expect(error, 'a wrong password is announced in an alert').toContainText('Username or password is incorrect');
+    await expect(error, 'a wrong password is announced in an alert').toContainText('Wrong username or password');
     await expect(page, 'still on the login page').toHaveURL(/\/login/);
     // the password is cleared or kept; type the right one by keyboard only
     await page.getByLabel('Password').focus();

@@ -39,7 +39,7 @@ test.describe('axe scans: Regie', () => {
     await page.getByLabel('Username').fill('nobody');
     await page.getByLabel('Password').fill('wrong-password-123');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toContainText('incorrect');
+    await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toContainText('Wrong username or password');
     await scanner.scan('login-error');
     scanner.verify();
   });
