@@ -300,10 +300,13 @@ export class OutputPage {
 
   // --- pixels -------------------------------------------------------------------------------------------------
 
-  /** Screenshot of the stage (letterbox excluded) as pixels. `omitBackground` keeps transparency. */
+  /** Screenshot of the stage (letterbox excluded) as pixels; canvas coordinates are those of the production's canvas. `omitBackground` keeps transparency. */
   async stagePixels(options: { omitBackground?: boolean } = {}): Promise<{
     image: PixelImage;
+    /** Screenshot pixels per canvas pixel. */
     scale: number;
+    /** Size of the canvas (the stage element before it is scaled to the window). */
+    canvas: { width: number; height: number };
     at: (canvasX: number, canvasY: number) => Rgba;
     mean: (canvasRect: Rect) => Rgba;
   }> {
@@ -316,7 +319,11 @@ export class OutputPage {
       animations: 'allow',
     });
     const image = PixelImage.fromPng(png);
-    const scale = image.width / 1920;
+    const canvas = await stage.evaluate((element: HTMLElement) => ({
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+    }));
+    const scale = image.width / canvas.width;
     const toImage = (rect: Rect): Rect => ({
       x: rect.x * scale,
       y: rect.y * scale,
@@ -326,6 +333,7 @@ export class OutputPage {
     return {
       image,
       scale,
+      canvas,
       at: (x, y) => image.pixel(x * scale, y * scale),
       mean: (rect) => image.mean(toImage(rect)),
     };
