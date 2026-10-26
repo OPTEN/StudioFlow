@@ -546,6 +546,115 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("scenes", (string)null);
                 });
 
+            modelBuilder.Entity("Opten.StudioFlow.Core.Domain.ServerSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AcmeEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("acme_email");
+
+                    b.Property<string>("AgeRecipients")
+                        .IsRequired()
+                        .HasMaxLength(640)
+                        .HasColumnType("character varying(640)")
+                        .HasColumnName("age_recipients");
+
+                    b.Property<int>("BackupKeepDaily")
+                        .HasColumnType("integer")
+                        .HasColumnName("backup_keep_daily");
+
+                    b.Property<int>("BackupKeepWeekly")
+                        .HasColumnType("integer")
+                        .HasColumnName("backup_keep_weekly");
+
+                    b.Property<string>("BackupSchedule")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("backup_schedule");
+
+                    b.Property<string>("BackupTimezone")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("backup_timezone");
+
+                    b.Property<string>("CertificatePem")
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)")
+                        .HasColumnName("certificate_pem");
+
+                    b.Property<string>("DnsChallengeDomain")
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)")
+                        .HasColumnName("dns_challenge_domain");
+
+                    b.Property<string>("DnsCredentialsProtected")
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)")
+                        .HasColumnName("dns_credentials_protected");
+
+                    b.Property<string>("Domain")
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)")
+                        .HasColumnName("domain");
+
+                    b.Property<string>("FrameAncestors")
+                        .IsRequired()
+                        .HasMaxLength(5120)
+                        .HasColumnType("character varying(5120)")
+                        .HasColumnName("frame_ancestors");
+
+                    b.Property<string>("MediaAddress")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("media_address");
+
+                    b.Property<bool>("OffsiteUnencrypted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("offsite_unencrypted");
+
+                    b.Property<string>("PrivateKeyProtected")
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)")
+                        .HasColumnName("private_key_protected");
+
+                    b.Property<string>("RcloneConfigProtected")
+                        .HasMaxLength(131072)
+                        .HasColumnType("character varying(131072)")
+                        .HasColumnName("rclone_config_protected");
+
+                    b.Property<string>("RcloneRemote")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("rclone_remote");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    b.Property<string>("TlsMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("tls_mode");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_server_settings");
+
+                    b.ToTable("server_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_server_settings_only_row", "id = 1");
+                        });
+                });
+
             modelBuilder.Entity("Opten.StudioFlow.Infrastructure.Persistence.SourceActivity", b =>
                 {
                     b.Property<string>("SourceId")

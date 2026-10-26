@@ -17,6 +17,7 @@ using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure;
 using Opten.StudioFlow.Infrastructure.Backup;
+using Opten.StudioFlow.Infrastructure.Install;
 using Opten.StudioFlow.Infrastructure.Persistence;
 using Opten.StudioFlow.Infrastructure.Security;
 using Opten.StudioFlow.Web.Endpoints;
@@ -59,6 +60,9 @@ internal static class StudioFlowHost
         var configuration = builder.Configuration;
         var environment = builder.Environment;
 
+        // The secrets the init service generated (database password, LiveKit keys) complete the configuration (issue #27).
+        SecretFiles.Apply(configuration);
+
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
             kestrel.AddServerHeader = false;
@@ -79,8 +83,10 @@ internal static class StudioFlowHost
             options.AddSchemaTransformer<DiscriminatorRequiredTransformer>();
         });
 
+        // The address and the embedding list follow the server settings (wizard and "Server settings"); the two keys override them.
         services.AddOptions<StudioFlowOptions>().Bind(configuration.GetSection(StudioFlowOptions.Section))
-            .Validate(o => Uri.TryCreate(o.PublicBaseUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp), "StudioFlow:PublicBaseUrl must be an absolute http(s) URL.");
+            .PostConfigure<ServerSettingsState>((options, settings) => options.UseSettings(settings))
+            .Validate(o => string.IsNullOrWhiteSpace(o.PublicBaseUrl) || (Uri.TryCreate(o.PublicBaseUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)), "StudioFlow:PublicBaseUrl must be empty or an absolute http(s) URL.");
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<StudioFlowOptions>>().Value);
         services.AddValidatedOptions<PairingOptions>(configuration, PairingOptions.Section);
         services.AddValidatedOptions<LoginLockoutOptions>(configuration, LoginLockoutOptions.Section);
@@ -90,6 +96,7 @@ internal static class StudioFlowHost
         services.AddValidatedOptions<BackupOptions>(configuration, BackupOptions.Section);
         services.AddValidatedOptions<AuditOptions>(configuration, AuditOptions.Section);
         services.AddValidatedOptions<TransferOptions>(configuration, TransferOptions.Section);
+        services.AddValidatedOptions<InstallOptions>(configuration, InstallOptions.Section);
         services.AddSingleton(TimeProvider.System);
         services.AddStudioFlowInfrastructure(configuration);
         AddApplication(services);
@@ -143,6 +150,10 @@ internal static class StudioFlowHost
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
         app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains(DatabaseMaintenance.ReadyTag), ResponseWriter = HealthResponse.WriteAsync }).DisableRateLimiting();
         app.MapStudioFlowApi();
+
+        // Caddy asks here before it makes a certificate of the local CA for an unknown name or address. Caddy does not proxy
+        // this path, so only a container of the compose network reaches it.
+        app.MapGet(InternalEndpoints.TlsAskPath, InternalEndpoints.AskTls).ExcludeFromDescription();
 
         // A Regie connection ends with its admin session (GAP-04b).
         app.MapHub<StudioHub>(HubMethods.StudioHubPath, options => options.CloseOnAuthenticationExpiration = true);
@@ -210,6 +221,10 @@ internal static class StudioFlowHost
         services.AddSingleton<AuditLogService>();
         services.AddSingleton<AuditRetentionService>();
         services.AddSingleton<SourceRestartWatch>();
+        services.AddSingleton<ServerSettingsState>();
+        services.AddSingleton<ServerConfigApplier>();
+        services.AddSingleton<ServerSettingsService>();
+        services.AddSingleton<InternalEndpoints.TlsAskGate>();
     }
 
     private static void AddSecurity(IServiceCollection services, ConfigurationManager configuration, IWebHostEnvironment environment)
@@ -221,6 +236,7 @@ internal static class StudioFlowHost
         }
 
         services.AddSingleton<AdminSessions>();
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
         services.AddAuthentication(AuthSchemes.Admin)
             .AddCookie(AuthSchemes.Admin, cookie =>
             {

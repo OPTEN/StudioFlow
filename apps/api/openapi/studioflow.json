@@ -3529,6 +3529,378 @@
         }
       }
     },
+    "/api/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "getServerSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/status": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "getServerSettingsStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/media": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "updateMediaSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/media/suggestions": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "getMediaSuggestions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSuggestionsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/media/test": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "startMediaTest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaTestDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "endMediaTest",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/settings/address": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "updateAddressSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/certificate": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "uploadCertificate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCertificateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/embedding": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "updateEmbeddingSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmbeddingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/backup": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "updateBackupSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/backups": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "listBackups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "operationId": "requestBackup",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pairing/requests": {
       "post": {
         "tags": [
@@ -4189,6 +4561,63 @@
   },
   "components": {
     "schemas": {
+      "AddressSettingsDto": {
+        "required": [
+          "tlsMode",
+          "domain",
+          "acmeEmail",
+          "dnsChallengeDomain",
+          "credentialFields",
+          "certificate"
+        ],
+        "type": "object",
+        "properties": {
+          "tlsMode": {
+            "type": "string",
+            "description": "`internal`, `custom` or `dns-*`."
+          },
+          "domain": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The host name of the Regie, if one is set."
+          },
+          "acmeEmail": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "E-mail of the Let's Encrypt account (dns-* modes)."
+          },
+          "dnsChallengeDomain": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Delegation target of `_acme-challenge`, if one is set."
+          },
+          "credentialFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Which credential fields are stored (names only)."
+          },
+          "certificate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The uploaded certificate (mode `custom`).",
+                "$ref": "#/components/schemas/CertificateInfoDto"
+              }
+            ]
+          }
+        },
+        "description": "The address and the certificate."
+      },
       "AddSceneItemRequest": {
         "required": [
           "source",
@@ -4263,6 +4692,50 @@
           }
         },
         "description": "Allocates a new slot on the device (another screen, or the optional laptop camera)."
+      },
+      "ApplyStatusDto": {
+        "required": [
+          "caddy",
+          "liveKit",
+          "backup"
+        ],
+        "type": "object",
+        "properties": {
+          "caddy": {
+            "description": "The edge proxy.",
+            "$ref": "#/components/schemas/ApplyTargetDto"
+          },
+          "liveKit": {
+            "description": "The media server.",
+            "$ref": "#/components/schemas/ApplyTargetDto"
+          },
+          "backup": {
+            "description": "The backup service.",
+            "$ref": "#/components/schemas/ApplyTargetDto"
+          }
+        },
+        "description": "Whether the services run the saved settings."
+      },
+      "ApplyTargetDto": {
+        "required": [
+          "applied",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "description": "True when the service runs the saved settings."
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why not, if the last attempt failed (English, no secrets)."
+          }
+        },
+        "description": "State of one service."
       },
       "AssetDto": {
         "required": [
@@ -4470,6 +4943,137 @@
           }
         },
         "description": "One page of the audit log, newest first."
+      },
+      "BackupEntryDto": {
+        "required": [
+          "name",
+          "at",
+          "bytes",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Folder name, e.g. `2026-10-26_0300_auto`; the argument of `restore`."
+          },
+          "at": {
+            "type": "string",
+            "description": "When it finished.",
+            "format": "date-time"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "Size of the folder.",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`auto` or `manual`."
+          }
+        },
+        "description": "A backup folder."
+      },
+      "BackupsDto": {
+        "required": [
+          "serviceSeen",
+          "running",
+          "postponed",
+          "lastError",
+          "backups"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceSeen": {
+            "type": "boolean",
+            "description": "False when the backup service has not reported yet (not started, or the status file is missing)."
+          },
+          "running": {
+            "type": "boolean",
+            "description": "True while a backup runs or waits for the end of a broadcast."
+          },
+          "postponed": {
+            "type": "boolean",
+            "description": "True while a run waits for the end of a broadcast."
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the last run failed, if it did."
+          },
+          "backups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupEntryDto"
+            },
+            "description": "The latest backups, newest first."
+          }
+        },
+        "description": "The latest backups and the state of the backup service."
+      },
+      "BackupSettingsDto": {
+        "required": [
+          "schedule",
+          "timezone",
+          "keepDaily",
+          "keepWeekly",
+          "rcloneRemote",
+          "rcloneConfigured",
+          "ageRecipients",
+          "offsiteUnencrypted"
+        ],
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Cron expression; null: automatic backups are off."
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IANA time zone of the schedule; null: UTC."
+          },
+          "keepDaily": {
+            "type": "integer",
+            "description": "Daily backups kept.",
+            "format": "int32"
+          },
+          "keepWeekly": {
+            "type": "integer",
+            "description": "Weekly backups kept.",
+            "format": "int32"
+          },
+          "rcloneRemote": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The rclone remote of the off-site copy; null: none."
+          },
+          "rcloneConfigured": {
+            "type": "boolean",
+            "description": "True when an rclone.conf is stored (it is never returned)."
+          },
+          "ageRecipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Public age keys that encrypt the off-site copy."
+          },
+          "offsiteUnencrypted": {
+            "type": "boolean",
+            "description": "The remote encrypts by itself, so the copy is not encrypted here."
+          }
+        },
+        "description": "The backup schedule and the off-site target."
       },
       "BandwidthTestResultDto": {
         "required": [
@@ -4869,6 +5473,38 @@
           "p1080"
         ],
         "description": "Target resolution of the output canvas, named after the short side. Together with the format it gives the canvas size."
+      },
+      "CertificateInfoDto": {
+        "required": [
+          "subject",
+          "names",
+          "notAfter",
+          "fingerprint"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Subject of the leaf certificate."
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The DNS names it covers."
+          },
+          "notAfter": {
+            "type": "string",
+            "description": "When it expires.",
+            "format": "date-time"
+          },
+          "fingerprint": {
+            "type": "string",
+            "description": "SHA-256 of the leaf certificate (hex)."
+          }
+        },
+        "description": "An uploaded certificate as the Regie shows it (never the key)."
       },
       "ChangeCanvasRequest": {
         "required": [
@@ -5593,6 +6229,27 @@
         },
         "description": "Telemetry push to the Regie; not revisioned."
       },
+      "DnsProviderDto": {
+        "required": [
+          "id",
+          "fields"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Certificate mode, e.g. `dns-cloudflare`."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of the credential fields (all secret, none is ever returned)."
+          }
+        },
+        "description": "A DNS provider and the credential fields it needs."
+      },
       "DuplicateProductionRequest": {
         "required": [
           "name"
@@ -5608,6 +6265,22 @@
           }
         },
         "description": "Request to duplicate a production."
+      },
+      "EmbeddingSettingsDto": {
+        "required": [
+          "origins"
+        ],
+        "type": "object",
+        "properties": {
+          "origins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The origins; `'self'` is always allowed and not listed."
+          }
+        },
+        "description": "The origins that may embed the output."
       },
       "HttpValidationProblemDetails": {
         "type": "object",
@@ -5957,7 +6630,12 @@
           "deviceRenamed",
           "cameraLensSwitched",
           "auditExported",
-          "auditRetention"
+          "auditRetention",
+          "settingsMediaChanged",
+          "settingsAddressChanged",
+          "settingsEmbeddingChanged",
+          "settingsBackupChanged",
+          "backupRequested"
         ],
         "description": "What an entry of \"Recent events\" reports. Clients show their own text for the code and fill in the params of the\nentry; the English text of the entry is the fallback for clients that do not know the code yet."
       },
@@ -6033,6 +6711,88 @@
           }
         },
         "description": "Fallback when the source of an item fails."
+      },
+      "MediaSettingsDto": {
+        "required": [
+          "address"
+        ],
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The IPv4 address LiveKit announces; null until the wizard saved it."
+          }
+        },
+        "description": "The media address."
+      },
+      "MediaSuggestionsDto": {
+        "required": [
+          "fromHost",
+          "interfaces"
+        ],
+        "type": "object",
+        "properties": {
+          "fromHost": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The IPv4 address the admin opened the page with (the `Host` header), if it is one."
+          },
+          "interfaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IPv4 addresses of the interfaces the API sees (inside Docker these are not the addresses of the host)."
+          }
+        },
+        "description": "Where the media address could come from."
+      },
+      "MediaTestDto": {
+        "required": [
+          "room",
+          "first",
+          "second",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "room": {
+            "type": "string",
+            "description": "The throw-away room."
+          },
+          "first": {
+            "description": "Token of the first participant.",
+            "$ref": "#/components/schemas/LiveKitTokenDto"
+          },
+          "second": {
+            "description": "Token of the second participant.",
+            "$ref": "#/components/schemas/LiveKitTokenDto"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the trial configuration of LiveKit ends if nobody saves the address.",
+            "format": "date-time"
+          }
+        },
+        "description": "What the browser needs for the round trip: two participants of a throw-away room. LiveKit announces the tested address\nfor the test (it was restarted with it); the browser connects over the same origin as the page and sends a message from\none participant to the other and back."
+      },
+      "MediaTestRequest": {
+        "required": [
+          "address"
+        ],
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "The IPv4 address to announce for the test."
+          }
+        },
+        "description": "Asks for a test of a media address."
       },
       "OutputChangesDto": {
         "required": [
@@ -7802,6 +8562,58 @@
         ],
         "description": "Layout mode of a scene."
       },
+      "ServerSettingsDto": {
+        "required": [
+          "configured",
+          "baseUrl",
+          "httpsPort",
+          "media",
+          "address",
+          "embedding",
+          "backup",
+          "dnsProviders"
+        ],
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "description": "True once the media address was saved; before that the wizard continues after the account step."
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The address devices open, e.g. `https://studioflow.opten.ch:8443`."
+          },
+          "httpsPort": {
+            "type": "integer",
+            "description": "The published HTTPS port (`STUDIOFLOW_HTTPS_PORT`, default 8443).",
+            "format": "int32"
+          },
+          "media": {
+            "description": "The media address.",
+            "$ref": "#/components/schemas/MediaSettingsDto"
+          },
+          "address": {
+            "description": "The address and the certificate.",
+            "$ref": "#/components/schemas/AddressSettingsDto"
+          },
+          "embedding": {
+            "description": "The embedding origins.",
+            "$ref": "#/components/schemas/EmbeddingSettingsDto"
+          },
+          "backup": {
+            "description": "The backup settings.",
+            "$ref": "#/components/schemas/BackupSettingsDto"
+          },
+          "dnsProviders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DnsProviderDto"
+            },
+            "description": "The DNS providers this version supports."
+          }
+        },
+        "description": "Everything the wizard and the \"Server settings\" page show."
+      },
       "SessionDto": {
         "required": [
           "username"
@@ -8347,6 +9159,151 @@
         ],
         "description": "Kind of transition between program scenes. A fade always runs to completion (no T-bar)."
       },
+      "UpdateAddressRequest": {
+        "required": [
+          "tlsMode",
+          "domain",
+          "acmeEmail",
+          "dnsChallengeDomain",
+          "dnsCredentials"
+        ],
+        "type": "object",
+        "properties": {
+          "tlsMode": {
+            "type": "string",
+            "description": "`internal`, `custom` or `dns-*`."
+          },
+          "domain": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Host name; optional in mode `internal`, required in the others."
+          },
+          "acmeEmail": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "E-mail of the Let's Encrypt account (dns-* modes); optional."
+          },
+          "dnsChallengeDomain": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Delegation target of `_acme-challenge` (dns-* modes); optional."
+          },
+          "dnsCredentials": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The credentials of the provider; omitted: the stored ones stay."
+          }
+        },
+        "description": "Sets the address and the certificate mode."
+      },
+      "UpdateBackupRequest": {
+        "required": [
+          "schedule",
+          "timezone",
+          "keepDaily",
+          "keepWeekly",
+          "rcloneRemote",
+          "rcloneConfig",
+          "ageRecipients",
+          "offsiteUnencrypted"
+        ],
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Cron expression of five fields; empty: off."
+          },
+          "timezone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IANA time zone; empty: UTC."
+          },
+          "keepDaily": {
+            "type": "integer",
+            "description": "Daily backups kept (1 to 365).",
+            "format": "int32"
+          },
+          "keepWeekly": {
+            "type": "integer",
+            "description": "Weekly backups kept (1 to 104).",
+            "format": "int32"
+          },
+          "rcloneRemote": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The rclone remote `name:path`; empty: no off-site copy."
+          },
+          "rcloneConfig": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The text of the rclone.conf; omitted: the stored one stays."
+          },
+          "ageRecipients": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Public age keys."
+          },
+          "offsiteUnencrypted": {
+            "type": "boolean",
+            "description": "The remote encrypts by itself."
+          }
+        },
+        "description": "Sets the backup schedule and the off-site target."
+      },
+      "UpdateEmbeddingRequest": {
+        "required": [
+          "origins"
+        ],
+        "type": "object",
+        "properties": {
+          "origins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Origins such as `https://proxy.example.ch` or `https://*.example.com`."
+          }
+        },
+        "description": "Sets the origins that may embed the output."
+      },
+      "UpdateMediaRequest": {
+        "required": [
+          "address"
+        ],
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "The IPv4 address LiveKit announces to the devices."
+          }
+        },
+        "description": "Sets the media address."
+      },
       "UpdateOutputAccessRequest": {
         "required": [
           "allowedIps"
@@ -8476,6 +9433,24 @@
           }
         },
         "description": "Replaces the content of a text source (last writer wins)."
+      },
+      "UploadCertificateRequest": {
+        "required": [
+          "certificatePem",
+          "privateKeyPem"
+        ],
+        "type": "object",
+        "properties": {
+          "certificatePem": {
+            "type": "string",
+            "description": "The certificate chain, leaf first."
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "The unencrypted private key."
+          }
+        },
+        "description": "Uploads the certificate and the private key of the mode `custom` (PEM text)."
       }
     }
   },
@@ -8515,6 +9490,9 @@
     },
     {
       "name": "Audit"
+    },
+    {
+      "name": "Settings"
     },
     {
       "name": "Pairing (public)"

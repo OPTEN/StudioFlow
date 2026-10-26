@@ -9,6 +9,7 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.auditExported': 'Protokoll als {format} exportiert, {rows} Zeilen',
   'regie.log.auditRetention':
     'Aufbewahrung des Protokolls ({days} Tage): {deleted} Einträge gelöscht, {anonymised} IP-Adressen entfernt',
+  'regie.log.backupRequested': 'Sicherung angefordert',
   'regie.log.broadcastEnded': 'Sendung beendet',
   'regie.log.broadcastReset': 'Sendung zurückgesetzt',
   'regie.log.broadcastStarted': 'Sendung gestartet',
@@ -48,6 +49,10 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.sceneDeleted': 'Szene «{scene}» gelöscht',
   'regie.log.sceneLive': 'Szene «{scene}» ist live',
   'regie.log.screenEnded': '{code} Teilen beendet',
+  'regie.log.settingsAddressChanged': 'Adresse und Zertifikat geändert ({mode})',
+  'regie.log.settingsBackupChanged': 'Einstellungen der Sicherung geändert',
+  'regie.log.settingsEmbeddingChanged': 'Einbettung geändert ({count} Ursprünge)',
+  'regie.log.settingsMediaChanged': 'Medienadresse auf {address} gesetzt',
   'regie.log.sourceLost': '{code} kein Bild',
   'regie.log.sourceReconnecting': '{code} verbindet neu',
   'regie.log.sourceRecovered': '{code} wieder da, war {downtime} weg',

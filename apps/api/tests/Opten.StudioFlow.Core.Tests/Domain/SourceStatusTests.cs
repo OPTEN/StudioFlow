@@ -462,6 +462,11 @@ public sealed class LogTextsTests
             (AuditActions.CameraLensSwitched, [(AuditDetails.Codes, "K1"), (AuditDetails.Device, "Phone 1"), (AuditDetails.Lens, "UltraWide")], LogCode.CameraLensSwitched, "K1 Phone 1: lens switched to Wide-angle", new() { ["subject"] = "K1 Phone 1", ["lens"] = "ultraWide" }),
             (AuditActions.AuditExported,[(AuditDetails.Format, "csv"), (AuditDetails.Rows, "42")], LogCode.AuditExported, "Audit log exported as csv, 42 rows", new() { ["format"] = "csv", ["rows"] = "42" }),
             (AuditActions.AuditRetention, [(AuditDetails.Days, "365"), (AuditDetails.Deleted, "142"), (AuditDetails.Anonymised, "7")], LogCode.AuditRetention, "Audit retention (365 days): entries deleted 142, IP addresses removed 7", new() { ["days"] = "365", ["deleted"] = "142", ["anonymised"] = "7" }),
+            (AuditActions.SettingsMediaChanged, [(AuditDetails.Address, "192.168.1.50")], LogCode.SettingsMediaChanged, "Media address set to 192.168.1.50", new() { ["address"] = "192.168.1.50" }),
+            (AuditActions.SettingsAddressChanged, [(AuditDetails.Mode, "dns-cloudflare"), (AuditDetails.Domain, "studio.example.ch")], LogCode.SettingsAddressChanged, "Address and certificate changed (dns-cloudflare)", new() { ["mode"] = "dns-cloudflare" }),
+            (AuditActions.SettingsEmbeddingChanged, [(AuditDetails.Count, "2")], LogCode.SettingsEmbeddingChanged, "Embedding changed (2 origins)", new() { ["count"] = "2" }),
+            (AuditActions.SettingsBackupChanged, [], LogCode.SettingsBackupChanged, "Backup settings changed", new()),
+            (AuditActions.BackupRequested, [], LogCode.BackupRequested, "Backup requested", new()),
         };
 
         foreach (var (action, details, code, text, parameters) in rows)

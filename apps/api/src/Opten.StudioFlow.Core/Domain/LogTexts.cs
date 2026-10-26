@@ -43,6 +43,9 @@ public static class LogTexts
         public const string Days = "days";
         public const string Deleted = "deleted";
         public const string Anonymised = "anonymised";
+        public const string Address = "address";
+        public const string Mode = "mode";
+        public const string Count = "count";
     }
 
     /// <summary>The log entry of an audit entry in "Recent events", or null when the entry is not shown there.</summary>
@@ -119,6 +122,11 @@ public static class LogTexts
             AuditActions.CameraLensSwitched => Lens(entry, subject),
             AuditActions.AuditExported => With(LogCode.AuditExported, $"Audit log exported as {entry.Detail(AuditDetails.Format)}, {entry.Detail(AuditDetails.Rows)} rows", (Param.Format, entry.Detail(AuditDetails.Format)), (Param.Rows, entry.Detail(AuditDetails.Rows))),
             AuditActions.AuditRetention => Retention(entry),
+            AuditActions.SettingsMediaChanged => With(LogCode.SettingsMediaChanged, $"Media address set to {entry.Detail(AuditDetails.Address)}", (Param.Address, entry.Detail(AuditDetails.Address))),
+            AuditActions.SettingsAddressChanged => With(LogCode.SettingsAddressChanged, $"Address and certificate changed ({entry.Detail(AuditDetails.Mode)})", (Param.Mode, entry.Detail(AuditDetails.Mode))),
+            AuditActions.SettingsEmbeddingChanged => With(LogCode.SettingsEmbeddingChanged, $"Embedding changed ({entry.Detail(AuditDetails.Count)} origins)", (Param.Count, entry.Detail(AuditDetails.Count))),
+            AuditActions.SettingsBackupChanged => With(LogCode.SettingsBackupChanged, "Backup settings changed"),
+            AuditActions.BackupRequested => With(LogCode.BackupRequested, "Backup requested"),
             _ => null,
         };
     }

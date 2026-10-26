@@ -173,6 +173,11 @@ public sealed class AuditCategoriesTests
     [InlineData(AuditActions.AssetUploaded, AuditCategory.Media)]
     [InlineData(AuditActions.OutputKeyRegenerated, AuditCategory.Output)]
     [InlineData(AuditActions.AuditRetention, AuditCategory.System)]
+    [InlineData(AuditActions.SettingsMediaChanged, AuditCategory.System)]
+    [InlineData(AuditActions.SettingsAddressChanged, AuditCategory.System)]
+    [InlineData(AuditActions.SettingsEmbeddingChanged, AuditCategory.System)]
+    [InlineData(AuditActions.SettingsBackupChanged, AuditCategory.System)]
+    [InlineData(AuditActions.BackupRequested, AuditCategory.System)]
     [InlineData("from.a.newer.version", AuditCategory.System)]
     public void Of_GivesTheCategoryOfTheAction(string action, AuditCategory expected) => Assert.Equal(expected, AuditCategories.Of(action));
 }

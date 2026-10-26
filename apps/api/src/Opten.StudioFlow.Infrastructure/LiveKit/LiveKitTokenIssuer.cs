@@ -51,6 +51,20 @@ internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOpti
             ["hidden"] = true,
         });
 
+    public LiveKitTokenDto IssueMediaTestToken(string room, string identity) => Issue(
+        room,
+        identity,
+        "Media test",
+        "mediatest",
+        new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["roomJoin"] = true,
+            ["room"] = room,
+            ["canPublish"] = false,
+            ["canSubscribe"] = true,
+            ["canPublishData"] = true,
+        });
+
     /// <summary>Short-lived room admin token for the room service.</summary>
     public string CreateAdminToken(string room)
     {

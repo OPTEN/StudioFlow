@@ -490,6 +490,21 @@ public enum LogCode
 
     /// <summary>Old audit entries were deleted and old IP addresses removed. Params: <c>days</c>, <c>deleted</c>, <c>anonymised</c>.</summary>
     AuditRetention,
+
+    /// <summary>The media address of the server settings was saved. Params: <c>address</c>.</summary>
+    SettingsMediaChanged,
+
+    /// <summary>The address or the certificate of the server settings changed. Params: <c>mode</c> (<c>internal</c>, <c>custom</c>, <c>dns-*</c>).</summary>
+    SettingsAddressChanged,
+
+    /// <summary>The origins that may embed the output changed. Params: <c>count</c>.</summary>
+    SettingsEmbeddingChanged,
+
+    /// <summary>The backup schedule or the off-site target changed.</summary>
+    SettingsBackupChanged,
+
+    /// <summary>The Regie asked the backup service for a backup.</summary>
+    BackupRequested,
 }
 
 /// <summary>What an entry of the audit log is about: the category filter of the log view and a column of the export.</summary>
