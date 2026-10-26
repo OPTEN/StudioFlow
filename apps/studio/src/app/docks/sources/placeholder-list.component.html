@@ -1,0 +1,93 @@
+@if (rows().length > 0) {
+  <section class="c-ph" aria-labelledby="sf-ph-title" data-testid="placeholders">
+    <div class="c-label c-ph__title" id="sf-ph-title">{{ t('regie.placeholders.dock.title') }}</div>
+    <p class="c-hint c-ph__hint">{{ t('regie.placeholders.dock.hint') }}</p>
+    <ul class="c-ph__list">
+      @for (row of rows(); track row.id) {
+        <li class="c-ph__item" [class.is-open]="picking() === row.id" [attr.data-code]="row.code">
+          <div class="c-ph__row">
+            <span class="c-ph__kind"><svg [sfIcon]="icon(row.kind)"></svg></span>
+            <span class="c-code">{{ row.code }}</span>
+            <span class="c-ph__main">
+              <span class="c-ph__name">{{ row.label }}</span>
+              <span class="c-ph__used">{{ row.usedIn }}</span>
+            </span>
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [attr.aria-expanded]="picking() === row.id"
+              [attr.aria-controls]="'sf-ph-' + row.id"
+              [attr.aria-label]="t('regie.placeholders.assign.label', { name: row.name })"
+              [disabled]="commands.blocked(row.id)"
+              (click)="toggle(row)"
+            >
+              {{ t('regie.placeholders.assign.button') }}
+            </button>
+          </div>
+          @if (picking() === row.id) {
+            <div
+              class="c-ph__picker"
+              role="group"
+              [id]="'sf-ph-' + row.id"
+              [attr.aria-label]="t('regie.placeholders.assign.title', { name: row.name })"
+            >
+              <div class="c-ph__picker-h">
+                {{ t('regie.placeholders.assign.title', { name: row.name }) }}
+              </div>
+              @for (group of groups(); track group.id) {
+                <div class="c-ph__group" role="group" [attr.aria-label]="group.label">
+                  <div class="c-ph__group-l">{{ group.label }}</div>
+                  @for (source of group.sources; track source.id) {
+                    <button
+                      class="c-menu-item"
+                      type="button"
+                      [attr.data-source]="source.id"
+                      [disabled]="commands.blocked(row.id)"
+                      (click)="assign(row, source)"
+                    >
+                      <svg [sfIcon]="icon(source.kind)"></svg>
+                      <span class="c-code">{{ source.code }}</span>
+                      <span class="c-ph__source-name">{{ source.label }}</span>
+                      @if (stateOf(source); as state) {
+                        <span class="c-ph__source-state" [class]="state.className">{{
+                          state.word
+                        }}</span>
+                      }
+                    </button>
+                  }
+                </div>
+              } @empty {
+                <p class="c-pop-note">{{ t('regie.placeholders.assign.empty') }}</p>
+              }
+              <div class="c-menu-sep" role="separator"></div>
+              @if (removing() === row.id) {
+                <sf-confirm-box
+                  [flush]="true"
+                  [message]="
+                    t('regie.placeholders.remove.message', {
+                      name: row.name,
+                      count: row.usage.items,
+                    })
+                  "
+                  [confirmLabel]="t('regie.placeholders.remove.confirmLabel', { name: row.name })"
+                  [busy]="commands.busy(row.id)"
+                  (confirm)="remove(row)"
+                  (cancel)="removing.set(null)"
+                />
+              } @else {
+                <button
+                  class="c-menu-item c-ph__remove"
+                  type="button"
+                  [disabled]="commands.blocked(row.id)"
+                  (click)="askRemove(row)"
+                >
+                  <svg sfIcon="trash"></svg>{{ t('regie.placeholders.assign.remove') }}
+                </button>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}

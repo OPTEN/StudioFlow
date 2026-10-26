@@ -2,6 +2,7 @@ import { tm } from '@studioflow/i18n';
 import type { SourceDto } from '@studioflow/scene-model';
 import {
   itemFixture,
+  placeholderFixture,
   productionFixture,
   sceneFixture,
   sourceFixture,
@@ -73,6 +74,39 @@ describe('source rows', () => {
     const [row] = sourceRows(scene, sources, null);
     expect(row).toMatchObject({ code: '–', name: 'Source missing', icon: 'screen', missing: true });
     expect(kindOfReference('ast_zzzzzzzzzzzzzzzz', null)).toBe('image');
+  });
+
+  it('shows an item of a placeholder with the code and name of the original and "Source missing"', () => {
+    const named = placeholderFixture('K7', 'Stage phone');
+    const removed = placeholderFixture('S3', null);
+    const scene = sceneFixture('scn_a', 'A', 0, [
+      itemFixture('itm_1', named.sourceId),
+      itemFixture('itm_2', removed.sourceId),
+      itemFixture('itm_3', K1.id),
+    ]);
+    const [live, gone, camera] = sourceRows(scene, sources, 'itm_1', [named, removed]).reverse();
+    expect(camera).toMatchObject({ code: 'K1', placeholderId: null });
+    expect(live).toMatchObject({
+      code: 'K7',
+      name: 'Stage phone',
+      icon: 'camera',
+      missing: true,
+      selected: true,
+      lamp: 'is-idle',
+      placeholderId: named.id,
+    });
+    expect(live.state).toEqual({ word: 'Source missing', tone: 'muted', timer: false });
+    expect(gone).toMatchObject({ code: 'S3', name: 'removed source', icon: 'screen' });
+    expect(kindOfReference(removed.sourceId, null, removed)).toBe('screen');
+  });
+
+  it('keeps a missing source without placeholder as it was', () => {
+    const scene = sceneFixture('scn_a', 'A', 0, [
+      itemFixture('itm_1', 'dev_zzzzzzzzzzzzzzzz/camera'),
+    ]);
+    const [row] = sourceRows(scene, sources, null, [placeholderFixture('K7', 'Stage phone')]);
+    expect(row).toMatchObject({ code: '–', name: 'Source missing', placeholderId: null });
+    expect(row.state).toBeNull();
   });
 
   it('offers the sources not in the scene, without blocked ones, grouped and sorted', () => {

@@ -53,7 +53,7 @@ describe('ProductionMenuComponent: change password', () => {
   it('links to the audit log page', async () => {
     await setup();
 
-    const link = element.querySelector<HTMLAnchorElement>('a.c-menu-item');
+    const link = element.querySelector<HTMLAnchorElement>('a.c-menu-item[href="/audit"]');
 
     expect(link?.textContent?.trim()).toBe('Audit log');
     expect(link?.getAttribute('href')).toBe('/audit');

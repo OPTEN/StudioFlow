@@ -1,0 +1,112 @@
+// "Missing sources" of the Sources dock (issue #14): placeholder rows with an inline list of sources to assign.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.c-ph {
+  border-top: 1px solid var(--seam);
+  margin: 6px 6px 0;
+  padding: 10px 0 4px;
+}
+
+.c-ph__title {
+  padding: 0 6px;
+}
+
+.c-ph__hint {
+  margin: 2px 0 6px;
+  padding: 0 6px;
+}
+
+.c-ph__list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.c-ph__item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+
+  &.is-open {
+    background: var(--raised);
+    border-color: var(--seam-strong);
+  }
+}
+
+.c-ph__row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
+  min-height: 40px;
+  padding: 3px 4px 3px 8px;
+}
+
+.c-ph__kind {
+  color: var(--muted);
+  display: inline-flex;
+}
+
+.c-ph__main {
+  display: grid;
+  min-width: 0;
+}
+
+.c-ph__name {
+  @include ellipsis;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.c-ph__used {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+
+.c-ph__picker {
+  display: grid;
+  padding: 2px 6px 8px;
+}
+
+.c-ph__picker-h {
+  @include label-text(11px);
+  padding: 6px 8px 2px;
+}
+
+.c-ph__group {
+  display: grid;
+}
+
+.c-ph__group-l {
+  @include label-text(11px);
+  padding: 8px 8px 2px;
+}
+
+.c-ph__source-name {
+  @include ellipsis;
+  flex: 1 1 auto;
+}
+
+.c-ph__source-state {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.c-ph__remove {
+  color: var(--red);
+
+  .c-icon {
+    color: inherit;
+  }
+}
+
+.c-state--muted {
+  color: var(--muted);
+}
