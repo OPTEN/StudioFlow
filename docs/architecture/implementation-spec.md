@@ -262,8 +262,40 @@ Tally (server → device `tally`): per slot `program` if a non-hidden item with 
 else `preview` if in the preview scene, else `off`; overall = max. Pushed on every change that affects it and on
 Hello. During standby/ended the tally is `off` (nothing is on air).
 
-Commands: reshare (slot), switchCamera, message (1–140 chars; Regie chat). Delivered over the device hub; 202 even if
-the device is offline (dropped then; the Regie shows a toast if the device is offline).
+Commands: reshare (slot), switchCamera, message (1–140 chars; Regie chat), cameraControl (below). Delivered over the
+device hub; 202 even if the device is offline (dropped then; the Regie shows a toast if the device is offline).
+
+**Remote camera control** (issue #11, phones only; decisions in `docs/decisions.md` «#11»). Only what the browser reports
+through `MediaStreamTrack.getCapabilities()` can be controlled, so the phone tells the server what it can do and the
+Regie shows only that:
+- The phone adds `camera: CameraStateDto` to every `Report`: `capabilities` (lenses from `enumerateDevices()` with a kind
+  front / ultraWide / standard / tele / other derived from the name; `zoom`, `focusDistance`, `exposureCompensation` as
+  `{min, max, step}`; `focusModes` auto / manual; `torch`), `settings` (what `getSettings()` says now, never the requested
+  value) and `problem` (`overconstrained` | `failed` after a refused change). A control the camera does not report is
+  missing. The server sanitises it (version 1, at most 8 lenses, sane ranges) and relays it inside the telemetry; a change
+  of the camera state is relayed at once, not throttled to 2 s, so the Regie sees the actual value after a command.
+- `cameraControl` is a partial update `{ v: 1, lensId?, zoom?, focusMode?, focusDistance?, exposureCompensation?, torch?,
+  reset? }` (`reset` = zoom out, automatic focus, 0 EV, light off, the lens stays). `POST …/devices/{id}/commands` with
+  `kind: "cameraControl"` and `camera`; only the admin session of the production can send it (the same endpoint and
+  authorisation as the other commands: a device or an anonymous caller gets 401, a device of another production 404).
+  The server refuses a laptop, another version, an empty command and numbers beyond hard limits (400
+  `validation_failed`); when the phone has reported capabilities it clamps values to range and step and refuses a control
+  or a lens the phone did not report (400); without a report only the hard limits apply and the sender clamps again.
+- Throttle: at most one camera command per phone every `Sources:CameraCommandInterval` (default 100 ms); commands in
+  between merge (the newest value of each field wins, a reset drops older values but keeps a lens switch) and leave with
+  the next command or the 1 s maintenance tick. The Regie panel sends about ten commands a second while a slider is
+  dragged and merges moves while a request is on its way. The sender applies commands one after the other and merges those
+  that arrive while one is applied (latest wins), so the last command wins wherever it comes from.
+- The sender applies zoom, focus, brightness and light with `applyConstraints({ advanced: [...] })`, a lens switch with
+  `restartTrack({ deviceId: { exact } })` (replaces the track in place: no republish, a short freeze; zoom starts again
+  at the default), reports at once and shows a short note («Die Regie hat gezoomt: 2,0×»). A refusal
+  (`OverconstrainedError`) or a value the camera ignores is reported as `problem` and the settings follow what the camera
+  really does. The last applied lens and image settings are kept in `localStorage` and restored after every camera start
+  (reload, reconnect, camera restart). Settings are per device, there are no scene presets.
+- Regie: station details → «Kamera» opens the panel (lens picker, zoom, focus automatic / lock with distance, brightness
+  with «Automatisch», light, «Auf automatisch zurücksetzen»). A lens switch of a source that is in the program asks first
+  (dashed red confirmation); zoom, focus and brightness take effect at once. Not done: tap-to-focus
+  (`pointsOfInterest`), audit entries for lens switches in the program, pinch to zoom on the phone.
 
 ### 4.7 Assets
 
@@ -405,7 +437,9 @@ Events the output must not see (devices, pairing, invites, incidents, log, outpu
 `revisionOnly` with the same revision. `Report(OutputReport)` every 2 s.
 
 Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `self`, `sessionReplaced`.
-`Report(DeviceReportDto)` every 2 s (the server relays it as telemetry to the Regie and updates source status).
+`Report(DeviceReportDto)` every 2 s (the server relays it as telemetry to the Regie and updates source status). The
+`command` message also carries `cameraControl` (section 4.6); the report carries the camera state of a phone and is sent
+once more right after a camera command.
 
 ## 7. LiveKit
 
@@ -590,7 +624,11 @@ Fades use the Web Animations API on opacity (new scene layer over old), `reduced
   `publishScreen(slot)` (must be called from a user gesture), `unpublish(slot)`, `stopAll()`, per-slot state
   (`starting | live | paused | ended | failed`) via `onSlotState(fn)`; camera `ended`/device loss → re-acquire with
   `restartTrack` (3 attempts with backoff, then `failed`), screen `ended` → `ended` (never restarts by itself);
-  republishes all live slots after a rejoin; `getSlotTelemetry()` for reports.
+  republishes all live slots after a rejoin; `getSlotTelemetry()` for reports. Remote camera control (section 4.6):
+  `getCameraState()` (capabilities from `getCapabilities()`, settings from `getSettings()`, lenses from
+  `enumerateDevices()`), `controlCamera(command)` (latest command wins, lens switch with `restartTrack` and no
+  republish), `onCameraSettings(fn)` for persisting; the settings are restored after every restart. The pure rules
+  (mapping, clamping, merging) are in `camera-control.ts` and shared with the Regie through `@studioflow/media-client/device`.
 - `runTechCheck(…)`: camera (resolution/fps achieved), network (RTT to the API over 5 pings), bandwidth (upload of
   1 MB to `/api/device/bandwidth-test`, ≥ 6 Mbit/s ok, ≥ 3 warn, else bad) → `TechCheckDto`.
 
@@ -649,7 +687,8 @@ wake lock (re-acquire on visibility), auto-start after reload with the last sett
 share ended or the Regie asks (“The control room asks you to share your screen again”), optional camera. German:
 «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», «Erneut teilen», «Die Regie bittet dich,
 den Bildschirm erneut zu teilen».
-Messages from the Regie appear as a prominent banner. Technical check runs on first start and on demand; result is
+Messages from the Regie appear as a prominent banner; a camera change by the Regie shows a short, unobtrusive note
+(«Die Regie hat gezoomt: 2,0×») under the header. Technical check runs on first start and on demand; result is
 reported. Reports every 2 s. PWA: manifest (name “StudioFlow Sender”, `lang` `en`, scope/start_url `/join/`, display standalone,
 theme `#0d1117`), Angular service worker for the app shell only (never cache `/api`, `/hubs`, `/rtc`).
 Design: same tokens as the Regie, large touch targets (≥ 44 px), works from 320 px wide, portrait and landscape.

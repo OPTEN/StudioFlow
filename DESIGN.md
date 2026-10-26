@@ -457,6 +457,7 @@ The only large filled control. It is 172px wide and at least 56px tall, Action B
 - **Style:** Ground fill, strong-seam 1px border, 4px radius, 30px height. Text is 13–13.5px in Sofia Sans, and the caret is blue.
 - **Focus:** the border turns blue, and controls without a border get a global 2px blue outline offset by 2px.
 - **Number fields:** the mono label and unit are muted, and the value is in Value Violet.
+- **Camera panel (Stations dock):** labelled rows of a muted label, a native range slider (blue accent, full keyboard support: arrows, Page Up/Down, Home, End) and the live value in Value Violet mono ("2.0×", "+0.5 EV"). Choices (lens, focus Auto | Lock, light Off | On) are segmented controls with `aria-pressed`. Only the controls the phone reports are drawn, and the value shown is the one the phone reports back. A refusal is a plain inline sentence in the secondary text colour, never a hue. A lens switch of a source in the program asks in the dashed red confirmation; zoom, focus and brightness never ask.
 - **Selects:** use the same box as text inputs.
 
 ### Docks

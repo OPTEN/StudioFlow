@@ -370,7 +370,7 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `PAIR` Pairing | 8 | 17 | 20 | 45 | 19 | 21 | 5 |
 | `SCENE` Scenes and editing | 20 | 7 | 24 | 51 | 19 | 26 | 6 |
 | `SWITCH` Switching, broadcast, tally | 9 | 6 | 20 | 35 | 18 | 12 | 5 |
-| `SRC` Sources, stations, incidents | 9 | 7 | 22 | 38 | 18 | 16 | 4 |
+| `SRC` Sources, stations, incidents | 9 | 7 | 27 | 43 | 20 | 19 | 4 |
 | `OUT` Output page | 12 | 0 | 25 | 37 | 16 | 17 | 4 |
 | `NET` Resilience and network | 4 | 6 | 27 | 37 | 13 | 16 | 8 |
 | `DEV` Devices, viewports, accessibility | 0 | 0 | 23 | 23 | 7 | 13 | 3 |
@@ -379,7 +379,7 @@ fixture (fresh active production with scenes `Szene A`, `Szene B`, `Szene C`) an
 | `OPS` Operations | 2 | 0 | 27 | 29 | 13 | 13 | 3 |
 | `SYNC` Realtime protocol and state model | 4 | 8 | 0 | 12 | 5 | 5 | 2 |
 | `LK` LiveKit integration | 1 | 2 | 4 | 7 | 3 | 2 | 2 |
-| **Total** | **90** | **94** | **244** | **428** | **183** | **186** | **59** |
+| **Total** | **90** | **94** | **249** | **433** | **185** | **189** | **59** |
 <!--/SUMMARY-->
 
 Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration)
@@ -1433,6 +1433,28 @@ log «K2 verbindet neu», «K2 wieder da, war 9 s weg», «S1 Teilen beendet», 
 - Steps: `DELETE …/devices/{id}` while the phone is live.
 - Expect: LiveKit participant removed, the phone shows a terminal state (`/entfernt|nicht mehr gekoppelt/i`, [GAP-27]) and offers pairing again, does not reconnect in a loop (≤ 1 request per 15 s); the Regie station disappears; scene items keep «Quelle fehlt».
 
+Remote camera control (issue #11, decisions «#11» in `docs/decisions.md`; the camera is Chromium's fake device behind `support/devices/camera-stub.ts`, which answers `getCapabilities` / `getSettings` / `applyConstraints` like an Android profile; the real-phone procedure is MAN-14):
+
+**E2E-SRC-23** · P1 · pw (`pixel7`) — Camera control hidden where unsupported
+- Steps: a phone whose camera reports no capability and one lens; station detail → «Kamera».
+- Expect: the panel says that the controls are not available on this device; no slider, no lens picker, no reset button.
+
+**E2E-SRC-24** · P0 · pw (`pixel7`) — Zoom and brightness round trip, clamping, refusal
+- Steps: a phone with zoom 1…8, brightness −2…+2 EV; drag the zoom slider to 3, the brightness slider to +1; `POST …/commands` with zoom 20; with an unknown lens, version 2 and an empty command.
+- Expect: the camera really has zoom 3 and +1 EV, the sender shows the short note, the panel shows `3,0×` and `+1,0 EV` (the values the camera reports back); zoom 20 is accepted (202) with 8 in the answer and the camera has 8; the three invalid commands are 400.
+
+**E2E-SRC-25** · P0 · pw (`pixel7`) — Lens switch of a live source
+- Steps: put K1 into the program scene; pick the wide-angle lens; cancel; pick it again and confirm.
+- Expect: a dashed red confirmation appears and nothing changes before it is confirmed; after the confirmation the camera is the other lens (one more capture, no republish: the slot is `live` again) and the panel marks it; zoom starts again at 1×.
+
+**E2E-SRC-26** · P1 · pw (`pixel7`) — Refused change and reset
+- Steps: the camera refuses `torch` (`OverconstrainedError`); switch the light on; then zoom 4, lock the focus, light on, «Auf automatisch zurücksetzen».
+- Expect: an inline message in the panel, the light stays off in the panel and on the camera, the sender stays connected; the next working change clears the message; the reset gives zoom 1, automatic focus, 0 EV, light off.
+
+**E2E-SRC-27** · P1 · pw (`pixel7`) — Settings survive a reload
+- Steps: wide-angle lens, zoom 2,5, brightness −1; reload the phone.
+- Expect: after the reload the camera has the same lens, zoom and brightness again and the panel shows them.
+
 ### 2.6 OUT – Output page
 
 Strings: «Gleich geht's los», «Danke fürs Zuschauen», «Kein Zugang», «Bild kommt gleich zurück». The page has no other text and no controls. Preloading without black frames is tested by `E2E-SWITCH-09`; IP restriction and key rotation by `E2E-AUTH-23` and `E2E-AUTH-24`; assets via the key by `E2E-OUT-19`. Header chip «Output an Proxy» (lamp + mono latency), popover «Zustand» «verbunden, 1 Abnehmer», «Abnehmer» (IP), «Format» «1920 × 1080 · 30 fps», «Latenz» «<n> ms gemessen».
@@ -2297,6 +2319,9 @@ Procedure: laptop camera as slot while Teams/Zoom opens the camera; unplug a USB
 
 **MAN-12 · Screen readers and keyboard on real hardware.**
 Equipment: NVDA/JAWS (Windows), VoiceOver (macOS and iOS). Procedure: operate login, switching, Take, outage handling, pairing and sender states with keyboard and screen reader only. Pass: an outage is announced (live region) within 2 s without moving focus; every control has a name; the order matches the visual order; Windows High Contrast keeps states distinguishable.
+
+**MAN-14 · Remote camera control on real phones (issue #11, the spike).**
+Equipment: at least one Android phone (Chrome, with an ultra-wide camera if possible, e.g. Pixel 6+ or Samsung S21+) and one iPhone (Safari 17+); Regie laptop; stack as in MAN-01. Procedure per phone: pair it, start the camera and open «Stationen» → the phone → «Kamera». Write down what the panel offers (lenses, zoom range, focus, brightness range, light) next to the phone model and browser version: that is the capability matrix of the device and goes into the runbook table «Remote camera control». Then: drag the zoom slider slowly and quickly (the picture follows, the value shown is the one the phone reports, no flood on a weak Wi-Fi: throttle the phone to 3G in the browser's network panel or move away from the access point); lock the focus and unlock it, point the phone at a close and a far object; move brightness to −2, +2 and press «Automatisch»; switch the light on and off; pick every lens while the station is in preview and then in the program (the confirmation appears only in the program); change the zoom on the phone's screen is not offered, so check that a second Regie operator who moves the same slider wins over the first (the last command wins) and both Regies show the value the phone reports; press «Auf automatisch zurücksetzen»; reload the phone page, lock and unlock the screen, take a call: the lens, zoom, focus and brightness come back as they were; put the phone to sleep or switch the camera to another app and send a command (the panel shows the real value or the inline message, never a stuck slider). Pass: only controls the phone supports are shown (an iPhone typically only the lens list); every value in the panel equals what the phone does; a lens switch in the program interrupts the picture for less than 1 s and the output shows the hold frame, not black; after a reload the camera is back as it was within 5 s; no console errors on the sender.
 
 **MAN-13 · External security scan.**
 Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline scan against the Regie, sender and output (authenticated and not), `nmap -p- <server>`; review the security-review document. Pass: only the published ports (80, 443, 7881/tcp, 7882/udp) are open; TLS ≥ 1.2 with modern ciphers; no ZAP findings above Low that are not documented; the CSP invariants I-CSP hold.
