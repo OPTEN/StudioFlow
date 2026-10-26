@@ -63,6 +63,11 @@ COPY infra/caddy/tls/ /etc/caddy/tls/
 COPY --from=web /src/dist/studio/browser/ /srv/studio/
 COPY --from=web /src/dist/sender/browser/ /srv/join/
 COPY --from=web /src/dist/output/ /srv/o/
+# What the bundles contain and under which licence (Apache-2.0 section 4): the licence texts of the npm packages that
+# Angular extracts (not part of dist/*/browser) and the notices of the repository, served under /licenses/.
+COPY --from=web /src/dist/studio/3rdpartylicenses.txt /srv/studio/3rdpartylicenses.txt
+COPY --from=web /src/dist/sender/3rdpartylicenses.txt /srv/join/3rdpartylicenses.txt
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /srv/studio/licenses/
 
 # Fail the build on a broken config: validate every TLS mode, with and without ACME e-mail and extra hosts, with
 # dummy credentials ("custom" needs mounted certificate files and is checked at startup). Validation provisions a
