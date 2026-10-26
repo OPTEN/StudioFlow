@@ -151,17 +151,18 @@ To skip a release, do not merge the pull request: it grows with the next commits
 
 | File | Content |
 |---|---|
-| `studioflow-X.Y.Z.tar.gz` | The install folder: `docker-compose.yml` (the release file, pinned to X.Y.Z), `.env.example`, `setup`, `update`, `backup` and `restore` scripts (`.sh` and `.ps1`), `docs/runbook.md`, `docker-compose.override.example.yml`, `QUICKSTART.md`, `VERSION` |
+| `studioflow-X.Y.Z.tar.gz` | The install folder: `docker-compose.yml` (the release file, pinned to X.Y.Z), `.env.example`, `setup`, `update`, `backup` and `restore` scripts (`.sh` and `.ps1`), `docs/runbook.md`, `docker-compose.override.example.yml`, `QUICKSTART.md`, `VERSION`, `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` |
 | `docker-compose.yml`, `env.example` | The same two files on their own (GitHub drops the leading dot of `.env.example`) |
 | `QUICKSTART.md` | One page: install, update, roll back |
-| `studioflow-prototype-X.Y.Z.zip` | The clickable Regie prototype (`prototype/regie.html`, works offline) |
+| `studioflow-prototype.html` | The clickable Regie prototype as **one file**: `prototype/regie.html` with the fonts inlined as base64 (`tools/build-prototype.mjs`), works offline, shows a note that all data is synthetic. The name has no version, so the README links `https://github.com/OPTEN/FlowStudio/releases/latest/download/studioflow-prototype.html` |
 | `SHA256SUMS` | Checksums of the files above: `sha256sum -c SHA256SUMS --ignore-missing` |
 
 The Caddy files are not separate assets: they are inside the `studioflow-web` image, nothing of them is mounted at
 run time.
 
-`infra/release/build-bundle.sh X.Y.Z OUTPUT_DIR` builds the same files from a working tree (needs `zip`); the
-version must match the one in the files.
+`infra/release/build-bundle.sh X.Y.Z OUTPUT_DIR` builds the same files from a working tree (needs `node` for the
+prototype); the version must match the one in the files. `npm run build:prototype` builds the prototype file alone
+(`dist/studioflow-prototype.html`).
 
 ## 6. Verifying an image
 
