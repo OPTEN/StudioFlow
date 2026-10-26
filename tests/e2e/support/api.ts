@@ -1,5 +1,6 @@
 import type {
   AddSceneItemRequest,
+  ChangeCanvasRequest,
   AllocateSlotRequest,
   AssetDto,
   BandwidthTestResultDto,
@@ -185,6 +186,7 @@ export class AdminApi extends HttpApi {
   getActiveProduction = () => this.call<ProductionSummaryDto & Problem>('GET', '/api/productions/active');
   getSnapshot = (id: string) => this.call<ProductionSnapshot & Problem>('GET', `/api/productions/${id}/snapshot`);
   getChanges = (id: string, since?: number | string) => this.call<ProductionChangesDto & Problem>('GET', `/api/productions/${id}/changes`, { query: { since } });
+  changeCanvas = (id: string, body: Loose<ChangeCanvasRequest>) => this.call<ProductionDto & Problem>('PUT', `/api/productions/${id}/canvas`, { json: body });
   updateProduction = (id: string, body: Loose<UpdateProductionRequest>) => this.call<ProductionDto & Problem>('PATCH', `/api/productions/${id}`, { json: body });
   activateProduction = (id: string) => this.call<ProductionDto & Problem>('POST', `/api/productions/${id}/activate`);
   startBroadcast = (id: string) => this.call<ProductionDto & Problem>('POST', `/api/productions/${id}/broadcast/start`);
