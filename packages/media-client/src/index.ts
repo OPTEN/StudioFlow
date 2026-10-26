@@ -5,6 +5,7 @@
  * Importing this entry point loads livekit-client (~150 KB gzip, not tree-shakable): the Regie imports it lazily.
  * The device helpers alone are available without livekit-client from `@studioflow/media-client/device`.
  */
+export { AudioPublisher, type AudioPublisherOptions } from './audio-publisher';
 export { systemClock, type Clock, type TimerHandle } from './clock';
 export * from './device';
 export {
@@ -59,11 +60,14 @@ export {
   type CameraResolution,
   type CameraSettings,
   type FacingMode,
+  type MicProfile,
+  type MicSettings,
   type ScreenFrameRate,
 } from './publish-options';
 export { EndlessReconnectPolicy, roomOptionsFor, type MediaRole } from './room-options';
 export {
   LiveKitSourceProvider,
+  type AudioSourceStats,
   type DecoderSummary,
   type LiveKitSourceProviderOptions,
   type SourceStats,

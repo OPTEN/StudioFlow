@@ -14,6 +14,7 @@ import {
 import {
   RoomEvent,
   TrackEvent,
+  type LocalAudioTrack,
   type LocalVideoTrack,
   type ScreenShareCaptureOptions,
   type TrackPublishOptions,
@@ -32,7 +33,7 @@ import {
   type CameraImageSettings,
   type CameraProblem,
 } from './camera-control';
-import { captureCamera, captureScreen, setContentHint } from './capture';
+import { captureCamera, captureScreen, setContentHint, type ScreenCapture } from './capture';
 import {
   cancellableDelay,
   systemClock,
@@ -54,6 +55,7 @@ import {
   isCameraSettings,
   isScreenFrameRate,
   screenCaptureOptions,
+  screenAudioPublishOptions,
   screenPublishOptions,
   screenShareEncoding,
   type CameraResolution,
@@ -97,8 +99,13 @@ export type SlotStateListener = (
 export interface PublisherOptions {
   /** Camera capture (default livekit `createLocalVideoTrack`). */
   readonly createCameraTrack?: (options: VideoCaptureOptions) => Promise<LocalVideoTrack>;
-  /** Screen capture (default livekit `createLocalScreenTracks`); must call getDisplayMedia synchronously. */
-  readonly createScreenTrack?: (options: ScreenShareCaptureOptions) => Promise<LocalVideoTrack>;
+  /**
+   * Screen capture (default livekit `createLocalScreenTracks`); must call getDisplayMedia synchronously. Returns the
+   * picture alone or, when the user shared sound as well, the picture and the audio track.
+   */
+  readonly createScreenTrack?: (
+    options: ScreenShareCaptureOptions,
+  ) => Promise<LocalVideoTrack | ScreenCapture>;
   /** Wraps a track for the preview `srcObject`; injectable because test DOMs lack a working `MediaStream`. */
   readonly createStream?: (track: MediaStreamTrack) => MediaStream;
   readonly logger?: MediaLogger;
@@ -136,6 +143,8 @@ interface SlotRecord {
   messageKey: SlotMessageKey | undefined;
   failure: SlotFailure | undefined;
   track: LocalVideoTrack | null;
+  /** The sound a screen share came with (system or tab audio), published as `screen-n-audio`. */
+  audio: ScreenAudio | null;
   /** Camera settings requested by the user. */
   camera: CameraSettings | null;
   /** Camera settings the current track was captured with. */
@@ -156,6 +165,18 @@ interface SlotRecord {
   pendingControl: CameraControlDto | null;
   /** Why the camera refused the last remote command, null once one works again. */
   cameraProblem: CameraProblem | null;
+}
+
+/** The sound of a screen share: its own track, published next to the picture and ended with it. */
+interface ScreenAudio {
+  readonly track: LocalAudioTrack;
+  publishedTo: MediaRoom | null;
+  detach: (() => void) | null;
+}
+
+/** True when a capture result carries the audio track next to the picture. */
+function isScreenCapture(value: LocalVideoTrack | ScreenCapture): value is ScreenCapture {
+  return 'video' in value && 'audio' in value && !('mediaStreamTrack' in value);
 }
 
 function defaultCreateStream(track: MediaStreamTrack): MediaStream {
@@ -238,7 +259,9 @@ function invokeAsync<T>(operation: () => Promise<T>): Promise<T> {
 export class Publisher {
   readonly #session: SessionStateSource;
   readonly #createCamera: (options: VideoCaptureOptions) => Promise<LocalVideoTrack>;
-  readonly #createScreen: (options: ScreenShareCaptureOptions) => Promise<LocalVideoTrack>;
+  readonly #createScreen: (
+    options: ScreenShareCaptureOptions,
+  ) => Promise<LocalVideoTrack | ScreenCapture>;
   readonly #createStream: (track: MediaStreamTrack) => MediaStream;
   readonly #logger: MediaLogger;
   readonly #clock: Clock;
@@ -403,10 +426,11 @@ export class Publisher {
   }
 
   /**
-   * Shares a screen. MUST be called synchronously from a user gesture: getDisplayMedia is invoked before anything is
-   * awaited. A running share of the slot is kept (end it with {@link unpublish} first to pick another surface).
+   * Shares a screen, with its sound if `options.audio` is set and the user shares it in the browser's dialog. MUST be
+   * called synchronously from a user gesture: getDisplayMedia is invoked before anything is awaited. A running share of
+   * the slot is kept (end it with {@link unpublish} first to pick another surface).
    */
-  publishScreen(slot: string): Promise<void> {
+  publishScreen(slot: string, options: { readonly audio?: boolean } = {}): Promise<void> {
     if (slotKind(slot) !== 'screen') {
       return Promise.reject(new RangeError(`not a screen slot: ${slot}`));
     }
@@ -418,7 +442,9 @@ export class Publisher {
       return existing.queue;
     }
     const frameRate = this.screenFrameRate(slot);
-    const capture = invokeAsync(() => this.#createScreen(screenCaptureOptions(frameRate)));
+    const capture = invokeAsync(() =>
+      this.#createScreen(screenCaptureOptions(frameRate, options.audio === true)),
+    );
     capture.catch(() => undefined);
     void this.#codecOfScreens();
     const record = existing ?? this.#createRecord(slot, 'screen');
@@ -467,6 +493,14 @@ export class Publisher {
   /** Stops and unpublishes every slot. */
   async stopAll(): Promise<void> {
     await Promise.all([...this.#records.keys()].map((slot) => this.unpublish(slot)));
+  }
+
+  /** True while a screen share has a live sound track (the user shared sound and the browser delivers it). */
+  screenHasAudio(slot: string): boolean {
+    const audio = this.#records.get(slot)?.audio;
+    return (
+      audio !== null && audio !== undefined && audio.track.mediaStreamTrack.readyState === 'live'
+    );
   }
 
   /** Telemetry of every slot for the device report (camera first). */
@@ -536,6 +570,7 @@ export class Publisher {
       messageKey: undefined,
       failure: undefined,
       track: null,
+      audio: null,
       camera: null,
       appliedCamera: null,
       publishedTo: null,
@@ -628,12 +663,19 @@ export class Publisher {
   async #startScreen(
     record: SlotRecord,
     epoch: number,
-    capture: Promise<LocalVideoTrack>,
+    capture: Promise<LocalVideoTrack | ScreenCapture>,
     previous: LocalSlotState,
   ): Promise<void> {
     let track: LocalVideoTrack;
+    let audio: LocalAudioTrack | null = null;
     try {
-      track = await capture;
+      const captured = await capture;
+      if (isScreenCapture(captured)) {
+        track = captured.video;
+        audio = captured.audio;
+      } else {
+        track = captured;
+      }
     } catch (error) {
       if (!this.#isStale(record, epoch)) {
         this.#onScreenCaptureFailed(record, previous, error);
@@ -642,10 +684,14 @@ export class Publisher {
     }
     if (this.#isStale(record, epoch)) {
       track.stop();
+      audio?.stop();
       return;
     }
     setContentHint(track.mediaStreamTrack, contentHintOf(this.screenFrameRate(record.slot)));
     this.#adoptTrack(record, track);
+    if (audio !== null) {
+      this.#adoptScreenAudio(record, audio);
+    }
     await this.#publish(record);
   }
 
@@ -686,6 +732,87 @@ export class Publisher {
     } catch (error) {
       this.#logger.warn('screen encoder limits refused', errorContext(error));
     }
+  }
+
+  /** Keeps the sound of the share; when it ends on its own the picture goes on without it. */
+  #adoptScreenAudio(record: SlotRecord, track: LocalAudioTrack): void {
+    const onEnded = (): void => {
+      try {
+        if (record.audio?.track === track) {
+          void this.#dropScreenAudio(record);
+        }
+      } catch (error) {
+        this.#logger.warn('screen audio ended handler failed', errorContext(error));
+      }
+    };
+    track.on(TrackEvent.Ended, onEnded);
+    record.audio = {
+      track,
+      publishedTo: null,
+      detach: () => track.off(TrackEvent.Ended, onEnded),
+    };
+  }
+
+  /** Publishes the sound of a screen share next to its picture; a failure costs the sound, never the picture. */
+  async #publishScreenAudio(record: SlotRecord, room: MediaRoom, epoch: number): Promise<void> {
+    const audio = record.audio;
+    if (audio === null || audio.publishedTo === room) {
+      return;
+    }
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await room.localParticipant.publishTrack(
+          audio.track,
+          screenAudioPublishOptions(record.slot),
+        );
+      } catch (error) {
+        this.#logger.warn('screen audio publish failed', {
+          slot: record.slot,
+          attempt,
+          ...errorContext(error),
+        });
+        if (
+          attempt === MAX_RETRIES ||
+          !(await this.#sleep(backoffDelay(attempt, this.#random))) ||
+          this.#isStale(record, epoch) ||
+          record.audio !== audio ||
+          this.#session.room !== room
+        ) {
+          return;
+        }
+        continue;
+      }
+      if (this.#isStale(record, epoch) || record.audio !== audio || this.#session.room !== room) {
+        void this.#unpublishFrom(room, audio.track);
+        return;
+      }
+      audio.publishedTo = room;
+      this.#notifyPreview(record);
+      return;
+    }
+  }
+
+  /** Stops the sound of a screen share and unpublishes it; the picture stays. */
+  async #dropScreenAudio(record: SlotRecord, notify = true): Promise<void> {
+    const audio = record.audio;
+    if (audio === null) {
+      return;
+    }
+    record.audio = null;
+    audio.detach?.();
+    const unpublishing =
+      audio.publishedTo === null
+        ? Promise.resolve()
+        : this.#unpublishFrom(audio.publishedTo, audio.track);
+    try {
+      audio.track.stop();
+    } catch (error) {
+      this.#logger.warn('screen audio stop failed', errorContext(error));
+    }
+    if (notify) {
+      this.#notifyPreview(record);
+    }
+    await unpublishing;
   }
 
   /** A cancelled picker returns to where the slot was (`ended` stays `ended`, else `idle`); other errors fail. */
@@ -828,6 +955,7 @@ export class Publisher {
     if (record.recovering === null && record.state !== 'paused') {
       this.#setState(record, 'live');
     }
+    await this.#publishScreenAudio(record, room, epoch);
   }
 
   /** Retries a failed publish while the room is still connected; a lost room is handled by the next `connected`. */
@@ -1076,7 +1204,9 @@ export class Publisher {
     record.track = null;
     record.publishedTo = null;
     record.preview = null;
+    const sound = this.#dropScreenAudio(record, false);
     if (track === null) {
+      await sound;
       return;
     }
     const unpublishing =
@@ -1086,10 +1216,10 @@ export class Publisher {
     } catch (error) {
       this.#logger.warn('track stop failed', errorContext(error));
     }
-    await unpublishing;
+    await Promise.all([unpublishing, sound]);
   }
 
-  async #unpublishFrom(room: MediaRoom, track: LocalVideoTrack): Promise<void> {
+  async #unpublishFrom(room: MediaRoom, track: LocalVideoTrack | LocalAudioTrack): Promise<void> {
     try {
       await room.localParticipant.unpublishTrack(track, false);
     } catch (error) {

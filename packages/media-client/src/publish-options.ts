@@ -2,10 +2,13 @@
  * Capture and publish settings of the sender (spec section 7, “Publishing” and “Verified livekit-client 2.23.0
  * behaviour”). Pure data, shared by the sender room defaults and the {@link Publisher}.
  */
+import { screenAudioTrackName } from '@studioflow/scene-model';
 import {
+  AudioPresets,
   Track,
   VideoPreset,
   VideoPresets,
+  type AudioCaptureOptions,
   type ScreenShareCaptureOptions,
   type TrackPublishOptions,
   type VideoCaptureOptions,
@@ -102,14 +105,20 @@ export function screenShareEncoding(frameRate: ScreenFrameRate): VideoEncoding {
 export const SCREEN_SHARE_ENCODING: VideoEncoding = screenShareEncoding(SCREEN_FRAME_RATE_DEFAULT);
 
 /**
- * getDisplayMedia options of a screen share: no audio, at most 1440p (ideal constraint, smaller screens stay native) at
- * the frame rate of the slot, hide the sender tab itself, allow switching the shared surface.
+ * getDisplayMedia options of a screen share: at most 1440p (ideal constraint, smaller screens stay native) at the frame
+ * rate of the slot, hide the sender tab itself, allow switching the shared surface. With `withAudio` the share also asks
+ * for sound: the browser decides what it can deliver (Chromium on Windows the whole system's sound, on macOS, Linux and
+ * for a window only the sound of a tab, Firefox and Safari none). The processing is off, so the sound arrives as it plays.
  */
 export function screenCaptureOptions(
   frameRate: ScreenFrameRate = SCREEN_FRAME_RATE_DEFAULT,
+  withAudio = false,
 ): ScreenShareCaptureOptions {
   return {
-    audio: false,
+    audio: withAudio
+      ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      : false,
+    ...(withAudio ? { systemAudio: 'include' as const } : {}),
     contentHint: contentHintOf(frameRate),
     selfBrowserSurface: 'exclude',
     surfaceSwitching: 'include',
@@ -144,5 +153,74 @@ export function screenPublishOptions(
     degradationPreference:
       frameRate === SCREEN_FRAME_RATE_VIDEO ? 'balanced' : 'maintain-resolution',
     screenShareEncoding: screenShareEncoding(frameRate),
+  };
+}
+
+/** Screen share options with sound at the default frame rate. */
+export const SCREEN_CAPTURE_WITH_AUDIO_OPTIONS: ScreenShareCaptureOptions = screenCaptureOptions(
+  SCREEN_FRAME_RATE_DEFAULT,
+  true,
+);
+
+/** Publish options of the sound of a screen share (`screen-n-audio`): Opus stereo with a high bitrate, DTX off, RED on. */
+export function screenAudioPublishOptions(slot: string): TrackPublishOptions {
+  return {
+    name: screenAudioTrackName(slot),
+    source: Track.Source.ScreenShareAudio,
+    audioPreset: AudioPresets.musicHighQualityStereo,
+    dtx: false,
+    red: true,
+    forceStereo: true,
+  };
+}
+
+/**
+ * Microphone profile:
+ * - `voice`: a person's microphone (phone, laptop) with the browser's echo cancellation, noise suppression and automatic
+ *   gain, mono;
+ * - `station`: the feed of a mixing desk (the audio station): nothing touches the signal, stereo, high bitrate.
+ */
+export type MicProfile = 'voice' | 'station';
+
+/** What the sender chooses for the microphone. */
+export interface MicSettings {
+  readonly profile: MicProfile;
+  /** A specific input (browser device id); the default input otherwise. */
+  readonly deviceId?: string;
+}
+
+/** True for a structurally valid {@link MicSettings} value (guards public API input). */
+export function isMicSettings(value: unknown): value is MicSettings {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const { profile, deviceId } = value as Record<string, unknown>;
+  return (
+    (profile === 'voice' || profile === 'station') &&
+    (deviceId === undefined || (typeof deviceId === 'string' && deviceId !== ''))
+  );
+}
+
+/** getUserMedia constraints of the microphone. A chosen input is requested exactly, so a missing one is an error. */
+export function micCaptureOptions(settings: MicSettings): AudioCaptureOptions {
+  const processing = settings.profile === 'voice';
+  return {
+    echoCancellation: processing,
+    noiseSuppression: processing,
+    autoGainControl: processing,
+    channelCount: processing ? 1 : 2,
+    ...(settings.deviceId === undefined ? {} : { deviceId: { exact: settings.deviceId } }),
+  };
+}
+
+/** Publish options of the microphone: Opus with RED and DTX off; the station sends stereo with a high bitrate. */
+export function micPublishOptions(slot: string, profile: MicProfile): TrackPublishOptions {
+  return {
+    name: slot,
+    source: Track.Source.Microphone,
+    audioPreset: profile === 'station' ? AudioPresets.musicHighQualityStereo : AudioPresets.music,
+    dtx: false,
+    red: true,
+    forceStereo: profile === 'station',
   };
 }
