@@ -323,7 +323,7 @@ Regie shows only that:
 - Regie: station details → «Kamera» opens the panel (lens picker, zoom, focus automatic / lock with distance, brightness
   with «Automatisch», light, «Auf automatisch zurücksetzen»). A lens switch of a source that is in the program asks first
   (dashed red confirmation); zoom, focus and brightness take effect at once. Not done: tap-to-focus
-  (`pointsOfInterest`), audit entries for lens switches in the program, pinch to zoom on the phone.
+  (`pointsOfInterest`), pinch to zoom on the phone. A lens switch is an audit entry (`device.camera.lens`, section 4.9).
 
 ### 4.7 Assets
 
@@ -352,14 +352,62 @@ the value changes by > 20 %).
 
 ### 4.9 Audit log
 
-Table `audit_entries` (id, productionId nullable, at, actor `admin` | `device:{id}` | `system`, action, details jsonb).
-Actions: login.succeeded, login.failed, login.locked, scene.live, broadcast.started, broadcast.ended, device.paired,
-device.blocked, device.unblocked, device.removed, pairing.denied, invite.created, invite.revoked, output.key.regenerated,
-output.access.changed, asset.uploaded, asset.deleted, scene.created, scene.deleted, account.setup,
-account.password.changed, account.reset (account entries have no production; the snapshot of every production shows
-them in its log). The API derives the log entry
-(`LogEntryDto`: a stable `code`, its `params` and an English `text` fallback) for the Regie, which renders it in the
-user's language from `code` and `params`; `RecentLog` in the snapshot holds the latest 20 entries of the production.
+Table `audit_entries` (id, productionId nullable, at, actor `admin` | `device:{id}` | `system`, action, details jsonb). Entries are
+only ever appended; the Regie reads them and cannot change or delete them. Details hold parameters (scene, device name and
+slot codes, user name, IP address of a sign-in), never secrets: no password, device secret, output key, invite token or
+session cookie (a test runs every action and searches the table, the view and the exports for them).
+
+**Actions and categories.** Every action has one category (the filter of the log view) and one log code with an English
+text (`LogTexts`, the single source of the texts; the Regie renders its own text from `code` and `params`, English and
+de-CH).
+
+| Category | Actions |
+|---|---|
+| `production` | production.created, production.renamed, production.activated, broadcast.started, broadcast.ended, broadcast.reset, slate.changed, scene.live (`via`: `take` or `click`), scene.created, scene.deleted |
+| `devices` | device.paired, device.renamed, device.blocked, device.unblocked, device.removed, device.camera.lens, pairing.denied, invite.created, invite.revoked (invite links only), incident.acknowledged, source.reconnecting, source.ended, source.lost, source.recovered |
+| `security` | login.succeeded, login.failed, login.locked, logout, account.setup, account.password.changed, account.reset, audit.exported |
+| `media` | asset.uploaded, asset.deleted |
+| `output` | output.key.regenerated, output.access.changed |
+| `system` | audit.retention |
+
+Not audited: the preview (too frequent), the phone QR invite (renewed every half hour; entries of older versions stay and
+are hidden from the view), zoom, focus, brightness and light of a phone camera (only a lens switch is). Account entries
+and sign-ins have no production; the snapshot of every production shows the account entries in its log. `RecentLog` in the
+snapshot holds the latest 20 entries of the production that are in `LogTexts.RecentActions` (a subset: no sign-ins, no
+exports).
+
+**Reading.** `GET /api/audit` (admin) returns `AuditPageDto`: entries newest first, ordered by `(at, id)`, and
+`nextCursor`. The cursor is a keyset (the time and id of the last entry, opaque to clients), so a page continues exactly
+after the previous one while entries are added, with the same time or not; there is no offset. Filters (all optional):
+`from` (inclusive) and `to` (exclusive) as ISO 8601, `production` (an id, or `none` for entries without a production),
+`category` and `action` (repeatable), `actor`, `q` (case-insensitive text in the action code or the details, at most 100
+characters; `%` and `_` are literal), `cursor` and `limit` (1 to 200, default 50). Invalid input is 400
+`validation_failed` with the field names (`to` not after `from`, unknown category or action, bad cursor, limit out of range).
+The values travel as SQL parameters; the statement text is fixed. Indexes: `(at desc, id desc)`,
+`(production_id, at desc, id desc)` and a partial index on `at` for entries that still hold an IP address.
+
+**Export.** `GET /api/audit/export.csv` and `export.json` take the same filters (without `cursor` and `limit`). They are
+read from the database in keyset batches of 1000 and written while they are read; nothing is collected in memory. CSV is
+UTF-8 with a byte order mark, RFC 4180 (CRLF, quotes where needed), the columns `time` (UTC), `actor`, `category`,
+`action`, `description` (English), `production`, `production_id`, `details` (JSON); the separator is a comma, or a
+semicolon with `separator=semicolon` (the Regie asks for it in the German UI, which is what Excel expects there). A cell that
+starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading `'` (device names are free text). File name
+`studioflow-audit-YYYY-MM-DD.csv` (`.json`). More than `Audit:ExportMaxRows` (50 000) matching entries is 409
+`limit_reached` before anything is sent; more than `Audit:ExportsPerMinute` (6) exports per client address and minute is
+429 `rate_limited`. Every export is itself an entry (`audit.exported`: format, row count and the filter).
+
+**Retention.** A maintenance step runs every `Audit:MaintenanceInterval` (1 hour) and is skipped while a broadcast is
+live. In batches of `Audit:BatchSize` (5000) it deletes entries older than `Audit:RetentionDays` (365) and removes the
+`ip` detail from entries older than `Audit:IpRetentionDays` (90; sign-ins and account changes), the rest of the entry
+stays. It is idempotent: a run that stops halfway is finished by the next one, and a run that finds nothing writes
+nothing. A run that changed something writes the entry `audit.retention` (actor `system`: days, entries deleted, IP
+addresses removed) and an information line to the log. Values are validated at startup (`IpRetentionDays` at most
+`RetentionDays`).
+
+**Regie.** The page `/audit` (production menu, "Audit log"): table of time (local, with seconds), who, what and production;
+the raw details of an entry on demand; filters for the time range (any time, today, last broadcast, custom), production,
+category and text (debounced); paging with a button and automatically at the end of the list; the export of the filtered
+entries; new entries at the top while the page is open (the page asks every 15 s).
 
 ## 5. API
 

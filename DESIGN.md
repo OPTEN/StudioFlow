@@ -489,6 +489,12 @@ Texts are part of the picture, not of the console, so the **production** chooses
 - **Popovers:** Float (Raised in the dark theme), strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
 - **Toast:** centred at the bottom on Raised Higher with the Pop shadow. It confirms switches ("‘Lea presents’ is live"; German: "«Lea präsentiert» ist live") and dock moves, with an optional undo action.
 
+### Audit log page
+`/audit`, a page of its own like `/monitoring` (it follows the theme), reached from the production menu. A 50px header bar (brand, Label title, "Back to the control room") above one scrolling Panel.
+- **Filters:** one wrapping row of labelled controls: Time range and Production (selects), custom From and To (`datetime-local` inputs, red border and a plain sentence when the end is not after the start), Search (a search input), the categories as toggle buttons (`aria-pressed`, selected look as in the segmented control: Raised Higher with the selected shadow), "Clear filters" when any filter is on, and the export buttons ("Export CSV" primary outline, "Export JSON" default) at the end of the row. At 900px and below the row simply wraps.
+- **Table:** one hairline per row, 13px text, the time in mono with the details arrow (28px target, rotates 90° when open) in front, then who, what and production. Headings are Label style on Panel and stay at the top of the scroll area. The open details row is Raised, a two-column list of muted mono keys and secondary mono values (action code, actor, exact UTC time, entry number, then every detail as stored). A new entry that arrives while the page is open fades from the blue wash over 2.4s (no animation under reduced motion). The table never scrolls the page sideways: its container scrolls when 640px do not fit.
+- **States:** loading, empty ("No entries match.", with a hint) and error ("Try again") use the plain empty block; a failed "Load more" keeps the loaded entries and says so next to the button. No new colours or tokens: Panel, Raised, seam, text and the blue wash in both themes.
+
 ### Header
 50px tall on Panel. On the left are the mark and brand, then the production name in text-2. On the right are LIVE with a red dot and mono runtime, output status to the proxy with a lamp and mono latency, station health, the Docks and layout and presence icon buttons, and the mono clock.
 
