@@ -31,6 +31,7 @@ import { regieSources } from './regie-sources';
 import { regieStage } from './regie-stage';
 import { regieStations } from './regie-stations';
 import { regieStatusline } from './regie-statusline';
+import { regieText } from './regie-text';
 import { regieWorkspace } from './regie-workspace';
 import { renderer } from './renderer';
 import { senderCameraProblem } from './sender-camera-problem';
@@ -71,6 +72,7 @@ export const deCH: Translation<typeof en> = {
   ...regieStage,
   ...regieStations,
   ...regieStatusline,
+  ...regieText,
   ...regieWorkspace,
   ...renderer,
   ...senderCameraProblem,

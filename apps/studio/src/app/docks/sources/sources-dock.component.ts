@@ -124,7 +124,7 @@ export class SourcesDockComponent {
   /** Selects the row's item; a second click on the selected row clears the selection (back to the scene). */
   protected select(row: SourceRowView, event?: Event): void {
     event?.stopPropagation();
-    if (!row.hidden) {
+    if (!row.hidden || row.isText) {
       this.editor.select(row.selected ? null : row.itemId);
     }
   }

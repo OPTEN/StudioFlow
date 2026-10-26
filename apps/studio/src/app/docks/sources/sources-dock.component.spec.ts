@@ -146,9 +146,15 @@ describe('SourcesDockComponent', () => {
     const menu = element.querySelector('[role="menu"]');
     expect(text(menu?.querySelector('.c-pop-h'))).toBe('Add to “Presentation”');
     const groups = Array.from(menu?.querySelectorAll('.c-add-pop__label') ?? []).map(text);
-    expect(groups).toEqual(['Cameras']);
+    expect(groups).toEqual(['Cameras', 'New text']);
     const items = Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
-    expect(items.map(text)).toEqual(['K2Phone wide shot', 'Upload image or video…']);
+    expect(items.map(text)).toEqual([
+      'K2Phone wide shot',
+      'Lower third',
+      'Title',
+      'Note',
+      'Upload image or video…',
+    ]);
     items[0].click();
     const add = harness.http.expectOne(`${SCENE_B}/items`);
     expect(add.request.body.items.at(-1)).toMatchObject({

@@ -1,0 +1,60 @@
+// Text editor in the element inspector (issue #13).
+@use 'inspector';
+
+.c-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.c-text__preview {
+  display: grid;
+  gap: 6px;
+}
+
+.c-text__visibility {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.c-text__state {
+  color: var(--muted);
+  font-size: 12.5px;
+
+  &.is-shown {
+    color: var(--green);
+    font-weight: 600;
+  }
+}
+
+.c-text__field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.c-text__count {
+  color: var(--muted);
+  font-size: 11.5px;
+  justify-self: end;
+
+  &.is-over {
+    color: var(--red);
+    font-weight: 600;
+  }
+}
+
+.c-text__danger {
+  align-items: center;
+  border-top: 1px solid var(--seam);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 12px;
+
+  .c-hint {
+    flex: 1 1 160px;
+  }
+}

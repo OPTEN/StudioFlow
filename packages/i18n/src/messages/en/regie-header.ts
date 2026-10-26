@@ -102,5 +102,21 @@ export const regieHeader = {
   'regie.header.production.subtitle': 'Subtitle',
   'regie.header.production.switchTitle': 'Switch production',
   'regie.header.production.switched': 'Switched to “{name}”',
+  'regie.header.production.textAccent': 'Accent',
+  'regie.header.production.textBackground': 'Background',
+  'regie.header.production.textColors': 'Text colours…',
+  'regie.header.production.textColorsHint':
+    'Colours of all lower thirds, titles and notes of this production. Saving applies them to the output at once.',
+  'regie.header.production.textColorsInvalid':
+    'Enter every colour as #rrggbb, for example #1f6feb.',
+  'regie.header.production.textColorsReset': 'Reset to defaults',
+  'regie.header.production.textColorsSaved': 'Text colours saved',
+  'regie.header.production.textColorsTitle': 'Text colours',
+  'regie.header.production.textContrastLow':
+    'Contrast {ratio} : 1. The text is hard to read on this background; aim for at least 4.5 : 1.',
+  'regie.header.production.textForeground': 'Text',
+  'regie.header.production.textHex': '{colour}, hex value',
+  'regie.header.production.textPick': '{colour}, colour picker',
+  'regie.header.production.textSample': 'Sample of a lower third',
   'regie.header.production.title': 'Title',
 } as const satisfies Namespace<'regie.header'>;

@@ -43,6 +43,23 @@
   }
 
   <div class="c-menu-sep" role="separator"></div>
+  <div class="c-add-pop__group" role="group" aria-labelledby="sf-add-src-new-text">
+    <div class="c-add-pop__label" id="sf-add-src-new-text">
+      {{ t('regie.sources.add.newText') }}
+    </div>
+    @for (style of textStyles; track style) {
+      <button
+        class="c-menu-item"
+        type="button"
+        role="menuitem"
+        [disabled]="!canAdd()"
+        (click)="addNewText(style)"
+      >
+        <svg sfIcon="text"></svg>{{ t(`regie.text.style.${style}`) }}
+      </button>
+    }
+  </div>
+  <div class="c-menu-sep" role="separator"></div>
   <button class="c-menu-item" type="button" role="menuitem" (click)="upload.emit()">
     <svg sfIcon="upload"></svg>{{ t('regie.sources.add.upload') }}
   </button>

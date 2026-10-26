@@ -63,6 +63,40 @@
   font-size: 12.5px;
 }
 
+.c-prod__color {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+
+.c-prod__swatch {
+  background: var(--ground);
+  border: 1px solid var(--control-edge);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  height: 30px;
+  padding: 3px;
+  width: 36px;
+}
+
+// The colours of the text as the output will draw them: they come from the form, never from the theme tokens.
+.c-prod__sample {
+  border-left: 6px solid;
+  border-radius: var(--radius-md);
+  display: grid;
+  line-height: 1.25;
+  padding: 8px 12px;
+
+  strong {
+    font-size: 15px;
+  }
+
+  span {
+    font-size: 12.5px;
+  }
+}
+
 .c-prod__row {
   display: flex;
   gap: 8px;

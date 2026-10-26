@@ -6,6 +6,7 @@ export const regieSources = {
   'regie.sources.add.label': 'Add source',
   'regie.sources.add.liveLocked': 'This scene is live. Switch another scene to Program first.',
   'regie.sources.add.manage': 'Manage media…',
+  'regie.sources.add.newText': 'New text',
   'regie.sources.add.noSources':
     'No sources yet. Pair devices under Stations or upload an image or video.',
   'regie.sources.add.offline':
@@ -27,6 +28,7 @@ export const regieSources = {
   'regie.sources.group.camera': 'Cameras',
   'regie.sources.group.media': 'Media',
   'regie.sources.group.screen': 'Screens',
+  'regie.sources.group.text': 'Texts',
 
   'regie.sources.hint.autoGrid':
     'Auto grid: the order of the items is their position in the grid. Drag a row to move an item to another cell.',

@@ -10,6 +10,7 @@ import {
   type SyncStatus,
 } from '@studioflow/realtime-client';
 import {
+  DEFAULT_TEXT_THEME,
   ERROR_CODES,
   HUB,
   applyChanges,
@@ -38,6 +39,8 @@ import {
   type SourceKind,
   type SourceStatus,
   type TallyState,
+  type TextSourceDto,
+  type TextThemeDto,
   type TransitionDto,
 } from '@studioflow/scene-model';
 import { ApiError } from '../api/api-error';
@@ -194,7 +197,11 @@ export class ProductionStoreService {
   readonly programScene = computed(() => this.sceneById(this.programSceneId()));
   /** The preview scene, or null. */
   readonly previewScene = computed(() => this.sceneById(this.previewSceneId()));
-  /** Sources by reference (`{deviceId}/{slot}` or `{assetId}`). */
+  /** Colours of all texts and lower thirds (the defaults before the first snapshot). */
+  readonly textTheme = computed<TextThemeDto>(
+    () => this.production()?.textTheme ?? DEFAULT_TEXT_THEME,
+  );
+  /** Sources by reference (`{deviceId}/{slot}`, `{assetId}` or `{textId}`). */
   readonly sources = computed<ReadonlyMap<string, SourceDto>>(
     () => this.stateSignal()?.sources ?? EMPTY_MAP,
   );
@@ -361,6 +368,11 @@ export class ProductionStoreService {
   /** Kind of a source (camera, screen, image, video), or undefined for deleted sources. */
   kindOf(sourceId: string): SourceKind | undefined {
     return this.sources().get(sourceId)?.kind;
+  }
+
+  /** Content of a text source, or undefined for any other source and for deleted texts. */
+  textOf(sourceId: string): TextSourceDto | undefined {
+    return this.sources().get(sourceId)?.text ?? undefined;
   }
 
   /** Display name of a source; "Source missing" when it was deleted. */

@@ -1,6 +1,6 @@
 import { sourceFixture } from '../../../testing/fixtures';
 import {
-  isMediaKind,
+  isDeviceKind,
   sourceLamp,
   sourceStateView,
   statusHasTimer,
@@ -23,8 +23,9 @@ describe('source view helpers', () => {
     const image = sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'M1', { kind: 'image' });
     expect(sourceLamp(image)).toBeNull();
     expect(sourceLamp(null)).toBe('is-idle');
-    expect(isMediaKind('video')).toBe(true);
-    expect(isMediaKind('screen')).toBe(false);
+    expect(isDeviceKind('video')).toBe(false);
+    expect(isDeviceKind('screen')).toBe(true);
+    expect(isDeviceKind('text')).toBe(false);
   });
 
   it('describes the state line with word, tone and timer', () => {

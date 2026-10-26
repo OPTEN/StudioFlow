@@ -8,9 +8,11 @@ import {
   incidentFixture,
   logFixture,
   PRODUCTION_ID,
+  productionFixture,
   sceneFixture,
   snapshotChanges,
   snapshotFixture,
+  textSourceFixture,
 } from '../../../testing/fixtures';
 import { MemoryStorage, startStore, studioTestProviders } from '../../../testing/store-harness';
 import { AuthService } from '../auth/auth.service';
@@ -42,6 +44,39 @@ describe('ProductionStoreService', () => {
     expect(store.sourceLabel('dev_bbbbbbbbbbbbbbbb/screen-1')).toBe('Laptop Lea · Slides');
     expect(store.sourceLabel('dev_xxxxxxxxxxxxxxxx/camera')).toBe('Source missing');
     expect(store.tallyOf('dev_aaaaaaaaaaaaaaaa/camera')).toBe('program');
+  });
+
+  it('serves the content of texts and the text colours, and follows their events', async () => {
+    const harness = await startStore(hub);
+    const { store } = harness;
+    expect(store.textOf('dev_aaaaaaaaaaaaaaaa/camera')).toBeUndefined();
+    expect(store.textTheme()).toEqual({
+      accent: '#1f6feb',
+      background: '#0d1117',
+      foreground: '#ffffff',
+    });
+
+    harness.emitEvent({
+      type: 'sourceUpserted',
+      source: textSourceFixture('txt_aaaaaaaaaaaaaaaa', 'T1'),
+    });
+    harness.emitEvent({
+      type: 'sourceUpserted',
+      source: textSourceFixture('txt_aaaaaaaaaaaaaaaa', 'T1', { line1: 'Leo Lang' }),
+    });
+    harness.emitEvent({
+      type: 'productionChanged',
+      production: productionFixture({
+        textTheme: { accent: '#ff8800', background: '#001122', foreground: '#eeeeee' },
+      }),
+    });
+
+    expect(store.textOf('txt_aaaaaaaaaaaaaaaa')?.line1).toBe('Leo Lang');
+    expect(store.sourceLabel('txt_aaaaaaaaaaaaaaaa')).toBe('Leo Lang');
+    expect(store.kindOf('txt_aaaaaaaaaaaaaaaa')).toBe('text');
+    expect(store.textTheme().accent).toBe('#ff8800');
+    harness.emitEvent({ type: 'sourceRemoved', sourceId: 'txt_aaaaaaaaaaaaaaaa' });
+    expect(store.textOf('txt_aaaaaaaaaaaaaaaa')).toBeUndefined();
   });
 
   it('applies live events and reports program switches', async () => {

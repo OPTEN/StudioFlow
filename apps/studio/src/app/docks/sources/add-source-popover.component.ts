@@ -8,7 +8,7 @@ import {
   output,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import type { SourceDto } from '@studioflow/scene-model';
+import { TEXT_STYLES, type SourceDto, type TextStyle } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { PopoverDirective, PopoverService } from '../../core/ui/popover.directive';
@@ -46,6 +46,7 @@ export class AddSourcePopoverComponent {
 
   protected readonly popoverId = ADD_SOURCE_POPOVER;
   protected readonly t = t;
+  protected readonly textStyles = TEXT_STYLES;
   protected readonly sceneName = computed(
     () => this.editor.editScene()?.name ?? t('regie.sources.add.sceneFallback'),
   );
@@ -82,6 +83,12 @@ export class AddSourcePopoverComponent {
   protected add(source: SourceDto): void {
     this.popovers.close(this.popoverId);
     this.editor.addSource(source.id);
+  }
+
+  /** "New text": creates a text of the style and adds it to the scene, hidden and selected for editing. */
+  protected addNewText(style: TextStyle): void {
+    this.popovers.close(this.popoverId);
+    void this.editor.addText(style);
   }
 
   protected onKeyDown(event: KeyboardEvent): void {

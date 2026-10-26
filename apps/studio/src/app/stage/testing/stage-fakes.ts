@@ -13,7 +13,7 @@ import type { SceneRendererFactory } from '../scene-view.component';
 
 /** One recorded renderer call. */
 export interface RendererCall {
-  readonly op: 'show' | 'update' | 'transitionTo' | 'setSourceStatuses' | 'destroy';
+  readonly op: 'show' | 'update' | 'transitionTo' | 'refresh' | 'destroy';
   readonly sceneId?: string | null;
   readonly transition?: TransitionDto;
 }
@@ -71,8 +71,8 @@ export class FakeSceneRenderer implements SceneRenderer {
     // Not used by the Regie monitors.
   }
 
-  setSourceStatuses(): void {
-    this.calls.push({ op: 'setSourceStatuses' });
+  refresh(): void {
+    this.calls.push({ op: 'refresh' });
   }
 
   effectiveRects(): ReadonlyMap<string, CanvasRect> {
@@ -103,7 +103,7 @@ export class FakeSceneRenderer implements SceneRenderer {
   /** Recorded operations without status refreshes. */
   ops(): string[] {
     return this.calls
-      .filter((call) => call.op !== 'setSourceStatuses')
+      .filter((call) => call.op !== 'refresh')
       .map((call) => (call.sceneId === undefined ? call.op : `${call.op}:${call.sceneId}`));
   }
 }

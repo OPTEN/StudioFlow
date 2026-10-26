@@ -2,6 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 /** Every icon of the prototype sprite (prototype/regie.html `<symbol id="i-…">`) plus a few additions. */
 export type IconName =
+  | 'video'
+  | 'text'
+  | 'eye'
   | 'camera'
   | 'screen'
   | 'image'
@@ -41,15 +44,6 @@ export type IconName =
   // The StudioFlow brand mark (22 × 18)
   | 'mark';
 
-/** Icon for a source kind (prototype `KIND_ICON`). */
-export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | 'video', IconName>> =
-  {
-    camera: 'camera',
-    screen: 'screen',
-    image: 'image',
-    video: 'video',
-  };
-
 /**
  * Inline SVG icon: `<svg sfIcon="camera" [size]="14"></svg>`. The host element is the `<svg class="c-icon">`
  * itself (16 px, 1.6 px stroke, `currentColor`), always `aria-hidden`; give the surrounding control an accessible
@@ -78,6 +72,9 @@ export const SOURCE_KIND_ICON: Readonly<Record<'camera' | 'screen' | 'image' | '
       @case ('video') {
         <svg:rect x="3" y="6" width="13" height="12" rx="1.5" />
         <svg:path d="m16 10.5 5-3v9l-5-3" />
+      }
+      @case ('text') {
+        <svg:path d="M5 6.5h14M12 6.5v12M9 18.5h6" />
       }
       @case ('eye') {
         <svg:path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />

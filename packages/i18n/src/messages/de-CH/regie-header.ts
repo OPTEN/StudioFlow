@@ -101,5 +101,21 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.production.subtitle': 'Untertitel',
   'regie.header.production.switchTitle': 'Produktion wechseln',
   'regie.header.production.switched': 'Gewechselt zu «{name}»',
+  'regie.header.production.textAccent': 'Akzent',
+  'regie.header.production.textBackground': 'Hintergrund',
+  'regie.header.production.textColors': 'Textfarben …',
+  'regie.header.production.textColorsHint':
+    'Farben aller Bauchbinden, Titel und Notizen dieser Produktion. Speichern wendet sie sofort im Ausgang an.',
+  'regie.header.production.textColorsInvalid':
+    'Gib jede Farbe als #rrggbb ein, zum Beispiel #1f6feb.',
+  'regie.header.production.textColorsReset': 'Auf Standard zurücksetzen',
+  'regie.header.production.textColorsSaved': 'Textfarben gespeichert',
+  'regie.header.production.textColorsTitle': 'Textfarben',
+  'regie.header.production.textContrastLow':
+    'Kontrast {ratio} : 1. Der Text ist auf diesem Hintergrund schlecht lesbar; mindestens 4,5 : 1 sind gut.',
+  'regie.header.production.textForeground': 'Text',
+  'regie.header.production.textHex': '{colour}, Hex-Wert',
+  'regie.header.production.textPick': '{colour}, Farbwähler',
+  'regie.header.production.textSample': 'Beispiel einer Bauchbinde',
   'regie.header.production.title': 'Titel',
 };

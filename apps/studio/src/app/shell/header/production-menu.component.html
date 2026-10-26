@@ -116,6 +116,84 @@
             </div>
           </form>
         }
+        @case ('textColors') {
+          <form class="c-prod__form" [formGroup]="textForm" (submit)="saveTextColors($event)">
+            <div class="c-pop-h">{{ t('regie.header.production.textColorsTitle') }}</div>
+            @for (field of textColorFields; track field.key) {
+              <div class="c-prod__field">
+                <span class="c-prod__label">{{ t(field.label) }}</span>
+                <span class="c-prod__color">
+                  <input
+                    class="c-prod__swatch"
+                    type="color"
+                    [attr.aria-label]="
+                      t('regie.header.production.textPick', { colour: t(field.label) })
+                    "
+                    [value]="textForm.controls[field.key].value"
+                    (input)="setColor(field.key, $any($event.target).value)"
+                  />
+                  <input
+                    class="c-input u-mono"
+                    type="text"
+                    maxlength="7"
+                    autocomplete="off"
+                    spellcheck="false"
+                    [attr.aria-label]="
+                      t('regie.header.production.textHex', { colour: t(field.label) })
+                    "
+                    [class.is-invalid]="
+                      textForm.controls[field.key].invalid && textForm.controls[field.key].touched
+                    "
+                    [formControl]="textForm.controls[field.key]"
+                  />
+                </span>
+              </div>
+            }
+            @if (editedTheme(); as theme) {
+              <div
+                class="c-prod__sample"
+                role="img"
+                [attr.aria-label]="t('regie.header.production.textSample')"
+                [style.background-color]="theme.background"
+                [style.color]="theme.foreground"
+                [style.border-left-color]="theme.accent"
+              >
+                <strong>{{ t('regie.text.placeholder.name') }}</strong>
+                <span>{{ t('regie.text.placeholder.role') }}</span>
+              </div>
+            }
+            @if (lowContrast(); as ratio) {
+              <p class="c-field-error" role="status">
+                {{ t('regie.header.production.textContrastLow', { ratio }) }}
+              </p>
+            }
+            @if (textForm.invalid && textForm.touched) {
+              <p class="c-field-error">{{ t('regie.header.production.textColorsInvalid') }}</p>
+            }
+            <p class="c-hint">{{ t('regie.header.production.textColorsHint') }}</p>
+            <div class="c-prod__row">
+              <button class="c-btn c-btn--sm c-btn--fill" type="submit" [disabled]="busy()">
+                {{ t('common.save') }}
+              </button>
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                [disabled]="busy()"
+                (click)="resetTextColors()"
+              >
+                {{ t('regie.header.production.textColorsReset') }}
+              </button>
+              <button
+                class="c-btn c-btn--sm"
+                type="button"
+                [disabled]="busy()"
+                (click)="mode.set('menu')"
+              >
+                {{ t('common.cancel') }}
+              </button>
+            </div>
+          </form>
+        }
         @case ('create') {
           <form class="c-prod__form" (submit)="create($event)">
             <div class="c-pop-h">{{ t('regie.header.production.new') }}</div>
@@ -169,6 +247,14 @@
             (click)="show('slates')"
           >
             <svg sfIcon="image"></svg>{{ t('regie.header.production.editSlates') }}
+          </button>
+          <button
+            class="c-menu-item"
+            type="button"
+            [disabled]="!store.canCommand()"
+            (click)="show('textColors')"
+          >
+            <svg sfIcon="text"></svg>{{ t('regie.header.production.textColors') }}
           </button>
           <div class="c-menu-sep"></div>
           <div class="c-pop-h">{{ t('regie.header.production.switchTitle') }}</div>

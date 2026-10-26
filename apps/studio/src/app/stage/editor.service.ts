@@ -12,6 +12,8 @@ import {
   type SceneDto,
   type SceneItemDto,
   type SceneLayoutMode,
+  type TextSourceDto,
+  type TextStyle,
 } from '@studioflow/scene-model';
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
@@ -50,6 +52,13 @@ export function offlineEditMessage(): string {
   return t('regie.stage.editor.offline');
 }
 
+/** Placeholder content of a new text per style; the operator replaces it before the text is shown. */
+const TEXT_PLACEHOLDERS = {
+  lowerThird: { line1: 'regie.text.placeholder.name', line2: 'regie.text.placeholder.role' },
+  title: { line1: 'regie.text.placeholder.title', line2: null },
+  note: { line1: 'regie.text.placeholder.note', line2: null },
+} as const satisfies Record<TextStyle, { line1: PlainMessageKey; line2: PlainMessageKey | null }>;
+
 /** Undo steps kept per scene (spec 9.1). */
 export const UNDO_LIMIT = 60;
 
@@ -68,6 +77,8 @@ export interface UpdateItemOptions {
   readonly effectiveRects?: ReadonlyMap<string, CanvasRect>;
   /** Record an undo step (default true; ignored inside a gesture, which records one step). */
   readonly undo?: boolean;
+  /** Allowed on the live scene in Studio Mode: showing and hiding a text is an operation, not an edit. */
+  readonly whileLive?: boolean;
 }
 
 type WriteOp =
@@ -196,11 +207,14 @@ export class EditorService {
   });
   /** Id of the selected item, or null. */
   readonly selectedItemId = this.selectedItemIdSignal.asReadonly();
-  /** The selected item of the edit scene (with drafts), or null when none, missing or hidden. */
+  /**
+   * The selected item of the edit scene (with drafts), or null when none, missing or hidden. A hidden text stays
+   * selected: its content is prepared before it is shown.
+   */
   readonly selectedItem = computed<SceneItemDto | null>(() => {
     const id = this.selectedItemIdSignal();
     const item = id ? this.editScene()?.items.find((entry) => entry.id === id) : undefined;
-    return item && !item.hidden ? item : null;
+    return item && (!item.hidden || this.isText(item)) ? item : null;
   });
   /** Undo is available for the edit scene. */
   readonly canUndo = computed(() => this.historyDepth(this.undoStacks) > 0);
@@ -321,7 +335,7 @@ export class EditorService {
    */
   updateItem(item: SceneItemDto, options: UpdateItemOptions = {}): boolean {
     const scene = this.editScene();
-    if (!scene || !this.guard()) {
+    if (!scene || !this.guard(options.whileLive)) {
       return false;
     }
     const current = scene.items.find((entry) => entry.id === item.id);
@@ -365,8 +379,11 @@ export class EditorService {
     return true;
   }
 
-  /** Adds a source to the edit scene with the prototype defaults (600 × 338 at 1240/680) and selects it. */
-  addSource(sourceId: string): string | null {
+  /**
+   * Adds a source to the edit scene with the prototype defaults (600 × 338 at 1240/680) and selects it. A text that
+   * was just created is passed along, because its source event may not have reached the store yet.
+   */
+  addSource(sourceId: string, text?: TextSourceDto): string | null {
     const scene = this.editScene();
     if (!scene || !this.guard()) {
       return null;
@@ -376,17 +393,42 @@ export class EditorService {
       return null;
     }
     const source = this.store.sourceById(sourceId);
-    const item = newItem(sourceId, source?.kind, createItemId());
+    const known = text ?? source?.text ?? undefined;
+    const item = newItem(sourceId, known ? 'text' : source?.kind, createItemId(), known?.style);
     this.recordUndo(scene, true);
     this.enqueue(scene, { kind: 'replace', items: [...scene.items, item], layoutMode: null });
     this.select(item.id);
     this.toasts.show(
       t('regie.stage.editor.sourceAdded', {
-        code: source?.code ?? t('regie.stage.editor.sourceFallback'),
+        code: known?.code ?? source?.code ?? t('regie.stage.editor.sourceFallback'),
         scene: scene.name,
       }),
     );
     return item.id;
+  }
+
+  /**
+   * Creates a text with placeholder content and adds it to the edit scene, hidden and selected for editing. Returns
+   * the item id, or null when that was not possible (a toast says why).
+   */
+  async addText(style: TextStyle): Promise<string | null> {
+    const productionId = this.store.productionId();
+    if (!productionId || !this.guard()) {
+      return null;
+    }
+    const placeholder = TEXT_PLACEHOLDERS[style];
+    try {
+      const text = await this.api.createText(productionId, {
+        line1: t(placeholder.line1),
+        line2: placeholder.line2 ? t(placeholder.line2) : null,
+        style,
+        align: null,
+      });
+      return this.addSource(text.id, text);
+    } catch (error) {
+      this.toasts.error(error);
+      return null;
+    }
   }
 
   /** Removes an item; the toast offers "Undo". */
@@ -409,15 +451,19 @@ export class EditorService {
     return true;
   }
 
-  /** Shows or hides an item (eye toggle); hiding the selected item deselects it. */
+  /**
+   * Shows or hides an item (eye toggle); hiding the selected item deselects it. A text is shown and hidden live, also
+   * on the live scene in Studio Mode and without an undo step, and stays selected.
+   */
   toggleHidden(itemId: string): boolean {
     const item = this.itemById(itemId);
-    if (!item || !this.guard()) {
+    if (!item) {
       return false;
     }
+    const text = this.isText(item);
     const hidden = !item.hidden;
-    const changed = this.updateItem({ ...item, hidden });
-    if (changed && hidden && this.selectedItemIdSignal() === itemId) {
+    const changed = this.updateItem({ ...item, hidden }, { whileLive: text, undo: !text });
+    if (changed && hidden && !text && this.selectedItemIdSignal() === itemId) {
       this.select(null);
     }
     return changed;
@@ -560,9 +606,13 @@ export class EditorService {
     this.toasts.show(t(doneMessage));
   }
 
-  /** Checks the edit lock and the connection; shows the reason as a toast. */
-  private guard(): boolean {
-    if (this.editLocked()) {
+  private isText(item: SceneItemDto): boolean {
+    return this.store.kindOf(item.source) === 'text';
+  }
+
+  /** Checks the edit lock (unless the change is allowed on the live scene) and the connection; shows the reason as a toast. */
+  private guard(whileLive = false): boolean {
+    if (this.editLocked() && !whileLive) {
       this.toasts.show(liveLockedMessage());
       return false;
     }

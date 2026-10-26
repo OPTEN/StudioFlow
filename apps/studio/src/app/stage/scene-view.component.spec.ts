@@ -197,7 +197,7 @@ describe('SceneViewComponent', () => {
 
   it('re-reads the source statuses when the sources change', async () => {
     await setup();
-    const before = factory.last.calls.filter((call) => call.op === 'setSourceStatuses').length;
+    const before = factory.last.calls.filter((call) => call.op === 'refresh').length;
     harness.emitEvent({
       type: 'sourceUpserted',
       source: sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', {
@@ -207,7 +207,7 @@ describe('SceneViewComponent', () => {
     });
     await harness.settle();
     await render();
-    const after = factory.last.calls.filter((call) => call.op === 'setSourceStatuses').length;
+    const after = factory.last.calls.filter((call) => call.op === 'refresh').length;
     expect(after).toBeGreaterThan(before);
     expect(factory.last.options.statusOf?.('dev_aaaaaaaaaaaaaaaa/camera')).toBe('reconnecting');
   });
