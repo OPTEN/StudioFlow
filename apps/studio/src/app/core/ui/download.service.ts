@@ -17,6 +17,8 @@ export class DownloadService {
     link.href = url;
     link.download = fileName;
     link.hidden = true;
+    // The click is no click of the user on the page: the popover that offered the download must stay open.
+    link.addEventListener('click', (event) => event.stopPropagation());
     this.document.body.append(link);
     link.click();
     link.remove();

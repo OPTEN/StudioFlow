@@ -36,6 +36,21 @@ describe('DownloadService', () => {
     expect(revoked).toEqual(['blob:studioflow-test']);
   });
 
+  it('does not let the click reach the page, so an open popover stays open', () => {
+    const reached = vi.fn();
+    document.addEventListener('click', reached);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      this.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    TestBed.inject(DownloadService).saveText('x.json', '{}');
+
+    document.removeEventListener('click', reached);
+    expect(reached).not.toHaveBeenCalled();
+  });
+
   it('leaves no link in the page', () => {
     TestBed.inject(DownloadService).saveText('x.json', '{}');
 
