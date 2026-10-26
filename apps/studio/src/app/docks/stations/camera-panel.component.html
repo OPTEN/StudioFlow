@@ -31,6 +31,8 @@
             @for (lens of current.lenses; track lens.id) {
               <button
                 type="button"
+                data-testid="camera-lens"
+                [attr.data-lens]="lens.id"
                 [attr.aria-pressed]="lens.active"
                 (click)="chooseLens(lens.id, lens.label)"
               >
@@ -83,6 +85,7 @@
             @if (focus.canAuto) {
               <button
                 type="button"
+                data-testid="camera-focus-auto"
                 [attr.aria-pressed]="focus.mode === 'auto'"
                 (click)="setFocus('auto')"
               >
@@ -92,6 +95,7 @@
             @if (focus.canLock) {
               <button
                 type="button"
+                data-testid="camera-focus-lock"
                 [attr.aria-pressed]="focus.mode === 'manual'"
                 (click)="setFocus('manual')"
               >
@@ -162,10 +166,20 @@
             t('regie.camera.torch.label')
           }}</span>
           <div class="c-seg" role="group" [attr.aria-labelledby]="'sf-cam-torch-' + device().id">
-            <button type="button" [attr.aria-pressed]="!torch.on" (click)="setTorch(false)">
+            <button
+              type="button"
+              data-testid="camera-torch-off"
+              [attr.aria-pressed]="!torch.on"
+              (click)="setTorch(false)"
+            >
               {{ t('regie.camera.torch.off') }}
             </button>
-            <button type="button" [attr.aria-pressed]="torch.on" (click)="setTorch(true)">
+            <button
+              type="button"
+              data-testid="camera-torch-on"
+              [attr.aria-pressed]="torch.on"
+              (click)="setTorch(true)"
+            >
               {{ t('regie.camera.torch.on') }}
             </button>
           </div>
