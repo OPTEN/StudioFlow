@@ -4,6 +4,8 @@ import type { errors as en } from '../en/errors';
 export const errors: Translation<typeof en> = {
   'errors.code.validation_failed': 'Die Eingabe ist ungültig.',
   'errors.code.not_found': 'Das gibt es nicht mehr. Vielleicht wurde es inzwischen gelöscht.',
+  'errors.code.broadcast_live':
+    'Das geht nicht, solange die Sendung live ist. Zuerst die Sendung beenden.',
   'errors.code.transition_running': 'Eine Blende läuft noch. Bitte kurz warten.',
   'errors.code.scene_is_live': 'Die Live-Szene lässt sich nicht löschen.',
   'errors.code.asset_in_use': 'Die Datei wird noch verwendet und lässt sich nicht löschen.',

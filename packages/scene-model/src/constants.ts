@@ -1,11 +1,6 @@
 import { t } from '@studioflow/i18n';
 
-/** Width of the fixed canvas of every scene and of the output (always 16:9). */
-export const CANVAS_WIDTH = 1920;
-/** Height of the fixed canvas of every scene and of the output (always 16:9). */
-export const CANVAS_HEIGHT = 1080;
-
-/** Margin used by layout templates and as a snap line (prototype: 40 px). */
+/** Margin used by layout templates and as a snap line on a 1080p canvas (prototype: 40 px); see `safeMargin`. */
 export const SAFE_MARGIN = 40;
 
 /** Allowed fade durations in milliseconds (no T-bar: a fade always runs to completion). */
@@ -64,7 +59,10 @@ export const LIMITS = {
   recentLogEntries: 20,
 } as const;
 
-/** Geometry bounds of a scene item in canvas pixels. */
+/**
+ * Geometry bounds of a scene item in canvas pixels. They are absolute and wide enough for every canvas (at most 1920
+ * pixels on a side), so they do not depend on the production.
+ */
 export const ITEM_BOUNDS = {
   minX: -3840,
   maxX: 3840,
@@ -86,5 +84,5 @@ export const ROTATIONS = [0, 90, 180, 270] as const;
 /** One of the allowed item rotations. */
 export type Rotation = (typeof ROTATIONS)[number];
 
-/** Geometry the server uses for a newly added item without explicit geometry. */
+/** Geometry the server uses for a newly added item on a 1920 × 1080 canvas; other canvases get it in proportion (`placeOnCanvas`). */
 export const NEW_ITEM_RECT = { x: 1240, y: 680, w: 600, h: 338 } as const;

@@ -231,6 +231,12 @@ function reduceEvent(state: ProductionState, event: ProductionEvent): Production
   switch (event.type) {
     case 'productionChanged':
       return { ...state, production: event.production };
+    case 'productionCanvasChanged':
+      return {
+        ...state,
+        production: event.production,
+        scenes: sortedScenes(event.scenes.reduce(upsertById, state.scenes)),
+      };
     case 'programSwitched':
       return { ...state, production: switchProgram(state.production, event) };
     case 'sceneUpserted':

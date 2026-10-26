@@ -4,6 +4,7 @@
 import {
   DEFAULT_TEXT_THEME,
   type AuditEntryDto,
+  canvasDto,
   type DeviceDto,
   type IncidentDto,
   type LogEntryDto,
@@ -40,6 +41,7 @@ export function productionFixture(overrides: Partial<ProductionDto> = {}): Produ
     standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
     endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     textTheme: DEFAULT_TEXT_THEME,
+    canvas: canvasDto('widescreen', 'p1080'),
     ...overrides,
   };
 }

@@ -34,6 +34,7 @@ export interface ProblemBody {
 export const ERROR_CODE_MESSAGES = {
   validation_failed: 'errors.code.validation_failed',
   not_found: 'errors.code.not_found',
+  broadcast_live: 'errors.code.broadcast_live',
   transition_running: 'errors.code.transition_running',
   scene_is_live: 'errors.code.scene_is_live',
   asset_in_use: 'errors.code.asset_in_use',

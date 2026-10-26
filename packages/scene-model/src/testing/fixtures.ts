@@ -21,6 +21,7 @@ import type {
   SourceKind,
   SourceStatus,
 } from '../contracts';
+import { canvasDto } from '../canvas';
 
 /** Fixed server time of all fixtures. */
 export const FIXTURE_TIME = '2026-10-22T10:00:00.000Z';
@@ -43,6 +44,7 @@ export function productionFixture(overrides: Partial<ProductionDto> = {}): Produ
     standbySlate: { title: 'Starting soon', subtitle: 'Webinar', backgroundAssetId: null },
     endSlate: { title: 'Thanks for watching', subtitle: null, backgroundAssetId: null },
     textTheme: { accent: '#1f6feb', background: '#0d1117', foreground: '#ffffff' },
+    canvas: canvasDto('widescreen', 'p1080'),
     ...overrides,
   };
 }

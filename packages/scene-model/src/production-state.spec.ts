@@ -1,3 +1,4 @@
+import { canvasDto } from './canvas';
 import type { OutputChangesDto, ProductionEvent } from './contracts';
 import {
   applyChanges,
@@ -159,6 +160,37 @@ describe('applyEvent per event type', () => {
     expect(apply(baseState(), { type: 'productionChanged', production }).production).toBe(
       production,
     );
+  });
+
+  it('productionCanvasChanged replaces the production and the rescaled scenes in one step', () => {
+    const state = baseState();
+    const production = productionFixture({ canvas: canvasDto('portrait', 'p1080') });
+    const rescaled = sceneFixture('scn_b', 1, [itemFixture('itm_1', 'dev_k1aaaa/camera')], {
+      version: 2,
+    });
+
+    const next = apply(state, { type: 'productionCanvasChanged', production, scenes: [rescaled] });
+
+    expect(next.production).toBe(production);
+    expect(next.scenes.map((scene) => scene.id)).toEqual(['scn_a', 'scn_b', 'scn_c']);
+    expect(next.scenes[1]).toBe(rescaled);
+    expect(next.scenes[0]).toBe(state.scenes[0]);
+    expect(next.scenes[2]).toBe(state.scenes[2]);
+  });
+
+  it('productionCanvasChanged without scenes only replaces the production', () => {
+    const state = baseState();
+    const production = productionFixture({ canvas: canvasDto('square', 'p720') });
+
+    const next = apply(state, { type: 'productionCanvasChanged', production, scenes: [] });
+
+    expect(next.production.canvas).toEqual({
+      format: 'square',
+      resolution: 'p720',
+      width: 720,
+      height: 720,
+    });
+    expect(next.scenes.map((scene) => scene.id)).toEqual(['scn_a', 'scn_b', 'scn_c']);
   });
 
   it('programSwitched updates program, preview, transition and switch time', () => {

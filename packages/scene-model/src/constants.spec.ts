@@ -1,6 +1,4 @@
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   DEFAULT_FADE_MS,
   DEFAULT_HOLD_MS,
   FADE_DURATIONS_MS,
@@ -10,12 +8,9 @@ import {
   NEW_ITEM_RECT,
   ROTATIONS,
 } from './constants';
+import { DEFAULT_CANVAS } from './canvas';
 
 describe('constants', () => {
-  it('describes a 16:9 canvas', () => {
-    expect(CANVAS_WIDTH / CANVAS_HEIGHT).toBeCloseTo(16 / 9, 10);
-  });
-
   it('offers the fade durations of the spec with 300 ms as default', () => {
     expect(FADE_DURATIONS_MS).toEqual([200, 300, 500, 800, 1000, 1500, 2000]);
     expect(FADE_DURATIONS_MS).toContain(DEFAULT_FADE_MS);
@@ -29,9 +24,9 @@ describe('constants', () => {
     }
   });
 
-  it('places a new item inside the bounds and on the canvas', () => {
-    expect(NEW_ITEM_RECT.x + NEW_ITEM_RECT.w).toBeLessThanOrEqual(CANVAS_WIDTH);
-    expect(NEW_ITEM_RECT.y + NEW_ITEM_RECT.h).toBeLessThanOrEqual(CANVAS_HEIGHT);
+  it('places a new item inside the bounds and on the 1920 × 1080 reference canvas', () => {
+    expect(NEW_ITEM_RECT.x + NEW_ITEM_RECT.w).toBeLessThanOrEqual(DEFAULT_CANVAS.width);
+    expect(NEW_ITEM_RECT.y + NEW_ITEM_RECT.h).toBeLessThanOrEqual(DEFAULT_CANVAS.height);
     expect(NEW_ITEM_RECT.w).toBeGreaterThanOrEqual(ITEM_BOUNDS.minW);
     expect(NEW_ITEM_RECT.h).toBeGreaterThanOrEqual(ITEM_BOUNDS.minH);
   });

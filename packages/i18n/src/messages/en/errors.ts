@@ -8,6 +8,8 @@ import type { Namespace } from '../../types';
 export const errors = {
   'errors.code.validation_failed': 'The input is not valid.',
   'errors.code.not_found': 'That no longer exists. It may have been deleted in the meantime.',
+  'errors.code.broadcast_live':
+    'That is not possible while the broadcast is live. End the broadcast first.',
   'errors.code.transition_running': 'A fade is still running. Please wait a moment.',
   'errors.code.scene_is_live': 'The live scene cannot be deleted.',
   'errors.code.asset_in_use': 'The file is still in use and cannot be deleted.',

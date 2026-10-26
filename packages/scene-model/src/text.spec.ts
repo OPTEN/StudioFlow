@@ -10,7 +10,7 @@ import {
   styleHasAlignment,
   textItemRect,
 } from './text';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_MARGIN } from './constants';
+import { CANVAS_FORMATS, CANVAS_RESOLUTIONS, DEFAULT_CANVAS, canvasSize } from './canvas';
 
 describe('text styles', () => {
   it('offers the three fixed styles in the order of the menu', () => {
@@ -25,19 +25,36 @@ describe('text styles', () => {
     expect(TEXT_STYLES.map(styleHasAlignment)).toEqual([false, true, true]);
   });
 
-  it.each(TEXT_STYLES)('places a new %s inside the safe margin of the canvas', (style) => {
-    const { x, y, w, h } = textItemRect(style);
+  it.each(TEXT_STYLES)(
+    'places a new %s on every canvas, at least 3 % of the short side from the edges',
+    (style) => {
+      for (const format of CANVAS_FORMATS) {
+        for (const resolution of CANVAS_RESOLUTIONS) {
+          const canvas = canvasSize(format, resolution);
+          const margin = Math.floor(Math.min(canvas.width, canvas.height) * 0.03);
+          const { x, y, w, h } = textItemRect(style, canvas);
 
-    expect(x).toBeGreaterThanOrEqual(SAFE_MARGIN);
-    expect(y).toBeGreaterThanOrEqual(SAFE_MARGIN);
-    expect(x + w).toBeLessThanOrEqual(CANVAS_WIDTH - SAFE_MARGIN);
-    expect(y + h).toBeLessThanOrEqual(CANVAS_HEIGHT - SAFE_MARGIN);
-  });
+          expect(x, `${style} ${format} ${resolution}`).toBeGreaterThanOrEqual(margin);
+          expect(y).toBeGreaterThanOrEqual(margin);
+          expect(x + w).toBeLessThanOrEqual(canvas.width - margin);
+          expect(y + h).toBeLessThanOrEqual(canvas.height - margin);
+        }
+      }
+    },
+  );
 
   it('puts the lower third at the bottom left, the title in the middle and the note in the top right', () => {
-    expect(textItemRect('lowerThird')).toEqual({ x: 80, y: 820, w: 960, h: 180 });
-    expect(textItemRect('title')).toEqual({ x: 160, y: 390, w: 1600, h: 300 });
-    expect(textItemRect('note')).toEqual({ x: 1320, y: 60, w: 540, h: 96 });
+    expect(textItemRect('lowerThird', DEFAULT_CANVAS)).toEqual({ x: 80, y: 820, w: 960, h: 180 });
+    expect(textItemRect('title', DEFAULT_CANVAS)).toEqual({ x: 160, y: 390, w: 1600, h: 300 });
+    expect(textItemRect('note', DEFAULT_CANVAS)).toEqual({ x: 1320, y: 60, w: 540, h: 96 });
+  });
+
+  it('keeps the corners and the centre on a portrait canvas', () => {
+    const portrait = canvasSize('portrait', 'p1080');
+
+    expect(textItemRect('lowerThird', portrait)).toEqual({ x: 45, y: 1774, w: 540, h: 101 });
+    expect(textItemRect('title', portrait)).toEqual({ x: 90, y: 876, w: 900, h: 169 });
+    expect(textItemRect('note', portrait)).toEqual({ x: 743, y: 34, w: 304, h: 54 });
   });
 
   it('mirrors the limits of the API', () => {

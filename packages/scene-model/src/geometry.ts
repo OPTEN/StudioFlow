@@ -1,7 +1,6 @@
 import { t, type MessageKey } from '@studioflow/i18n';
+import { placeOnCanvas, type CanvasSize } from './canvas';
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   DEFAULT_HOLD_MS,
   DEFAULT_ITEM_RADIUS,
   ITEM_BOUNDS,
@@ -20,7 +19,7 @@ import type {
 import { formatDecimal } from './format';
 import { textItemRect } from './text';
 
-/** Rectangle in canvas pixels (1920 × 1080 space). Structurally identical to the renderer's `CanvasRect`. */
+/** Rectangle in canvas pixels (the space of the production's canvas). Structurally identical to the renderer's `CanvasRect`. */
 export interface CanvasRect {
   readonly x: number;
   readonly y: number;
@@ -232,21 +231,23 @@ export function validateItem(
 }
 
 /**
- * A new item with the server defaults of `AddSceneItem` (spec 4.3): 600 × 338 at 1240/680, radius 12, contain for
- * screens and cover for everything else, no crop, no rotation, hold the last frame 3 s on loss. A text gets the
- * rectangle of its style (`textItemRect`) and no corner radius, and starts hidden so it can be prepared off air.
+ * A new item with the server defaults of `AddSceneItem` (spec 4.3): 600 × 338 at 1240/680 on a 1920 × 1080 canvas (in
+ * proportion on others), radius 12, contain for screens and cover for everything else, no crop, no rotation, hold the
+ * last frame 3 s on loss. A text gets the rectangle of its style (`textItemRect`) and no corner radius, and starts
+ * hidden so it can be prepared off air.
  */
 export function newItem(
   source: string,
   kind: SourceKind | undefined,
   id: string,
+  canvas: CanvasSize,
   textStyle: TextStyle = 'lowerThird',
 ): SceneItemDto {
   const isText = kind === 'text';
   return {
     id,
     source,
-    ...(isText ? textItemRect(textStyle) : NEW_ITEM_RECT),
+    ...(isText ? textItemRect(textStyle, canvas) : placeOnCanvas(canvas, NEW_ITEM_RECT)),
     fit: kind === 'screen' ? 'contain' : 'cover',
     crop: { ...NO_CROP },
     radius: isText ? 0 : DEFAULT_ITEM_RADIUS,
@@ -306,12 +307,12 @@ export function rectCenter(rect: CanvasRect): CanvasPoint {
  * Moves a rectangle fully onto the canvas, shrinking it first if it is larger than the canvas (keyboard nudges,
  * pasted items). Size is kept whenever it fits.
  */
-export function clampRectToCanvas(rect: CanvasRect): CanvasRect {
-  const w = Math.min(Math.max(rect.w, 0), CANVAS_WIDTH);
-  const h = Math.min(Math.max(rect.h, 0), CANVAS_HEIGHT);
+export function clampRectToCanvas(rect: CanvasRect, canvas: CanvasSize): CanvasRect {
+  const w = Math.min(Math.max(rect.w, 0), canvas.width);
+  const h = Math.min(Math.max(rect.h, 0), canvas.height);
   return {
-    x: Math.min(Math.max(rect.x, 0), CANVAS_WIDTH - w),
-    y: Math.min(Math.max(rect.y, 0), CANVAS_HEIGHT - h),
+    x: Math.min(Math.max(rect.x, 0), canvas.width - w),
+    y: Math.min(Math.max(rect.y, 0), canvas.height - h),
     w,
     h,
   };

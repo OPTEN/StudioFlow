@@ -29,12 +29,14 @@ export const modelScene = {
   'model.scene.templateInfo.two': 'Interview, conversation',
   'model.scene.templateName.auto': 'Auto grid',
   'model.scene.templateName.col': 'Screen + camera column',
+  'model.scene.templateName.colRow': 'Screen + camera row',
   'model.scene.templateName.full': 'Full screen',
   'model.scene.templateName.grid': '2 × 2',
   'model.scene.templateName.grid3': '3 × 3',
   'model.scene.templateName.onetwo': 'One plus two',
   'model.scene.templateName.pip': 'Picture in picture',
   'model.scene.templateName.two': 'Side by side',
+  'model.scene.templateName.twoStacked': 'Stacked',
 
   'model.scene.validation.borderColor': 'The border colour must be a hex colour like #e3b341.',
   'model.scene.validation.cropAxisHorizontal':

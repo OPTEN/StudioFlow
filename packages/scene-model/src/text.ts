@@ -1,4 +1,5 @@
 import type { TextAlign, TextStyle, TextThemeDto } from './contracts';
+import { placeOnCanvas, type CanvasSize } from './canvas';
 import type { CanvasRect } from './geometry';
 import { isHexColor } from './geometry';
 
@@ -21,6 +22,13 @@ export const DEFAULT_TEXT_THEME: TextThemeDto = {
 /** WCAG 2 minimum contrast of normal text against its background (level AA). */
 export const MIN_TEXT_CONTRAST = 4.5;
 
+/** Rectangle of a text style on a 1920 × 1080 canvas. */
+const REFERENCE_TEXT_RECTS: Readonly<Record<TextStyle, CanvasRect>> = {
+  lowerThird: { x: 80, y: 820, w: 960, h: 180 },
+  title: { x: 160, y: 390, w: 1600, h: 300 },
+  note: { x: 1320, y: 60, w: 540, h: 96 },
+};
+
 /** Alignment a new text of the style starts with: titles are centred, the others sit at the left edge. */
 export function defaultTextAlign(style: TextStyle): TextAlign {
   return style === 'title' ? 'center' : 'left';
@@ -33,17 +41,11 @@ export function styleHasAlignment(style: TextStyle): boolean {
 
 /**
  * Where a new item of a text lands, inside the safe margin (mirrors `TextSourceRules.DefaultRect`): the lower third at
- * the bottom left, the title in the middle, the note in the top right corner.
+ * the bottom left, the title in the middle, the note in the top right corner. The rectangles are those of a 1920 × 1080
+ * canvas, placed on the canvas of the production.
  */
-export function textItemRect(style: TextStyle): CanvasRect {
-  switch (style) {
-    case 'lowerThird':
-      return { x: 80, y: 820, w: 960, h: 180 };
-    case 'title':
-      return { x: 160, y: 390, w: 1600, h: 300 };
-    case 'note':
-      return { x: 1320, y: 60, w: 540, h: 96 };
-  }
+export function textItemRect(style: TextStyle, canvas: CanvasSize): CanvasRect {
+  return placeOnCanvas(canvas, REFERENCE_TEXT_RECTS[style]);
 }
 
 /** Relative luminance of a `#rrggbb` colour (WCAG 2); NaN for anything else. */
