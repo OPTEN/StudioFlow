@@ -13,7 +13,7 @@ export const REPO_ROOT = path.resolve(E2E_DIR, '..', '..');
 /** Compose project of the default stack (no E2E_STACK / E2E_PROJECT). */
 export const DEFAULT_PROJECT = 'sf-e2e';
 /** Numbered stacks E2E_STACK=1..MAX_STACK run side by side on one machine (README, "Parallel stacks"). */
-export const MAX_STACK = 4;
+export const MAX_STACK = 5;
 
 /** Everything that tells one stack from another on a machine: names, host ports and subnets. */
 export interface StackSettings {
@@ -94,7 +94,7 @@ function portOf(env: NodeJS.ProcessEnv, name: string, fallback: number): number 
  */
 export function resolveStackSettings(env: NodeJS.ProcessEnv = process.env): StackSettings {
   const rawStack = env['E2E_STACK']?.trim();
-  const projectStack = /^sf-e2e-([1-4])$/.exec(env['E2E_PROJECT']?.trim() ?? '')?.[1];
+  const projectStack = /^sf-e2e-([1-5])$/.exec(env['E2E_PROJECT']?.trim() ?? '')?.[1];
   const base = rawStack ? numberedStack(Number(rawStack)) : projectStack ? numberedStack(Number(projectStack)) : DEFAULT_SETTINGS;
   const project = env['E2E_PROJECT']?.trim() || base.project;
   // Compose project names: lower-case letters, digits, "-" and "_", starting with a letter or digit.

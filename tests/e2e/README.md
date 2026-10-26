@@ -27,8 +27,8 @@ and waits for all four healthchecks. Teardown removes containers and volumes. Lo
 | `E2E_NO_BUILD=1` | `up -d` without `--build` (images from the last run) |
 | `E2E_BUG_REPORT=1` | run the tests of open known bugs as plain tests (raw failures as evidence) |
 | `E2E_NODE_IP` | node IP instead of the detected LAN IPv4 |
-| `E2E_STACK=N` (1-4) | one of the four numbered stacks that run side by side, see "Parallel stacks" |
-| `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-4) alone also selects numbered stack N |
+| `E2E_STACK=N` (1-5) | one of the five numbered stacks that run side by side, see "Parallel stacks" |
+| `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-5) alone also selects numbered stack N |
 | `E2E_HTTPS_PORT`, `E2E_HTTP_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
 | `E2E_RTC_TCP_PORT`, `E2E_RTC_UDP_PORT` | LiveKit media ports (passed on as `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT`; host and container port are the same number) |
 | `E2E_BASE_URL` | origin the Playwright `baseURL` points at, if it is not `https://localhost[:E2E_HTTPS_PORT]` |
@@ -39,7 +39,7 @@ webkit`), Git Bash on Windows for the OPS specs, ports 80 and 443 free (or moved
 
 ## Parallel stacks
 
-Four independent stacks can run on one machine, each with its own compose project, ports, subnet, env file, output
+Five independent stacks can run on one machine, each with its own compose project, ports, subnet, env file, output
 directory, containers, volumes, network and images. `E2E_STACK=N` selects a set; every other `E2E_*` variable still
 overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: project `sf-e2e`, ports 80/443,
 7881/7882, 18081, 17880, 15432 and subnet `172.31.250.0/24`, files in `tests/e2e/.env.e2e` and `tests/e2e/.output`.
@@ -50,6 +50,7 @@ overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: 
 | 2 | `sf-e2e-2` | 8492 | 8092 | 7903 / 7904 | 18092 | 17892 | 15492 | 172.31.202.0/24 | `.env.e2e.sf-e2e-2`, `.output/sf-e2e-2` |
 | 3 | `sf-e2e-3` | 8493 | 8093 | 7905 / 7906 | 18093 | 17893 | 15493 | 172.31.203.0/24 | `.env.e2e.sf-e2e-3`, `.output/sf-e2e-3` |
 | 4 | `sf-e2e-4` | 8494 | 8094 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.sf-e2e-4`, `.output/sf-e2e-4` |
+| 5 | `sf-e2e-5` | 8495 | 8095 | 7909 / 7910 | 18095 | 17895 | 15495 | 172.31.205.0/24 | `.env.e2e.sf-e2e-5`, `.output/sf-e2e-5` |
 
 The table lives in `support/env.ts` (`numberedStack`). The services take the addresses `.10` (LiveKit), `.11` (API),
 `.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `STUDIOFLOW_PUBLIC_BASE_URL` carries the https port

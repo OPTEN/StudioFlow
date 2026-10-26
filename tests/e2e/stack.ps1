@@ -1,4 +1,4 @@
-# Numbered E2E stacks (1-4) on one machine - tests/e2e/README.md, "Parallel stacks". No npm script and no dependency:
+# Numbered E2E stacks (1-5) on one machine - tests/e2e/README.md, "Parallel stacks". No npm script and no dependency:
 # the script only sets E2E_STACK=N (tests/e2e/support/env.ts turns it into the project name, ports and subnet) and
 # calls Playwright or docker compose.
 #
@@ -13,9 +13,10 @@
 #   2  sf-e2e-2   8492  8092 7903/7904  18092 17892   15492    172.31.202.0/24
 #   3  sf-e2e-3   8493  8093 7905/7906  18093 17893   15493    172.31.203.0/24
 #   4  sf-e2e-4   8494  8094 7907/7908  18094 17894   15494    172.31.204.0/24
+#   5  sf-e2e-5   8495  8095 7909/7910  18095 17895   15495    172.31.205.0/24
 param(
   [Parameter(Mandatory = $true, Position = 0)][ValidateSet('up', 'test', 'status', 'down')][string]$Action,
-  [Parameter(Mandatory = $true, Position = 1)][ValidateRange(1, 4)][int]$N,
+  [Parameter(Mandatory = $true, Position = 1)][ValidateRange(1, 5)][int]$N,
   [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest
 )
 
