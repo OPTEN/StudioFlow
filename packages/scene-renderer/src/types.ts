@@ -3,7 +3,13 @@
  * fakes in tests). The renderer never imports livekit-client; `@studioflow/media-client` implements
  * {@link SourceMediaProvider}.
  */
-import type { SceneDto, SlateDto, TransitionDto } from '@studioflow/scene-model';
+import type {
+  SceneDto,
+  SlateDto,
+  TextSourceDto,
+  TextThemeDto,
+  TransitionDto,
+} from '@studioflow/scene-model';
 
 /** Availability of a source picture as seen by one client. */
 export type SourceAvailability =
@@ -86,10 +92,14 @@ export interface SceneRendererOptions {
   readonly statusOf?: (sourceId: string) => MonitorSourceStatus | undefined;
   /** Slot code for monitor labels (“K2 · Freeze frame 00:12”). */
   readonly codeOf?: (sourceId: string) => string | undefined;
-  /** Turns fades into cuts (prefers-reduced-motion or an explicit setting). */
+  /** Turns fades into cuts and shows or hides texts without animation (prefers-reduced-motion or a setting). */
   readonly reducedMotion?: boolean;
   /** Kind of an asset; unknown assets render as images. */
   readonly assetKindOf?: (assetId: string) => AssetMediaKind | undefined;
+  /** Content of a text source (`txt_…`); undefined renders the item as “Source missing” (monitor) or nothing. */
+  readonly textOf?: (sourceId: string) => TextSourceDto | undefined;
+  /** Colours of all texts (the production's text theme); undefined uses the defaults. */
+  readonly textTheme?: () => TextThemeDto | undefined;
   /** Accessible name of the stage (`role="img"`). Default “Scene” in the active language. */
   readonly label?: string;
   /**
@@ -140,8 +150,8 @@ export interface SceneRenderer {
   showSlate(slate: SlateDto | null, assetUrl?: string | null): void;
   /** Output: requests a small picture for the device sources of these scenes that are not on stage. */
   setPreloadScenes(scenes: readonly SceneDto[]): void;
-  /** Re-reads `statusOf` for monitor alerts. */
-  setSourceStatuses(): void;
+  /** Re-reads the callbacks (`statusOf`, `textOf`, `textTheme`) and renders again: sources or text colours changed. */
+  refresh(): void;
   /** Rectangles actually used per visible item id of the shown scene (after Auto-Grid), in canvas pixels. */
   effectiveRects(): ReadonlyMap<string, CanvasRect>;
   /** Rendering statistics. */

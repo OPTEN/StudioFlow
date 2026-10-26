@@ -67,7 +67,7 @@ describe('scene renderer: hold frame', () => {
     expect(held()?.style.display).toBe('none');
     expect(box()?.style.filter).toBe('');
     // Exactly one copy, not one per render.
-    mounted.renderer.setSourceStatuses();
+    mounted.renderer.refresh();
     expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
   });
 

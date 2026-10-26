@@ -49,7 +49,7 @@ describe('scene renderer: monitor alerts', () => {
 
   function setStatus(sourceId: string, status: MonitorSourceStatus): void {
     statuses.set(sourceId, status);
-    mounted.renderer.setSourceStatuses();
+    mounted.renderer.refresh();
   }
 
   const outline = (id: string): HTMLElement | null => mounted.part(id, '.sf-r-alert');

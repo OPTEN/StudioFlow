@@ -10,7 +10,7 @@ import type { SourceAvailability } from './types';
 export type SourceState =
   /** Malformed reference, unknown asset or a device source the production does not know. */
   | { readonly kind: 'missing' }
-  /** Image or video asset: always available. */
+  /** Image or video asset, or a known text: always available. */
   | { readonly kind: 'media' }
   /** Device source that never delivered a picture in this session. */
   | { readonly kind: 'pending' }
@@ -33,7 +33,7 @@ export function normalizeHoldMs(holdMs: unknown): number | null {
 
 /**
  * State of a resolved source. `availability` is only read for device sources; `known` is false when the production
- * does not know the device source (Regie `statusOf` returned undefined).
+ * does not know the device source (Regie `statusOf` returned undefined) or the text (no content from `textOf`).
  */
 export function sourceState(
   source: ResolvedSource,
@@ -48,6 +48,8 @@ export function sourceState(
     case 'image':
     case 'video':
       return { kind: 'media' };
+    case 'text':
+      return known ? { kind: 'media' } : { kind: 'missing' };
     case 'device':
       break;
   }

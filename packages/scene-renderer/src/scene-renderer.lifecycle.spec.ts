@@ -76,7 +76,7 @@ describe('scene renderer: lifecycle and robustness', () => {
     mounted.renderer.update(scene('scn_x', []));
     mounted.renderer.showSlate({ title: 'x', subtitle: null, backgroundAssetId: null });
     mounted.renderer.setPreloadScenes([scene('scn_y', [sceneItem('itm_y', CAMERA)])]);
-    mounted.renderer.setSourceStatuses();
+    mounted.renderer.refresh();
     mounted.renderer.resize();
     mounted.provider.lose(CAMERA);
     expect(mounted.renderer.stats()).toEqual({ fps: 0, items: 0, videos: 0 });

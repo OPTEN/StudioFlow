@@ -149,15 +149,23 @@ export class SceneLayer {
     const visible = this.order.flatMap((view, index) =>
       view.current.hidden ? [] : [{ view, state: states[index] }],
     );
+    // Texts overlay the picture: the Auto-Grid places only the other items, texts keep their own rectangle.
+    const ownRects = (entries: typeof visible): [string, CanvasRect][] =>
+      entries.map(({ view }) => [view.current.id, itemRect(view.current)]);
     this.rects =
       this.scene.layoutMode === 'autoGrid'
-        ? autoGridRects(
-            visible.map(({ view, state }) => ({
-              id: view.current.id,
-              available: isGridAvailable(state),
-            })),
-          )
-        : new Map(visible.map(({ view }) => [view.current.id, itemRect(view.current)]));
+        ? new Map([
+            ...autoGridRects(
+              visible
+                .filter(({ view }) => !view.isText)
+                .map(({ view, state }) => ({
+                  id: view.current.id,
+                  available: isGridAvailable(state),
+                })),
+            ),
+            ...ownRects(visible.filter(({ view }) => view.isText)),
+          ])
+        : new Map(ownRects(visible));
 
     let nextExpiry: number | null = null;
     this.order.forEach((view, index) => {
