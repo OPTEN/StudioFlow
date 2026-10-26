@@ -31,7 +31,8 @@ The version is written in these files, all changed by the release pull request a
 | `docker-compose.release.yml` (default of `STUDIOFLOW_IMAGE_TAG`) | The images a release installation starts |
 
 Before the first release every file says `0.0.0`. `release-please-config.json` holds the rules (`node` release type,
-tags `vX.Y.Z`, before 1.0 a breaking change raises the minor version only).
+tags `vX.Y.Z`, before 1.0 a breaking change raises the minor version only, and `initial-version` `0.1.0`: without a
+release tag release-please would otherwise start at `1.0.0`).
 
 ### Rules for commit messages
 

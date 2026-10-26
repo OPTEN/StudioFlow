@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # StudioFlow edge image: Caddy with the DNS-challenge modules, the Caddyfile and the three built frontends.
 # Build context is the repository root (docker-compose.yml: context ".", dockerfile infra/caddy/Dockerfile).
 

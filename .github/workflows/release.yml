@@ -252,6 +252,8 @@ jobs:
       contents: read
       packages: read
     strategy:
+      # Every image reports its own findings; one red image does not cancel the scans of the others.
+      fail-fast: false
       matrix:
         image: [api, web, backup]
     steps:
