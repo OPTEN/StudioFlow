@@ -22,7 +22,7 @@ export const regieOutput: Translation<typeof en> = {
   'regie.output.camera.step5':
     'In Teams, Zoom oder Webex die Kamera «OBS Virtual Camera» wählen und Hintergrundeffekte ausschalten.',
   'regie.output.camera.title': '«{name}» als Kamera nutzen',
-  'regie.output.link.add': 'Link hinzufügen',
+  'regie.output.link.add': 'Link anlegen',
   'regie.output.link.connected': 'verbunden',
   'regie.output.link.created': 'Link «{name}» erstellt',
   'regie.output.link.keyLabel': 'Link «{name}»',

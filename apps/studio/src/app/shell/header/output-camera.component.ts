@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { t } from '@studioflow/i18n';
 import type { OutputLinkDto } from '@studioflow/scene-model';
 import { DownloadService } from '../../core/ui/download.service';
@@ -52,6 +60,7 @@ import {
 export class OutputCameraComponent {
   private readonly downloads = inject(DownloadService);
   private readonly toasts = inject(ToastService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly link = input.required<OutputLinkDto>();
   readonly closed = output();
@@ -64,7 +73,10 @@ export class OutputCameraComponent {
   protected download(): void {
     const link = this.link();
     const file = obsSceneCollectionFileName(link.name);
-    this.downloads.saveText(file, obsSceneCollection(link.name, link.url));
+    // The link is clicked inside the popover, so the click does not count as a click outside and close it.
+    this.downloads.saveText(file, obsSceneCollection(link.name, link.url), {
+      container: this.host.nativeElement,
+    });
     this.toasts.show(t('regie.output.camera.downloaded', { file }));
   }
 }

@@ -25,7 +25,7 @@ export const regieOutput = {
   'regie.output.camera.step5':
     'In Teams, Zoom or Webex pick the camera “OBS Virtual Camera” and switch background effects off.',
   'regie.output.camera.title': 'Use “{name}” as a camera',
-  'regie.output.link.add': 'Add link',
+  'regie.output.link.add': 'Create link',
   'regie.output.link.connected': 'connected',
   'regie.output.link.created': 'Link “{name}” created',
   'regie.output.link.keyLabel': 'Link “{name}”',

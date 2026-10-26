@@ -215,7 +215,7 @@ describe('OutputPopoverComponent', () => {
     it('creates a named link and selects it', async () => {
       await open();
       type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, '  Zoom room ');
-      button('Add link').click();
+      button('Create link').click();
       const request = harness.http.expectOne(BASE + '/links');
       expect(request.request.method).toBe('POST');
       expect(request.request.body).toEqual({ name: 'Zoom room' });
@@ -239,7 +239,7 @@ describe('OutputPopoverComponent', () => {
     ])('refuses the name "%s" without asking the server', async (name, message) => {
       await open();
       type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, name);
-      button('Add link').click();
+      button('Create link').click();
       await render();
       expect(text()).toContain(message);
       harness.http.expectNone(BASE + '/links');
@@ -247,14 +247,14 @@ describe('OutputPopoverComponent', () => {
 
     it('blocks adding at the limit and says why', async () => {
       await open([PROXY, TEAMS], undefined, 2);
-      expect(button('Add link').disabled).toBe(true);
+      expect(button('Create link').disabled).toBe(true);
       expect(text()).toContain('At most 2 links. Revoke one to add another.');
     });
 
     it('shows the failure when the server refuses (limit reached in the meantime)', async () => {
       await open();
       type(element.querySelector<HTMLInputElement>('.c-output-pop__add input')!, 'Extra');
-      button('Add link').click();
+      button('Create link').click();
       harness.http
         .expectOne(BASE + '/links')
         .flush({ code: 'limit_reached', status: 409 }, { status: 409, statusText: 'Conflict' });
@@ -396,10 +396,12 @@ describe('OutputPopoverComponent', () => {
 
     it('downloads the OBS scene collection of the selected link', async () => {
       await open();
-      const saved: { file: string; text: string }[] = [];
-      vi.spyOn(TestBed.inject(DownloadService), 'saveText').mockImplementation((file, content) => {
-        saved.push({ file, text: content });
-      });
+      const saved: { file: string; text: string; container?: HTMLElement }[] = [];
+      vi.spyOn(TestBed.inject(DownloadService), 'saveText').mockImplementation(
+        (file, content, options) => {
+          saved.push({ file, text: content, container: options?.container });
+        },
+      );
       element.querySelectorAll<HTMLButtonElement>('.c-output-pop__link')[1]?.click();
       await render();
       button('Use as camera …').click();
@@ -407,6 +409,7 @@ describe('OutputPopoverComponent', () => {
       button('Download OBS scene collection').click();
       expect(saved).toHaveLength(1);
       expect(saved[0]?.file).toBe('StudioFlow-Teams-camera.json');
+      expect(element.contains(saved[0]?.container ?? null), 'the popover stays open').toBe(true);
       const collection = JSON.parse(saved[0]!.text) as {
         sources: { settings: Record<string, unknown> }[];
       };
