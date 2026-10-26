@@ -24,6 +24,23 @@ rules in `docs/i18n.md`.
   `tests/e2e/README.md`. The harness performs the first-run setup (#4) of a fresh stack itself.
 - No Python on the machine; use Node for scripted edits.
 
+### Cloud container (Claude Code on the web, from 2026-10-26 evening)
+
+The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What it needs, all local and never committed:
+
+- `dockerd` is started by hand; `/etc/docker/daemon.json` sets the registry mirror `https://mirror.gcr.io`, because
+  anonymous Docker Hub pulls from the shared egress address get `429 Too Many Requests`.
+- All outbound HTTPS is intercepted by an egress proxy with its own CA. The base images of the Dockerfiles are re-tagged
+  locally with that CA added (a scratchpad script), so `apk`, `npm`, `dotnet restore` and `go` work inside builds. This
+  only works with the engine's built-in Dockerfile frontend: a `# syntax=docker/dockerfile:1` line makes BuildKit
+  resolve base images from the registry and skip the local ones (the line was removed from the Dockerfiles; it also
+  saved a rate-limited Docker Hub pull on every CI build).
+- .NET 10 SDK under `/root/.dotnet` (dotnet-install with `global.json`); Playwright browsers of the pinned version under
+  `PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright` (the pre-installed ones are another version).
+- The kernel has no `sch_netem`/`ifb`/`act_mirred`: `E2E-NET-00 [lk-pause/netem/disconnect]` fails locally only; it is
+  green on the GitHub runners (`load-netem-modules.sh` prints `Loaded: sch_netem ifb act_mirred`).
+- Agent worktrees live in `.claude/worktrees/` (git-ignored).
+
 ## Done and pushed to `main`
 
 | Issue | State | Commits |
@@ -45,12 +62,18 @@ rules in `docs/i18n.md`.
 | #17 audit log | done, closed | 401f95d .. 921e9e2 |
 | #27 zero-config install | decisions recorded only | bfb6e41 |
 
-## In progress (2026-10-26)
+## In progress (2026-10-26, evening, cloud session)
 
-Sonnet agents in worktrees under `.claude/worktrees/agent-*` (branch `worktree-agent-<id>`):
-#20 E2E texts (stack 1), #12 performance (stack 2), #8 format and resolution (stack 3), #7 audio (stack 4),
-#9 output links and OBS virtual camera (stack 5). Merge procedure: `git rebase main` in the worktree, run the checks,
-`git merge --ff-only` in the main checkout, push.
+The work of the earlier Windows worktrees for #7 and #12 never reached `origin` and was started again. Sonnet agents in
+worktrees, each with its own numbered E2E stack: #7 audio (stack 2), #12 performance (stack 3), #27 zero-config install
+(stack 4), #14 duplicate/export/import (stack 5), the flaky E2E bugs #30-#33 (stack 1), and a package without a stack
+for the #18 version display plus the #5 groundwork (licence, notices, CONTRIBUTING/SECURITY/code of conduct, logo,
+standalone prototype, secret scan). The coordinator reviews and merges each branch into `main` (rebase, checks,
+fast-forward, push).
+
+Release pipeline: the first green Release run is 40403463907 (13a0e00): images, signatures, scans, smoke on the pushed
+images, `:main`, and release PR #29, now "release 0.1.0" (`initial-version` in `release-please-config.json`). The backup
+image no longer ships `gosu` (critical CVE in its Go runtime).
 
 ## Remaining plan
 
@@ -76,7 +99,8 @@ Sonnet agents in worktrees under `.claude/worktrees/agent-*` (branch `worktree-a
 
 ## Known open bugs
 
-- #20 E2E suite asserts German texts (smoke red on `main`)
+- #30-#33 E2E tests that fail or flake under load on GitHub runners (outage detection > 3 s, fade end not observed,
+  empty audit rows, socket hang-up in the concurrent redeem test)
 - #23 owner actions (the owner runs `tools/github-repo-settings.sh`; repo rename later)
 - Fixed and recorded: #21 #24 #25 #26
 
