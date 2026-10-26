@@ -152,6 +152,9 @@ public static class AuditActions
     /// <summary>A text was hidden on the program scene.</summary>
     public const string TextHidden = "text.hidden";
 
+    /// <summary>A channel of the audio mixer changed (mute, gain, mode or sync offset).</summary>
+    public const string AudioChanged = "audio.changed";
+
     /// <summary>A scene was created.</summary>
     public const string SceneCreated = "scene.created";
 
@@ -258,6 +261,31 @@ public static class AuditDetails
 
     /// <summary>The domain that was saved.</summary>
     public const string Domain = "domain";
+
+    /// <summary>What changed on an audio channel, see <see cref="AuditAudioChanges"/>.</summary>
+    public const string Change = "change";
+
+    /// <summary>The new value of the change: dB for a gain, the mode name, milliseconds for a sync offset.</summary>
+    public const string Value = "value";
+}
+
+/// <summary>Values of <see cref="AuditDetails.Change"/> of <see cref="AuditActions.AudioChanged"/>; a request that changes several things writes one entry for each.</summary>
+public static class AuditAudioChanges
+{
+    /// <summary>The channel was muted.</summary>
+    public const string Muted = "muted";
+
+    /// <summary>The channel was unmuted.</summary>
+    public const string Unmuted = "unmuted";
+
+    /// <summary>The gain changed.</summary>
+    public const string Gain = "gain";
+
+    /// <summary>The mode changed.</summary>
+    public const string Mode = "mode";
+
+    /// <summary>The sync offset changed.</summary>
+    public const string SyncOffset = "syncOffset";
 }
 
 /// <summary>Values of <see cref="AuditDetails.Via"/>.</summary>

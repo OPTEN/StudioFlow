@@ -3,7 +3,7 @@ using Opten.StudioFlow.Core.Contracts;
 namespace Opten.StudioFlow.Core.Application;
 
 /// <summary>
-/// What the output page may see (spec 6): production, scenes, sources and assets. Device, pairing, invite, incident,
+/// What the output page may see (spec 6): production, scenes, sources, assets and the audio mixer. Device, pairing, invite, incident,
 /// log and output status events become <see cref="RevisionOnlyEvent"/> with the same revision; sources carry no health.
 /// </summary>
 public static class OutputView
@@ -15,7 +15,7 @@ public static class OutputView
         return productionEvent switch
         {
             ProductionChangedEvent or ProductionCanvasChangedEvent or ProgramSwitchedEvent or SceneUpsertedEvent or SceneRemovedEvent or ScenesReorderedEvent
-                or SourceRemovedEvent or AssetUpsertedEvent or AssetRemovedEvent => productionEvent,
+                or AudioChannelsChangedEvent or SourceRemovedEvent or AssetUpsertedEvent or AssetRemovedEvent => productionEvent,
             SourceUpsertedEvent upserted => upserted with { Source = WithoutHealth(upserted.Source) },
             _ => new RevisionOnlyEvent(productionEvent.Revision),
         };

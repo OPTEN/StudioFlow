@@ -28,6 +28,7 @@ internal static class ApiSurface
         MapScenes(Admin(app.MapGroup("/api/productions/{productionId}/scenes").WithTags("Scenes")));
         MapTexts(Admin(app.MapGroup("/api/productions/{productionId}/texts").WithTags("Texts")));
         MapPlaceholders(Admin(app.MapGroup("/api/productions/{productionId}/placeholders").WithTags("Placeholders")));
+        MapAudio(Admin(app.MapGroup("/api/productions/{productionId}/audio").WithTags("Audio")));
         MapDevices(Admin(app.MapGroup("/api/productions/{productionId}/devices").WithTags("Devices")));
         MapPairingAdmin(Admin(app.MapGroup("/api/productions/{productionId}/pairing").WithTags("Pairing")));
         MapAssets(Admin(app.MapGroup("/api/productions/{productionId}/assets").WithTags("Assets")));
@@ -152,6 +153,16 @@ internal static class ApiSurface
             .WithName("updateText").Produces<TextSourceDto>().ProducesValidationProblem().ProducesProblem(404);
         g.MapDelete("/{textId}", TextEndpoints.DeleteAsync).WithName("deleteText")
             .Produces(204).ProducesProblem(404);
+    }
+
+    /// <summary>
+    /// The audio mixer: <c>PUT /channels</c> sets channels (see <see cref="SetAudioChannelsRequest"/>); the mixer itself
+    /// arrives with the snapshot and as <c>audioChannelsChanged</c> events.
+    /// </summary>
+    private static void MapAudio(RouteGroupBuilder g)
+    {
+        g.MapPut("/channels", AudioEndpoints.SetChannelsAsync).WithName("setAudioChannels")
+            .Produces<IReadOnlyList<AudioChannelDto>>().ProducesValidationProblem().ProducesProblem(404);
     }
 
     private static void MapDevices(RouteGroupBuilder g)

@@ -6,7 +6,7 @@ namespace Opten.StudioFlow.Core.Domain;
 /// <summary>A slot of a device with its permanent slot code.</summary>
 /// <param name="Slot">Slot name (LiveKit track name).</param>
 /// <param name="Code">Slot code, e.g. K2.</param>
-/// <param name="Kind">Camera or screen.</param>
+/// <param name="Kind">Camera, screen or audio (microphone).</param>
 public sealed record DeviceSlot(string Slot, string Code, SourceKind Kind);
 
 /// <summary>
@@ -28,7 +28,7 @@ public sealed class Device
     /// <summary>Display name (1–60 characters).</summary>
     public string Name { get; private set; } = string.Empty;
 
-    /// <summary>Phone or laptop.</summary>
+    /// <summary>Phone, laptop or audio station.</summary>
     public DeviceKind Kind { get; private set; }
 
     /// <summary>Platform text reported by the sender (≤ 80 characters).</summary>
@@ -56,7 +56,7 @@ public sealed class Device
     public bool IsBlocked => State == DeviceState.Blocked;
 
     /// <summary>
-    /// Pairs a new device. A phone gets its <c>camera</c> slot, a laptop <c>screen-1</c>. Returns the device and its
+    /// Pairs a new device. A phone gets its <c>camera</c> slot, a laptop <c>screen-1</c>, an audio station its <c>mic</c> slot. Returns the device and its
     /// secret, which is shown to the device exactly once.
     /// </summary>
     public static (Device Device, string Secret) Pair(string productionId, string name, DeviceKind kind, string? platform, PairingMethod method, DateTimeOffset now, IEnumerable<string> codesInUse)
@@ -75,7 +75,7 @@ public sealed class Device
             PairedAt = now,
             SecretHash = Secrets.Hash(secret),
         };
-        device.AllocateSlot(kind == DeviceKind.Phone ? SourceKind.Camera : SourceKind.Screen, codesInUse);
+        device.AllocateSlot(FirstSlotKind(kind), codesInUse);
         return (device, secret);
     }
 
@@ -83,7 +83,12 @@ public sealed class Device
     public static string DefaultName(DeviceKind kind, IEnumerable<string> existingNames)
     {
         ArgumentNullException.ThrowIfNull(existingNames);
-        var stem = kind == DeviceKind.Phone ? "Phone " : "Laptop ";
+        var stem = kind switch
+        {
+            DeviceKind.Phone => "Phone ",
+            DeviceKind.AudioStation => "Audio station ",
+            _ => "Laptop ",
+        };
         var used = new HashSet<int>();
         foreach (var existing in existingNames)
         {
@@ -103,9 +108,9 @@ public sealed class Device
     }
 
     /// <summary>
-    /// Allocates another slot: the camera (once) or the next free screen (max 9, laptops only). Throws
-    /// <c>limit_reached</c> (409) when no slot of the kind is left and <c>validation_failed</c> (400) for a kind the
-    /// device cannot have (GAP-05, GAP-19).
+    /// Allocates another slot: the camera (once), the microphone (once) or the next free screen (max 9, laptops only).
+    /// Throws <c>limit_reached</c> (409) when no slot of the kind is left and <c>validation_failed</c> (400) for a kind
+    /// the device cannot have (GAP-05, GAP-19): a phone has no screen, an audio station only a microphone.
     /// </summary>
     public DeviceSlot AllocateSlot(SourceKind kind, IEnumerable<string> codesInUse)
     {
@@ -115,7 +120,21 @@ public sealed class Device
             throw StudioFlowException.Invalid("kind", "A phone cannot share a screen.");
         }
 
-        if (kind == SourceKind.Camera)
+        if (Kind == DeviceKind.AudioStation && kind != SourceKind.Audio)
+        {
+            throw StudioFlowException.Invalid("kind", "An audio station only has a microphone.");
+        }
+
+        if (kind == SourceKind.Audio)
+        {
+            if (FindSlot(DeviceSlots.Mic) is not null)
+            {
+                throw StudioFlowException.LimitReached("This device already has a microphone.");
+            }
+
+            slot = DeviceSlots.Mic;
+        }
+        else if (kind == SourceKind.Camera)
         {
             if (FindSlot(DeviceSlots.Camera) is not null)
             {
@@ -132,7 +151,7 @@ public sealed class Device
         }
         else
         {
-            throw StudioFlowException.Invalid("kind", "A device can only have camera or screen slots.");
+            throw StudioFlowException.Invalid("kind", "A device can only have camera, screen or microphone slots.");
         }
 
         var allocated = new DeviceSlot(slot, SlotCodes.Allocate(kind, codesInUse), kind);
@@ -142,7 +161,8 @@ public sealed class Device
 
     /// <summary>
     /// Removes a slot; returns the removed slot or null when the device has no such slot. The camera of a phone is the
-    /// phone's only source and cannot be removed (<c>conflict</c>, GAP-19); the phone is removed as a whole instead.
+    /// phone's only source and so is the microphone of an audio station: they cannot be removed (<c>conflict</c>, GAP-19);
+    /// the device is removed as a whole instead.
     /// </summary>
     public DeviceSlot? ReleaseSlot(string slot)
     {
@@ -155,6 +175,11 @@ public sealed class Device
         if (Kind == DeviceKind.Phone && existing.Kind == SourceKind.Camera)
         {
             throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The camera of a phone cannot be removed.");
+        }
+
+        if (Kind == DeviceKind.AudioStation && existing.Kind == SourceKind.Audio)
+        {
+            throw StudioFlowException.Conflict(ErrorCodes.Conflict, "The microphone of an audio station cannot be removed.");
         }
 
         Slots = [.. Slots.Where(s => s != existing)];
@@ -228,11 +253,17 @@ public sealed class Device
     }
 
     /// <summary>
-    /// Label of a slot: phones “{name}”, laptop screens “{name} · Screen {n}”, a laptop camera “{name} · Camera”.
+    /// Label of a slot: phones “{name}”, laptop screens “{name} · Screen {n}”, a laptop camera “{name} · Camera”, the
+    /// microphone of an audio station “{name}” and the microphone of another device “{name} · Microphone”.
     /// </summary>
     public string LabelOf(DeviceSlot slot)
     {
         ArgumentNullException.ThrowIfNull(slot);
+        if (slot.Kind == SourceKind.Audio)
+        {
+            return Kind == DeviceKind.AudioStation ? Name : $"{Name} · Microphone";
+        }
+
         if (DeviceSlots.ScreenNumber(slot.Slot) is { } screen)
         {
             return $"{Name} · Screen {screen.ToString(CultureInfo.InvariantCulture)}";
@@ -240,6 +271,14 @@ public sealed class Device
 
         return Kind == DeviceKind.Phone ? Name : $"{Name} · Camera";
     }
+
+    /// <summary>The kind of the first slot a device of the kind gets when it is paired.</summary>
+    private static SourceKind FirstSlotKind(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Phone => SourceKind.Camera,
+        DeviceKind.AudioStation => SourceKind.Audio,
+        _ => SourceKind.Screen,
+    };
 
     /// <summary>Slot codes joined for log texts, e.g. “S1, S2”.</summary>
     public string CodesText() => string.Join(", ", Slots.Select(s => s.Code));

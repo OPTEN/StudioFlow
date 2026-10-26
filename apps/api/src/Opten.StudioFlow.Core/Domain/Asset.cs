@@ -36,6 +36,9 @@ public sealed class Asset
     /// <summary>Pixel height of images.</summary>
     public int? Height { get; private set; }
 
+    /// <summary>The file has an audio track (videos only). It becomes a channel of the audio mixer.</summary>
+    public bool HasAudio { get; private set; }
+
     /// <summary>File name inside the production's media folder, e.g. <c>ast_….png</c>.</summary>
     public string FileName { get; private set; } = string.Empty;
 
@@ -49,14 +52,14 @@ public sealed class Asset
     public SourceKind SourceKind => Kind == AssetKind.Image ? SourceKind.Image : SourceKind.Video;
 
     /// <summary>Creates an asset for stored content.</summary>
-    public static Asset Create(string id, string productionId, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now, IEnumerable<string> codesInUse) =>
-        Create(id, productionId, SlotCodes.Allocate(SourceKind.Image, codesInUse), name, kind, contentType, sizeBytes, width, height, fileName, now);
+    public static Asset Create(string id, string productionId, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now, IEnumerable<string> codesInUse, bool hasAudio = false) =>
+        Create(id, productionId, SlotCodes.Allocate(SourceKind.Image, codesInUse), name, kind, contentType, sizeBytes, width, height, fileName, now, hasAudio);
 
     /// <summary>
     /// Creates an asset with a given slot code: the copy of a production keeps the codes of the original, so M2 stays M2
     /// (the caller makes sure the codes are unique).
     /// </summary>
-    public static Asset Create(string id, string productionId, string code, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now) =>
+    public static Asset Create(string id, string productionId, string code, string name, AssetKind kind, string contentType, long sizeBytes, int? width, int? height, string fileName, DateTimeOffset now, bool hasAudio = false) =>
         new()
         {
             Id = id,
@@ -68,6 +71,7 @@ public sealed class Asset
             SizeBytes = sizeBytes,
             Width = width,
             Height = height,
+            HasAudio = kind == AssetKind.Video && hasAudio,
             FileName = fileName,
             CreatedAt = now,
         };

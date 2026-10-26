@@ -92,6 +92,10 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("file_name");
 
+                    b.Property<bool>("HasAudio")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_audio");
+
                     b.Property<int?>("Height")
                         .HasColumnType("integer")
                         .HasColumnName("height");
@@ -383,6 +387,11 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("id");
+
+                    b.Property<string>("AudioChannels")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("audio_channels");
 
                     b.Property<string>("Broadcast")
                         .IsRequired()

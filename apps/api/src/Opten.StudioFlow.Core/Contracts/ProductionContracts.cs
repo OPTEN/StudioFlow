@@ -73,6 +73,7 @@ public sealed record LogEntryDto(DateTimeOffset At, LogCode Code, IReadOnlyDicti
 /// <param name="Scenes">Scenes ordered by <see cref="SceneDto.SortOrder"/>.</param>
 /// <param name="Sources">All sources with health.</param>
 /// <param name="Placeholders">Device sources of the production this one was copied from, not assigned yet.</param>
+/// <param name="AudioChannels">The channels of the audio mixer, one for every source that can carry sound.</param>
 /// <param name="Devices">All paired devices.</param>
 /// <param name="Assets">Uploaded media.</param>
 /// <param name="PairingRequests">Pending /join requests.</param>
@@ -88,6 +89,7 @@ public sealed record ProductionSnapshot(
     IReadOnlyList<SceneDto> Scenes,
     IReadOnlyList<SourceDto> Sources,
     IReadOnlyList<SourcePlaceholderDto> Placeholders,
+    IReadOnlyList<AudioChannelDto> AudioChannels,
     IReadOnlyList<DeviceDto> Devices,
     IReadOnlyList<AssetDto> Assets,
     IReadOnlyList<PairingRequestDto> PairingRequests,

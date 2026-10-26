@@ -46,6 +46,7 @@ public static class LogTexts
         public const string Address = "address";
         public const string Mode = "mode";
         public const string Count = "count";
+        public const string Value = "value";
     }
 
     /// <summary>The log entry of an audit entry in "Recent events", or null when the entry is not shown there.</summary>
@@ -95,7 +96,9 @@ public static class LogTexts
             AuditActions.TextHidden => With(LogCode.TextHidden, $"{code} hidden", (Param.Code, code)),
             AuditActions.SourceReconnecting => With(LogCode.SourceReconnecting, $"{code} reconnecting", (Param.Code, code)),
             AuditActions.SourceEnded when string.Equals(entry.Detail(AuditDetails.Kind), nameof(SourceKind.Camera), StringComparison.Ordinal) => With(LogCode.CameraEnded, $"{code} camera stopped", (Param.Code, code)),
+            AuditActions.SourceEnded when string.Equals(entry.Detail(AuditDetails.Kind), nameof(SourceKind.Audio), StringComparison.Ordinal) => With(LogCode.AudioEnded, $"{code} microphone stopped", (Param.Code, code)),
             AuditActions.SourceEnded => With(LogCode.ScreenEnded, $"{code} sharing stopped", (Param.Code, code)),
+            AuditActions.SourceLost when string.Equals(entry.Detail(AuditDetails.Kind), nameof(SourceKind.Audio), StringComparison.Ordinal) => With(LogCode.AudioLost, $"{code} no sound", (Param.Code, code)),
             AuditActions.SourceLost => With(LogCode.SourceLost, $"{code} no picture", (Param.Code, code)),
             AuditActions.SourceRecovered => Recovered(entry, code),
             AuditActions.AccountSetUp => With(LogCode.AccountSetUp, "Account set up"),
@@ -127,6 +130,7 @@ public static class LogTexts
             AuditActions.SettingsEmbeddingChanged => With(LogCode.SettingsEmbeddingChanged, $"Embedding changed ({entry.Detail(AuditDetails.Count)} origins)", (Param.Count, entry.Detail(AuditDetails.Count))),
             AuditActions.SettingsBackupChanged => With(LogCode.SettingsBackupChanged, "Backup settings changed"),
             AuditActions.BackupRequested => With(LogCode.BackupRequested, "Backup requested"),
+            AuditActions.AudioChanged => AudioChange(entry, code),
             _ => null,
         };
     }
@@ -154,6 +158,34 @@ public static class LogTexts
         };
         return With(LogCode.CameraLensSwitched, $"{subject}: lens switched to {name}", (Param.Subject, subject), (Param.Lens, param));
     }
+
+    private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text)? AudioChange(AuditEntry entry, string code)
+    {
+        var value = entry.Detail(AuditDetails.Value);
+        return entry.Detail(AuditDetails.Change) switch
+        {
+            AuditAudioChanges.Muted => With(LogCode.AudioMuted, $"{code} muted", (Param.Code, code)),
+            AuditAudioChanges.Unmuted => With(LogCode.AudioUnmuted, $"{code} unmuted", (Param.Code, code)),
+            AuditAudioChanges.Gain => With(LogCode.AudioGainChanged, $"{code} gain {FormatGain(value)}", (Param.Code, code), (Param.Value, value)),
+            AuditAudioChanges.Mode => With(LogCode.AudioModeChanged, $"{code} mode {ModeText(value)}", (Param.Code, code), (Param.Value, value)),
+            AuditAudioChanges.SyncOffset => With(LogCode.AudioSyncOffsetChanged, $"{code} sync offset {value} ms", (Param.Code, code), (Param.Value, value)),
+            _ => null,
+        };
+    }
+
+    /// <summary>"-6.0 dB"; the floor of the fader is "silence".</summary>
+    private static string FormatGain(string value) =>
+        double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var db)
+            ? db <= AudioMixerRules.MinGainDb ? "silence" : $"{db.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} dB"
+            : value;
+
+    private static string ModeText(string value) => value switch
+    {
+        "always" => "always audible",
+        "follow" => "follows the picture",
+        "off" => "off",
+        _ => value,
+    };
 
     private static (LogCode Code, IReadOnlyDictionary<string, string> Params, string Text) Retention(AuditEntry entry)
     {

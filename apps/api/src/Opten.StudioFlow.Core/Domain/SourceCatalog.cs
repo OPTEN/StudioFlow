@@ -32,20 +32,35 @@ public sealed class SourceCatalog
         {
             foreach (var slot in device.Slots)
             {
-                var id = device.SourceIdOf(slot);
-                entries[id] = new SourceEntry(id, slot.Code, slot.Kind, device.LabelOf(slot), device, slot, null);
+                var entry = DeviceEntry(device, slot);
+                entries[entry.Id] = entry;
             }
         }
 
         foreach (var asset in assets)
         {
-            entries[asset.Id] = new SourceEntry(asset.Id, asset.Code, asset.SourceKind, asset.Name, null, null, asset);
+            entries[asset.Id] = AssetEntry(asset);
         }
 
         foreach (var text in texts ?? [])
         {
             entries[text.Id] = TextEntry(text);
         }
+    }
+
+    /// <summary>The catalog entry of a slot of a device.</summary>
+    public static SourceEntry DeviceEntry(Device device, DeviceSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(slot);
+        return new SourceEntry(device.SourceIdOf(slot), slot.Code, slot.Kind, device.LabelOf(slot), device, slot, null);
+    }
+
+    /// <summary>The catalog entry of an asset.</summary>
+    public static SourceEntry AssetEntry(Asset asset)
+    {
+        ArgumentNullException.ThrowIfNull(asset);
+        return new SourceEntry(asset.Id, asset.Code, asset.SourceKind, asset.Name, null, null, asset);
     }
 
     /// <summary>The catalog entry of a text source; its label is the first line.</summary>
@@ -66,6 +81,9 @@ public sealed class SourceCatalog
 
     /// <summary>The source with the given reference, if any.</summary>
     public SourceEntry? Find(string sourceId) => entries.GetValueOrDefault(sourceId);
+
+    /// <summary>True when <paramref name="sourceId"/> is an audio-only source (a microphone), which no scene item can show.</summary>
+    public bool IsAudioOnly(string? sourceId) => sourceId is not null && entries.TryGetValue(sourceId, out var entry) && entry.Kind == SourceKind.Audio;
 
     /// <summary>True when <paramref name="sourceId"/> is a text source of the production.</summary>
     public bool IsText(string? sourceId) => sourceId is not null && entries.TryGetValue(sourceId, out var entry) && entry.Kind == SourceKind.Text;

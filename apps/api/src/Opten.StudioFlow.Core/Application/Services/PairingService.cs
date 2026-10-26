@@ -101,7 +101,7 @@ public sealed class PairingService(
                 var now = context.Now;
                 context.OnCommitted(() => request.Approve(credentials, now));
                 context.Emit(revision => new PairingRequestRemovedEvent(revision, request.Id, PairingRequestStatus.Approved));
-                Paired(context, device, AuditActors.Admin);
+                await PairedAsync(context, device, AuditActors.Admin, cancellationToken);
                 return Dtos.Device(device, context.Runtime.FindDevice(device.Id));
             },
             cancellationToken);
@@ -183,8 +183,8 @@ public sealed class PairingService(
     /// <summary>
     /// Redeems a QR code or invite link. Idempotent per client id for <c>Pairing:RedeemIdempotencyWindow</c>: the same
     /// client gets the same device with a rotated secret. Unknown, expired, used or revoked tokens are
-    /// <c>pairing_expired</c> (410). The invite decides the device kind: a QR code pairs a phone, a link a laptop; the
-    /// kind in the request is ignored (GAP-19).
+    /// <c>pairing_expired</c> (410). The invite decides the device kind: a QR code pairs a phone, a link a laptop (or an audio
+    /// station when the request says so); any other kind in the request is ignored (GAP-19).
     /// </summary>
     public async Task<DeviceCredentialsDto> RedeemAsync(string token, RedeemInviteRequest request, CancellationToken cancellationToken)
     {
@@ -214,13 +214,13 @@ public sealed class PairingService(
 
                 var devices = await context.Data.Devices.ListAsync(productionId, cancellationToken);
                 var catalog = await context.CatalogAsync(cancellationToken);
-                var kind = invite.DeviceKind;
+                var kind = KindOf(invite, request.Kind);
                 var name = TextRules.Truncate(request.Name, TextRules.DeviceNameMax) ?? Device.DefaultName(kind, devices.Select(d => d.Name));
                 var (device, secret) = Device.Pair(productionId, name, kind, request.Platform, invite.PairingMethod, context.Now, catalog.CodesInUse);
                 invite.Redeem(clientId, device.Id, context.Now);
                 context.Data.Devices.Add(device);
                 context.Emit(revision => new InviteRemovedEvent(revision, invite.Id));
-                Paired(context, device, AuditActors.Device(device.Id));
+                await PairedAsync(context, device, AuditActors.Device(device.Id), cancellationToken);
                 if (invite.Kind == InviteKind.PhoneQr)
                 {
                     CreateInvite(context, InviteKind.PhoneQr, AuditActors.System);
@@ -270,6 +270,13 @@ public sealed class PairingService(
         }
     }
 
+    /// <summary>
+    /// The device kind of a redeemed invite: a QR code pairs a phone, a link a laptop – or, when the person at the mixing
+    /// desk says so, an audio station (the only kind the request can change, and only on a laptop link).
+    /// </summary>
+    private static DeviceKind KindOf(Invite invite, DeviceKind requested) =>
+        invite.DeviceKind == DeviceKind.Laptop && requested == DeviceKind.AudioStation ? DeviceKind.AudioStation : invite.DeviceKind;
+
     private static string ValidateRedeem(RedeemInviteRequest request)
     {
         var errors = new ValidationErrors();
@@ -294,7 +301,7 @@ public sealed class PairingService(
         return clientId;
     }
 
-    private static void Paired(MutationContext context, Device device, string actor)
+    private static async Task PairedAsync(MutationContext context, Device device, string actor, CancellationToken cancellationToken)
     {
         DeviceEvents.EmitDevice(context, device);
         foreach (var slot in device.Slots)
@@ -302,6 +309,7 @@ public sealed class PairingService(
             SourceMonitor.Introduce(context, device, slot);
         }
 
+        await AudioMixerSync.AddAsync(context, device, device.Slots, cancellationToken);
         context.Audit(actor, AuditActions.DevicePaired, MutationContextExtensions.DeviceDetails(device));
     }
 

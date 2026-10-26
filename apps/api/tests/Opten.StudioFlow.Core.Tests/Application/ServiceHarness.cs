@@ -26,6 +26,7 @@ internal sealed class ServiceHarness : IDisposable
         Scenes = new SceneService(Coordinator);
         DeviceAdmin = new DeviceAdminService(Coordinator, kicker, SourceOptions);
         Texts = new TextService(Coordinator);
+        Audio = new AudioMixerService(Coordinator, Data);
         Devices = new DeviceSessionService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, SourceOptions);
         Pairing = new PairingService(Coordinator, Data, Requests, Options, PairingOptions, Clock);
         Outputs = new OutputService(Coordinator, Data, Runtimes, new FakeTokens(), kicker, Options);
@@ -69,6 +70,8 @@ internal sealed class ServiceHarness : IDisposable
 
     public TextService Texts { get; }
 
+    public AudioMixerService Audio { get; }
+
     public DeviceAdminService DeviceAdmin { get; }
 
     public DeviceSessionService Devices { get; }
@@ -99,6 +102,15 @@ internal sealed class ServiceHarness : IDisposable
         var invite = await Pairing.CreateInviteAsync(Production.Id, new CreateInviteRequest(InviteKind.LaptopLink), CancellationToken.None);
         var token = invite.Url[(invite.Url.LastIndexOf('/') + 1)..];
         var credentials = await Pairing.RedeemAsync(token, new RedeemInviteRequest(Guid.NewGuid().ToString(), name, DeviceKind.Laptop, "Windows"), CancellationToken.None);
+        var device = Data.Devices.Single(d => d.Id == credentials.DeviceId);
+        return (device, new DeviceIdentity(device.Id, Production.Id, false));
+    }
+
+    public async Task<(Device Device, DeviceIdentity Identity)> PairAudioStationAsync(string name = "Mixing desk")
+    {
+        var invite = await Pairing.CreateInviteAsync(Production.Id, new CreateInviteRequest(InviteKind.LaptopLink), CancellationToken.None);
+        var token = invite.Url[(invite.Url.LastIndexOf('/') + 1)..];
+        var credentials = await Pairing.RedeemAsync(token, new RedeemInviteRequest(Guid.NewGuid().ToString(), name, DeviceKind.AudioStation, "Windows"), CancellationToken.None);
         var device = Data.Devices.Single(d => d.Id == credentials.DeviceId);
         return (device, new DeviceIdentity(device.Id, Production.Id, false));
     }

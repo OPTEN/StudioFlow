@@ -580,6 +580,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/productions/{productionId}/audio/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setAudioChannels"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productions/{productionId}/devices/{deviceId}": {
         parameters: {
             query?: never;
@@ -1396,6 +1412,8 @@ export interface components {
              * @description Pixel height where known.
              */
             height: null | number;
+            /** @description The file has an audio track (videos only); it becomes a channel of the audio mixer. */
+            hasAudio: boolean;
             /**
              * Format: date-time
              * @description Upload time.
@@ -1414,6 +1432,36 @@ export interface components {
             /** @description The source: a device slot, an image or a video. A text cannot take the place of a camera. */
             sourceId: string;
         };
+        /**
+         * @description One channel of the audio mixer of a production (issue #7): the level, the mute switch, the mode and the sync offset of
+         *     one audio source. The mixer is one global state per production, revisioned like the scenes; the output page mixes the
+         *     sound itself (Web Audio) from this state. There is one channel for every source that can carry sound: a microphone
+         *     slot (`{deviceId}/mic`, source kind audio), a screen (`{deviceId}/screen-n`, the audio of the shared tab or
+         *     system) and a video with sound (`{assetId}`).
+         */
+        AudioChannelDto: {
+            /** @description The source the channel belongs to. */
+            sourceId: string;
+            /**
+             * Format: double
+             * @description Fader in dB, −100 (silence, shown as −∞) to +10. 0 is unity gain.
+             */
+            gainDb: number;
+            /** @description Mute switch; a muted channel is silent whatever the mode. */
+            muted: boolean;
+            /** @description Always audible, follows the picture, or off. */
+            mode: components["schemas"]["AudioMode"];
+            /**
+             * Format: int32
+             * @description Delay in milliseconds, 0 to 500, to bring the sound in step with a picture that arrives later.
+             */
+            syncOffsetMs: number;
+        };
+        /**
+         * @description How an audio channel of the mixer is switched (spec 4.4, issue #7).
+         * @enum {unknown}
+         */
+        AudioMode: "always" | "follow" | "off";
         /**
          * @description What an entry of the audit log is about: the category filter of the log view and a column of the export.
          * @enum {unknown}
@@ -1871,7 +1919,7 @@ export interface components {
          * @description Kind of a paired device.
          * @enum {unknown}
          */
-        DeviceKind: "phone" | "laptop";
+        DeviceKind: "phone" | "laptop" | "audioStation";
         /** @description Periodic report of a device (about every two seconds). */
         DeviceReportDto: {
             /** @description Media connection state. */
@@ -2116,7 +2164,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "canvasChanged" | "productionDuplicated" | "productionExported" | "productionImported" | "placeholderAssigned" | "placeholderRemoved" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention" | "settingsMediaChanged" | "settingsAddressChanged" | "settingsEmbeddingChanged" | "settingsBackupChanged" | "backupRequested" | "audioEnded" | "audioLost" | "audioMuted" | "audioUnmuted" | "audioGainChanged" | "audioModeChanged" | "audioSyncOffsetChanged";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -2183,6 +2231,21 @@ export interface components {
             /** @description The IPv4 address to announce for the test. */
             address: string;
         };
+        /** @description The sound of an output page as it reports it. */
+        OutputAudioDto: {
+            /** @description Off (on purpose), running, blocked by the browser or unavailable. */
+            state: components["schemas"]["OutputAudioState"];
+            /**
+             * Format: double
+             * @description Peak level of the program mix in dBFS over the report interval; null without signal (below −90 dBFS) or without audio.
+             */
+            levelDb: null | number;
+        };
+        /**
+         * @description What the output page reports about its sound.
+         * @enum {unknown}
+         */
+        OutputAudioState: "off" | "running" | "blocked" | "unavailable";
         /**
          * @description Output variant of ProductionChangesDto (hub `SubscribeOutput` and `GET /api/output/{slug}/changes`):
          *     changes the output must not see – devices, pairing, invites, incidents, log, output status and health-only source
@@ -2264,6 +2327,7 @@ export interface components {
              * @description Number of those streams decoded in software.
              */
             softwareDecodedStreams?: null | number;
+            audio?: null | components["schemas"]["OutputAudioDto"];
         };
         /** @description Status report of an output page, sent about every two seconds. */
         OutputReport: {
@@ -2296,6 +2360,7 @@ export interface components {
              * @description Of those, the number decoded in software.
              */
             softwareDecodedStreams?: null | number;
+            audio?: null | components["schemas"]["OutputAudioDto"];
         };
         /** @description Output settings for the Regie. */
         OutputSettingsDto: {
@@ -2327,6 +2392,8 @@ export interface components {
             scenes: components["schemas"]["SceneDto"][];
             /** @description Sources without health. */
             sources: components["schemas"]["SourceDto"][];
+            /** @description The channels of the audio mixer; the output page mixes the sound from them. */
+            audioChannels: components["schemas"]["AudioChannelDto"][];
             /** @description Media with content URLs. */
             assets: components["schemas"]["AssetDto"][];
         };
@@ -2508,7 +2575,7 @@ export interface components {
          *     Clients apply an event only when its revision is exactly one above their own; a larger gap triggers a resync
          *     (new snapshot), a smaller revision is ignored.
          */
-        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProductionCanvasChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventPlaceholderRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
+        ProductionEvent: components["schemas"]["ProductionEventProductionChangedEvent"] | components["schemas"]["ProductionEventProductionCanvasChangedEvent"] | components["schemas"]["ProductionEventProgramSwitchedEvent"] | components["schemas"]["ProductionEventAudioChannelsChangedEvent"] | components["schemas"]["ProductionEventSceneUpsertedEvent"] | components["schemas"]["ProductionEventSceneRemovedEvent"] | components["schemas"]["ProductionEventScenesReorderedEvent"] | components["schemas"]["ProductionEventSourceUpsertedEvent"] | components["schemas"]["ProductionEventSourceRemovedEvent"] | components["schemas"]["ProductionEventPlaceholderRemovedEvent"] | components["schemas"]["ProductionEventDeviceUpsertedEvent"] | components["schemas"]["ProductionEventDeviceRemovedEvent"] | components["schemas"]["ProductionEventAssetUpsertedEvent"] | components["schemas"]["ProductionEventAssetRemovedEvent"] | components["schemas"]["ProductionEventPairingRequestUpsertedEvent"] | components["schemas"]["ProductionEventPairingRequestRemovedEvent"] | components["schemas"]["ProductionEventInviteUpsertedEvent"] | components["schemas"]["ProductionEventInviteRemovedEvent"] | components["schemas"]["ProductionEventIncidentUpsertedEvent"] | components["schemas"]["ProductionEventIncidentRemovedEvent"] | components["schemas"]["ProductionEventOutputStatusChangedEvent"] | components["schemas"]["ProductionEventLogAppendedEvent"] | components["schemas"]["ProductionEventRevisionOnlyEvent"];
         /** @description An asset was deleted. */
         ProductionEventAssetRemovedEvent: {
             /** @enum {string} */
@@ -2525,6 +2592,20 @@ export interface components {
             /** @enum {string} */
             type: "assetUpserted";
             asset: components["schemas"]["AssetDto"];
+            /**
+             * Format: int64
+             * @description Revision after this change.
+             */
+            revision: number;
+        };
+        /**
+         * @description Channels of the audio mixer were created or changed; each listed channel replaces the one of the same source. A channel
+         *     disappears with its source (SourceRemovedEvent), there is no separate removal event.
+         */
+        ProductionEventAudioChannelsChangedEvent: {
+            /** @enum {string} */
+            type: "audioChannelsChanged";
+            channels: components["schemas"]["AudioChannelDto"][];
             /**
              * Format: int64
              * @description Revision after this change.
@@ -2789,6 +2870,8 @@ export interface components {
             sources: components["schemas"]["SourceDto"][];
             /** @description Device sources of the production this one was copied from, not assigned yet. */
             placeholders: components["schemas"]["SourcePlaceholderDto"][];
+            /** @description The channels of the audio mixer, one for every source that can carry sound. */
+            audioChannels: components["schemas"]["AudioChannelDto"][];
             /** @description All paired devices. */
             devices: components["schemas"]["DeviceDto"][];
             /** @description Uploaded media. */
@@ -2973,6 +3056,21 @@ export interface components {
         SessionDto: {
             username: string;
         };
+        /**
+         * @description Sets channels of the mixer (`PUT …/audio/channels`). Every listed channel replaces the stored one in full; channels
+         *     that are not listed stay as they are, so two Regie seats that move different faders do not overwrite each other.
+         *     Undo and redo send the previous state of the channels they touched.
+         */
+        SetAudioChannelsRequest: {
+            /** @description The channels to set; at most one entry per source. */
+            channels: components["schemas"]["AudioChannelDto"][];
+            /**
+             * @description True while a fader is being dragged: the change is applied and sent at once, but not written to the audit log. The last
+             *     request of the drag is sent with false.
+             * @default false
+             */
+            adjusting: boolean;
+        };
         /** @description Sets or clears the preview scene. */
         SetPreviewRequest: {
             sceneId: null | string;
@@ -3074,7 +3172,7 @@ export interface components {
          * @description Kind of a source.
          * @enum {unknown}
          */
-        SourceKind: "camera" | "screen" | "image" | "video" | "text";
+        SourceKind: "camera" | "screen" | "image" | "video" | "text" | "audio";
         /**
          * @description A device source of the production this one was copied from (duplicate or import). Devices belong to one production
          *     and are paired anew, so the copy keeps the place of the source as a placeholder: scene items point to
@@ -3307,6 +3405,8 @@ export type ApplyTargetDto = components['schemas']['ApplyTargetDto'];
 export type AssetDto = components['schemas']['AssetDto'];
 export type AssetKind = components['schemas']['AssetKind'];
 export type AssignPlaceholderRequest = components['schemas']['AssignPlaceholderRequest'];
+export type AudioChannelDto = components['schemas']['AudioChannelDto'];
+export type AudioMode = components['schemas']['AudioMode'];
 export type AuditCategory = components['schemas']['AuditCategory'];
 export type AuditEntryDto = components['schemas']['AuditEntryDto'];
 export type AuditPageDto = components['schemas']['AuditPageDto'];
@@ -3375,6 +3475,8 @@ export type MediaSettingsDto = components['schemas']['MediaSettingsDto'];
 export type MediaSuggestionsDto = components['schemas']['MediaSuggestionsDto'];
 export type MediaTestDto = components['schemas']['MediaTestDto'];
 export type MediaTestRequest = components['schemas']['MediaTestRequest'];
+export type OutputAudioDto = components['schemas']['OutputAudioDto'];
+export type OutputAudioState = components['schemas']['OutputAudioState'];
 export type OutputChangesDto = components['schemas']['OutputChangesDto'];
 export type OutputLinkDto = components['schemas']['OutputLinkDto'];
 export type OutputLinkStatusDto = components['schemas']['OutputLinkStatusDto'];
@@ -3395,6 +3497,7 @@ export type ProductionDto = components['schemas']['ProductionDto'];
 export type ProductionEvent = components['schemas']['ProductionEvent'];
 export type ProductionEventAssetRemovedEvent = components['schemas']['ProductionEventAssetRemovedEvent'];
 export type ProductionEventAssetUpsertedEvent = components['schemas']['ProductionEventAssetUpsertedEvent'];
+export type ProductionEventAudioChannelsChangedEvent = components['schemas']['ProductionEventAudioChannelsChangedEvent'];
 export type ProductionEventDeviceRemovedEvent = components['schemas']['ProductionEventDeviceRemovedEvent'];
 export type ProductionEventDeviceUpsertedEvent = components['schemas']['ProductionEventDeviceUpsertedEvent'];
 export type ProductionEventIncidentRemovedEvent = components['schemas']['ProductionEventIncidentRemovedEvent'];
@@ -3431,6 +3534,7 @@ export type SceneItemDto = components['schemas']['SceneItemDto'];
 export type SceneLayoutMode = components['schemas']['SceneLayoutMode'];
 export type ServerSettingsDto = components['schemas']['ServerSettingsDto'];
 export type SessionDto = components['schemas']['SessionDto'];
+export type SetAudioChannelsRequest = components['schemas']['SetAudioChannelsRequest'];
 export type SetPreviewRequest = components['schemas']['SetPreviewRequest'];
 export type SetupRequest = components['schemas']['SetupRequest'];
 export type SetupStatusDto = components['schemas']['SetupStatusDto'];
@@ -5048,6 +5152,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaceholderChangeDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    setAudioChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAudioChannelsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioChannelDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
             /** @description Not Found */

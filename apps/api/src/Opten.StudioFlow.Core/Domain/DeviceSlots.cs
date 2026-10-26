@@ -2,11 +2,17 @@ using System.Globalization;
 
 namespace Opten.StudioFlow.Core.Domain;
 
-/// <summary>Slot names of a device: <c>camera</c> and <c>screen-1</c> … <c>screen-9</c>; the slot is the LiveKit track name.</summary>
+/// <summary>Slot names of a device: <c>camera</c>, <c>mic</c> and <c>screen-1</c> … <c>screen-9</c>; the slot is the LiveKit track name.</summary>
 public static class DeviceSlots
 {
     /// <summary>The camera slot.</summary>
     public const string Camera = "camera";
+
+    /// <summary>The microphone slot (a device microphone, or the feed of an audio station).</summary>
+    public const string Mic = "mic";
+
+    /// <summary>Suffix of the LiveKit track that carries the sound of a screen share: <c>screen-1-audio</c>.</summary>
+    public const string AudioSuffix = "-audio";
 
     /// <summary>Maximum number of screen slots per device.</summary>
     public const int MaxScreens = 9;
@@ -21,8 +27,8 @@ public static class DeviceSlots
         return ScreenPrefix + number.ToString(CultureInfo.InvariantCulture);
     }
 
-    /// <summary>True for <c>camera</c> and <c>screen-1</c> … <c>screen-9</c>.</summary>
-    public static bool IsValid(string? slot) => slot == Camera || ScreenNumber(slot) is not null;
+    /// <summary>True for <c>camera</c>, <c>mic</c> and <c>screen-1</c> … <c>screen-9</c>.</summary>
+    public static bool IsValid(string? slot) => slot is Camera or Mic || ScreenNumber(slot) is not null;
 
     /// <summary>Number of a screen slot, or null when <paramref name="slot"/> is not a screen slot.</summary>
     public static int? ScreenNumber(string? slot)

@@ -155,6 +155,10 @@ public sealed class Scene
         {
             errors.Add("source", "This source does not exist.");
         }
+        else if (source.Kind == SourceKind.Audio)
+        {
+            errors.Add("source", "An audio source has no picture.");
+        }
 
         errors.ThrowIfAny();
         if (Items.Count >= SceneItemRules.MaxItems)
@@ -351,10 +355,10 @@ public sealed class Scene
     }
 
     private static bool IsKept(string source, SceneItemDto? existing, SourceCatalog catalog) =>
-        catalog.Contains(source) || string.Equals(existing?.Source, source, StringComparison.Ordinal);
+        (catalog.Contains(source) && !catalog.IsAudioOnly(source)) || string.Equals(existing?.Source, source, StringComparison.Ordinal);
 
     private static bool IsKeptFallback(string fallback, SceneItemDto? existing, SourceCatalog catalog) =>
-        (catalog.Contains(fallback) && !catalog.IsText(fallback)) || string.Equals(existing?.OnLost?.FallbackSource, fallback, StringComparison.Ordinal);
+        (catalog.Contains(fallback) && !catalog.IsText(fallback) && !catalog.IsAudioOnly(fallback)) || string.Equals(existing?.OnLost?.FallbackSource, fallback, StringComparison.Ordinal);
 
     private int IndexOf(string itemId)
     {

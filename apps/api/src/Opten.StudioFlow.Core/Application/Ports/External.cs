@@ -5,7 +5,7 @@ namespace Opten.StudioFlow.Core.Application.Ports;
 /// <summary>Issues LiveKit access tokens (spec 7). The grants follow the role exactly.</summary>
 public interface ILiveKitTokenIssuer
 {
-    /// <summary>Token for a sender: publish camera and screen share, no subscribe, no data.</summary>
+    /// <summary>Token for a sender: publish camera, screen share, microphone and screen share audio, no subscribe, no data.</summary>
     LiveKitTokenDto IssueSenderToken(string room, string identity, string name);
 
     /// <summary>Token for the Regie or the output: hidden subscriber without publish rights.</summary>
@@ -83,7 +83,8 @@ public sealed record LiveKitEvent(LiveKitEventKind Kind, string Room, string? Ro
 /// <param name="SizeBytes">Stored size.</param>
 /// <param name="Width">Image width where readable.</param>
 /// <param name="Height">Image height where readable.</param>
-public sealed record StoredMedia(AssetKind Kind, string ContentType, string FileName, long SizeBytes, int? Width, int? Height);
+/// <param name="HasAudio">The video has an audio track (always false for images).</param>
+public sealed record StoredMedia(AssetKind Kind, string ContentType, string FileName, long SizeBytes, int? Width, int? Height, bool HasAudio = false);
 
 /// <summary>Media storage (spec 4.7): verifies the type by magic bytes and enforces the size limits.</summary>
 public interface IMediaStore

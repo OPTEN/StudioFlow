@@ -75,9 +75,44 @@ public static class MediaSamples
         return bytes;
     }
 
+    /// <summary>An MP4 with the box structure of a real file: <c>ftyp</c>, <c>moov</c> with one <c>trak</c> per handler, <c>mdat</c>.</summary>
+    /// <param name="handlers">Handler types of the tracks, e.g. <c>vide</c> and <c>soun</c>.</param>
+    /// <param name="moovFirst">True for a file made for streaming (<c>moov</c> before <c>mdat</c>), false for the plain layout.</param>
+    public static byte[] Mp4WithTracks(string[] handlers, bool moovFirst = true)
+    {
+        var ftyp = Box("ftyp", [.. "isom"u8.ToArray(), 0, 0, 2, 0, .. "isomiso2"u8.ToArray()]);
+        var tracks = handlers.SelectMany(handler => Box("trak", Box("mdia", Box("hdlr", [0, 0, 0, 0, 0, 0, 0, 0, .. Encoding.ASCII.GetBytes(handler), .. new byte[13]])))).ToArray();
+        var moov = Box("moov", tracks);
+        var mdat = Box("mdat", new byte[256]);
+        return [.. ftyp, .. (moovFirst ? moov : mdat), .. (moovFirst ? mdat : moov)];
+    }
+
+    /// <summary>A WebM like the browser's recorder writes it: a segment of unknown size with the tracks before the first cluster.</summary>
+    /// <param name="trackTypes">Matroska track types: 1 video, 2 audio.</param>
+    public static byte[] WebMWithTracks(params int[] trackTypes)
+    {
+        var header = Element([0x1A, 0x45, 0xDF, 0xA3], [0x42, 0x86, 0x81, 0x01, 0x42, 0x82, 0x84, .. "webm"u8.ToArray()]);
+        var entries = trackTypes.SelectMany((type, index) => Element([0xAE], [.. Element([0xD7], [(byte)(index + 1)]), .. Element([0x83], [(byte)type])])).ToArray();
+        var segment = new byte[] { 0x18, 0x53, 0x80, 0x67, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        return [.. header, .. segment, .. Element([0x15, 0x49, 0xA9, 0x66], [0x2A, 0xD7, 0xB1, 0x83, 0x0F, 0x42, 0x40]), .. Element([0x16, 0x54, 0xAE, 0x6B], entries), .. Element([0x1F, 0x43, 0xB6, 0x75], new byte[32])];
+    }
+
     public static byte[] Gif() => "GIF89a\u0001\u0000\u0001\u0000\u0000\u0000\u0000;"u8.ToArray();
 
     public static byte[] Svg() => "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>"u8.ToArray();
+
+    private static byte[] Box(string type, byte[] payload)
+    {
+        var box = new byte[8 + payload.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(box, (uint)box.Length);
+        Encoding.ASCII.GetBytes(type).CopyTo(box, 4);
+        payload.CopyTo(box, 8);
+        return box;
+    }
+
+    /// <summary>An EBML element with a one or two byte size.</summary>
+    private static byte[] Element(byte[] id, byte[] payload) =>
+        payload.Length < 127 ? [.. id, (byte)(0x80 | payload.Length), .. payload] : [.. id, (byte)(0x40 | (payload.Length >> 8)), (byte)payload.Length, .. payload];
 
     private static byte[] WebPHeader(string chunk, int length)
     {

@@ -16,6 +16,11 @@ public sealed record ProgramChange(string? ProgramSceneId, string? PreviewSceneI
 /// <param name="Items">Scene items that show the source now or were removed.</param>
 public sealed record PlaceholderChange(SourcePlaceholderDto Placeholder, IReadOnlyList<Scene> Scenes, int Items);
 
+/// <summary>A change of one mixer channel: the state before and after.</summary>
+/// <param name="Before">The channel before the request (its defaults when it had none).</param>
+/// <param name="After">The channel now.</param>
+public sealed record AudioChannelChange(AudioChannelDto Before, AudioChannelDto After);
+
 /// <summary>
 /// A production (OBS: scene collection), the aggregate root of scenes and switching state (spec 4.2).
 /// </summary>
@@ -91,6 +96,12 @@ public sealed class Production
     /// point to them and show “Source missing”; their codes are reserved.
     /// </summary>
     public IReadOnlyList<SourcePlaceholderDto> Placeholders { get; private set; } = [];
+
+    /// <summary>
+    /// The audio mixer (issue #7): one channel for every source that can carry sound, in no particular order. A plain
+    /// list of contract records, so exporting a production can take it as it is.
+    /// </summary>
+    public IReadOnlyList<AudioChannelDto> AudioChannels { get; private set; } = [];
 
     /// <summary>Aspect ratio of the output canvas.</summary>
     public CanvasFormat CanvasFormat { get; private set; } = Canvases.DefaultFormat;
@@ -559,6 +570,107 @@ public sealed class Production
 
         Placeholders = [.. Placeholders.Where(p => !ReferenceEquals(p, placeholder))];
         return new PlaceholderChange(placeholder, changed, items);
+    }
+
+    /// <summary>The channel of a source, or null when it has none.</summary>
+    public AudioChannelDto? FindAudioChannel(string sourceId) =>
+        AudioChannels.FirstOrDefault(c => string.Equals(c.SourceId, sourceId, StringComparison.Ordinal));
+
+    /// <summary>
+    /// Sets channels of the mixer: every listed channel replaces the stored one of its source (or creates it); the others
+    /// stay. Validates all of them first, so a request is applied completely or not at all. Returns the channels that
+    /// really changed, with their state before (a source without a channel counts as its default).
+    /// </summary>
+    public IReadOnlyList<AudioChannelChange> ApplyAudioChannels(IReadOnlyList<AudioChannelDto?>? requested, SourceCatalog catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        AudioMixerRules.Validate(requested, catalog);
+        var changes = new List<AudioChannelChange>();
+        var channels = AudioChannels.ToList();
+        foreach (var channel in requested!.Select(c => c!))
+        {
+            var index = channels.FindIndex(c => string.Equals(c.SourceId, channel.SourceId, StringComparison.Ordinal));
+            var before = index >= 0 ? channels[index] : AudioMixerRules.DefaultChannel(catalog.Find(channel.SourceId)!);
+            if (index >= 0 && before == channel)
+            {
+                continue;
+            }
+
+            if (index >= 0)
+            {
+                channels[index] = channel;
+            }
+            else
+            {
+                channels.Add(channel);
+            }
+
+            changes.Add(new AudioChannelChange(before, channel));
+        }
+
+        if (changes.Count > 0)
+        {
+            AudioChannels = channels;
+        }
+
+        return changes;
+    }
+
+    /// <summary>
+    /// Brings the mixer in step with the sources: a channel with its defaults for every source that can carry sound and has
+    /// none yet, no channel for a source that is gone or cannot carry sound any more. Returns the channels that were created
+    /// (the removed ones leave with their source).
+    /// </summary>
+    public IReadOnlyList<AudioChannelDto> SyncAudioChannels(SourceCatalog catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var sources = catalog.All.Where(AudioMixerRules.CarriesSound).ToList();
+        var present = AudioChannels.Select(c => c.SourceId).ToHashSet(StringComparer.Ordinal);
+        var created = sources.Where(s => !present.Contains(s.Id)).Select(AudioMixerRules.DefaultChannel).ToList();
+        var keep = sources.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        var remaining = AudioChannels.Where(c => keep.Contains(c.SourceId)).ToList();
+        if (created.Count > 0 || remaining.Count != AudioChannels.Count)
+        {
+            AudioChannels = [.. remaining, .. created];
+        }
+
+        return created;
+    }
+
+    /// <summary>Gives the sources that can carry sound a channel with its defaults when they have none; returns the new channels.</summary>
+    public IReadOnlyList<AudioChannelDto> AddAudioChannels(IEnumerable<SourceEntry> sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        var created = new List<AudioChannelDto>();
+        foreach (var source in sources.Where(AudioMixerRules.CarriesSound))
+        {
+            if (FindAudioChannel(source.Id) is null)
+            {
+                created.Add(AudioMixerRules.DefaultChannel(source));
+            }
+        }
+
+        if (created.Count > 0)
+        {
+            AudioChannels = [.. AudioChannels, .. created];
+        }
+
+        return created;
+    }
+
+    /// <summary>Removes the channels of sources that are gone; true when there were any.</summary>
+    public bool RemoveAudioChannels(IEnumerable<string> sourceIds)
+    {
+        ArgumentNullException.ThrowIfNull(sourceIds);
+        var gone = sourceIds.ToHashSet(StringComparer.Ordinal);
+        var remaining = AudioChannels.Where(c => !gone.Contains(c.SourceId)).ToList();
+        if (remaining.Count == AudioChannels.Count)
+        {
+            return false;
+        }
+
+        AudioChannels = remaining;
+        return true;
     }
 
     private static SlateDto? ValidateSlate(SlateDto slate, string path, ValidationErrors errors, SourceCatalog catalog)

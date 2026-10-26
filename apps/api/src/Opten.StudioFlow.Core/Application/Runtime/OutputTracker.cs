@@ -26,6 +26,14 @@ public sealed class OutputTracker(OutputMonitorOptions options)
     /// <summary>More streams than this are not a reading but a bug (a production has at most 32 items per scene).</summary>
     private const int MaxStreams = 1000;
 
+    /// <summary>A change of the program level of this many dB is worth an event of its own (smaller ones wait for the interval).</summary>
+    private const double SignificantLevelChangeDb = 6;
+
+    /// <summary>The program level the page can report: from silence to a little above full scale.</summary>
+    private const double MinLevelDb = -120;
+
+    private const double MaxLevelDb = 6;
+
     private readonly Dictionary<string, string> linkNames = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LinkState> links = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> connectionLinks = new(StringComparer.Ordinal);
@@ -124,6 +132,7 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             DroppedFramesPct = report.DroppedFramesPct is >= 0 and <= 100 ? report.DroppedFramesPct : null,
             DecodedStreams = decoded,
             SoftwareDecodedStreams = report.SoftwareDecodedStreams >= 0 && report.SoftwareDecodedStreams <= decoded ? report.SoftwareDecodedStreams : null,
+            Audio = SanitizeAudio(report.Audio),
         };
         state.LastReportAt = now;
         if (report.Rendering)
@@ -168,7 +177,7 @@ public sealed class OutputTracker(OutputMonitorOptions options)
         var structural = !SameStructure(current, previous) || !current.Links.Select(Structure).SequenceEqual(previous.Links.Select(Structure));
         var metricsChanged = MetricsDiffer(current, previous)
             || current.Links.Count != previous.Links.Count
-            || current.Links.Zip(previous.Links).Any(pair => MetricsDiffer(pair.First, pair.Second));
+            || current.Links.Zip(previous.Links).Any(pair => MetricsDiffer(pair.First, pair.Second) || LevelDiffers(pair.First.Audio?.LevelDb, pair.Second.Audio?.LevelDb));
         if (!structural && !metricsChanged)
         {
             return null;
@@ -177,7 +186,8 @@ public sealed class OutputTracker(OutputMonitorOptions options)
         var significant = IsSignificant(previous.LatencyMs, current.LatencyMs) || IsSignificant(previous.Fps, current.Fps)
             || IsSignificantDrop(previous.DroppedFramesPct, current.DroppedFramesPct)
             || current.Links.Zip(previous.Links).Any(pair => IsSignificant(pair.Second.LatencyMs, pair.First.LatencyMs) || IsSignificant(pair.Second.Fps, pair.First.Fps)
-                || IsSignificantDrop(pair.Second.DroppedFramesPct, pair.First.DroppedFramesPct));
+                || IsSignificantDrop(pair.Second.DroppedFramesPct, pair.First.DroppedFramesPct)
+                || IsSignificantLevel(pair.Second.Audio?.LevelDb, pair.First.Audio?.LevelDb));
         var intervalPassed = lastMetricsPublishedAt is not { } at || now - at >= options.MetricsInterval;
         if (!structural && !significant && !intervalPassed)
         {
@@ -212,14 +222,27 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             state?.LastReportAt,
             report?.DroppedFramesPct,
             report?.DecodedStreams,
-            report?.SoftwareDecodedStreams);
+            report?.SoftwareDecodedStreams,
+            report?.Audio);
     }
 
     private static bool SameStructure(OutputStatusDto current, OutputStatusDto previous) =>
         current.State == previous.State && current.Consumers == previous.Consumers && current.Addresses.SequenceEqual(previous.Addresses, StringComparer.Ordinal);
 
     private static string Structure(OutputLinkStatusDto link) =>
-        $"{link.LinkId}|{link.Name}|{link.State}|{link.Consumers}|{string.Join(',', link.Addresses)}";
+        $"{link.LinkId}|{link.Name}|{link.State}|{link.Consumers}|{string.Join(',', link.Addresses)}|{link.Audio?.State}";
+
+    /// <summary>The state must be a known one and the level a plausible number, else it is dropped (the page is not trusted).</summary>
+    private static OutputAudioDto? SanitizeAudio(OutputAudioDto? audio) => audio is null || !Enum.IsDefined(audio.State)
+        ? null
+        : audio with { LevelDb = audio.LevelDb is >= MinLevelDb and <= MaxLevelDb ? Math.Round(audio.LevelDb.Value, 1) : null };
+
+    /// <summary>True when the levels differ by more than rounding to whole dB (or one of them is missing).</summary>
+    private static bool LevelDiffers(double? level, double? previous) =>
+        level.HasValue != previous.HasValue || (level.HasValue && Math.Round(level.Value) != Math.Round(previous!.Value));
+
+    private static bool IsSignificantLevel(double? before, double? after) =>
+        before.HasValue != after.HasValue || (before.HasValue && Math.Abs(after!.Value - before.Value) >= SignificantLevelChangeDb);
 
     private static bool MetricsDiffer(OutputStatusDto current, OutputStatusDto previous) =>
         MetricsDiffer(current.LatencyMs, current.Fps, current.DroppedFramesPct, current.DecodedStreams, current.SoftwareDecodedStreams, previous.LatencyMs, previous.Fps, previous.DroppedFramesPct, previous.DecodedStreams, previous.SoftwareDecodedStreams);

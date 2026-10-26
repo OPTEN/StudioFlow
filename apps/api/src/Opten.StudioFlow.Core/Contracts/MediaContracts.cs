@@ -9,6 +9,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="SizeBytes">File size.</param>
 /// <param name="Width">Pixel width where known.</param>
 /// <param name="Height">Pixel height where known.</param>
+/// <param name="HasAudio">The file has an audio track (videos only); it becomes a channel of the audio mixer.</param>
 /// <param name="CreatedAt">Upload time.</param>
 /// <param name="ContentUrl">Relative URL of the content. The output appends its key as <c>?k=</c>.</param>
 public sealed record AssetDto(
@@ -20,6 +21,7 @@ public sealed record AssetDto(
     long SizeBytes,
     int? Width,
     int? Height,
+    bool HasAudio,
     DateTimeOffset CreatedAt,
     string ContentUrl);
 

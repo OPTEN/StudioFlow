@@ -507,7 +507,7 @@ public sealed class LogTextsTests
     {
         foreach (var action in AllActions())
         {
-            Assert.True(Text(action, (AuditDetails.Kind, "LaptopLink")) is not null, $"{action} has no text");
+            Assert.True(Text(action, (AuditDetails.Kind, "LaptopLink"), (AuditDetails.Change, AuditAudioChanges.Muted)) is not null, $"{action} has no text");
         }
     }
 
@@ -523,13 +523,16 @@ public sealed class LogTextsTests
         var produced = new HashSet<LogCode>();
         foreach (var action in AllActions())
         {
-            foreach (var kind in new[] { "LaptopLink", "Camera", "Screen" })
+            foreach (var kind in new[] { "LaptopLink", "Camera", "Screen", "Audio" })
             {
                 foreach (var slate in new[] { AuditSlates.Standby, AuditSlates.End })
                 {
-                    if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind), (AuditDetails.Slate, slate))) is { } described)
+                    foreach (var change in new[] { AuditAudioChanges.Muted, AuditAudioChanges.Unmuted, AuditAudioChanges.Gain, AuditAudioChanges.Mode, AuditAudioChanges.SyncOffset })
                     {
-                        produced.Add(described.Code);
+                        if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind), (AuditDetails.Slate, slate), (AuditDetails.Change, change))) is { } described)
+                        {
+                            produced.Add(described.Code);
+                        }
                     }
                 }
             }

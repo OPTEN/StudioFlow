@@ -12,6 +12,7 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="DroppedFramesPct">Share of the frames the output page could not show, in percent (the computer cannot keep up).</param>
 /// <param name="DecodedStreams">Number of video streams the output page decodes.</param>
 /// <param name="SoftwareDecodedStreams">Number of those streams decoded in software.</param>
+/// <param name="Audio">The sound of the page that reported last: off, running, blocked by the browser or unavailable, with its level; null before any report.</param>
 public sealed record OutputLinkStatusDto(
     string LinkId,
     string Name,
@@ -23,7 +24,8 @@ public sealed record OutputLinkStatusDto(
     DateTimeOffset? LastReportAt,
     double? DroppedFramesPct = null,
     int? DecodedStreams = null,
-    int? SoftwareDecodedStreams = null);
+    int? SoftwareDecodedStreams = null,
+    OutputAudioDto? Audio = null);
 
 /// <summary>
 /// Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own.
@@ -91,6 +93,7 @@ public sealed record UpdateOutputAccessRequest(IReadOnlyList<string> AllowedIps)
 /// <param name="Production">Production settings and switching state.</param>
 /// <param name="Scenes">All scenes (the output preloads their sources).</param>
 /// <param name="Sources">Sources without health.</param>
+/// <param name="AudioChannels">The channels of the audio mixer; the output page mixes the sound from them.</param>
 /// <param name="Assets">Media with content URLs.</param>
 public sealed record OutputSnapshot(
     long Revision,
@@ -98,6 +101,7 @@ public sealed record OutputSnapshot(
     ProductionDto Production,
     IReadOnlyList<SceneDto> Scenes,
     IReadOnlyList<SourceDto> Sources,
+    IReadOnlyList<AudioChannelDto> AudioChannels,
     IReadOnlyList<AssetDto> Assets);
 
 /// <summary>Status report of an output page, sent about every two seconds.</summary>
@@ -108,6 +112,7 @@ public sealed record OutputSnapshot(
 /// <param name="DroppedFramesPct">Share of the frames the page dropped since the previous report, in percent.</param>
 /// <param name="DecodedStreams">Number of video streams the page decodes (paused sources do not count).</param>
 /// <param name="SoftwareDecodedStreams">Of those, the number decoded in software.</param>
+/// <param name="Audio">State and level of the sound; null from a page that predates audio.</param>
 public sealed record OutputReport(
     bool Rendering,
     int? LatencyMs,
@@ -115,4 +120,5 @@ public sealed record OutputReport(
     string? ProgramSceneId,
     double? DroppedFramesPct = null,
     int? DecodedStreams = null,
-    int? SoftwareDecodedStreams = null);
+    int? SoftwareDecodedStreams = null,
+    OutputAudioDto? Audio = null);

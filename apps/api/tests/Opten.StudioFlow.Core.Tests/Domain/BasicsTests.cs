@@ -116,7 +116,8 @@ public sealed class SourceRefTests
     [InlineData("dev_abcd1234")]
     [InlineData("dev_abcd1234/screen-0")]
     [InlineData("dev_abcd1234/screen-10")]
-    [InlineData("dev_abcd1234/mic")]
+    [InlineData("dev_abcd1234/mic-1")]
+    [InlineData("dev_abcd1234/screen-1-audio")]
     [InlineData("dev_abcd1234/camera/x")]
     [InlineData("ast_abcd1234/camera")]
     [InlineData("txt_abcd1234/camera")]
@@ -131,13 +132,14 @@ public sealed class DeviceSlotsTests
 {
     [Theory]
     [InlineData("camera", true)]
+    [InlineData("mic", true)]
     [InlineData("screen-1", true)]
     [InlineData("screen-9", true)]
     [InlineData("screen-0", false)]
     [InlineData("screen-", false)]
     [InlineData("Screen-1", false)]
     [InlineData(null, false)]
-    public void IsValid_Slot_AcceptsCameraAndNineScreens(string? slot, bool expected) => Assert.Equal(expected, DeviceSlots.IsValid(slot));
+    public void IsValid_Slot_AcceptsCameraMicrophoneAndNineScreens(string? slot, bool expected) => Assert.Equal(expected, DeviceSlots.IsValid(slot));
 
     [Fact]
     public void Screen_OutOfRange_Throws() => Assert.Throws<ArgumentOutOfRangeException>(() => DeviceSlots.Screen(10));

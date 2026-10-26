@@ -138,6 +138,15 @@ public static class Pairing
         return await app.RedeemAsync(invite, DeviceKind.Laptop, name);
     }
 
+    /// <summary>Pairs an audio station: a laptop link redeemed as the device kind audio station.</summary>
+    public static async Task<DeviceCredentialsDto> PairAudioStationAsync(this StudioFlowApp app, AdminSession admin, string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        ArgumentNullException.ThrowIfNull(admin);
+        var invite = await admin.Client.PostJsonAsync($"/api/productions/{admin.ProductionId}/pairing/invites", new CreateInviteRequest(InviteKind.LaptopLink)).ExpectAsync<InviteDto>(HttpStatusCode.Created);
+        return await app.RedeemAsync(invite, DeviceKind.AudioStation, name);
+    }
+
     public static string TokenOf(InviteDto invite)
     {
         ArgumentNullException.ThrowIfNull(invite);
