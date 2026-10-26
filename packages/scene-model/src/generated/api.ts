@@ -708,23 +708,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/productions/{productionId}/output/access": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["updateOutputAccess"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/productions/{productionId}/output/regenerate-key": {
+    "/api/productions/{productionId}/output/links": {
         parameters: {
             query?: never;
             header?: never;
@@ -733,7 +717,55 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["regenerateOutputKey"];
+        post: operations["createOutputLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/output/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revokeOutputLink"];
+        options?: never;
+        head?: never;
+        patch: operations["renameOutputLink"];
+        trace?: never;
+    };
+    "/api/productions/{productionId}/output/links/{linkId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateOutputLinkAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/productions/{productionId}/output/links/{linkId}/regenerate-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["regenerateOutputLinkKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1298,6 +1330,11 @@ export interface components {
         CreateInviteRequest: {
             kind: components["schemas"]["InviteKind"];
         };
+        /** @description Creates a named output link. */
+        CreateOutputLinkRequest: {
+            /** @description 1–40 characters, unique per production (ignoring case). */
+            name: string;
+        };
         /** @description Anonymous knock from /join. */
         CreatePairingRequest: {
             /** @description Device name, 1–60 characters. */
@@ -1606,7 +1643,7 @@ export interface components {
          *     entry; the English text of the entry is the fallback for clients that do not know the code yet.
          * @enum {unknown}
          */
-        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
+        LogCode: "sceneLive" | "sceneCreated" | "sceneDeleted" | "broadcastStarted" | "broadcastEnded" | "devicePaired" | "deviceBlocked" | "deviceUnblocked" | "deviceRemoved" | "pairingDenied" | "inviteLinkCreated" | "inviteLinkRevoked" | "outputLinkCreated" | "outputLinkRenamed" | "outputLinkRevoked" | "outputLinkRegenerated" | "outputAccessChanged" | "assetUploaded" | "assetDeleted" | "sourceReconnecting" | "cameraEnded" | "screenEnded" | "sourceLost" | "sourceRecovered" | "accountSetUp" | "passwordChanged" | "accountReset" | "textCreated" | "textDeleted" | "textShown" | "textHidden" | "loginSucceeded" | "loginFailed" | "loginLocked" | "loggedOut" | "productionCreated" | "productionRenamed" | "productionActivated" | "broadcastReset" | "standbySlateChanged" | "endSlateChanged" | "incidentAcknowledged" | "deviceRenamed" | "cameraLensSwitched" | "auditExported" | "auditRetention";
         /** @description An entry of "Recent events", derived from the audit log. */
         LogEntryDto: {
             /**
@@ -1653,6 +1690,58 @@ export interface components {
             events: null | components["schemas"]["ProductionEvent"][];
             snapshot: null | components["schemas"]["OutputSnapshot"];
         };
+        /** @description An output link for the Regie. */
+        OutputLinkDto: {
+            /** @description Link id. */
+            id: string;
+            /** @description Link name, unique per production. */
+            name: string;
+            /** @description Absolute output URL including the secret key of the link. */
+            url: string;
+            /**
+             * Format: date-time
+             * @description When the current key was created.
+             */
+            keyCreatedAt: string;
+            /**
+             * Format: date-time
+             * @description When a page of the link last connected or disconnected; null while it was never used.
+             */
+            lastSeenAt: null | string;
+            /** @description IP addresses or CIDR ranges allowed to open the link; empty allows every address. */
+            allowedIps: string[];
+        };
+        /** @description Live state of one output link (a consumer such as the proxy or the Teams camera). */
+        OutputLinkStatusDto: {
+            /** @description Link id. */
+            linkId: string;
+            /** @description Link name. */
+            name: string;
+            /** @description None, connected or stale. */
+            state: components["schemas"]["OutputState"];
+            /**
+             * Format: int32
+             * @description Number of connected output pages of the link.
+             */
+            consumers: number;
+            /** @description Remote IP addresses of the output pages of the link. */
+            addresses: string[];
+            /**
+             * Format: int32
+             * @description Estimated receive latency reported by the output page.
+             */
+            latencyMs: null | number;
+            /**
+             * Format: double
+             * @description Rendered frames per second of the program.
+             */
+            fps: null | number;
+            /**
+             * Format: date-time
+             * @description Last report time.
+             */
+            lastReportAt: null | string;
+        };
         /** @description Status report of an output page, sent about every two seconds. */
         OutputReport: {
             /** @description The page renders the program (false while connecting). */
@@ -1672,15 +1761,13 @@ export interface components {
         };
         /** @description Output settings for the Regie. */
         OutputSettingsDto: {
-            /** @description Absolute output URL including the secret key. */
-            url: string;
+            /** @description The output links, oldest first. */
+            links: components["schemas"]["OutputLinkDto"][];
             /**
-             * Format: date-time
-             * @description When the current key was created.
+             * Format: int32
+             * @description Maximum number of links per production.
              */
-            keyCreatedAt: string;
-            /** @description IP addresses or CIDR ranges allowed to open the output; empty allows every address. */
-            allowedIps: string[];
+            maxLinks: number;
             /** @description Domains allowed to embed the output (from configuration, read-only). */
             frameAncestors: string[];
         };
@@ -1710,32 +1797,34 @@ export interface components {
          * @enum {unknown}
          */
         OutputState: "none" | "connected" | "stale";
-        /** @description Live state of the output consumer (chip “Output to proxy” in the header). */
+        /** @description Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own. */
         OutputStatusDto: {
-            /** @description None, connected or stale. */
+            /** @description Connected when any link is connected, else stale when any link is stale, else none. */
             state: components["schemas"]["OutputState"];
             /**
              * Format: int32
-             * @description Number of connected output pages.
+             * @description Number of connected output pages of all links.
              */
             consumers: number;
-            /** @description Remote IP addresses of the output pages. */
+            /** @description Remote IP addresses of the output pages of all links. */
             addresses: string[];
             /**
              * Format: int32
-             * @description Estimated receive latency reported by the output page.
+             * @description Estimated receive latency reported by the output page that reported last.
              */
             latencyMs: null | number;
             /**
              * Format: double
-             * @description Rendered frames per second of the program.
+             * @description Rendered frames per second of the program, from the same report.
              */
             fps: null | number;
             /**
              * Format: date-time
-             * @description Last report time.
+             * @description Last report time of any link.
              */
             lastReportAt: null | string;
+            /** @description Every output link of the production, ordered by name. */
+            links: components["schemas"]["OutputLinkStatusDto"][];
         };
         /**
          * @description How a device was paired.
@@ -2150,6 +2239,11 @@ export interface components {
         RenameDeviceRequest: {
             name: string;
         };
+        /** @description Renames an output link. */
+        RenameOutputLinkRequest: {
+            /** @description 1–40 characters, unique per production (ignoring case). */
+            name: string;
+        };
         /** @description New z-order of a scene: the ids of all its items, back to front. Only the order changes, never an item. */
         ReorderSceneItemsRequest: {
             /** @description Every item id of the scene exactly once; a list that does not match the current items is a 409 `conflict`. */
@@ -2455,7 +2549,7 @@ export interface components {
          * @enum {unknown}
          */
         TransitionKind: "cut" | "fade";
-        /** @description Sets the IP restriction of the output. */
+        /** @description Sets the IP restriction of an output link. */
         UpdateOutputAccessRequest: {
             allowedIps: string[];
         };
@@ -2510,6 +2604,7 @@ export type CameraSettingsDto = components['schemas']['CameraSettingsDto'];
 export type CameraStateDto = components['schemas']['CameraStateDto'];
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type CreateInviteRequest = components['schemas']['CreateInviteRequest'];
+export type CreateOutputLinkRequest = components['schemas']['CreateOutputLinkRequest'];
 export type CreatePairingRequest = components['schemas']['CreatePairingRequest'];
 export type CreateProductionRequest = components['schemas']['CreateProductionRequest'];
 export type CreateSceneRequest = components['schemas']['CreateSceneRequest'];
@@ -2543,6 +2638,8 @@ export type LogEntryDto = components['schemas']['LogEntryDto'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 export type LostBehaviorDto = components['schemas']['LostBehaviorDto'];
 export type OutputChangesDto = components['schemas']['OutputChangesDto'];
+export type OutputLinkDto = components['schemas']['OutputLinkDto'];
+export type OutputLinkStatusDto = components['schemas']['OutputLinkStatusDto'];
 export type OutputReport = components['schemas']['OutputReport'];
 export type OutputSettingsDto = components['schemas']['OutputSettingsDto'];
 export type OutputSnapshot = components['schemas']['OutputSnapshot'];
@@ -2582,6 +2679,7 @@ export type ProductionSummaryDto = components['schemas']['ProductionSummaryDto']
 export type RedeemInviteRequest = components['schemas']['RedeemInviteRequest'];
 export type RenameAssetRequest = components['schemas']['RenameAssetRequest'];
 export type RenameDeviceRequest = components['schemas']['RenameDeviceRequest'];
+export type RenameOutputLinkRequest = components['schemas']['RenameOutputLinkRequest'];
 export type ReorderSceneItemsRequest = components['schemas']['ReorderSceneItemsRequest'];
 export type ReorderScenesRequest = components['schemas']['ReorderScenesRequest'];
 export type ReplaceSceneItemsRequest = components['schemas']['ReplaceSceneItemsRequest'];
@@ -4491,12 +4589,132 @@ export interface operations {
             };
         };
     };
-    updateOutputAccess: {
+    createOutputLink: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 productionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOutputLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputLinkDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    revokeOutputLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    renameOutputLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameOutputLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutputLinkDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateOutputLinkAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productionId: string;
+                linkId: string;
             };
             cookie?: never;
         };
@@ -4512,7 +4730,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OutputSettingsDto"];
+                    "application/json": components["schemas"]["OutputLinkDto"];
                 };
             };
             /** @description Bad Request */
@@ -4524,14 +4742,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
-    regenerateOutputKey: {
+    regenerateOutputLinkKey: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 productionId: string;
+                linkId: string;
             };
             cookie?: never;
         };
@@ -4543,7 +4771,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OutputSettingsDto"];
+                    "application/json": components["schemas"]["OutputLinkDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
