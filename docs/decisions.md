@@ -116,6 +116,19 @@ decision deliberately: update this file and the code together.
 1. The Scenes dock gets the same drag-and-drop list component.
 2. No layer dragging in the monitor.
 
+## #27 Zero-config install
+
+Taken on 2026-10-26, following the recommendations of the issue.
+
+1. Caddy gets its configuration from the API through the Caddy admin API, reachable only on the internal network.
+   LiveKit runs in a thin wrapper image that watches `livekit.yaml` in a shared volume and restarts the server process
+   on change. No Docker socket anywhere.
+2. Default HTTPS port `8443` (tcp and udp), overridable with `STUDIOFLOW_HTTPS_PORT`; nothing listens on port 80.
+3. `docker-compose.yml` (build from source) stays for development and is zero-config as well; `.env` is optional in
+   both files.
+4. The wizard covers account, media address, address and certificate, embedding. The backup schedule and the off-site
+   `rclone` target are only in "Server settings", to keep the first run short.
+
 ### #6 pinned details
 
 The details below were fixed for the parallel work on #6 (design: [architecture/i18n-design.md](architecture/i18n-design.md),
