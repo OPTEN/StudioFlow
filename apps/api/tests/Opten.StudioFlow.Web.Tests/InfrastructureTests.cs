@@ -177,7 +177,7 @@ public sealed class LiveKitTokenIssuerTests
 
     private static LiveKitTokenIssuer Issuer(string publicUrl = "") => new(
         Options.Create(new LiveKitOptions { ApiKey = "key", ApiSecret = "sk-secret-with-more-than-thirty-two-chars", PublicUrl = publicUrl }),
-        Options.Create(new StudioFlowOptions { PublicBaseUrl = "https://studioflow.opten.ch/" }),
+        Options.Create(new StudioFlowOptions { PublicBaseUrl = "https://studioflow.example.com/" }),
         Clock);
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed class LiveKitTokenIssuerTests
         var token = new JsonWebToken(dto.Token);
         using var video = JsonDocument.Parse(token.GetPayloadValue<JsonElement>("video").GetRawText());
 
-        Assert.Equal("wss://studioflow.opten.ch", dto.Url);
+        Assert.Equal("wss://studioflow.example.com", dto.Url);
         Assert.Equal("key", token.Issuer);
         Assert.Equal("dev_a", token.Subject);
         Assert.Equal("Phone 1", token.GetPayloadValue<string>("name"));

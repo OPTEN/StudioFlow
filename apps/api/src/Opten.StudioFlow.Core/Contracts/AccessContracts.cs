@@ -31,7 +31,7 @@ public sealed record LiveKitTokenDto(string Url, string Token, string Identity, 
 
 /// <summary>Static information about the installation.</summary>
 /// <param name="Version">Build version.</param>
-/// <param name="PublicBaseUrl">Public base URL, e.g. https://studioflow.opten.ch.</param>
+/// <param name="PublicBaseUrl">Public base URL, e.g. https://studioflow.example.com.</param>
 public sealed record SystemInfoDto(string Version, string PublicBaseUrl);
 
 /// <summary>Machine readable error codes in <c>ProblemDetails.extensions.code</c>.</summary>

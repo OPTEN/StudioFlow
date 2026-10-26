@@ -32,7 +32,7 @@ import { OutputCameraComponent } from './output-camera.component';
 /** Longest link name the API accepts. */
 export const LINK_NAME_MAX = 40;
 
-/** "studioflow.opten.ch/o/webinar?k=••••••": without scheme and with the key masked. */
+/** "studioflow.example.com/o/webinar?k=••••••": without scheme and with the key masked. */
 export function maskOutputUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/([?&]k=)[^&#]*/, '$1••••••');
 }

@@ -106,7 +106,7 @@ public sealed class AdminAccountRulesTests
     [Theory]
     [InlineData("admin")]
     [InlineData("Regie.Team-2")]
-    [InlineData("nico@opten.ch")]
+    [InlineData("admin@example.com")]
     [InlineData("a")]
     public void ValidateUsername_Valid_IsReturnedTrimmed(string username)
     {

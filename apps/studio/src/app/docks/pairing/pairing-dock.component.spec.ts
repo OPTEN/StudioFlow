@@ -24,8 +24,8 @@ function invite(
     kind,
     url:
       kind === 'phoneQr'
-        ? `https://studioflow.opten.ch/join/i/${id}`
-        : `https://studioflow.opten.ch/j/${id}`,
+        ? `https://studioflow.example.com/join/i/${id}`
+        : `https://studioflow.example.com/j/${id}`,
     createdAt: new Date(created).toISOString(),
     expiresAt: new Date(Date.now() + minutes * 60_000).toISOString(),
   };
@@ -42,7 +42,7 @@ describe('pairing helpers', () => {
   });
 
   it('formats URLs and remaining times', () => {
-    expect(displayUrl('https://studioflow.opten.ch/join/')).toBe('studioflow.opten.ch/join');
+    expect(displayUrl('https://studioflow.example.com/join/')).toBe('studioflow.example.com/join');
     expect(expiryText(28 * 60_000)).toBe('expires in 28 minutes');
     expect(expiryText(50_000)).toBe('expires in 1 minute');
     expect(expiryText(10_000)).toBe('expires shortly');
@@ -161,7 +161,7 @@ describe('PairingDockComponent', () => {
     });
     await render();
     expect(text(element.querySelector('.c-pair__url'))).toBe(
-      'studioflow.opten.ch/j/inv_cccccccccccccccc',
+      'studioflow.example.com/j/inv_cccccccccccccccc',
     );
     expect(text(element.querySelector('sf-link-tab .c-hint'))).toBe(
       'Valid once and expires in 30 minutes. Whoever opens it is paired straight away.',
