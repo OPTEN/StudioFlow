@@ -432,44 +432,98 @@ public sealed class LogTextsTests
             Assert.Equal(text, Text(action, details));
         }
 
-        Assert.Equal(LogTexts.Actions.Order(StringComparer.Ordinal), rows.Select(r => r.Action).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+        Assert.Equal(LogTexts.RecentActions.Order(StringComparer.Ordinal), rows.Select(r => r.Action).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
     }
 
     [Fact]
-    public void For_LoginsAndPhoneInvites_AreNotShown()
+    public void Describe_TheActionsOnlyTheAuditLogShows_HaveACodeAnEnglishTextAndTheirParameters()
     {
-        Assert.Null(Text(AuditActions.LoginFailed, (AuditDetails.Username, "admin")));
+        var rows = new (string Action, (string Key, string Value)[] Details, LogCode Code, string Text, Dictionary<string, string> Params)[]
+        {
+            (AuditActions.LoginSucceeded, [(AuditDetails.Username, "regie"), (AuditDetails.Ip, "10.0.0.7")], LogCode.LoginSucceeded, "“regie” signed in", new() { ["username"] = "regie" }),
+            (AuditActions.LoginFailed, [(AuditDetails.Username, "root")], LogCode.LoginFailed, "Sign-in failed for “root”", new() { ["username"] = "root" }),
+            (AuditActions.LoginLocked, [(AuditDetails.Username, "root")], LogCode.LoginLocked, "Sign-in locked after too many failed attempts", new()),
+            (AuditActions.Logout, [(AuditDetails.Username, "regie")], LogCode.LoggedOut, "“regie” signed out", new() { ["username"] = "regie" }),
+            (AuditActions.ProductionCreated, [(AuditDetails.Name, "Spring")], LogCode.ProductionCreated, "Production “Spring” created", new() { ["name"] = "Spring" }),
+            (AuditActions.ProductionRenamed, [(AuditDetails.From, "Spring"), (AuditDetails.Name, "Autumn")], LogCode.ProductionRenamed, "Production “Spring” renamed to “Autumn”", new() { ["from"] = "Spring", ["name"] = "Autumn" }),
+            (AuditActions.ProductionActivated, [(AuditDetails.Name, "Autumn")], LogCode.ProductionActivated, "Production “Autumn” activated", new() { ["name"] = "Autumn" }),
+            (AuditActions.BroadcastReset, [], LogCode.BroadcastReset, "Broadcast reset", new()),
+            (AuditActions.SlateChanged, [(AuditDetails.Slate, AuditSlates.Standby)], LogCode.StandbySlateChanged, "Slate before the broadcast changed", new()),
+            (AuditActions.SlateChanged, [(AuditDetails.Slate, AuditSlates.End)], LogCode.EndSlateChanged, "Slate after the broadcast changed", new()),
+            (AuditActions.IncidentAcknowledged, [(AuditDetails.Code, "K2")], LogCode.IncidentAcknowledged, "K2 message marked as seen", new() { ["code"] = "K2" }),
+            (AuditActions.DeviceRenamed, [(AuditDetails.Codes, "K2"), (AuditDetails.Device, "Phone 2"), (AuditDetails.Name, "Stage left")], LogCode.DeviceRenamed, "K2 Phone 2 renamed to “Stage left”", new() { ["subject"] = "K2 Phone 2", ["name"] = "Stage left" }),
+            (AuditActions.AuditExported, [(AuditDetails.Format, "csv"), (AuditDetails.Rows, "42")], LogCode.AuditExported, "Audit log exported as csv, 42 rows", new() { ["format"] = "csv", ["rows"] = "42" }),
+            (AuditActions.AuditRetention, [(AuditDetails.Days, "365"), (AuditDetails.Deleted, "142"), (AuditDetails.Anonymised, "7")], LogCode.AuditRetention, "Audit retention (365 days): entries deleted 142, IP addresses removed 7", new() { ["days"] = "365", ["deleted"] = "142", ["anonymised"] = "7" }),
+        };
+
+        foreach (var (action, details, code, text, parameters) in rows)
+        {
+            var described = Describe(action, details);
+            Assert.Equal(code, described.Code);
+            Assert.Equal(text, described.Text);
+            Assert.Equal(parameters, described.Params);
+            Assert.Null(LogTexts.DescribeRecent(Entry(action, details)));
+        }
+    }
+
+    [Fact]
+    public void Describe_AnInviteOfAPhoneQrCode_HasNoTextAndIsNotRecent()
+    {
         Assert.Null(Text(AuditActions.InviteCreated, (AuditDetails.Kind, "PhoneQr")));
         Assert.Null(Text(AuditActions.InviteRevoked, (AuditDetails.Kind, "PhoneQr")));
-        Assert.Null(Text("unknown.action"));
-        Assert.Null(LogTexts.Describe(Entry(AuditActions.LoginSucceeded)));
+        Assert.Null(LogTexts.DescribeRecent(Entry(AuditActions.InviteCreated, (AuditDetails.Kind, "PhoneQr"))));
     }
 
     [Fact]
-    public void Actions_ContainEveryActionWithText()
+    public void Describe_AnUnknownAction_HasNoText()
     {
-        foreach (var action in typeof(AuditActions).GetFields().Select(f => (string)f.GetValue(null)!))
+        Assert.Null(Text("unknown.action"));
+        Assert.Null(LogTexts.DescribeRecent(Entry("unknown.action")));
+    }
+
+    [Fact]
+    public void DescribeRecent_LoginsAreNotShownInRecentEvents()
+    {
+        Assert.Null(LogTexts.DescribeRecent(Entry(AuditActions.LoginFailed, (AuditDetails.Username, "admin"))));
+        Assert.Null(LogTexts.DescribeRecent(Entry(AuditActions.LoginSucceeded)));
+        Assert.NotNull(LogTexts.DescribeRecent(Entry(AuditActions.SceneLive, (AuditDetails.Scene, "Break"))));
+    }
+
+    [Fact]
+    public void Describe_EveryAction_HasAText()
+    {
+        foreach (var action in AllActions())
         {
-            var hasText = Text(action, (AuditDetails.Kind, "LaptopLink")) is not null;
-            Assert.Equal(hasText, LogTexts.Actions.Contains(action));
+            Assert.True(Text(action, (AuditDetails.Kind, "LaptopLink")) is not null, $"{action} has no text");
         }
+    }
+
+    [Fact]
+    public void RecentActions_AreActionsOfTheAuditLog()
+    {
+        Assert.All(LogTexts.RecentActions, action => Assert.Contains(action, AllActions()));
     }
 
     [Fact]
     public void EveryLogCode_IsProducedByAnAction()
     {
         var produced = new HashSet<LogCode>();
-        foreach (var action in LogTexts.Actions)
+        foreach (var action in AllActions())
         {
             foreach (var kind in new[] { "LaptopLink", "Camera", "Screen" })
             {
-                if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind))) is { } described)
+                foreach (var slate in new[] { AuditSlates.Standby, AuditSlates.End })
                 {
-                    produced.Add(described.Code);
+                    if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind), (AuditDetails.Slate, slate))) is { } described)
+                    {
+                        produced.Add(described.Code);
+                    }
                 }
             }
         }
 
         Assert.Equal(Enum.GetValues<LogCode>().OrderBy(c => c), produced.OrderBy(c => c));
     }
+
+    private static IEnumerable<string> AllActions() => typeof(AuditActions).GetFields().Select(f => (string)f.GetValue(null)!);
 }

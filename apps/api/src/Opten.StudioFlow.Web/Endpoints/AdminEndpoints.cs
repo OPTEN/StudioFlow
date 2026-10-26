@@ -66,7 +66,7 @@ internal static class AuthEndpoints
 
     // Ends the session on the server too (GAP-04): the cookie is refused from now on and the Regie hub connections of
     // this session are closed.
-    public static async Task<IResult> LogoutAsync(HttpContext context, AdminSessions sessions, TimeProvider clock, IOptions<AdminOptions> admin)
+    public static async Task<IResult> LogoutAsync(HttpContext context, AdminSessions sessions, AdminLoginService logins, TimeProvider clock, IOptions<AdminOptions> admin)
     {
         if (context.User.FindFirstValue(StudioFlowClaims.SessionId) is { Length: > 0 } sessionId)
         {
@@ -75,6 +75,7 @@ internal static class AuthEndpoints
         }
 
         await context.SignOutAsync(AuthSchemes.Admin);
+        await logins.LogoutAsync(context.User.Identity?.Name ?? string.Empty, ClientAddress.Of(context));
         return TypedResults.NoContent();
     }
 

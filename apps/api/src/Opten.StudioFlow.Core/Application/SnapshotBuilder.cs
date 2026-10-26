@@ -18,7 +18,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
         var runtime = context.Runtime;
         var catalog = new SourceCatalog(devices, assets, production.TextSources);
         var invites = await context.Data.Invites.ListOpenAsync(production.Id, context.Now, cancellationToken);
-        var log = await context.Data.Audit.ListRecentAsync(production.Id, LogTexts.Actions, RecentLogSize * 3, cancellationToken);
+        var log = await context.Data.Audit.ListRecentAsync(production.Id, LogTexts.RecentActions, RecentLogSize * 3, cancellationToken);
         var sourceIds = catalog.All.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
         return new ProductionSnapshot(
             runtime.Revision,
@@ -32,7 +32,7 @@ public sealed class SnapshotBuilder(PairingRequestStore pairingRequests, StudioF
             [.. invites.OrderBy(i => i.CreatedAt).Select(i => Dtos.Invite(i, options.BaseUrl))],
             [.. runtime.Sources.Values.Where(h => h.Incident is not null && sourceIds.Contains(h.SourceId)).Select(h => h.Incident!).OrderBy(i => i.StartedAt)],
             runtime.Output.Current(context.Now),
-            [.. log.Select(e => (e.At, Described: LogTexts.Describe(e))).Where(e => e.Described is not null).Take(RecentLogSize).Select(e => new LogEntryDto(e.At, e.Described!.Value.Code, e.Described.Value.Params, e.Described.Value.Text))],
+            [.. log.Select(e => (e.At, Described: LogTexts.DescribeRecent(e))).Where(e => e.Described is not null).Take(RecentLogSize).Select(e => new LogEntryDto(e.At, e.Described!.Value.Code, e.Described.Value.Params, e.Described.Value.Text))],
             runtime.StudioConnections.Count);
     }
 

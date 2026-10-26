@@ -23,6 +23,36 @@ public static class AuditActions
     /// <summary>The Regie account was reset with <c>reset-admin</c>.</summary>
     public const string AccountReset = "account.reset";
 
+    /// <summary>The admin signed out.</summary>
+    public const string Logout = "logout";
+
+    /// <summary>A production was created.</summary>
+    public const string ProductionCreated = "production.created";
+
+    /// <summary>A production was renamed.</summary>
+    public const string ProductionRenamed = "production.renamed";
+
+    /// <summary>A production became the active one.</summary>
+    public const string ProductionActivated = "production.activated";
+
+    /// <summary>The broadcast was reset to standby.</summary>
+    public const string BroadcastReset = "broadcast.reset";
+
+    /// <summary>A slate was changed.</summary>
+    public const string SlateChanged = "slate.changed";
+
+    /// <summary>A recovered source message was marked as seen.</summary>
+    public const string IncidentAcknowledged = "incident.acknowledged";
+
+    /// <summary>A device was renamed.</summary>
+    public const string DeviceRenamed = "device.renamed";
+
+    /// <summary>The audit log was exported.</summary>
+    public const string AuditExported = "audit.exported";
+
+    /// <summary>Old audit entries were deleted and old IP addresses removed.</summary>
+    public const string AuditRetention = "audit.retention";
+
     /// <summary>A scene went on air.</summary>
     public const string SceneLive = "scene.live";
 
@@ -141,6 +171,50 @@ public static class AuditDetails
 
     /// <summary>Number of entries (IP rules).</summary>
     public const string Count = "count";
+
+    /// <summary>How a scene went on air, see <see cref="AuditVia"/>.</summary>
+    public const string Via = "via";
+
+    /// <summary>The previous name of a renamed production.</summary>
+    public const string From = "from";
+
+    /// <summary>Which slate changed, see <see cref="AuditSlates"/>.</summary>
+    public const string Slate = "slate";
+
+    /// <summary>Export format (<c>csv</c> or <c>json</c>).</summary>
+    public const string Format = "format";
+
+    /// <summary>Number of exported rows.</summary>
+    public const string Rows = "rows";
+
+    /// <summary>Number of entries deleted by the retention.</summary>
+    public const string Deleted = "deleted";
+
+    /// <summary>Number of entries whose IP address the retention removed.</summary>
+    public const string Anonymised = "anonymised";
+
+    /// <summary>The retention period in days.</summary>
+    public const string Days = "days";
+}
+
+/// <summary>Values of <see cref="AuditDetails.Via"/>.</summary>
+public static class AuditVia
+{
+    /// <summary>The preview was taken on air (Studio-Modus).</summary>
+    public const string Take = "take";
+
+    /// <summary>A scene was switched directly.</summary>
+    public const string Click = "click";
+}
+
+/// <summary>Values of <see cref="AuditDetails.Slate"/>.</summary>
+public static class AuditSlates
+{
+    /// <summary>The slate before the broadcast.</summary>
+    public const string Standby = "standby";
+
+    /// <summary>The slate after the broadcast.</summary>
+    public const string End = "end";
 }
 
 /// <summary>An entry of the audit log (table <c>audit_entries</c>).</summary>

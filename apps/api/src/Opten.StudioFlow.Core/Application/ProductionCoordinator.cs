@@ -76,7 +76,7 @@ public sealed class MutationContext
     {
         var entry = AuditEntry.Create(ProductionId, Now, actor, action, details);
         Data.Audit.Add(entry);
-        if (LogTexts.Describe(entry) is var (code, parameters, text))
+        if (LogTexts.DescribeRecent(entry) is var (code, parameters, text))
         {
             var log = new LogEntryDto(Now, code, parameters, text);
             Emit(revision => new LogAppendedEvent(revision, log));
