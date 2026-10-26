@@ -149,7 +149,8 @@ describe('HeaderComponent', () => {
       }),
     );
     expect(text()).toContain('148 ms');
-    expect(element.querySelector('.c-header__out-label')?.textContent).toBe('Proxy');
+    expect(element.querySelector('.c-header__out-label')?.textContent).toBe('Output');
+    expect(element.querySelector('.c-header__out-links')?.textContent).toBe('Proxy');
     element.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"].c-chipbtn')?.click();
     await render();
     harness.http.expectOne(`${BASE}/output`).flush({
@@ -172,6 +173,46 @@ describe('HeaderComponent', () => {
     expect(text()).toContain('1920 × 1080 · 30 fps');
     expect(text()).toContain('studioflow.opten.ch/o/webinar?k=••••••');
     expect(text()).not.toContain('secret123');
+  });
+
+  it('names every connected output link in the chip and lists all links with their state in its tooltip', async () => {
+    const link = (linkId: string, name: string, state: 'connected' | 'stale' | 'none') => ({
+      linkId,
+      name,
+      state,
+      consumers: state === 'none' ? 0 : 1,
+      addresses: [],
+      latencyMs: null,
+      fps: null,
+      lastReportAt: null,
+    });
+    await setup(
+      snapshotFixture({
+        outputStatus: {
+          state: 'connected',
+          consumers: 2,
+          addresses: [],
+          latencyMs: null,
+          fps: null,
+          lastReportAt: null,
+          links: [
+            link('olk_a', 'Proxy', 'connected'),
+            link('olk_b', 'Teams camera', 'connected'),
+            link('olk_c', 'Zoom', 'none'),
+          ],
+        },
+      }),
+    );
+    expect(element.querySelector('.c-header__out-links')?.textContent).toBe('Proxy + Teams camera');
+    expect(element.querySelector('.c-chipbtn')?.getAttribute('title')).toBe(
+      'Proxy · connected\nTeams camera · connected\nZoom · not connected',
+    );
+  });
+
+  it('shows no link name in the chip while no output link is connected', async () => {
+    await setup();
+    expect(element.querySelector('.c-header__out-links')).toBeNull();
+    expect(element.querySelector('.c-chipbtn')?.hasAttribute('title')).toBe(false);
   });
 
   it('masks output links and validates IP entries', () => {

@@ -14,7 +14,10 @@
         [sfPopoverTrigger]="outputPopover"
       >
         <svg sfIcon="output"></svg>
-        <span class="c-header__out-label">{{ outputLabel() }}</span>
+        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>
+        @if (connectedLinks(); as names) {
+          <span class="c-header__out-links">{{ names }}</span>
+        }
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
         <span class="u-mono">{{ outputLatency() }}</span>
         <svg sfIcon="chev" [size]="13"></svg>

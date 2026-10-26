@@ -59,13 +59,13 @@ export class HeaderComponent {
         return 'is-idle';
     }
   });
-  /** The chip names the connected links ("Proxy + Teams camera"); without one it just says "Output". */
-  protected readonly outputLabel = computed(() => {
-    const connected = (this.store.outputStatus()?.links ?? [])
+  /** The chip names the connected links ("Proxy + Teams camera"); empty while none is connected. */
+  protected readonly connectedLinks = computed(() =>
+    (this.store.outputStatus()?.links ?? [])
       .filter((link) => link.state === 'connected')
-      .map((link) => link.name);
-    return connected.length > 0 ? connected.join(' + ') : t('regie.header.output.label');
-  });
+      .map((link) => link.name)
+      .join(' + '),
+  );
   /** Tooltip of the chip: every link with its state ("Proxy · connected"). */
   protected readonly outputTitle = computed(() => {
     const links = this.store.outputStatus()?.links ?? [];

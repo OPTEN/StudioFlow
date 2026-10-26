@@ -43,6 +43,13 @@
   }
 }
 
+// The connected output links in the output chip ("Proxy + Teams camera").
+.c-header__out-links {
+  @include ellipsis;
+  color: var(--text-2);
+  max-width: 18ch;
+}
+
 .c-header__presence {
   align-items: center;
   color: var(--text-2);
