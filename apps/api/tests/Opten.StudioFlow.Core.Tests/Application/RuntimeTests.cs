@@ -296,6 +296,20 @@ public sealed class OutputTrackerTests
     }
 
     [Fact]
+    public void TakeChange_DroppedFramesFlickeringFromZero_IsThrottled()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        // 0 % to 1.7 % is a change of 170 % of the value, but not a reason to wake every Regie within the interval.
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 1.7, 3, 0), Build.T0.AddSeconds(2));
+
+        Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(2)));
+        Assert.Equal(1.7, tracker.TakeChange(Build.T0.AddSeconds(5))!.DroppedFramesPct);
+    }
+
+    [Fact]
     public void TakeChange_StateChange_PublishesImmediately()
     {
         tracker.Connect("c1", "olk_a", "10.0.0.5");
