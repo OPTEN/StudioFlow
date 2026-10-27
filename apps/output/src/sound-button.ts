@@ -5,21 +5,27 @@ import type { OutputAudio } from './output-audio';
 const GESTURE_EVENTS = ['click', 'keydown', 'touchend', 'pointerup'] as const;
 
 /**
- * The “Sound on” button of the output page. It is only there while the browser blocks the sound and some channel could
+ * The “Sound on” button of the output page. It is in the document only while the browser blocks the sound and some channel could
  * be heard; a click on it – or any click, key or touch on the page – starts the audio context, and the button goes away.
  * OBS with “Control audio via OBS” and a frame with `allow="autoplay"` never show it. Returns the function that removes it.
  */
 export function mountSoundButton(doc: Document, audio: OutputAudio): () => void {
-  const button = doc.createElement('button');
-  button.type = 'button';
-  button.className = 'c-sound-on';
-  button.textContent = t('output.audio.soundOn');
-  button.title = t('output.audio.soundOnHint');
+  // The button exists only while it is needed: the page of the audience has no control at all otherwise (E2E-OUT-01).
+  let button: HTMLButtonElement | null = null;
   const show = (needed: boolean): void => {
-    button.hidden = !needed;
+    if (needed && button === null) {
+      button = doc.createElement('button');
+      button.type = 'button';
+      button.className = 'c-sound-on';
+      button.textContent = t('output.audio.soundOn');
+      button.title = t('output.audio.soundOnHint');
+      doc.body.append(button);
+    } else if (!needed && button !== null) {
+      button.remove();
+      button = null;
+    }
   };
   show(audio.needsGesture);
-  doc.body.append(button);
   const start = (): void => {
     if (audio.state === 'blocked') {
       void audio.resume();
@@ -34,6 +40,6 @@ export function mountSoundButton(doc: Document, audio: OutputAudio): () => void 
     for (const event of GESTURE_EVENTS) {
       doc.removeEventListener(event, start, { capture: true });
     }
-    button.remove();
+    show(false);
   };
 }
