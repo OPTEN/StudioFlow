@@ -298,7 +298,7 @@ export async function expectVideoFrozen(video: Locator, ms = 1500) { /* totalVid
 | Helper | Effect | Affects | Does not affect |
 |---|---|---|---|
 | `net.browserOffline(ctx, on)` → `context.setOffline` | fetch, XHR and new WebSocket connections of that browser context (existing sockets are closed or stall in current Chromium – verified by `E2E-NET-00`) | REST, SignalR hubs, LiveKit signalling | established WebRTC media (UDP) |
-| `net.cut(ctx)` / `net.restore(ctx)` (what `phone.goOffline()/goOnline()` and the Regie equivalents use) | `setOffline` **plus** closing every tracked `WebSocket` and `RTCPeerConnection` (the init script keeps the registries `window.__sfNet.sockets/peers`); `restore` clears offline so the browser fires `online` | hub **and** media of that page: the closest software equivalent of "the Wi-Fi is gone" | other pages, the server |
+| `net.cut(ctx)` / `net.restore(ctx)` (what `phone.goOffline()/goOnline()` and the Regie equivalents use) | closing every tracked `WebSocket` and `RTCPeerConnection` (the init script keeps the registries `window.__sfNet.sockets/peers`) **first** and waiting for the close handshake, then `setOffline`; from the first moment the page cannot open new sockets or peers (`__sfNet.blocked`), so an app cannot reconnect in the gap. With `setOffline` first the emulated offline mode swallowed traffic of the open sockets now and then (in a probe under load the server's Close reply never reached the page in 4 of 7 cuts, and in one cut the hub connection outlived the cut): the server saw a silent loss, the Regie showed the outage after 3.8-4 s instead of 0.1-0.5 s (issue 30) and the test measured `T-DETECT-SILENT` instead of `T-DETECT-CLEAN`. `cut` returns `{ at, clean }`: `at` is `Date.now()` inside the page when the connections were closed (start a detection time there), `clean` that every socket finished its close handshake. `restore` lifts the block, then clears offline so the browser fires `online` | hub **and** media of that page: the closest software equivalent of "the Wi-Fi is gone" | other pages, the server |
 | `net.cdpThrottle(page, profile)` → CDP `Network.emulateNetworkConditions` | latency and throughput of HTTP requests (WebSocket frames are not reliably throttled by Chromium, so hub behaviour under throttling is judged on negotiate/REST) | REST, uploads, page load | WebRTC media, WebSocket frames |
 | `net.routeFault(page, urlGlob, { status \| delayMs \| abort })` → `page.route` | selected requests | one page | others |
 | `lk.pause()/unpause()` → `docker pause <livekit>` / `docker unpause <livekit>` | process frozen, sockets stay open, no RST: **silent loss** for all media and the signalling WebSocket | all browsers | api, hubs |
@@ -798,7 +798,7 @@ Strings: knock card “{Name} wants to join”, “Does the laptop show the same
 
 **INT-PAIR-15** · P0 · xunit — Concurrency
 - Steps: 20 parallel redeems of one invite with 20 distinct clientIds; 20 parallel redeems of one invite with one clientId; two parallel approvals of one request; 30 parallel pairings (distinct invites).
-- Expect: exactly one 200 and 19 × 410; all 20 return the same device and exactly one device row; one approval 200 and one 404 with exactly one `device.paired` row; all slot codes distinct.
+- Expect: exactly one 200 and 19 × 410; all 20 return the same device and exactly one device row; one approval 200 and one 404 with exactly one `device.paired` row; all slot codes distinct. The E2E variant (`[stack]`, bursts of 20 and 30 concurrent connections to the direct API port) names the request in a transport error of the harness' HTTP client: error code, elapsed time and whether the response headers had arrived (issue 33: a bare “socket hang up” flaked on the CI runner and could not be reproduced locally in about 200 runs under CPU contention, a CPU-limited API, API restarts before the test and bursts of up to 800 connections).
 
 **INT-PAIR-16** · P1 · xunit — Production scoping [GAP-36]
 - Steps: approve a request through another production's route; redeem an invite of an inactive production; `activate` another production while a request is pending.
@@ -1212,7 +1212,7 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 
 **E2E-SWITCH-04** · P0 · pw — A fade always completes; switches during a fade are ignored
 - Steps: duration 2 s; operator A clicks “Scene B”, 300 ms later clicks “Scene C” and presses key `3`; operator B (separate Regie) clicks “Scene C” 500 ms after A's switch.
-- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running`, is ignored silently (no error toast, no state change); the Take button is `disabled` during the fade; after 2 s program = “Scene B” in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works.
+- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running`, is ignored silently (no error toast, no state change); the Take button is `disabled` during the fade; after 2 s program = “Scene B” in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works. The animation reports its own end (`finished`, not cancelled): the renderer's stall guard does not cut a fade short that is only late with its frames (issue 31); `T-FADE` is judged without the frame stall of the page.
 
 **E2E-SWITCH-05** · P0 · pw — Studio Mode
 - Steps: toggle the `Studio Mode` switch on; click “Scene C”; toggle off; reload with it on.
@@ -1358,7 +1358,7 @@ log “K2 reconnecting”, “K2 is back, was gone for 9 s”, “S1 sharing sto
 
 **E2E-SRC-02** · P0 · pw — Device loses network: outage in all six places
 - Pre: K1 (phone, in the program scene and the preview scene), K2 (phone, in another scene), S1 (laptop screen) live; output open; hold 3 s.
-- Steps: `phone1.goOffline()` (`net.cut`: hub and media of that phone die); sample the six places until all show the outage.
+- Steps: `phone1.goOffline()` (`net.cut`: hub and media of that phone die; the sockets close with a close handshake before the browser goes offline, `cut.clean` is asserted); sample the six places until all show the outage. `T-DETECT-CLEAN` runs from the moment the phone page closed its connections (`cut.at`) to the DOM read of the Regie that showed all six places, both stamps taken inside the browsers: the round trips of the harness are not part of the product's time.
 - Expect: within `T-DETECT-CLEAN`: header chip “1 incident” with amber lamp; strip segment `K1 <name> reconnecting on Program <mm:ss>` (timer counting); Program (and Preview) monitor: element K1 with dashed amber outline and tab “K1 · Freeze frame 00:0x”; Scenes: the scene row shows an amber lamp and “K1 disrupted”; Sources row: amber lamp, “reconnecting”, timer; Stations row: amber wash, “reconnecting 00:0x freeze frame”; log “K1 reconnecting”; the output keeps K1's last frame (`E2E-OUT-06`); other stations unaffected. Test passes `regie.expectOutage('K1','reconnecting')`.
 
 **E2E-SRC-03** · P0 · pw — Recovery stays until “Seen”
@@ -2360,7 +2360,7 @@ Spec 4.9, runbook 17. E2E specs run in English (`locale: 'en-US'`) on any stack;
 
 **E2E-AUDIT-01** · P0 · pw — "Last broadcast" and the CSV (smoke)
 - Steps: start a broadcast, switch twice, end it; production menu → "Audit log"; choose "Last broadcast"; "Export CSV".
-- Expect: exactly four rows in the order ended, live, live, started with the scene names, "Admin" and the production; the download is `studioflow-audit-YYYY-MM-DD.csv` with a UTF-8 BOM, the English header and the same four descriptions in the same order, production id and details (`via: click`); the export is then an entry of the log.
+- Expect: exactly four rows in the order ended, live, live, started with the scene names, "Admin" and the production; the download is `studioflow-audit-YYYY-MM-DD.csv` with a UTF-8 BOM, the English header and the same four descriptions in the same order, production id and details (`via: click`); the export is then an entry of the log (one of several when the stack saw earlier runs: a retry or a repetition leaves its export entry behind). Choosing "Last broadcast" before the list of productions has arrived waits for it instead of showing an empty table (unit test of the page, issue 32).
 
 **E2E-AUDIT-02** · P1 · pw — Filters, details and keyboard
 - Steps: switch a scene and rename the production; category "Production" on, then "Access and security" on and "Production" off; clear; search for the scene name; focus the details button, Enter, Space; search for text nobody has.
@@ -2755,7 +2755,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | Server: request received → event published, p95 | ≤ 20 ms | ≤ 50 ms | — |
 | | REST mutation (scene item update) p95 / p99, local PostgreSQL | ≤ 50 / 150 ms | ≤ 100 / 250 ms | — |
 | | Event fan-out to 10 subscribers p95 | ≤ 20 ms | ≤ 50 ms | — |
-| `T-FADE` | Measured fade duration vs `durationMs` | ± 17 ms | ± 50 ms | spec 4.2 |
+| `T-FADE` | Measured fade duration vs `durationMs` (the end is seen in the first frame after it, so the measure leaves out the part of that frame gap that exceeds one 60 Hz frame: a stalled page on a loaded runner is not the fade's error; `fadeDeviationMs` in `support/regie/kit.ts`) | ± 17 ms | ± 50 ms | spec 4.2 |
 | | Regie vs output fade start offset | ≤ 50 ms | ≤ 100 ms | — |
 | | Fade left half-finished | never | never | PRODUCT.md principle 3 |
 | `T-TALLY` | Switch event → `tally` applied on the device, p95 | ≤ 250 ms | ≤ 500 ms | — |
