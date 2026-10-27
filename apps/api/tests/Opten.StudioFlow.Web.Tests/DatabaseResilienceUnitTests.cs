@@ -129,6 +129,18 @@ public sealed class DatabaseResilienceUnitTests
     }
 
     [Fact]
+    public void Apply_ConnectionString_SwitchesGssEncryptionOff()
+    {
+        var options = new DatabaseOptions();
+
+        var pooled = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=sf;Username=u;Password=p;GSS Encryption Mode=Prefer"));
+        var probe = new NpgsqlConnectionStringBuilder(options.Apply("Host=db;Database=sf;Username=u;Password=p", pooled: false));
+
+        Assert.Equal(GssEncryptionMode.Disable, pooled.GssEncryptionMode);
+        Assert.Equal(GssEncryptionMode.Disable, probe.GssEncryptionMode);
+    }
+
+    [Fact]
     public void Validate_OutOfRange_NamesTheKeys()
     {
         var errors = new DatabaseOptions { ConnectTimeout = TimeSpan.Zero, CommandTimeout = TimeSpan.FromHours(1), ProbeInterval = TimeSpan.FromMilliseconds(1), StartupWait = TimeSpan.FromHours(1) }.Validate().ToList();

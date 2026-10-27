@@ -64,6 +64,9 @@ public sealed class DatabaseOptions
     /// <summary>
     /// The connection string with the timeouts of these options. <paramref name="pooled"/> false is for the probe of
     /// <see cref="DatabaseCircuit"/>, which must reach the server instead of reusing an idle pooled connection.
+    /// GSS encryption is switched off: the API signs in with a password on the internal network and never uses Kerberos,
+    /// and with the default (Prefer) every new connection goes through the native libgssapi_krb5 of the Alpine image, which
+    /// crashed the process with SIGSEGV while many connections were opened at once (issue #33).
     /// </summary>
     public string Apply(string connectionString, bool pooled = true)
     {
@@ -73,6 +76,7 @@ public sealed class DatabaseOptions
             Timeout = WholeSeconds(ConnectTimeout),
             CommandTimeout = WholeSeconds(CommandTimeout),
             CancellationTimeout = (int)CancellationTimeout.TotalMilliseconds,
+            GssEncryptionMode = GssEncryptionMode.Disable,
         };
         if (!pooled)
         {
