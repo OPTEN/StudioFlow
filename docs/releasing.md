@@ -128,7 +128,7 @@ plan -> images (api, web, livekit, backup) -> smoke (release commits) -> main-ta
 |---|---|
 | Docs only | `plan`, `release-please`; `:main` stays on the last code commit |
 | Code (not a release) | `plan`, `images`, `scan`, `main-tag`, `release-please`. The smoke set is not run again: CI smoke-tested images of the same commit built from the same Dockerfiles and the same layer cache |
-| Release commit | everything: the smoke set runs against the pushed images and the scan must be green before they get a version tag |
+| Release commit | everything: the smoke set runs against the pushed images and the scan must be green before they get a version tag. A release runs the smoke set twice: in CI on the release pull request, and here against the pushed images. CI skips `build-images` and `e2e-smoke` for the release commit itself (a push that changes `.release-please-manifest.json`), and `release-please` creates the tag only after `smoke` |
 
 | Job | Does | Permissions beyond `contents: read` |
 |---|---|---|

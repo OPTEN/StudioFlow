@@ -3082,7 +3082,7 @@ The pipeline runs on GitHub Actions (`.github/workflows/`). `ci.yml` is the safe
 | Frontends, packages, tools, the E2E harness | `unit-web`, `contracts`, `lint-typecheck` with the type check, `build-images` and `e2e-smoke` | about 25 minutes |
 | `.github/workflows/**` | everything | about 28 minutes |
 
-`e2e-smoke` needs all four images, so whenever it runs the four `build-images` jobs run (about 25 s each with the layer cache). On a pull request the label `e2e` runs `e2e-smoke` (and the image builds) even when the paths would not. The last job, `ci-ok`, runs after all others with `if: always()` and fails when one of them ended `failure` or `cancelled`; a skipped job passes. Branch protection requires `ci-ok` and the title check only, so that a skipped job never blocks a merge and a red one always does.
+`e2e-smoke` needs all four images, so whenever it runs the four `build-images` jobs run (about 25 s each with the layer cache). On a pull request the label `e2e` runs `e2e-smoke` (and the image builds) even when the paths would not. The release commit on `main` (a push that changes `.release-please-manifest.json`) skips both: the release pull request ran them, and the job `smoke` of `release.yml` runs the smoke set against the pushed images before the release gets its tag (`docs/releasing.md` section 4). The last job, `ci-ok`, runs after all others with `if: always()` and fails when one of them ended `failure` or `cancelled`; a skipped job passes. Branch protection requires `ci-ok` and the title check only, so that a skipped job never blocks a merge and a red one always does.
 
 | Job | Runs | Red when |
 |---|---|---|

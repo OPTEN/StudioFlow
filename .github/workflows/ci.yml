@@ -4,8 +4,10 @@
 # check and the release files check and nothing else; the API runs api and contracts; the frontends and packages run
 # unit-web and contracts; anything that reaches the stack (apps, packages, infra, Compose, the E2E harness, the Node
 # set-up) builds the four images and runs e2e-smoke. A change to a workflow runs everything, and so does the label e2e
-# on a pull request for e2e-smoke. The remaining jobs run in parallel (the four image builds are one job each);
-# e2e-smoke starts from the images that build-images built.
+# on a pull request for e2e-smoke. The release commit on main (it changes .release-please-manifest.json) runs no images
+# and no e2e-smoke: the release pull request ran them, and release.yml runs the smoke set against the pushed images.
+# The remaining jobs run in parallel (the four image builds are one job each); e2e-smoke starts from the images that
+# build-images built.
 #
 # Branch protection requires only the aggregate job ci-ok (and the PR title check): it fails when a job that ran failed
 # or was cancelled, and passes when a job was skipped because its paths did not change. The dependency audit runs
@@ -47,7 +49,9 @@ jobs:
       api: ${{ steps.filter.outputs.api == 'true' || steps.filter.outputs.dotnet == 'true' || steps.filter.outputs.workflows == 'true' }}
       web: ${{ steps.filter.outputs.web == 'true' || steps.filter.outputs.workflows == 'true' }}
       code: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' }}
-      e2e: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e') }}
+      # The release commit (a push that changes .release-please-manifest.json) skips the images and e2e-smoke: the release
+      # pull request ran them, and release.yml runs the smoke set against the pushed images before the version tag.
+      e2e: ${{ ((steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true') && !(github.event_name == 'push' && steps.filter.outputs.release == 'true')) || contains(github.event.pull_request.labels.*.name, 'e2e') }}
     steps:
       # Full history: on a push the filter diffs against event.before, which a shallow clone does not have and cannot fetch
       # without the credentials that persist-credentials: false removes.
@@ -64,6 +68,8 @@ jobs:
           filters: |
             workflows:
               - '.github/workflows/**'
+            release:
+              - '.release-please-manifest.json'
             api:
               - 'apps/api/**'
             dotnet:
