@@ -3,6 +3,7 @@ import { percentile } from '../../support/helpers';
 import { uniqueIp } from '../../support/fixtures';
 import { DeviceHub } from '../../support/hubs';
 import { pairLaptopByLink, pairPhone, type PairedDevice } from '../../support/production';
+import { sleep } from '../../support/shell';
 import { t } from '../../support/tags';
 import { expect, test } from '../../support/ui/fixtures';
 import {
@@ -290,20 +291,28 @@ test.describe('REGIE switching', () => {
       await expect(duration(pageA)).toHaveText('2 s');
       const postsA = programPosts(pageA);
       const postsB = programPosts(pageB);
-      await regie.clickScene('Scene B');
       const startedAt = Date.now();
+      await regie.clickScene('Scene B');
       await expect.poll(() => programId(api, production)).toBe(b);
-      // A clicks Scene C and presses 3 during the fade; B clicks Scene C 500 ms after A's switch.
-      await pageA.waitForTimeout(300);
-      await regie.scene('Scene C').click();
-      await pageA.keyboard.press('3');
-      await pageB.waitForTimeout(Math.max(0, 500 - (Date.now() - startedAt)));
-      await operatorB.scene('Scene C').click();
-      // And a client that has no UI guard (REST) is refused by the server.
-      const refused = await api.switchProgram(production.id, {
-        sceneId: c,
-        transition: { kind: 'cut', durationMs: 0 },
-      });
+      // Everything below has to happen inside the 2 s of the fade, and a click costs a loaded machine several hundred
+      // milliseconds of round trips: the three actors work at the same time instead of one after the other, each at the
+      // moment the catalogue names (A at +300 ms, B at +500 ms after A's switch, the REST client at once).
+      const untilAfterSwitch = (ms: number) => sleep(Math.max(0, ms - (Date.now() - startedAt)));
+      const [refused] = await Promise.all([
+        // A client that has no UI guard (REST) is refused by the server.
+        api.switchProgram(production.id, { sceneId: c, transition: { kind: 'cut', durationMs: 0 } }),
+        // A clicks Scene C and presses 3 during the fade.
+        (async () => {
+          await untilAfterSwitch(300);
+          await regie.scene('Scene C').click();
+          await pageA.keyboard.press('3');
+        })(),
+        // B clicks Scene C 500 ms after A's switch.
+        (async () => {
+          await untilAfterSwitch(500);
+          await operatorB.scene('Scene C').click();
+        })(),
+      ]);
       expect(refused.status).toBe(409);
       expect(refused.body.code).toBe('transition_running');
       expect(
