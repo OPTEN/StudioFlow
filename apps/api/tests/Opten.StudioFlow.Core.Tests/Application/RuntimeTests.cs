@@ -302,6 +302,31 @@ public sealed class OutputTrackerTests
     }
 
     [Fact]
+    public void TakeChange_DroppedFramesFallingBelowTheWarningPoint_PublishesImmediately()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 8, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 2, 3, 0), Build.T0.AddSeconds(1));
+
+        Assert.Equal(2, tracker.TakeChange(Build.T0.AddSeconds(1))!.DroppedFramesPct);
+    }
+
+    [Fact]
+    public void TakeChange_DroppedFramesChangingAboveTheWarningPoint_IsThrottled()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 17.9, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        // 18 % and then 10 %: the Regie already says "drops frames".
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 9.8, 3, 0), Build.T0.AddSeconds(2));
+
+        Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(2)));
+    }
+
+    [Fact]
     public void TakeChange_DroppedFramesFlickeringFromZero_IsThrottled()
     {
         tracker.Connect("c1", "olk_a", "10.0.0.5");

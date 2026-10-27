@@ -502,8 +502,8 @@ is, else stale if any is) and `links`: every link of the production with its id,
 latency and fps, and the load of the page (issue #12): `droppedFramesPct` (0–100), `decodedStreams` and
 `softwareDecodedStreams` (≤ decoded; the summary carries those of the page that reported last). Implausible numbers are
 dropped, not clamped. Changes (also a link created, renamed or revoked) emit `outputStatusChanged` (latency and fps at
-most every 5 s or when the value changes by > 20 %; the dropped share is a percentage and counts in points: at most every
-5 s or when it changes by 5 points or more, the point from which the Regie warns; the decoder counts follow the 5 s too: they flicker on a busy computer). `lastSeenAt` of a link is written when one of its pages connects or
+most every 5 s or when the value changes by > 20 %; the dropped share is a percentage: at most every
+5 s or when it crosses 5 %, the point from which the Regie warns, in either direction; the decoder counts follow the 5 s too: they flicker on a busy computer). `lastSeenAt` of a link is written when one of its pages connects or
 disconnects.
 
 ### 4.9 Audit log

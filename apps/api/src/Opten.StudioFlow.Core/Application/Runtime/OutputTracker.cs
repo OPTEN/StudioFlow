@@ -8,7 +8,7 @@ namespace Opten.StudioFlow.Core.Application.Runtime;
 /// <c>Output:StaleAfter</c> (6 s), <c>stale</c> when connected without a fresh rendering report, <c>none</c> without a
 /// page. The summary over all links is connected when any link is, else stale when any link is. Latency, fps, dropped
 /// frames and decoder counts are published at most every <c>Output:MetricsInterval</c> (5 s) unless latency or fps
-/// change by more than 20 % or the dropped share by 5 percentage points or more (the point from which the Regie warns).
+/// change by more than 20 % or the dropped share crosses 5 % (the point from which the Regie warns, in either direction).
 /// The decoder counts only follow the interval: they are the streams that decoded a frame in the last two seconds, which
 /// flickers on a computer that is busy, and every Regie would be woken for it.
 /// </summary>
@@ -17,10 +17,11 @@ public sealed class OutputTracker(OutputMonitorOptions options)
     private const double SignificantChange = 0.2;
 
     /// <summary>
-    /// A dropped share is a percentage, so it is compared in points: relative to its own value 0 % to 1.7 % would be a
-    /// change of 170 % and every flicker would reach all Regie clients at once. Five points are what the Regie warns at.
+    /// The dropped share is a percentage: relative to its own value 0 % to 1.7 % would be a change of 170 % and every
+    /// flicker would reach all Regie clients at once. It matters when it crosses the point from which the Regie says
+    /// "drops frames" (5 %), whichever way; a computer that drops 18 % and then 10 % has told the Regie what it needs.
     /// </summary>
-    private const double SignificantDroppedPoints = 5;
+    private const double DroppedWarnPercent = 5;
 
     /// <summary>More streams than this are not a reading but a bug (a production has at most 32 items per scene).</summary>
     private const int MaxStreams = 1000;
@@ -237,7 +238,7 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             return before.HasValue != after.HasValue;
         }
 
-        return Math.Abs(after.Value - before.Value) >= SignificantDroppedPoints;
+        return (before.Value >= DroppedWarnPercent) != (after.Value >= DroppedWarnPercent);
     }
 
     private static bool IsSignificant(double? before, double? after)
