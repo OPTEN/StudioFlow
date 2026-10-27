@@ -1,4 +1,6 @@
+import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, containerNameOf, stackConfig } from './env';
 import { exec, sleep, waitUntil, type ExecOptions, type ExecResult } from './shell';
 
@@ -199,6 +201,47 @@ export async function dumpLogs(dir: string): Promise<void> {
     const result = await compose(['logs', '--no-color', '--timestamps', service]);
     fs.writeFileSync(`${dir}/${service}.log`, result.output);
   }
+  // The state of every container at the end of the run: restarts, memory and CPU limits, the last exit.
+  const states: Record<string, unknown> = {};
+  for (const service of SERVICES) {
+    const result = await docker(['inspect', containerName(service)]);
+    if (result.code !== 0) continue;
+    const info = JSON.parse(result.stdout)[0];
+    states[service] = {
+      restartCount: info.RestartCount,
+      state: info.State,
+      memoryLimit: info.HostConfig?.Memory,
+      nanoCpus: info.HostConfig?.NanoCpus,
+      restartPolicy: info.HostConfig?.RestartPolicy,
+    };
+  }
+  fs.writeFileSync(`${dir}/containers.json`, JSON.stringify(states, null, 2));
+}
+
+let eventLog: ChildProcess | undefined;
+
+/**
+ * Records the events of the containers of the stack (start, kill, die with the exit code, oom, restart, stop) in a file, one
+ * JSON object per line, until stopEventLog. A container with a restart policy that dies by itself leaves no other trace:
+ * `docker inspect` forgets the exit code as soon as it runs again, its own log has no last words after a SIGKILL, and the
+ * daemon keeps only the last 256 events, which the health checks fill within minutes (issue 33).
+ */
+export function startEventLog(file: string): void {
+  stopEventLog();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const out = fs.openSync(file, 'w');
+  const args = ['events', '--format', '{{json .}}', '--filter', 'type=container', '--filter', `label=com.docker.compose.project=${PROJECT}`];
+  for (const event of ['start', 'kill', 'die', 'oom', 'restart', 'stop']) args.push('--filter', `event=${event}`);
+  // The end time is a safety net: a runner that is killed does not leave the process behind for ever.
+  args.push('--until', String(Math.floor(Date.now() / 1000) + 8 * 3600));
+  eventLog = spawn('docker', args, { stdio: ['ignore', out, 'ignore'], windowsHide: true });
+  eventLog.on('error', () => undefined);
+  fs.closeSync(out);
+}
+
+export function stopEventLog(): void {
+  eventLog?.kill();
+  eventLog = undefined;
 }
 
 export { sleep };
