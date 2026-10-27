@@ -2755,7 +2755,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | Server: request received → event published, p95 | ≤ 20 ms | ≤ 50 ms | — |
 | | REST mutation (scene item update) p95 / p99, local PostgreSQL | ≤ 50 / 150 ms | ≤ 100 / 250 ms | — |
 | | Event fan-out to 10 subscribers p95 | ≤ 20 ms | ≤ 50 ms | — |
-| `T-FADE` | Measured fade duration vs `durationMs` (the end is seen in the first frame after it, so the measure leaves out the part of that frame gap that exceeds one 60 Hz frame: a stalled page on a loaded runner is not the fade's error; `fadeDeviationMs` in `support/regie/kit.ts`) | ± 17 ms | ± 50 ms | spec 4.2 |
+| `T-FADE` | Measured fade duration vs `durationMs` (the end is seen in the first frame after it, so the measure leaves out the part of that frame gap that exceeds one 60 Hz frame: a stalled page on a loaded runner is not the fade's error; `fadeDeviationMs` in `support/regie/kit.ts`; the frame before the one that reported the end lay less than the duration after the start, so the gap is at least the overshoot: a CI runner measured 367 ms for a 300 ms fade with 210-271 ms between two paints of the page, issue 31). What the animation engine says is checked besides, and does not depend on the frames: the fade finished by itself and was not cancelled, `effect.getTiming().duration` is the requested duration, and the end was not reported before the duration had passed (`expectFadeTiming`) | ± 17 ms | ± 50 ms | spec 4.2 |
 | | Regie vs output fade start offset | ≤ 50 ms | ≤ 100 ms | — |
 | | Fade left half-finished | never | never | PRODUCT.md principle 3 |
 | `T-TALLY` | Switch event → `tally` applied on the device, p95 | ≤ 250 ms | ≤ 500 ms | — |

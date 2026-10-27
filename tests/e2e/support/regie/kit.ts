@@ -538,6 +538,8 @@ export interface RecordedAnimation {
    * machine, a stall of the page on a loaded one.
    */
   frameGapMs: number | null;
+  /** The duration the animation engine reports for the effect (`effect.getTiming().duration`), read when it finished. */
+  timingMs: number | null;
   cancelled: boolean;
 }
 
@@ -588,6 +590,7 @@ export async function installAnimationHook(page: Page): Promise<void> {
         endedAt: null as number | null,
         elapsedMs: null as number | null,
         frameGapMs: null as number | null,
+        timingMs: null as number | null,
         timelineStart: null as number | null,
         cancelled: false,
       };
@@ -601,6 +604,8 @@ export async function installAnimationHook(page: Page): Promise<void> {
       animation.finished.then(
         () => {
           record.endedAt = Date.now();
+          const timing = animation.effect?.getTiming().duration;
+          record.timingMs = typeof timing === 'number' ? timing : null;
           const frame = Number(document.timeline.currentTime);
           if (record.timelineStart !== null) record.elapsedMs = frame - record.timelineStart;
           // The promise may run before or after the frame's own callback: the frame before this one is the latest earlier time.
@@ -637,11 +642,28 @@ export async function opacityFades(page: Page, sceneId?: string): Promise<Record
  * How far (ms) a finished fade ran from its `duration` (`T-FADE`), without the stall of the page: the end is reported in
  * the first frame after it, so the part of that frame gap beyond one 60 Hz frame is not the fade's error. Call it for a
  * fade that finished (`endedAt` is set).
+ *
+ * The frame before the one that reported the end lay less than `duration` after the start (the end is reported by the
+ * first frame at or after `duration`), so the gap is at least the overshoot; without a recorded gap that bound is used.
  */
 export function fadeDeviationMs(fade: RecordedAnimation): number {
   const measured = fade.elapsedMs ?? fade.endedAt! - fade.startedAt;
-  const frameStall = Math.max(0, (fade.frameGapMs ?? 0) - 1000 / 60);
+  const overshoot = Math.max(0, measured - fade.duration!);
+  const frameStall = Math.max(0, (fade.frameGapMs ?? overshoot) - 1000 / 60);
   return Math.max(0, Math.abs(measured - fade.duration!) - frameStall);
+}
+
+/**
+ * What the animation engine says about a fade, independent of how fast the page produced frames: it finished by itself (not
+ * cancelled), the effect has the requested duration (`getTiming().duration`), and the end was not reported before the
+ * duration had passed on the document timeline (a fade that is cut short ends early).
+ */
+export function expectFadeTiming(fade: RecordedAnimation, durationMs: number): void {
+  expect(fade.cancelled, 'the fade ends by itself, it is not cancelled').toBe(false);
+  expect(fade.endedAt, 'the fade reached finished').not.toBeNull();
+  expect(fade.timingMs, 'the effect of the animation has the requested duration').toBe(durationMs);
+  const measured = fade.elapsedMs ?? fade.endedAt! - fade.startedAt;
+  expect(measured, 'the fade is not cut short').toBeGreaterThanOrEqual(durationMs - 1000 / 60);
 }
 
 /** The flash of the Program monitor (outline animation of `.c-monitor__screen`). */
