@@ -291,7 +291,7 @@ jobs:
           done
       # The harness generates its sample media (JPEG, WebP, MP4/H.264, WebM/VP8) with ffmpeg once and keeps them in the
       # output folder of the stack. They are cached by the hash of the generator, so ffmpeg (a slow apt install on a busy
-      # mirror) is only installed when the generator changed.
+      # mirror) is only installed when the generator changed; H-MEDIA-01 probes them in the run that makes them.
       - name: Restore the sample media
         id: samples-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -306,14 +306,15 @@ jobs:
         run: tests/e2e/load-netem-modules.sh
       - name: Start the stack
         run: tests/e2e/stack.sh up "$E2E_STACK"
+      - name: Run the smoke tests
+        run: E2E_REUSE_STACK=1 tests/e2e/stack.sh test "$E2E_STACK" --project=smoke
+      # Only after a green smoke run: H-MEDIA-01 probed the files with ffprobe, so the cache never holds a bad sample.
       - name: Save the sample media
-        if: steps.samples-cache.outputs.cache-hit != 'true'
+        if: success() && steps.samples-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tests/e2e/.output/sf-e2e-${{ env.E2E_STACK }}/assets
           key: e2e-samples-${{ runner.os }}-${{ hashFiles('tests/e2e/support/media-samples.ts') }}
-      - name: Run the smoke tests
-        run: E2E_REUSE_STACK=1 tests/e2e/stack.sh test "$E2E_STACK" --project=smoke
       # The harness collects the container logs (docker compose logs) in .output/<project>/logs when the run ends.
       - name: Upload the Playwright report and the container logs
         if: failure()
