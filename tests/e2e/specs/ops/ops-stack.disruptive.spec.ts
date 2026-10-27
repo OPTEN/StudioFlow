@@ -1,12 +1,12 @@
 import net from 'node:net';
 import { AdminApi } from '../../support/api';
 import { dockerCtl } from '../../support/docker-ctl';
-import { PROJECT, stackConfig, volumeNameOf } from '../../support/env';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, stackConfig, volumeNameOf } from '../../support/env';
 import { expect, test } from '../../support/fixtures';
 import { makePng } from '../../support/media-samples';
 import { certSerial, secretFingerprint } from '../../support/ops';
 import { pairPhone } from '../../support/production';
-import { sleep, waitUntil } from '../../support/shell';
+import { exec, sleep, waitUntil } from '../../support/shell';
 import { HEALTH_SERVICES, SERVICES, compose, containerName, docker, ensureHealthy, inspectService, tryFetch, type Service } from '../../support/stack';
 import { t } from '../../support/tags';
 
@@ -205,6 +205,31 @@ test.describe('OPS secrets and ports', () => {
     await ensureHealthy();
     expect(await Promise.all(names.map((name) => secretFingerprint(name))), 'the database still opens with the stored password').toEqual(before);
     expect((await AdminApi.login()).cookie, 'the API reads the stored secrets and the database accepts them').toBeTruthy();
+  });
+
+  test('E2E-OPS-34 [stack] the secrets of an old .env are adopted on the first start of a new installation and kept afterwards', t.p1, async () => {
+    test.setTimeout(240_000);
+    // A second project on new volumes: only the init service runs (it has no network, so nothing collides with the stack).
+    const project = `${PROJECT}-adopt`;
+    const base = ['compose', '-p', project, '--env-file', ENV_FILE, '-f', COMPOSE_FILES.base, '-f', COMPOSE_FILES.e2e];
+    const old = { POSTGRES_PASSWORD: 'OldDatabasePassword0123456789abcd', LIVEKIT_API_KEY: 'OldLiveKitKey', LIVEKIT_API_SECRET: 'skOldLiveKitSecret0123456789abcdef0123456789abcd' };
+    const init = (env: Record<string, string>) => exec('docker', [...base, 'run', '--rm', '-T', '--no-deps', 'init'], { cwd: REPO_ROOT, env: { ...process.env, ...env }, timeoutMs: 120_000 });
+    const read = async (name: string) => (await exec('docker', [...base, 'run', '--rm', '-T', '--no-deps', '--user', '1654', '--entrypoint', 'cat', 'init', `/secrets/${name}`], { cwd: REPO_ROOT, check: true, timeoutMs: 120_000 })).stdout.trim();
+    try {
+      const first = await init(old);
+      expect(first.code, first.output).toBe(0);
+      expect(first.output).toContain('secrets: postgres-password created');
+      expect(first.output, 'a secret is never printed').not.toContain(old.POSTGRES_PASSWORD);
+      expect(await read('postgres-password')).toBe(old.POSTGRES_PASSWORD);
+      expect(await read('livekit-api-key')).toBe(old.LIVEKIT_API_KEY);
+      expect(await read('livekit-api-secret')).toBe(old.LIVEKIT_API_SECRET);
+      // The values of the .env are only taken once: later runs keep the files, whatever the environment says.
+      const second = await init({ POSTGRES_PASSWORD: 'AnotherPassword0123456789abcdef012', LIVEKIT_API_KEY: 'Another', LIVEKIT_API_SECRET: 'skAnother0123456789abcdef0123456789abcdef012345' });
+      expect(second.output).not.toContain('created');
+      expect(await read('postgres-password')).toBe(old.POSTGRES_PASSWORD);
+    } finally {
+      await exec('docker', [...base, 'down', '--volumes', '--remove-orphans', '--timeout', '10'], { cwd: REPO_ROOT, timeoutMs: 120_000 });
+    }
   });
 
   test('E2E-OPS-35 [stack] a taken port stops the start of Caddy with Docker\'s own message that names the port; freeing it lets Caddy start', t.p0, async () => {

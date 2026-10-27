@@ -1,8 +1,8 @@
 # StudioFlow – Operations guide (runbook)
 
 For everyone who runs StudioFlow on site or on a VPS: set it up, start it, back it up, update it and react quickly
-during a webinar. Technical details are in `docs/architecture/implementation-spec.md` (section 10), all variables in
-`.env.example`.
+during a webinar. Technical details are in `docs/architecture/implementation-spec.md` (section 10), the optional
+overrides in `.env.example`. The only tool is `docker compose`.
 
 Interface texts are quoted as they appear in the English interface. The German translation of each text is in
 `packages/i18n/src/messages/de-CH/`; see section 13 for how the language is chosen. The Regie (control room) is the
@@ -10,145 +10,153 @@ operator's screen. The word "Regie" is kept as a proper noun throughout.
 
 ## 1. Overview
 
-One Docker Compose stack with four services:
+One Docker Compose stack. `docker compose up -d` is the whole installation: there is no script to run and no file to write.
+The stack makes its own secrets on the first start, and the first-run wizard in the Regie sets up the rest.
 
 | Service | Purpose | Data (volume) |
 |---|---|---|
-| `caddy` | HTTPS, certificates, serves the Regie (`/`), sender (`/join`) and output (`/o/…`), forwards the API and signalling | `caddy_data` (certificates, local CA), `caddy_config` |
-| `api` | ASP.NET Core: login, scenes, devices, tokens, SignalR | `media` (images, videos), `keys` (login keys) |
-| `livekit` | SFU: forwards the video of the phones and laptops | – |
+| `init` | Runs once per start and exits: makes the internal secrets (database password, LiveKit key pair) on the first start and never again | `secrets` |
+| `caddy` | HTTPS, certificates, serves the Regie (`/`), sender (`/join`) and output (`/o/…`), forwards the API and signalling. Its configuration comes from the API | `caddy_data` (certificates, local CA), `caddy_config`, `caddy_certs` (an uploaded certificate) |
+| `api` | ASP.NET Core: login, scenes, devices, tokens, SignalR, the server settings | `media` (images, videos), `keys` (login keys) |
+| `livekit` | SFU: forwards the video of the phones and laptops. A thin wrapper restarts it when the media address changes | `livekit_config` |
 | `postgres` | Database | `pgdata` |
+| `backup` | Scheduled and manual backups, restore (section 7) | `backups`, `backup_status`, `backup_config` |
 
-Media (WebRTC) goes directly between the devices and LiveKit (7881/tcp, 7882/udp), never through Caddy. Everything
-else goes over HTTPS on 443.
+Media (WebRTC) goes directly between the devices and LiveKit (7881/tcp, 7882/udp), never through Caddy. Everything else
+goes over HTTPS on one port, **8443** by default. **Nothing listens on port 80.**
 
-An optional fifth service, `backup` (profile `backup`, data in the volumes `backups` and `backup_status`), takes the
-automatic backups: section 7.2.
+The settings that used to be written into a `.env` file by a script (address, certificate, media address, embedding, backup
+schedule) are saved in the database through the Regie ("Server settings") and are therefore part of every backup. The API
+hands them to Caddy, LiveKit and the backup service over the internal network of the stack. No container has access to the
+Docker socket, and the admin interface of Caddy (port 2019) is reachable on that internal network only.
 
 Two ways to operate it:
 
 - **On site (recommended):** the server (mini PC, second laptop or the Regie computer) sits on the same network as the
-  phones and the Regie, connected to the router by cable. A subdomain points with an A record to the **internal** IP of
-  the server, and the certificate comes through a DNS challenge. Lowest latency (target about 0.15 s), no internet
-  needed for the media.
+  phones and the Regie, connected to the router by cable. Lowest latency (target about 0.15 s), no internet needed for the
+  media. The certificate comes from the stack itself (every device trusts it once, section 4.4), from Let's Encrypt through
+  a DNS challenge (section 4.2) or is your own.
 - **VPS:** the same stack on a Linux server on the internet. The devices then send over the internet: more latency
   and more upload bandwidth needed on site (about 2–3 Mbit/s per camera, up to 3 Mbit/s per screen – rough guide
   values).
 
 ## 2. Prerequisites
 
-- **Server:** Linux with Docker Engine and Compose v2 (`docker compose version`), or Windows/macOS with Docker Desktop.
-  Guide values: 4 CPU cores, 8 GB RAM, 20 GB free (plus space for videos and backups). Git for updates (not needed
-  when the server runs the ready-made images of a release, section 14).
-- **Windows:** PowerShell 7.4 or newer (`pwsh`) for the `.ps1` scripts; the `.sh` scripts run in Git Bash.
-  Docker Desktop only starts after the user has signed in – so after a restart, sign in (or enable "Start Docker
-  Desktop when you sign in" and set up automatic sign-in).
+- **Server:** Linux with Docker Engine and Compose v2.24 or newer (`docker compose version`), or Windows/macOS with Docker
+  Desktop. Guide values: 4 CPU cores, 8 GB RAM, 20 GB free (plus space for videos and backups). The commands in this
+  runbook are the same on every system and run in any terminal: no Git, no PowerShell or Bash scripts. Git is only needed
+  to build from the source (section 5.4).
+- **Windows:** Docker Desktop only starts after the user has signed in – so after a restart, sign in (or enable "Start
+  Docker Desktop when you sign in" and set up automatic sign-in).
 - **Docker Desktop (Windows/macOS) does not see real client IPs:** all devices appear with the same internal
   address. Consequences: the IP restriction of the output cannot be used, and the per-IP limits apply to all devices
   together (5 failed logins lock the login for 15 minutes for everyone; at most 10 pairing requests through `/join`
   in 10 minutes). For production use, prefer a Linux server.
 - **Network on site:** a dedicated Wi-Fi (5 GHz) for the phones, without client isolation ("AP isolation", guest
   Wi-Fi), server and Regie laptop connected by cable. The server gets a fixed IP in the router (DHCP reservation):
-  LiveKit passes this IP on to the devices (`STUDIOFLOW_NODE_IP`).
-- **Domain:** a subdomain, for example `studioflow.opten.ch`, at a DNS provider with an API (see section 4).
-
-After cloning on Linux, make the scripts executable if necessary: `chmod +x *.sh`.
+  LiveKit passes this IP on to the devices (the "media address" of the wizard).
+- **Domain (optional):** a name such as `studioflow.example.com` for the server. Needed for a Let's Encrypt certificate
+  (a DNS provider with an API, section 4.2); optional for the local certificate; devices otherwise use the IP address.
 
 ## 3. Ports and firewall
 
 | Port | Purpose | Reachable from |
 |---|---|---|
-| 443/tcp | HTTPS: Regie, sender, output, API, signalling | Devices on the Wi-Fi; proxy; on a VPS the internet |
-| 443/udp | HTTP/3 (optional, browsers otherwise fall back to HTTP/2) | same as 443/tcp |
-| 80/tcp | Redirect to HTTPS; in `acme` mode the Let's Encrypt check | same as 443/tcp |
+| 8443/tcp | HTTPS: Regie, sender, output, API, signalling (`STUDIOFLOW_HTTPS_PORT`) | Devices on the Wi-Fi; proxy; on a VPS the internet |
+| 8443/udp | HTTP/3 (optional, browsers otherwise fall back to HTTP/2) | same as 8443/tcp |
 | 7881/tcp | LiveKit media over TCP (fallback when UDP is blocked) | all sending and receiving devices |
 | 7882/udp | LiveKit media over UDP (main path) | all sending and receiving devices |
 
-Not published, and never to be opened: 7880 (LiveKit signalling, only through Caddy `/rtc`), 8080 (API),
-5432 (PostgreSQL), 2019/2020 (Caddy internal).
+There is **no port 80** and no redirect: addresses are always written with the port (`https://192.168.1.50:8443/`). If
+8443 is taken by another program, or you want the usual 443, set `STUDIOFLOW_HTTPS_PORT` (section 11, "Port already in
+use"). Not published, and never to be opened: 7880 (LiveKit signalling, only through Caddy `/rtc`), 8080 (API),
+5432 (PostgreSQL), 2019 (admin interface of Caddy, internal network only).
 
-- **Linux (ufw):** `sudo ufw allow 80,443/tcp && sudo ufw allow 443/udp && sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`.
+- **Linux (ufw):** `sudo ufw allow 8443/tcp && sudo ufw allow 8443/udp && sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`.
   Note: Docker bypasses ufw for published ports (its own iptables chain). Restrict only through the `DOCKER-USER`
   chain or the firewall of the VPS provider.
 - **Windows:** the Wi-Fi/LAN must be set to the network profile "Private". On first start Windows asks for permissions
   for Docker Desktop – allow them. If devices cannot connect, create rules (PowerShell as administrator):
 
   ```powershell
-  New-NetFirewallRule -DisplayName 'StudioFlow HTTPS' -Direction Inbound -Protocol TCP -LocalPort 80,443 -Profile Private -Action Allow
-  New-NetFirewallRule -DisplayName 'StudioFlow HTTP/3' -Direction Inbound -Protocol UDP -LocalPort 443 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow HTTPS' -Direction Inbound -Protocol TCP -LocalPort 8443 -Profile Private -Action Allow
+  New-NetFirewallRule -DisplayName 'StudioFlow HTTP/3' -Direction Inbound -Protocol UDP -LocalPort 8443 -Profile Private -Action Allow
   New-NetFirewallRule -DisplayName 'StudioFlow Media TCP' -Direction Inbound -Protocol TCP -LocalPort 7881 -Profile Private -Action Allow
   New-NetFirewallRule -DisplayName 'StudioFlow Media UDP' -Direction Inbound -Protocol UDP -LocalPort 7882 -Profile Private -Action Allow
   ```
 
-- **VPS:** open the same ports in the provider's firewall. `STUDIOFLOW_NODE_IP` is then the public IP.
+- **VPS:** open the same ports in the provider's firewall. The media address of the wizard is then the public IP.
 
 ## 4. DNS and certificate
 
-Browsers only release camera and screen over HTTPS – on the Wi-Fi as well. The TLS mode is set in
-`STUDIOFLOW_TLS_MODE`.
+Browsers only release camera and screen over HTTPS – on the Wi-Fi as well. The wizard step "Address and certificate" (and
+the section of the same name in "Server settings") chooses how the server gets its certificate. No mode needs port 80:
+Let's Encrypt is used through the DNS challenge only.
 
-| Mode | When | What is needed |
+| Choice in the Regie | When | What is needed |
 |---|---|---|
-| `dns-<provider>` | **Recommended on site and on a VPS.** A real Let's Encrypt certificate, even if the server is only reachable internally | A record to the internal IP, API token of the DNS provider |
-| `acme` | VPS, publicly reachable | A record to the public IP, 80/tcp and 443/tcp open |
-| `internal` | Quick test without a domain (`localhost`, IP, local name) | Every device installs the root CA (`/ca.crt`) once |
-| `custom` | Your own certificate (for example from IT) | Mount `fullchain.pem` and `privkey.pem` to `/certs` (see `docker-compose.override.example.yml`); renewal by hand |
+| **Local certificate (no domain needed)** (`internal`) | Default. On site and for a quick test. The domain is optional | Every device installs the root certificate (`ca.crt`) once, section 4.4 |
+| **Let's Encrypt through DNS: <provider>** (`dns-<provider>`) | **Recommended with a domain**, on site and on a VPS. A real certificate, even if the server is only reachable internally | A record to the server, domain at one of the providers of section 4.2, an API token of that provider |
+| **My own certificate** (`custom`) | A certificate from your IT | Upload the certificate chain and the private key (PEM, no password) in the Regie; renewal by hand |
 
-### 4.1 Subdomain pointing to the internal IP
+Saving the choice is enough: the API hands the certificate settings to Caddy, which obtains or loads the certificate within
+seconds. The page shows "Web server runs the saved settings" when it is done.
 
-At the DNS provider, create an A record: `studioflow.opten.ch` → `192.168.1.50` (the LAN IP of the server). This is
+**A change of the domain or the certificate changes the address.** Paired phones, laptops and output links open the address
+they were paired with; after a change they have to open the new one. The page says so before you save.
+
+### 4.1 Subdomain pointing to the server
+
+At the DNS provider, create an A record: `studioflow.example.com` → `192.168.1.50` (the LAN IP of the server). This is
 safe: the address is only reachable inside your own network.
 
 - Some routers discard DNS answers with private addresses ("DNS rebind protection", for example FRITZ!Box, pfSense).
   Then add an exception for the domain (FRITZ!Box: Home Network › Network › Network Settings › DNS rebind
   protection) or create a local DNS entry in the router. Menu names depend on the language of the device.
-- Check from a device on the Wi-Fi: `nslookup studioflow.opten.ch` must return the internal IP.
+- Check from a device on the Wi-Fi: `nslookup studioflow.example.com` must return the internal IP.
 
-### 4.2 DNS challenge per provider
+### 4.2 Let's Encrypt through DNS, per provider
 
-`./setup.sh` asks for the mode and the token. The credentials end up in the `.env`.
+Choose "Let's Encrypt through DNS: <provider>", enter the domain and the access data. They are stored **encrypted** in the
+database, never shown again and never part of an answer or a log; leaving a field empty on a later save keeps the stored
+value.
 
-| Provider | Mode | Variables | Token permissions |
-|---|---|---|---|
-| Cloudflare | `dns-cloudflare` | `CF_API_TOKEN` | Zone › Zone › Read and Zone › DNS › Edit for the zone |
-| Infomaniak (CH) | `dns-infomaniak` | `INFOMANIAK_API_TOKEN` | Scopes `domain:read dns:read dns:write` |
-| Hetzner | `dns-hetzner` | `HETZNER_API_TOKEN` | Token of the Hetzner Cloud project that holds the DNS zone (the old DNS console has been shut down) |
-| deSEC | `dns-desec` | `DESEC_TOKEN` | Token of the account (also for the delegation below) |
-| AWS Route 53 | `dns-route53` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | IAM: `route53:ListHostedZones*`, `GetChange`, `ChangeResourceRecordSets` |
-| Gandi | `dns-gandi` | `GANDI_BEARER_TOKEN` | Personal access token with "Domain technical configurations" |
-| OVHcloud | `dns-ovh` | `OVH_ENDPOINT` (for example `ovh-eu`), `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | GET/POST/PUT/DELETE on `/domain/zone/*` |
+| Provider | Fields in the Regie | Token permissions |
+|---|---|---|
+| Cloudflare | API token | Zone › Zone › Read and Zone › DNS › Edit for the zone |
+| Infomaniak (CH) | API token | Scopes `domain:read dns:read dns:write` |
+| Hetzner | API token | Token of the Hetzner Cloud project that holds the DNS zone (the old DNS console has been shut down) |
+| deSEC | API token | Token of the account (also for the delegation below) |
+| AWS Route 53 | Access key ID, Secret access key, Region | IAM: `route53:ListHostedZones*`, `GetChange`, `ChangeResourceRecordSets` |
+| Gandi | API token | Personal access token with "Domain technical configurations" |
+| OVHcloud | Endpoint (for example `ovh-eu`), Application key, Application secret, Consumer key | GET/POST/PUT/DELETE on `/domain/zone/*` |
 
-Caddy obtains the certificate on first start; renewal is automatic. Check:
-`docker compose logs caddy | grep -i -E "certificate obtained|error"`.
+The optional field "E-mail for expiry notices" is passed to Let's Encrypt. Caddy obtains the certificate when the settings
+are saved; renewal is automatic. Check: `docker compose logs caddy | grep -i -E "certificate obtained|error"`.
 
 ### 4.3 Hostpoint, cyon and others without a module: delegate the challenge
 
 There is no Caddy module for Hostpoint and cyon. The solution: delegate only the validation record `_acme-challenge`
 by CNAME to a zone at deSEC (free) or Cloudflare. The A record stays with the current provider.
 
-1. At [deSEC](https://desec.io), create an account and a domain, for example `studioflow-opten.dedyn.io`, and create a
+1. At [deSEC](https://desec.io), create an account and a domain, for example `studioflow-example.dedyn.io`, and create a
    token.
-2. At the current provider (zone `opten.ch`), create a CNAME:
-   `_acme-challenge.studioflow` → `_acme-challenge.studioflow-opten.dedyn.io.`
-3. Setup with delegation:
+2. At the current provider (zone `example.com`), create a CNAME:
+   `_acme-challenge.studioflow` → `_acme-challenge.studioflow-example.dedyn.io.`
+3. In the Regie choose "Let's Encrypt through DNS: deSEC", enter the domain `studioflow.example.com` and the token, and
+   put `_acme-challenge.studioflow-example.dedyn.io` into "Delegated challenge domain (optional)".
+4. Check: `nslookup -type=CNAME _acme-challenge.studioflow.example.com` shows the target at deSEC.
 
-   ```bash
-   DESEC_TOKEN=… ./setup.sh --domain studioflow.opten.ch --tls-mode dns-desec \
-       --dns-challenge-domain _acme-challenge.studioflow-opten.dedyn.io
-   ```
+The same works with Cloudflare ("Let's Encrypt through DNS: Cloudflare", CNAME target in a zone at Cloudflare).
 
-   (Windows: `$env:DESEC_TOKEN = '…'; ./setup.ps1 -Domain studioflow.opten.ch -TlsMode dns-desec -DnsChallengeDomain _acme-challenge.studioflow-opten.dedyn.io`)
-4. Check: `nslookup -type=CNAME _acme-challenge.studioflow.opten.ch` shows the target at deSEC.
+### 4.4 Local certificate: install the root certificate on the devices
 
-The same works with Cloudflare (`dns-cloudflare`, CNAME target in a zone at Cloudflare).
-
-### 4.4 Internal mode: install the root certificate on the devices
-
-In `internal` mode Caddy signs the certificates itself. Every device must trust the root CA once, otherwise the
+With the local certificate Caddy signs the certificates itself. Every device must trust the root CA once, otherwise the
 browser blocks camera and screen. The CA lives in the volume `caddy_data` (valid for 10 years, included in every
 backup). If the volume is lost, a new CA is created and all devices have to install it again.
 
-Download on the device: `https://<domain>/ca.crt` (confirm the certificate warning once on the first visit).
+Download on the device: `https://<address>:8443/ca.crt` (confirm the certificate warning once on the first visit), or the
+button "Download the CA certificate" in the wizard and in "Server settings".
 
 - **iPhone/iPad:** open the link in Safari › "Allow" › Settings › General › VPN & Device Management › profile
   "Caddy Local Authority" › Install. Then **additionally** Settings › General › About › Certificate Trust Settings ›
@@ -164,58 +172,96 @@ Download on the device: `https://<domain>/ca.crt` (confirm the certificate warni
 
 Menu names are given for systems set to English and differ on systems set to another language.
 
-Access by IP instead of name: `--extra-hosts 192.168.1.50` in `setup` (also sets `STUDIOFLOW_DEFAULT_SNI`), then the
-certificate is also valid for `https://192.168.1.50`. Or use `--domain 192.168.1.50` right away.
+The server presents a certificate for every address it is opened with: its IP address (`https://192.168.1.50:8443/`) and,
+when you entered one, the domain. A domain is optional, so a first start works with the IP address alone.
 
-## 5. Setup
+## 5. Install and first-run wizard
+
+### 5.1 Start
+
+```bash
+docker compose up -d       # pulls (release) or builds (source) the images and starts the stack
+docker compose ps          # all services "healthy", init "exited (0)"
+```
+
+That is all: no `.env`, no script. Everything in `.env.example` is an optional override (section 5.4). The first start with
+images that are not on the machine yet takes a few minutes.
+
+### 5.2 First-run account and wizard
+
+1. Read the one-time **setup code**: `docker compose logs api` shows the line `Setup code: K7QM-3XD2` a few seconds after
+   the start (PowerShell: `docker compose logs api | Select-String 'Setup code'`). It protects the short time between the
+   start and the setup: whoever reaches the page first from the network still needs it.
+2. Open `https://<address of this computer>:8443/` in a browser, for example `https://192.168.1.50:8443/`. The browser
+   warns once, because the certificate comes from the stack's own certificate authority: accept it for now (section 4.4
+   removes the warning).
+3. **Step 1, Account:** enter the setup code, a user name and a password (at least 12 characters, not the user name, not a
+   common password) and repeat the password. You are signed in at once. Wrong codes count like failed logins: 5 from the
+   same address lock it for 15 minutes. The code is valid until the account exists or the API restarts (then a new one
+   is logged).
+4. **Step 2, Media address:** the IPv4 address of this computer in your network, which the devices use to send picture and
+   sound. The wizard suggests the address you opened the page with. "Test connection" restarts the media server for a few
+   seconds and sends a message from this browser through the address and back; it names what failed (the media server, the
+   connection to the address, or the answer). Reserve the address in the router so that it stays the same.
+5. **Step 3, Address and certificate:** section 4. "Keep the defaults" gives the local certificate without a domain.
+6. **Step 4, Embedding:** the origins that may show the output in a frame, for example the domain of the streaming proxy,
+   one per line (empty: none). The control room can never be embedded.
+
+Each step is saved when you continue. When the last one is done, the server is "configured" and the wizard never opens
+again; until then every sign-in leads back to it. Everything can be changed later under production menu (the production
+name in the header) › **Server settings**.
+
+The account is in the database and therefore part of every backup and restore. Change the password in the Regie:
+production menu › Change password; it needs the old password and signs out all other sessions. The interface language
+follows the browser by default and can be changed in the Regie (section 13).
+
+### 5.3 Server settings
+
+The page "Server settings" shows whether the web server, the media server and the backup service run the saved settings
+("runs the saved settings", "is taking over the settings …", "refused the settings") and has one section for each of: media
+address, address and certificate, embedding, backups (schedule, retention, off-site copy, section 7) and the list of the
+latest backups with "Back up now". Saving a section is atomic: an invalid value is refused with the reason and nothing is
+changed.
+
+- A new **media address** restarts the media server (a few seconds of freeze frame). It is refused while a broadcast is
+  live.
+- A new **address or certificate** is applied by Caddy without a restart.
+- Every change is written to the audit log (`settings.media.changed`, `settings.address.changed` (also for an uploaded
+  certificate), `settings.embedding.changed`, `settings.backup.changed`; `backup.requested` for "Back up now").
+
+### 5.4 Optional overrides, Git checkout
+
+Create a `.env` next to `docker-compose.yml` only for one of the values in `.env.example`: another HTTPS port
+(`STUDIOFLOW_HTTPS_PORT=9443`), other media ports, a subnet that does not collide with your LAN, the image version
+(section 14), size limits. A variable that is empty or missing uses its default. Put values with spaces in single quotes.
+
+From the source (development, or a server that builds itself):
 
 ```bash
 git clone <repo> studioflow && cd studioflow
-./setup.sh                      # Linux/macOS (Git Bash works too)
-pwsh ./setup.ps1                # Windows
-docker compose up -d --build    # first start: builds the images (a few minutes)
-docker compose ps               # all four services "healthy"?
+docker compose up -d --build       # builds the images (a few minutes), then as above
 ```
 
-This is the installation from the source: the images are built on the server. A server normally runs the ready-made
-images of a release instead, without Git and without a build: see section 14.
+The ready-made images of a release (section 14) need neither Git nor a build and are the recommended way. Local development
+with `ng serve`: see `docker-compose.override.example.yml`.
 
-`setup` asks for: LAN IPv4 (detected automatically, confirm it), TLS mode (+ email and token), domain, additional
-addresses (`internal` only), origins that may embed the output (`STUDIOFLOW_FRAME_ANCESTORS`, for example the domain
-of the proxy). It generates the LiveKit keys and the database password; the `.env` gets permissions 600. It asks for
-**no password**: the Regie account is created in the first-run setup of the Regie (below), and `.env` holds no account
-setting. At the end it offers to start the stack and then shows the setup code.
+### 5.5 Moving from the script installation
 
-- Without prompts: `./setup.sh --non-interactive --domain … --tls-mode … --start` (all options:
-  `./setup.sh --help`, `Get-Help ./setup.ps1 -Full`). Tokens then come from the environment.
-- Run again (different domain): `./setup.sh --force`. The old file stays as `.env.backup-<time>`; the
-  database password and the LiveKit keys are kept (the database password cannot be changed through the `.env` after the
-  first initialisation). `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of an older `.env` are no longer
-  used and are not carried over. Then `docker compose up -d`.
-- **Put the `.env` into the password vault (Keeper) right away.** It is not in Git and not in the backups.
-- Local development with `ng serve`: see `docker-compose.override.example.yml`.
+An installation that was set up with `setup.sh` / `setup.ps1` keeps its data: the volumes have the same names.
 
-### First-run setup of the Regie account
-
-As long as no Regie account exists, the API writes a one-time **setup code** to its log and the Regie shows the page
-"First-run setup" instead of the login. The code protects the short time between the start and the setup: whoever
-reaches the page first from the network still needs it.
-
-1. Read the code: `docker compose logs api | grep 'Setup code'` (the line `Setup code: K7QM-3XD2`;
-   PowerShell: `docker compose logs api | Select-String 'Setup code'`). `./setup.sh --start` prints it at the end. The
-   API writes it a few seconds after the start.
-2. Open `https://<domain>/`, enter the code, a user name and a password (at least 12 characters, not the user name, not a
-   common password) and repeat the password. You are signed in at once and the production "Webinar" is ready (on first
-   start the API creates the database and that production).
-3. The code is valid until the account exists or the API restarts (then a new one is logged). Wrong codes count like
-   failed logins: 5 from the same address lock it for 15 minutes.
-
-The account is in the database and therefore part of every backup and restore. After the setup, the first-run setup
-never opens again, unless the account is reset (section 11, "Login does not work"). Change the password in the Regie:
-production menu (the production name in the header) › Change password; it needs the old password and signs out all other
-sessions.
-
-The interface language follows the browser by default and can be changed in the Regie (section 13).
+1. Back up the old installation (`./backup.sh`) and keep the old `.env`.
+2. Take the new files (`git pull`, or the folder of a release) **without deleting the old `.env`**. The init service adopts
+   `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` from it on its first start (the database keeps its
+   password) and ignores them afterwards. Delete the host scripts of the old version.
+3. `docker compose up -d`. The Regie account exists, so the wizard starts at step 2: enter the media address (the former
+   `STUDIOFLOW_NODE_IP`), the domain and the certificate (the former `STUDIOFLOW_DOMAIN`, `STUDIOFLOW_TLS_MODE` and DNS
+   token – they are **not** read from the `.env` any more) and the embedding origins (the former
+   `STUDIOFLOW_FRAME_ANCESTORS`).
+4. **The address now has a port:** 8443 instead of 443 and no port 80. Either open `https://<domain>:8443/` on the paired
+   devices again, or put `STUDIOFLOW_HTTPS_PORT=443` into the `.env` to keep the old address. The firewall must allow the
+   port (section 3).
+5. The local certificate authority is in the volume `caddy_data`, so devices that trust it keep trusting it. Old backups in
+   `./backups` can be restored with section 7.4.
 
 ## 6. Start, stop, logs
 
@@ -223,102 +269,101 @@ The interface language follows the browser by default and can be changed in the 
 |---|---|
 | Start / after a change to `.env` | `docker compose up -d` |
 | Status and health checks | `docker compose ps` |
-| Logs (live) | `docker compose logs -f --tail 100 api` (or `caddy`, `livekit`, `postgres`) |
+| Logs (live) | `docker compose logs -f --tail 100 api` (or `caddy`, `livekit`, `postgres`, `backup`) |
 | Restart one service | `docker compose restart api` |
 | Stop (data stays) | `docker compose stop` or `docker compose down` |
 | Resources | `docker stats`, `docker system df` |
 
-- **Never `docker compose down -v`**: it deletes all volumes – database, media, certificates and the local CA.
-- All containers have `restart: unless-stopped` and start by themselves after a crash or restart.
+- **Never `docker compose down -v`**: it deletes all volumes – database, media, certificates, the local CA and the secrets.
+- All containers have `restart: unless-stopped` and start by themselves after a crash or restart. After a restart of the
+  server, Caddy gets its configuration back from the API within seconds (the page is served by a bootstrap configuration
+  until then).
 - Logs are limited to 5 × 10 MB per container. Tokens, output keys and invite links are redacted in the Caddy logs
   (`REDACTED`).
 - Health check in detail: `docker inspect --format '{{json .State.Health}}' studioflow-api-1`.
+- The secrets (database password, LiveKit key pair) live in the volume `secrets`. They are never printed and no endpoint
+  returns them. They are not part of the backups and are not needed there: a restore on a new server works with the new
+  secrets of that server.
 
 ## 7. Backup and restore
 
 A backup is only worth something if it is taken regularly, kept somewhere else than the server and has been restored at
 least once. This section covers all three: backups by hand (7.1), automatic backups (7.2), the copy to a second place
-(7.3), restoring and the restore drill (7.4); 7.5 is the other kind of copy: one production as a file.
+(7.3), restoring and the restore drill (7.4); 7.5 is the other kind of copy: one production as a file. Backups and restores run
+as commands of the `backup` service of the stack, the same on Linux, macOS and Windows; nothing is installed on the host.
 
 ### 7.1 Backup by hand
 
 ```bash
-./backup.sh                    # Windows: pwsh ./backup.ps1
-./backup.sh --keep 14          # afterwards keep only the 14 newest backups
-./restore.sh backups/2026-10-22_1430
+docker compose run --rm backup backup-now         # a backup now; during operation, no broadcast is disturbed
+docker compose run --rm backup list               # the backups, newest first
 ```
 
-A backup (`backups/YYYY-MM-DD_HHMM/`) contains the database (`database.dump`, pg_dump), the volumes `media`, `keys` and
-`caddy_data` as `.tar.gz`, `backup-info.txt` and `SHA256SUMS`. It runs during operation and does not disturb a
-broadcast. It contains private keys (login, certificates, CA): store the folder protected and copy it to another
-device regularly. Take one by hand before an update (`./update.sh --backup` does) and before the webinar (section 9).
+Or in the Regie: Server settings › Latest backups › **Back up now** (the list shows the result). A backup is a folder
+`YYYY-MM-DD_HHMM_manual` in the Docker volume `backups` with the database (`database.dump`, pg_dump), the volumes `keys` and
+`caddy_data` as `.tar.gz`, `backup-info.txt` and `SHA256SUMS`; the media are an incremental copy in `media/` next to the
+folders (7.2, step 5). It contains private keys (login, certificates, CA, the stored DNS access data in encrypted form):
+store it protected and copy it off the server. Take one by hand before an update and before the webinar (section 9).
+
+Fetch a backup to the host: `docker compose cp backup:/backups/2026-10-23_0300_manual ./backups/` (and
+`backup:/backups/media ./backups/` for the media).
 
 ### 7.2 Automatic backups
 
-Off by default. Switch them on with two lines in `.env` (and `BACKUP_TIMEZONE` so that 03:00 means your 03:00), then
-start the service:
+Off until you set a schedule: Server settings › Backups › **Schedule** (five fields as in cron, for example `0 3 * * *` for
+every day at 03:00; empty = no automatic backups), **Time zone of the schedule** (for example `Europe/Zurich`; empty =
+UTC), and how many daily and weekly backups are kept. Saving hands the settings to the backup service within seconds.
 
 ```bash
-COMPOSE_PROFILES=backup
-BACKUP_SCHEDULE='0 3 * * *'        # cron expression, here: every day at 03:00
-BACKUP_TIMEZONE=Europe/Zurich      # default UTC
-```
-
-```bash
-docker compose up -d --build       # builds the small backup image, restarts the API with the new settings
-docker compose logs backup         # "Automatic backups: '0 3 * * *' ..."
-docker compose exec backup /opt/backup/backup-job.sh    # take one now (same steps as the schedule)
+docker compose logs backup         # "Automatic backups: '0 3 * * *' (time zone Europe/Zurich) ..."
+docker compose run --rm backup backup-now     # take one now (same steps as the schedule)
 ```
 
 What a run does, in this order:
 
 1. **Waits while a broadcast is live.** The run looks every 5 minutes (`BACKUP_LIVE_POLL_SECONDS`) whether a production is
    live and starts as soon as the broadcast has ended. A broadcast that is never ended therefore blocks the backups
-   (the warning below appears after 48 hours). If the state cannot be read, the backup runs anyway.
+   (the warning below appears after 48 hours). If the state cannot be read, the backup runs anyway. A manual backup does
+   not wait.
 2. **Database and small volumes:** `pg_dump` over the network, `keys` and `caddy_data` as `.tar.gz`, into
-   `YYYY-MM-DD_HHMM_auto/` with `backup-info.txt` and `SHA256SUMS` (same layout as 7.1, without `media.tar.gz`).
+   `YYYY-MM-DD_HHMM_auto/` with `backup-info.txt` and `SHA256SUMS`.
 3. **Checks the new dump:** it is loaded into a throwaway database. A dump that does not load is discarded and counts as
    a failure, so a broken backup never pushes out a good one.
-4. **Retention:** the newest backup of each of the last `BACKUP_KEEP_DAILY` (7) days and of the last
-   `BACKUP_KEEP_WEEKLY` (4) weeks is kept, the rest is deleted: about one month of history. Days and weeks without a
-   backup are not counted, so a pause does not shorten the history. Only folders ending in `_auto` are touched.
+4. **Retention:** the newest backup of each of the last "Daily backups kept" (7) days and of the last "Weekly backups kept"
+   (4) weeks is kept, the rest is deleted: about one month of history. Days and weeks without a backup are not counted,
+   so a pause does not shorten the history. Only folders ending in `_auto` are touched; manual and safety backups
+   (`_manual`, `_pre-restore`) stay until you delete them.
 5. **Media, incrementally:** videos can be large, so they are not archived again every day. Files in `media` never
    change (the name is the asset id), so only files that are not yet in `media/` next to the dated folders are copied.
    Nothing is deleted when an asset is removed in the Regie, so the copy grows; remove old files by hand if needed.
 6. **Off-site copy** if a second target is configured (7.3).
 
-**Where the backups are.** In the Docker volume `backups` (`docker volume inspect studioflow_backups`), not in
-`./backups`: a named volume behaves the same on a Linux server and in Docker Desktop on Windows (no file permissions of
-the host, no Windows paths, no virus scanner in between). Fetch a backup to the host with
-`docker compose cp backup:/backups/2026-10-23_0300_auto ./backups/` (and `backup:/backups/media ./backups/` for the media)
-and restore it as in 7.4. The volume is on the same disk as everything else: **it does not protect against a failed
-disk or a stolen server; the off-site copy (7.3) does.**
+**Where the backups are.** In the Docker volume `backups` (`docker volume inspect studioflow_backups`), not in a folder of
+the host: a named volume behaves the same on a Linux server and in Docker Desktop on Windows (no file permissions of the
+host, no Windows paths, no virus scanner in between). The volume is on the same disk as everything else: **it does not
+protect against a failed disk or a stolen server; the off-site copy (7.3) does.**
 
 **Why inside the stack and not cron or the Task Scheduler.** The service runs on every system where the stack runs, with
 the same files and the same behaviour, restarts with Docker (`restart: unless-stopped`) and needs nothing on the host: no
-cron or systemd on Linux, no Task Scheduler, no signed-in user, no `pwsh` or Git Bash on Windows. It knows the
-broadcast state, verifies its own result and reports to the API. A host timer still works if you prefer it
-(`15 3 * * * cd /opt/studioflow && ./backup.sh --keep 14 >> backups/backup.log 2>&1`; Windows: Task Scheduler, action
-`pwsh.exe -NoProfile -File C:\studioflow\backup.ps1 -Keep 14`), but it knows nothing about broadcasts, does not verify and
-is not noticed by the readiness check. On Docker Desktop the stack (and so the schedule) only runs while Docker Desktop
-runs; a missed run is simply taken at the next scheduled time.
+cron or systemd on Linux, no Task Scheduler, no signed-in user on Windows. It knows the broadcast state, verifies its own
+result and reports to the API. On Docker Desktop the stack (and so the schedule) only runs while Docker Desktop runs; a
+missed run is simply taken at the next scheduled time.
 
 **How a failure is noticed.**
 
 - The service writes a status file (`backup-status.json` in the volume `backup_status`, which the API mounts read-only) after
   every step. The readiness check of the API reads it: `docker compose exec api wget -q -O - http://127.0.0.1:8080/health/ready`.
-  It prints `Healthy`, or `Degraded` followed by the reasons, with HTTP status 200: a warning, never an outage.
-- It warns when the last run failed (with the reason), when the last successful backup is older than
-  `BACKUP_WARN_AFTER_HOURS` (default 48), when there is no backup yet after that time, when no off-site copy is
+  It prints `Healthy`, or `Degraded` followed by the reasons, with HTTP status 200: a warning, never an outage. It reports
+  on automatic backups, so it prints `Healthy` while no schedule is set.
+- With a schedule it warns when the last run failed (with the reason), when the last successful backup is older than
+  `BACKUP_WARN_AFTER_HOURS` (default 48, `.env`), when there is no backup yet after that time, when no off-site copy is
   configured ("the backups stay on this server"), or when the last off-site copy failed or is too old. A successful run
   clears the failure.
-- Details: `docker compose logs --tail 100 backup`. The Regie does not show the backup state yet (a UI task); it can read
-  the same status file through the API.
+- Server settings › Backups shows the state of the service ("A backup is running …", "A backup waits for the end of the
+  broadcast.", "The last backup failed. Check: docker compose logs backup"). Details: `docker compose logs --tail 100 backup`.
 
-Switch off: remove the two lines, `docker compose up -d --remove-orphans`, and `docker compose --profile backup rm -sf backup`.
-The backups stay in the volume until you remove it (`docker volume rm studioflow_backups`).
-
-`setup.sh --force` writes a new `.env`: copy `COMPOSE_PROFILES` and the `BACKUP_*` lines from `.env.backup-<time>` again.
+Switch off: empty the schedule in Server settings. The backups stay in the volume until you remove it
+(`docker volume rm studioflow_backups`).
 
 ### 7.3 Second target (off-site copy)
 
@@ -329,28 +374,21 @@ encrypted with [age](https://age-encryption.org) and a **public** key; the priva
 stolen server or a hacked storage account does not reveal the backups.
 
 1. **Make a key pair on your own machine** (install `age`): `age-keygen -o studioflow-backup.key`. It prints the public key
-   (`age1...`). Put the key file into the password vault (Keeper) and delete it from the machine. Without it the off-site
+   (`age1...`). Put the key file into the password vault and delete it from the machine. Without it the off-site
    copies cannot be read, with it anybody can read them. (Without installing anything:
-   `docker compose --profile backup run --rm --no-deps --entrypoint age-keygen backup` prints a pair once; copy the
-   private part to the vault right away.)
+   `docker compose run --rm --no-deps --entrypoint age-keygen backup` prints a pair once; copy the private part to the
+   vault right away.)
 2. **Define the target** on your own machine with `rclone config` (name it `offsite`; for S3 choose `s3`, provider
    `Other`, endpoint, region and access key; for a NAS `sftp`). Create the bucket or folder and test it:
    `rclone lsd offsite:`. Use credentials that may write and read; if they may not delete, the retention at the target
    only warns (use a lifecycle rule of the storage instead).
-3. **Hand the configuration to the service** as one line of base64 in `.env`. The file must contain only the remote(s) it
-   needs. Linux and macOS: `base64 -w0 ~/.config/rclone/rclone.conf` (macOS: `base64 -i ...`); Windows PowerShell:
-   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:APPDATA\rclone\rclone.conf"))`.
-
-```bash
-BACKUP_RCLONE_REMOTE=offsite:studioflow-backups     # <remote>:<bucket or folder>
-BACKUP_RCLONE_CONFIG=W29mZnNpdGVdCnR5cGUgPSBzMwo...  # the base64 line (a secret: it holds the access keys)
-BACKUP_AGE_RECIPIENT=age1xxxxxxxx...                 # public key; several keys separated by spaces
-```
-
-4. `docker compose up -d`, then `docker compose exec backup /opt/backup/backup-job.sh` and look at the target. The service
-   refuses to start with a clear message if the remote is not defined, the key is not an age key, or the target has no key
-   at all (`BACKUP_OFFSITE_UNENCRYPTED=true` allows that if the remote encrypts by itself, for example an rclone `crypt`
+3. **Enter it in the Regie:** Server settings › Backups › Off-site copy. "rclone remote" is `offsite:studioflow-backups`
+   (`<remote>:<bucket or folder>`), "rclone configuration" is the text of `rclone.conf` with only the remote(s) it needs
+   (stored encrypted, never shown again; paste a new one to replace it), "Public age keys" the `age1…` line(s). The page
+   refuses a remote that the configuration does not define, a key that is not an age key, and a target without any key
+   (the box "The remote encrypts by itself" allows that if the remote encrypts by itself, for example an rclone `crypt`
    remote).
+4. Save, then `docker compose run --rm backup backup-now` and look at the target.
 
 At the target there is one folder per backup (`2026-10-23_0300_auto/` with `database.dump.age`, `keys.tar.gz.age`,
 `caddy_data.tar.gz.age`, `backup-info.txt.age` and, uploaded last, the plain `SHA256SUMS`) and `media/` with every media
@@ -360,21 +398,33 @@ the next scheduled run waits for it.
 
 ### 7.4 Restore and the restore drill
 
-Restore (`./restore.sh` / `restore.ps1`): verifies the checksums, asks for confirmation (unless `--yes`), first takes a
-backup of the current state (`backups/…_pre-restore`), stops the API and Caddy, restores the database into a new
-database and only then swaps it in (if the restore fails, the old one stays unchanged), replaces the volumes and starts
-everything. During a broadcast it refuses to start (`--force` overrides). If the schedule of the backup service could fire
-while the restore runs, stop the service first (`docker compose stop backup`); the restore starts it again.
-
-**From an automatic backup.** Fetch the folder and the media copy to the host, then restore the folder. A backup without
-`media.tar.gz` takes the media from the folder `media/` next to it:
+Restore is a command, never a button: it replaces the database, so the API must not run. The command checks the checksums,
+asks for confirmation (unless `--yes`), first takes a backup of the current state (`…_pre-restore`), restores the
+database into a new database and only then swaps it in (if the restore fails, the old one stays unchanged), replaces the
+volumes `keys`, `caddy_data` and `media`, and tells you to start the stack. The server settings, the stored certificate
+and the DNS access data come back with the database. During a broadcast it refuses (`--force` overrides).
 
 ```bash
-mkdir -p backups
-docker compose cp backup:/backups/2026-10-23_0300_auto backups/
-docker compose cp backup:/backups/media backups/
-./restore.sh backups/2026-10-23_0300_auto
+docker compose run --rm backup list                                   # the folder names
+docker compose stop caddy api livekit                                 # nobody may use the database or the volumes
+docker compose run --rm backup restore 2026-10-23_0300_auto          # asks "Restore from …?"; --yes skips the question
+docker compose up -d
 ```
+
+If the API still runs, the command stops with the exact command to run first. A restore of a backup from another server
+or from the off-site copy is the same command with the folder in place (below).
+
+**From a folder on the host** (a backup you copied off the server, or an old `./backups/…` of the script installation).
+Mount the folder that holds the backup folders (and `media/` next to them) into the one-off container:
+
+```bash
+docker compose stop caddy api livekit
+docker compose run --rm -v "$PWD/backups:/import:ro" backup restore /import/2026-10-23_0300_auto
+docker compose up -d
+```
+
+(PowerShell: `-v "${PWD}/backups:/import:ro"`.) A backup without `media.tar.gz` takes the media from the folder `media/` next
+to it. An old backup made by `backup.sh` has `media.tar.gz` and is restored as it is.
 
 **From the off-site copy** (server lost): on a machine with `rclone` (same remote definition) and `age`, put the private
 key next to you:
@@ -384,19 +434,23 @@ rclone copy offsite:studioflow-backups/2026-10-23_0300_auto backups/2026-10-23_0
 rclone copy offsite:studioflow-backups/media backups/media
 for f in backups/2026-10-23_0300_auto/*.age; do age -d -i studioflow-backup.key -o "${f%.age}" "$f" && rm "$f"; done
 find backups/media -name '*.age' -exec sh -c 'age -d -i studioflow-backup.key -o "${1%.age}" "$1" && rm "$1"' _ {} \;
-./restore.sh --verify backups/2026-10-23_0300_auto     # checks before anything is replaced
-./restore.sh backups/2026-10-23_0300_auto
+docker compose run --rm -v "$PWD/backups:/import:ro" backup restore /import/2026-10-23_0300_auto --verify     # checks before anything is replaced
+docker compose stop caddy api livekit
+docker compose run --rm -v "$PWD/backups:/import:ro" backup restore /import/2026-10-23_0300_auto
+docker compose up -d
 ```
 
-**Restore drill.** `./restore.sh --verify <folder>` (Windows: `pwsh ./restore.ps1 <folder> -Verify`) verifies the checksums
-and loads the dump into a throwaway database of the running PostgreSQL. It prints the number of tables and the newest
+**Restore drill.** `docker compose run --rm backup restore <folder> --verify` verifies the checksums, loads the dump into a
+throwaway database of the running PostgreSQL and reads the archives. It prints the number of tables and the newest
 migration and removes the database again. Nothing is replaced or stopped, so it is safe at any time. The service does
 the same check after every backup; the drill proves the rest: that you can get the files back and decrypt them. Do the
 off-site variant above once a month, with the private key from the vault, and a full restore on a spare machine once a
 year. A backup that was never restored is not a backup.
 
-Moving to a new server: clone the repo, put the `.env` back from the vault (or run `setup` again),
-`docker compose up -d --build`, then `./restore.sh <backup>`.
+**Moving to a new server:** install the stack there (section 5.1) but do not run the wizard; copy the backup folder (and
+`media/`) over, stop `caddy api livekit`, restore it as above and start everything. The restored settings still name the old
+media address and domain: open the Regie and correct them under Server settings (the media address is the IP of the new
+server; the DNS record of a domain has to point to it).
 
 ### 7.5 Move a production to another server
 
@@ -445,36 +499,37 @@ Good to know:
 
 ## 8. Update
 
-**Never during a broadcast.** The script checks this itself and aborts as long as a production is live.
+**Never during a broadcast.** Check first: `docker compose exec -T api dotnet Opten.StudioFlow.Web.dll broadcast-status`
+prints `live` (exit code 3) or `idle` (exit code 0); exit code 1 means the state could not be read.
 
-This section describes an installation from the source (Git checkout, images built on the server). With the ready-made
-images of a release the same command pulls the new version instead, and `--version` selects it (also to go back):
-section 14.
+A server that runs the ready-made images of a release updates with two commands (details, version choice and rollback in
+section 14):
 
 ```bash
-./update.sh --backup           # Windows: pwsh ./update.ps1 -Backup
+docker compose run --rm backup backup-now     # a backup before the update
+docker compose pull && docker compose up -d   # new images, then only the changed services restart
 ```
 
-Sequence: check the broadcast status (`broadcast-status` of the API) → optional backup → `git pull --ff-only` →
-`docker compose up -d --build` → wait until all services are healthy → status. Volumes are kept.
+The pull happens before anything is touched: when it fails (network, `denied`), the running stack stays as it was.
+Volumes, secrets and settings are kept. The API migrates the database when it starts.
 
-- With local changes or a diverged state, `git pull --ff-only` aborts without restarting anything.
-- New variables in a new version: `docker compose` reports them at start; compare with `.env.example`.
-- If the API does not answer (broadcast status unknown), the script refuses as well; with `--force` it goes ahead
-  anyway (for example when the API restarts all the time because of a bug and the update brings the fix).
-- Back to an earlier version: `git log --oneline`, `git checkout <commit>`, `./update.sh --no-pull`. If the new
-  version migrated the database, also restore the backup `…_pre-update`. Later return with `git checkout main`.
-- Cleaning up after updates: `docker image prune` removes old, unused build images.
+A server that builds from the source: `git pull --ff-only && docker compose up -d --build`. With local changes or a diverged
+state, `git pull --ff-only` aborts without restarting anything.
+
+- New variables in a new version: `docker compose` reports them at start; compare with `.env.example`. None is required.
+- Back to an earlier version: section 14.4 (release images) or `git checkout <commit>` and `docker compose up -d --build`
+  (source). If the new version migrated the database, also restore the backup taken before the update (section 7.4).
+- Cleaning up after updates: `docker image prune` removes old, unused images.
 
 ## 9. Checklist before the webinar
 
 **The day before**
 
-- [ ] `./update.sh --backup` (if an update is pending) – afterwards no more updates until after the broadcast.
+- [ ] `docker compose run --rm backup backup-now`, then the update if one is pending (section 8) – afterwards no more updates until after the broadcast.
 - [ ] `docker compose ps`: all services "healthy". Certificate valid (the Regie loads without a warning).
 - [ ] Scenes, per-item fallbacks and slates (“Starting soon”, “Thanks for watching”) prepared.
 - [ ] Output link tested at the proxy: the page loads in the iframe, the picture runs, the proxy's domain is in
-      `STUDIOFLOW_FRAME_ANCESTORS`; if the IP restriction is active: proxy IP entered (on Docker Desktop the API only
+      the allowed origins (Server settings › Embedding); if the IP restriction is active: proxy IP entered (on Docker Desktop the API only
       sees the internal Docker address – the IP restriction only works reliably on a Linux server).
 - [ ] If the picture goes into Teams, Zoom or Webex through OBS (section 18): the link "Teams camera" shows "connected"
       in the output chip, a second participant sees the picture, background effects are off, and the computer with OBS
@@ -483,15 +538,16 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 **On site, 60 minutes before**
 
 - [ ] Server and Regie laptop **connected by cable** to the router; phones on the **5 GHz** Wi-Fi without guests and
-      without client isolation; the server has its fixed IP (`STUDIOFLOW_NODE_IP`).
+      without client isolation; the server has its fixed IP (the media address in Server settings).
 - [ ] Phones **on a charging cable**, mounted firmly, Do Not Disturb on, battery saver off, auto-lock off.
 - [ ] Pair the devices (phones by QR code, laptops through `/join` with a verification code or an invite link).
 - [ ] **Tech check** in every sender: camera, network, bandwidth (≥ 6 Mbit/s good, ≥ 3 Mbit/s tight).
 - [ ] Monitoring view: bitrate, packet loss and battery of all stations unremarkable.
 - [ ] Output at the proxy: picture current, latency in the output chip plausible; test switch.
-- [ ] `./backup.sh`.
+- [ ] `docker compose run --rm backup backup-now`.
 - [ ] With automatic backups: `docker compose exec api wget -q -O - http://127.0.0.1:8080/health/ready` prints `Healthy`
-      (otherwise it lists what is wrong with the backups, section 7.2).
+      (otherwise it lists what is wrong with the backups, section 7.2); Server settings shows all three services
+      "runs the saved settings".
 
 **15 minutes before**
 
@@ -511,7 +567,7 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 | API restart or update | on shutdown the API disconnects all hub connections immediately (restart within a few seconds, without "reconnecting"); SignalR reconnects, the state is reconciled by version; media keeps running. If a device with a source in Program or Preview does not return within 15 s, the Regie reports it ("reconnecting") | nothing | Nothing. (Still never update during a broadcast.) |
 | The database (PostgreSQL) is gone | Regie commands fail within a few seconds with a "database currently unreachable, try again in a moment" message; hubs, output and media keep running; once the database is back everything works again without an API restart | nothing | `docker compose ps` / `docker compose logs --tail 200 postgres`; `docker compose start postgres`. Then repeat the command. |
 | A container crashes | Docker restarts it; all clients reconnect by themselves | freeze frame, a few seconds (LiveKit) | `docker compose ps`; if a service keeps restarting ("Restarting"): `docker compose logs --tail 200 <service>` and section 11. |
-| The whole server restarts | all containers start automatically, all devices come back by themselves | interruption until the server is back | Windows: sign in so that Docker Desktop starts. Wait until `docker compose ps` shows everything "healthy". If the server got a new IP: adjust `STUDIOFLOW_NODE_IP` in `.env`, `docker compose up -d`. |
+| The whole server restarts | all containers start automatically, all devices come back by themselves | interruption until the server is back | Windows: sign in so that Docker Desktop starts. Wait until `docker compose ps` shows everything "healthy". If the server got a new IP: enter it under Server settings › Media address (the page can be opened by the new IP), save. |
 | A device is opened in a second tab | the old tab is disconnected and stays off ("Opened in another tab"), no ping-pong | nothing | In the tab you want, click "Continue here". |
 
 ## 11. Troubleshooting
@@ -522,18 +578,20 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
 
 1. Right Wi-Fi? No guest Wi-Fi, no client isolation. Switch off mobile data; test with VPN and iCloud Private Relay
    off.
-2. DNS: does `nslookup <domain>` on the device (or on a laptop on the same Wi-Fi) return the server IP? If not, see
-   section 4.1 (DNS rebind protection).
-3. Firewall: is 443/tcp open (section 3)? Test from a laptop: `Test-NetConnection <ip> -Port 443` or
-   `nc -vz <ip> 443`.
-4. Certificate: `internal` mode → CA installed and (iOS) switched on in the certificate trust settings? Date and time
-   of the device correct? `dns-*` mode → `docker compose logs caddy` (see below).
+2. The address needs the port: `https://<address>:8443/` (there is no port 80 and no redirect from `http://`). If a
+   domain is used, does `nslookup <domain>` on the device (or on a laptop on the same Wi-Fi) return the server IP? If
+   not, see section 4.1 (DNS rebind protection).
+3. Firewall: is 8443/tcp open (section 3)? Test from a laptop: `Test-NetConnection <ip> -Port 8443` or
+   `nc -vz <ip> 8443`.
+4. Certificate: local certificate → CA installed and (iOS) switched on in the certificate trust settings? Date and time
+   of the device correct? Let's Encrypt through DNS → `docker compose logs caddy` (see below). After the domain or the
+   certificate was changed, devices must open the new address (Server settings shows it).
 
 **The page loads, but no picture ("connecting…")**
 
-1. `STUDIOFLOW_NODE_IP` wrong or outdated: `docker compose logs livekit | grep nodeIP` shows the announced IP. It must
-   be the current LAN IP of the server (not 127.0.0.1, not a Docker or WSL address). Correct it in `.env`, then
-   `docker compose up -d`.
+1. Media address wrong or outdated: `docker compose logs livekit | grep nodeIP` shows the announced IP. It must be the
+   current LAN IP of the server (not 127.0.0.1, not a Docker or WSL address). Correct it under Server settings › Media
+   address (with "Test connection"); saving restarts the media server.
 2. Media ports: are 7882/udp and 7881/tcp open (section 3)? Test: `Test-NetConnection <ip> -Port 7881`.
 3. Client isolation on the Wi-Fi prevents connections between devices and the server.
 4. If it only works over TCP (7881), it runs, but with more latency – then UDP 7882 is blocked.
@@ -555,15 +613,34 @@ Sequence: check the broadcast status (`broadcast-status` of the API) → optiona
   shows `udp` or `tcp`.
 - What the proxy adds in buffering is outside StudioFlow.
 
-### Certificate is not issued (dns-*, acme)
+### Certificate is not issued (Let's Encrypt through DNS)
 
-- `docker compose logs caddy | grep -i -E "acme|challenge|obtain|error"`.
-- Token and permissions at the provider (section 4.2); token in `.env` without a trailing space.
-- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` shows the target; `STUDIOFLOW_DNS_CHALLENGE_DOMAIN`
-  matches the target exactly.
-- `acme` mode: 80/tcp and 443/tcp reachable from the internet, A record to the public IP.
+- Server settings shows "Web server … refused the settings" or "is taking over the settings …" for a long time:
+  `docker compose logs api caddy | grep -i -E "acme|challenge|obtain|error|refused"`.
+- Token and permissions at the provider (section 4.2); paste the token again under Server settings › Address and
+  certificate (a field that is left empty keeps the stored value, a wrong one has to be replaced).
+- Delegation: `nslookup -type=CNAME _acme-challenge.<domain>` shows the target; "Delegated challenge domain" matches the
+  target exactly.
+- The domain must belong to the account of the provider; the server needs access to the internet (DNS servers and Let's
+  Encrypt) but nothing needs to reach the server from the internet.
 - After several failed attempts Let's Encrypt blocks for an hour; Caddy keeps trying by itself (also with ZeroSSL).
-  After a correction in `.env`: `docker compose up -d`.
+  The stack keeps serving with its local certificate meanwhile.
+
+### Port already in use
+
+`docker compose up -d` stops with `failed to bind host port 0.0.0.0:8443/tcp: address already in use` (or `port is already
+allocated`) when another program uses the port. Either free the port, or choose another one: put
+`STUDIOFLOW_HTTPS_PORT=9443` (and, for the media ports, `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT`) into a
+`.env` next to `docker-compose.yml` and run `docker compose up -d` again; the stack is then at `https://<address>:9443/`
+and the firewall must allow the port. If you freed the port instead, create the container anew:
+`docker compose up -d --force-recreate caddy` (with some Docker versions a plain `up -d` starts the container that failed
+without its network and ports, although `docker compose ps` calls it healthy).
+
+### The API cannot reach the database after volumes were removed one by one
+
+The database password is in the volume `secrets`, the data in `pgdata`. Removing only one of them (instead of restoring a
+backup) leaves a database whose password no longer matches. Remove the volumes together (`docker compose down -v`, only when
+a backup exists), start the stack and restore the backup (section 7.4); the backup does not need the old secrets.
 
 ### Login does not work
 
@@ -604,10 +681,14 @@ The setting stays until `clear` or until the LiveKit container is recreated.
 
 ## 12. Security in operation
 
-- `.env`, `backups/` and the volume `caddy_data` contain secrets and private keys: never pass them on, keep backups
-  encrypted or in a protected place.
+- The backups, the `.env` (if you made one) and the volumes `caddy_data`, `keys` and `secrets` contain secrets and private
+  keys: never pass them on, keep backups in a protected place and the off-site copy encrypted (section 7.3). DNS access
+  data, the rclone configuration and the private key of an uploaded certificate are stored encrypted in the database and
+  are never shown again.
 - Only open the ports from section 3. The API, the database and the LiveKit signalling are only reachable through
-  Caddy.
+  Caddy. The admin interface of Caddy (2019) and the files that configure LiveKit and the backup service are reachable
+  inside the stack only, and no container has the Docker socket.
+- The setup code and the sign-in protect the Server settings: they are only open to the signed-in admin.
 - Never set `STUDIOFLOW_TRUSTED_PROXIES` to the LAN – otherwise the IP restriction of the output can be bypassed with a
   forged `X-Forwarded-For`.
 - Give every output link only to the one consumer it is named after (the proxy, the Teams camera, …) and enter that
@@ -661,10 +742,11 @@ are made: `docs/releasing.md`.
 |---|---|
 | `ghcr.io/opten/studioflow-web` | Caddy (TLS, DNS modules) with the Regie, sender and output frontends |
 | `ghcr.io/opten/studioflow-api` | The API with its commands (`reset-admin`, `broadcast-status`) |
-| `ghcr.io/opten/studioflow-backup` | The automatic backups (profile `backup`, section 7); pulled only when `COMPOSE_PROFILES=backup` is set in `.env` |
+| `ghcr.io/opten/studioflow-livekit` | LiveKit with the small wrapper that restarts it when the media address changes |
+| `ghcr.io/opten/studioflow-backup` | The backup service: schedule, `backup-now`, `list`, `restore` (section 7) |
 
-All three always have the same version (`0.4.2`): they are built from one commit and must match. `livekit` and `postgres`
-are third-party images with a fixed version in the Compose file.
+All four always have the same version (`0.4.2`): they are built from one commit and must match. `postgres` is a third-party
+image with a fixed version in the Compose file.
 
 ### 14.1 Install from a release
 
@@ -678,22 +760,20 @@ are third-party images with a fixed version in the Compose file.
    tar -xzf studioflow-X.Y.Z.tar.gz && cd studioflow-X.Y.Z    # Windows 10/11: the same command works in a terminal
    ```
 
-3. `./setup.sh` (Windows: `pwsh ./setup.ps1`) asks the questions of section 5 and writes the `.env`. Put it into the
-   password vault.
-4. `docker compose up -d` pulls the images of this release and starts the stack; `docker compose ps` shows four
-   healthy services. Create the account in the first-run setup as in section 5 (`./setup.sh --start` does steps 3 and 4
-   and shows the setup code).
+   (The release also offers `docker-compose.yml` and `QUICKSTART.md` on their own: the Compose file is all a server needs.)
+3. `docker compose up -d` pulls the images of this release and starts the stack; `docker compose ps` shows five healthy
+   services (and `init` exited). Read the setup code with `docker compose logs api` and follow the first-run wizard of
+   section 5.2.
 
-The folder holds `docker-compose.yml` (the release file: it names the images instead of building them), `.env.example`,
-the `setup`, `update`, `backup` and `restore` scripts, this runbook (`docs/runbook.md`), `QUICKSTART.md` and `VERSION`.
-Everything else in this runbook (sections 3, 4, 6, 7, 9-13) applies unchanged. Differences: the profile `chaos`
+The folder holds `docker-compose.yml` (the release file: it names the images instead of building them),
+`.env.example` (optional overrides), this runbook (`docs/runbook.md`), `QUICKSTART.md`, `VERSION` and the licence files.
+There is no script. Everything else in this runbook (sections 3-7, 9-13) applies unchanged. Difference: the profile `chaos`
 (`netem`) does not exist, and `docker compose build` has nothing to build.
 
 ### 14.2 Which version runs
 
-The version is the variable `STUDIOFLOW_IMAGE_TAG`: in the `.env` if it is set there, otherwise the default in
-`docker-compose.yml`, which is the release the folder came from. `./update.sh --version` writes it to the `.env`.
-Ways to see what runs:
+The version is the variable `STUDIOFLOW_IMAGE_TAG`: in the `.env` if it is set there, otherwise `latest`, the newest release at
+the moment of the pull. Ways to see what runs:
 
 ```bash
 docker compose images                       # image names with their tags
@@ -708,8 +788,8 @@ report. A local build (`docker compose up --build`) has the version without the 
 
 | `STUDIOFLOW_IMAGE_TAG` | Meaning |
 |---|---|
-| `0.4.2` | A release. Recommended: a server runs a version that was chosen on purpose |
-| `latest` | The newest release at the moment of the pull. `./update.sh` resolves it and writes the number |
+| `latest` (default) | The newest release at the moment of the pull. Convenient; a server that must not change by itself pins a version |
+| `0.4.2` | A release. Recommended for a production server: it runs a version that was chosen on purpose |
 | `main` | The latest build of the main branch that passed all tests. For trying things out, never for a webinar |
 | `sha-1a2b3c4` | The build of one commit |
 
@@ -717,48 +797,51 @@ report. A local build (`docker compose up --build`) has the version without the 
 
 ### 14.3 Update
 
-**Never during a broadcast.** The script checks this and refuses while a production is live (section 8).
+**Never during a broadcast** (check as in section 8).
 
 ```bash
-./update.sh --backup                 # the newest release; Windows: pwsh ./update.ps1 -Backup
-./update.sh --backup --version 0.4.2 # a specific release; Windows: -Version 0.4.2
+docker compose run --rm backup backup-now     # a backup before the update
+docker compose pull                           # fetches the images; nothing is touched yet
+docker compose up -d                          # restarts the services whose image changed
+docker compose ps                             # all healthy
 ```
 
-Sequence: check the broadcast status → optional backup (`backups/..._pre-update`) → `docker compose pull` → write
-`STUDIOFLOW_IMAGE_TAG` to the `.env` → `docker compose up -d --wait` → status. The pull happens before anything is
-touched: when it fails (network, `denied`), the running stack and the `.env` stay as they were. Volumes are kept.
+The pull happens before anything is touched: when it fails (network, `denied`), the running stack stays as it was. Volumes,
+secrets and settings are kept; the API migrates the database when it starts.
 
-- The images carry the program; the Compose file and the scripts in the folder belong to the release the folder came
-  from. When the release notes of a newer version say that they changed (a new variable in `.env.example`, a new
-  service), download that release and unpack its `studioflow-X.Y.Z.tar.gz` over the folder (`.env`, `backups/` and
-  `docker-compose.override.yml` are not part of it and stay; local changes to the Compose file belong into the override
-  file), then run `./update.sh` again. The script warns when the folder and the images are from different releases.
-- New variables: `docker compose` names them at the start; compare with `.env.example`.
-- `./update.sh --no-pull` only restarts, for example after a change to the `.env` (it fetches nothing).
+- To stay on a version (or to go to a specific one), set `STUDIOFLOW_IMAGE_TAG=0.4.2` in the `.env` and run the commands
+  again.
+- The images carry the program; the Compose file in the folder belongs to the release it came from. When the release
+  notes of a newer version say that it changed (a new service, a new volume), download that release and replace
+  `docker-compose.yml` (and `.env.example`) in the folder; `.env` and `docker-compose.override.yml` are not part of it and
+  stay (local changes to the Compose file belong into the override file).
+- New variables: `docker compose` names them at the start; compare with `.env.example`. None is required.
 - Cleaning up after updates: `docker image prune` removes the images of earlier versions that no container uses.
 
 ### 14.4 Roll back
 
 ```bash
-./update.sh --version 0.4.1          # the version that ran before; the script prints it before it restarts
+# .env:  STUDIOFLOW_IMAGE_TAG=0.4.1    (the version that ran before)
+docker compose pull && docker compose up -d
 ```
 
 The database is migrated when the API starts, and a migration is not undone by starting an older API. Two cases:
 
-- **The newer version did not change the database schema** (no migration in the release notes): the command above is
+- **The newer version did not change the database schema** (no migration in the release notes): the commands above are
   enough.
-- **It did** (or you are not sure): after going back, restore the backup that was taken before the update. It is the
-  newest `backups/..._pre-update` folder; its `backup-info.txt` shows the `version:` it belongs to, which must be the
-  version you went back to:
+- **It did** (or you are not sure): after going back, restore the backup that was taken before the update. Its
+  `backup-info.txt` shows the `version:` it belongs to, which must be the version you went back to:
 
   ```bash
-  ./update.sh --version 0.4.1
-  ./restore.sh backups/2026-10-22_1430_pre-update
+  docker compose run --rm backup list
+  docker compose stop caddy api livekit
+  docker compose run --rm backup restore 2026-10-22_1430_manual
+  docker compose up -d
   ```
 
   Everything that was entered after that backup is lost.
 
-That is why every update starts with `--backup`.
+That is why every update starts with a backup.
 
 ### 14.5 Access while the repository is private
 
@@ -770,7 +853,7 @@ As long as the repository is private, the packages are private too. Every server
    treat it like a password and keep it in the vault.
 
 When the repository is public (#5) the packages are made public and this step disappears. `pull access denied` or
-`denied` during `setup` or `update` means: not signed in, a token without `read:packages`, or an expired token.
+`denied` during `up` or `pull` means: not signed in, a token without `read:packages`, or an expired token.
 
 ### 14.6 Verify what you got
 
@@ -779,10 +862,9 @@ the same digest as the commit's `sha-` tag that passed the tests. Commands: `doc
 
 ### 14.7 Images with a Git checkout
 
-A Git checkout can run the ready-made images as well: put `COMPOSE_FILE=docker-compose.release.yml` into the `.env`
-(the scripts notice it), or call `docker compose -f docker-compose.release.yml ...`. Without that, `docker-compose.yml`
-builds from the source as described in sections 5 and 8; `./update.sh --version` then explains that it is for the
-ready-made images.
+A Git checkout can run the ready-made images as well: put `COMPOSE_FILE=docker-compose.release.yml` into the `.env`, or
+call `docker compose -f docker-compose.release.yml ...`. Without that, `docker-compose.yml` builds from the source as
+described in sections 5.4 and 8.
 
 ## 15. Dependency updates (Renovate)
 
@@ -798,7 +880,7 @@ nothing is changed on a running server (apply them with section 8). The rules ar
 2. Settings › Code security: enable the **dependency graph** and **Dependabot alerts** (not Dependabot version updates).
    Renovate reads the alerts and opens security fixes immediately; without them it still checks the OSV database.
 3. Settings › Branches › protection for `main`: require the CI jobs (`lint-typecheck`, `unit-web`, `api`, `contracts`,
-   `build-images (api)`, `build-images (caddy)`, `build-images (backup)`, `e2e-smoke`) and allow auto-merge (Settings › General). Automerge below only merges when these are green;
+   `build-images (api)`, `build-images (caddy)`, `build-images (livekit)`, `build-images (backup)`, `e2e-smoke`) and allow auto-merge (Settings › General). Automerge below only merges when these are green;
    the job `audit` is a report and not required.
 
 **What arrives, and when**
@@ -900,12 +982,13 @@ client are allowed. Every export is an entry itself ("Audit log exported as csv,
 **What is recorded.** Sign-ins (success, failure, lockout) and sign-outs, the account (set up, password changed, reset),
 productions (created, duplicated, exported, imported, renamed, activated), missing sources assigned or removed, the broadcast (start, end, reset), scenes (live, created, deleted), the slates,
 devices (paired, renamed, blocked, unblocked, removed, camera lens switched), invite links, knocks that were denied,
-"Seen" on a message, media (uploaded, deleted), the output link and its access rules, and the exports and the retention
-themselves. Not recorded: the preview, zoom and focus of a phone camera, the phone QR code that renews itself.
+"Seen" on a message, media (uploaded, deleted), the output link and its access rules, the server settings (media
+address, address and certificate, embedding, backup schedule; the values of secrets such as DNS tokens are never
+written) and "Back up now" (category System), and the exports and the retention themselves. Not recorded: the preview, zoom and focus of a phone camera, the phone QR code that renews itself.
 
 **How long it is kept (retention).** The API deletes entries older than `AUDIT_RETENTION_DAYS` (default 365) and removes
 the IP address from entries older than `AUDIT_IP_RETENTION_DAYS` (default 90, at most the first value; IP addresses are
-personal data under the Swiss FADP). Set both in `.env`, then `docker compose up -d`. The step runs every hour, in
+personal data under the Swiss FADP). Set both in a `.env` next to `docker-compose.yml`, then `docker compose up -d`. The step runs every hour, in
 batches, and waits while a broadcast is live. When it changed something, the log says so ("Audit retention (365 days):
 entries deleted 142, IP addresses removed 7", actor System) and so does the API log:
 

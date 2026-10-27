@@ -1,8 +1,8 @@
 # StudioFlow E2E harness
 
-Playwright suite for the stack as a user runs it: Caddy, API, LiveKit and PostgreSQL in Docker (compose project
-`sf-e2e`, or `sf-e2e-N` for a numbered stack), driven over REST, SignalR, WebRTC, the real frontends and the operations
-scripts. The catalogue and the pass criteria are in `docs/testing.md`; test titles start with the catalogue ID
+Playwright suite for the stack as a user runs it: Caddy, API, LiveKit, PostgreSQL and the backup service in Docker (compose
+project `sf-e2e`, or `sf-e2e-N` for a numbered stack), started with `docker compose up -d` and set up through the first-run
+wizard, driven over REST, SignalR, WebRTC, the real frontends and the operator commands (`docker compose run --rm backup ...`). The catalogue and the pass criteria are in `docs/testing.md`; test titles start with the catalogue ID
 (`E2E-AUTH-01 [api] ...`).
 
 ## Run
@@ -15,9 +15,14 @@ npx playwright test -c tests/e2e/playwright.config.ts --grep "@p0"
 npx playwright test -c tests/e2e/playwright.config.ts --project=desktop-chromium --grep @ui-fixture   # the UI fixture smokes
 ```
 
-Global setup writes `tests/e2e/.env.e2e` (git-ignored, throwaway credentials, TLS `internal`, node IP = LAN IPv4,
-fallback 127.0.0.1), checks that the ports and the subnet of the stack are free, builds and starts the project `sf-e2e`
-and waits for all four healthchecks. Teardown removes containers and volumes. Logs of every service go to
+Global setup writes `tests/e2e/.env.e2e` (git-ignored; only overrides: ports, subnet, size limits, the test addresses and
+the node IP = LAN IPv4, fallback 127.0.0.1 - **no secret**), checks that the ports and the subnet of the stack are free,
+builds and starts the project `sf-e2e` with `docker compose up -d` and waits for all healthchecks. The stack makes its own
+secrets (init service); the harness reads them from the running containers into `.output/<project>/stack-secrets.json`.
+Then it does what an operator does in the wizard, through the admin API: the account with the setup code from the API log,
+the media address (the node IP), the local certificate with the domain `localhost`, the embedding origins
+(`https://embed.e2e.test https://embed.test`), and waits until Caddy, LiveKit and the backup service run the saved settings.
+Teardown removes containers and volumes. Logs of every service go to
 `tests/e2e/.output/logs`, reports to `.output/html`, `.output/junit.xml` and `.output/results.json`.
 
 | Variable | Effect |
@@ -29,31 +34,31 @@ and waits for all four healthchecks. Teardown removes containers and volumes. Lo
 | `E2E_NODE_IP` | node IP instead of the detected LAN IPv4 |
 | `E2E_STACK=N` (1-5) | one of the five numbered stacks that run side by side, see "Parallel stacks" |
 | `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-5) alone also selects numbered stack N |
-| `E2E_HTTPS_PORT`, `E2E_HTTP_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
+| `E2E_HTTPS_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
 | `E2E_RTC_TCP_PORT`, `E2E_RTC_UDP_PORT` | LiveKit media ports (passed on as `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT`; host and container port are the same number) |
 | `E2E_BASE_URL` | origin the Playwright `baseURL` points at, if it is not `https://localhost[:E2E_HTTPS_PORT]` |
-| `E2E_BASH` | bash that runs `setup.sh`/`backup.sh`/`restore.sh`/`update.sh` (default: Git Bash on Windows) |
 
-Requirements: Docker with Compose v2, Node 22, the Playwright browsers (`npx playwright install chromium firefox
-webkit`), Git Bash on Windows for the OPS specs, ports 80 and 443 free (or moved with the variables above).
+Requirements: Docker with Compose v2.24 or newer, Node 22, the Playwright browsers (`npx playwright install chromium firefox
+webkit`), port 443 free (the unnumbered stack publishes it; move it with the variables above). No shell other than
+the one that starts Playwright is needed: the OPS specs call `docker compose` directly.
 
 ## Parallel stacks
 
 Five independent stacks can run on one machine, each with its own compose project, ports, subnet, env file, output
 directory, containers, volumes, network and images. `E2E_STACK=N` selects a set; every other `E2E_*` variable still
-overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: project `sf-e2e`, ports 80/443,
+overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: project `sf-e2e`, port 443,
 7881/7882, 18081, 17880, 15432 and subnet `172.31.250.0/24`, files in `tests/e2e/.env.e2e` and `tests/e2e/.output`.
 
-| N | project | https | http | media tcp / udp | api | livekit | postgres | subnet | env file, output |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `sf-e2e-1` | 8491 | 8091 | 7901 / 7902 | 18091 | 17891 | 15491 | 172.31.201.0/24 | `.env.e2e.sf-e2e-1`, `.output/sf-e2e-1` |
-| 2 | `sf-e2e-2` | 8492 | 8092 | 7903 / 7904 | 18092 | 17892 | 15492 | 172.31.202.0/24 | `.env.e2e.sf-e2e-2`, `.output/sf-e2e-2` |
-| 3 | `sf-e2e-3` | 8493 | 8093 | 7905 / 7906 | 18093 | 17893 | 15493 | 172.31.203.0/24 | `.env.e2e.sf-e2e-3`, `.output/sf-e2e-3` |
-| 4 | `sf-e2e-4` | 8494 | 8094 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.sf-e2e-4`, `.output/sf-e2e-4` |
-| 5 | `sf-e2e-5` | 8495 | 8095 | 7909 / 7910 | 18095 | 17895 | 15495 | 172.31.205.0/24 | `.env.e2e.sf-e2e-5`, `.output/sf-e2e-5` |
+| N | project | https | media tcp / udp | api | livekit | postgres | subnet | env file, output |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `sf-e2e-1` | 8491 | 7901 / 7902 | 18091 | 17891 | 15491 | 172.31.201.0/24 | `.env.e2e.sf-e2e-1`, `.output/sf-e2e-1` |
+| 2 | `sf-e2e-2` | 8492 | 7903 / 7904 | 18092 | 17892 | 15492 | 172.31.202.0/24 | `.env.e2e.sf-e2e-2`, `.output/sf-e2e-2` |
+| 3 | `sf-e2e-3` | 8493 | 7905 / 7906 | 18093 | 17893 | 15493 | 172.31.203.0/24 | `.env.e2e.sf-e2e-3`, `.output/sf-e2e-3` |
+| 4 | `sf-e2e-4` | 8494 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.sf-e2e-4`, `.output/sf-e2e-4` |
+| 5 | `sf-e2e-5` | 8495 | 7909 / 7910 | 18095 | 17895 | 15495 | 172.31.205.0/24 | `.env.e2e.sf-e2e-5`, `.output/sf-e2e-5` |
 
 The table lives in `support/env.ts` (`numberedStack`). The services take the addresses `.10` (LiveKit), `.11` (API),
-`.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `STUDIOFLOW_PUBLIC_BASE_URL` carries the https port
+`.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `STUDIOFLOW_HTTPS_PORT` carries the https port
 (`https://localhost:8492`), `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT` the media ports. Global setup refuses to
 start a stack whose port or subnet is taken and names what holds it.
 
@@ -103,7 +108,7 @@ installed. Smoke tests for every piece are in `specs/ui/ui-fixtures.spec.ts` (ta
 
 | Module | What it gives |
 | --- | --- |
-| `init.ts` | `installUiInit(context, options)`: sets `localStorage['studioflow.testHooks'] = '1'` before any app script runs (the read-only state views `window.__sfStudio` / `window.__sfSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `en-US`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, in `STUDIOFLOW_FRAME_ANCESTORS` of the test env) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
+| `init.ts` | `installUiInit(context, options)`: sets `localStorage['studioflow.testHooks'] = '1'` before any app script runs (the read-only state views `window.__sfStudio` / `window.__sfSender` exist only then), the init script (WebSocket and RTCPeerConnection registries, media counters) and the fake sources; `newUiContext(browser, { profile })` with `pixel7`, `iphone15` or `desktop` profiles (Chromium, `en-US`, camera and microphone permissions); `serveFakeOrigin` for pages served with `page.route`; `clientIp` (see below); `EMBED_ORIGIN` (`https://embed.test`, one of the embedding origins the harness saves in the wizard) and `FOREIGN_ORIGIN`; `openTimecodeTab` for native screen capture |
 | `regie.ts` | `RegiePage`: `loginViaUi`, `loginViaApi` (session cookie injected into the context), `waitReady` (hub live: hooks, then `data-testid`, then what the DOM shows), `hooks()` / `waitForRevision` / `waitForConvergence` against the API snapshot, scene and Take locators, stations, the pairing dock (`openPairing`, `readPairingQr` with `jsqr`), knock cards (`approveKnock`, `knockCheckCode`) |
 | `sender.ts` | `PhoneSender` / `LaptopSender` in a context of their own or in an existing one: pairing form, check code, connection / tally / slot states through `data-testid`, `window.__sfSender`, stored credentials, camera and screen-share buttons, `browserStopsSharing()` (what the browser's «Stop sharing» does) |
 | `pairing.ts` | `pairPhoneViaQr(regie, phone)`: QR read from the dock, URL opened in the phone, station row waited for; `pairLaptopViaKnock(regie, laptop, name)`: `/join/`, check code on both screens, «Zulassen»; `pairViaApi(pairContext, sender)`: the fast path for tests that are not about pairing (REST pairing, credentials handed to the sender, it resumes into its station) |
@@ -131,13 +136,14 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
 ## Layout
 
 - `playwright.config.ts` projects and run order; `global-setup.ts` / `global-teardown.ts` stack lifecycle.
-- `docker-compose.e2e.yml` test-only additions (127.0.0.1 ports, fixed addresses); `docker-compose.short-ttl.yml` the
-  short-TTL profile (the specs recreate the API/LiveKit with it and back).
+- `docker-compose.e2e.yml` test-only additions (127.0.0.1 ports, fixed addresses); `docker-compose.short-ttl.yml` and
+  `docker-compose.short-livekit.yml` the short-TTL profile (the specs recreate the API/LiveKit with them and back).
 - `stack.ps1`, `stack.sh` numbered stacks (`up`, `test`, `status`, `down`).
 - `support/` typed API client with CSRF (`api.ts`), hubs and the Regie/sender/output stand-ins (`hubs.ts`,
   `sync-client.ts`, `sim.ts`), pairing and production fixtures (`production.ts`, `fixtures.ts`), LiveKit helpers
   (`livekit.ts`, `livekit-browser.ts` with the latency stamp codec), fault injection (`docker-ctl.ts`, `net.ts`,
-  `tcp-proxy.ts`), isolated script copies (`ops.ts`), stack settings and names (`env.ts`), start checks (`preflight.ts`),
+  `tcp-proxy.ts`), the operator commands of the stack and its backup image (`ops.ts`), a self-signed certificate made with
+  node:crypto for the upload tests (`selfsigned.ts`), stack settings and names (`env.ts`), start checks (`preflight.ts`),
   the English texts the specs share (`text.ts`; the German ones for the `i18n` project are in `text.de.ts`), error codes
   and thresholds (`constants.ts`), UI fixtures (`ui/`, `browser/`).
 - `specs/<area>/` the tests. File suffixes choose the project: `*.disruptive.spec.ts`, `*.short-ttl.spec.ts`,

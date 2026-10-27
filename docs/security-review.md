@@ -225,6 +225,43 @@ The audit above describes commit dd13fd0. The Regie account has changed since, a
   the old password (counted like a failed login when wrong) and ends every other session at once (security stamp in the
   cookie, hub connections closed). `reset-admin` needs shell access to the server.
 
+## Changes since the audit (issue #27, zero-config install)
+
+The audit describes commit dd13fd0. The installation changed with #27; the findings about `.env`, `setup.sh` and `backup.sh`
+(for example `backup.sh:108`, `setup.sh:15`) refer to files that no longer exist. What is different:
+
+- **No secret in a file the operator handles.** The database password and the LiveKit key pair are generated once by the
+  `init` service into the volume `secrets` (mode 600, owner = the API user), are not in the environment of any container
+  (`docker inspect` shows no value), appear in no log and are returned by no endpoint. There is no `.env` with secrets; an
+  optional `.env` holds ports and limits. An old `.env` is only read for the three values on the first start.
+- **No Docker socket and no host scripts.** No container mounts the socket; Caddy and LiveKit follow the settings through
+  the admin API of Caddy and files in shared volumes. The setup, update, backup and restore scripts are gone, so nothing
+  runs with the rights of the operator's shell (E2E-OPS-31 pins both).
+- **The Caddy admin API (port 2019) has no authentication, therefore it is only on the compose network** (not published;
+  E2E-OPS-32 checks that the host cannot reach it). Whoever can run a container in that network could reconfigure Caddy; in
+  a default installation only the API (the one legitimate client) and the other services of the stack are members of it.
+  The on-demand TLS `ask` endpoint (`/internal/tls/ask` of the API) is not routed by Caddy, answers only for names of a
+  sensible form and admits 60 new names per minute.
+- **Settings are admin-only and CSRF-protected** (`/api/settings/*`: session cookie and `X-StudioFlow`), validated field by
+  field (the Caddyfile is rendered from validated values, quoted, with no character that ends a token). Secrets in them
+  (DNS credentials, the private key of an uploaded certificate, the rclone configuration) are encrypted with the Data
+  Protection keys of the `keys` volume and never returned. A change is an audit entry without the secret values.
+- **The setup code** protects the first-run account as before; the settings and the wizard routes need the admin session
+  (E2E-OPS-38).
+- **Files that other services read are world-readable inside dedicated volumes:** `livekit.yaml` (it holds the LiveKit key
+  pair) in `livekit_config` (mounted in the API and LiveKit only), and the uploaded certificate and its private key in
+  `caddy_certs` (API and Caddy only). The services run as different users and none of them may read another user's files,
+  so mode 600 would not work; the exposure is limited to containers that already hold the same secret. The rclone
+  configuration is mode 600.
+- **The backup service carries capabilities** (`CHOWN`, `DAC_OVERRIDE`, `DAC_READ_SEARCH`, `FOWNER`) and mounts the data
+  volumes read-write, because a restore replaces files of the API user, of Caddy and of the database. It publishes no port,
+  its root filesystem is read-only and no other service mounts those volumes writable.
+- **HTTP-01 is gone.** Nothing listens on port 80; certificates come from the local CA, a DNS challenge or an upload.
+  HSTS is 3600 s for sites with the local CA (a browser must not remember "https only" for a year for a certificate it
+  trusts by hand).
+- **The LiveKit URL follows the caller (issue 44).** A `Host` that is not a plain host name or address with a port is
+  ignored; the URL only goes back to the caller that sent the header.
+
 ## Secret scan of the Git history (issue #5)
 
 Done before the repository becomes public, because everything in the history becomes readable then.

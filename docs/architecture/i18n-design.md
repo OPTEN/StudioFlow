@@ -280,7 +280,7 @@ public sealed record LogEntryDto(DateTimeOffset At, LogCode Code, IReadOnlyDicti
 
 ## 6. Scripts and docs
 
-**Scripts (D9), English and ASCII only; there is no i18n layer.**
+**Scripts (D9), English and ASCII only; there is no i18n layer.** (Issue #27 removed the `setup|backup|restore|update` host scripts and `infra/scripts`; the rule now covers the shell code of the images in `infra/backup` and `infra/livekit`, `.env.example` and the Compose files.)
 - **Files:** `setup|backup|restore|update` in `.sh` and `.ps1`, `infra/scripts/common.sh`, `infra/scripts/StudioFlow.psm1`, `.env.example` (comments), `docker-compose.yml` (`${VAR:?message}` texts), `docker-compose.override.example.yml`, `tools/capture.ps1`, `tools/make-artifact.ps1`, `tools/mobile-wrap.html`.
 - **Helpers:** the prefixes `Fehler:`/`Warnung:` become `Error:`/`Warning:` in `sf_die`/`sf_warn` and the psm1 equivalents. `--help` text is translated.
 - **Encoding:** `.ps1` keeps CRLF (per `.gitattributes`).
