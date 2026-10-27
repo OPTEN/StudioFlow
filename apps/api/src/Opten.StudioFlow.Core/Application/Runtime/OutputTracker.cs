@@ -6,12 +6,16 @@ namespace Opten.StudioFlow.Core.Application.Runtime;
 /// Output consumer status of a production (spec 4.8), kept per output link: connected output hub pages, their addresses
 /// and the last report of the link. A link is <c>connected</c> with at least one page and a rendering report within
 /// <c>Output:StaleAfter</c> (6 s), <c>stale</c> when connected without a fresh rendering report, <c>none</c> without a
-/// page. The summary over all links is connected when any link is, else stale when any link is. Latency and fps updates
-/// are published at most every <c>Output:MetricsInterval</c> (5 s) unless they change by more than 20 %.
+/// page. The summary over all links is connected when any link is, else stale when any link is. Latency, fps, dropped
+/// frames and decoder counts are published at most every <c>Output:MetricsInterval</c> (5 s) unless they change by more
+/// than 20 % (a changed decoder count: at once).
 /// </summary>
 public sealed class OutputTracker(OutputMonitorOptions options)
 {
     private const double SignificantChange = 0.2;
+
+    /// <summary>More streams than this are not a reading but a bug (a production has at most 32 items per scene).</summary>
+    private const int MaxStreams = 1000;
 
     private readonly Dictionary<string, string> linkNames = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LinkState> links = new(StringComparer.Ordinal);
@@ -103,10 +107,14 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             links[linkId] = state = new LinkState();
         }
 
+        var decoded = report.DecodedStreams is >= 0 and <= MaxStreams ? report.DecodedStreams : null;
         state.LastReport = report with
         {
             LatencyMs = report.LatencyMs is >= 0 and <= 600_000 ? report.LatencyMs : null,
             Fps = report.Fps is >= 0 and <= 1000 ? report.Fps : null,
+            DroppedFramesPct = report.DroppedFramesPct is >= 0 and <= 100 ? report.DroppedFramesPct : null,
+            DecodedStreams = decoded,
+            SoftwareDecodedStreams = report.SoftwareDecodedStreams >= 0 && report.SoftwareDecodedStreams <= decoded ? report.SoftwareDecodedStreams : null,
         };
         state.LastReportAt = now;
         if (report.Rendering)
@@ -127,7 +135,17 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             : statuses.Any(s => s.State == OutputState.Stale) ? OutputState.Stale
             : OutputState.None;
         var addresses = statuses.SelectMany(s => s.Addresses).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        return new OutputStatusDto(state, statuses.Sum(s => s.Consumers), addresses, lastReported?.LatencyMs, lastReported?.Fps, lastReported?.LastReportAt, statuses);
+        return new OutputStatusDto(
+            state,
+            statuses.Sum(s => s.Consumers),
+            addresses,
+            lastReported?.LatencyMs,
+            lastReported?.Fps,
+            lastReported?.LastReportAt,
+            statuses,
+            lastReported?.DroppedFramesPct,
+            lastReported?.DecodedStreams,
+            lastReported?.SoftwareDecodedStreams);
     }
 
     /// <summary>
@@ -139,16 +157,20 @@ public sealed class OutputTracker(OutputMonitorOptions options)
         var current = Current(now);
         var previous = Published;
         var structural = !SameStructure(current, previous) || !current.Links.Select(Structure).SequenceEqual(previous.Links.Select(Structure));
-        var metricsChanged = MetricsDiffer(current.LatencyMs, current.Fps, previous.LatencyMs, previous.Fps)
+        var metricsChanged = MetricsDiffer(current, previous)
             || current.Links.Count != previous.Links.Count
-            || current.Links.Zip(previous.Links).Any(pair => MetricsDiffer(pair.First.LatencyMs, pair.First.Fps, pair.Second.LatencyMs, pair.Second.Fps));
+            || current.Links.Zip(previous.Links).Any(pair => MetricsDiffer(pair.First, pair.Second));
         if (!structural && !metricsChanged)
         {
             return null;
         }
 
         var significant = IsSignificant(previous.LatencyMs, current.LatencyMs) || IsSignificant(previous.Fps, current.Fps)
-            || current.Links.Zip(previous.Links).Any(pair => IsSignificant(pair.Second.LatencyMs, pair.First.LatencyMs) || IsSignificant(pair.Second.Fps, pair.First.Fps));
+            || IsSignificant(previous.DroppedFramesPct, current.DroppedFramesPct)
+            || previous.SoftwareDecodedStreams != current.SoftwareDecodedStreams || previous.DecodedStreams != current.DecodedStreams
+            || current.Links.Zip(previous.Links).Any(pair => IsSignificant(pair.Second.LatencyMs, pair.First.LatencyMs) || IsSignificant(pair.Second.Fps, pair.First.Fps)
+                || IsSignificant(pair.Second.DroppedFramesPct, pair.First.DroppedFramesPct)
+                || pair.Second.SoftwareDecodedStreams != pair.First.SoftwareDecodedStreams || pair.Second.DecodedStreams != pair.First.DecodedStreams);
         var intervalPassed = lastMetricsPublishedAt is not { } at || now - at >= options.MetricsInterval;
         if (!structural && !significant && !intervalPassed)
         {
@@ -171,7 +193,19 @@ public sealed class OutputTracker(OutputMonitorOptions options)
             ? OutputState.None
             : state!.LastRenderingAt is { } rendering && now - rendering <= options.StaleAfter ? OutputState.Connected : OutputState.Stale;
         var addresses = state?.Connections.Values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray() ?? [];
-        return new OutputLinkStatusDto(linkId, name, status, consumers, addresses, state?.LastReport?.LatencyMs, state?.LastReport?.Fps, state?.LastReportAt);
+        var report = state?.LastReport;
+        return new OutputLinkStatusDto(
+            linkId,
+            name,
+            status,
+            consumers,
+            addresses,
+            report?.LatencyMs,
+            report?.Fps,
+            state?.LastReportAt,
+            report?.DroppedFramesPct,
+            report?.DecodedStreams,
+            report?.SoftwareDecodedStreams);
     }
 
     private static bool SameStructure(OutputStatusDto current, OutputStatusDto previous) =>
@@ -180,8 +214,15 @@ public sealed class OutputTracker(OutputMonitorOptions options)
     private static string Structure(OutputLinkStatusDto link) =>
         $"{link.LinkId}|{link.Name}|{link.State}|{link.Consumers}|{string.Join(',', link.Addresses)}";
 
-    private static bool MetricsDiffer(int? latency, double? fps, int? previousLatency, double? previousFps) =>
-        latency != previousLatency || !Nullable.Equals(fps, previousFps);
+    private static bool MetricsDiffer(OutputStatusDto current, OutputStatusDto previous) =>
+        MetricsDiffer(current.LatencyMs, current.Fps, current.DroppedFramesPct, current.DecodedStreams, current.SoftwareDecodedStreams, previous.LatencyMs, previous.Fps, previous.DroppedFramesPct, previous.DecodedStreams, previous.SoftwareDecodedStreams);
+
+    private static bool MetricsDiffer(OutputLinkStatusDto current, OutputLinkStatusDto previous) =>
+        MetricsDiffer(current.LatencyMs, current.Fps, current.DroppedFramesPct, current.DecodedStreams, current.SoftwareDecodedStreams, previous.LatencyMs, previous.Fps, previous.DroppedFramesPct, previous.DecodedStreams, previous.SoftwareDecodedStreams);
+
+    private static bool MetricsDiffer(int? latency, double? fps, double? dropped, int? decoded, int? software, int? previousLatency, double? previousFps, double? previousDropped, int? previousDecoded, int? previousSoftware) =>
+        latency != previousLatency || !Nullable.Equals(fps, previousFps) || !Nullable.Equals(dropped, previousDropped)
+        || decoded != previousDecoded || software != previousSoftware;
 
     private static bool IsSignificant(double? before, double? after)
     {

@@ -9,6 +9,9 @@ namespace Opten.StudioFlow.Core.Contracts;
 /// <param name="LatencyMs">Estimated receive latency reported by the output page.</param>
 /// <param name="Fps">Rendered frames per second of the program.</param>
 /// <param name="LastReportAt">Last report time.</param>
+/// <param name="DroppedFramesPct">Share of the frames the output page could not show, in percent (the computer cannot keep up).</param>
+/// <param name="DecodedStreams">Number of video streams the output page decodes.</param>
+/// <param name="SoftwareDecodedStreams">Number of those streams decoded in software.</param>
 public sealed record OutputLinkStatusDto(
     string LinkId,
     string Name,
@@ -17,7 +20,10 @@ public sealed record OutputLinkStatusDto(
     IReadOnlyList<string> Addresses,
     int? LatencyMs,
     double? Fps,
-    DateTimeOffset? LastReportAt);
+    DateTimeOffset? LastReportAt,
+    double? DroppedFramesPct = null,
+    int? DecodedStreams = null,
+    int? SoftwareDecodedStreams = null);
 
 /// <summary>
 /// Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own.
@@ -29,6 +35,9 @@ public sealed record OutputLinkStatusDto(
 /// <param name="Fps">Rendered frames per second of the program, from the same report.</param>
 /// <param name="LastReportAt">Last report time of any link.</param>
 /// <param name="Links">Every output link of the production, ordered by name.</param>
+/// <param name="DroppedFramesPct">Dropped frames of the output page that reported last, in percent.</param>
+/// <param name="DecodedStreams">Streams that page decodes.</param>
+/// <param name="SoftwareDecodedStreams">Of those, the streams decoded in software.</param>
 public sealed record OutputStatusDto(
     OutputState State,
     int Consumers,
@@ -36,7 +45,10 @@ public sealed record OutputStatusDto(
     int? LatencyMs,
     double? Fps,
     DateTimeOffset? LastReportAt,
-    IReadOnlyList<OutputLinkStatusDto> Links);
+    IReadOnlyList<OutputLinkStatusDto> Links,
+    double? DroppedFramesPct = null,
+    int? DecodedStreams = null,
+    int? SoftwareDecodedStreams = null);
 
 /// <summary>An output link for the Regie.</summary>
 /// <param name="Id">Link id.</param>
@@ -93,4 +105,14 @@ public sealed record OutputSnapshot(
 /// <param name="LatencyMs">Estimated receive latency (RTT/2 plus jitter buffer delay).</param>
 /// <param name="Fps">Rendered frames per second.</param>
 /// <param name="ProgramSceneId">Scene the page currently shows.</param>
-public sealed record OutputReport(bool Rendering, int? LatencyMs, double? Fps, string? ProgramSceneId);
+/// <param name="DroppedFramesPct">Share of the frames the page dropped since the previous report, in percent.</param>
+/// <param name="DecodedStreams">Number of video streams the page decodes (paused sources do not count).</param>
+/// <param name="SoftwareDecodedStreams">Of those, the number decoded in software.</param>
+public sealed record OutputReport(
+    bool Rendering,
+    int? LatencyMs,
+    double? Fps,
+    string? ProgramSceneId,
+    double? DroppedFramesPct = null,
+    int? DecodedStreams = null,
+    int? SoftwareDecodedStreams = null);

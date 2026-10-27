@@ -327,5 +327,7 @@ public sealed class DeviceRuntime(string deviceId)
         BitrateKbps = slot.BitrateKbps is >= 0 and <= 1_000_000 ? slot.BitrateKbps : null,
         PacketLossPct = slot.PacketLossPct is >= 0 and <= 100 ? slot.PacketLossPct : null,
         Codec = TextRules.Truncate(slot.Codec, 32),
+        Encoder = TextRules.Truncate(slot.Encoder, 64),
+        QualityLimitation = slot.QualityLimitation is "cpu" or "bandwidth" or "other" ? slot.QualityLimitation : null,
     };
 }

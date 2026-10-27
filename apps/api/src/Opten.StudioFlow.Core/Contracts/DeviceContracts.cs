@@ -47,6 +47,17 @@ public sealed record DeviceTelemetryDto(
     CameraStateDto? Camera = null);
 
 /// <summary>Telemetry of one slot (camera or screen) of a device.</summary>
+/// <param name="Slot">Slot name.</param>
+/// <param name="State">Slot state.</param>
+/// <param name="Width">Width of the largest layer the sender encodes.</param>
+/// <param name="Height">Height of the largest layer the sender encodes.</param>
+/// <param name="Fps">Frames per second of the largest layer.</param>
+/// <param name="BitrateKbps">Send bit rate over all layers.</param>
+/// <param name="PacketLossPct">Packet loss reported by the SFU.</param>
+/// <param name="Codec">Video codec, e.g. "h264" or "vp9".</param>
+/// <param name="Encoder">Encoder implementation the browser names (e.g. "libvpx", "OpenH264", "VideoToolbox"), where it tells the page.</param>
+/// <param name="HardwareEncoder">True for a power-efficient (hardware) encoder, false for software, null when the browser does not say.</param>
+/// <param name="QualityLimitation">Why the sender lowers the picture right now: "cpu" (the computer cannot keep up), "bandwidth" or "other"; null when it does not.</param>
 public sealed record SlotTelemetryDto(
     string Slot,
     SlotState State,
@@ -55,7 +66,10 @@ public sealed record SlotTelemetryDto(
     double? Fps,
     int? BitrateKbps,
     double? PacketLossPct,
-    string? Codec);
+    string? Codec,
+    string? Encoder = null,
+    bool? HardwareEncoder = null,
+    string? QualityLimitation = null);
 
 /// <summary>Result of the technical check on the sender (camera, network, bandwidth).</summary>
 public sealed record TechCheckDto(

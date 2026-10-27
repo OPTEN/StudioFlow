@@ -198,6 +198,104 @@ public sealed class OutputTrackerTests
     }
 
     [Fact]
+    public void Report_DroppedFramesAndDecoders_AreKeptPerLinkAndInTheSummary()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Connect("c2", "olk_b", "10.0.0.6");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 2.5, 3, 1), Build.T0);
+        tracker.Report("olk_b", new OutputReport(true, 200, 25, null, 0, 6, 0), Build.T0.AddSeconds(1));
+
+        var status = tracker.Current(Build.T0.AddSeconds(1));
+
+        Assert.Equal(2.5, status.Links.Single(l => l.LinkId == "olk_a").DroppedFramesPct);
+        Assert.Equal(3, status.Links.Single(l => l.LinkId == "olk_a").DecodedStreams);
+        Assert.Equal(1, status.Links.Single(l => l.LinkId == "olk_a").SoftwareDecodedStreams);
+        Assert.Equal(6, status.Links.Single(l => l.LinkId == "olk_b").DecodedStreams);
+        // The summary is the page that reported last, like latency and fps.
+        Assert.Equal(0, status.DroppedFramesPct);
+        Assert.Equal(6, status.DecodedStreams);
+        Assert.Equal(0, status.SoftwareDecodedStreams);
+    }
+
+    [Fact]
+    public void Report_OldPageWithoutTheNewFields_LeavesThemEmpty()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null), Build.T0);
+
+        var status = tracker.Current(Build.T0);
+
+        Assert.Null(status.DroppedFramesPct);
+        Assert.Null(status.DecodedStreams);
+        Assert.Null(status.SoftwareDecodedStreams);
+    }
+
+    [Theory]
+    [InlineData(-1, 3, 1)]
+    [InlineData(100.5, 3, 1)]
+    [InlineData(double.NaN, 3, 1)]
+    public void Report_ImplausibleDroppedFrames_AreDropped(double dropped, int decoded, int software)
+    {
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, dropped, decoded, software), Build.T0);
+
+        Assert.Null(tracker.Current(Build.T0).DroppedFramesPct);
+        Assert.Equal(decoded, tracker.Current(Build.T0).DecodedStreams);
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(5000, 0)]
+    [InlineData(3, 4)]
+    [InlineData(3, -1)]
+    public void Report_ImplausibleStreamCounts_AreDropped(int decoded, int software)
+    {
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, decoded, software), Build.T0);
+
+        var status = tracker.Current(Build.T0);
+        Assert.Null(status.SoftwareDecodedStreams);
+        if (decoded is < 0 or > 1000)
+        {
+            Assert.Null(status.DecodedStreams);
+        }
+    }
+
+    [Fact]
+    public void TakeChange_DroppedFramesStartingToRise_PublishesImmediately()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 8, 3, 0), Build.T0.AddSeconds(1));
+
+        Assert.Equal(8, tracker.TakeChange(Build.T0.AddSeconds(1))!.DroppedFramesPct);
+    }
+
+    [Fact]
+    public void TakeChange_ChangedDecoderCount_PublishesImmediately()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 3), Build.T0.AddSeconds(1));
+
+        Assert.Equal(3, tracker.TakeChange(Build.T0.AddSeconds(1))!.SoftwareDecodedStreams);
+    }
+
+    [Fact]
+    public void TakeChange_SmallDroppedFramesJitter_IsThrottled()
+    {
+        tracker.Connect("c1", "olk_a", "10.0.0.5");
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 10, 3, 0), Build.T0);
+        tracker.TakeChange(Build.T0);
+
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 11, 3, 0), Build.T0.AddSeconds(2));
+
+        Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(2)));
+    }
+
+    [Fact]
     public void TakeChange_StateChange_PublishesImmediately()
     {
         tracker.Connect("c1", "olk_a", "10.0.0.5");
@@ -388,6 +486,37 @@ public sealed class DeviceRuntimeTests
         Assert.Equal(32, screen.Codec!.Length);
         Assert.Equal(SlotState.Live, device.SlotStateOf("camera"));
         Assert.Equal(Build.T0, telemetry.At);
+    }
+
+    [Fact]
+    public void ApplyReport_EncoderAndQualityLimitation_AreKeptAndSanitized()
+    {
+        var report = new DeviceReportDto(
+            RtcState.Connected,
+            [
+                new SlotTelemetryDto("camera", SlotState.Live, 1920, 1080, 30, 2500, 0, "h264", "VideoToolbox", true, null),
+                new SlotTelemetryDto("screen-1", SlotState.Live, 2560, 1440, 15, 3000, 0, "vp9", new string('e', 100), false, "cpu"),
+                new SlotTelemetryDto("screen-2", SlotState.Live, 2560, 1440, 15, 3000, 0, "h264", null, null, "<script>"),
+                new SlotTelemetryDto("screen-3", SlotState.Live, 2560, 1440, 15, 3000, 0, "h264", null, null, "bandwidth"),
+            ],
+            null,
+            null,
+            null,
+            null,
+            null);
+
+        var (telemetry, _, _) = device.ApplyReport(report, [.. OwnSlots, "screen-2", "screen-3"], Build.T0);
+
+        var camera = telemetry.Slots.Single(s => s.Slot == "camera");
+        Assert.Equal("VideoToolbox", camera.Encoder);
+        Assert.True(camera.HardwareEncoder);
+        Assert.Null(camera.QualityLimitation);
+        var screen = telemetry.Slots.Single(s => s.Slot == "screen-1");
+        Assert.Equal(64, screen.Encoder!.Length);
+        Assert.False(screen.HardwareEncoder);
+        Assert.Equal("cpu", screen.QualityLimitation);
+        Assert.Null(telemetry.Slots.Single(s => s.Slot == "screen-2").QualityLimitation);
+        Assert.Equal("bandwidth", telemetry.Slots.Single(s => s.Slot == "screen-3").QualityLimitation);
     }
 
     [Fact]
