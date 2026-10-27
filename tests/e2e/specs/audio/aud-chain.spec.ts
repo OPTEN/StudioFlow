@@ -1,10 +1,13 @@
+import { percentile } from '../../support/helpers';
 import { sleep } from '../../support/shell';
 import { pairViaApi } from '../../support/ui/pairing';
 import {
   fakeTones,
   measureAudio,
   outputTarget,
+  setFakeTone,
   silenceAt,
+  toneAt,
   unlockSound,
   waitForPeak,
   waitForSilence,
@@ -14,7 +17,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD, the whole chain (issue #7, docs/testing.md 2.18): the audio station sends the sound of the mixing desk, the output
+ * AUD, the whole chain (issue #7, docs/testing.md 2.19): the audio station sends the sound of the mixing desk, the output
  * page plays it only while the broadcast is live and the channel is audible. The microphone is a sine tone of known
  * frequency (support/browser/fake-audio.js) and the output page is measured with the audio probe, so a frequency in the
  * spectrum proves that the sound went through LiveKit, the output page and the mixer – and silence that it did not.
@@ -92,6 +95,44 @@ test.describe('AUD audio chain', () => {
       await expect(station.micLive()).toBeHidden({ timeout: 10_000 });
       expect((await fakeTones(station.page)).filter((tone) => tone.live)).toHaveLength(1);
       void regie;
+    },
+  );
+
+  test(
+    'E2E-AUD-16 [station + output] the delay of the sound from the microphone of the station to the output page is measured (a tone that starts after silence, five times)',
+    t.p2,
+    async ({ openAudioStation, openOutput, pairContext, production, api }, testInfo) => {
+      test.setTimeout(180_000);
+      const station = await openAudioStation({ mic: { frequency: STATION_HZ } });
+      await pairViaApi(pairContext, station, { name: 'Mixing desk' });
+      await station.waitForMic('live', 45_000);
+      const output = await openOutput(production, {}, { context: OUTPUT });
+      await output.stage();
+      await unlockSound(output);
+      const target = await outputTarget(output);
+      await api.startBroadcast(production.id);
+      await waitForTone(target, STATION_HZ);
+
+      // The source is silent, then the tone starts at a known moment of this machine's clock. The fake microphone writes its
+      // samples about 60 ms ahead of the clock, which is part of the number.
+      const delays: number[] = [];
+      for (let round = 0; round < 5; round += 1) {
+        await setFakeTone(station.page, 'mic', { level: 0 });
+        await waitForSilence(target, { timeout: 15_000 });
+        await sleep(300);
+        const heard = toneAt(target, STATION_HZ, 15_000);
+        const startedAt = await station.page.evaluate(() => {
+          (window as unknown as { __sfAudioFake: { setTone(kind: string, patch: object): void } }).__sfAudioFake.setTone('mic', { level: 0.5 });
+          return Date.now();
+        });
+        delays.push((await heard) - startedAt);
+      }
+      const median = percentile(delays, 50);
+      testInfo.annotations.push({
+        type: 'measurement',
+        description: `audio delay microphone -> output page (tone after silence, 5 rounds): ${delays.join(' / ')} ms, median ${median} ms; includes about 60 ms of the fake source's write-ahead and the 21 ms window of the probe`,
+      });
+      expect(median, 'T-AUDIO-DELAY: the sound is not seconds behind').toBeLessThanOrEqual(1_000);
     },
   );
 });

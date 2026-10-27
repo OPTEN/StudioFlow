@@ -17,7 +17,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD, the mixer (issue #7, docs/testing.md 2.18): one global mixer per production – fader (-∞ to +10 dB), mute, mode
+ * AUD, the mixer (issue #7, docs/testing.md 2.19): one global mixer per production – fader (-∞ to +10 dB), mute, mode
  * (always, follows the picture, off) and sync offset per channel – set with `PUT …/audio/channels` and heard on the
  * output page within the specified times. The output page is measured with the audio probe (support/browser/audio-probe.js).
  */

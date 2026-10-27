@@ -19,7 +19,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD sources (issue #7, docs/testing.md 2.18): the sound of a shared screen follows its picture, scene changes fade the
+ * AUD sources (issue #7, docs/testing.md 2.19): the sound of a shared screen follows its picture, scene changes fade the
  * sound with the picture, and a microphone that is pulled out while it is audible is an incident that heals when it is
  * plugged back in. The sources are sine tones of known frequency (support/browser/fake-audio.js), the output page is
  * measured with the audio probe.

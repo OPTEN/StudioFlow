@@ -99,7 +99,7 @@ Pinned details of the implementation (spec 4.10, runbook chapter 20):
   to use its own room and tokens (later).
 - Measurements (E2E on a loaded machine, tones of 440–1100 Hz): mute or fader change heard 6–60 ms after the answer of the request,
   end of the broadcast silent within about 450 ms, the sound of the station reaches the output unchanged in level (±2 dB); the delay
-  from the microphone to the output page is recorded by E2E-AUD-16. Lip sync: the sound and the picture of a source travel in separate
+  from the microphone to the output page is 190–640 ms (median 510 ms) with the fake source on a machine at load average 25, recorded by E2E-AUD-16. Lip sync: the sound and the picture of a source travel in separate
   streams and the output page plays the sound through Web Audio, so the browser does not align them for the output; the sync offset
   (0–500 ms) is the tool of the operator; an automatic alignment is not built.
 
