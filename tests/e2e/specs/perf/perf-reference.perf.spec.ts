@@ -1,6 +1,6 @@
 import { expect, test } from '../../support/ui/fixtures';
 import { sleep } from '../../support/output/analysis';
-import { QUIET_BUSY_PCT, judgeTiming, recordMeasurement, type TimingGate } from '../../support/output/stats';
+import { judgeTiming, recordMeasurement, startCpuMonitor, type TimingGate } from '../../support/output/stats';
 import { t } from '../../support/tags';
 import { profileMainThread } from '../../support/perf/cpu';
 import { BUDGET, checkBudgetParts, flatten, type PerfSummary } from '../../support/perf/budget';
@@ -84,6 +84,9 @@ function summarizeWindow(window: WindowResult): PerfSummary['idle'] {
   };
 }
 
+/** The scenario takes about two thirds of four cores by itself: a machine above this had no headroom for it. */
+const SATURATED_BUSY_PCT = 90;
+
 test.describe('PERF reference scenario', () => {
   test(
     'E2E-PERF-01 [perf, reference scenario] 4 phones at 1080p, 2 screens at 1440p, 6 scenes and Studio Mode: CPU, decoders and encoders per role stay within the performance budget',
@@ -91,6 +94,7 @@ test.describe('PERF reference scenario', () => {
     async ({ api, production, pairContext, onCleanup }) => {
       test.setTimeout(900_000);
       const world = await buildReferenceWorld({ api, production, pairContext, onCleanup });
+      const stopMachineCpu = startCpuMonitor();
       const meters = await Meters.attach(world);
       onCleanup(() => meters.detach());
       // Settle: simulcast layers, dynacast, first keyframes, fonts.
@@ -141,15 +145,21 @@ test.describe('PERF reference scenario', () => {
       ).toEqual([]);
 
       // The counts hold on any machine. The loads only mean something if the machine had headroom: a sender at its CPU limit
-      // (`qualityLimitationReason = cpu`) is the sign that it had none (docs/testing.md 6.8).
+      // (`qualityLimitationReason = cpu`) is the sign that it had none, and so is a machine that was busy all the time (the
+      // scenario itself takes about two thirds of four cores, so the limit is higher than the 60 % of the other timing tests;
+      // docs/testing.md 6.8).
       const { counts, loads } = checkBudgetParts(summary, BUDGET);
       expect(counts, `the performance budget, counts (docs/testing.md 5.1):\n${counts.join('\n')}`).toEqual([]);
       const starved = summary.idle.senders.cpuLimited || summary.dragging.senders.cpuLimited;
+      const machine = stopMachineCpu();
+      const saturated = machine.busyPct > SATURATED_BUSY_PCT;
       const gate: TimingGate = {
-        enforce: !starved,
-        busyPct: null,
-        maxBusyPct: QUIET_BUSY_PCT,
-        reason: 'a sender was at its CPU limit (qualityLimitationReason = cpu) during the measurement: the machine had no headroom, the figures are recorded, the loads are not held against the budget (not comparable); repeat the run on a machine with headroom (docs/testing.md 6.8)',
+        enforce: !starved && !saturated,
+        busyPct: machine.busyPct,
+        maxBusyPct: SATURATED_BUSY_PCT,
+        reason: starved
+          ? 'a sender was at its CPU limit (qualityLimitationReason = cpu) during the measurement: the machine had no headroom, the figures are recorded, the loads are not held against the budget (not comparable); repeat the run on a machine with headroom (docs/testing.md 6.8)'
+          : `the machine was at ${machine.busyPct} % CPU during the measurement (more than ${SATURATED_BUSY_PCT} %): the figures are recorded, the loads are not held against the budget (not comparable); repeat the run on a machine with headroom (docs/testing.md 6.8)`,
       };
       await judgeTiming(test.info(), gate, () => {
         expect(loads, `the performance budget, loads (docs/testing.md 5.1):\n${loads.join('\n')}`).toEqual([]);

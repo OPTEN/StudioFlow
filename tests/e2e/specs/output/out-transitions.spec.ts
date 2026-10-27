@@ -164,6 +164,10 @@ test.describe('OUT transitions', () => {
       await probe.waitForScene(a);
       await sleep(1000);
       for (const [from, to] of [[a, b], [b, a]] as const) {
+        // The next scene is the preview scene (Studio Mode, decision 12): the output has its picture ready when the fade starts.
+        // A scene that is neither on air nor in the preview shows its picture with the next keyframe, after about half a second.
+        expect((await api.setPreview(production.id, { sceneId: to })).status).toBe(200);
+        await sleep(900);
         const cast = await Screencast.start(output.page, { maxWidth: 320, maxHeight: 180 });
         await sleep(300);
         const sw = await switchProgram(api, production, to, FADE(1000));
@@ -638,6 +642,9 @@ test.describe('OUT transitions', () => {
       const starts: number[] = [];
       let target = b;
       for (let index = 0; index < 20; index++) {
+        // The next scene is the preview scene (Studio Mode, decision 12): its picture is ready when the fade starts.
+        expect((await api.setPreview(production.id, { sceneId: target })).status).toBe(200);
+        await sleep(900);
         const sw = await switchProgram(api, production, target, FADE(300));
         expect(sw.status, `fade ${index}`).toBe(200);
         starts.push(sw.sentAt);

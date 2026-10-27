@@ -7,6 +7,7 @@ import { openProbedOutput } from '../../support/output/open';
 import { DecodedFrame, Screencast } from '../../support/output/screencast';
 import { judgeTiming, recordMeasurement, startCpuMonitor, timingGate } from '../../support/output/stats';
 import { addCamera, goLive, placeItem } from '../../support/output/world';
+import type { ProbedOutput } from '../../support/output/open';
 import type { ProbeFrame, ProbeItem } from '../../support/output/probe';
 import { t } from '../../support/tags';
 
@@ -32,6 +33,32 @@ const PLAN: Placed[] = [
 
 function stateAt(frame: ProbeFrame, id: string): ProbeItem | undefined {
   return frame.items.find((item) => item.id === id);
+}
+
+/** What the item shows while its source is lost, read from the page: the hold frame canvas and the pixels in it (for the message of a failure). */
+async function describeHold(frame: Awaited<ReturnType<ProbedOutput['output']['frame']>>, itemId: string): Promise<string> {
+  const found = await frame.evaluate((id) => {
+    const item = document.querySelector(`[data-item-id="${id}"]`);
+    const canvas = item?.querySelector('canvas.sf-r-hold-frame') as HTMLCanvasElement | null | undefined;
+    const video = item?.querySelector('video') as HTMLVideoElement | null | undefined;
+    let brightest = -1;
+    if (canvas && canvas.width > 0) {
+      try {
+        const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+        context.canvas.width = 16;
+        context.canvas.height = 9;
+        context.drawImage(canvas, 0, 0, 16, 9);
+        brightest = Math.max(...context.getImageData(0, 0, 16, 9).data.filter((_, index) => index % 4 !== 3));
+      } catch {
+        brightest = -2;
+      }
+    }
+    return {
+      canvas: canvas ? { w: canvas.width, h: canvas.height, display: getComputedStyle(canvas).display, opacity: getComputedStyle(canvas).opacity, brightestChannel: brightest } : null,
+      video: video ? { readyState: video.readyState, w: video.videoWidth, tracks: (video.srcObject as MediaStream | null)?.getVideoTracks().map((track) => track.readyState) ?? null } : null,
+    };
+  }, itemId);
+  return JSON.stringify(found);
 }
 
 test.describe('OUT hold frame', () => {
@@ -80,7 +107,7 @@ test.describe('OUT hold frame', () => {
         for (const channel of [0, 1, 2]) expect(Math.abs(a1[channel]! - a2[channel]!), 'the hold picture is frozen (channel ' + channel + ')').toBeLessThanOrEqual(1.5);
       }
       const holdLuma = hold1.image.meanLuma({ x: k1Area.x * hold1.scale, y: k1Area.y * hold1.scale, width: k1Area.width * hold1.scale, height: k1Area.height * hold1.scale });
-      expect(holdLuma, 'hold: the last picture is not black').toBeGreaterThanOrEqual(20);
+      expect(holdLuma, `hold: the last picture is not black (${await describeHold(await output.frame(), k1)})`).toBeGreaterThanOrEqual(20);
       // Darkened: after the hold time the same area is darker, but not black.
       await probe.waitForItemState(k1, 'held', 10_000);
       await sleep(400);
