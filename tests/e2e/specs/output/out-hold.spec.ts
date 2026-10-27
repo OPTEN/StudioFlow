@@ -101,7 +101,13 @@ test.describe('OUT hold frame', () => {
         const id = items4[index]!;
         const sequence = frames.map((frame) => stateAt(frame, id)?.state).filter((state, position, all) => state !== all[position - 1]);
         expect(sequence, `${plan.name}: states over time`).toEqual(plan.holdMs === null ? ['live', 'hold'] : ['live', 'hold', 'held']);
-        const lumas = frames.map((frame) => stateAt(frame, id)).filter((item) => item && (item.state === 'hold' || item.state === 'held')).map((item) => item!.luma ?? 0);
+        // A lost item shows a copy of its last picture (issue #50): there is one in every sampled frame, and it was measured -
+        // a luminance that could not be measured is a test problem and says so, it is not counted as a black picture.
+        const lost = frames.map((frame) => stateAt(frame, id)).filter((item): item is ProbeItem => item !== undefined && (item.state === 'hold' || item.state === 'held'));
+        expect(lost.length, `${plan.name}: the lost state was sampled`).toBeGreaterThan(0);
+        expect(lost.filter((item) => !item.holdFrame).length, `${plan.name}: frames of a lost item without a copy of its last picture`).toBe(0);
+        const lumas = lost.map((item) => item.luma).filter((luma): luma is number => typeof luma === 'number');
+        expect(lumas.length, `${plan.name}: the luminance of the lost picture was measured in every frame`).toBe(lost.length);
         expect(Math.min(...lumas), `${plan.name}: the lost picture is never black`).toBeGreaterThanOrEqual(12);
       }
 
@@ -122,7 +128,8 @@ test.describe('OUT hold frame', () => {
           const held = item.querySelector('.sf-r-held') as HTMLElement;
           const text = item.querySelector('.sf-r-held-text') as HTMLElement;
           out[id] = {
-            blur: getComputedStyle(item.querySelector('.sf-r-box')!).filter,
+            // The blur is computed once into the copy of the picture (data-held-blur, in canvas pixels); a copy that could not be blurred gets a CSS filter.
+            blur: item.querySelector('.sf-r-box')!.getAttribute('data-held-blur') ? `blur(${item.querySelector('.sf-r-box')!.getAttribute('data-held-blur')}px)` : getComputedStyle(item.querySelector('.sf-r-box')!).filter,
             scrim: getComputedStyle(held).backgroundColor,
             text: text.textContent ?? '',
             textDisplay: getComputedStyle(text).display,
@@ -223,7 +230,7 @@ test.describe('OUT hold frame', () => {
         return {
           display: getComputedStyle(fb).display,
           image: img ? { natural: img.naturalWidth, src: img.src } : null,
-          blur: getComputedStyle(root.querySelector('.sf-r-box')!).filter,
+          blur: root.querySelector('.sf-r-box')!.getAttribute('data-held-blur') ? 'blurred' : getComputedStyle(root.querySelector('.sf-r-box')!).filter,
           held: getComputedStyle(root.querySelector('.sf-r-held')!).display,
         };
       }, item.id);

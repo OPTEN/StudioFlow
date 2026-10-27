@@ -26,7 +26,8 @@
       "fix": "Either derive the default subtitle from the current name while the slate subtitle was never edited (store null/“use the name”), or update the subtitle in Production.Update when it still equals the old name."
     },
     "OUT-03": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-27 (issue #12): the output requests the sources of the preview scene at the size they will have on stage (the highest layer for a full-canvas item) and requests nothing for other scenes (they are paused). E2E-SWITCH-10 [output, preview at the highest layer] is a regression guard now.",
       "severity": "medium",
       "area": "OUT",
       "title": "The output preloads the sources of the preview scene at the lowest simulcast layer (320x180), not at the highest as spec 7 and E2E-SWITCH-10 require; after a cut the first picture is always 320 px wide",
@@ -45,7 +46,7 @@
       "test": "E2E-OUT-22 [output, subscriptions] (specs/output/out-media.spec.ts)",
       "steps": "1. One camera in the program scene, one laptop screen S1 live but in no scene; output open. 2. Read the inbound-rtp video streams of the output page (remote SDP msid -> track SID).",
       "expected": "docs/testing.md GAP-26 / E2E-OUT-22: the output subscribes only to sources of scenes; no track and no bytes for S1.",
-      "actual": "MediaSession connects with autoSubscribe: this.role !== 'sender' (true for the output), the provider sets LOW only for tracks without a desired size, it never unsubscribes. Two inbound video streams for one source in a scene; S1 delivered 148093 bytes (1280 px wide, a screen has no simulcast) in about 6 s. Because the output link is a bearer secret, anybody holding it can also receive sources that were never put on air.",
+      "actual": "MediaSession connects with autoSubscribe: this.role !== 'sender' (true for the output), the provider sets LOW only for tracks without a desired size, it never unsubscribes. Two inbound video streams for one source in a scene; S1 delivered 148093 bytes (1280 px wide, a screen has no simulcast) in about 6 s. Since issue #12 the provider pauses a track nobody asked for 1.5 s after it arrives, so about 1.5 s of it is delivered instead of the whole time; the track is still subscribed and the first seconds still arrive. Because the output link is a bearer secret, anybody holding it can also receive sources that were never put on air.",
       "evidence": "tests/e2e/.output/sf-e2e-3/results/out-out-22-subscriptions.json (streams with sid, width, bytes)",
       "fix": "Connect the output with autoSubscribe: false and subscribe/unsubscribe the publications of the sources that appear in a scene (plus a server-side restriction of the output token if possible)."
     },
