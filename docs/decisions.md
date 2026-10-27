@@ -268,9 +268,10 @@ Fixed during the implementation (design: `docs/architecture/implementation-spec.
 6. **How Caddy follows the settings.** Caddy starts with a bootstrap Caddyfile that answers 503; the API pushes the real one
    to `http://caddy:2019/load`, again after every change and whenever it finds Caddy on the bootstrap again (the maintenance
    loop, every 5 seconds). The loaded server is named `sf-<12 hex of the Caddyfile>`.
-7. **LiveKit client URL (issue 44).** The URL in a token is `wss://<Host of the request>` (the scheme from the forwarded
-   protocol); `LiveKit:PublicUrl` overrides, and outside a request the base URL of the settings is used. It is therefore the
-   same name the page was opened with, which is the one its CSP allows.
+7. **LiveKit client URL (issue 44).** The URL in a token is `wss://<Host of the request>`: host and port from the request,
+   the scheme from the public base URL (the stack serves HTTPS only; the request scheme is not used, because a call without the
+   forwarded protocol would give `ws://`). `LiveKit:PublicUrl` overrides, and outside a request the base URL of the settings is
+   used. It is therefore the same name the page was opened with, which is the one its CSP allows.
 8. **Backup service.** Automatic backups are off until a schedule is saved (as `COMPOSE_PROFILES=backup` was before). Labels
    `_auto`, `_manual`, `_pre-restore`; only `_auto` is pruned, locally and at the off-site target. "Back up now" is a request
    file in the volume `backup_config`; restore is a command only and refuses while the API holds database connections (the

@@ -716,7 +716,8 @@ once more right after a camera command.
   (`playoutDelayHint`/`jitterBufferTarget` ≈ 0 where supported); output with `adaptiveStream: false`, explicit
   quality per source from the scene model: program items → dimensions of the item on the canvas (HIGH for large
   items), preview scene items → HIGH (preload before a take), all other scenes' sources → LOW; jitter buffer ≈ 50 ms.
-- The LiveKit URL for clients is the same origin (`wss://{host}`); Caddy proxies `/rtc` to LiveKit 7880. Media goes
+- The LiveKit URL for clients is the same origin: `wss://` and the `Host` the caller used for the token request (the scheme comes
+  from the public base URL, `LiveKit:PublicUrl` overrides both); Caddy proxies `/rtc` to LiveKit 7880. Media goes
   directly to 7881/tcp and 7882/udp (`STUDIOFLOW_RTC_TCP_PORT`, `STUDIOFLOW_RTC_UDP_PORT`) on the saved media address.
 
 Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) that the implementation must respect:

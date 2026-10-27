@@ -2204,7 +2204,7 @@ Backups (runbook section 7). The backup service is part of the stack; its schedu
 
 **E2E-OPS-42** · P0 · pw — The address the page was opened with (issue 44)
 - Steps: log in and fetch the LiveKit tokens of the Regie and of the output through `https://localhost`, `https://127.0.0.1` and the LAN address of the machine; read the CSP of `/`, `/join/` and `/o/…` under the same names; open the Regie by `https://127.0.0.1:<port>` in a browser and watch its WebSockets and CSP violations.
-- Expect: the `url` of every token is `wss://<the Host of the request>`; every page names that host in `connect-src` (`https://` and `wss://`); the Regie opens its LiveKit connection on `wss://127.0.0.1:<port>/rtc` and no Content-Security-Policy violation or console error occurs.
+- Expect: the `url` of every token is `wss://<the Host of the request>` (also for a call that arrives as plain http, such as the direct API port of the suite: the scheme comes from the public base URL; API unit tests cover IPv4, IPv6, names, ports and malformed hosts); every page names that host in `connect-src` (`https://` and `wss://`); the Regie opens its LiveKit connection on `wss://127.0.0.1:<port>/rtc` and no Content-Security-Policy violation or console error occurs.
 
 **E2E-OPS-43** · P0 · pw — Every link starts with the saved address
 - Steps: `GET /api/system/info`; create a laptop invite link and an output link; read the invites of the snapshot.
