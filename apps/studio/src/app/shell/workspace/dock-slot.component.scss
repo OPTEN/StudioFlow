@@ -3,6 +3,8 @@
 
 :host {
   background: var(--panel);
+  // The docks answer to their own width (the pairing dock, the head of the Scenes dock), not to the window.
+  container-type: inline-size;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
@@ -41,10 +43,6 @@
 
 :host(.is-moving) {
   opacity: 0.4;
-}
-
-:host(.is-pair) {
-  container-type: inline-size;
 }
 
 .c-dock-slot__split {
