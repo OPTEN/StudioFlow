@@ -19,21 +19,14 @@ echo "2/4 Actions: read-only default token, allowed to create and approve pull r
 gh api -X PUT "repos/$repo/actions/permissions/workflow" --silent \
   -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
 
-echo "3/4 Branch protection for main: required CI checks, no force push, no deletion"
+echo "3/4 Branch protection for main: required checks ci-ok (aggregate of the CI jobs, issue 57) and the PR title, no force push, no deletion"
 # enforce_admins=false: administrators may still push directly to main (the maintainers' working mode).
 gh api -X PUT "repos/$repo/branches/main/protection" --silent --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": false,
     "contexts": [
-      "lint-typecheck",
-      "unit-web",
-      "api",
-      "contracts",
-      "build-images (api)",
-      "build-images (caddy)",
-      "build-images (backup)",
-      "e2e-smoke",
+      "ci-ok",
       "Conventional Commits title"
     ]
   },
