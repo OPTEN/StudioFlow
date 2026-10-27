@@ -17,6 +17,7 @@ import { DockLayoutService } from '../shell/workspace/dock-layout.service';
 import { SplitterDirective } from '../shell/workspace/splitter.directive';
 import { ControlColumnComponent } from './control-column.component';
 import { EditorService } from './editor.service';
+import { FRAME_SCHEDULER } from './frame-scheduler';
 import { MONITOR_SPLIT_PX, monitorWidths } from './monitor-layout';
 import { MonitorComponent } from './monitor.component';
 import type { SceneTransitionCue } from './scene-view.component';
@@ -69,7 +70,10 @@ export class StageComponent {
   private readonly layout = inject(DockLayoutService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly monitors = viewChild.required<ElementRef<HTMLElement>>('monitors');
+  private readonly scheduleFrame = inject(FRAME_SCHEDULER);
   private size = { width: 0, height: 0 };
+  /** Cancels the pending width write of {@link observeSize}, null when none is scheduled. */
+  private cancelWidths: (() => void) | null = null;
 
   /** The program scene with local drafts. */
   protected readonly programScene = computed(() =>
@@ -155,9 +159,27 @@ export class StageComponent {
       } else {
         return;
       }
-      this.applyWidths();
+      this.scheduleWidths();
     });
     observer.observe(this.host, { box: 'border-box' });
-    inject(DestroyRef).onDestroy(() => observer.disconnect());
+    inject(DestroyRef).onDestroy(() => {
+      observer.disconnect();
+      this.cancelWidths?.();
+    });
+  }
+
+  /**
+   * Writes the widths one frame after the measurement. The widths resize the observed host again; written inside the
+   * observer callback that is a layout change within the same delivery, which browsers report as the error event
+   * “ResizeObserver loop completed with undelivered notifications” (Angular's global error listener logs it).
+   */
+  private scheduleWidths(): void {
+    if (this.cancelWidths) {
+      return;
+    }
+    this.cancelWidths = this.scheduleFrame(() => {
+      this.cancelWidths = null;
+      this.applyWidths();
+    });
   }
 }

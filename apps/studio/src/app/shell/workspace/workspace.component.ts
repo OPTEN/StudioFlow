@@ -21,6 +21,7 @@ import { t } from '@studioflow/i18n';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ViewportService } from '../../core/ui/viewport.service';
+import { FRAME_SCHEDULER } from '../../stage/frame-scheduler';
 import { StageComponent } from '../../stage/stage.component';
 import {
   DOCK_TITLE_KEYS,
@@ -89,6 +90,9 @@ export class WorkspaceComponent extends DockWorkspace {
   private readonly slots = new Map<DockSlotId, ComponentRef<DockSlotComponent>>();
   /** Bottom zone height computed by fitStage (px), or null for the CSS default. */
   private readonly fittedBottom = signal<number | null>(null);
+  private readonly scheduleFrame = inject(FRAME_SCHEDULER);
+  /** Cancels the pending fit of {@link scheduleFit}, null when none is scheduled. */
+  private cancelFit: (() => void) | null = null;
 
   protected readonly zones = this.layout.zones;
   protected readonly titleKeys = DOCK_TITLE_KEYS;
@@ -308,7 +312,7 @@ export class WorkspaceComponent extends DockWorkspace {
     if (typeof ResizeObserver === 'undefined') {
       return;
     }
-    const observer = new ResizeObserver(() => this.fitStage());
+    const observer = new ResizeObserver(() => this.scheduleFit());
     effect(() => {
       const center = this.centerRef()?.nativeElement;
       observer.disconnect();
@@ -316,6 +320,24 @@ export class WorkspaceComponent extends DockWorkspace {
         observer.observe(center);
       }
     });
-    inject(DestroyRef).onDestroy(() => observer.disconnect());
+    inject(DestroyRef).onDestroy(() => {
+      observer.disconnect();
+      this.cancelFit?.();
+    });
+  }
+
+  /**
+   * Fits the stage one frame after the measurement. The fitted height of the bottom zone resizes the observed centre
+   * again; written inside the observer callback that is a layout change within the same delivery, which browsers report
+   * as the error event “ResizeObserver loop completed with undelivered notifications”.
+   */
+  private scheduleFit(): void {
+    if (this.cancelFit) {
+      return;
+    }
+    this.cancelFit = this.scheduleFrame(() => {
+      this.cancelFit = null;
+      this.fitStage();
+    });
   }
 }

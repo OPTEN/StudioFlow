@@ -20,10 +20,12 @@ describe('StageComponent', () => {
   let factory: FakeRendererFactory;
   let fixture: ComponentFixture<StageComponent>;
   let element: HTMLElement;
+  let frames: ManualFrames;
 
   async function setup(options: { studio?: boolean; preview?: string | null } = {}): Promise<void> {
     hub = new FakeStudioHub();
     factory = new FakeRendererFactory();
+    frames = new ManualFrames();
     const storage = new MemoryStorage();
     if (options.studio) {
       storage.setItem(PREFERENCE_KEYS.studioMode, '1');
@@ -32,7 +34,7 @@ describe('StageComponent', () => {
       providers: [
         ...studioTestProviders(hub, storage),
         { provide: SCENE_RENDERER_FACTORY, useValue: factory.create },
-        { provide: FRAME_SCHEDULER, useValue: new ManualFrames().scheduler },
+        { provide: FRAME_SCHEDULER, useValue: frames.scheduler },
       ],
     });
     harness = await startStore(
@@ -72,6 +74,41 @@ describe('StageComponent', () => {
   }
 
   afterEach(() => harness?.http.verify());
+
+  it('writes the monitor widths one frame after the measurement, outside the ResizeObserver callback', async () => {
+    let notify: ResizeObserverCallback = () => undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          notify = callback;
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    try {
+      await setup({ studio: true, preview: 'scn_b' });
+      const measured = [
+        { borderBoxSize: [{ inlineSize: 1000, blockSize: 500 }] },
+      ] as unknown as ResizeObserverEntry[];
+
+      notify(measured, {} as ResizeObserver);
+      notify(measured, {} as ResizeObserver);
+
+      // A write here would resize the observed host again within the same delivery (“ResizeObserver loop completed with
+      // undelivered notifications”).
+      expect(element.style.getPropertyValue('--sf-program-w')).toBe('');
+      expect(frames.pending).toBe(1);
+
+      frames.flush();
+      expect(element.style.getPropertyValue('--sf-program-w')).toMatch(/^\d+(\.\d+)?px$/);
+      expect(element.style.getPropertyValue('--sf-preview-w')).toMatch(/^\d+(\.\d+)?px$/);
+      expect(frames.pending).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it('without Studio Mode: one Program monitor with the overlay, "Preview off" beside it', async () => {
     await setup();
