@@ -144,6 +144,19 @@ http://127.0.0.1:2020 {
 			}
 			import api_proxy 15m
 		}
+		# Import of a production (multipart ZIP file with its media): up to STUDIOFLOW_MAX_IMPORT, same timeouts as the
+		# asset upload. The API reads, checks and stores the file before it answers; it checks the exact limit as well
+		# (Transfer:MaxImportBytes). The export is a plain GET and streams, so it needs no route of its own.
+		@production_import {
+			method POST
+			path_regexp ^/api/productions/import/?$
+		}
+		handle @production_import {
+			request_body {
+				max_size {$STUDIOFLOW_MAX_IMPORT}
+			}
+			import api_proxy 15m
+		}
 		handle {
 			request_body {
 				max_size {$STUDIOFLOW_MAX_BODY}
