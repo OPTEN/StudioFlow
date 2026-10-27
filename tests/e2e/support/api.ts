@@ -3,7 +3,9 @@ import type {
   AuditPageDto,
   ChangeCanvasRequest,
   AllocateSlotRequest,
+  ApplyStatusDto,
   AssetDto,
+  BackupsDto,
   BandwidthTestResultDto,
   CreateInviteRequest,
   CreatePairingRequest,
@@ -21,6 +23,8 @@ import type {
   ImportPreviewDto,
   InviteDto,
   LiveKitTokenDto,
+  MediaSuggestionsDto,
+  MediaTestDto,
   OutputLinkDto,
   OutputReport,
   OutputSettingsDto,
@@ -37,14 +41,20 @@ import type {
   ReplaceSceneItemsRequest,
   SceneDto,
   SceneItemDto,
+  ServerSettingsDto,
   SessionDto,
   SetPreviewRequest,
   SwitchProgramRequest,
   SystemInfoDto,
   TakeRequest,
+  UpdateAddressRequest,
+  UpdateBackupRequest,
+  UpdateEmbeddingRequest,
+  UpdateMediaRequest,
   UpdateOutputAccessRequest,
   UpdateProductionRequest,
   UpdateSceneRequest,
+  UploadCertificateRequest,
   TransitionDto,
 } from '../../../packages/scene-model/src/contracts';
 import { multipart, send, type HttpResponse } from './http';
@@ -184,6 +194,20 @@ export class AdminApi extends HttpApi {
   logout = () => this.call<void>('POST', '/api/auth/logout');
   getSession = () => this.call<SessionDto & Problem>('GET', '/api/auth/me');
   getSystemInfo = () => this.call<SystemInfoDto>('GET', '/api/system/info');
+
+  // --- server settings (issue #27) --------------------------------------------------------------------------------
+  getServerSettings = () => this.call<ServerSettingsDto & Problem>('GET', '/api/settings');
+  getServerSettingsStatus = () => this.call<ApplyStatusDto & Problem>('GET', '/api/settings/status');
+  updateMediaSettings = (body: Loose<UpdateMediaRequest>) => this.call<ServerSettingsDto & Problem>('PUT', '/api/settings/media', { json: body });
+  getMediaSuggestions = () => this.call<MediaSuggestionsDto & Problem>('GET', '/api/settings/media/suggestions');
+  startMediaTest = (body: Loose<UpdateMediaRequest>) => this.call<MediaTestDto & Problem>('POST', '/api/settings/media/test', { json: body });
+  endMediaTest = () => this.call<Problem>('DELETE', '/api/settings/media/test');
+  updateAddressSettings = (body: Loose<UpdateAddressRequest>) => this.call<ServerSettingsDto & Problem>('PUT', '/api/settings/address', { json: body });
+  uploadCertificate = (body: Loose<UploadCertificateRequest>) => this.call<ServerSettingsDto & Problem>('PUT', '/api/settings/certificate', { json: body });
+  updateEmbeddingSettings = (body: Loose<UpdateEmbeddingRequest>) => this.call<ServerSettingsDto & Problem>('PUT', '/api/settings/embedding', { json: body });
+  updateBackupSettings = (body: Loose<UpdateBackupRequest>) => this.call<ServerSettingsDto & Problem>('PUT', '/api/settings/backup', { json: body });
+  listBackups = () => this.call<BackupsDto & Problem>('GET', '/api/settings/backups');
+  requestBackup = () => this.call<Problem>('POST', '/api/settings/backups');
 
   // --- productions ------------------------------------------------------------------------------------------------
   listProductions = () => this.call<ProductionSummaryDto[]>('GET', '/api/productions/');

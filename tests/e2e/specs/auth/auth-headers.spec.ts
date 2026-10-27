@@ -168,14 +168,17 @@ test.describe('AUTH headers', () => {
     expect(violations.length, 'the browser reported refused frames').toBeGreaterThan(0);
   });
 
-  test('E2E-AUTH-19 HTTP is redirected to HTTPS and no cookie is ever set over HTTP', t.p2, async ({ config }) => {
-    const base = `http://${config.host}${config.httpPort === 80 ? '' : `:${config.httpPort}`}`;
-    const root = await send({ method: 'GET', url: `${base}/`, headersOnly: true });
-    expect([301, 308, 302, 307]).toContain(root.status);
-    expect(root.headers['location']).toMatch(/^https:\/\/localhost(:\d+)?\//);
-    const login = await send({ method: 'POST', url: `${base}/api/auth/login`, json: config.admin, headersOnly: true });
-    expect([301, 308, 302, 307]).toContain(login.status);
-    expect(login.setCookies, 'no cookie over HTTP').toHaveLength(0);
+  test('E2E-AUTH-19 plain HTTP is never served, not even on the HTTPS port; no cookie is ever set over HTTP', t.p2, async ({ config }) => {
+    // Nothing listens on port 80 (no redirect, no ACME challenge): the HTTPS port refuses a plain HTTP request.
+    const base = `http://${config.host}:${config.httpsPort}`;
+    const root = await send({ method: 'GET', url: `${base}/`, headersOnly: true }).catch(() => undefined);
+    if (root) {
+      expect(root.status, 'a plain HTTP request to the HTTPS port is refused').toBe(400);
+      expect(root.setCookies, 'no cookie over HTTP').toHaveLength(0);
+    }
+    const login = await send({ method: 'POST', url: `${base}/api/auth/login`, json: config.admin, headersOnly: true }).catch(() => undefined);
+    expect(login?.setCookies ?? [], 'no cookie over HTTP').toHaveLength(0);
+    expect(login?.status ?? 400, 'the login is not served over HTTP').toBeGreaterThanOrEqual(400);
     const https = await send({ method: 'GET', url: `${config.baseURL}/` });
     expect(https.headers['strict-transport-security']).toContain('max-age=');
   });

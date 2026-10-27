@@ -10,22 +10,3 @@ services:
       PAIRING__REDEEMIDEMPOTENCYWINDOW: "00:00:10"
       PAIRING__LIMITS__PENDINGTOTAL: "3"
       LIVEKIT__TOKENTTL: "00:01:00"
-  livekit:
-    environment:
-      # Same block as docker-compose.yml with room.empty_timeout 10 (the base file has 300).
-      LIVEKIT_CONFIG: |
-        port: 7880
-        rtc:
-          tcp_port: ${STUDIOFLOW_RTC_TCP_PORT:-7881}
-          udp_port: ${STUDIOFLOW_RTC_UDP_PORT:-7882}
-          use_external_ip: false
-        room:
-          auto_create: true
-          empty_timeout: 10
-          departure_timeout: 20
-        logging:
-          level: info
-        webhook:
-          api_key: ${LIVEKIT_API_KEY:?fehlt in .env}
-          urls:
-            - http://api:8080/api/livekit/webhook

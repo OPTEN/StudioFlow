@@ -1,0 +1,8 @@
+# Short LiveKit rooms (docs/testing.md 1.2.6): room.empty_timeout 10 s instead of 300. LiveKit's configuration belongs to
+# the API now (it writes livekit.yaml into a volume and the LiveKit supervisor restarts the server when it changes), so the
+# value is an option of the API (Install:LiveKitEmptyTimeout) and not an environment variable of the livekit container.
+# Added on top of docker-compose.e2e.yml (and, if wanted, docker-compose.short-ttl.yml) by the specs that need it.
+services:
+  api:
+    environment:
+      INSTALL__LIVEKITEMPTYTIMEOUT: "10"

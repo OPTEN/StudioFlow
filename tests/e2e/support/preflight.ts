@@ -21,12 +21,6 @@ interface PortCheck {
 export function portChecks(settings: StackSettings = SETTINGS): PortCheck[] {
   return [
     {
-      what: 'Caddy http (E2E_HTTP_PORT)',
-      port: settings.httpPort,
-      protocol: 'tcp',
-      host: '0.0.0.0',
-    },
-    {
       what: 'Caddy https (E2E_HTTPS_PORT)',
       port: settings.httpsPort,
       protocol: 'tcp',

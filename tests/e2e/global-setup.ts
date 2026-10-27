@@ -44,7 +44,7 @@ async function recordBuild(): Promise<StackState['build']> {
   const status = await git(['status', '--porcelain']);
   const diff = await git(['diff', 'HEAD']);
   const images: Record<string, string> = {};
-  for (const service of ['api', 'caddy', 'livekit', 'postgres']) {
+  for (const service of ['api', 'caddy', 'livekit', 'postgres', 'backup']) {
     const result = await docker(['inspect', '-f', '{{.Image}}', containerNameOf(service)]);
     images[service] = result.code === 0 ? result.stdout.trim().replace('sha256:', '').slice(0, 12) : 'unknown';
   }
@@ -111,8 +111,8 @@ export default async function globalSetup(): Promise<void> {
   log(`wrote ${path.relative(process.cwd(), ENV_FILE)} (node IP ${nodeIp})`);
 
   log(`removing an old ${PROJECT} stack, if any`);
-  await compose(['down', '--volumes', '--remove-orphans', '--timeout', '30'], { profiles: ['chaos', 'tools'] });
-  log(`stack ${PROJECT}: https ${SETTINGS.httpsPort}, http ${SETTINGS.httpPort}, media ${SETTINGS.rtcTcpPort}/tcp ${SETTINGS.rtcUdpPort}/udp, api ${SETTINGS.apiPort}, livekit ${SETTINGS.livekitPort}, postgres ${SETTINGS.postgresPort}, subnet ${SETTINGS.subnet}`);
+  await compose(['down', '--volumes', '--remove-orphans', '--timeout', '30'], { profiles: ['chaos'] });
+  log(`stack ${PROJECT}: https ${SETTINGS.httpsPort}, media ${SETTINGS.rtcTcpPort}/tcp ${SETTINGS.rtcUdpPort}/udp, api ${SETTINGS.apiPort}, livekit ${SETTINGS.livekitPort}, postgres ${SETTINGS.postgresPort}, subnet ${SETTINGS.subnet}`);
   await assertStackFree();
 
   const build = process.env['E2E_NO_BUILD'] === '1' ? [] : ['--build'];
@@ -132,9 +132,11 @@ export default async function globalSetup(): Promise<void> {
     await compose(['ps', '-a']).then((ps) => process.stdout.write(ps.output));
     throw new Error(`docker compose up failed (exit ${up.code}); full output in .output/compose-up-attempt2.log\n${errors}\n--- tail ---\n${up.output.slice(-2500)}`);
   }
-  await ensureHealthy(120_000);
   const startToHealthyMs = Date.now() - started;
   log(`stack healthy after ${Math.round(startToHealthyMs / 1000)} s (includes image builds)`);
+  // The account and the settings of the first-run wizard (media address, address, embedding) are entered through the API.
+  await ensureHealthy(120_000);
+  log(`first-run wizard done (media address ${nodeIp}, domain localhost); the stack generated its own secrets`);
 
   // The chaos sidecar is built here so impairment tests do not pay for it (best effort: it needs NET_ADMIN modules).
   const netem = await compose(['build', 'netem'], { profiles: ['chaos'] });

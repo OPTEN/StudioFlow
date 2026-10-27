@@ -1,11 +1,15 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, containerNameOf, stackConfig } from './env';
+import { AdminApi } from './api';
+import { COMPOSE_FILES, ENV_FILE, PROJECT, REPO_ROOT, SECRETS_FILE, TEST_DOMAIN, TEST_FRAME_ANCESTORS, containerNameOf, stackConfig, type StackSecrets } from './env';
 import { exec, sleep, waitUntil, type ExecOptions, type ExecResult } from './shell';
 
+/** The four containers with a fixed address on the compose network (fault injection, network tests). */
 export const SERVICES = ['postgres', 'livekit', 'api', 'caddy'] as const;
 export type Service = (typeof SERVICES)[number];
+/** Every container that keeps running: the four above and the backup service (`init` runs once and exits). */
+export const HEALTH_SERVICES = [...SERVICES, 'backup'] as const;
 
 export interface ComposeOptions extends ExecOptions {
   /** Extra compose files after base + e2e (e.g. the short-ttl override). */
@@ -64,28 +68,28 @@ export async function inspectService(service: Service | string): Promise<Contain
 }
 
 export async function allHealthy(): Promise<boolean> {
-  const states = await Promise.all(SERVICES.map((service) => inspectService(service)));
+  const states = await Promise.all(HEALTH_SERVICES.map((service) => inspectService(service)));
   return states.every((state) => state?.running && state.health === 'healthy');
 }
 
 /** Starts every container that is not running (a `docker kill` or `stop` leaves it down; the restart policy does not apply). */
 export async function startStopped(): Promise<void> {
-  for (const service of SERVICES) {
+  for (const service of HEALTH_SERVICES) {
     const state = await inspectService(service);
     if (state && !state.running && state.status !== 'restarting') await compose(['start', service]);
   }
 }
 
-/** Waits until all four containers report `healthy`; containers that stay down are started once. */
+/** Waits until all five containers report `healthy`; containers that stay down are started once. */
 export async function waitHealthy(timeoutMs = 180_000): Promise<void> {
   let started = false;
   await waitUntil(
-    'all four containers healthy',
+    'all five containers healthy',
     async () => {
       if (await allHealthy()) return true;
       if (!started) {
         // Give the restart policy a few seconds first: a crashed container comes back by itself.
-        const states = await Promise.all(SERVICES.map((service) => inspectService(service)));
+        const states = await Promise.all(HEALTH_SERVICES.map((service) => inspectService(service)));
         if (states.some((state) => state && !state.running && state.status === 'exited')) {
           await sleep(5000);
           started = true;
@@ -152,14 +156,74 @@ export async function resetAdminAccount(): Promise<ExecResult> {
   return compose(['exec', '-T', 'api', 'dotnet', 'Opten.StudioFlow.Web.dll', 'reset-admin', '--yes'], { check: true });
 }
 
+/** One secret file of the stack, read from inside a running container (nothing is ever invented by the harness). */
+async function secretFrom(service: 'api' | 'postgres', file: string): Promise<string> {
+  const result = await docker(['exec', containerName(service), 'cat', file], { check: true });
+  return result.stdout.trim();
+}
+
+/**
+ * Reads the secrets the init service generated (LiveKit key pair, database password) and stores them for the tests
+ * (`.output/<project>/stack-secrets.json`, git-ignored). A stack that was removed with its volumes has new secrets, so
+ * this runs after every start.
+ */
+export async function writeStackSecrets(): Promise<StackSecrets> {
+  const secrets: StackSecrets = {
+    livekitApiKey: await secretFrom('api', '/secrets/livekit-api-key'),
+    livekitApiSecret: await secretFrom('api', '/secrets/livekit-api-secret'),
+    postgresPassword: await secretFrom('postgres', '/run/secrets/postgres-password'),
+  };
+  fs.mkdirSync(path.dirname(SECRETS_FILE), { recursive: true });
+  fs.writeFileSync(SECRETS_FILE, JSON.stringify(secrets), { mode: 0o600 });
+  return secrets;
+}
+
+/** Waits until Caddy and LiveKit run the saved settings (`GET /api/settings/status`, which makes the API apply them). */
+export async function waitForApplied(admin?: AdminApi, timeoutMs = 120_000): Promise<void> {
+  const api = admin ?? (await AdminApi.login());
+  await waitUntil(
+    'Caddy and LiveKit run the saved settings',
+    async () => {
+      const status = await api.getServerSettingsStatus().catch(() => undefined);
+      return status?.status === 200 && status.body.caddy.applied && status.body.liveKit.applied;
+    },
+    { timeoutMs, intervalMs: 500 },
+  );
+}
+
+/**
+ * Drives the first-run wizard of a fresh stack through its API, as the Regie does after the account: the media address
+ * (the LAN address of this machine), the address (the local certificate under the domain `localhost`) and the
+ * embedding. A configured stack is left alone. Then waits until Caddy and LiveKit run the settings.
+ */
+export async function ensureHarnessConfigured(): Promise<void> {
+  const config = stackConfig();
+  const admin = await AdminApi.login();
+  const settings = await admin.getServerSettings();
+  if (settings.status !== 200) throw new Error(`reading the server settings failed with ${settings.status}`);
+  if (!settings.body.configured) {
+    const media = await admin.updateMediaSettings({ address: config.nodeIp });
+    if (media.status !== 200) throw new Error(`the wizard step "media address" failed with ${media.status}: ${media.raw.text().slice(0, 300)}`);
+    const address = await admin.updateAddressSettings({ tlsMode: 'internal', domain: TEST_DOMAIN });
+    if (address.status !== 200) throw new Error(`the wizard step "address" failed with ${address.status}: ${address.raw.text().slice(0, 300)}`);
+    const embedding = await admin.updateEmbeddingSettings({ origins: [...TEST_FRAME_ANCESTORS] });
+    if (embedding.status !== 200) throw new Error(`the wizard step "embedding" failed with ${embedding.status}: ${embedding.raw.text().slice(0, 300)}`);
+  }
+  await waitForApplied(admin);
+  // LiveKit restarts with the new address: its health check follows.
+  await waitHealthy(120_000);
+}
+
 /**
  * Waits until the stack is usable again after a disruption: containers healthy, /health/ready 200, the harness account
- * exists (the first-run setup of a fresh stack is done here) and its login works through Caddy.
+ * exists (the first-run setup of a fresh stack is done here), its login works through Caddy, the wizard settings are
+ * in place and the secrets of the stack are known to the tests.
  */
 export async function ensureHealthy(timeoutMs = 240_000): Promise<void> {
   await waitHealthy(timeoutMs);
   await waitUntil('/health/ready 200', apiReady, { timeoutMs: 60_000, intervalMs: 500 });
   await ensureHarnessAccount();
+  await writeStackSecrets();
   const config = stackConfig();
   await waitUntil(
     'admin login through Caddy',
@@ -173,6 +237,7 @@ export async function ensureHealthy(timeoutMs = 240_000): Promise<void> {
     },
     { timeoutMs: 60_000, intervalMs: 1000 },
   );
+  await ensureHarnessConfigured();
 }
 
 /** Appends the output of `docker compose logs` of one service (or all) since a time stamp. */
@@ -184,10 +249,15 @@ export async function serviceLogs(service?: Service | string, since?: string): P
   return result.output;
 }
 
-/** Recreates the api container with/without extra compose files (short-TTL profile). */
+/**
+ * Recreates the api container with/without extra compose files (short-TTL profile). The new API pushes its
+ * configuration to Caddy and LiveKit again (LiveKit restarts when its file changed), so this waits for that as well.
+ */
 export async function recreateApi(extraFiles: string[] = []): Promise<void> {
   await compose(['up', '-d', '--no-deps', '--force-recreate', '--wait', '--wait-timeout', '240', 'api'], { extraFiles, check: true });
   await waitUntil('/health/ready 200', apiReady, { timeoutMs: 120_000, intervalMs: 500 });
+  await waitForApplied();
+  await waitHealthy(120_000);
 }
 
 export async function recreateLiveKit(extraFiles: string[] = []): Promise<void> {
@@ -197,7 +267,7 @@ export async function recreateLiveKit(extraFiles: string[] = []): Promise<void> 
 /** Writes stack logs of every service to a directory (global teardown, failures). */
 export async function dumpLogs(dir: string): Promise<void> {
   fs.mkdirSync(dir, { recursive: true });
-  for (const service of SERVICES) {
+  for (const service of [...HEALTH_SERVICES, 'init']) {
     const result = await compose(['logs', '--no-color', '--timestamps', service]);
     fs.writeFileSync(`${dir}/${service}.log`, result.output);
   }

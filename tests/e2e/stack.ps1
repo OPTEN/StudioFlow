@@ -8,12 +8,12 @@
 #   .\tests\e2e\stack.ps1 status 2                   containers and ports of stack 2
 #   .\tests\e2e\stack.ps1 down 2                     remove stack 2 with its volumes
 #
-#   N  project    https http rtc tcp/udp api   livekit postgres subnet
-#   1  sf-e2e-1   8491  8091 7901/7902  18091 17891   15491    172.31.201.0/24
-#   2  sf-e2e-2   8492  8092 7903/7904  18092 17892   15492    172.31.202.0/24
-#   3  sf-e2e-3   8493  8093 7905/7906  18093 17893   15493    172.31.203.0/24
-#   4  sf-e2e-4   8494  8094 7907/7908  18094 17894   15494    172.31.204.0/24
-#   5  sf-e2e-5   8495  8095 7909/7910  18095 17895   15495    172.31.205.0/24
+#   N  project    https rtc tcp/udp api   livekit postgres subnet
+#   1  sf-e2e-1   8491  7901/7902  18091 17891   15491    172.31.201.0/24
+#   2  sf-e2e-2   8492  7903/7904  18092 17892   15492    172.31.202.0/24
+#   3  sf-e2e-3   8493  7905/7906  18093 17893   15493    172.31.203.0/24
+#   4  sf-e2e-4   8494  7907/7908  18094 17894   15494    172.31.204.0/24
+#   5  sf-e2e-5   8495  7909/7910  18095 17895   15495    172.31.205.0/24
 param(
   [Parameter(Mandatory = $true, Position = 0)][ValidateSet('up', 'test', 'status', 'down')][string]$Action,
   [Parameter(Mandatory = $true, Position = 1)][ValidateRange(1, 5)][int]$N,
@@ -31,7 +31,7 @@ Set-Location $repo
 function Invoke-Compose {
   param([string[]]$ComposeArgs)
   if (Test-Path $envFile) {
-    & docker compose -p $project --env-file $envFile -f (Join-Path $repo 'docker-compose.yml') -f (Join-Path $here 'docker-compose.e2e.yml') --profile chaos --profile tools @ComposeArgs
+    & docker compose -p $project --env-file $envFile -f (Join-Path $repo 'docker-compose.yml') -f (Join-Path $here 'docker-compose.e2e.yml') --profile chaos @ComposeArgs
   } else {
     & docker compose -p $project @ComposeArgs
   }
@@ -39,7 +39,7 @@ function Invoke-Compose {
 
 function Show-Ports {
   if (Test-Path $envFile) {
-    Select-String -Path $envFile -Pattern '^(E2E_HTTPS_PORT|E2E_HTTP_PORT|STUDIOFLOW_RTC_TCP_PORT|STUDIOFLOW_RTC_UDP_PORT|E2E_API_PORT|E2E_LIVEKIT_PORT|E2E_POSTGRES_PORT|STUDIOFLOW_SUBNET|STUDIOFLOW_PUBLIC_BASE_URL)=' | ForEach-Object { $_.Line }
+    Select-String -Path $envFile -Pattern '^(E2E_HTTPS_PORT|STUDIOFLOW_RTC_TCP_PORT|STUDIOFLOW_RTC_UDP_PORT|E2E_API_PORT|E2E_LIVEKIT_PORT|E2E_POSTGRES_PORT|STUDIOFLOW_SUBNET)=' | ForEach-Object { $_.Line }
   }
 }
 
