@@ -37,7 +37,7 @@ export class PlaceholderCommandsService {
       this.toasts.show(
         t('regie.placeholders.toast.assigned', {
           name: placeholderName(placeholder),
-          target: `${source.code} ${source.label}`,
+          target: source.label,
         }),
       );
     }
