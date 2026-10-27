@@ -62,6 +62,21 @@ export async function waitForReportedPicture(api: AdminApi, production: Pick<Pro
   await new Promise((resolve) => setTimeout(resolve, 1500));
 }
 
+/**
+ * Waits until one page's own reports show a video that presents frames (a `Report` sent by that page with a frame rate above
+ * 0), for a page that shares the production with other output pages, whose reports `waitForReportedPicture` cannot tell
+ * apart. Like it, it never talks to the page. `sent` is read again at every look: `recordHubFrames` may replace it.
+ */
+export async function waitForOwnReportedPicture(sent: () => readonly HubMessage[], timeoutMs = 45_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const shown = sent().some((message) => message.target === 'Report' && ((message.arguments as Array<{ fps?: number | null }> | undefined)?.[0]?.fps ?? 0) > 0);
+    if (shown) return;
+    if (Date.now() > deadline) throw new Error(`the page did not report a picture within ${timeoutMs} ms (${sent().filter((message) => message.target === 'Report').length} reports)`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+}
+
 /** One message of the SignalR JSON protocol (type 1 = invocation, 3 = completion, 6 = ping ...). */
 export interface HubMessage {
   /** Epoch ms of the frame. */

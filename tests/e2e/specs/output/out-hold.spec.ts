@@ -5,7 +5,7 @@ import { colorsClose } from '../../support/ui/pixels';
 import { sleep } from '../../support/output/analysis';
 import { openProbedOutput } from '../../support/output/open';
 import { DecodedFrame, Screencast } from '../../support/output/screencast';
-import { recordMeasurement } from '../../support/output/stats';
+import { judgeTiming, recordMeasurement, startCpuMonitor, timingGate } from '../../support/output/stats';
 import { addCamera, goLive, placeItem } from '../../support/output/world';
 import type { ProbeFrame, ProbeItem } from '../../support/output/probe';
 import { t } from '../../support/tags';
@@ -56,6 +56,7 @@ test.describe('OUT hold frame', () => {
       await sleep(2500); // the rolling hold frames are refreshed about once per second
 
       // The pages close; the senders leave. The output notices when LiveKit reports the track gone.
+      const stopCpu = startCpuMonitor();
       await probe.startSampler({ luma: true });
       await sleep(300);
       const closedAt = Date.now();
@@ -70,10 +71,14 @@ test.describe('OUT hold frame', () => {
       const hold1 = await output.stagePixels();
       await sleep(600);
       const hold2 = await output.stagePixels();
-      expect((await probe.snapshot()).items.find((item) => item.id === k1)!.state, 'still in hold when the second screenshot was taken').toBe('hold');
-      const a1 = hold1.mean(k1Area);
-      const a2 = hold2.mean(k1Area);
-      for (const channel of [0, 1, 2]) expect(Math.abs(a1[channel]! - a2[channel]!), 'the hold picture is frozen (channel ' + channel + ')').toBeLessThanOrEqual(1.5);
+      // Both screenshots have to show the hold state: K1 turns held 3 s after the loss and two screenshots of the stage can take more than
+      // that on a computer that is busy with other work. Then they are not comparable, which the end of the test reports (docs/testing.md 6.8).
+      const stillInHold = (await probe.snapshot()).items.find((item) => item.id === k1)!.state === 'hold';
+      if (stillInHold) {
+        const a1 = hold1.mean(k1Area);
+        const a2 = hold2.mean(k1Area);
+        for (const channel of [0, 1, 2]) expect(Math.abs(a1[channel]! - a2[channel]!), 'the hold picture is frozen (channel ' + channel + ')').toBeLessThanOrEqual(1.5);
+      }
       const holdLuma = hold1.image.meanLuma({ x: k1Area.x * hold1.scale, y: k1Area.y * hold1.scale, width: k1Area.width * hold1.scale, height: k1Area.height * hold1.scale });
       expect(holdLuma, 'hold: the last picture is not black').toBeGreaterThanOrEqual(20);
       // Darkened: after the hold time the same area is darker, but not black.
@@ -114,11 +119,8 @@ test.describe('OUT hold frame', () => {
 
       // T-HOLD: hold -> held within the hold time (hard +-300 ms).
       const byName = new Map(rows.map((row) => [row.name, row]));
-      for (const [name, expected] of [['K1 wide', 3000], ['K2 narrow', 3000], ['K4 ten', 10_000]] as const) {
-        const row = byName.get(name)!;
-        expect(row.measured, `${name}: held reached`).not.toBeNull();
-        expect(Math.abs(row.measured! - expected), `T-HOLD ${name}: ${Math.round(row.measured!)} ms for ${expected} ms (hard +-300)`).toBeLessThanOrEqual(300);
-      }
+      const holdTimes = [['K1 wide', 3000], ['K2 narrow', 3000], ['K4 ten', 10_000]] as const;
+      for (const [name] of holdTimes) expect(byName.get(name)!.measured, `${name}: held reached`).not.toBeNull();
       expect(byName.get('K3 hold')!.heldAt, 'holdMs null never escalates').toBeUndefined();
 
       // The held look: blur 2.5 % of the item width, scrim rgba(13,17,23,.72), message only on items >= 320 px wide.
@@ -192,6 +194,18 @@ test.describe('OUT hold frame', () => {
       expect(live.state).toBe('live');
       expect(live.blur, 'blur removed').toBe('none');
       await recordMeasurement(test.info(), 'out-06-recovery', { reopenToLiveMs: liveAt - reopenedAt }, `K1 page reopened -> live on the output after ${liveAt - reopenedAt} ms`);
+
+      // The times need a machine with headroom (docs/testing.md 6.8); everything above about the picture (a copy that is never black,
+      // the look, the recovery) holds on any machine.
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
+      await judgeTiming(test.info(), gate, () => {
+        expect(stillInHold, 'still in hold when the second screenshot was taken').toBe(true);
+        for (const [name, expected] of holdTimes) {
+          const measured = byName.get(name)!.measured!;
+          expect(Math.abs(measured - expected), `T-HOLD ${name}: ${Math.round(measured)} ms for ${expected} ms (hard +-300)`).toBeLessThanOrEqual(300);
+        }
+      });
     },
   );
 

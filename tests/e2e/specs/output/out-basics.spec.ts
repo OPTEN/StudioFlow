@@ -1,6 +1,6 @@
 import { TEXT } from '../../support/text';
 import { expect, test } from '../../support/ui/fixtures';
-import { openProbedOutput, waitForReportedPicture } from '../../support/output/open';
+import { openProbedOutput, recordHubFrames, waitForOwnReportedPicture, type HubMessage } from '../../support/output/open';
 import { recordMeasurement, summarize, fmt } from '../../support/output/stats';
 import { FULL, addCamera, addScreens, goLive, placeItem } from '../../support/output/world';
 import { t } from '../../support/tags';
@@ -143,9 +143,14 @@ test.describe('OUT basics', () => {
       expect(direct.output.problems.consoleErrors).toEqual([]);
 
       // The same in an iframe with allow="autoplay; fullscreen" (the way the proxy embeds it).
-      const embedded = await openProbedOutput({ browser, onCleanup }, production, {}, { embed: { size: { width: 1280, height: 720 } } });
-      // Autoplay without a gesture, asked the quiet way: nothing talks to the frame until the picture is there.
-      await waitForReportedPicture(api, production);
+      const frames: { sent: HubMessage[]; received: HubMessage[] } = { sent: [], received: [] };
+      const embedded = await openProbedOutput({ browser, onCleanup }, production, {}, {
+        embed: { size: { width: 1280, height: 720 } },
+        onPage: (page) => Object.assign(frames, recordHubFrames(page)),
+      });
+      // Autoplay without a gesture, asked the quiet way: nothing talks to the frame until the picture is there. The page above is
+      // already reporting a picture for the production, so it is the report of this page that says when its own video plays.
+      await waitForOwnReportedPicture(() => frames.sent);
       expect(await embedded.probe.activationAtFirstPlay(), 'in the iframe: no user gesture before the first video played').toBe(false);
       const embeddedMeasured = await embedded.output.waitForPlayingVideos(2, { minFps: 10, timeout: 30_000 });
       for (const video of embeddedMeasured) expect(video.muted && video.autoplay && video.playsInline).toBe(true);
