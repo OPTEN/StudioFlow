@@ -19,22 +19,44 @@ const FRAME_EVENTS = ['loadeddata', 'playing'] as const;
 const HAVE_CURRENT_DATA = 2;
 
 /**
+ * No camera or screen has a frame with an edge below this. A sender that stops (its page closes) sends black frames of two
+ * by two pixels until the SFU takes its track away, and the element keeps the last of them: it is not a picture.
+ */
+const MIN_FRAME_EDGE = 16;
+
+/**
  * True when the video element currently has a decoded frame. The size of a video is known from its metadata on, before the
  * first frame is decoded (under load that takes a moment): a copy taken then is empty, and an empty hold frame is black on
- * air (issue #50).
+ * air (issue #50). A frame of a few pixels is the black frame of a sender that stopped, not a picture.
  */
 export function hasVideoFrame(video: HTMLVideoElement): boolean {
-  return video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= HAVE_CURRENT_DATA;
+  return (
+    video.videoWidth >= MIN_FRAME_EDGE &&
+    video.videoHeight >= MIN_FRAME_EDGE &&
+    video.readyState >= HAVE_CURRENT_DATA
+  );
 }
 
 /** Edge of the sample that tells whether a picture shows anything. */
 const PROBE_EDGE = 8;
 
-/** A 2D context of eight by eight pixels that is read back; null where there is no `OffscreenCanvas`. */
-function probe(): OffscreenCanvasRenderingContext2D | null {
-  return typeof OffscreenCanvas === 'function'
-    ? new OffscreenCanvas(PROBE_EDGE, PROBE_EDGE).getContext('2d', { willReadFrequently: true })
-    : null;
+/** A 2D context of eight by eight pixels that is read back: an `OffscreenCanvas`, else a canvas of the source's document. */
+function probe(
+  source: CanvasImageSource,
+): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null {
+  if (typeof OffscreenCanvas === 'function') {
+    return new OffscreenCanvas(PROBE_EDGE, PROBE_EDGE).getContext('2d', {
+      willReadFrequently: true,
+    });
+  }
+  const doc = (source as { ownerDocument?: Document | null }).ownerDocument;
+  if (!doc) {
+    return null;
+  }
+  const canvas = doc.createElement('canvas');
+  canvas.width = PROBE_EDGE;
+  canvas.height = PROBE_EDGE;
+  return canvas.getContext('2d', { willReadFrequently: true });
 }
 
 /**
@@ -46,7 +68,7 @@ function probe(): OffscreenCanvasRenderingContext2D | null {
  */
 export function showsPicture(source: CanvasImageSource): boolean {
   try {
-    const context = probe();
+    const context = probe(source);
     if (!context) {
       return true;
     }
@@ -97,30 +119,60 @@ export function copySize(frameWidth: number, frameHeight: number, limit: Desired
   };
 }
 
+/** Class of the scratch canvas (it is never in the document; tests tell the copies into a hold frame by it). */
+export const SCRATCH_CLASS = 'sf-r-scratch';
+
+/** One scratch canvas per document: the frame is drawn there first and looked at before it replaces a hold frame. */
+const scratches = new WeakMap<Document, HTMLCanvasElement>();
+
+function scratchCanvas(doc: Document): HTMLCanvasElement {
+  let canvas = scratches.get(doc);
+  if (!canvas) {
+    canvas = doc.createElement('canvas');
+    canvas.className = SCRATCH_CLASS;
+    scratches.set(doc, canvas);
+  }
+  return canvas;
+}
+
 /**
- * Copies the current frame of a video into `canvas` (resized when needed). Returns false when there is no frame, the frame
- * shows nothing (see {@link showsPicture}), no 2D context, or the browser refuses the copy (errors are expected here and
- * deliberately ignored); the canvas then keeps its previous content.
+ * Copies the current frame of a video into `canvas` (resized when needed). The frame is drawn into a scratch canvas first
+ * and looked at there ({@link showsPicture}): only a copy that shows a picture replaces the content of `canvas`, which
+ * is neither resized (that clears it) nor drawn over before. Returns false when there is no frame, the copy shows nothing
+ * (a video that was never painted, a black frame), no 2D context, or the browser refuses the copy (errors are expected
+ * here and deliberately ignored); the canvas then keeps its previous content (issue #50, "nothing black on air").
  */
 export function copyVideoFrame(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
   limit: DesiredSize,
 ): boolean {
-  if (!hasVideoFrame(video) || !hasRunningTrack(video) || !showsPicture(video)) {
+  if (!hasVideoFrame(video) || !hasRunningTrack(video)) {
     return false;
   }
   try {
+    const size = copySize(video.videoWidth, video.videoHeight, limit);
+    const scratch = scratchCanvas(canvas.ownerDocument);
+    const scratchContext = scratch.getContext('2d');
     const context = canvas.getContext('2d');
-    if (!context) {
+    if (!scratchContext || !context) {
       return false;
     }
-    const size = copySize(video.videoWidth, video.videoHeight, limit);
+    if (scratch.width !== size.width || scratch.height !== size.height) {
+      scratch.width = size.width;
+      scratch.height = size.height;
+    }
+    // Cleared first: a draw that does nothing must not leave the picture of an earlier copy (of another item) behind.
+    scratchContext.clearRect(0, 0, size.width, size.height);
+    scratchContext.drawImage(video, 0, 0, size.width, size.height);
+    if (!showsPicture(scratch)) {
+      return false;
+    }
     if (canvas.width !== size.width || canvas.height !== size.height) {
       canvas.width = size.width;
       canvas.height = size.height;
     }
-    context.drawImage(video, 0, 0, size.width, size.height);
+    context.drawImage(scratch, 0, 0);
     return true;
   } catch {
     return false;

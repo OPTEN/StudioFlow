@@ -1,6 +1,7 @@
 import type { SceneDto, SceneItemDto } from '@studioflow/scene-model';
 import { vi } from 'vitest';
 
+import { SCRATCH_CLASS } from '../hold-frame';
 import { createSceneRenderer } from '../scene-renderer';
 import type { SceneRenderer, SceneRendererOptions } from '../types';
 import { FakeProvider } from './fake-provider';
@@ -195,8 +196,10 @@ export interface FakeCanvas2d {
   readonly filters: string[];
   /** Values assigned to `context.globalCompositeOperation`. */
   readonly compositeOperations: string[];
-  /** The draw calls whose source is a video: the copies of live pictures (the others are canvas to canvas). */
+  /** The draw calls whose source is a video: every frame that was looked at, also one that was refused (the others are canvas to canvas). */
   videoDraws(): unknown[][];
+  /** The copies that replaced a hold frame or a still: the draws from the scratch canvas, which only a frame that shows a picture gets to. */
+  copies(): unknown[][];
 }
 
 /**
@@ -246,6 +249,11 @@ export function fakeCanvas2d(options: { readonly filter?: boolean } = {}): FakeC
     compositeOperations,
     videoDraws: () =>
       drawImage.mock.calls.filter((call: unknown[]) => call[0] instanceof HTMLVideoElement),
+    copies: () =>
+      drawImage.mock.calls.filter(
+        (call: unknown[]) =>
+          call[0] instanceof HTMLCanvasElement && call[0].className === SCRATCH_CLASS,
+      ),
   };
 }
 
