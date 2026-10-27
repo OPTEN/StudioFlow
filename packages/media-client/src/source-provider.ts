@@ -81,7 +81,9 @@ const LIVE: SourceAvailability = { state: 'live' };
 /**
  * A track that nobody asks a picture for when it arrives is paused after this time, not at once: a page that is loading
  * registers its consumers a moment after the tracks arrive, and pausing and resuming would cost it a round trip to the SFU
- * and a wait for a keyframe before the first picture.
+ * and a wait for a keyframe before the first picture. The short time only runs once a consumer has asked for a picture of
+ * any source (the page has rendered); before that the page is still loading, which on a busy computer takes seconds, and the
+ * normal grace time holds.
  */
 const FRESH_TRACK_GRACE_MS = 1_500;
 const DEFAULT_DISABLE_UNUSED_AFTER_MS: Readonly<Record<SubscriberRole, number>> = {
@@ -103,6 +105,8 @@ interface SourceEntry {
   disableTimer: TimerHandle | null;
   /** The track is paused by us (nobody needs a picture): no frames arrive, the elements show nothing. */
   paused: boolean;
+  /** The track arrived before any consumer asked for a picture; its pause timer waits for the page to render (see {@link FRESH_TRACK_GRACE_MS}). */
+  waitingForFirstConsumer: boolean;
 }
 
 /** Counters of one inbound stream at the previous summary. */
@@ -152,6 +156,8 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #clock: Clock;
   readonly #createStream: (track: MediaStreamTrack) => MediaStream;
   readonly #disableUnusedAfterMs: number;
+  /** Some consumer has asked for a picture of some source: the page has rendered. */
+  #consumersSeen = false;
   readonly #decoders: DecoderCapability;
   readonly #decoderMarks = new WeakMap<MediaRemoteTrack, DecoderMark>();
   readonly #entries = new Map<string, SourceEntry>();
@@ -225,6 +231,10 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
     const entry = this.#entry(sourceId);
     entry.sizes.set(consumerId, size);
+    if (size !== null && !this.#consumersSeen) {
+      this.#consumersSeen = true;
+      this.#startFreshTimers();
+    }
     this.#applyQuality(entry);
     this.#prune(sourceId, entry);
   }
@@ -515,15 +525,36 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       });
       this.#resume(entry);
     } else if (entry.disableTimer === null && !entry.paused) {
-      const grace = fresh
-        ? Math.min(FRESH_TRACK_GRACE_MS, this.#disableUnusedAfterMs)
-        : this.#disableUnusedAfterMs;
-      entry.disableTimer = this.#clock.setTimeout(() => {
-        entry.disableTimer = null;
-        if (entry.sizes.isEmpty) {
-          this.#pause(entry);
-        }
-      }, grace);
+      entry.waitingForFirstConsumer = fresh && !this.#consumersSeen;
+      this.#scheduleDisable(
+        entry,
+        fresh && this.#consumersSeen
+          ? Math.min(FRESH_TRACK_GRACE_MS, this.#disableUnusedAfterMs)
+          : this.#disableUnusedAfterMs,
+      );
+    }
+  }
+
+  #scheduleDisable(entry: SourceEntry, graceMs: number): void {
+    entry.disableTimer = this.#clock.setTimeout(() => {
+      entry.disableTimer = null;
+      entry.waitingForFirstConsumer = false;
+      if (entry.sizes.isEmpty) {
+        this.#pause(entry);
+      }
+    }, graceMs);
+  }
+
+  /**
+   * The first picture was asked for, so the page has rendered: the tracks that arrived before and that nobody asked for
+   * are paused after the short grace time from now.
+   */
+  #startFreshTimers(): void {
+    for (const entry of this.#entries.values()) {
+      if (entry.waitingForFirstConsumer && entry.sizes.isEmpty && !entry.paused) {
+        this.#clearDisableTimer(entry);
+        this.#scheduleDisable(entry, Math.min(FRESH_TRACK_GRACE_MS, this.#disableUnusedAfterMs));
+      }
     }
   }
 
@@ -568,6 +599,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   }
 
   #clearDisableTimer(entry: SourceEntry): void {
+    entry.waitingForFirstConsumer = false;
     if (entry.disableTimer !== null) {
       this.#clock.clearTimeout(entry.disableTimer);
       entry.disableTimer = null;
@@ -594,6 +626,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
         availability: PENDING,
         disableTimer: null,
         paused: false,
+        waitingForFirstConsumer: false,
       };
       this.#entries.set(sourceId, entry);
     }
