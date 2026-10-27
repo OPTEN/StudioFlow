@@ -58,6 +58,7 @@ export function send(options: HttpRequestOptions): Promise<HttpResponse> {
 
   return new Promise((resolve, reject) => {
     const started = Date.now();
+    let headersReceived = false;
     const requester = isTls ? https.request : http.request;
     const request = requester(
       {
@@ -73,6 +74,7 @@ export function send(options: HttpRequestOptions): Promise<HttpResponse> {
         timeout: options.timeoutMs ?? 30_000,
       },
       (response) => {
+        headersReceived = true;
         const chunks: Buffer[] = [];
         const finish = () => {
           const raw = response.rawHeaders;
@@ -114,7 +116,13 @@ export function send(options: HttpRequestOptions): Promise<HttpResponse> {
       },
     );
     request.on('timeout', () => request.destroy(new Error(`request timed out: ${options.method ?? 'GET'} ${options.url}`)));
-    request.on('error', reject);
+    // A bare "socket hang up" says nothing about which request of a burst it was: name it, and say how far it got.
+    request.on('error', (error: NodeJS.ErrnoException) => {
+      if (!error.message.startsWith('request timed out')) {
+        error.message = `${error.message} [${error.code ?? 'no code'}] on ${options.method ?? 'GET'} ${options.url} after ${Date.now() - started} ms, ${headersReceived ? 'after' : 'before'} the response headers`;
+      }
+      reject(error);
+    });
     if (body) request.write(body);
     request.end();
   });
