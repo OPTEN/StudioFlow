@@ -1,9 +1,15 @@
 # Build and tests of every pull request and of main (docs/testing.md, section 6.1).
 #
-# All jobs run in parallel (the three image builds are one job each); e2e-smoke starts from the images that
-# build-images built. A red job blocks the merge once branch protection for main requires them (repository setting of
-# the owner: pull request required, lint-typecheck, unit-web, api, contracts, the four build-images jobs and e2e-smoke
-# green; the audit job is a report and is not required). Timing budget and layout: docs/testing.md, section 6.1.
+# The job changes decides from the changed paths which jobs run (issue 57): a docs-only change runs Prettier, the i18n
+# check and the release files check and nothing else; the API runs api and contracts; the frontends and packages run
+# unit-web and contracts; anything that reaches the stack (apps, packages, infra, Compose, the E2E harness, the Node
+# set-up) builds the four images and runs e2e-smoke. A change to a workflow runs everything, and so does the label e2e
+# on a pull request for e2e-smoke. The remaining jobs run in parallel (the four image builds are one job each);
+# e2e-smoke starts from the images that build-images built.
+#
+# Branch protection requires only the aggregate job ci-ok (and the PR title check): it fails when a job that ran failed
+# or was cancelled, and passes when a job was skipped because its paths did not change. The dependency audit runs
+# weekly in audit.yml. Timing budget and layout: docs/testing.md, section 6.1.
 # Runners are pinned to ubuntu-24.04: ubuntu-latest is moving to a newer image, and a CI run must not change with it.
 # The full run (on demand) is .github/workflows/e2e-full.yml.
 #
@@ -15,7 +21,9 @@ on:
   push:
     branches: [main]
   # Pushes to a pull request branch are built by the pull_request event; running push as well would build twice.
+  # labeled: the label e2e asks for e2e-smoke on a pull request whose paths would not run it.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
 
 # A new push to a pull request cancels the run it supersedes; runs on main always finish.
 concurrency:
@@ -26,7 +34,58 @@ permissions:
   contents: read
 
 jobs:
+  # Which parts changed. The filters use predicate-quantifier every: a path counts for a filter when it matches the
+  # positive pattern and none of the negated ones. On a push the base is the previous tip of main (event.before), on a
+  # pull request the merge base with its target branch.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api == 'true' || steps.filter.outputs.dotnet == 'true' || steps.filter.outputs.workflows == 'true' }}
+      web: ${{ steps.filter.outputs.web == 'true' || steps.filter.outputs.workflows == 'true' }}
+      code: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' }}
+      e2e: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: every
+          # code: everything that is built, tested or shipped. Docs, Markdown, the licence files, the static prototype
+          # and the Renovate configuration are not.
+          filters: |
+            workflows:
+              - '.github/workflows/**'
+            api:
+              - 'apps/api/**'
+            dotnet:
+              - 'global.json'
+            web:
+              - '**'
+              - '!apps/api/**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!LICENSE'
+              - '!NOTICE'
+              - '!prototype/**'
+              - '!.github/**'
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!LICENSE'
+              - '!NOTICE'
+              - '!prototype/**'
+              - '!.github/renovate.json5'
+              - '!.github/ISSUE_TEMPLATE/**'
+
   lint-typecheck:
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -37,7 +96,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - if: needs.changes.outputs.api == 'true'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
           cache: true
@@ -46,18 +106,22 @@ jobs:
             apps/api/**/*.csproj
       - run: npm ci
       - name: Type check (packages, output page, E2E harness)
+        if: needs.changes.outputs.web == 'true'
         run: npm run typecheck
       - name: Prettier
         run: npm run format:check
       - name: i18n catalogues (index, prefixes, banned formatting)
         run: npm run check:i18n
       - name: dotnet format
+        if: needs.changes.outputs.api == 'true'
         run: dotnet format apps/api/StudioFlow.slnx --verify-no-changes
       # One version in every file (release-please keeps them) and docker-compose.release.yml agrees with docker-compose.yml.
       - name: Release files
         run: node infra/release/check.mjs
 
   unit-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -78,6 +142,8 @@ jobs:
         run: npm run test:sender
 
   api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -99,6 +165,8 @@ jobs:
         run: npm run test:api -- --no-build
 
   contracts:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -126,41 +194,6 @@ jobs:
             exit 1
           }
 
-  # Known vulnerabilities of the dependencies (issue 16). A report, never a blocker: it does not belong to the required
-  # checks, the job stays green, and the findings appear as warnings and in the job summary. Renovate opens the pull
-  # requests that fix them (security updates at once, .github/renovate.json5).
-  audit:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: |
-            apps/api/Directory.Packages.props
-            apps/api/**/*.csproj
-      - name: npm audit
-        run: |
-          if ! npm audit --audit-level=low > "$RUNNER_TEMP/npm-audit.txt" 2>&1; then
-            echo "::warning title=npm audit::The npm dependencies have known vulnerabilities (job summary)."
-          fi
-          { echo '### npm audit'; echo '```'; cat "$RUNNER_TEMP/npm-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-      - name: NuGet vulnerabilities
-        run: |
-          dotnet list apps/api/StudioFlow.slnx package --vulnerable --include-transitive > "$RUNNER_TEMP/nuget-audit.txt" 2>&1 || true
-          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/nuget-audit.txt"; then
-            echo "::warning title=NuGet audit::The NuGet packages have known vulnerabilities (job summary)."
-          fi
-          { echo '### dotnet list package --vulnerable'; echo '```'; cat "$RUNNER_TEMP/nuget-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-
   # Builds the four images of docker-compose.yml that have a build section, one job each and in parallel (the slowest
   # one, not the sum, decides). The Caddy build fails on a broken Caddy configuration (it runs `caddy validate` on the
   # bootstrap config and on the shape of the config the API pushes, for every provider) and builds the three frontends;
@@ -170,6 +203,8 @@ jobs:
   # that were validated here.
   build-images:
     name: build-images (${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -230,7 +265,8 @@ jobs:
   # backup service, started with tests/e2e/stack.sh as numbered stack 1 without any .env: the harness drives the
   # first-run wizard (account, media address, address with the local certificate, embedding).
   e2e-smoke:
-    needs: build-images
+    needs: [changes, build-images]
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-24.04
     # About 10 minutes normally; the rest is room for a slow apt mirror (run 40495799429 spent 10 minutes in apt).
     timeout-minutes: 30
@@ -324,3 +360,23 @@ jobs:
           path: tests/e2e/.output
           include-hidden-files: true
           retention-days: 14
+
+  # The one required check of branch protection (issue 57). It runs after every other job, also when they were skipped,
+  # and fails when one of them failed or was cancelled. Skipped jobs pass: their paths did not change.
+  ci-ok:
+    needs: [changes, lint-typecheck, unit-web, api, contracts, build-images, e2e-smoke]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job that ran is green
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *) echo "::error::A required job ended with '$result'."; exit 1 ;;
+            esac
+          done

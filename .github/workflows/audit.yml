@@ -1,0 +1,48 @@
+# Known vulnerabilities of the dependencies (issues 16 and 57). A report, never a blocker: the job stays green, and the
+# findings appear as warnings and in the job summary. Renovate opens the pull requests that fix them (security updates
+# at once, .github/renovate.json5). Weekly and on demand (Actions > Dependency audit > Run workflow) instead of on every
+# push: the findings change with the advisories, not with the commits.
+# Every action is pinned by commit SHA; the comment names the release.
+
+name: Dependency audit
+
+on:
+  schedule:
+    - cron: '17 5 * * 1' # Mondays, 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            apps/api/Directory.Packages.props
+            apps/api/**/*.csproj
+      - name: npm audit
+        run: |
+          if ! npm audit --audit-level=low > "$RUNNER_TEMP/npm-audit.txt" 2>&1; then
+            echo "::warning title=npm audit::The npm dependencies have known vulnerabilities (job summary)."
+          fi
+          { echo '### npm audit'; echo '```'; cat "$RUNNER_TEMP/npm-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: NuGet vulnerabilities
+        run: |
+          dotnet list apps/api/StudioFlow.slnx package --vulnerable --include-transitive > "$RUNNER_TEMP/nuget-audit.txt" 2>&1 || true
+          if grep -q 'has the following vulnerable packages' "$RUNNER_TEMP/nuget-audit.txt"; then
+            echo "::warning title=NuGet audit::The NuGet packages have known vulnerabilities (job summary)."
+          fi
+          { echo '### dotnet list package --vulnerable'; echo '```'; cat "$RUNNER_TEMP/nuget-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

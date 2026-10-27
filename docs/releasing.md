@@ -116,19 +116,28 @@ default image of GitHub cannot change a release; the pin is moved on purpose. Th
 its jobs are in `docs/testing.md`, section 6.1.
 
 ```text
-plan -> images (api, web, livekit, backup) -> smoke ------> main-tag
-                          -> scan   \---> release-please -> release (only for a release commit)
-                              smoke --/
+plan -> images (api, web, livekit, backup) -> smoke (release commits) -> main-tag
+                          -> scan                                   -> release-please -> release (release commit)
 ```
+
+**What runs (issue 57).** `plan` asks the GitHub API two things: did the CI run of this commit run `e2e-smoke` green
+(CI only runs it when something that reaches the stack changed, `docs/testing.md` 6.1), and does the commit change
+`.release-please-manifest.json` (then it is a release commit). Images are built when either is true. So:
+
+| Commit | Jobs |
+|---|---|
+| Docs only | `plan`, `release-please`; `:main` stays on the last code commit |
+| Code (not a release) | `plan`, `images`, `scan`, `main-tag`, `release-please`. The smoke set is not run again: CI smoke-tested images of the same commit built from the same Dockerfiles and the same layer cache |
+| Release commit | everything: the smoke set runs against the pushed images and the scan must be green before they get a version tag |
 
 | Job | Does | Permissions beyond `contents: read` |
 |---|---|---|
 | `plan` | Names: registry path (owner in lower case), tag `sha-xxxxxxx`, version | none |
 | `images` | Builds each image once, pushes `:sha-xxxxxxx` with SBOM and provenance, signs the digest. Skips the build when the tag exists (re-runs never change a sha image) | `packages: write`, `id-token: write` |
-| `smoke` | The E2E smoke set (`tests/e2e`, project `smoke`) against the pushed sha images, not against locally built ones | `packages: read` |
+| `smoke` | Release commits only: the E2E smoke set (`tests/e2e`, project `smoke`) against the pushed sha images, not against locally built ones | `packages: read` |
 | `scan` | Trivy: a fixable CRITICAL vulnerability in any of the four images fails the job | `packages: read` |
-| `main-tag` | After `smoke`: points `:main` at the sha images, but only while the commit is still the tip of `main` | `packages: write` |
-| `release-please` | After `smoke`: tags and publishes a release when a release pull request was merged, otherwise opens or updates the release pull request. Then looks for a tag on this commit | `contents`, `issues`, `pull-requests: write` |
+| `main-tag` | After `images` (and `smoke` when it ran): points `:main` at the sha images, but only while the commit is still the tip of `main` | `packages: write` |
+| `release-please` | On every commit, after `images` and `smoke` when they ran: tags and publishes a release when a release pull request was merged, otherwise opens or updates the release pull request. Then looks for a tag on this commit | `contents`, `issues`, `pull-requests: write` |
 | `release` | Only when this commit carries a release tag, after `smoke` **and** `scan`: tags the same manifests `:X.Y.Z`, `:X.Y` (while it is the newest patch of its minor) and `:latest` (while it is the newest release), compares the digests with the sha image, verifies the signature, builds the release files, attaches them | `contents: write`, `packages: write` |
 
 A critical vulnerability therefore blocks a release (no version tags, no files) but never `:main`.
@@ -142,11 +151,13 @@ never cancelled by a later push.
 
 1. Look at the open pull request **chore(main): release X.Y.Z**. It lists the commits since the last release, with the
    new `CHANGELOG.md` and the changed version files.
-2. Merge it when the latest **Release** run on `main` is green (smoke tests and scan). It is a deliberate click; use
-   **Squash and merge**.
-3. CI and then Release run for the merge commit. When they finish, the GitHub release `vX.Y.Z` has notes and files, and
+2. Put the label **`needs-full-e2e`** on it: the workflow **E2E full** runs every Playwright project against the stack
+   built from the pull request. Wait until it is green.
+3. Merge it when the full run, CI on the pull request (`ci-ok`) and the latest **Release** run on `main` are green. It
+   is a deliberate click; use **Squash and merge**.
+4. CI and then Release run for the merge commit. When they finish, the GitHub release `vX.Y.Z` has notes and files, and
    the images carry the version tags.
-4. Servers update with `docker compose pull && docker compose up -d` (runbook, section 14).
+5. Servers update with `docker compose pull && docker compose up -d` (runbook, section 14).
 
 To skip a release, do not merge the pull request: it grows with the next commits.
 
@@ -203,7 +214,7 @@ a pull request.
 | Setting | Why |
 |---|---|
 | Settings > General > Pull Requests: allow **squash merging**, set "Default commit message" to **Pull request title**; switch off merge commits and rebase merging | The title becomes the commit message |
-| Settings > Branches > rule for `main`: the checks `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (livekit)`, `build-images (backup)`, `e2e-smoke` and **Conventional Commits title** | CI and the title rule block the merge |
+| Settings > Branches > rule for `main`: the checks **`ci-ok`** and **Conventional Commits title** | `ci-ok` aggregates the CI jobs: a red job blocks the merge, a job skipped by the path filters does not |
 | Settings > Actions > General > Workflow permissions: **Allow GitHub Actions to create and approve pull requests** | release-please opens the release pull request |
 | Secret `RELEASE_PLEASE_TOKEN`: fine-grained personal access token (or GitHub App token) with *Contents* and *Pull requests* write access to this repository | A pull request created with the default token starts no workflow, so CI would never run on the release pull request and the required checks could not turn green. Without the secret the workflow uses the default token and the release pull request needs an administrator's merge |
 | Packages: after the first Release run, open the packages `studioflow-api`, `studioflow-web`, `studioflow-livekit` and `studioflow-backup` and check that the repository has access ("Manage Actions access") | The smoke test and the scan pull the images with the workflow token |

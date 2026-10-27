@@ -4,13 +4,19 @@
 #
 #   plan -> images (api, web, livekit, backup)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web,livekit,backup}:sha-<7 characters>
 #                              with SBOM and provenance attestations, signs them (cosign, keyless)
-#        -> smoke              the E2E smoke set against the pushed sha images (the images that would ship)
+#        -> smoke              release commits only: the E2E smoke set against the pushed sha images (the images that ship)
 #        -> scan               Trivy: fixable CRITICAL vulnerabilities fail the run
-#        -> main-tag           smoke green: moves the tag :main to the commit (only while it is the tip of main)
-#        -> release-please     smoke green: tags and publishes the release when a release pull request was merged,
-#                              otherwise opens or updates the release pull request
-#        -> release            only for a release commit and only if the scan is green as well: tags the SAME images
+#        -> main-tag           moves the tag :main to the commit (only while it is the tip of main)
+#        -> release-please     tags and publishes the release when a release pull request was merged, otherwise opens or
+#                              updates the release pull request
+#        -> release            only for a release commit and only if smoke and scan are green: tags the SAME images
 #                              (no rebuild) :X.Y.Z, :X.Y and :latest, then attaches the release files
+#
+# What runs depends on the CI run of the commit (issue 57). Images are built only when CI ran e2e-smoke, that is when
+# something that reaches the stack changed; after a docs-only commit plan and release-please run and :main stays where it
+# is. A :main image is built from the same Dockerfiles and the same layer cache as the images CI smoke-tested for this
+# commit, so the smoke set is not run a second time for it. A release commit (it changes .release-please-manifest.json)
+# always builds, and its pushed images go through the smoke set and the scan before they get a version tag.
 #
 # Why workflow_run and not workflow_call: the gate is "CI is green on this commit", which workflow_run states exactly
 # (conclusion == success on a push to main) without touching ci.yml, renaming its required checks or running the tests
@@ -60,6 +66,8 @@ jobs:
       registry: ${{ steps.plan.outputs.registry }}
       tag: ${{ steps.plan.outputs.tag }}
       build: ${{ steps.plan.outputs.build }}
+      images: ${{ steps.scope.outputs.images }}
+      release: ${{ steps.scope.outputs.release }}
       postgres_image: ${{ steps.plan.outputs.postgres_image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,9 +85,25 @@ jobs:
             # The backup image is built on the PostgreSQL image of the stack, so that pg_dump matches the server.
             echo "postgres_image=$(sed -n 's/^x-postgres-image: &postgres-image //p' docker-compose.yml)"
           } >> "$GITHUB_OUTPUT"
+      # A release commit is the merge of the release pull request: it raises the version in the manifest. Images are
+      # built for it and whenever CI built and smoke-tested images of this commit (its e2e-smoke job ran green).
+      - id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          files="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REVISION}" --jq '.files[].filename')"
+          release=false
+          if grep -qx '.release-please-manifest.json' <<< "$files"; then release=true; fi
+          smoke="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN}/jobs" --paginate --jq '.jobs[] | select(.name == "e2e-smoke") | .conclusion')"
+          images=false
+          if [ "$release" = true ] || [ "$smoke" = success ]; then images=true; fi
+          echo "Release commit: $release. e2e-smoke of CI: ${smoke:-none}. Build images: $images."
+          { echo "release=$release"; echo "images=$images"; } >> "$GITHUB_OUTPUT"
 
   images:
     needs: plan
+    if: needs.plan.outputs.images == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -183,6 +207,7 @@ jobs:
   # here is what a server pulls.
   smoke:
     needs: [plan, images]
+    if: needs.plan.outputs.release == 'true'
     runs-on: ubuntu-24.04
     # About 10 minutes normally; the rest is room for a slow apt mirror.
     timeout-minutes: 35
@@ -301,6 +326,11 @@ jobs:
   # :main is the latest verified build of the main branch. A slower run of an older commit must not move it back.
   main-tag:
     needs: [plan, images, smoke]
+    # smoke is skipped for a commit that is not a release; CI smoke-tested the images of this commit.
+    if: >-
+      always() &&
+      needs.images.result == 'success' &&
+      (needs.smoke.result == 'success' || needs.smoke.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -330,7 +360,14 @@ jobs:
   # Opens or updates the release pull request, or - when its merge commit is the commit of this run - tags the
   # release and publishes it on GitHub (release notes from the Conventional Commits, CHANGELOG.md).
   release-please:
-    needs: [images, smoke]
+    needs: [plan, images, smoke]
+    # Also after a docs-only commit (no images), so that the release pull request follows main. Never after a red build or
+    # smoke run: a release commit must not be tagged before its images passed.
+    if: >-
+      always() &&
+      needs.plan.result == 'success' &&
+      (needs.images.result == 'success' || needs.images.result == 'skipped') &&
+      (needs.smoke.result == 'success' || needs.smoke.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -366,7 +403,13 @@ jobs:
   # files of the release are attached. Only after smoke tests and scan are green.
   release:
     needs: [plan, images, smoke, scan, release-please]
-    if: needs.release-please.outputs.tag != ''
+    if: >-
+      always() &&
+      needs.release-please.outputs.tag != '' &&
+      needs.images.result == 'success' &&
+      needs.smoke.result == 'success' &&
+      needs.scan.result == 'success' &&
+      needs.release-please.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
