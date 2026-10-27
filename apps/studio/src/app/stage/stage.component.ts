@@ -46,8 +46,9 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
  *   every program switch event and flashes.
  * - The monitors have the shape of the production's canvas (16:9, 9:16, 1:1 or 4:3); a portrait monitor is narrow and
  *   the free space stays empty beside it.
- * - Sizes: a ResizeObserver measures the stage and writes the monitor widths (`monitor-layout.ts`) as the custom
- *   properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing never runs change detection.
+ * - Sizes: a ResizeObserver measures the stage and, one animation frame later, writes the monitor widths
+ *   (`monitor-layout.ts`) as the custom properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing
+ *   never runs change detection. The write is not made inside the observer callback: it resizes the observed host again.
  * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
  * - A press on the stage around the editable screen (monitor headers, the "Preview off" space, the other monitor,
  *   the free stage) clears the element selection, so Properties shows the scene again even when an element fills
