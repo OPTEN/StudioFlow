@@ -282,6 +282,8 @@ export class DeviceSessionService {
   private readonly freshScreens = new Set<string>();
   /** Fresh screens whose picker was cancelled while the allocation was still running. */
   private readonly cancelledScreens = new Set<string>();
+  /** The last queued screen allocation, null while none is running (see {@link queueScreenAllocation}). */
+  private screenAllocation: Promise<void> | null = null;
   /** Last report sent (tests, diagnostics). */
   private lastReportSent: DeviceReportDto | null = null;
 
@@ -496,7 +498,7 @@ export class DeviceSessionService {
     void media.publisher.publishScreen(slot);
     this.freshScreens.add(slot);
     this.pendingScreens.update((pending) => new Set([...pending, slot]));
-    void this.allocateScreen(slot);
+    this.queueScreenAllocation(slot);
   }
 
   /** “Stop sharing”: stops the share; the slot stays (the Regie sees “sharing stopped” and can ask again). */
@@ -808,6 +810,25 @@ export class DeviceSessionService {
     this.updateDerived();
   }
 
+  /**
+   * Allocates the screens one after the other. The server answers each request with the lowest free slot, so requests
+   * that overlap can come back in the opposite order of the clicks and none of them would match its predicted slot.
+   */
+  private queueScreenAllocation(predicted: string): void {
+    const previous = this.screenAllocation;
+    const allocation =
+      previous === null
+        ? this.allocateScreen(predicted)
+        : previous.then(() => this.allocateScreen(predicted));
+    const tail: Promise<void> = allocation.finally(() => {
+      if (this.screenAllocation === tail) {
+        this.screenAllocation = null;
+      }
+    });
+    this.screenAllocation = tail;
+  }
+
+  /** Never rejects: every failure is turned into `actionError`, so the queue keeps running. */
   private async allocateScreen(predicted: string): Promise<void> {
     try {
       const allocated = await this.api.allocateSlot('screen');

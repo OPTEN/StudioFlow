@@ -523,6 +523,56 @@ describe('DeviceSessionService', () => {
     expect(service.screens()[1]).toMatchObject({ slot: 'screen-2', code: 'S5' });
   });
 
+  it('two quick clicks on “+ Another screen” allocate one after the other and keep both screens', async () => {
+    const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+    await online(service);
+    media.publisher.emitSlot('screen-1', 'live');
+    const answers: Array<(slot: unknown) => void> = [];
+    api.allocateSlot.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+
+    service.addScreen();
+    service.addScreen();
+
+    // Both share dialogs opened inside the clicks; the second request waits for the answer to the first, so the server
+    // cannot hand out the slots in the opposite order.
+    expect(media.publisher.calls).toEqual(
+      expect.arrayContaining(['publishScreen:screen-2', 'publishScreen:screen-3']),
+    );
+    expect(api.allocateSlot).toHaveBeenCalledTimes(1);
+
+    answers[0]!({ slot: 'screen-2', code: 'S5', kind: 'screen' });
+    await settle();
+    expect(api.allocateSlot).toHaveBeenCalledTimes(2);
+    answers[1]!({ slot: 'screen-3', code: 'S6', kind: 'screen' });
+    await settle();
+
+    expect(service.screens().map((slot) => [slot.slot, slot.code])).toEqual([
+      ['screen-1', 'S2'],
+      ['screen-2', 'S5'],
+      ['screen-3', 'S6'],
+    ]);
+    expect(media.publisher.calls.filter((call) => call.startsWith('unpublish:'))).toEqual([]);
+    expect(service.actionError()).toBeNull();
+  });
+
+  it('a refused screen allocation does not stop the one queued behind it', async () => {
+    const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+    await online(service);
+    media.publisher.emitSlot('screen-1', 'live');
+    api.allocateSlot
+      .mockRejectedValueOnce(new ApiError(503, 'service_unavailable', 'x'))
+      .mockResolvedValueOnce({ slot: 'screen-3', code: 'S6', kind: 'screen' });
+
+    service.addScreen();
+    service.addScreen();
+    await settle();
+
+    expect(api.allocateSlot).toHaveBeenCalledTimes(2);
+    expect(media.publisher.calls).toContain('unpublish:screen-2');
+    expect(media.publisher.calls).not.toContain('unpublish:screen-3');
+    expect(service.screens().map((slot) => slot.slot)).toEqual(['screen-1', 'screen-3']);
+  });
+
   it('a cancelled picker of a freshly added screen releases the extra slot', async () => {
     const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
     await online(service);

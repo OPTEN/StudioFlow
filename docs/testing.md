@@ -1410,6 +1410,7 @@ log “K2 reconnecting”, “K2 is back, was gone for 9 s”, “S1 sharing sto
 **E2E-SRC-14** · P1 · pw — Several screens and optional camera on a laptop
 - Steps: `laptop.addScreen()` ×2 (3 screens), share all, end screen 2 only, “Remove” screen 3, add the laptop camera; try a 10th screen.
 - Expect: sources S1…S3 (labels “Laptop Lea · Screen n”) and a K code for the camera (“Laptop Lea · Camera”); only S2 raises an incident; removing screen 3 removes the station and keeps scene items as “Source missing”; the 10th screen is refused by the UI (disabled or `/9|nine/i` notice, “At most 9 screens are possible per device.”) and the API (409 `limit_reached`).
+- `[ui, quick clicks]`: two clicks on “+ Another screen” in a row while the answer to the first `POST /api/device/slots` is held back by 1.5 s. Expect: the sender sends the second request only after the first was answered (the server hands out the lowest free slot, so overlapping requests would swap the slots), both screens end `live` under `screen-2`/`S2` and `screen-3`/`S3`, no alert “Please click “Share screen” again”, three `getDisplayMedia` calls.
 
 **E2E-SRC-15** · P1 · pw — Station order
 - Steps: create states: S1 ended (red), K2 reconnecting (amber), K3 recovered, K4 connecting, K5 in program, K6 in preview, K7 unused.

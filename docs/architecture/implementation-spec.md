@@ -304,7 +304,10 @@ from. They reserve their code, show "Source missing" and are replaced by a real 
 that takes the place of a placeholder and is not used yet takes over its code (the one case in which a code changes).
 
 Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `screen-1`. A laptop allocates more
-screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`).
+screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`). The server
+answers each request with the lowest free slot, so the sender sends the requests for further screens one after the other:
+it opens the share dialog of each click at once (user gesture) under the slot it predicts, and a second click waits with
+its request for the answer to the first, so the answers cannot arrive in the opposite order of the clicks.
 `DELETE /api/device/slots/{slot}` removes the source (the sender's “Remove”); a screen share that merely ended
 keeps its slot (state ended) so the Regie can ask for a reshare and the picture returns to the same place.
 
