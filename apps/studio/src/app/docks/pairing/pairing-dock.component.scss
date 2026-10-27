@@ -57,7 +57,7 @@
   margin: 0;
 }
 
-// The dock slot is the size container (dock-slot `.is-pair`): a narrow pairing dock stacks its columns.
+// The dock slot is the size container (every dock slot is one): a narrow pairing dock stacks its columns.
 @container (max-width: 560px) {
   .c-pair {
     grid-template-columns: minmax(0, 1fr);

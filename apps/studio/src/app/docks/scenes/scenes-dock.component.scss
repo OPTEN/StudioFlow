@@ -17,3 +17,11 @@
 .c-scenes-dock__keys {
   white-space: nowrap;
 }
+
+// Five docks side by side leave the Scenes dock about 210 px on a 1280 px screen, too little for the hint and the button:
+// the hint gives way, so that "Add scene" stays inside the head (the dock slot is the container).
+@container (max-width: 270px) {
+  .c-scenes-dock__keys {
+    display: none;
+  }
+}
