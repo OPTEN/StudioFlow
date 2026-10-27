@@ -14,10 +14,14 @@ export interface SizeCall {
 export class FakeProvider implements SourceMediaProvider {
   readonly attachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> = [];
   readonly detachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> = [];
-  readonly assetAttachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> =
-    [];
-  readonly assetDetachCalls: Array<{ readonly sourceId: string; readonly video: HTMLVideoElement }> =
-    [];
+  readonly assetAttachCalls: Array<{
+    readonly sourceId: string;
+    readonly video: HTMLVideoElement;
+  }> = [];
+  readonly assetDetachCalls: Array<{
+    readonly sourceId: string;
+    readonly video: HTMLVideoElement;
+  }> = [];
   readonly sizeCalls: SizeCall[] = [];
   readonly urls = new Map<string, string>();
   private readonly registrations = new Map<string, Set<HTMLVideoElement>>();

@@ -324,7 +324,9 @@ export class AudioGraph {
 
   /** Peak level of the program mix alone (cheaper than {@link levels} when no channel meter is needed). */
   programLevel(): number {
-    return this.#masterMeter === null ? SILENCE_DB : analyserPeakDb(this.#masterMeter, this.#buffer);
+    return this.#masterMeter === null
+      ? SILENCE_DB
+      : analyserPeakDb(this.#masterMeter, this.#buffer);
   }
 
   /**
