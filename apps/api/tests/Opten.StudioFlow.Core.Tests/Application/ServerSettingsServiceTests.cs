@@ -281,6 +281,33 @@ public sealed class ServerSettingsServiceTests
     }
 
     [Fact]
+    public async Task Certificate_UploadedForTheDomainThatIsAboutToBeSaved_IsCheckedAgainstThatDomain()
+    {
+        var (certificate, key) = Certificate("new.example.ch", TimeSpan.FromDays(60));
+        var h = await HarnessWithDomainAsync();
+
+        var refused = await Refused(() => h.Service.UploadCertificateAsync(new UploadCertificateRequest(certificate, key, "other.example.ch"), Ct));
+        Assert.Equal(SettingsFieldErrors.CertificateNameMismatch, Codes(refused, "certificatePem"));
+
+        await h.Service.UploadCertificateAsync(new UploadCertificateRequest(certificate, key, "new.example.ch"), Ct);
+        var custom = await h.Service.UpdateAddressAsync(new UpdateAddressRequest(TlsModes.Custom, "new.example.ch", null, null, null), Ct);
+
+        Assert.Equal("new.example.ch", custom.Address.Domain);
+        Assert.Equal(TlsModes.Custom, custom.Address.TlsMode);
+    }
+
+    [Fact]
+    public async Task Certificate_UploadedWithAnInvalidDomain_IsRefused()
+    {
+        var (certificate, key) = Certificate("studio.example.ch", TimeSpan.FromDays(60));
+        var h = await HarnessWithDomainAsync();
+
+        var refused = await Refused(() => h.Service.UploadCertificateAsync(new UploadCertificateRequest(certificate, key, "not a host"), Ct));
+
+        Assert.Equal(SettingsFieldErrors.DomainInvalid, Codes(refused, "domain"));
+    }
+
+    [Fact]
     public async Task Certificate_ThatDoesNotCoverALaterChangeOfTheDomain_BlocksTheCustomMode()
     {
         var (certificate, key) = Certificate("studio.example.ch", TimeSpan.FromDays(60));

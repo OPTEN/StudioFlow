@@ -110,7 +110,9 @@ public sealed class ServerSettingsService(
     {
         ArgumentNullException.ThrowIfNull(request);
         var errors = new ValidationErrors();
-        var domain = state.Row?.Domain;
+        var domain = string.IsNullOrWhiteSpace(request.Domain)
+            ? state.Row?.Domain
+            : ServerSettingsRules.ValidateDomain(request.Domain, required: true, needsDot: true, "domain", errors);
         var pair = CertificateRules.Validate(request.CertificatePem, request.PrivateKeyPem, domain, clock.GetUtcNow(), errors);
         errors.ThrowIfAny();
 

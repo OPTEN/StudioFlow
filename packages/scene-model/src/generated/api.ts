@@ -3217,6 +3217,11 @@ export interface components {
             certificatePem: string;
             /** @description The unencrypted private key. */
             privateKeyPem: string;
+            /**
+             * @description The host name the certificate must cover, when the address is about to change to it (the certificate comes first, the
+             *     address second); omitted: the saved domain, and no check of the name while there is none.
+             */
+            domain?: null | string;
         };
     };
     responses: never;
