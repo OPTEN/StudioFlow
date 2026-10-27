@@ -86,7 +86,7 @@ export const livekitCtl = {
     await compose(['run', '--rm', 'netem', 'clear'], { profiles: ['chaos'], check: true });
   },
   async showNetem(): Promise<string> {
-    return (await compose(['run', '--rm', 'netem', 'show'], { profiles: ['chaos'], check: true })).output;
+    return (await compose(['run', '--rm', 'netem', 'show'], { profiles: ['chaos'], check: true })).stdout;
   },
 };
 
