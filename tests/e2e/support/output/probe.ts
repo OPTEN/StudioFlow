@@ -14,8 +14,27 @@ import type { OutputPage } from '../ui/output';
 
 const PROBE_SOURCE = fs.readFileSync(path.join(__dirname, 'browser', 'output-probe.js'), 'utf8');
 
+/** Start of the console line the probe writes when the first video of a document plays (see `output-probe.js`). */
+const FIRST_PLAY_MARKER = '__outProbe firstPlay ';
+
+/** What the console lines of the probe said in a context: the activation state at the first play of the latest document. */
+interface FirstPlayRecord {
+  activation?: boolean | null;
+  waiters: Array<() => void>;
+}
+
+const firstPlays = new WeakMap<BrowserContext, FirstPlayRecord>();
+
 /** Installs the probe in every page and frame of the context that opens `/o/...` later. */
 export async function installProbe(context: BrowserContext): Promise<void> {
+  const record: FirstPlayRecord = { waiters: [] };
+  firstPlays.set(context, record);
+  context.on('console', (message) => {
+    const text = message.text();
+    if (!text.startsWith(FIRST_PLAY_MARKER)) return;
+    record.activation = (JSON.parse(text.slice(FIRST_PLAY_MARKER.length)) as { activation: boolean | null }).activation;
+    for (const wake of record.waiters.splice(0)) wake();
+  });
   await context.addInitScript({ content: PROBE_SOURCE });
 }
 
@@ -101,11 +120,29 @@ export class OutputProbe {
     );
   }
 
-  /** `navigator.userActivation.hasBeenActive` at the moment the first video started to play (undefined: none did yet). */
-  async activationAtFirstPlay(): Promise<boolean | null | undefined> {
-    return (await this.frame()).evaluate(
-      () => (window as unknown as { __outProbe: { activationAtFirstPlay: boolean | null | undefined } }).__outProbe.activationAtFirstPlay,
-    );
+  /**
+   * `navigator.userActivation.hasBeenActive` at the moment the first video started to play (undefined: none did within
+   * `timeoutMs`). Waits for the console line the probe writes at that moment instead of reading the probe: a call into the
+   * page counts as a user gesture, so asking early would answer `true` for a page that needed none, and a single late read
+   * (the API reports the picture before the video fires `playing` on a loaded machine) answers `undefined`.
+   */
+  async activationAtFirstPlay(timeoutMs = 30_000): Promise<boolean | null | undefined> {
+    const record = firstPlays.get(this.output.page.context());
+    if (record === undefined) {
+      return (await this.frame()).evaluate(
+        () => (window as unknown as { __outProbe: { activationAtFirstPlay: boolean | null | undefined } }).__outProbe.activationAtFirstPlay,
+      );
+    }
+    if (record.activation === undefined) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, timeoutMs);
+        record.waiters.push(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    }
+    return record.activation;
   }
 
   /** Epoch ms of the first `playing` event of a video in this document (undefined: none yet). */
