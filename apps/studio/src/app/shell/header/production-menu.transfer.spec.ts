@@ -70,6 +70,7 @@ describe('ProductionMenuComponent: duplicate, export and import', () => {
       'New production…',
       'Import…',
       'Audit log',
+      'Server settings',
       'Change password',
       'Sign out',
     ]);
