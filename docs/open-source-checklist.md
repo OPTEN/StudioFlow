@@ -8,7 +8,7 @@ Decisions: `docs/decisions.md`, section "#5 Open source". Nothing in this list d
 
 | Item | Where |
 |---|---|
-| Licence Apache-2.0, copyright holder "OPTEN AG and the StudioFlow contributors", header policy (no per-file headers) | `LICENSE`, `NOTICE`, `CONTRIBUTING.md`, `package.json` (`license`), OCI label `licenses` in `release.yml` |
+| Licence MIT (#59, was Apache-2.0), copyright holder "OPTEN AG and the StudioFlow contributors", header policy (no per-file headers) | `LICENSE`, `NOTICE`, `CONTRIBUTING.md`, `package.json` (`license`), OCI label `licenses` in `release.yml` |
 | Third-party notices: fonts, services, main libraries, generated npm and NuGet lists | `THIRD_PARTY_NOTICES.md`, `tools/third-party-notices.mjs` (`npm run notices`, `npm run check:notices`) |
 | Contributing guide, Code of Conduct (Contributor Covenant 2.1), security policy | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` |
 | Logo: light and dark variant (wordmark as outlines, no font needed) and the square mark | `docs/assets/logo-light.svg`, `logo-dark.svg`, `logo-mark.svg` |
@@ -71,7 +71,8 @@ Reviewed on 2026-10-26. "Recommendation" is what we suggest; the owner decides.
 - **Review the wording of `SECURITY.md`:** the response times (5 and 10 working days, 30 days for a fix) and the sentence
   that research following the policy is not pursued legally are commitments of OPTEN AG.
 - **Confirm the copyright line** ("OPTEN AG and the StudioFlow contributors", year 2026) in `NOTICE` and decide whether
-  contributions need more than the Apache-2.0 section 5 licence (a CLA or DCO sign-off is not required by the files).
+  contributions need more than the "inbound = outbound" paragraph of `CONTRIBUTING.md` (a CLA or DCO sign-off is not
+  required by the files).
 - **Repository rename** `OPTEN/FlowStudio` to `OPTEN/StudioFlow` (#3): done on 2026-10-27. `RELEASE_PLEASE_TOKEN`, branch protection and
   squash merging: `docs/releasing.md` section 8, `tools/github-repo-settings.sh`.
 - **Licence texts in the shipped frontends (done).** The Angular production build writes `3rdpartylicenses.txt` next to,

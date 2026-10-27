@@ -1,8 +1,7 @@
 StudioFlow
-Copyright 2026 OPTEN AG and the StudioFlow contributors
+Copyright (c) 2026 OPTEN AG and the StudioFlow contributors
 
-This product includes software developed at OPTEN AG and by the StudioFlow contributors.
-It is licensed under the Apache License, Version 2.0 (see the file LICENSE).
+StudioFlow is licensed under the MIT License (see the file LICENSE).
 
 The third-party components that StudioFlow uses or ships, and their licences, are listed in
 THIRD_PARTY_NOTICES.md.

@@ -141,13 +141,15 @@ documentation and commit messages are English; German only inside the `de-CH` ca
 
 ## Licence of contributions
 
-StudioFlow is licensed under the [Apache License 2.0](LICENSE). By submitting a contribution you agree that it is
-licensed under the same terms (Apache-2.0, section 5, "Submission of Contributions"); no separate agreement is needed.
+StudioFlow is licensed under the [MIT License](LICENSE). By submitting a contribution you agree that it is licensed
+under the same terms ("inbound = outbound"): you license your contribution to everybody under the MIT License and
+confirm that you have the right to do so. The MIT License has no clause on contributions of its own, so this paragraph
+is that agreement; no separate one (CLA, DCO sign-off) is needed.
 
 **Header policy.** Source files do **not** need a licence or copyright header: the `LICENSE` and `NOTICE` files at the
 top of the repository apply to every file that has no notice of its own, and git records who wrote what. Do not add
 per-file headers. Keep an existing licence notice when you copy code from another project, and only copy code whose
-licence is compatible with Apache-2.0 (MIT, BSD, Apache-2.0; no GPL or AGPL). A new runtime dependency is listed in
+licence allows it to be shipped inside an MIT project with its notice kept (MIT, ISC, BSD, Apache-2.0; no GPL or AGPL). A new runtime dependency is listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): run `npm run notices` after you change `dependencies` or the NuGet
 packages, and say in the pull request why the dependency is needed.
 

@@ -73,7 +73,7 @@ COPY infra/caddy/validate.sh /usr/local/bin/validate-caddy-config
 COPY --from=web /src/dist/studio/browser/ /srv/studio/
 COPY --from=web /src/dist/sender/browser/ /srv/join/
 COPY --from=web /src/dist/output/ /srv/o/
-# What the bundles contain and under which licence (Apache-2.0 section 4): the licence texts of the npm packages that
+# What the bundles contain and under which licence (their notices must ship with them): the licence texts of the npm packages that
 # Angular extracts (not part of dist/*/browser) and the notices of the repository, served under /licenses/.
 COPY --from=web /src/dist/studio/3rdpartylicenses.txt /srv/studio/3rdpartylicenses.txt
 COPY --from=web /src/dist/sender/3rdpartylicenses.txt /srv/join/3rdpartylicenses.txt
