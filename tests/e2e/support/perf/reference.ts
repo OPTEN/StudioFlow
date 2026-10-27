@@ -14,7 +14,7 @@ import { decodeWindow, encodeWindow, readRtc, type DecodeWindow, type EncodeWind
 import type { WorldDeps } from '../output/world';
 
 /**
- * The reference scenario of the performance harness (issue #12, docs/testing.md 2.18): 4 phones (camera 1080p) and 2
+ * The reference scenario of the performance harness (issue #12, docs/testing.md 2.19): 4 phones (camera 1080p) and 2
  * laptop screens (1440p), 6 scenes, Studio Mode on, the Regie on a 14 inch laptop (1280 x 800 CSS pixels at a device pixel
  * ratio of 1.5) and the output on a second "machine" (a browser of its own, 1920 x 1080). Everything runs on fake media in
  * three Chromium instances, one per role, so the CPU time of the senders, the Regie and the output can be told apart

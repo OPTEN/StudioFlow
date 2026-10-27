@@ -764,7 +764,7 @@
     "dos": [
       "**Do** separate regions with 1px seam hairlines (#262c36) that run to the window edge, and keep content 16px from that edge.",
       "**Do** make every region divider a resize handle: blue on hover or focus, double-click or Enter to reset, arrow keys for 16px steps (Shift for 64px).",
-      "**Do** give each saturated hue exactly one meaning: red Program and down, green Preview and ok, amber reconnecting, blue selection and primary action, violet editable number.",
+      "**Do** give each saturated hue exactly one meaning: red Program and down, green Preview and ok, amber reconnecting or at its limit (attention, still working), blue selection and primary action, violet editable number.",
       "**Do** show an outage everywhere at once (header, message strip, monitor element, scene list, source row, station row) with lamps and washes, and keep a recovered station marked until \"Gesehen\".",
       "**Do** keep the control column and the docks fixed when Studio-Modus toggles. Only the Preview monitor appears or disappears.",
       "**Do** put risky actions behind a dashed red outline, away from other actions, with a dashed confirmation box.",

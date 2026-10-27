@@ -98,7 +98,7 @@ const projects: Project[] = [
   },
   {
     // Every test tagged @perf, in any spec (the latency tests, the many-sources test, the performance budget; docs/testing.md
-    // 2.18 and 6.8): on demand or in the workflow `perf.yml`, never retried, on a machine with at least 4 cores that is not
+    // 2.19 and 6.8): on demand or in the workflow `perf.yml`, never retried, on a machine with at least 4 cores that is not
     // busy otherwise.
     name: 'perf',
     grep: PERF_TAG,

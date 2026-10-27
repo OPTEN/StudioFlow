@@ -499,8 +499,11 @@ Output status: the API tracks output hub connections (count, remote IPs) and rep
 link**. A link is `connected` if ≥ 1 of its pages is connected and reported `rendering` within 6 s, `stale` if
 connected but no fresh rendering report, `none` otherwise. `OutputStatusDto` carries the summary (connected if any link
 is, else stale if any is) and `links`: every link of the production with its id, name, state, consumers, addresses,
-latency and fps. Changes (also a link created, renamed or revoked) emit `outputStatusChanged` (latency/fps updates at
-most every 5 s or when the value changes by > 20 %). `lastSeenAt` of a link is written when one of its pages connects or
+latency and fps, and the load of the page (issue #12): `droppedFramesPct` (0–100), `decodedStreams` and
+`softwareDecodedStreams` (≤ decoded; the summary carries those of the page that reported last). Implausible numbers are
+dropped, not clamped. Changes (also a link created, renamed or revoked) emit `outputStatusChanged` (latency and fps at
+most every 5 s or when the value changes by > 20 %; the dropped share is a percentage and counts in points: at most every
+5 s or when it changes by 5 points or more, the point from which the Regie warns; a changed decoder count at once). `lastSeenAt` of a link is written when one of its pages connects or
 disconnects.
 
 ### 4.9 Audit log
@@ -670,7 +673,9 @@ Events the output must not see (devices, pairing, invites, incidents, log, outpu
 `revisionOnly` with the same revision. `Report(OutputReport)` every 2 s.
 
 Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `self`, `sessionReplaced`.
-`Report(DeviceReportDto)` every 2 s (the server relays it as telemetry to the Regie and updates source status). The
+`Report(DeviceReportDto)` every 2 s (the server relays it as telemetry to the Regie and updates source status; per slot the
+report carries `codec`, `encoder`, `hardwareEncoder` and `qualityLimitation` `cpu | bandwidth | other`, any of them may be
+null and unknown values are dropped by the server). The
 `command` message also carries `cameraControl` (section 4.6); the report carries the camera state of a phone and is sent
 once more right after a camera command.
 
@@ -710,12 +715,19 @@ once more right after a camera command.
   `…/validate`); never expose `/twirp`. The media address (`rtc.node_ip`) is the host's LAN IPv4 (works for LAN and same-host
   clients), chosen in the wizard and changed under "Server settings"; `127.0.0.1` only for single-machine tests.
 - Publishing (sender): camera H.264, simulcast layers 1080p/540p/270p (or 720p/360p/180p), `contentHint = 'motion'`;
-  screens VP9 with H.264 backup codec, `contentHint = 'detail'`, simulcast off, max 1440p/15–30 fps;
-  dynacast on; no audio.
-- Subscribing: Regie with `adaptiveStream: true` (monitors are small) and minimal jitter buffer
-  (`playoutDelayHint`/`jitterBufferTarget` ≈ 0 where supported); output with `adaptiveStream: false`, explicit
-  quality per source from the scene model: program items → dimensions of the item on the canvas (HIGH for large
-  items), preview scene items → HIGH (preload before a take), all other scenes' sources → LOW; jitter buffer ≈ 50 ms.
+  screens H.264 (VP9 with a VP8 backup codec only where `MediaCapabilities.encodingInfo` reports a power-efficient VP9
+  encoder, see 8.4), `contentHint = 'detail'`, simulcast off, max 1440p at **15 fps** and 3 Mbit/s; a slot with the sender's
+  option "Video in screen" sends 30 fps at 4.5 Mbit/s with `contentHint = 'motion'`; dynacast on; no audio.
+- Subscribing: both roles with `adaptiveStream: false` and an explicit layer per source from the desired sizes of their
+  renderers (`setVideoDimensions`), a minimal jitter buffer in the Regie (`playoutDelayHint`/`jitterBufferTarget` ≈ 0
+  where supported) and ≈ 50 ms on the output. The output asks for the **program scene** (the size of each item on the
+  canvas) and the **preview scene** (the size it will have on stage, so a Take shows its picture at once); it asks for
+  nothing else. A source nobody asks a picture for is paused (`setEnabled(false)`: the SFU stops forwarding and the
+  browser stops decoding): on the output after 5 s, in the Regie after 10 s, and 1.5 s after its track arrives; the next
+  request resumes it at once and its picture is back with the next keyframe (about 0.5 s, decision #12). A paused video
+  element is emptied, so a stale picture never shows. Monitors, thumbnails and station thumbnails of the Regie ask for
+  nothing while they cannot be seen (8.3), and the requested size never exceeds the displayed size at a pixel ratio of
+  1.5 or the production canvas.
 - The LiveKit URL for clients is the same origin: `wss://` and the `Host` the caller used for the token request (the scheme comes
   from the public base URL, `LiveKit:PublicUrl` overrides both); Caddy proxies `/rtc` to LiveKit 7880. Media goes
   directly to 7881/tcp and 7882/udp (`STUDIOFLOW_RTC_TCP_PORT`, `STUDIOFLOW_RTC_UDP_PORT`) on the saved media address.
@@ -745,10 +757,11 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   the SDK restarts an ended camera itself (`TrackEvent.Restarted`) and re-acquires it when a phone returns to the
   foreground. Screens via `room.localParticipant.createScreenTracks({ audio: false, contentHint: 'detail',
   selfBrowserSurface: 'exclude', surfaceSwitching: 'include' })` (the standalone `createLocalScreenTracks` ignores
-  `contentHint`), published with `{ name: 'screen-n', source: Track.Source.ScreenShare, videoCodec: 'vp9',
-  backupCodec: { codec: 'vp8' }, simulcast: false, degradationPreference: 'maintain-resolution',
-  screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 30 } }`. Several screens per participant work
-  (find them with `getTrackPublicationByName`). VP9 falls back to VP8 automatically where unsupported.
+  `contentHint`), published with `{ name: 'screen-n', source: Track.Source.ScreenShare, videoCodec: 'h264', backupCodec: false,
+  simulcast: false, degradationPreference: 'maintain-resolution', screenShareEncoding: { maxBitrate: 3_000_000,
+  maxFramerate: 15 } }` (VP9 with `backupCodec: { codec: 'vp8' }` where its encoder is power efficient; "Video in screen":
+  `maxBitrate: 4_500_000, maxFramerate: 30`, `degradationPreference: 'balanced'`, `contentHint: 'motion'`; the capture
+  asks for the same frame rate). Several screens per participant work (find them with `getTrackPublicationByName`).
 - `livekit-client` is not tree-shakable (~150 KB gzip). The Regie loads it lazily (`await import('livekit-client')`)
   so the login page stays small.
 - Chromium fake media on this machine needs `--disable-gpu` in addition to `--use-fake-device-for-media-stream
@@ -819,6 +832,7 @@ createSceneRenderer(container: HTMLElement, options: {
   codeOf?: (sourceId: string) => string | undefined;                 // label “K2 · freeze frame 00:12”
   reducedMotion?: boolean;
   canvas?: { width: number; height: number };    // the production's canvas, default 1920 × 1080
+  pauseWhenHidden?: boolean;                     // ask for nothing while not visible; default true for monitor and thumbnail, false for output
 }): SceneRenderer
 
 interface SceneRenderer {
@@ -829,16 +843,16 @@ interface SceneRenderer {
   transitionTo(scene: SceneDto | null, transition: TransitionDto): Promise<void>; // cut or fade; fade always completes;
                                               // a new transition finishes a running fade instantly first
   showSlate(slate: SlateDto | null, assetUrl?: string | null): void;   // standby/end slate above everything (fade 300 ms)
-  setPreloadScenes(scenes: readonly SceneDto[]): void;  // output: request LOW quality for their sources
+  setPreloadScenes(scenes: readonly SceneDto[]): void;  // output: the preview scene; its sources are requested at the size they will have on stage
   refresh(): void;                             // re-read statusOf, textOf and textTheme (sources or colours changed)
   effectiveRects(): ReadonlyMap<string, CanvasRect>;    // per item id, after Auto grid (for the edit overlay)
-  stats(): { fps: number; items: number; videos: number };
+  stats(): { fps: number; items: number; videos: number; presentedFrames: number; droppedFrames: number };
   destroy(): void;
 }
 ```
 
 Rendering rules: one absolutely positioned element per visible item in z-order, `<video muted playsinline autoplay>`
-for device sources and video assets (loop), `<img>` for images, GPU-friendly transforms only (no canvas copies).
+for device sources and video assets (loop), `<img>` for images, GPU-friendly transforms only; the only canvas copies are the hold frames and the stills of thumbnails (below).
 Fit cover/contain via `object-fit`; crop by an inner wrapper scaled so the cropped part fills the item; radius with
 `overflow:hidden` + `border-radius`; border as inset box-shadow; mirror `scaleX(-1)`; rotation 90/270 swaps the
 inner box. Contain bars use `#0a0d12`. Missing source → dark placeholder `#121821` (monitor shows “Source missing”).
@@ -854,6 +868,26 @@ does (background tab, element not rendered) the renderer completes it, but only 
 only when the clock of the animation has stood still for a second (`stall-guard.ts`). An animation that is merely late, because a
 loaded machine delivers the first or the last frames late (stalls of up to 380 ms were measured), is left to finish by itself and
 is never cut short at the wall-clock end.
+
+Cost rules (issue #12, decision #12). *Sizes*: the desired size of a source is the displayed size × min(device pixel ratio,
+1.5), rounded up to 16 px, at most the production canvas. *Visibility*: `watchVisibility` (IntersectionObserver with a 96 px
+margin, `visibilitychange`) tells a monitor or thumbnail renderer whether it can be seen; while it cannot, it reports no
+desired sizes (the provider then pauses the source), keeps no timers and takes no copies. The `output` renderer never
+pauses. *Frame counting*: `stats()` reads `getVideoPlaybackQuality` of the videos it owns (cumulative presented and dropped
+frames, `fps` = frames per second of the busiest video); there is no permanent `requestAnimationFrame`. *Thumbnails* (mode
+`thumbnail`) show **stills** of device sources: one hidden video per source, shared by all thumbnails of a provider
+(`StillPool`), and a snapshot of at most 320 × 180 every 1.5 s, shown as an image (a canvas on screen costs the compositor
+a layer of its own); the program and preview monitors stay live. *Hold frame*: the
+rolling copy of a live picture is taken at most once a second at on-screen size; the blur of the held state is drawn once
+into the copy (`data-held-blur` on `.sf-r-box` carries the radius for tools); all copies share a time budget of 4 % of the
+main thread (`SnapshotBudget`): converting a 2560 × 1440 frame in software takes 50 to 100 ms, so an expensive copy
+delays the following ones; the first copy of an item and the copy at the moment of a loss never wait. A copy is only taken
+from a video that has a decoded frame (`readyState` ≥ 2; the size is known from the metadata before that) and that shows a
+picture (a sample of eight by eight pixels is neither transparent nor black): a frame that was never painted, or that the
+browser already painted black a moment before the track says that it ended, neither replaces the previous copy nor becomes
+the hold frame, and a blur that fails after the canvas was cleared puts the sharp picture back, so a lost item never shows
+an empty canvas (issue #50, "nothing black on air"). *Preloading*:
+`setPreloadScenes` takes the preview scene only (the output page passes nothing else).
 
 Texts (issue #13): an item whose source is `txt_…` is drawn as HTML by `text-block.ts`, never as a picture: sharp at every
 output resolution and scaled with the stage. The options `textOf(sourceId)` and `textTheme()` supply the content and the
@@ -882,13 +916,21 @@ Texts keep their own rectangle in an Auto grid scene.
 - `LiveKitSourceProvider implements SourceMediaProvider`: maps `{identity}/{trackName}` to remote video tracks,
   keeps video elements attached across track loss (hold frame), aggregates desired sizes → `setVideoDimensions` /
   `setVideoQuality` per publication (output: `adaptiveStream` off), sets the playout delay hint per role.
-  `getStats(sourceId)` (bitrate, fps, resolution, packet loss, jitter-buffer delay) and
-  `estimateLatencyMs()` (RTT/2 + jitter buffer delay, averaged) for the output debug overlay and report.
+  `getStats(sourceId)` (bitrate, fps, resolution, packet loss, jitter-buffer delay, codec, `decoder`: hardware or software)
+  and `estimateLatencyMs()` (RTT/2 + jitter buffer delay, averaged) for the output debug overlay and report;
+  `decoderSummary()` (streams that decode, those in software, frames dropped and received since the previous call; paused
+  streams do not count) for the output report. A source nobody needs is paused, see 7. Hardware or software decoding comes
+  from the stats (`decoderImplementation`, `powerEfficientDecoder`) where the browser tells this page, else from
+  `MediaCapabilities.decodingInfo` for the stream's codec and size (Chromium hides the stats from a page without a live capture).
 - `Publisher` (sender): `publishCamera(slot, { facingMode, resolution: 720 | 1080 })`, `switchCamera()`,
   `publishScreen(slot)` (must be called from a user gesture), `unpublish(slot)`, `stopAll()`, per-slot state
   (`starting | live | paused | ended | failed`) via `onSlotState(fn)`; camera `ended`/device loss → re-acquire with
   `restartTrack` (3 attempts with backoff, then `failed`), screen `ended` → `ended` (never restarts by itself);
-  republishes all live slots after a rejoin; `getSlotTelemetry()` for reports. Remote camera control (section 4.6):
+  republishes all live slots after a rejoin; `getSlotTelemetry()` for reports (per slot besides the figures: `codec`,
+  `encoder` and `hardwareEncoder` where the stats or `MediaCapabilities.encodingInfo` tell, and `qualityLimitation`
+  `cpu | bandwidth | other`). Screens: the codec is H.264 unless the VP9 encoder is power efficient (`screen-codec.ts`, probed
+  once per publisher), `setScreenFrameRate(slot, 15 | 30)` sets the frame rate of a slot ("Video in screen") for the next
+  share and applies it to a running one (capture constraint, content hint, encoder limits). Remote camera control (section 4.6):
   `getCameraState()` (capabilities from `getCapabilities()`, settings from `getSettings()`, lenses from
   `enumerateDevices()`), `controlCamera(command)` (latest command wins, lens switch with `restartTrack` and no
   republish), `onCameraSettings(fn)` for persisting; the settings are restored after every restart. The pure rules
@@ -950,6 +992,14 @@ characters is not sent; a change from another Regie replaces the fields unless s
 has “Text colours…”: three colour pickers with hex fields (`#rrggbb`), a sample, the warning “Contrast 4.4 : 1 …” below
 4.5 : 1 (the ratio is rounded down so it never reads 4.5), “Reset to defaults” and Save. There is no keyboard shortcut
 for show/hide: the digits are scenes and a hidden text has no focus target; the eye button is reachable with Tab.
+Cost and load in the Regie (issue #12): the scene thumbnails are stills (8.3); the station thumbnails are live but ask for
+nothing while the Stations dock, its section or the row cannot be seen; the monitors pause with the tab. The station line
+says "CPU at limit" in amber (with the slot code on a laptop with several) when a sender reports `qualityLimitation = cpu`;
+the details of a station list "Encoding" per slot ("H.264 · hardware", "VP9 · software encoding", plus the CPU tag) and,
+while open, "Decoding here" (how this Regie decodes the station's pictures, read from the provider every 3 s);
+`/monitoring` has the sortable column "Encoding" with the same tag per slot. The output chip says "drops frames" in amber
+when a connected output page drops 5 % or more of its frames (tooltip: the cause and the advice), and the output popover
+lists "Decoding" ("3 streams · 1 in software", amber with software decoding) and "Dropped frames".
 Studio Mode and layout persist per browser (`localStorage` keys `studioflow.studio`, `studioflow.layout` v1,
 `studioflow.transition`; the language setting is `studioflow.locale`, shared with the sender; the appearance is
 `studioflow.theme` = `dark` | `light` | `system`, absent means dark, and applies to the Regie, `/monitoring` and the login
@@ -967,7 +1017,9 @@ name + slot codes, connection state (“Connected”, “Reconnecting…”, “
 «Verbunden», «Verbindet neu …», «Gesperrt», «In einem anderen Tab geöffnet»).
 Phone: camera preview, front/back, 720p/1080p, start/stop, dark mode (black screen with a thin tally frame),
 wake lock (re-acquire on visibility), auto-start after reload with the last settings. Laptop: list of screen slots with
-“Share screen”, “+ Add another screen”, “Stop sharing”, “Remove”, a large “Share again” button when a
+“Share screen”, “+ Add another screen”, “Stop sharing”, “Remove”, per screen the toggle “Video in screen” (30 instead of 15
+frames per second for a video that plays in the shared screen; kept per slot in the browser, applied to a running share
+without a new picker; it costs the laptop more power, the line under the state says so), a large “Share again” button when a
 share ended or the Regie asks (“The control room asks you to share your screen again”), optional camera. German:
 «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», «Erneut teilen», «Die Regie bittet dich,
 den Bildschirm erneut zu teilen».
@@ -985,10 +1037,15 @@ by default; `lang` selects `en` or `de-CH`, otherwise the browser language decid
 setting). Boot: read slug
 and key, subscribe via output hub (`ProductionSync`), get a LiveKit token, start `MediaSession` (output role) and
 `LiveKitSourceProvider`, render with `createSceneRenderer(mode 'output')`: standby slate → program scene → end slate;
-program switches play the event's transition; preview scene and all other scenes are preloaded at LOW/HIGH as in 7.
+program switches play the event's transition; the preview scene is preloaded at the size it will have on stage and no other
+scene is (7): a Take to the preview scene shows its picture at once, a switch to any other scene shows it with the next keyframe.
 Loss of API or LiveKit keeps the last picture; reconnect forever. 403 → slate “No access” («Kein Zugang») (no retry loop faster
 than 30 s). `debug=1` shows a mono overlay (scene, revision, connection states, per source resolution/fps/bitrate,
-estimated latency, and the build version `StudioFlow 0.1.0+1a2b3c4` as the last line). Reports `OutputReport` every 2 s (the report belongs to the link whose key opened the page).
+estimated latency, decoder and dropped frames, and the build version `StudioFlow 0.1.0+1a2b3c4` as the last line). Reports
+`OutputReport` every 2 s (the report belongs to the link whose key opened the page): `rendering`, `latencyMs`, `fps` (frames
+per second of the busiest video, not the page's animation frame rate), `programSceneId`, `droppedFramesPct` (share of frames
+the browser dropped since the previous report), `decodedStreams` and `softwareDecodedStreams` (streams that decoded in the
+interval, paused ones do not count).
 The stage has the canvas of the production (format and resolution): the program view hands it to the renderer before it
 shows a scene, so a `productionCanvasChanged` event resizes the open page at once and the rescaled scenes of the same
 revision are drawn on the new stage; `?debug=1` shows it ("Canvas 1080 × 1920 · 9:16 · 1080p"). The picture size that

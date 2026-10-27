@@ -155,7 +155,7 @@ outside tests; the production checks (E2E-OPS-31, -34) assert that no script exi
 - **After each test** (auto fixture): `POST …/broadcast/reset`; delete every device the test created (`DELETE …/devices/{id}` kicks the sender); close all contexts;
   restore `allowedIps` to `[]`; restore the name of the production when the test renamed it (a name like “… renamed” would make `getByRole('button', { name: 'Rename' })` ambiguous in the production menu, which lists every production: its locators use `exact: true`); if the test was `@disruptive`, `stack.ensureHealthy()` (waits until all four containers are healthy, `/health/ready` is 200 and the admin login works).
 - There is no production delete endpoint; productions accumulate within a run and are removed by `down -v` in global teardown.
-- **Project order**: `smoke` (P0 non-disruptive) → `main` (all non-disruptive) → `short-ttl` → `disruptive` (restarts, kills, lockout, rate limits; runs last) → `soak` (manual or nightly only).
+- **Project order**: `smoke` (P0 non-disruptive) → `main` (all non-disruptive) → `short-ttl` → `disruptive` (restarts, kills, lockout, rate limits; runs last) → `soak` (manual or nightly only). Tests tagged `@perf` are in none of these: `main` leaves them out and the project `perf` runs them on demand (6.8).
 - **Lockout and rate-limit tests** change process-wide counters keyed by client IP (all E2E traffic shares one IP behind Caddy). They are tagged `@disruptive`
   and end with `docker compose restart api` (counters live in memory, [GAP-03]); no other project may follow them without that restart.
 
@@ -257,6 +257,7 @@ projects run the **UI-only subset** (pairing forms, redeem, layout, tally render
 | `small-320` | 320×568, touch, Chromium | sender at the narrowest width |
 | `i18n` | Chromium with `locale: 'de-CH'` | `specs/i18n` (2.17: the tests set the browser language they need), the German rules audit of `E2E-DEV-17`, files `*.de.spec.ts` |
 | `short-ttl`, `disruptive`, `soak` | Chromium | see 1.2.4 |
+| `perf` | Chromium, three instances per test (senders, Regie, output) | every test tagged `@perf`, in any spec: `*.perf.spec.ts` (2.19, CPU, decoders and encoders per role against the performance budget, 5.1), the latency, many-sources, CPU-throttling and switching-time tests (6.8); on a machine with at least 4 cores and nothing else running; never in `smoke` or `main` (so not in the nightly run), never retried; run by hand or with the workflow `perf.yml` |
 
 ```ts
 // tests/e2e/playwright.config.ts (skeleton)
@@ -389,11 +390,12 @@ fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) an
 | `LINK` Output links and the camera | 5 | 4 | 3 | 12 | 9 | 2 | 1 |
 | `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
 | `XFER` Duplicate, export and import | 6 | 6 | 8 | 20 | 12 | 8 | 0 |
+| `PERF` Performance | 6 | 1 | 1 | 8 | 3 | 5 | 0 |
 | `I18N` Language and formats | 0 | 0 | 13 | 13 | 0 | 13 | 0 |
-| **Total** | **117** | **117** | **285** | **519** | **226** | **231** | **62** |
+| **Total** | **123** | **118** | **286** | **527** | **229** | **236** | **62** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import) · [2.19 PERF](#219-perf--performance-issue-12)
 
 
 ### 2.1 AUTH – Auth and security
@@ -1235,12 +1237,12 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 
 **E2E-SWITCH-09** · P0 · pw — No black frame when switching (preload)
 - Pre: scene A = K1 full screen, scene B = K2 full screen, both cameras live (timecode or fake pattern, mean luminance ≥ 40), output open at 1920×1080.
-- Steps: `startScreencast`; 50 alternating cuts every 700 ms and 20 fades of 300 ms; analyse frames.
-- Expect: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (preloaded); resolution of the new picture never drops below the LOW layer; `T-SWITCH` unaffected.
+- Steps: `startScreencast`; 50 alternating cuts every 700 ms and 20 fades of 300 ms, the target of every cut being the preview scene (Studio Mode: the next Take; decision #12 keeps only the preview scene ready, so that is the case this test measures); analyse frames. A second run of cuts to a scene that is **neither in the program nor in the preview** (6 cuts 8 s apart, so its sources are paused again): the cold case.
+- Expect: preview scene: in every frame after a switch the item rectangle has mean luminance ≥ 20 (no black or empty frame); at switch time the target `<video>` already has `readyState ≥ 2` and `videoWidth > 0` (preloaded); the first picture is on screen ≤ 150 ms after the new layer and never below the LOW layer; `T-SWITCH` unaffected. Cold scene: the layer is in the DOM within `T-SWITCH` and the picture follows with the next keyframe, ≤ 1.5 s after the layer (`T-SWITCH-COLD`, about 0.5 s expected). The LOW layer is 320 px wide when the sender has CPU to spare; a sender that adapts to its CPU (`qualityLimitationReason = cpu`) sends smaller layers (240 px = 3/4 × 320), and the floor of that cut is the lowest layer the sender sends (read with `getStats` before the cut; the annotation `sender-cpu-limited` counts those cuts). The times (picture ≤ 150 ms, layer p95 ≤ 300 ms, cold ≤ 1.5 s) are enforced when the machine was at 60 % CPU or less; on a busier one a failure ends in a skip `not-comparable` (6.8).
 
-**E2E-SWITCH-10** · P1 · pw — Preview scene sources are preloaded at high quality
-- Steps: output with `debug=1`; Studio Mode on; select a preview scene whose camera is not in the program; read the per-source resolution from the `debug=1` overlay (`<code> <w>x<h> …` lines).
-- Expect: that camera is delivered at the highest simulcast layer (≥ 1280 px wide for a 1080p publisher) within 3 s of selecting the preview; before selection (source only in another scene) it is at the lowest layer (≤ 360 px wide).
+**E2E-SWITCH-10** · P1 · pw — Preview scene sources are preloaded at high quality, other scenes are paused
+- Steps: output with `debug=1`; Studio Mode on; select a preview scene whose camera is not in the program; read the frames decoded and the width of the camera's inbound stream on the output's peer connection.
+- Expect: before the selection the camera (only in another scene) is paused: no frames are decoded and no bytes arrive (decision #12); after the selection it is delivered at the highest simulcast layer (≥ 1280 px wide for a 1080p publisher) within 3 s; a program switch to the scene of a paused camera decodes its first frame within 3 s.
 
 **E2E-SWITCH-11** · P0 · pw — Tally on devices
 - Pre: phone K1 in program scene A; phone K2 in preview scene B (Studio Mode on); laptop with S1 in A and a camera slot in B; phone K3 in no scene.
@@ -1544,7 +1546,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 **E2E-OUT-06** · P0 · pw — Hold frame on source loss
 - Pre: K1 item 1360 px wide (holdMs 3000), K2 item 300 px wide (holdMs 3000), K3 item (holdMs null), K4 item (holdMs 10000); all live; output open.
 - Steps: close the K1…K4 phone pages (track unpublished); observe `data-state` and frames.
-- Expect: immediately `hold`: the element stays visible with the last frame (not black; `expectVideoFrozen` for 1.5 s); K1 changes to `held` at 3.0 s ± 0.3 s (`T-HOLD`): filter blur ≈ 2.5 % of the item width (34 px at stage scale 1, i.e. an output viewport of 1920×1080; ± 1 px), overlay `rgba(13,17,23,.72)`, text “Picture returns shortly”; K2 (300 px) `held` without text; K3 stays `hold` for 60 s; K4 `held` at 10 s ± 0.3 s; reopening the K1 sender page within `held` (credentials in storage, auto-start) → `live` with moving frames, filter removed, no black frame in between (screencast).
+- Expect: immediately `hold`: the element stays visible with the last frame (not black; `expectVideoFrozen` for 1.5 s); K1 changes to `held` at 3.0 s ± 0.3 s (`T-HOLD`): filter blur ≈ 2.5 % of the item width (34 px at stage scale 1, i.e. an output viewport of 1920×1080; ± 1 px), overlay `rgba(13,17,23,.72)`, text “Picture returns shortly”; K2 (300 px) `held` without text; K3 stays `hold` for 60 s; K4 `held` at 10 s ± 0.3 s; every sampled frame of a lost item has a copy of its last picture (`holdFrame` of the probe) whose luminance was measured and is at least 12 (a luminance that could not be measured is reported as such, it is not counted as black; issue #50); reopening the K1 sender page within `held` (credentials in storage, auto-start) → `live` with moving frames, filter removed, no black frame in between (screencast).
 
 **E2E-OUT-07** · P1 · pw — Fallback source
 - Steps: K1 item `fallbackSource` = image asset “Break slate”; K1 offline beyond `holdMs`; K1 back; then fallback = a live camera K2; then fallback = deleted asset.
@@ -1571,13 +1573,13 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 - Expect: slate “No access” (`data-slate=denied`), no video, no scene content; identical for all four cases (no hint whether the slug exists); at most 3 attempts in 70 s, spaced ≥ 30 s; fixing the URL and reloading works.
 
 **E2E-OUT-13** · P0 · pw — Glass-to-glass latency
-- Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene “Full screen” with the source; output 1920×1080 standalone; warm-up 5 s.
-- Steps: per source (screen, camera): read `readTimecode()` on every `requestVideoFrameCallback` for 60 s; compute latency per decoded frame; repeat with the Regie Program monitor `<video>`.
-- Expect: `T-LATENCY` for the output: p50 < 200 ms and p95 < 300 ms (hard), target p50 ≤ 150 ms; checksum failures < 5 %; decoded timestamps strictly increasing; results attached as `latency-screen.json`, `latency-camera.json`, `latency-regie.json` including p50/p95/p99/max/mean, frame count, codec, resolution, and the `OutputReport.latencyMs` average (informational: |estimate − measured| < 60 ms).
+- Pre: `chromium-desktop` on the perf runner (≥ 4 cores, nothing else running); laptop shares the timecode tab (screen, VP9) and a phone publishes the timecode camera (H.264); scene “Full screen” with the source; output 1920×1080 standalone; warm-up 5 s. Tagged `@perf`: not part of the nightly run on the 2-vCPU runner (6.8).
+- Steps: per source (screen, camera): read `readTimecode()` on every `requestVideoFrameCallback` for 60 s; compute latency per decoded frame; repeat with the Regie Program monitor `<video>`. The wait for a quiet machine (3 attempts, the first at 60 % CPU or less counts) is bounded by the time budget of the test: it starts no attempt that would not fit before the timeout and waits at most 30 s in all on CI, 240 s on a shared machine (6.8).
+- Expect: `T-LATENCY` for the output: p50 < 200 ms and p95 < 300 ms (hard), target p50 ≤ 150 ms; checksum failures < 5 %; decoded timestamps strictly increasing; results attached as `latency-screen.json`, `latency-camera.json`, `latency-regie.json` including p50/p95/p99/max/mean, frame count, codec, resolution, and the `OutputReport.latencyMs` average (informational: |estimate − measured| < 60 ms). The thresholds are enforced when the run was taken at 60 % CPU or less (`machineCpuBusyPct` and `comparable` in the JSON); on a busier machine the figures are recorded and a failure ends in a skip `not-comparable` that names the CPU use and the first failed threshold (6.8). Checked on every machine: the stamps are decoded at least once a second and increase. **E2E-OUT-13 [latency, camera, short]** (20 s, not `@perf`, in the nightly run) keeps the stamp path and the measurement alive on the shared runner with the same rules.
 
 **E2E-OUT-14** · P1 · pw — Latency stays stable while switching
 - Steps: repeat -13 for 120 s with a cut every 5 s between two scenes both containing the source.
-- Expect: p95 within +50 ms of the static case; no latency spike > 500 ms.
+- Expect: p95 within +50 ms of the static case; no latency spike > 500 ms. Same rules as -13 (`@perf`, 6.8): the cuts (≥ 20) and the decoded stamps are always checked, p95 and the spike only on a machine with headroom.
 
 **E2E-OUT-15** · P1 · pw — Output status in the Regie
 - Steps: no output → open one → open a second → block the first page's main thread for 10 s (`page.evaluate` busy loop) → resume → close both.
@@ -1608,7 +1610,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-21** · P1 · pw — Simulcast layer selection from the scene
 - Steps: output with `debug=1`; scene A with K1 at full canvas, scene B with K1 as a 270 px thumbnail, K2 only in scene C.
-- Expect: K1 full-size item receives the highest layer (≥ 1280 px wide); in scene B (270 px) K1 drops to ≤ 360 px; K2 (not in program or preview) is at the lowest layer; screens (simulcast off) have one layer; transitions between qualities happen without visible black frames.
+- Expect: K1 full-size item receives the highest layer (≥ 1280 px wide); in scene B (270 px) K1 drops to ≤ 360 px; K2 (not in program or preview) is paused: no frames are decoded; screens (simulcast off) have one layer; transitions between qualities happen without visible black frames.
 
 **E2E-OUT-22** · P1 · pw — Output subscribes only to scene sources [GAP-26]
 - Steps: laptop screen S1 live but placed in **no** scene; output open.
@@ -1748,11 +1750,11 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 **E2E-NET-19** · P1 · pw — Many sources
 - Pre: 8 phone contexts (fake cameras 720p) + 2 laptops (screens); scenes: “3 × 3” with 9 items, Auto grid with 10, single full-screen.
 - Steps: run 5 min; switch between scenes; read output `stats()` and CDP `TaskDuration`/`Performance.getMetrics`.
-- Expect: `T-FPS`: output fps ≥ 24 in the 3 × 3 scene, main-thread busy ≤ 60 % of one core (4-core runner), heap ≤ 400 MB; Regie interactions (scene click → toast) ≤ 150 ms; non-program sources received at LOW only (total inbound ≤ 20 Mbit/s); no frame decode errors; no incident.
+- Expect: `T-FPS`: output fps ≥ 24 in the 3 × 3 scene, main-thread busy ≤ 60 % of one core (4-core runner), heap ≤ 400 MB; Regie interactions (scene click → toast) ≤ 150 ms; non-program sources received at LOW only (total inbound ≤ 20 Mbit/s); no frame decode errors; no incident. `@perf` (6.8): ten senders and nine 1080p videos need the 4 cores; on a 2-vCPU runner the whole machine is at 100 % and the animation frame rate of the output falls to 1 fps while it decodes everything it is sent. The frame rate and the main-thread share are therefore enforced only when the machine was at 60 % CPU or less in the 3 × 3 phase (else recorded, skip `not-comparable`); decoding at the rate the senders send, the inbound rate, heap, drops, incidents and page errors are always enforced.
 
 **E2E-NET-20** · P1 · pw — CPU throttling
 - Steps: `Emulation.setCPUThrottlingRate` 4 on the Regie and on the output; 6 on the Regie; drag, switch, open popovers.
-- Expect: output at 4×: fps ≥ 20, not flipped to `stale`; Regie at 4×: click → visible reaction ≤ 250 ms (`T-FPS`), drag stays coalesced (requests per second bounded), long tasks > 200 ms ≤ 3 per minute while idle.
+- Expect (`@perf`: needs a machine with headroom, 6.8): output at 4×: fps ≥ 20, not flipped to `stale`; Regie at 4×: click → visible reaction ≤ 250 ms (`T-FPS`), drag stays coalesced (requests per second bounded), long tasks > 200 ms ≤ 3 per minute while idle.
 
 **E2E-NET-21** · P1 · pw — Reconnect cycles do not leak
 - Steps: 50 × (phone offline 5 s, online 5 s) and 20 × (Regie offline 3 s, online); sample counters before/after.
@@ -2683,6 +2685,42 @@ Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can 
 - Steps: "Assign K1 · Stage phone" → the phone; "Assign S1 …" → "Remove from all scenes…" → Cancel → "Remove from all scenes…" → "Remove S1 · Lea laptop · Screen 1".
 - Expect: the toast "The scenes now show Spare phone in place of K1 · Stage phone."; K1 is gone from "Missing sources", the first two scenes show the phone, the placeholder list has S1 only; the confirmation says "The 1 element that shows S1 … is removed from its scene." and Cancel changes nothing; after the removal there are no placeholders and the scene has lost the screen item.
 
+### 2.19 PERF – Performance (issue #12)
+
+Issue #12, decisions «#12», spec 7, 8.3, 8.4, 9.1–9.3, runbook 11, DESIGN.md "Load". The work was measured first and optimised by the measurement: the budget in 5.1 holds the numbers before and after. The container the automated tests run in has no GPU (Chromium renders with SwiftShader and every codec runs in software, `power efficient` is false everywhere), so the numbers are the worst case of "no hardware acceleration" and compare two builds on one machine; what the hardware of real laptops, phones and the proxy computer does stays a manual measurement (MAN-16).
+
+**UNIT-PERF-01** · P0 · vitest (`screen-codec.spec.ts`, `encoder-info.spec.ts`, `room-options.spec.ts`, `publisher.spec.ts`, `source-provider.spec.ts`) — Media client
+- Steps: the screen codec for every answer of `MediaCapabilities.encodingInfo` (VP9 power efficient, not, unsupported, no API, an exception) and the probe once per publisher; publish options and capture constraints at 15 and 30 fps; `setScreenFrameRate` before a share and on a running one (constraint, content hint, encoder limits, no new picker); `codec`, `encoder`, `hardwareEncoder` and `qualityLimitation` in the slot telemetry; a track nobody asked for, a consumer that comes back within the grace time, resume, elements emptied during a pause and when attached to a paused source; the decoder of a stream from the stats and from `MediaCapabilities`; `decoderSummary` over two intervals.
+- Expect: H.264 unless VP9 is power efficient (VP8 backup only with VP9); 15 fps, 3 Mbit/s, `detail` by default and 30 fps, 4.5 Mbit/s, `motion` with "Video in screen"; paused after 5 s (output), 10 s (Regie) and 1.5 s after a track arrives without a consumer, resumed at once with the size asked for; no stale picture after a pause; a paused stream is not counted as decoding; a browser that hides the implementation is asked what it would choose.
+
+**UNIT-PERF-02** · P0 · vitest (`visibility.spec.ts`, `fps-meter.spec.ts`, `snapshot-budget.spec.ts`, `desired-sizes.spec.ts`, `scene-renderer.visibility.spec.ts`, `.thumbnail.spec.ts`, `.sizes.spec.ts`, `.hold.spec.ts`, `.lifecycle.spec.ts`, `.stress.spec.ts`) — Renderer
+- Steps: visible/hidden through IntersectionObserver and `visibilitychange`, without the API, dispose; the desired sizes at pixel ratios 1, 1.5 and 3, capped by the canvas, none while hidden; thumbnails as stills (one hidden video per source for all thumbnails, a snapshot every 1.5 s, none while hidden or lost, the stalest first, waiting while copies are expensive); the rolling hold frame, the copy at the loss, the blur baked once (`data-held-blur`), the time budget; a video that only knows its size, a frame that was never painted and a black frame are not copied, the previous copy stays and no empty hold frame is shown, a blur that fails puts the sharp picture back (issue #50); preloading of the preview scene at the size on stage and of nothing else; `FpsMeter` from `getVideoPlaybackQuality` (fps of the busiest video, cumulative presented and dropped frames, no timer without a video); a stress run with many items.
+- Expect: a monitor or thumbnail that cannot be seen asks for no picture, keeps no timer and takes no copy, and asks again when it can be seen; the output never pauses; the requested size is the displayed size × at most 1.5 and never above the canvas; a thumbnail has no `<video>` of its own; the held state shows the picture blurred by 2.5 % of the item width without a CSS filter; an expensive copy delays the following ones, the first copy and the copy at the loss never wait; `stats().fps` is the video frame rate; no permanent `requestAnimationFrame` loop.
+
+**UNIT-PERF-03** · P0 · vitest (`apps/output`: `playback-load.spec.ts`, `program-view.spec.ts`, `output-app.spec.ts`, `debug-overlay.spec.ts`, `debug-overlay.de.spec.ts`) — Output page
+- Steps: the preload selection for every state (no preview, preview = program, preview ≠ program, unknown preview, Studio Mode off); the report with dropped frames, decoded and software streams over intervals, paused streams, a provider without the summary, invalid numbers; the overlay lines for decoder and dropped frames in English and German.
+- Expect: the preview scene and only it is preloaded; `droppedFramesPct` is the share of dropped against received frames since the previous report, `decodedStreams` and `softwareDecodedStreams` count the streams that decoded; nothing is reported where the browser or the provider does not tell; the overlay reads the decoder per source and the dropped share.
+
+**UNIT-PERF-04** · P1 · ng — Regie and sender
+- Steps: station line and details (CPU tag, "Encoding", "Decoding here"), the station thumbnail (asks for nothing while hidden, pixel ratio cap), the output chip and popover (dropped frames, software streams, threshold 5 %, stale pages ignored), the monitoring page (column "Encoding", sorting by load, tag), the sender toggle "Video in screen" (per slot, persisted, applied to a running share, forgotten on "Remove"), all in English and German.
+- Expect: "CPU at limit" only for `qualityLimitation = cpu`; "drops frames" from 5 % of a connected link; the toggle sets 30 fps and back to 15 and survives a reload.
+
+**UNIT-PERF-05** · P1 · vitest (`tests/e2e/support/perf/budget.spec.ts`) — The budget check
+- Steps: a summary within the budget, one more decoded stream, more videos, a load 20 % over and just over, `PERF_BUDGET_SCALE`, the screen codec and frame rate cap, a value that was not measured, every key of the budget against the flat table.
+- Expect: counts fail on any rise; loads fail beyond budget × scale × 1.2; a missing value is a failure, not a pass; the counts and the loads (with the starvation of the senders) can be checked apart (`checkBudgetParts`), because only the loads depend on the headroom of the machine.
+
+**UNIT-PERF-06** · P1 · vitest (`tests/e2e/support/output/quiet.spec.ts`) — Timing tests on a machine without headroom (issue #39)
+- Steps: the plan of the attempts of a measurement (`planAttempt`: the first attempt always runs, a further one only if a whole run still fits before the timeout less the reserve, the wait for a quiet machine is capped for the whole test and never eats into the run), a simulated sequence for the tests of the issue (900 s and 600 s timeouts, runs of 66 s and 35 s, wait caps of 30 s and 240 s), `measureWhenQuiet` with a fake clock (a quiet run, a busy machine, a test that is running out of time), `waitForQuietMachine` (no wait without time, never longer than its timeout), `timingGate` (at most 60 % CPU, unknown load) and `judgeTiming` (a failure on a quiet machine fails, on a busy one it ends in a skip with the first failed threshold, a pass stays a pass).
+- Expect: a machine that never gets quiet costs the wait cap plus the runs and ends in `quiet: false`, never in the test timeout (the old code needed 3 × 312 s for a 900 s test); thresholds are enforced exactly when the machine was at 60 % CPU or less.
+
+**INT-PERF-01** · P1 · xunit (`RuntimeTests`, `OutputLinkApiTests`, `OutputLinkHubTests`, `HubTests`) — Reports and relay
+- Steps: a device report with `encoder`, `qualityLimitation` and an unknown reason; an output report with dropped frames and decoder counts through REST and the hub, from an old page without the fields, with implausible values; the throttling of `outputStatusChanged`.
+- Expect: the telemetry relayed to the Regie carries the encoder facts and `cpu | bandwidth | other` only; the per-link and summary status carry the load; implausible numbers are dropped, old pages leave the fields empty; a dropped share that rises by 5 points or more and a changed decoder count are published at once, smaller changes (a flicker from 0 to 1.7 %, latency or fps within 20 %) at most every 5 s.
+
+**E2E-PERF-01** · P1 · pw (`perf-reference.perf.spec.ts`, project `perf`, tag `@perf`) — Reference scenario against the budget
+- Steps: 4 phones (camera 1080p, fake media), 2 laptops (screen 1440p), 6 scenes (Host, Panel = program, Four, Slides = preview, Two screens, Everything), Studio Mode on, Regie at 1280 × 800 with a device pixel ratio of 1.5, output page at 1920 × 1080, one Chromium instance per role. After 20 s of settling: 45 s idle (CPU time per browser through `SystemInfo.getProcessInfo`, main thread through `Performance.getMetrics`, WebRTC `getStats` of every page with `decoderImplementation`/`powerEfficientDecoder`/`encoderImplementation`/`powerEfficient`/`qualityLimitationReason` or, where Chromium hides them, `MediaCapabilities`), a sampled profile of the main thread of the Regie and the output, 15 s with the picture-in-picture camera dragged in the preview monitor, then a switch to the preview scene and to a scene whose sources nobody asked for. The numbers go to `tests/e2e/.output/<stack>/results/out-perf-reference.json` and to the log (`[perf] key = value`).
+- Expect: the output decodes only the sources of the program and the preview scene; no count exceeds the budget in 5.1 (exactly, on any machine) and no load by more than 20 % (when no sender was at its CPU limit: a run in which one was is skipped as `not-comparable`, 6.8); screens go out as H.264 at no more than 15 fps; no sender reports a CPU limit. Run it before and after a change on the same machine and compare the table: `E2E_REUSE_STACK=1 tests/e2e/stack.sh test <N> --project=perf tests/e2e/specs/perf/perf-reference.perf.spec.ts` (`PERF_SECONDS` scales the windows, `PERF_BUDGET_SCALE` the loads).
+
 ---
 
 ## 3. Browser and device matrix
@@ -2708,7 +2746,7 @@ Legend: **●** runs and is required (priority of the test applies) · **○** r
 | SRC-02…08, 12…16, 20…22 (Regie side + laptop sender; phones from `pixel7` in the same scenario) | ● | – | ○ (06, 07) | – | ● | – | – | – | – |
 | SRC-10, 11 (block, duplicate tab) | ● | – | ○ | – | ● | ◐ | – | – | – |
 | OUT-01…25 | ● | ○ (01, 02, 03) | ○ (17) | ○ (17) | – | – | – | – | – |
-| OUT-13/14 (latency) | ● (perf runner only) | – | – | – | – | – | – | – | – |
+| OUT-13/14 (latency) | ● (`perf` project; a short camera run in the nightly) | – | – | – | – | – | – | – | – |
 | NET-00…26 | ● | – | – | – | ● (phones) | – | – | – | – |
 | NET-03…06 (`@linux-netem`), NET-04b and NET-25 (`@netns`) | Linux CI only | – | – | – | – | – | – | – | – |
 | DEV-01 | – | – | – | – | – | – | – | `regie-1280x720` ● | – |
@@ -2778,6 +2816,9 @@ Equipment: at least one Android phone (Chrome, with an ultra-wide camera if poss
 **MAN-15 · OBS virtual camera into Teams (issue #9, stage 1).**
 Equipment: a computer that is not the Regie laptop with OBS Studio 31 or 32 and the new Teams app (Windows 11, and the same on macOS), a second participant on another device, the stack as in MAN-01. Procedure: runbook section 18 from the start (link “Teams camera”, download, import, Settings → Video, Start Virtual Camera, pick “OBS Virtual Camera”, background effects off); check the browser source plays without a click and survives a scene switch in OBS; check “?bg=transparent” on the same link in a second browser source; switch scenes in the Regie and watch them in Teams; switch the Wi-Fi of the camera computer off for 30 s and on again; measure glass to glass (a stopwatch or a clock in the picture, filmed together with the second participant's screen) at least ten times; revoke the link and see the page in OBS turn to “No access”. Pass: the import works without a message; the picture in Teams is the output picture, text readable at the size recommended in the runbook, no mirroring for the second participant; the picture is back within 10 s after the Wi-Fi returns without restarting the virtual camera; the latency is written down (median and worst) next to the OBS and Teams versions; revoking affects only this link.
 
+**MAN-16 · Load on real devices (issue #12).**
+Equipment: the devices of a real webinar: 3 to 4 phones (one low-end Android, one iPhone), 2 laptops (one without a discrete GPU, ideally a 4-year-old one), the Regie laptop and the computer that runs the proxy or OBS with the output page, all on one Wi-Fi 5 GHz; the stack as in MAN-01. Procedure: build the scenario of E2E-PERF-01 (4 cameras at 1080p, 2 screens, the scenes Host, Panel, Four, Slides, Two screens, Everything, Studio Mode) and run it 15 minutes. On every computer read the CPU load and the temperature (Task Manager or Activity Monitor; on Android and iOS the battery and the warmth of the case); in Chrome `chrome://gpu` and `chrome://webrtc-internals` of the Regie and of the output computer (the line `decoderImplementation` and `powerEfficientDecoder` of every inbound stream, `encoderImplementation` of the senders); the Regie station details ("Encoding", "Decoding here") and the output popover ("Decoding", "Dropped frames"). Then: share a slide deck from a laptop with and without "Video in screen" and play a video in the shared screen with the toggle on and off; switch to a scene that is in neither program nor preview (note how long the picture takes), then the same scene as the preview and take it; hide the Stations dock and look at the CPU of the Regie; put the Regie tab in the background for a minute and come back. Pass: no sender shows "CPU at limit" for longer than a few seconds; the output computer stays below 70 % CPU with no "drops frames"; screens are H.264 (hardware encoder on the laptops that have one; VP9 only where `powerEfficient` is true); the picture of a scene that is not in the preview is there within about 0.5 s after the keyframe; the Regie is usable (clicks answered within 150 ms) with the docks open; the CPU of the Regie drops when the dock is hidden or the tab is in the background; write the numbers next to the table in 5.1 and say which devices they come from.
+
 **MAN-13 · External security scan.**
 Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline scan against the Regie, sender and output (authenticated and not), `nmap -p- <server>`; review the security-review document. Pass: only the published ports (80, 443, 7881/tcp, 7882/udp) are open; TLS ≥ 1.2 with modern ciphers; no ZAP findings above Low that are not documented; the CSP invariants I-CSP hold.
 
@@ -2805,7 +2846,8 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | `T-RECOVER-SHORT` | Outage ≤ 10 s: network back → output frames advancing | ≤ 2 s (p95) | ≤ 3 s | plan §9 phase 0 (reconnect in under 3 s) |
 | | …→ Regie shows `ok` + “back” after frames advance | ≤ 0.5 s | ≤ 1 s | — |
 | `T-RECOVER-LONG` | Outage ≥ 30 s (backoff at its 5 s cap + token + connect) → frames advancing | ≤ 5 s | ≤ 8 s | spec 8.2 |
-| `T-SWITCH` | Regie click/key → first frame of the new scene on the output (cut), p50 / p95 | 150 ms / 250 ms | — / 300 ms | plan §2 |
+| `T-SWITCH` | Regie click/key → first frame of the new scene on the output (cut), p50 / p95; the scene was in the preview or in the program (decision #12) | 150 ms / 250 ms | — / 300 ms | plan §2 |
+| `T-SWITCH-COLD` | The same for a scene whose sources the output does not keep ready (neither program nor preview): layer in the DOM / first picture with the next keyframe | ≤ 300 ms / ≤ 0.5 s after the layer | ≤ 300 ms / ≤ 1.5 s after the layer | decision #12 |
 | | Server: request received → event published, p95 | ≤ 20 ms | ≤ 50 ms | — |
 | | REST mutation (scene item update) p95 / p99, local PostgreSQL | ≤ 50 / 150 ms | ≤ 100 / 250 ms | — |
 | | Event fan-out to 10 subscribers p95 | ≤ 20 ms | ≤ 50 ms | — |
@@ -2840,6 +2882,39 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | | PostgreSQL connections | ≤ 10 | ≤ pool max (20) | — |
 | | Uncaught exceptions, container restarts, OOM kills | 0 | 0 | — |
 | `T-LIMITS` | Constants asserted exactly (no tolerance): lockout 5 failures / IP, 15 min window and lock, 20 / username; pairing 10 requests and 20 redeems / IP / 10 min, 20 pending; fade steps 200/300/500/800/1000/1500/2000 ms; scenes 99, items 32, screens 9; invite 30 min, request 10 min, credentials window 5 min, redeem idempotency 5 min; keep-alive 2 s, client timeout 5 s, ring buffer 500 events, token TTL 10 min, telemetry at most 1 message per device and 2 s | exact | exact | spec 4–7, 12 |
+
+### 5.1 Performance budget (issue #12)
+
+Measured with E2E-PERF-01 (2.19) in the reference scenario: 4 phones (camera 1080p), 2 laptop screens (1440p), 6 scenes, Studio Mode, fake media; Chromium without a GPU, so every codec is in software; the whole machine was busy (the harness records it: `machineBusy` ≈ 1.0, with other work on it), which makes CPU and time figures swing by a factor of two between runs. Counts (decoded streams, videos in the DOM, frame rate cap, screen codec) are exact and do not depend on the machine: any rise fails the test. Loads (CPU cores = CPU seconds per second of all processes of one browser, the share of the time the main thread is busy, dropped frames, switching time) may exceed their budget by 20 %; `PERF_BUDGET_SCALE` multiplies them for a slower or faster machine. The budget lies above the values seen after the optimisations (the time lines leave room for a busy machine, and a run in which a sender was at its CPU limit is invalid: its loads are not held against the budget and the test is skipped as not comparable, 6.8); the lines are in `tests/e2e/support/perf/budget.ts` and are checked by E2E-PERF-01 and, as arithmetic, by UNIT-PERF-05.
+
+| Metric (reference scenario) | Before (3 runs) | After (2 runs) | Budget |
+|---|---:|---:|---:|
+| Output: streams decoded, idle | 6 | 3 | ≤ 3 exact |
+| Output: videos in the DOM | 2 | 2 | ≤ 2 exact |
+| Regie: streams decoded, idle | 6 | 6 | ≤ 6 exact |
+| Regie: videos in the DOM | 26 | 16 | ≤ 16 exact |
+| Regie: canvases in the DOM | 20 | 4 | ≤ 8 exact |
+| Screens: codec | vp9 | h264 | = h264 |
+| Output: CPU, idle (cores) | 0.43 – 0.47 | 0.25 – 0.26 | ≤ 0.5 |
+| Output: CPU, Regie dragging (cores) | 0.30 – 0.38 | 0.17 – 0.26 | ≤ 0.45 |
+| Output: main thread busy, idle | 0.052 – 0.108 | 0.015 – 0.017 | ≤ 0.10 |
+| Output: decoded megapixels per second, idle | 37 – 73 | 10 – 16 | – |
+| Output: frames dropped, idle | 0.011 – 0.024 | 0.000 | ≤ 0.05 |
+| Regie: CPU, idle (cores) | 0.70 – 0.76 | 0.43 – 0.48 | ≤ 0.8 |
+| Regie: CPU, dragging (cores) | 0.74 – 0.78 | 0.61 – 0.69 | ≤ 1.2 |
+| Regie: GPU process, idle (cores) | 0.26 | 0.21 – 0.24 | ≤ 0.35 |
+| Regie: GPU process, dragging (cores) | 0.25 – 0.26 | 0.23 – 0.28 | ≤ 0.35 |
+| Regie: main thread busy, idle | 0.435 – 0.648 | 0.098 – 0.129 | ≤ 0.30 |
+| Regie: main thread busy, dragging | 0.592 – 0.802 | 0.476 – 0.520 | ≤ 0.65 |
+| Regie: animation frames per second, dragging | 15.3 – 32.7 | 31.3 – 36.8 | not budgeted |
+| Senders: CPU, all six (cores) | 1.38 – 1.70 | 1.21 – 1.25 | ≤ 2.3 |
+| Senders: encode load of the 2 screens (cores) | 0.88 – 1.03 | 1.21 – 1.35 | – |
+| Senders: encode load of the 4 phones (cores) | 1.53 – 1.84 | 1.53 – 1.58 | – |
+| Switch to the preview scene (ms, request → every video shows a picture) | 220 – 919 | 236 – 864 | ≤ 1500 |
+| Switch to a scene nobody prepared (ms) | 341 – 653 | 424 – 443 | ≤ 2000 |
+| Regie: share of the main thread in `drawImage` (sampled profile) | 29 – 30 % | 4 – 5 % | – |
+
+What the numbers say. *Output*: it decodes three streams instead of six (the program scene and the preview scene, nothing else) and needs about 40 % less CPU; its main thread is idle nine tenths of the time. *Regie*: 16 videos instead of 26 and 4 canvases instead of 20 (the scene thumbnails are stills, shown as images), the main thread is busy about a tenth of the time instead of half (the copies of video frames were 29 % of its time, mostly the software conversion of the 2560 × 1440 screens, and are 4 to 5 % now: they share a time budget), CPU 0.43 to 0.48 cores instead of 0.70 to 0.76. It still decodes six streams: the station thumbnails are live, at the smallest layer. The animation frame rate while an item is dragged is 31 to 37 (15 to 33 before). A first version of the stills drew a canvas per thumbnail; the sixteen canvases on screen doubled the GPU process of the Regie and the frame rate fell to 3, which is why the budget counts canvases and the GPU process. *Senders*: all six together need less CPU (1.2 instead of 1.4 to 1.7 cores). The two screens, however, cost more as software H.264 than they did as software VP9 (1.2 to 1.35 cores against 0.9 to 1.0), because this container has no hardware encoder; the decision (VP9 only with a power-efficient encoder, H.264 otherwise) is made for real laptops, where H.264 is encoded and decoded in hardware and VP9 often is not, and MAN-16 has to confirm it there. *Switching*: the times are between 0.2 and 0.9 s for the preview scene and about 0.4 s for a scene nobody prepared (before, such a scene came up from the preloaded low layer); they include the API call and a fully busy machine, so the budget leaves room. A run in which a sender reports `qualityLimitationReason = cpu` is not a valid measurement: its loads are recorded and the test is skipped as `not-comparable` (the counts are still checked); repeat it when the machine is quiet (6.8).
 
 ---
 
@@ -2888,7 +2963,7 @@ Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 day
 
 **`pr-title.yml`** checks that the title of every pull request follows Conventional Commits (`feat: ...`, `fix(api): ...`; the job is named “Conventional Commits title”). **`release.yml`** runs after `ci.yml` succeeded on a push to `main`: it builds the three images once, pushes them as `sha-<7>`, runs the smoke set again against those pushed images, scans them with Trivy, moves `:main`, and maintains the release (release-please); the release job tags the same images with the version. Details: `docs/releasing.md`. Its smoke run uses the same harness as `e2e-smoke` (`E2E_NO_BUILD=1` with the pulled images tagged `sf-e2e-1-api` and `sf-e2e-1-caddy`).
 
-**Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on a Windows runner, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices or a dedicated runner (latency, real phones), which stay manual (section 4).
+**Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on a Windows runner, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices (real phones), which stay manual (section 4). The `@perf` tests (latency, many sources, switching times, the performance budget) are not in the nightly run either: they run on demand with the workflow `perf.yml` (input `runner`: a larger runner or a perf runner with at least 4 cores) or with `tests/e2e/stack.sh test <N> --project=perf` (6.8; decision 15.3 stays, there is no self-hosted runner).
 
 ### 6.2 Smoke set (`@smoke`, P0)
 
@@ -2898,8 +2973,8 @@ Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 day
 
 ### 6.3 Tags and selection
 
-`@smoke`, `@disruptive` (restarts, kills, lockout, rate limits; run last, followed by `stack.ensureHealthy()`), `@short-ttl`, `@netns`, `@linux-netem`, `@soak`, `@perf` (latency; dedicated runner, never retried),
-`@webkit-ui` (UI-only subset), `@p0 @p1 @p2` (priority, derived from this file). Example: `npx playwright test -c tests/e2e/playwright.config.ts --grep "@smoke" --project=smoke`.
+`@smoke`, `@disruptive` (restarts, kills, lockout, rate limits; run last, followed by `stack.ensureHealthy()`), `@short-ttl`, `@netns`, `@linux-netem`, `@soak`, `@perf` (absolute timing, frame-rate and CPU thresholds: E2E-OUT-13, E2E-OUT-14, E2E-NET-19, E2E-NET-20, E2E-SWITCH-08 and -15 [regie], E2E-PERF-01; they need at least 4 cores and nothing else running, so the nightly run leaves them out; project `perf`, workflow `perf.yml`, never retried, see 6.8),
+`@webkit-ui` (UI-only subset), `@p0 @p1 @p2` (priority, derived from this file). Example: `npx playwright test -c tests/e2e/playwright.config.ts --grep "@smoke" --project=smoke`; the `@perf` tests: `tests/e2e/stack.sh test <N> --project=perf`.
 
 ### 6.4 Retries and flakiness
 
@@ -2919,6 +2994,16 @@ Docker with Compose v2 (`--wait`), Node ≥ 22.12, .NET 10 SDK, Playwright brows
 ### 6.7 Suggested implementation order for test agents
 
 1. Harness: stack start/stop, fixtures, init script, `E2E-NET-00` canary, `check-catalogue.mjs`. 2. All `UNIT-*` of a component together with the component (xunit Core, vitest packages, ng). 3. `INT-AUTH`, `INT-SYNC`, `INT-PAIR`, `INT-SWITCH`, `INT-SCENE`, `INT-SRC`, `INT-MEDIA`, `INT-LK`, `INT-NET`. 4. The smoke set (6.2). 5. Remaining P0 E2E, then P1, then P2. 6. `@perf`, `@soak`, `@linux-netem`, `@netns` last, on the dedicated runners. `check-catalogue.mjs` prints the list of catalogue IDs that are not implemented yet.
+
+### 6.8 Timing tests on a machine without headroom (issue #39)
+
+A latency, frame-rate or switching-time figure means something only if the machine had CPU to spare while it was taken. The standard GitHub runner (`ubuntu-24.04`) has 2 vCPU and 7 GB for the whole stack (API, PostgreSQL, LiveKit, Caddy), the senders (software H.264 simulcast encoders, `--disable-gpu`) and the output browser. In the first full run (40408028177) the machine was at 93 to 100 % CPU the whole time: the output page decoded everything it was sent but drew 1.1 frames per second (a starved compositor, its main thread was busy 14 to 18 %), the senders adapted to their CPU (the lowest simulcast layer 240 px wide instead of 320), and the latency tests waited for a quiet machine that never came and ran into their timeouts (3 × (246 + 66) s in a test of 900 s). The latency itself was fine at 93 % load (E2E-OUT-14: p50 89 ms, p95 112 ms). The rules since then:
+
+1. **`@perf` tests are not in the nightly run.** They hold measurements against absolute thresholds and need at least 4 cores with nothing else running (E2E-OUT-13 says so). `desktop-chromium` leaves them out (`grepInvert`), the project `perf` selects them by tag (`tests/e2e/stack.sh test <N> --project=perf`), and the workflow `perf.yml` runs them on demand (`workflow_dispatch`, input `runner` for a larger runner or a perf runner; the output folder with the measurements is always uploaded). They are never retried: a second run measures a different machine. Nothing runs them by itself, in line with decision 15.3 (latency tests stay manual). The nightly run keeps a short camera latency run (E2E-OUT-13 [latency, camera, short]) and everything that is not a threshold on time.
+2. **Waiting for a quiet machine has a budget.** `measureWhenQuiet` (`tests/e2e/support/output/quiet.ts`) starts no attempt that would not fit before the test timeout less a reserve of 60 s, waits for a quiet machine at most 30 s in all on CI (`CI` set) and 240 s on a shared machine (not per attempt), and never lets the wait eat into the time of the run. The first attempt always runs. A machine that never gets quiet costs the wait plus the runs and ends in a measurement with `quiet: false`, not in a timeout. The set-up of the test counts: the spec calls `markTestStart` in `test.beforeEach`.
+3. **Thresholds are enforced when the machine had headroom.** Quiet means: the whole machine (all cores) was at 60 % CPU or less while the figures were taken (`QUIET_BUSY_PCT`, from `os.cpus()` around the measurement). `judgeTiming` runs the assertions that hold the figures against absolute thresholds (latency, frame rate, main-thread share, picture and switching times, decoded frames per second): on a quiet machine a failure fails the test; on a busier one a failure ends in a skip with the annotation `not-comparable` (CPU use and the first failed threshold), and the report says "skipped". A pass on a busy machine is a pass. What does not depend on the load stays enforced everywhere: the stamps are decoded and increase, the output decodes what the senders send, the received bytes, the heap, the drops, no incident, no page error. The JSON of every such measurement (`.output/<stack>/results/out-*.json`) carries `machineCpuBusyPct`, `comparable`, `stoppedBecause` and `waitedForQuietMs`.
+4. **A sender that adapts to its CPU has smaller layers.** libwebrtc lowers the resolution of an overloaded sender (`degradationPreference: 'maintain-framerate'`), so its LOW layer is 240 px, not 320. E2E-SWITCH-09 reads the lowest layer the sender sends before each cut: a sender at `qualityLimitationReason = cpu` sets the floor of that cut to that layer (annotation `sender-cpu-limited`), any other sender keeps the floor at 320 px. A picture narrower than the layer that is sent still fails. The known product bug OUT-03 (the preview scene prepared at 320 px) is a different matter.
+5. **To get a verdict from a skipped test**, repeat it on a machine with headroom: `perf.yml` on a larger runner, or a computer with 4 cores or more that is not doing anything else (`machineCpuBusyPct` in the JSON says whether it was).
 
 ---
 

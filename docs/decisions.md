@@ -117,6 +117,58 @@ one function (`obsCanvasSize()`), so the production format of #8 can replace 192
 2. Preloading: the preview scene is immediate; other scenes may take about 0.5 s.
 3. Scene thumbnails as still images are fine.
 
+Implementation details fixed with the work on #12 (spec 7, 8.3, 8.4, 9.1–9.3, `docs/testing.md` 2.19 and 5.1):
+
+4. **Measuring.** `E2E-PERF-01` (project `perf`, tag `@perf`, not in the smoke set) builds the reference scenario: 4 phones
+   (camera 1080p), 2 laptop screens (1440p), 6 scenes, Studio Mode, fake media, three Chromium instances (senders, Regie at
+   1280 × 800 and device pixel ratio 1.5, output at 1920 × 1080). CPU time comes from `SystemInfo.getProcessInfo` per browser,
+   the main thread from `Performance.getMetrics` and a sampled profile, decoders and encoders from WebRTC `getStats`. The
+   container has no GPU, so every codec runs in software: the numbers compare two builds on one machine and are the worst case;
+   they never replace the manual measurement on real devices (MAN-16).
+5. **Screen codec by capability.** A screen share is VP9 only when `MediaCapabilities.encodingInfo` says the VP9 encoder is
+   power efficient (hardware); in every other case, also in a browser that cannot answer, it is H.264. The probe runs once per
+   publisher (the share's picker is not delayed by it). Cameras stay H.264. Only a VP9 share has a backup codec (VP8).
+6. **Screen frame rate.** A screen sends 15 fps (3 Mbit/s cap, content hint `detail`) unless its slot has the option "Video in
+   screen" (sender, per slot, kept per browser): then 30 fps, 4.5 Mbit/s cap, content hint `motion`. Changing the option
+   changes a running share without a new picker.
+7. **What the output receives.** The program scene and the preview scene, nothing else. The preview scene's sources are
+   requested at the size they will have on stage (not the lowest layer any more). A source nobody asks a picture for is
+   paused (`setEnabled(false)`: the SFU stops forwarding, the browser stops decoding): on the output after 5 s, in the Regie
+   after 10 s, and 1.5 s after its track arrives without a consumer. A paused element is emptied (`srcObject = null`), so a
+   stale picture is never shown when the source returns; the next request resumes it and the picture is back with the next
+   keyframe (about 0.5 s). Paused sources do not count as decoded streams.
+8. **Scene thumbnails are stills.** One hidden video per source, shared by all thumbnails of a provider, and a snapshot of at
+   most 320 × 180 every 1.5 s (`STILL_REFRESH_MS`), shown as an image (JPEG data URL), not as a canvas: a canvas on screen is a layer
+   that the browser keeps compositing, and sixteen of them cost the Regie more GPU time in the reference scenario than the
+   videos they replaced. The program and preview monitors and the station thumbnails stay live.
+9. **Nobody sees it, nobody asks for it.** `watchVisibility` (IntersectionObserver with a 96 px margin, plus
+   `visibilitychange`) decides. Monitor and thumbnail renderers and the station thumbnails request nothing while they are not
+   visible (hidden dock, collapsed section, scrolled away, background tab); the output renderer never pauses (an OBS browser
+   source that is switched off keeps its pictures). A renderer option `pauseWhenHidden` overrides the default.
+10. **Requested size.** The size of the picture on screen × the device pixel ratio, at most 1.5, rounded up to 16 px, never
+    above the production canvas (#8). The renderers re-read it when the pixel ratio changes.
+11. **Frame counting.** `FpsMeter` counts what the videos present (`getVideoPlaybackQuality`, cumulative presented and
+    dropped frames) instead of running a permanent `requestAnimationFrame`. `fps` in the output report and the debug overlay
+    is therefore the video frame rate of the busiest video, no longer the animation frame rate of the page.
+12. **Hold frame.** The rolling copy of a live picture is taken at most once per second at on-screen size. The blur of the held
+    state is computed once into the copy (`blurCanvas`); there is no CSS `filter` on the live element. All copies (rolling
+    hold frames and stills) share one time budget (`SnapshotBudget`, 4 % of the main thread): converting a 2560 × 1440 frame
+    in software takes 50 to 100 ms, and an expensive copy delays the next ones. The first copy of an item and the copy at the
+    moment of a loss never wait. (Issue 50.) A copy needs a decoded frame (`readyState` ≥ 2) that shows a picture, not
+    transparent and not black; otherwise the previous copy stays. Nothing black on air.
+13. **Hardware or software.** Where the browser hides `decoderImplementation`, `encoderImplementation` and `powerEfficient*`
+    from a page (Chromium without a live capture), the product asks `MediaCapabilities.decodingInfo` and `encodingInfo` what
+    the browser would choose. That says hardware or software, but not which encoder; the name stays unknown.
+14. **What the operator sees.** A sender reports `encoder`, `hardwareEncoder` and `qualityLimitation` per slot. The station
+    line says "CPU at limit" in amber only for `qualityLimitation = cpu` ("bandwidth" and "other" are not a CPU problem); the
+    station details list "Encoding" per slot and "Decoding here" (how this Regie decodes); the monitoring page has the sortable
+    column "Encoding" with the same tag. The output page reports `droppedFramesPct`, `decodedStreams` and
+    `softwareDecodedStreams`; the output chip says "drops frames" (amber) from 5 % dropped frames of a connected link, and the
+    output popover lists "Decoding" and "Dropped frames". Amber means "attention, the picture is still there" (DESIGN.md).
+15. **Budget.** `docs/testing.md` 5.1: counts (decoded streams, videos) are exact; loads (CPU, main thread, switching time)
+    may exceed their budget by 20 %, `PERF_BUDGET_SCALE` scales them for another machine. The animation frame rate of the Regie
+    while dragging is recorded, not budgeted: on a machine that is fully busy and renders in software it swings from 2 to 30.
+
 ## #13 Text and lower thirds
 
 1. Three fixed styles plus production colours.
@@ -191,6 +243,11 @@ Pinned details (implementation, spec 4.2.2):
 2. The nightly full run runs on working days only while the repository is private. Changed by the owner on 2026-10-27:
    the full run is on demand only (`workflow_dispatch`); it runs before a release.
 3. No self-hosted runner; device and latency tests stay manual.
+4. (Pinned with issue 39.) Tests tagged `@perf` (latency, many sources, switching times, the performance budget) need at least
+   4 cores and are not part of the nightly run on the 2-vCPU runner; they run on demand (project `perf`, workflow `perf.yml`).
+   Timing thresholds are enforced only when the machine was at 60 % CPU or less while the figures were taken, else the figures
+   are recorded and the test is skipped as "not comparable". Waiting for a quiet machine never runs into the test timeout.
+   `docs/testing.md` 6.8.
 
 ## #16 Backups and dependency updates
 
