@@ -410,9 +410,9 @@ fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) an
 | `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
 | `XFER` Duplicate, export and import | 6 | 6 | 8 | 20 | 12 | 8 | 0 |
 | `PERF` Performance | 6 | 1 | 1 | 8 | 3 | 5 | 0 |
-| `AUD` Audio | 7 | 3 | 16 | 26 | 14 | 11 | 1 |
+| `AUD` Audio | 7 | 3 | 17 | 27 | 14 | 12 | 1 |
 | `I18N` Language and formats | 0 | 0 | 13 | 13 | 0 | 13 | 0 |
-| **Total** | **130** | **121** | **302** | **553** | **243** | **247** | **63** |
+| **Total** | **130** | **121** | **303** | **554** | **243** | **248** | **63** |
 <!--/SUMMARY-->
 
 Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import) · [2.19 PERF](#219-perf--performance-issue-12) · [2.20 AUD](#220-aud--audio)
@@ -2620,14 +2620,14 @@ Issue #8, decisions «#8», spec 4.2 ("Canvas"), 4.3, 8.1, 8.3, 9.3, runbook 19.
 
 ### 2.18 XFER – Duplicate, export and import
 
-Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can be duplicated inside the installation and exported as a file (`.studioflow.zip`: `manifest.json` with `formatVersion` 1 and the media under `media/`, each with its SHA-256) that another installation imports as a new production. Devices are never copied: the cameras and screens that scenes use become placeholders (code and name, "Source missing") that a source takes over with one click. E2E specs run in English (`en-US`) against the stack (Docker); the files they build are made by `support/zip.ts`.
+Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can be duplicated inside the installation and exported as a file (`.studioflow.zip`: `manifest.json` with `formatVersion` 2 and the media under `media/`, each with its SHA-256) that another installation imports as a new production. Devices are never copied: the cameras and screens that scenes use become placeholders (code and name, "Source missing") that a source takes over with one click. E2E specs run in English (`en-US`) against the stack (Docker); the files they build are made by `support/zip.ts`.
 
 **UNIT-XFER-01** · P0 · xunit (`ManifestTests`) — The manifest
-- Steps: write and read a manifest; unknown property, missing required one, wrong type, unknown enum text, `null` for a required field; `formatVersion` 0, 1, 2, 99, missing; the migration chain with a test step; the keys of references (`asset:`, `text:`, `placeholder:`).
+- Steps: write and read a manifest; unknown property, missing required one, wrong type, unknown enum text, `null` for a required field; `formatVersion` 0, 1, 2, 3, 99, missing; the migration chain with a test step, the real step 1 → 2 (an empty `audioChannels`, also over a leftover value) and a file of version 1 read as the current one; an audio channel of the wrong shape (text gain, integer or unknown mode, no source, the list missing); the keys of references (`asset:`, `text:`, `placeholder:`).
 - Expect: the round trip gives an equal manifest; every strictness violation is `invalid_archive` and names the path (`scenes[1].items[0].fit`); an older version is migrated step by step in memory, the current one is untouched, a newer one is `unsupported_format` without reading further; a reference without a key or with another prefix is refused.
 
 **UNIT-XFER-02** · P0 · xunit (`ProductionTransferTests`) — Capture and plan
-- Steps: capture a production with texts, media, a slate and background medium, scenes with every item field, devices (one in two scenes, one as fallback only, one removed from the production) and an existing placeholder; plan the manifest; names (`CopyOf`, `Unique`); limits (99 scenes, 32 items, 64 texts, 100 device sources); duplicate keys, unknown references, invalid codes, geometry errors.
+- Steps: capture a production with texts, media, a slate and background medium, scenes with every item field, devices (one in two scenes, one as fallback only, one removed from the production) and an existing placeholder; capture the audio channels (videos with sound and a changed channel, an audio station that stays behind, a video without sound); plan the manifest, also with channels (new id of the video, seeding with the defaults and the settings of the file, a channel of a video that has no sound here is dropped); names (`CopyOf`, `Unique`); limits (99 scenes, 32 items, 64 texts, 100 device sources); duplicate keys, unknown references, a channel of an image, an unknown or repeated video, values out of range and `always`, invalid codes, geometry errors.
 - Expect: everything listed in spec 4.2.2 is in the manifest and nothing else (no device id, secret, output link, log, broadcast state); a device source becomes one placeholder with its code, name and kind, a source whose device is gone gets the next free code and no name; the export of a copy equals the export of the original apart from the time; the plan assigns new ids to everything and resolves every reference; each error carries its path; "Name (copy)", " (2)", " (3)" and the cut to 80 characters; limits are `limit_reached`.
 
 **UNIT-XFER-03** · P0 · xunit (`PlaceholderTests`) — Placeholders
@@ -2681,7 +2681,7 @@ Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can 
 
 **E2E-XFER-03** · P0 · pw (`xfer-api.spec.ts`) — Export, preview and import through Caddy
 - Steps: `GET …/export`; read the ZIP; dry run; import; import again; audit.
-- Expect: `application/zip`, a `.studioflow.zip` file name; `manifest.json` (`studioflow-production`, version 1) and one medium whose SHA-256 is in the manifest; no `prd_`, `scn_`, `itm_`, `dev_` id, device secret, output key or slug in the manifest; the preview says `{name} (2)`, 3 scenes, 1 medium, the placeholders and the warnings `nameChanged` and `placeholders`, and creates nothing; the import is 201, not active, with the same scenes without ids and the same picture bytes, a new output link; the second import is " (3)"; `production.exported` and `production.imported` in the audit log.
+- Expect: `application/zip`, a `.studioflow.zip` file name; `manifest.json` (`studioflow-production`, version 2, no audio channels) and one medium whose SHA-256 is in the manifest; no `prd_`, `scn_`, `itm_`, `dev_` id, device secret, output key or slug in the manifest; the preview says `{name} (2)`, 3 scenes, 1 medium, the placeholders and the warnings `nameChanged` and `placeholders`, and creates nothing; the import is 201, not active, with the same scenes without ids and the same picture bytes, a new output link; the second import is " (3)"; `production.exported` and `production.imported` in the audit log.
 
 **E2E-XFER-04** · P0 · pw (`xfer-api.spec.ts`) — Refused files and what is left
 - Steps: import and dry run of a text file, a ZIP without manifest, `formatVersion` 99, an entry `../evil.txt`, `/etc/evil.txt`, `other/evil.png`, a deflated ZIP bomb (40 MiB of zeros), a changed medium (wrong checksum), an SVG; then the list of productions and `find /data/media` in the api container.
@@ -2785,8 +2785,8 @@ Audio dock. The E2E specs are in `tests/e2e/specs/audio/` and run in English (`e
 - Expect: 200 with the stored channels, 400 `validation_failed` naming `channels[n].field`, 401, 403, 404; exactly one event and one revision per changing request; the output sees the event; audit text “A1 muted”, “A1 gain -6.0 dB”.
 
 **INT-AUD-02** · P0 · xunit (`AudioMixerMigrationTests`, `InfrastructureTests` container cases) — Migration and the sound of videos
-- Steps: a database from before `AddAudioMixer` with productions, devices and videos migrated up (and `SyncAll` giving the channels, idempotent); MP4 (moov first or last, audio and video tracks, only video, empty moov) and WebM (track types) files, broken and truncated files, images; upload of a video with and without sound; deletion.
-- Expect: existing productions get an empty mixer and no sound (`hasAudio` false); the detection reads headers only and never throws; a video with sound has a channel that goes with the asset.
+- Steps: a database from before `AddAudioMixer` with productions, devices and videos migrated up (and `SyncAll` giving the channels, idempotent); MP4 (moov first or last, audio and video tracks, only video, empty moov) and WebM (track types) files, broken and truncated files, images; upload of a video with and without sound; deletion; duplicate, export and import of a production with two videos with sound (one with a changed channel), a silent video and an audio station; the import of a file as version 1 wrote it (no `audioChannels`); a manifest with a channel that points nowhere or has a gain of +40 dB (`invalid_archive`, `audioChannels[0]`), with an unknown mode.
+- Expect: existing productions get an empty mixer and no sound (`hasAudio` false); the detection reads headers only and never throws; a video with sound has a channel that goes with the asset; a copy and an import have `hasAudio` and a channel for every video with sound, under its new id, with the fader, mute, mode and delay of the original, and none for the station or the silent video; a file of version 1 gives the defaults.
 
 **INT-AUD-03** · P1 · xunit (`DeviceAndPairingApiTests`, `InfrastructureTests`) — Pairing, reports and LiveKit grants
 - Steps: an invite link redeemed as `audioStation` (laptop link only; a phone QR code ignores it), a knock as an audio station, the report of a device with the slot `mic`, LiveKit tokens (a sender may publish camera, screen, microphone and screen audio; the Regie and the output may not publish).
@@ -2855,6 +2855,10 @@ Audio dock. The E2E specs are in `tests/e2e/specs/audio/` and run in English (`e
 **E2E-AUD-16** · P2 · pw (`aud-chain.spec.ts`) — Delay of the sound
 - Steps: a tone that starts after silence at the audio station, five times; the time to the first audible tone at the output page.
 - Expect: the median is under one second (the measurement includes about 60 ms of write-ahead of the fake source and a 21 ms probe window); the values are recorded in the report as `measurement` annotations (**T-AUDIO-DELAY**, section 5).
+
+**E2E-AUD-17** · P2 · pw (`aud-assets.spec.ts`) — A copy and an import keep the sound of videos
+- Steps: a WebM with a tone uploaded; its channel set to −9.5 dB, muted, off, 80 ms; `POST …/duplicate`; export and import of the file; read the snapshots.
+- Expect: the copy and the import have the clip under a new id with `hasAudio` and the channel with exactly these values (new `sourceId`); the original keeps its channel.
 
 ---
 

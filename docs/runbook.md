@@ -460,7 +460,8 @@ Regie. The file has the extension `.studioflow.zip`; unpack it only to look insi
 
 **Export** (any time, also during the broadcast; nothing changes in the production):
 1. Header → production name → "Export". The browser saves `{name}-{date}.studioflow.zip`.
-2. The file holds the name, format and resolution, slates, text colours, texts, all scenes with their elements, and **all media**
+2. The file holds the name, format and resolution, slates, text colours, texts, all scenes with their elements, the sound settings
+   of the videos (fader, mute, mode and delay in the Audio dock), and **all media**
    (a production with videos is as large as its videos; the Regie shows the size on import).
 
 **Import** on the other server (first start of the stack and the first-run setup done, section 5):
@@ -476,6 +477,9 @@ Regie. The file has the extension `.studioflow.zip`; unpack it only to look insi
    with their code and name, listed under "Missing sources" in the Sources dock). Pair a phone or laptop; its station row offers
    "Use as K1 · Stage phone", which puts the new device in every scene where K1 was, and makes it K1. Or assign the placeholder
    to any existing camera, screen or medium with "Assign…" in the Sources dock; "Remove from all scenes…" drops a placeholder.
+   The sound of devices is not part of the file either: the audio station, the microphones and the sound of shared screens appear
+   in the Audio dock of the new production when the devices are paired, with their usual start values (the station always on,
+   microphones muted); set the faders again.
 5. **Fresh output links.** The new production has its own link with a new key: give the new URL to the proxy or the OBS
    scene collection ("Use as camera…") again.
 
