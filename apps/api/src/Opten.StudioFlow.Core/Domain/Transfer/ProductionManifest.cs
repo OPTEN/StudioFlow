@@ -19,6 +19,7 @@ namespace Opten.StudioFlow.Core.Domain.Transfer;
 /// <param name="Assets">Images and videos; the files are in the ZIP under <c>media/</c>.</param>
 /// <param name="Placeholders">The device sources the scenes use, which become placeholders.</param>
 /// <param name="Scenes">Scenes in list order.</param>
+/// <param name="AudioChannels">The sound settings of the videos in <paramref name="Assets"/> (format version 2); the channels of devices are not part of the file.</param>
 public sealed record ProductionManifest(
     string Format,
     int FormatVersion,
@@ -27,7 +28,8 @@ public sealed record ProductionManifest(
     IReadOnlyList<ManifestText> Texts,
     IReadOnlyList<ManifestAsset> Assets,
     IReadOnlyList<ManifestPlaceholder> Placeholders,
-    IReadOnlyList<ManifestScene> Scenes);
+    IReadOnlyList<ManifestScene> Scenes,
+    IReadOnlyList<ManifestAudioChannel> AudioChannels);
 
 /// <summary>The program that wrote the file.</summary>
 /// <param name="Version">Version of StudioFlow, e.g. <c>0.1.0+1a2b3c4</c>.</param>
@@ -67,6 +69,18 @@ public sealed record ManifestAsset(string Key, string Code, AssetKind Kind, stri
 /// <param name="Slot">Slot of the original source (<c>camera</c>, <c>screen-1</c> …).</param>
 /// <param name="Label">Name of the original source, or null.</param>
 public sealed record ManifestPlaceholder(string Key, string Code, SourceKind Kind, string Slot, string? Label = null);
+
+/// <summary>
+/// The channel of the audio mixer for the sound of a video (issue #7). Only videos are in the file: a device microphone, the
+/// audio station and the sound of a screen belong to the device, and a device is never copied, so the new device starts with
+/// the defaults of its kind.
+/// </summary>
+/// <param name="Source">A reference to a video of <see cref="ProductionManifest.Assets"/>, <c>asset:a2</c>.</param>
+/// <param name="GainDb">Fader position, −100 (silence) to +10 dB.</param>
+/// <param name="Muted">Whether the channel is muted.</param>
+/// <param name="Mode">Follows the picture or off; a video is never always on.</param>
+/// <param name="SyncOffsetMs">Delay of the sound, 0 to 500 ms.</param>
+public sealed record ManifestAudioChannel(string Source, double GainDb, bool Muted, AudioMode Mode, int SyncOffsetMs);
 
 /// <summary>A scene.</summary>
 public sealed record ManifestScene(string Name, SceneLayoutMode LayoutMode, ManifestBackground Background, IReadOnlyList<ManifestItem> Items);
@@ -109,7 +123,7 @@ public static class ManifestFormat
     public const string Name = "studioflow-production";
 
     /// <summary>The version this installation writes and reads without migration.</summary>
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     /// <summary>Name of the manifest inside the ZIP.</summary>
     public const string ManifestEntry = "manifest.json";

@@ -13,8 +13,10 @@ public sealed record ExportMedia(string AssetId, string FileName, ManifestAsset 
 /// Turns a production into the manifest of an export (spec 4.2.2). A duplicate takes the same way: the manifest is the one
 /// description of everything a production hands on. What it holds and what it leaves out is decided here, for every field:
 /// <list type="bullet">
-/// <item>Taken over: name, canvas, both slates, the text colours, texts, media, scenes with all items in list order.</item>
-/// <item>Device sources become placeholders (code, name, original slot) – but only those the scenes use.</item>
+/// <item>Taken over: name, canvas, both slates, the text colours, texts, media, scenes with all items in list order, the
+/// channels of the audio mixer for the sound of videos (fader, mute, mode, delay).</item>
+/// <item>Device sources become placeholders (code, name, original slot) – but only those the scenes use. Their channels of the
+/// audio mixer (audio station, microphones, sound of a screen) stay behind: they belong to the device that fills the place.</item>
 /// <item>Left out: devices, their secrets, invites, pairing requests and incidents; the output links and their keys and IP
 /// restrictions (the copy gets a fresh default link); the broadcast state, program and preview scene, last transition;
 /// the audit log; whether the production is active.</item>
@@ -68,8 +70,24 @@ public static class ProductionExport
             texts,
             [.. media.Select(m => m.Entry)],
             placeholders.List,
-            [.. production.OrderedScenes.Select(scene => Scene(scene, sources))]);
+            [.. production.OrderedScenes.Select(scene => Scene(scene, sources))],
+            AudioChannels(production, assets, assetKeys));
         return (manifest, media);
+    }
+
+    /// <summary>The channels of the videos in the order of the media; a channel of a source that is no medium of the production is left out.</summary>
+    private static List<ManifestAudioChannel> AudioChannels(Production production, IReadOnlyList<Asset> assets, Dictionary<string, string> assetKeys)
+    {
+        var channels = new List<ManifestAudioChannel>();
+        foreach (var asset in assets.Where(a => a.Kind == AssetKind.Video))
+        {
+            if (production.FindAudioChannel(asset.Id) is { } channel)
+            {
+                channels.Add(new ManifestAudioChannel(ManifestRefs.Asset + assetKeys[asset.Id], channel.GainDb, channel.Muted, channel.Mode, channel.SyncOffsetMs));
+            }
+        }
+
+        return channels;
     }
 
     private static string Key(string prefix, int index) => prefix + (index + 1).ToString(CultureInfo.InvariantCulture);

@@ -39,7 +39,23 @@ public sealed class ManifestMigratorTests
     }
 
     [Fact]
-    public void FormatVersion_StartsAtOne() => Assert.Equal(1, ManifestFormat.CurrentVersion);
+    public void FormatVersion_IsTwo_SinceTheAudioMixer() => Assert.Equal(2, ManifestFormat.CurrentVersion);
+
+    [Fact]
+    public void Default_Version1_GetsAnEmptyListOfAudioChannels()
+    {
+        var manifest = Manifest(1);
+        manifest["audioChannels"] = JsonValue.Create("left over from nowhere");
+
+        var upgraded = ManifestMigrator.Default.Upgrade(manifest);
+
+        Assert.Equal(ManifestFormat.CurrentVersion, ManifestMigrator.VersionOf(upgraded));
+        Assert.Empty(upgraded["audioChannels"]!.AsArray());
+    }
+
+    [Fact]
+    public void Default_HasAStepForEveryOlderVersion() =>
+        Assert.Equal(Enumerable.Range(1, ManifestFormat.CurrentVersion - 1), ManifestMigrations.Steps.Keys.Order());
 
     [Fact]
     public void Upgrade_OlderManifest_RunsEveryStepInOrder()
@@ -155,7 +171,7 @@ public sealed class ManifestJsonTests
     {
         var text = Encoding.UTF8.GetString(ManifestJson.Serialize(Fixture.Manifest()));
 
-        Assert.Contains("\"formatVersion\": 1", text, StringComparison.Ordinal);
+        Assert.Contains("\"formatVersion\": 2", text, StringComparison.Ordinal);
         Assert.Contains("\"layoutMode\": \"free\"", text, StringComparison.Ordinal);
         Assert.Contains("\"resolution\": \"p1080\"", text, StringComparison.Ordinal);
         Assert.Contains("\"fit\": \"cover\"", text, StringComparison.Ordinal);
@@ -193,6 +209,7 @@ public sealed class ManifestJsonTests
     [InlineData("production")]
     [InlineData("scenes")]
     [InlineData("assets")]
+    [InlineData("audioChannels")]
     [InlineData("app")]
     public void Read_MissingRequiredPart_IsInvalidAndNamesTheField(string part)
     {
@@ -235,11 +252,60 @@ public sealed class ManifestJsonTests
     [Fact]
     public void Read_NewerFormat_IsUnsupportedWhateverElseIsInIt()
     {
-        var json = """{"format":"studioflow-production","formatVersion":2,"somethingNew":[1,2,3]}""";
+        var json = """{"format":"studioflow-production","formatVersion":3,"somethingNew":[1,2,3]}""";
 
         var error = Assert.Throws<StudioFlowException>(() => ManifestJson.Read(Encoding.UTF8.GetBytes(json)));
 
         Assert.Equal(ErrorCodes.UnsupportedFormat, error.Code);
+    }
+
+    [Fact]
+    public void Read_FileOfVersion1_IsMigratedAndHasNoAudioChannels()
+    {
+        var node = JsonNode.Parse(ManifestJson.Serialize(Fixture.Manifest()))!.AsObject();
+        node["formatVersion"] = 1;
+        node.Remove("audioChannels");
+
+        var read = ManifestJson.Read(Encoding.UTF8.GetBytes(node.ToJsonString()));
+
+        Assert.Equal(ManifestFormat.CurrentVersion, read.FormatVersion);
+        Assert.Empty(read.AudioChannels);
+        Assert.Equal("Intro", read.Scenes[0].Name);
+    }
+
+    [Fact]
+    public void RoundTrip_KeepsTheAudioChannelsOfVideos()
+    {
+        var manifest = Fixture.Manifest() with { AudioChannels = [new ManifestAudioChannel("asset:a2", -6.5, true, AudioMode.Off, 120)] };
+
+        var text = Encoding.UTF8.GetString(ManifestJson.Serialize(manifest));
+        var read = ManifestJson.Read(Encoding.UTF8.GetBytes(text));
+
+        Assert.Contains("\"mode\": \"off\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"gainDb\": -6.5", text, StringComparison.Ordinal);
+        Assert.Equal(manifest.AudioChannels, read.AudioChannels);
+    }
+
+    [Fact]
+    public void Read_VersionTwoWithoutAudioChannels_OrWithAChannelOfTheWrongShape_IsInvalid()
+    {
+        var channel = new ManifestAudioChannel("asset:a2", 0, false, AudioMode.Follow, 0);
+        var withChannel = () => JsonNode.Parse(ManifestJson.Serialize(Fixture.Manifest() with { AudioChannels = [channel] }))!.AsObject();
+        var missing = withChannel();
+        missing.Remove("audioChannels");
+        var textGain = withChannel();
+        textGain["audioChannels"]![0]!["gainDb"] = "-6";
+        var integerMode = withChannel();
+        integerMode["audioChannels"]![0]!["mode"] = 1;
+        var unknownMode = withChannel();
+        unknownMode["audioChannels"]![0]!["mode"] = "loud";
+        var noSource = withChannel();
+        noSource["audioChannels"]![0]!["source"] = null;
+
+        foreach (var node in new[] { missing, textGain, integerMode, unknownMode, noSource })
+        {
+            Assert.Equal(ErrorCodes.InvalidArchive, Assert.Throws<StudioFlowException>(() => ManifestJson.Read(Encoding.UTF8.GetBytes(node.ToJsonString()))).Code);
+        }
     }
 
     [Fact]
@@ -290,5 +356,6 @@ internal static class Fixture
                     new ManifestItem("placeholder:p1", 10, 20, 640, 360, ItemFit.Cover, new ManifestCrop(0.1, 0, 0.1, 0), 12, true, 90, false, true, new ManifestOnLost(2500, "asset:a1"), new ManifestBorder(4, "#00ff00")),
                     new ManifestItem("text:t1", 0, 0, 100, 100, ItemFit.Contain, new ManifestCrop(0, 0, 0, 0), 0, false, 0, true, false, new ManifestOnLost()),
                 ]),
-        ]);
+        ],
+        []);
 }

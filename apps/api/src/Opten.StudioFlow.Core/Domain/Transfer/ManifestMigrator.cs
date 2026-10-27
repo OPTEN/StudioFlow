@@ -63,12 +63,21 @@ public sealed class ManifestMigrator
 }
 
 /// <summary>
-/// The migration steps of this version of StudioFlow. Format version 1 is the first one, so there is no step yet. A change
-/// of the format (a new part of the production, such as the audio mixer) raises <see cref="ManifestFormat.CurrentVersion"/>
-/// by one and adds the step <c>[oldVersion] = manifest =&gt; …</c> here, so exports of the old version still import.
+/// The migration steps of this version of StudioFlow. A change of the format (a new part of the production) raises
+/// <see cref="ManifestFormat.CurrentVersion"/> by one and adds the step <c>[oldVersion] = manifest =&gt; …</c> here, so exports
+/// of the old version still import.
 /// </summary>
 public static class ManifestMigrations
 {
     /// <summary>The step from each older version to the next one.</summary>
-    public static IReadOnlyDictionary<int, Func<JsonObject, JsonObject>> Steps { get; } = new Dictionary<int, Func<JsonObject, JsonObject>>();
+    public static IReadOnlyDictionary<int, Func<JsonObject, JsonObject>> Steps { get; } = new Dictionary<int, Func<JsonObject, JsonObject>>
+    {
+        // 1 → 2 (issue #7): the audio mixer. A file of version 1 has no sound settings; its videos start with the defaults of
+        // a new video (0 dB, not muted, follows the picture).
+        [1] = manifest =>
+        {
+            manifest["audioChannels"] = new JsonArray();
+            return manifest;
+        },
+    };
 }

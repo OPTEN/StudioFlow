@@ -157,7 +157,7 @@ public sealed class ProductionTransferApiTests(StudioFlowApp app) : IClassFixtur
 
         Assert.Matches($"^attachment; filename=\"{source.Production.Slug}-\\d{{4}}-\\d{{2}}-\\d{{2}}\\.studioflow\\.zip\"$", response.Content.Headers.ContentDisposition!.ToString());
         Assert.Equal(["manifest.json", "media/a1.png", "media/a2.mp4"], files.Keys.Order(StringComparer.Ordinal));
-        Assert.Equal(1, manifest.FormatVersion);
+        Assert.Equal(ManifestFormat.CurrentVersion, manifest.FormatVersion);
         Assert.Equal(source.Production.Name, manifest.Production.Name);
         Assert.Equal(["Welcome", "Presentation", "Break", "Interview"], manifest.Scenes.Select(s => s.Name));
         Assert.Equal(["K1", "S1"], manifest.Placeholders.Select(p => p.Code));

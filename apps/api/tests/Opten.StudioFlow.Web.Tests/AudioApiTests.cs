@@ -370,6 +370,53 @@ public sealed class AudioMixerApiTests(StudioFlowApp app) : IClassFixture<Studio
     }
 
     [Fact]
+    public async Task DuplicateAndImport_TakeTheSoundOfVideosAlong_WithTheirMixerSettings()
+    {
+        var admin = await FreshAsync();
+        var talk = await UploadAsync(admin, MediaSamples.Mp4WithTracks(["vide", "soun"]), "talk.mp4").ExpectAsync<AssetDto>(HttpStatusCode.Created);
+        var interview = await UploadAsync(admin, MediaSamples.Mp4WithTracks(["vide", "soun"]), "interview.mp4").ExpectAsync<AssetDto>(HttpStatusCode.Created);
+        await UploadAsync(admin, MediaSamples.Mp4WithTracks(["vide"]), "silent.mp4").ExpectAsync<AssetDto>(HttpStatusCode.Created);
+        await app.PairAudioStationAsync(admin);
+        await SetAsync(admin, false, new AudioChannelDto(interview.Id, -6.5, true, AudioMode.Off, 120)).ExpectAsync(HttpStatusCode.OK);
+
+        var copy = await admin.Client.PostJsonAsync($"/api/productions/{admin.ProductionId}/duplicate", new DuplicateProductionRequest("Copy " + Guid.NewGuid().ToString("N")[..8])).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
+        var archive = await TransferSupport.ExportAsync(admin, admin.ProductionId);
+        var imported = await TransferSupport.ImportAsync(admin, archive).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
+
+        foreach (var id in new[] { copy.Id, imported.Id })
+        {
+            var snapshot = await TransferSupport.SnapshotAsync(admin, id);
+            Assert.Equal([("talk", true), ("interview", true), ("silent", false)], snapshot.Assets.Select(a => (a.Name, a.HasAudio)));
+
+            // Every video with sound has its channel under its new id, with the settings of the original. The audio station is
+            // a device and stays behind; the silent video has no channel.
+            Assert.Equal(
+                [new AudioChannelDto(snapshot.Assets[0].Id, 0, false, AudioMode.Follow, 0), new AudioChannelDto(snapshot.Assets[1].Id, -6.5, true, AudioMode.Off, 120)],
+                snapshot.AudioChannels);
+            Assert.DoesNotContain(snapshot.AudioChannels, c => c.SourceId == talk.Id || c.SourceId == interview.Id);
+        }
+    }
+
+    [Fact]
+    public async Task Import_OfAFileFromBeforeTheMixer_GivesTheVideosTheirDefaultChannels()
+    {
+        var admin = await FreshAsync();
+        await UploadAsync(admin, MediaSamples.Mp4WithTracks(["vide", "soun"]), "talk.mp4").ExpectAsync<AssetDto>(HttpStatusCode.Created);
+        var archive = await TransferSupport.ExportAsync(admin, admin.ProductionId);
+
+        // The same file as version 1 wrote it: no sound settings.
+        var old = TransferSupport.WithManifest(archive, manifest =>
+        {
+            manifest["formatVersion"] = 1;
+            manifest.Remove("audioChannels");
+        });
+        var imported = await TransferSupport.ImportAsync(admin, old).ExpectAsync<ProductionDto>(HttpStatusCode.Created);
+
+        var snapshot = await TransferSupport.SnapshotAsync(admin, imported.Id);
+        Assert.Equal([new AudioChannelDto(snapshot.Assets[0].Id, 0, false, AudioMode.Follow, 0)], snapshot.AudioChannels);
+    }
+
+    [Fact]
     public async Task LiveKitToken_Sender_MayPublishPictureAndSound()
     {
         var admin = await FreshAsync();

@@ -154,8 +154,8 @@ public sealed class ProductionImportSecurityTests(StudioFlowApp app) : IClassFix
     }
 
     [Theory]
-    [InlineData(2)]
     [InlineData(3)]
+    [InlineData(4)]
     [InlineData(99)]
     [InlineData(int.MaxValue)]
     public async Task NewerFormatVersion_IsUnsupportedFormat(int version)
@@ -213,6 +213,35 @@ public sealed class ProductionImportSecurityTests(StudioFlowApp app) : IClassFix
             root["scenes"]![0]!["layoutMode"] = "diagonal";
             root["texts"] = "none";
         });
+
+        await RefusedAsync(Zip(("manifest.json", manifest)), HttpStatusCode.BadRequest, ErrorCodes.InvalidArchive);
+    }
+
+    [Fact]
+    public async Task AudioChannelsThatMakeNoSense_AreRefusedWithTheirPath()
+    {
+        var admin = await app.AdminAsync();
+        var channel = new ManifestAudioChannel("asset:a1", 0, false, AudioMode.Follow, 0);
+        var nowhere = MinimalManifest() with { AudioChannels = [channel with { Source = "asset:a9" }] };
+        var louder = MinimalManifest() with { AudioChannels = [channel with { GainDb = 40 }] };
+
+        foreach (var manifest in new[] { nowhere, louder })
+        {
+            using var response = await ImportAsync(admin, Zip(("manifest.json", ManifestJson.Serialize(manifest))));
+
+            await response.ExpectAsync(HttpStatusCode.BadRequest);
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.Contains("invalid_archive", body, StringComparison.Ordinal);
+            Assert.Contains("audioChannels[0]", body, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task AudioChannelWithAnUnknownMode_IsRefused()
+    {
+        var manifest = ManifestJsonWith(
+            MinimalManifest() with { AudioChannels = [new ManifestAudioChannel("asset:a1", 0, false, AudioMode.Follow, 0)] },
+            root => root["audioChannels"]![0]!["mode"] = "loud");
 
         await RefusedAsync(Zip(("manifest.json", manifest)), HttpStatusCode.BadRequest, ErrorCodes.InvalidArchive);
     }
