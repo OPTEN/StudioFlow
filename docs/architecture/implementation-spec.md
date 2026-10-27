@@ -883,11 +883,13 @@ rolling copy of a live picture is taken at most once a second at on-screen size;
 into the copy (`data-held-blur` on `.sf-r-box` carries the radius for tools); all copies share a time budget of 4 % of the
 main thread (`SnapshotBudget`): converting a 2560 × 1440 frame in software takes 50 to 100 ms, so an expensive copy
 delays the following ones; the first copy of an item and the copy at the moment of a loss never wait. A copy is only taken
-from a video that has a decoded frame (`readyState` ≥ 2; the size is known from the metadata before that) and that shows a
-picture (a sample of eight by eight pixels is neither transparent nor black): a frame that was never painted, or that the
-browser already painted black a moment before the track says that it ended, neither replaces the previous copy nor becomes
-the hold frame, and a blur that fails after the canvas was cleared puts the sharp picture back, so a lost item never shows
-an empty canvas (issue #50, "nothing black on air"). *Preloading*:
+from a video that has a decoded frame (`readyState` ≥ 2, and an edge of at least 16 pixels: the size is known from the
+metadata before the first frame, and a sender that stops sends black frames of two by two pixels until the SFU takes its
+track away). The frame is drawn into a scratch canvas first and a sample of eight by eight pixels of it is looked at: if it
+is neither transparent nor black it replaces the hold frame, else the previous copy stays. So a frame that was never painted,
+or that the browser already painted black, neither replaces the previous copy nor becomes the hold frame (nor resizes it,
+which would clear it), and a blur that fails after the canvas was cleared puts the sharp picture back: a lost item never
+shows an empty canvas (issue #50, "nothing black on air"). *Preloading*:
 `setPreloadScenes` takes the preview scene only (the output page passes nothing else).
 
 Texts (issue #13): an item whose source is `txt_…` is drawn as HTML by `text-block.ts`, never as a picture: sharp at every

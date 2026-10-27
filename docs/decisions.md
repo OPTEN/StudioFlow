@@ -156,8 +156,9 @@ Implementation details fixed with the work on #12 (spec 7, 8.3, 8.4, 9.1–9.3, 
     state is computed once into the copy (`blurCanvas`); there is no CSS `filter` on the live element. All copies (rolling
     hold frames and stills) share one time budget (`SnapshotBudget`, 4 % of the main thread): converting a 2560 × 1440 frame
     in software takes 50 to 100 ms, and an expensive copy delays the next ones. The first copy of an item and the copy at the
-    moment of a loss never wait. (Issue 50.) A copy needs a decoded frame (`readyState` ≥ 2) that shows a picture, not
-    transparent and not black; otherwise the previous copy stays. Nothing black on air.
+    moment of a loss never wait. (Issue 50.) A copy needs a decoded frame (`readyState` ≥ 2, an edge of at least 16 px: a
+    stopped sender sends 2 × 2 black frames) that shows a picture, not transparent and not black, looked at in a scratch
+    canvas before it replaces the hold frame; otherwise the previous copy stays. Nothing black on air.
 13. **Hardware or software.** Where the browser hides `decoderImplementation`, `encoderImplementation` and `powerEfficient*`
     from a page (Chromium without a live capture), the product asks `MediaCapabilities.decodingInfo` and `encodingInfo` what
     the browser would choose. That says hardware or software, but not which encoder; the name stays unknown.

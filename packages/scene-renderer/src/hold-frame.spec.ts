@@ -67,7 +67,7 @@ describe('hold frame helpers', () => {
   });
 
   it('copies only frames of running tracks and reuses the canvas size', () => {
-    const { drawImage } = fakeCanvas2d();
+    const { copies } = fakeCanvas2d();
     const video = document.createElement('video');
     const canvas = document.createElement('canvas');
     const limit = { width: 640, height: 368 };
@@ -76,10 +76,10 @@ describe('hold frame helpers', () => {
     expect(copyVideoFrame(video, canvas, limit)).toBe(true);
     expect([canvas.width, canvas.height]).toEqual([654, 368]);
     expect(copyVideoFrame(video, canvas, limit)).toBe(true);
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(copies()).toHaveLength(2);
     Object.defineProperty(video, 'srcObject', { value: streamWith('ended'), configurable: true });
     expect(copyVideoFrame(video, canvas, limit)).toBe(false);
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(copies()).toHaveLength(2);
   });
 
   it('tells a picture from nothing painted and from black (issue #50)', () => {
@@ -122,7 +122,7 @@ describe('hold frame helpers', () => {
   });
 
   it('does not copy a frame that shows nothing and leaves the canvas as it was', () => {
-    const { drawImage } = fakeCanvas2d();
+    const { copies } = fakeCanvas2d();
     const probe = fakePictureProbe('picture');
     const video = document.createElement('video');
     giveFrame(video);
@@ -130,7 +130,7 @@ describe('hold frame helpers', () => {
     const limit = { width: 640, height: 368 };
     expect(copyVideoFrame(video, canvas, limit)).toBe(true);
     expect([canvas.width, canvas.height]).toEqual([654, 368]);
-    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(copies()).toHaveLength(1);
 
     // Never painted, then black: the good copy is not overwritten and not resized (which would clear it).
     giveFrame(video, 640, 360);
@@ -138,11 +138,30 @@ describe('hold frame helpers', () => {
       probe.show = show;
       expect(copyVideoFrame(video, canvas, limit)).toBe(false);
       expect([canvas.width, canvas.height]).toEqual([654, 368]);
-      expect(drawImage).toHaveBeenCalledTimes(1);
+      expect(copies()).toHaveLength(1);
     }
     probe.show = 'picture';
     expect(copyVideoFrame(video, canvas, limit)).toBe(true);
-    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(copies()).toHaveLength(2);
+  });
+
+  it('does not take the 2 x 2 black frame of a sender that stopped for a frame (issue #50)', () => {
+    const { drawImage } = fakeCanvas2d();
+    fakePictureProbe('picture');
+    const video = document.createElement('video');
+    const canvas = document.createElement('canvas');
+    const limit = { width: 640, height: 368 };
+    giveFrame(video);
+    expect(copyVideoFrame(video, canvas, limit)).toBe(true);
+    const drawn = drawImage.mock.calls.length;
+
+    // The element keeps the last frame the sender sent before its track went: two by two pixels, black. The copy of it would
+    // be a black canvas of the smallest size, and resizing the canvas for it would clear the good copy.
+    giveFrame(video, 2, 2);
+    expect(hasVideoFrame(video)).toBe(false);
+    expect(copyVideoFrame(video, canvas, limit)).toBe(false);
+    expect([canvas.width, canvas.height]).toEqual([654, 368]);
+    expect(drawImage).toHaveBeenCalledTimes(drawn);
   });
 
   it('does not copy a video that only knows its size', () => {
