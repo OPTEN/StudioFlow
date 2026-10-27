@@ -69,6 +69,9 @@ export function defaultDeviceName(kind: DeviceKind, platform: string): string {
   if (known && (os === 'iPhone' || os === 'iPad')) {
     return os;
   }
+  if (kind === 'audioStation') {
+    return t('sender.core.deviceName.audioStation');
+  }
   const stem = t(
     kind === 'phone' ? 'sender.core.deviceName.phone' : 'sender.core.deviceName.laptop',
   );

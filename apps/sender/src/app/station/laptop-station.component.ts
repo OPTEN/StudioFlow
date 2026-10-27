@@ -9,6 +9,7 @@ import { describeCameraProblem, type CameraProblem } from './camera-problem';
 import { ConnectionStatusComponent } from './connection-status.component';
 import { DeviceSessionService, type StationSlot } from './device-session.service';
 import { slotNumber } from './device-messages';
+import { MicPanelComponent } from './mic-panel.component';
 import { actionErrorText } from './slot-errors';
 
 const BUSY = new Set(['starting', 'live', 'paused']);
@@ -37,11 +38,17 @@ export function slotStateText(slot: StationSlot): string {
 /**
  * Laptop with screens (plan “Laptop with screens”): one row per screen slot with code, state, local preview,
  * “Stop sharing” and “Remove”; “Share screen”, “+ Another screen”, a large “Share again” after an ended share or a
- * reshare request, and the optional camera.
+ * reshare request, the optional camera, the optional microphone and “Share audio” for the next screen share.
  */
 @Component({
   selector: 'sf-laptop-station',
-  imports: [BrandMarkComponent, ConnectionStatusComponent, IconComponent, MediaPreviewDirective],
+  imports: [
+    BrandMarkComponent,
+    ConnectionStatusComponent,
+    IconComponent,
+    MediaPreviewDirective,
+    MicPanelComponent,
+  ],
   templateUrl: './laptop-station.component.html',
   styleUrl: './laptop-station.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +67,8 @@ export class LaptopStationComponent {
   protected readonly self = this.session.self;
   protected readonly screens = this.session.screens;
   protected readonly camera = this.session.camera;
+  protected readonly mic = this.session.mic;
+  protected readonly shareAudio = computed(() => this.session.settings().shareScreenAudio);
   protected readonly facing = this.session.facing;
   protected readonly reshare = computed(() =>
     this.screens().filter((slot) => slot.reshareRequested),
@@ -111,6 +120,14 @@ export class LaptopStationComponent {
   /** “Video in screen”: 30 instead of 15 frames per second for this screen. */
   protected toggleVideoScreen(slot: StationSlot): void {
     this.session.setVideoScreen(slot.slot, !this.session.videoScreen(slot.slot));
+  }
+
+  protected hasSound(slot: StationSlot): boolean {
+    return this.session.screenHasAudio(slot.slot);
+  }
+
+  protected setShareAudio(event: Event): void {
+    this.session.setShareScreenAudio((event.target as HTMLInputElement).checked);
   }
 
   /** Must stay synchronous: the browser's share dialog needs the click (user gesture). */

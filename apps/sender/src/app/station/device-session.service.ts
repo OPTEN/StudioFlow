@@ -7,6 +7,7 @@ import {
   toRtcState,
   type LocalSlotState,
   type MediaSessionState,
+  type MicSettings,
   type SlotFailure,
   type SlotMessageKey,
   type TechCheckResult,
@@ -114,7 +115,7 @@ export interface StationSlot extends SlotView {
   readonly slot: string;
   /** Slot code (K3, S2); null while a new screen is still being allocated. */
   readonly code: string | null;
-  readonly kind: 'camera' | 'screen';
+  readonly kind: 'camera' | 'screen' | 'audio';
   readonly tally: TallyState;
   /** The Regie asked to share this screen again. */
   readonly reshareRequested: boolean;
@@ -241,13 +242,15 @@ export class DeviceSessionService {
       }
     }
     return known
-      .filter((entry) => entry.kind === 'camera' || entry.kind === 'screen')
+      .filter(
+        (entry) => entry.kind === 'camera' || entry.kind === 'screen' || entry.kind === 'audio',
+      )
       .sort((a, b) => slotNumber(a.slot) - slotNumber(b.slot))
       .map((entry): StationSlot => ({
         ...viewOf(entry.slot, states[entry.slot], ended.has(entry.slot)),
         slot: entry.slot,
         code: entry.code === '' ? null : entry.code,
-        kind: entry.kind === 'camera' ? 'camera' : 'screen',
+        kind: entry.kind === 'camera' ? 'camera' : entry.kind === 'audio' ? 'audio' : 'screen',
         tally: tally.slots[entry.slot] ?? 'off',
         reshareRequested: reshare.has(entry.slot),
       }));
@@ -257,6 +260,12 @@ export class DeviceSessionService {
   readonly camera = computed(() => this.slots().find((slot) => slot.kind === 'camera') ?? null);
   /** The screen slots. */
   readonly screens = computed(() => this.slots().filter((slot) => slot.kind === 'screen'));
+  /** The microphone slot (a person's microphone, or the feed of the mixing desk on the audio station), if the device has one. */
+  readonly mic = computed(() => this.slots().find((slot) => slot.kind === 'audio') ?? null);
+  /** The microphone is in the program (the Regie lets its sound through). */
+  readonly micLive = computed(() => this.tally().slots['mic'] === 'program');
+  /** The audio inputs of this device (browser device ids with labels), refreshed with the state of the microphone. */
+  readonly micInputs = signal<readonly { readonly id: string; readonly label: string }[]>([]);
   /** Something is being captured or published. */
   readonly sending = computed(() => this.slots().some((slot) => SENDING.has(slot.state)));
 
@@ -279,6 +288,7 @@ export class DeviceSessionService {
   private reportStartedAt: number | null = null;
   private reportSeq = 0;
   private autoStartDone = false;
+  private micAutoStartDone = false;
   private firstCheckPending = false;
   /** Screens allocated in this page that never went live: released again when their picker is cancelled. */
   private readonly freshScreens = new Set<string>();
@@ -332,6 +342,9 @@ export class DeviceSessionService {
       hub.on(HUB.sessionReplaced, () => this.enterReplaced()),
       media.session.onStateChange((state) => this.onMediaState(state)),
       media.publisher.onSlotState((slot, state, messageKey, failure) =>
+        this.onSlotState(slot, state, messageKey, failure),
+      ),
+      media.audio.onSlotState((slot, state, messageKey, failure) =>
         this.onSlotState(slot, state, messageKey, failure),
       ),
       media.publisher.onCameraSettings((camera) =>
@@ -460,11 +473,92 @@ export class DeviceSessionService {
     }
   }
 
+  // ---- Microphone ---------------------------------------------------------------------------------------------
+
+  /**
+   * Starts the microphone with the stored input. A phone or laptop gets its `mic` slot from the server first (once);
+   * the audio station has it from the start. The profile follows the device: a person's microphone keeps the browser's
+   * echo cancellation, noise suppression and gain, the feed of the mixing desk is left as it comes.
+   */
+  async startMic(): Promise<void> {
+    const media = this.media;
+    if (media === null || this.isTerminal()) {
+      return;
+    }
+    this.actionError.set(null);
+    if (this.mic() === null) {
+      try {
+        this.addSlotToSelf(await this.api.allocateSlot('audio'));
+      } catch (error) {
+        this.actionError.set(allocateSlotError(error, 'audio'));
+        return;
+      }
+    }
+    this.setEnded('mic', false);
+    this.settingsService.update({ micOn: true });
+    this.micAutoStartDone = true;
+    void media.audio.publishMic(this.micSettings());
+  }
+
+  /** Stops the microphone on purpose: the Regie sees “microphone stopped”, not an outage of the connection. */
+  stopMic(): void {
+    const media = this.media;
+    if (media === null) {
+      return;
+    }
+    this.setEnded('mic', true);
+    this.settingsService.update({ micOn: false });
+    this.micAutoStartDone = true;
+    void media.audio.unpublish();
+  }
+
+  /** Chooses the audio input (null: the default input); a running microphone switches in place. */
+  setMicInput(deviceId: string | null): void {
+    if (deviceId === this.settingsService.settings().micInput) {
+      return;
+    }
+    this.settingsService.update({ micInput: deviceId });
+    if (this.media !== null && SENDING.has(this.media.audio.slotState())) {
+      void this.media.audio.publishMic(this.micSettings());
+    }
+  }
+
+  /** Reads the audio inputs of the device again (labels appear once the microphone was allowed). */
+  async refreshMicInputs(): Promise<void> {
+    const inputs = (await this.media?.audio.listInputs()) ?? [];
+    this.micInputs.set(inputs);
+  }
+
+  /** The running microphone as a stream for the level meter, else null. */
+  micStream(): MediaStream | null {
+    this.previewRevision();
+    return this.media?.audio.localStream() ?? null;
+  }
+
+  /** “Share audio” for the next screen share. */
+  setShareScreenAudio(share: boolean): void {
+    this.settingsService.update({ shareScreenAudio: share });
+  }
+
+  /** The share of a screen carries sound (the user shared it and the browser delivers it). */
+  screenHasAudio(slot: string): boolean {
+    this.previewRevision();
+    return this.media?.publisher.screenHasAudio(slot) ?? false;
+  }
+
+  private micSettings(): MicSettings {
+    const { micInput } = this.settingsService.settings();
+    return {
+      profile: this.kind() === 'audioStation' ? 'station' : 'voice',
+      ...(micInput === null ? {} : { deviceId: micInput }),
+    };
+  }
+
   // ---- Screens ------------------------------------------------------------------------------------------------
 
   /**
-   * Shares a screen into an existing slot. Call it directly from the click handler: getDisplayMedia runs
-   * synchronously inside, before anything is awaited (user gesture).
+   * Shares a screen into an existing slot, with its sound if “Share audio” is ticked. Call it directly from the
+   * click handler: getDisplayMedia runs synchronously inside, before anything is awaited (user gesture).
    */
   shareScreen(slot: string): void {
     const media = this.media;
@@ -472,7 +566,9 @@ export class DeviceSessionService {
       return;
     }
     this.actionError.set(null);
-    void media.publisher.publishScreen(slot);
+    void media.publisher.publishScreen(slot, {
+      audio: this.settingsService.settings().shareScreenAudio,
+    });
     this.setReshare(slot, false);
   }
 
@@ -498,7 +594,9 @@ export class DeviceSessionService {
       return;
     }
     this.actionError.set(null);
-    void media.publisher.publishScreen(slot);
+    void media.publisher.publishScreen(slot, {
+      audio: this.settingsService.settings().shareScreenAudio,
+    });
     this.freshScreens.add(slot);
     this.pendingScreens.update((pending) => new Set([...pending, slot]));
     this.queueScreenAllocation(slot);
@@ -538,7 +636,7 @@ export class DeviceSessionService {
 
   /** “Remove”: stops the slot and removes the source in the Regie (`DELETE /api/device/slots/{slot}`). */
   async removeSlot(slot: string): Promise<void> {
-    void this.media?.publisher.unpublish(slot);
+    this.stopPublishing(slot);
     this.setEnded(slot, false);
     this.setReshare(slot, false);
     this.forgetSharedScreen(slot);
@@ -758,6 +856,15 @@ export class DeviceSessionService {
     }, MESSAGE_DISMISS_MS);
   }
 
+  /** Stops what a slot publishes: the microphone has its own publisher, everything else belongs to the video one. */
+  private stopPublishing(slot: string): void {
+    if (slot === 'mic') {
+      void this.media?.audio.unpublish();
+    } else {
+      void this.media?.publisher.unpublish(slot);
+    }
+  }
+
   private requestReshare(slot: string | null): void {
     if (slot === null || slotKind(slot) !== 'screen') {
       return;
@@ -778,7 +885,7 @@ export class DeviceSessionService {
           !self.slots.some((entry) => entry.slot === slot.slot) &&
           !this.pendingScreens().has(slot.slot)
         ) {
-          void this.media?.publisher.unpublish(slot.slot);
+          this.stopPublishing(slot.slot);
           this.setEnded(slot.slot, false);
           this.setReshare(slot.slot, false);
           this.forgetSharedScreen(slot.slot);
@@ -790,6 +897,7 @@ export class DeviceSessionService {
       return;
     }
     this.maybeAutoStartCamera();
+    this.maybeAutoStartMic();
   }
 
   // ---- Media --------------------------------------------------------------------------------------------------
@@ -836,6 +944,9 @@ export class DeviceSessionService {
     }
     if (slot === 'camera' && this.firstCheckPending && (state === 'live' || state === 'failed')) {
       void this.runTechCheck();
+    }
+    if (slot === 'mic') {
+      void this.refreshMicInputs();
     }
     this.updateDerived();
   }
@@ -1031,6 +1142,7 @@ export class DeviceSessionService {
     void this.hub?.stop();
     this.media?.session.stop();
     void this.media?.publisher.stopAll();
+    void this.media?.audio.unpublish();
     this.credentials.clear();
     this.settingsService.update({ sharedScreens: [], techCheck: null });
     this.notices.pairingNotice.set('sender.notices.deviceRemoved');
@@ -1060,8 +1172,9 @@ export class DeviceSessionService {
     const seq = ++this.reportSeq;
     this.reportStartedAt = monotonicNow();
     try {
-      const [telemetry, battery, camera] = await Promise.all([
+      const [telemetry, mic, battery, camera] = await Promise.all([
         media.publisher.getSlotTelemetry().catch(() => []),
+        media.audio.getSlotTelemetry().catch(() => null),
         this.env.battery().catch(() => null),
         // Remote camera control is for phones only (no PTZ webcams).
         this.kind() === 'phone'
@@ -1070,7 +1183,7 @@ export class DeviceSessionService {
       ]);
       const report = buildDeviceReport({
         mediaState: media.session.state,
-        telemetry,
+        telemetry: mic === null ? telemetry : [...telemetry, mic],
         deviceSlots: this.self()?.slots.map((slot) => slot.slot) ?? null,
         endedSlots: this.endedSlots(),
         battery,
@@ -1181,6 +1294,29 @@ export class DeviceSessionService {
   }
 
   /**
+   * The audio station starts its microphone by itself (unless it was switched off on purpose): nobody is at the laptop
+   * to press a button, and a restart of the page must bring the sound of the desk back.
+   */
+  private maybeAutoStartMic(): void {
+    if (
+      this.micAutoStartDone ||
+      this.media === null ||
+      this.isTerminal() ||
+      this.kind() !== 'audioStation' ||
+      this.mic() === null
+    ) {
+      return;
+    }
+    this.micAutoStartDone = true;
+    if (this.settingsService.settings().micOn === false) {
+      return;
+    }
+    if (this.media.audio.slotState() === 'idle') {
+      void this.startMic();
+    }
+  }
+
+  /**
    * Technical check, and the slots that stay stopped after a reload: screens shared before it (they need a click) and
    * a camera stopped on purpose. Every report replaces the server's slot states of this session, so they are reported
    * `ended` again; a slot the device does not have is filtered out by the report.
@@ -1191,7 +1327,8 @@ export class DeviceSessionService {
       this.techCheck.set(this.settingsService.techCheckFor(deviceId));
     }
     const { sharedScreens, cameraOn } = this.settingsService.settings();
-    const stopped = cameraOn ? sharedScreens : [...sharedScreens, 'camera'];
+    // The microphone is off after a reload until the person (or, on the audio station, the page) turns it on.
+    const stopped = [...sharedScreens, ...(cameraOn ? [] : ['camera']), 'mic'];
     if (stopped.length > 0) {
       this.endedSlots.update((ended) => new Set([...ended, ...stopped]));
     }
@@ -1274,7 +1411,10 @@ export class DeviceSessionService {
     } else {
       void this.wakeLock?.disable();
     }
-    this.liveState.onAir.set(this.phase() === 'online' && this.tally().overall !== 'off');
+    // A live microphone counts: an update must not reload the page in the middle of the sound.
+    this.liveState.onAir.set(
+      this.phase() === 'online' && (this.tally().overall !== 'off' || this.micLive()),
+    );
     this.liveState.sharingScreen.set(
       slots.some((slot) => slot.kind === 'screen' && SENDING.has(slot.state)),
     );
@@ -1383,6 +1523,7 @@ export class DeviceSessionService {
     void this.hub?.stop();
     this.media?.session.stop();
     this.media?.publisher.dispose();
+    this.media?.audio.dispose();
     this.wakeLock?.dispose();
     this.liveState.reset();
     this.removeTestHook();

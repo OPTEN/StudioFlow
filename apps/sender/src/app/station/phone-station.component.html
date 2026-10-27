@@ -43,6 +43,11 @@
       <h1 class="c-phone__name" id="phone-station-title" data-route-focus tabindex="-1">
         {{ name() }}
       </h1>
+      @if (session.micLive()) {
+        <span class="c-tag c-tag--program" data-testid="mic-live">{{
+          t('sender.audio.live')
+        }}</span>
+      }
     </div>
     <sf-connection-status
       [view]="session.connection()"
@@ -152,6 +157,17 @@
         </label>
       </div>
     </fieldset>
+
+    <button
+      class="c-button c-button--overlay c-phone__mic"
+      type="button"
+      data-testid="mic-toggle"
+      [attr.aria-pressed]="micRunning()"
+      (click)="toggleMic(); $event.stopPropagation()"
+    >
+      <sf-icon name="mic" />
+      {{ micRunning() ? t('sender.audio.phone.on') : t('sender.audio.phone.off') }}
+    </button>
 
     <button
       class="c-button c-button--overlay c-phone__dark-toggle"

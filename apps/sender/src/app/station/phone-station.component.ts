@@ -53,6 +53,10 @@ export class PhoneStationComponent {
     const state = this.cameraState();
     return state === 'starting' || state === 'live' || state === 'paused';
   });
+  protected readonly micRunning = computed(() => {
+    const state = this.session.mic()?.state ?? 'idle';
+    return state === 'starting' || state === 'live' || state === 'paused';
+  });
   protected readonly preview = computed(() =>
     this.running() ? this.session.preview('camera') : null,
   );
@@ -82,6 +86,14 @@ export class PhoneStationComponent {
       this.session.stopCamera();
     } else {
       this.session.startCamera();
+    }
+  }
+
+  protected toggleMic(): void {
+    if (this.micRunning()) {
+      this.session.stopMic();
+    } else {
+      void this.session.startMic();
     }
   }
 

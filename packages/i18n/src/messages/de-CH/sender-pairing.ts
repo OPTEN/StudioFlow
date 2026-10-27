@@ -20,6 +20,7 @@ export const senderPairing: Translation<typeof en> = {
 
   'sender.pairing.start.foot':
     'Mit dem QR-Code der Regie geht es noch schneller: einfach mit der Kamera-App des Handys scannen.',
+  'sender.pairing.start.kindAudioStation': 'Audiostation (Mischpult)',
   'sender.pairing.start.kindLaptop': 'Laptop (Bildschirm)',
   'sender.pairing.start.kindLegend': 'Was sendet dieses Gerät?',
   'sender.pairing.start.kindPhone': 'Handy (Kamera)',

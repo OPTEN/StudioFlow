@@ -55,7 +55,6 @@ export const regieAudio = {
   'regie.audio.role.video': 'Video sound',
 
   'regie.audio.row.details': 'Mode and sync offset of {name}',
-  'regie.audio.row.error': 'The mixer change was not saved.',
   'regie.audio.row.fader': 'Level of {name}',
   'regie.audio.row.faderText': '{value} dB',
   'regie.audio.row.group': 'Audio channel {name}',

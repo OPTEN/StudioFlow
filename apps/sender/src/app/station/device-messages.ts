@@ -80,7 +80,7 @@ function isSlot(value: unknown): value is DeviceSlotDto {
   return (
     typeof slot.slot === 'string' &&
     typeof slot.code === 'string' &&
-    (slot.kind === 'camera' || slot.kind === 'screen')
+    (slot.kind === 'camera' || slot.kind === 'screen' || slot.kind === 'audio')
   );
 }
 
@@ -93,7 +93,7 @@ export function isDeviceSelf(value: unknown): value is DeviceSelfDto {
   return (
     typeof self.id === 'string' &&
     typeof self.name === 'string' &&
-    (self.kind === 'phone' || self.kind === 'laptop') &&
+    (self.kind === 'phone' || self.kind === 'laptop' || self.kind === 'audioStation') &&
     (self.state === 'active' || self.state === 'blocked') &&
     Array.isArray(self.slots) &&
     self.slots.every(isSlot)
@@ -105,7 +105,10 @@ export function isBlockedHubError(error: unknown): boolean {
   return hubErrorCode(error) === ERROR_CODES.deviceBlocked;
 }
 
-/** Number of a screen slot (`screen-3` → 3), 0 for the camera. */
+/** Number of a screen slot (`screen-3` → 3), 0 for the camera, 10 for the microphone (after the screens in lists). */
 export function slotNumber(slot: string): number {
+  if (slot === 'mic') {
+    return 10;
+  }
   return slot === 'camera' ? 0 : Number(slot.slice('screen-'.length)) || 0;
 }

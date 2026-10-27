@@ -1,0 +1,35 @@
+<div class="c-audio-station">
+  <header class="c-audio-station__bar">
+    <sf-brand-mark class="c-audio-station__brand" />
+    <sf-connection-status
+      class="c-audio-station__connection"
+      [view]="session.connection()"
+      [since]="session.degradedSince()"
+      [now]="session.now()"
+    />
+    <button class="c-button c-audio-station__check" type="button" (click)="openTechCheck.emit()">
+      <span
+        class="c-lamp"
+        [class.c-lamp--idle]="techLevel() === 'unknown'"
+        [class.c-lamp--warn]="techLevel() === 'warn'"
+        [class.c-lamp--bad]="techLevel() === 'bad'"
+        aria-hidden="true"
+      ></span>
+      {{ t('sender.techcheck.open') }}
+    </button>
+  </header>
+
+  <main class="c-audio-station__main">
+    <div class="c-audio-station__intro">
+      <h1 class="c-audio-station__title" data-route-focus tabindex="-1">
+        {{ self()?.name }}
+      </h1>
+      <p class="c-audio-station__lead">
+        {{ t('sender.audio.station.lead', { name: self()?.name ?? '' }) }}
+      </p>
+      <p class="c-audio-station__hint">{{ t('sender.audio.station.hint') }}</p>
+    </div>
+
+    <sf-mic-panel />
+  </main>
+</div>

@@ -12,9 +12,11 @@ import {
   LIVEKIT_TOKEN,
   MemoryStorage,
   TECH_CHECK_OK,
+  audioStationSelf,
   fakeEnvironment,
   fakeMedia,
   laptopSelf,
+  micSlot,
   phoneSelf,
   settle,
 } from '../../testing/sender-fakes';
@@ -1060,6 +1062,251 @@ describe('DeviceSessionService', () => {
       expect(service.settings()).toEqual(
         expect.objectContaining({ facing: 'user', lens: null, image: { torch: true } }),
       );
+    });
+  });
+
+  describe('microphone (issue #7)', () => {
+    it('a phone has no microphone until the person switches it on, then it is allocated and published', async () => {
+      const service = setup();
+      await online(service);
+
+      expect(service.mic()).toBeNull();
+      expect(media.audio.calls).toEqual([]);
+
+      api.allocateSlot.mockResolvedValue({ slot: 'mic', code: 'A1', kind: 'audio' });
+      await service.startMic();
+
+      expect(api.allocateSlot).toHaveBeenCalledWith('audio');
+      expect(media.audio.calls).toEqual(['publishMic:voice:default']);
+      expect(service.mic()).toMatchObject({ slot: 'mic', code: 'A1', kind: 'audio' });
+      expect(service.settings().micOn).toBe(true);
+    });
+
+    it('does not allocate a second microphone slot', async () => {
+      const service = setup({ self: phoneSelf({ slots: [...phoneSelf().slots, micSlot()] }) });
+      await online(service);
+
+      await service.startMic();
+
+      expect(api.allocateSlot).not.toHaveBeenCalled();
+      expect(media.audio.calls).toEqual(['publishMic:voice:default']);
+    });
+
+    it('a device that already has a microphone slot does not start it by itself (muted by default)', async () => {
+      const service = setup({ self: phoneSelf({ slots: [...phoneSelf().slots, micSlot()] }) });
+      await online(service);
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+      expect(media.audio.calls).toEqual([]);
+      expect(lastReport().slots).toContainEqual(
+        expect.objectContaining({ slot: 'mic', state: 'ended' }),
+      );
+    });
+
+    it('says when the microphone is already taken (409 limit_reached)', async () => {
+      const service = setup();
+      await online(service);
+      api.allocateSlot.mockRejectedValue(new ApiError(409, 'limit_reached', 'x'));
+
+      await service.startMic();
+
+      expect(media.audio.calls).toEqual([]);
+      const error = service.actionError();
+      expect(error === null ? null : actionErrorText(error)).toBe(
+        'This device already has a microphone.',
+      );
+    });
+
+    it('the audio station starts the desk feed by itself, as a station with the chosen input', async () => {
+      const service = setup({
+        self: audioStationSelf(),
+        settings: { micInput: 'usb-interface' },
+      });
+      await online(service);
+
+      expect(media.audio.calls).toEqual(['publishMic:station:usb-interface']);
+      expect(service.mic()?.state).toBe('starting');
+    });
+
+    it('the audio station stays off after the person switched the microphone off', async () => {
+      const service = setup({ self: audioStationSelf(), settings: { micOn: false } });
+      await online(service);
+
+      expect(media.audio.calls).toEqual([]);
+      expect(service.mic()?.state).toBe('idle');
+    });
+
+    it('“Switch off” stops the microphone on purpose and a reload keeps it off', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+      media.audio.emit('live');
+
+      service.stopMic();
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+      expect(media.audio.calls).toContain('unpublish');
+      expect(service.mic()?.state).toBe('idle');
+      expect(service.settings().micOn).toBe(false);
+      expect(lastReport().slots).toEqual([
+        expect.objectContaining({ slot: 'mic', state: 'ended' }),
+      ]);
+      TestBed.resetTestingModule();
+      const reloaded = setup({
+        self: audioStationSelf(),
+        settings: storage.readJson(STORAGE_KEYS.settings) as Record<string, unknown>,
+      });
+      await online(reloaded);
+
+      expect(media.audio.calls).toEqual([]);
+    });
+
+    it('switching the input of a running microphone publishes it again with the new input', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+      media.audio.emit('live');
+
+      service.setMicInput('line-in');
+
+      expect(media.audio.calls).toEqual([
+        'publishMic:station:default',
+        'publishMic:station:line-in',
+      ]);
+      expect(service.settings().micInput).toBe('line-in');
+    });
+
+    it('remembers an input chosen while the microphone is off without starting it', async () => {
+      const service = setup({ self: phoneSelf({ slots: [...phoneSelf().slots, micSlot()] }) });
+      await online(service);
+
+      service.setMicInput('headset');
+      service.setMicInput(null);
+
+      expect(media.audio.calls).toEqual([]);
+      expect(service.settings().micInput).toBeNull();
+    });
+
+    it('lists the audio inputs of the device and refreshes them with the state of the microphone', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+      media.audio.inputs = [{ id: 'usb-interface', label: 'USB interface' }];
+
+      await service.refreshMicInputs();
+
+      expect(service.micInputs()).toEqual([{ id: 'usb-interface', label: 'USB interface' }]);
+    });
+
+    it('reports the microphone with the telemetry of the video slots, and a problem as failed', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+      media.audio.telemetry = {
+        slot: 'mic',
+        state: 'live',
+        width: null,
+        height: null,
+        fps: null,
+        bitrateKbps: 128,
+        packetLossPct: 0,
+        codec: 'opus',
+      };
+      media.audio.emit('live');
+
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+      expect(lastReport().slots).toEqual([
+        expect.objectContaining({ slot: 'mic', state: 'live', bitrateKbps: 128, codec: 'opus' }),
+      ]);
+
+      media.audio.telemetry = null;
+      media.audio.emit('failed', 'media.slot.mic.not-found', 'not-found');
+      await vi.advanceTimersByTimeAsync(REPORT_INTERVAL_MS);
+
+      expect(service.mic()).toMatchObject({
+        state: 'failed',
+        messageKey: 'media.slot.mic.not-found',
+      });
+    });
+
+    it('the microphone is live while the tally of the mic slot is program, and the overall tally stays off', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+
+      hub.emit('tally', { overall: 'off', slots: { mic: 'program' } });
+
+      expect(service.micLive()).toBe(true);
+      expect(service.slots()[0].tally).toBe('program');
+
+      hub.emit('tally', { overall: 'off', slots: {} });
+
+      expect(service.micLive()).toBe(false);
+    });
+
+    it('a live microphone counts as on air: an update must not reload the page', async () => {
+      const service = setup({ self: audioStationSelf() });
+      const liveState = TestBed.inject(LiveStateService);
+      await online(service);
+
+      hub.emit('tally', { overall: 'off', slots: { mic: 'program' } });
+
+      expect(liveState.busy()).toBe(true);
+    });
+
+    it('removing the microphone slot stops its publisher and removes the slot', async () => {
+      const service = setup({ self: phoneSelf({ slots: [...phoneSelf().slots, micSlot()] }) });
+      await online(service);
+
+      await service.removeSlot('mic');
+
+      expect(media.audio.calls).toContain('unpublish');
+      expect(media.publisher.calls).not.toContain('unpublish:mic');
+      expect(api.releaseSlot).toHaveBeenCalledWith('mic');
+    });
+
+    it('leaving the page disposes the microphone publisher', async () => {
+      const service = setup({ self: audioStationSelf() });
+      await online(service);
+
+      TestBed.resetTestingModule();
+
+      expect(media.audio.disposed).toBe(true);
+      expect(service.mic()).not.toBeNull();
+    });
+
+    it('shares the sound of a screen only when “Share audio” is ticked, and remembers it', async () => {
+      const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+      await online(service);
+
+      service.shareScreen('screen-1');
+      service.setShareScreenAudio(true);
+      service.shareScreen('screen-1');
+
+      expect(media.publisher.calls.filter((call) => call.startsWith('publishScreen'))).toEqual([
+        'publishScreen:screen-1',
+        'publishScreen:screen-1:audio',
+      ]);
+      expect(service.settings().shareScreenAudio).toBe(true);
+    });
+
+    it('a screen added with “Share audio” ticked asks for its sound at once', async () => {
+      const service = setup({
+        self: laptopSelf(),
+        settings: { cameraOn: false, shareScreenAudio: true },
+      });
+      await online(service);
+      media.publisher.emitSlot('screen-1', 'live');
+      api.allocateSlot.mockResolvedValue({ slot: 'screen-2', code: 'S5', kind: 'screen' });
+
+      service.addScreen();
+
+      expect(media.publisher.calls).toContain('publishScreen:screen-2:audio');
+    });
+
+    it('knows whether a share carries sound', async () => {
+      const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+      await online(service);
+      media.publisher.screensWithSound.add('screen-1');
+
+      expect(service.screenHasAudio('screen-1')).toBe(true);
+      expect(service.screenHasAudio('screen-2')).toBe(false);
     });
   });
 });

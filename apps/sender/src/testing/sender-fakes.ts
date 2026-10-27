@@ -6,6 +6,7 @@ import type {
   CameraSettings,
   LocalSlotState,
   MediaSessionState,
+  MicSettings,
   ScreenFrameRate,
   SlotFailure,
   SlotMessageKey,
@@ -16,6 +17,7 @@ import type {
   CameraControlDto,
   CameraStateDto,
   DeviceSelfDto,
+  DeviceSlotDto,
   LiveKitTokenDto,
   SlotTelemetryDto,
 } from '@studioflow/scene-model';
@@ -23,6 +25,7 @@ import type { SafeStorage } from '../app/core/browser-storage';
 import type { DeviceEnvironment } from '../app/core/device-environment';
 import type {
   DeviceHub,
+  SenderAudio,
   SenderMedia,
   SenderMediaSession,
   SenderPublisher,
@@ -248,10 +251,17 @@ export class FakePublisher implements SenderPublisher {
     return Promise.resolve();
   }
 
-  publishScreen(slot: string): Promise<void> {
-    this.calls.push(`publishScreen:${slot}`);
+  publishScreen(slot: string, options: { readonly audio?: boolean } = {}): Promise<void> {
+    this.calls.push(`publishScreen:${slot}${options.audio === true ? ':audio' : ''}`);
     this.emitSlot(slot, 'starting');
     return Promise.resolve();
+  }
+
+  /** Slots whose share carries sound (a test sets it; the real publisher knows from the capture). */
+  readonly screensWithSound = new Set<string>();
+
+  screenHasAudio(slot: string): boolean {
+    return this.screensWithSound.has(slot);
   }
 
   unpublish(slot: string): Promise<void> {
@@ -329,6 +339,83 @@ export class FakePublisher implements SenderPublisher {
   }
 }
 
+/** Fake microphone publisher: records calls and lets tests drive the slot state and the inputs. */
+export class FakeAudio implements SenderAudio {
+  readonly calls: string[] = [];
+  state: LocalSlotState = 'idle';
+  current: MicSettings | null = null;
+  inputs: { id: string; label: string }[] = [];
+  stream: MediaStream | null = null;
+  telemetry: SlotTelemetryDto | null = null;
+  disposed = false;
+  private readonly listeners = new Set<
+    (
+      slot: string,
+      state: LocalSlotState,
+      messageKey?: SlotMessageKey,
+      failure?: SlotFailure,
+    ) => void
+  >();
+
+  publishMic(settings: MicSettings): Promise<void> {
+    this.calls.push(`publishMic:${settings.profile}:${settings.deviceId ?? 'default'}`);
+    this.current = settings;
+    this.emit('starting');
+    return Promise.resolve();
+  }
+
+  unpublish(): Promise<void> {
+    this.calls.push('unpublish');
+    this.current = null;
+    this.emit('idle');
+    return Promise.resolve();
+  }
+
+  onSlotState(
+    listener: (
+      slot: string,
+      state: LocalSlotState,
+      messageKey?: SlotMessageKey,
+      failure?: SlotFailure,
+    ) => void,
+  ): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  slotState(): LocalSlotState {
+    return this.state;
+  }
+
+  settings(): MicSettings | null {
+    return this.current;
+  }
+
+  listInputs(): Promise<readonly { readonly id: string; readonly label: string }[]> {
+    return Promise.resolve(this.inputs);
+  }
+
+  localStream(): MediaStream | null {
+    return this.stream;
+  }
+
+  getSlotTelemetry(): Promise<SlotTelemetryDto | null> {
+    return Promise.resolve(this.telemetry);
+  }
+
+  dispose(): void {
+    this.disposed = true;
+  }
+
+  /** Drives the slot state as the real publisher would. */
+  emit(state: LocalSlotState, messageKey?: SlotMessageKey, failure?: SlotFailure): void {
+    this.state = state;
+    for (const listener of [...this.listeners]) {
+      listener('mic', state, messageKey, failure);
+    }
+  }
+}
+
 /** Fake wake lock. */
 export class FakeWakeLock implements StationWakeLock {
   active = false;
@@ -351,8 +438,16 @@ export class FakeWakeLock implements StationWakeLock {
 }
 
 /** Media pair of fakes. */
-export function fakeMedia(): SenderMedia & { session: FakeMediaSession; publisher: FakePublisher } {
-  return { session: new FakeMediaSession(), publisher: new FakePublisher() };
+export function fakeMedia(): SenderMedia & {
+  session: FakeMediaSession;
+  publisher: FakePublisher;
+  audio: FakeAudio;
+} {
+  return {
+    session: new FakeMediaSession(),
+    publisher: new FakePublisher(),
+    audio: new FakeAudio(),
+  };
 }
 
 /** A configurable device environment. */
@@ -394,6 +489,25 @@ export function laptopSelf(overrides: Partial<DeviceSelfDto> = {}): DeviceSelfDt
     productionId: 'prd_webinar01',
     productionName: 'Webinar',
     slots: [{ slot: 'screen-1', code: 'S2', kind: 'screen' }],
+    ...overrides,
+  };
+}
+
+/** The microphone slot of a device. */
+export function micSlot(): DeviceSlotDto {
+  return { slot: 'mic', code: 'A1', kind: 'audio' };
+}
+
+/** Self of an audio station: the desk feed is its only source. */
+export function audioStationSelf(overrides: Partial<DeviceSelfDto> = {}): DeviceSelfDto {
+  return {
+    id: 'dev_station01',
+    name: 'Mixing desk',
+    kind: 'audioStation',
+    state: 'active',
+    productionId: 'prd_webinar01',
+    productionName: 'Webinar',
+    slots: [micSlot()],
     ...overrides,
   };
 }

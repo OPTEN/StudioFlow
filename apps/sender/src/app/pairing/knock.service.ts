@@ -43,7 +43,7 @@ function parseKnock(value: unknown): PendingKnock | null {
     /^\d{4}$/.test(knock.checkCode) &&
     typeof knock.expiresAt === 'string' &&
     typeof knock.name === 'string' &&
-    (knock.kind === 'phone' || knock.kind === 'laptop');
+    (knock.kind === 'phone' || knock.kind === 'laptop' || knock.kind === 'audioStation');
   return valid ? (knock as PendingKnock) : null;
 }
 

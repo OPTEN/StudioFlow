@@ -236,3 +236,25 @@
     }
   }
 }
+
+// “Share audio”: one checkbox row with the honest note about what the browser can share.
+.c-laptop__audio {
+  display: grid;
+  gap: $SPACE_SM;
+}
+
+.c-laptop__check-row {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 600;
+  gap: $SPACE_LG;
+  min-height: $TOUCH_TARGET;
+}
+
+.c-laptop__checkbox {
+  accent-color: var(--blue);
+  height: 20px;
+  margin: 0;
+  width: 20px;
+}

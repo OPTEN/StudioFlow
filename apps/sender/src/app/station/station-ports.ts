@@ -1,5 +1,5 @@
 import { InjectionToken } from '@angular/core';
-import { MediaSession, Publisher } from '@studioflow/media-client';
+import { AudioPublisher, MediaSession, Publisher } from '@studioflow/media-client';
 import {
   ScreenWakeLock,
   runTechCheck,
@@ -47,6 +47,7 @@ export type SenderPublisher = Pick<
   | 'setCameraResolution'
   | 'publishScreen'
   | 'setScreenFrameRate'
+  | 'screenHasAudio'
   | 'unpublish'
   | 'stopAll'
   | 'onSlotState'
@@ -59,10 +60,26 @@ export type SenderPublisher = Pick<
   | 'dispose'
 >;
 
-/** The media pair of a station. */
+/** Microphone publishing (`AudioPublisher` from `@studioflow/media-client`). */
+export type SenderAudio = Pick<
+  AudioPublisher,
+  | 'publishMic'
+  | 'unpublish'
+  | 'onSlotState'
+  | 'slotState'
+  | 'settings'
+  | 'listInputs'
+  | 'localStream'
+  | 'getSlotTelemetry'
+  | 'dispose'
+>;
+
+/** The media set of a station. */
 export interface SenderMedia {
   readonly session: SenderMediaSession;
   readonly publisher: SenderPublisher;
+  /** The microphone of the device: a person's microphone or the feed of the mixing desk. */
+  readonly audio: SenderAudio;
 }
 
 /** Creates the media pair; `tokenProvider` fetches a fresh LiveKit token for every join. */
@@ -90,7 +107,7 @@ export const SENDER_MEDIA_FACTORY = new InjectionToken<SenderMediaFactory>(
     providedIn: 'root',
     factory: () => (tokenProvider) => {
       const session = new MediaSession({ role: 'sender', tokenProvider });
-      return { session, publisher: new Publisher(session) };
+      return { session, publisher: new Publisher(session), audio: new AudioPublisher(session) };
     },
   },
 );

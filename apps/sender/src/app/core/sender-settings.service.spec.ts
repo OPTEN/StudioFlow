@@ -37,6 +37,36 @@ describe('SenderSettingsService', () => {
     });
   });
 
+  it('keeps the microphone choices: on or off on purpose, the input and “Share audio”', () => {
+    const first = create();
+    expect(first.settings()).toMatchObject({
+      micOn: null,
+      micInput: null,
+      shareScreenAudio: false,
+    });
+    first.update({ micOn: false, micInput: 'usb-interface', shareScreenAudio: true });
+    TestBed.resetTestingModule();
+
+    expect(create().settings()).toMatchObject({
+      micOn: false,
+      micInput: 'usb-interface',
+      shareScreenAudio: true,
+    });
+  });
+
+  it('drops corrupt microphone values one by one', () => {
+    expect(parseSettings({ micOn: 'yes', micInput: '', shareScreenAudio: 1 })).toMatchObject({
+      micOn: null,
+      micInput: null,
+      shareScreenAudio: false,
+    });
+    expect(parseSettings({ micInput: 'x'.repeat(600) }).micInput).toBeNull();
+    expect(parseSettings({ micOn: true, micInput: 'line-in' })).toMatchObject({
+      micOn: true,
+      micInput: 'line-in',
+    });
+  });
+
   it('falls back per value for corrupt data', () => {
     expect(
       parseSettings({

@@ -1,0 +1,57 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+// A panel like the rows of the laptop page: hairline above and below, red edge while the microphone is on air.
+.c-mic {
+  border-bottom: 1px solid var(--seam);
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: $SPACE_LG;
+  padding: $SPACE_GUTTER 0;
+
+  &.is-live {
+    box-shadow: inset 3px 0 0 var(--red);
+    padding-left: $SPACE_LG;
+  }
+}
+
+.c-mic__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD;
+}
+
+.c-mic__icon {
+  color: var(--muted);
+}
+
+.c-mic__title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.c-mic__state {
+  color: var(--text-2);
+  font-size: 15px;
+
+  &.is-bad {
+    color: var(--red);
+    font-weight: 700;
+  }
+}
+
+.c-mic__message,
+.c-mic__note {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.c-mic__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_LG;
+}

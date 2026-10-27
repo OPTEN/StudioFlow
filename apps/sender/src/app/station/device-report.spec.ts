@@ -104,6 +104,39 @@ describe('buildDeviceReport', () => {
     });
   });
 
+  it('reports the microphone after the screens, live with its telemetry or ended when switched off', () => {
+    const mic: SlotTelemetryDto = {
+      slot: 'mic',
+      state: 'live',
+      width: null,
+      height: null,
+      fps: null,
+      bitrateKbps: 128,
+      packetLossPct: 0,
+      codec: 'opus',
+    };
+    const live = buildDeviceReport(
+      input({
+        telemetry: [CAMERA, { ...CAMERA, slot: 'screen-1' }, mic],
+        deviceSlots: ['camera', 'screen-1', 'mic'],
+      }),
+    );
+    expect(live.slots.map((slot) => [slot.slot, slot.state])).toEqual([
+      ['camera', 'live'],
+      ['screen-1', 'live'],
+      ['mic', 'live'],
+    ]);
+    expect(live.slots[2]).toEqual(mic);
+
+    const off = buildDeviceReport(
+      input({ telemetry: [CAMERA], deviceSlots: ['camera', 'mic'], endedSlots: new Set(['mic']) }),
+    );
+    expect(off.slots.map((slot) => [slot.slot, slot.state])).toEqual([
+      ['camera', 'live'],
+      ['mic', 'ended'],
+    ]);
+  });
+
   it('leaves out slots that do not belong to the device (a screen still being allocated)', () => {
     const report = buildDeviceReport(
       input({ telemetry: [CAMERA, { ...CAMERA, slot: 'screen-3' }], deviceSlots: ['camera'] }),
