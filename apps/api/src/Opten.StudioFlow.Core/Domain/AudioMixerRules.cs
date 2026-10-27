@@ -132,6 +132,14 @@ public static class AudioMixerRules
             errors.Add($"{path}.mode", "The sound of a video always belongs to its picture.");
         }
 
+        ValidateValues(channel, path, errors);
+    }
+
+    /// <summary>Checks the numbers and the mode of a channel (fader, delay, known mode); the source is checked by the caller.</summary>
+    public static void ValidateValues(AudioChannelDto channel, string path, ValidationErrors errors)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+        ArgumentNullException.ThrowIfNull(errors);
         if (!double.IsFinite(channel.GainDb) || channel.GainDb < MinGainDb || channel.GainDb > MaxGainDb)
         {
             errors.Add($"{path}.gainDb", $"Must be between {MinGainDb.ToString(CultureInfo.InvariantCulture)} and {MaxGainDb.ToString(CultureInfo.InvariantCulture)} dB.");

@@ -77,7 +77,7 @@ public sealed class ProductionTransferService(
                 var original = source.Assets[i];
                 var extension = Path.GetExtension(source.Media[i].FileName);
                 var fileName = await media.CopyAsync(plan.ProductionId, plan.Assets[i].AssetId, extension, source.Files[i], cancellationToken);
-                stored.Add(new StoredAsset(original.Kind, original.ContentType, original.SizeBytes, original.Width, original.Height, fileName));
+                stored.Add(new StoredAsset(original.Kind, original.ContentType, original.SizeBytes, original.Width, original.Height, fileName, original.HasAudio));
             }
 
             var desired = requested ?? ProductionNames.CopyOf(source.Name);
@@ -215,7 +215,7 @@ public sealed class ProductionTransferService(
                     throw TransferErrors.Invalid($"{asset.Entry.File} is not the {asset.Entry.Kind.ToString().ToLowerInvariant()} the manifest says.");
                 }
 
-                staged.Stored.Add(new StoredAsset(stored.Kind, stored.ContentType, stored.SizeBytes, stored.Width, stored.Height, stored.FileName));
+                staged.Stored.Add(new StoredAsset(stored.Kind, stored.ContentType, stored.SizeBytes, stored.Width, stored.Height, stored.FileName, stored.HasAudio));
             }
 
             return staged;
@@ -238,14 +238,22 @@ public sealed class ProductionTransferService(
         await using var unit = data.Create();
         unit.Productions.Add(production);
         unit.OutputLinks.Add(OutputLink.Create(production.Id, OutputLink.DefaultName, [], now));
+        var assets = new List<Asset>(plan.Assets.Count);
         for (var i = 0; i < plan.Assets.Count; i++)
         {
             var asset = plan.Assets[i];
             var file = stored[i];
 
             // One microsecond apart, so the media keep the order of the original (the list is ordered by upload time).
-            unit.Assets.Add(Asset.Create(asset.AssetId, production.Id, asset.Code, asset.Name, file.Kind, file.ContentType, file.SizeBytes, file.Width, file.Height, file.FileName, now.AddTicks(i * 10L)));
+            assets.Add(Asset.Create(asset.AssetId, production.Id, asset.Code, asset.Name, file.Kind, file.ContentType, file.SizeBytes, file.Width, file.Height, file.FileName, now.AddTicks(i * 10L), file.HasAudio));
         }
+
+        foreach (var asset in assets)
+        {
+            unit.Assets.Add(asset);
+        }
+
+        plan.SeedAudioChannels(production, assets);
 
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Name] = production.Name };
         if (original is not null)
@@ -280,7 +288,7 @@ public sealed class ProductionTransferService(
     }
 
     /// <summary>A stored medium: what the asset needs to know of its file.</summary>
-    private sealed record StoredAsset(AssetKind Kind, string ContentType, long SizeBytes, int? Width, int? Height, string FileName);
+    private sealed record StoredAsset(AssetKind Kind, string ContentType, long SizeBytes, int? Width, int? Height, string FileName, bool HasAudio);
 
     /// <summary>A production described for a copy, with its open media files.</summary>
     private sealed class CapturedProduction(

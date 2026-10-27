@@ -23,6 +23,7 @@ public sealed partial class TransferPlan
     private readonly ProductionManifest manifest;
     private readonly List<Scene> scenes;
     private readonly List<TextSourceDto> texts;
+    private readonly List<AudioChannelDto> audioChannels;
     private readonly string? standbyBackground;
     private readonly string? endBackground;
 
@@ -34,6 +35,7 @@ public sealed partial class TransferPlan
         List<TextSourceDto> texts,
         List<SourcePlaceholderDto> placeholders,
         List<Scene> scenes,
+        List<AudioChannelDto> audioChannels,
         string? standbyBackground,
         string? endBackground)
     {
@@ -44,6 +46,7 @@ public sealed partial class TransferPlan
         this.texts = texts;
         Placeholders = placeholders;
         this.scenes = scenes;
+        this.audioChannels = audioChannels;
         this.standbyBackground = standbyBackground;
         this.endBackground = endBackground;
     }
@@ -62,6 +65,9 @@ public sealed partial class TransferPlan
 
     /// <summary>The device sources that become placeholders.</summary>
     public IReadOnlyList<SourcePlaceholderDto> Placeholders { get; }
+
+    /// <summary>The channels of the audio mixer that the file carries, for the new ids of the videos.</summary>
+    public IReadOnlyList<AudioChannelDto> AudioChannels => audioChannels;
 
     /// <summary>Number of scenes.</summary>
     public int SceneCount => scenes.Count;
@@ -115,8 +121,29 @@ public sealed partial class TransferPlan
             builtScenes.Add(PlanScene(productionId, manifest.Scenes[i], i, resolver, errors));
         }
 
+        var videoKeys = assets.Where(a => a.Entry.Kind == AssetKind.Video).Select(a => a.Key).ToHashSet(StringComparer.Ordinal);
+        var channels = PlanAudioChannels(manifest, assetIds, videoKeys, errors);
+
         TransferErrors.ThrowIfAny(errors);
-        return new TransferPlan(manifest, productionId, name!, assets, texts, placeholders, builtScenes, standby, end);
+        return new TransferPlan(manifest, productionId, name!, assets, texts, placeholders, builtScenes, channels, standby, end);
+    }
+
+    /// <summary>
+    /// Gives the new production the channels of the audio mixer for its videos: the defaults of a new video for every video that
+    /// has sound here, then the settings of the file. A channel of a video that has no sound in this installation (the file
+    /// says what the exporting program saw) is left out. Call it with the assets once they are stored, before the production is saved.
+    /// </summary>
+    public void SeedAudioChannels(Production production, IReadOnlyList<Asset> assets)
+    {
+        ArgumentNullException.ThrowIfNull(production);
+        ArgumentNullException.ThrowIfNull(assets);
+        var catalog = new SourceCatalog([], assets, production.TextSources);
+        production.SyncAudioChannels(catalog);
+        var requested = audioChannels.Where(c => catalog.Find(c.SourceId) is { } source && AudioMixerRules.CarriesSound(source)).ToList();
+        if (requested.Count > 0)
+        {
+            production.ApplyAudioChannels(requested, catalog);
+        }
     }
 
     /// <summary>
@@ -207,6 +234,41 @@ public sealed partial class TransferPlan
             }
 
             planned.Add(new PlannedAsset(asset.Key, EntityIds.New(EntityIds.Asset), asset.Code, name ?? string.Empty, asset));
+        }
+
+        return planned;
+    }
+
+    private static List<AudioChannelDto> PlanAudioChannels(ProductionManifest manifest, Dictionary<string, string> assetIds, HashSet<string> videoKeys, ValidationErrors errors)
+    {
+        var planned = new List<AudioChannelDto>(manifest.AudioChannels.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < manifest.AudioChannels.Count; i++)
+        {
+            var channel = manifest.AudioChannels[i];
+            var path = $"audioChannels[{i}]";
+            string? sourceId = null;
+            if (!ManifestRefs.TryParse(channel.Source, out var prefix, out var key) || prefix != ManifestRefs.Asset || !videoKeys.Contains(key))
+            {
+                errors.Add($"{path}.source", "A channel must belong to a video of the file, asset:….");
+            }
+            else if (!seen.Add(key))
+            {
+                errors.Add($"{path}.source", "Each video can appear only once.");
+            }
+            else
+            {
+                sourceId = assetIds[key];
+            }
+
+            var dto = new AudioChannelDto(sourceId ?? string.Empty, channel.GainDb, channel.Muted, channel.Mode, channel.SyncOffsetMs);
+            AudioMixerRules.ValidateValues(dto, path, errors);
+            if (channel.Mode == AudioMode.Always)
+            {
+                errors.Add($"{path}.mode", "The sound of a video always belongs to its picture.");
+            }
+
+            planned.Add(dto);
         }
 
         return planned;

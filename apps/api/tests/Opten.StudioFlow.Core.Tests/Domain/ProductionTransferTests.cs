@@ -118,6 +118,39 @@ public sealed class ProductionExportTests
     }
 
     [Fact]
+    public void Capture_AudioChannelsOfVideos_AreTakenOver_ThoseOfDevicesStayBehind()
+    {
+        var image = Build.Image(production, "Logo");
+        var talk = Build.Video(production, "Talk", [image.Code], hasAudio: true);
+        var interview = Build.Video(production, "Interview", [image.Code, talk.Code], hasAudio: true);
+        var silent = Build.Video(production, "Silent", [image.Code, talk.Code, interview.Code]);
+        var station = Build.AudioStation(production);
+        assets.AddRange([image, talk, interview, silent]);
+        devices.Add(station);
+        production.SyncAudioChannels(Catalog);
+        production.ApplyAudioChannels([new AudioChannelDto(interview.Id, -6.5, true, AudioMode.Off, 120)], Catalog);
+
+        var manifest = Capture().Manifest;
+
+        Assert.Equal(ManifestFormat.CurrentVersion, manifest.FormatVersion);
+        Assert.Equal(
+            [new ManifestAudioChannel("asset:a2", 0, false, AudioMode.Follow, 0), new ManifestAudioChannel("asset:a3", -6.5, true, AudioMode.Off, 120)],
+            manifest.AudioChannels);
+        var text = Encoding.UTF8.GetString(ManifestJson.Serialize(manifest));
+        Assert.DoesNotContain(station.Id, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(talk.Id, text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Capture_AProductionWithoutVideoSound_HasNoAudioChannels()
+    {
+        assets.Add(Build.Video(production, "Silent"));
+        production.SyncAudioChannels(Catalog);
+
+        Assert.Empty(Capture().Manifest.AudioChannels);
+    }
+
+    [Fact]
     public void Capture_ItemsWhoseSourceIsGone_AreLeftOut()
     {
         var image = Build.Image(production);
@@ -431,6 +464,85 @@ public sealed class TransferPlanTests
         var broken = manifest with { Assets = [manifest.Assets[0], video], Scenes = [manifest.Scenes[0] with { Background = new ManifestBackground("#000000", "a2") }] };
 
         Assert.Contains("scenes[0].background.asset", Assert.Throws<StudioFlowException>(() => TransferPlan.Create(broken)).Errors!.Keys);
+    }
+
+    private static ProductionManifest WithVideos(params ManifestAudioChannel[] channels)
+    {
+        var manifest = Manifest();
+        var talk = manifest.Assets[0] with { Key = "a2", Code = "M2", Kind = AssetKind.Video, Name = "Talk", File = "media/a2.mp4" };
+        var silent = talk with { Key = "a3", Code = "M3", Name = "Silent", File = "media/a3.mp4" };
+        return manifest with { Assets = [manifest.Assets[0], talk, silent], AudioChannels = channels };
+    }
+
+    [Fact]
+    public void Create_AudioChannels_MoveToTheNewIdOfTheirVideo()
+    {
+        var plan = TransferPlan.Create(WithVideos(new ManifestAudioChannel("asset:a2", -12, true, AudioMode.Off, 80)));
+
+        Assert.Equal([new AudioChannelDto(plan.Assets[1].AssetId, -12, true, AudioMode.Off, 80)], plan.AudioChannels);
+    }
+
+    [Fact]
+    public void Create_BadAudioChannels_AreReportedWithTheirPath()
+    {
+        var manifest = WithVideos(
+            new ManifestAudioChannel("asset:a1", 0, false, AudioMode.Follow, 0),
+            new ManifestAudioChannel("asset:a9", 0, false, AudioMode.Follow, 0),
+            new ManifestAudioChannel("placeholder:p1", 0, false, AudioMode.Follow, 0),
+            new ManifestAudioChannel("asset:a2", 10.5, false, AudioMode.Always, 501),
+            new ManifestAudioChannel("asset:a2", -101, false, AudioMode.Follow, -1),
+            new ManifestAudioChannel("asset:a3", double.NaN, false, (AudioMode)9, 0));
+
+        var errors = Assert.Throws<StudioFlowException>(() => TransferPlan.Create(manifest)).Errors!;
+
+        Assert.Equal(
+            [
+                "audioChannels[0].source",
+                "audioChannels[1].source",
+                "audioChannels[2].source",
+                "audioChannels[3].gainDb",
+                "audioChannels[3].mode",
+                "audioChannels[3].syncOffsetMs",
+                "audioChannels[4].gainDb",
+                "audioChannels[4].source",
+                "audioChannels[4].syncOffsetMs",
+                "audioChannels[5].gainDb",
+                "audioChannels[5].mode",
+            ],
+            errors.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void SeedAudioChannels_GivesEveryVideoWithSoundItsChannel_WithTheSettingsOfTheFile()
+    {
+        var plan = TransferPlan.Create(WithVideos(new ManifestAudioChannel("asset:a2", -12, true, AudioMode.Off, 80), new ManifestAudioChannel("asset:a3", -3, false, AudioMode.Follow, 10)));
+        var production = plan.Build("Copy", "copy", Build.T0);
+        var withSound = new[] { false, true, false };
+        var assets = plan.Assets.Select((a, i) => i == 0
+            ? Asset.Create(a.AssetId, production.Id, a.Code, a.Name, AssetKind.Image, "image/png", 10, 4, 4, "a.png", Build.T0)
+            : Asset.Create(a.AssetId, production.Id, a.Code, a.Name, AssetKind.Video, "video/mp4", 10, null, null, "a.mp4", Build.T0, withSound[i])).ToList();
+
+        plan.SeedAudioChannels(production, assets);
+
+        // The second video has no sound here, so its channel from the file is left out; the first one gets what the file says.
+        var channel = Assert.Single(production.AudioChannels);
+        Assert.Equal(new AudioChannelDto(plan.Assets[1].AssetId, -12, true, AudioMode.Off, 80), channel);
+    }
+
+    [Fact]
+    public void SeedAudioChannels_WithoutSettingsInTheFile_GivesTheDefaultsOfANewVideo()
+    {
+        var plan = TransferPlan.Create(WithVideos());
+        var production = plan.Build("Copy", "copy", Build.T0);
+        var assets = plan.Assets.Select((a, i) => i == 0
+            ? Asset.Create(a.AssetId, production.Id, a.Code, a.Name, AssetKind.Image, "image/png", 10, 4, 4, "a.png", Build.T0)
+            : Asset.Create(a.AssetId, production.Id, a.Code, a.Name, AssetKind.Video, "video/mp4", 10, null, null, "a.mp4", Build.T0, true)).ToList();
+
+        plan.SeedAudioChannels(production, assets);
+
+        Assert.Equal(
+            [new AudioChannelDto(plan.Assets[1].AssetId, 0, false, AudioMode.Follow, 0), new AudioChannelDto(plan.Assets[2].AssetId, 0, false, AudioMode.Follow, 0)],
+            production.AudioChannels);
     }
 
     [Fact]

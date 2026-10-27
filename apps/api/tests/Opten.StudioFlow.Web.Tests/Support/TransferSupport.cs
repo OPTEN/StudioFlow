@@ -207,7 +207,8 @@ public static class TransferSupport
         [],
         [],
         [],
-        [new ManifestScene("Scene", SceneLayoutMode.Free, new ManifestBackground("#0d1117"), [])]);
+        [new ManifestScene("Scene", SceneLayoutMode.Free, new ManifestBackground("#0d1117"), [])],
+        []);
 
     /// <summary>A manifest with one image, named like the file in the ZIP.</summary>
     public static (ProductionManifest Manifest, byte[] Content) ManifestWithImage(byte[] content, string name = "Picture")
@@ -225,6 +226,16 @@ public static class TransferSupport
         var node = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
         change(node);
         return System.Text.Encoding.UTF8.GetBytes(node.ToJsonString());
+    }
+
+    /// <summary>The same ZIP file with <c>manifest.json</c> changed by <paramref name="change"/> (a file as an older version wrote it).</summary>
+    public static byte[] WithManifest(byte[] archive, Action<System.Text.Json.Nodes.JsonObject> change)
+    {
+        var files = Unzip(archive);
+        var node = System.Text.Json.Nodes.JsonNode.Parse(files[ManifestFormat.ManifestEntry])!.AsObject();
+        change(node);
+        files[ManifestFormat.ManifestEntry] = System.Text.Encoding.UTF8.GetBytes(node.ToJsonString());
+        return Zip([.. files.Select(f => (f.Key, f.Value))]);
     }
 
     private static async Task<SceneDto> AddItemAsync(AdminSession admin, string url, string sceneId, string source) =>
