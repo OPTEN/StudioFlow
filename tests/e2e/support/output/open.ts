@@ -44,8 +44,10 @@ export async function openProbedOutput(
 }
 
 /**
- * Waits until an output page reports a received picture (`outputStatus`: connected with a latency estimate, which only
- * exists with a subscribed source) without ever talking to the output's frame or taking a screenshot of it. Playwright
+ * Waits until an output page reports a picture on screen (`outputStatus`: connected, with a latency estimate, which only
+ * exists with a subscribed source, and a frame rate above 0, which is the rate at which the busiest video presents frames
+ * since issue #12 and so exists only once a video plays) without ever talking to the output's frame or taking a
+ * screenshot of it. A subscription alone is not a picture: on a busy computer the first frame comes a moment later. Playwright
  * counts `evaluate()` (and, in an iframe, screenshots) as user gestures of the page, so this is how a test can ask
  * afterwards whether autoplay needed one (`probe.activationAtFirstPlay()`).
  */
@@ -53,7 +55,7 @@ export async function waitForReportedPicture(api: AdminApi, production: Pick<Pro
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const status = (await api.getSnapshot(production.id)).body.outputStatus;
-    if (status.state === 'connected' && status.latencyMs !== null) break;
+    if (status.state === 'connected' && status.latencyMs !== null && (status.fps ?? 0) > 0) break;
     if (Date.now() > deadline) throw new Error(`the output did not report a picture within ${timeoutMs} ms: ${JSON.stringify(status)}`);
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
