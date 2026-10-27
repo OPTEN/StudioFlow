@@ -5,7 +5,6 @@ import { t } from '../../support/tags';
 import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
 import { RegiePage } from '../../support/ui/regie';
-import { regieBug } from '../../support/regie/bugs';
 import { randomClientIp, recordRequests } from '../../support/regie/kit';
 
 /**
@@ -124,10 +123,6 @@ test.describe('REGIE login and session', () => {
     'E2E-AUTH-02 [regie ui, focus] after a failed login the focus returns to the password field',
     t.p1,
     async ({ browser, config, onCleanup }) => {
-      regieBug(
-        'REGIE-03',
-        'after a failed login the focus is not on the password field (it is lost with the disabled submit button)',
-      );
       const context = await newUiContext(browser, { clientIp: randomClientIp() });
       onCleanup(() => context.close());
       const regie = new RegiePage(await context.newPage(), config);

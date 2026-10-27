@@ -26,7 +26,8 @@
       "fix": "In SplitterBehavior of DockSlotComponent / WorkspaceComponent.splitBehavior compute the content widths (client width minus the padding of the edge docks) instead of the border-box width, or move the gutter into the zone so that the docks have equal chrome."
     },
     "REGIE-03": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "LoginPageComponent focuses the password input after a failed attempt (#66).",
       "severity": "low",
       "area": "AUTH",
       "title": "After a failed login the focus is not on the password field (docs/testing.md E2E-AUTH-02: “focus returns to the password field”)",

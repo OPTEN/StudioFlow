@@ -84,6 +84,19 @@ describe('LoginPageComponent', () => {
     expect((element.querySelectorAll('input')[1] as HTMLInputElement).value).toBe('');
   });
 
+  it('puts the focus back on the password field after a failed login', async () => {
+    await setup();
+    document.body.append(element);
+    fill('admin', 'wrong');
+    await submit();
+    http
+      .expectOne('/api/auth/login')
+      .flush({ code: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+    await render();
+    expect(document.activeElement).toBe(element.querySelectorAll('input')[1]);
+    element.remove();
+  });
+
   it('reports the lockout with the minutes from Retry-After and disables the button', async () => {
     await setup();
     fill('admin', 'x');

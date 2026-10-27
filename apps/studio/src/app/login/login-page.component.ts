@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { msg, t, tm, type Msg } from '@studioflow/i18n';
@@ -53,6 +61,7 @@ export class LoginPageComponent {
   protected readonly submitting = signal(false);
   protected readonly error = signal<Msg | null>(null);
   private readonly lockedUntil = signal<number | null>(null);
+  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('password');
 
   /** True while the lockout of a 429 lasts. */
   protected readonly locked = computed(() => {
@@ -103,6 +112,8 @@ export class LoginPageComponent {
       }
       this.error.set(loginErrorMsg(apiError));
       this.form.controls.password.reset('');
+      // The disabled submit button took the focus with it: the next attempt starts in the password field.
+      this.passwordInput()?.nativeElement.focus();
     } finally {
       this.submitting.set(false);
     }
