@@ -6937,6 +6937,30 @@
             ],
             "description": "Last report time.",
             "format": "date-time"
+          },
+          "droppedFramesPct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Share of the frames the output page could not show, in percent (the computer cannot keep up).",
+            "format": "double"
+          },
+          "decodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Number of video streams the output page decodes.",
+            "format": "int32"
+          },
+          "softwareDecodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Number of those streams decoded in software.",
+            "format": "int32"
           }
         },
         "description": "Live state of one output link (a consumer such as the proxy or the Teams camera)."
@@ -6976,6 +7000,30 @@
               "string"
             ],
             "description": "Scene the page currently shows."
+          },
+          "droppedFramesPct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Share of the frames the page dropped since the previous report, in percent.",
+            "format": "double"
+          },
+          "decodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Number of video streams the page decodes (paused sources do not count).",
+            "format": "int32"
+          },
+          "softwareDecodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Of those, the number decoded in software.",
+            "format": "int32"
           }
         },
         "description": "Status report of an output page, sent about every two seconds."
@@ -7125,6 +7173,30 @@
               "$ref": "#/components/schemas/OutputLinkStatusDto"
             },
             "description": "Every output link of the production, ordered by name."
+          },
+          "droppedFramesPct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Dropped frames of the output page that reported last, in percent.",
+            "format": "double"
+          },
+          "decodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Streams that page decodes.",
+            "format": "int32"
+          },
+          "softwareDecodedStreams": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Of those, the streams decoded in software.",
+            "format": "int32"
           }
         },
         "description": "Live state of the output (chip “Output” in the header): the summary over all links, and every link on its own."
@@ -8730,9 +8802,11 @@
         "type": "object",
         "properties": {
           "slot": {
-            "type": "string"
+            "type": "string",
+            "description": "Slot name."
           },
           "state": {
+            "description": "Slot state.",
             "$ref": "#/components/schemas/SlotState"
           },
           "width": {
@@ -8740,6 +8814,7 @@
               "null",
               "integer"
             ],
+            "description": "Width of the largest layer the sender encodes.",
             "format": "int32"
           },
           "height": {
@@ -8747,6 +8822,7 @@
               "null",
               "integer"
             ],
+            "description": "Height of the largest layer the sender encodes.",
             "format": "int32"
           },
           "fps": {
@@ -8754,6 +8830,7 @@
               "null",
               "number"
             ],
+            "description": "Frames per second of the largest layer.",
             "format": "double"
           },
           "bitrateKbps": {
@@ -8761,6 +8838,7 @@
               "null",
               "integer"
             ],
+            "description": "Send bit rate over all layers.",
             "format": "int32"
           },
           "packetLossPct": {
@@ -8768,13 +8846,36 @@
               "null",
               "number"
             ],
+            "description": "Packet loss reported by the SFU.",
             "format": "double"
           },
           "codec": {
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "Video codec, e.g. \"h264\" or \"vp9\"."
+          },
+          "encoder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Encoder implementation the browser names (e.g. \"libvpx\", \"OpenH264\", \"VideoToolbox\"), where it tells the page."
+          },
+          "hardwareEncoder": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "True for a power-efficient (hardware) encoder, false for software, null when the browser does not say."
+          },
+          "qualityLimitation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why the sender lowers the picture right now: \"cpu\" (the computer cannot keep up), \"bandwidth\" or \"other\"; null when it does not."
           }
         },
         "description": "Telemetry of one slot (camera or screen) of a device."

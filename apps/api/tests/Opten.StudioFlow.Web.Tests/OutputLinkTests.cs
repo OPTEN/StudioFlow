@@ -273,6 +273,38 @@ public sealed class OutputLinkApiTests(StudioFlowApp app) : IClassFixture<Studio
         Assert.Equal(140, snapshot.OutputStatus.Links.Single(l => l.Name == "Teams camera").LatencyMs);
     }
 
+    [Fact]
+    public async Task Report_Rest_CarriesDroppedFramesAndSoftwareDecoding()
+    {
+        var (admin, slug) = await ProductionAsync();
+        var teams = await CreateAsync(admin, "Teams camera");
+
+        await OutputClient(teams.Key()).PostJsonAsync($"/api/output/{slug}/report", new OutputReport(true, 140, 50, null, 12.5, 3, 2)).ExpectAsync(HttpStatusCode.NoContent);
+        var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
+
+        var link = snapshot.OutputStatus.Links.Single(l => l.Name == "Teams camera");
+        Assert.Equal(12.5, link.DroppedFramesPct);
+        Assert.Equal(3, link.DecodedStreams);
+        Assert.Equal(2, link.SoftwareDecodedStreams);
+        Assert.Equal(12.5, snapshot.OutputStatus.DroppedFramesPct);
+        Assert.Null(snapshot.OutputStatus.Links.Single(l => l.Name == "Proxy").DroppedFramesPct);
+    }
+
+    [Fact]
+    public async Task Report_Rest_IgnoresImplausibleStreamNumbers()
+    {
+        var (admin, slug) = await ProductionAsync();
+        var teams = await CreateAsync(admin, "Teams camera");
+
+        await OutputClient(teams.Key()).PostJsonAsync($"/api/output/{slug}/report", new OutputReport(true, 140, 50, null, 250, 5, 9)).ExpectAsync(HttpStatusCode.NoContent);
+        var snapshot = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/snapshot", TestContext.Current.CancellationToken).ExpectAsync<ProductionSnapshot>();
+
+        var link = snapshot.OutputStatus.Links.Single(l => l.Name == "Teams camera");
+        Assert.Null(link.DroppedFramesPct);
+        Assert.Equal(5, link.DecodedStreams);
+        Assert.Null(link.SoftwareDecodedStreams);
+    }
+
     private HttpClient OutputClient(string key, string? address = null)
     {
         var client = app.Anonymous(address);

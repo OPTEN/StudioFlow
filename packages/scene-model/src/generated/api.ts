@@ -2249,6 +2249,21 @@ export interface components {
              * @description Last report time.
              */
             lastReportAt: null | string;
+            /**
+             * Format: double
+             * @description Share of the frames the output page could not show, in percent (the computer cannot keep up).
+             */
+            droppedFramesPct?: null | number;
+            /**
+             * Format: int32
+             * @description Number of video streams the output page decodes.
+             */
+            decodedStreams?: null | number;
+            /**
+             * Format: int32
+             * @description Number of those streams decoded in software.
+             */
+            softwareDecodedStreams?: null | number;
         };
         /** @description Status report of an output page, sent about every two seconds. */
         OutputReport: {
@@ -2266,6 +2281,21 @@ export interface components {
             fps: null | number;
             /** @description Scene the page currently shows. */
             programSceneId: null | string;
+            /**
+             * Format: double
+             * @description Share of the frames the page dropped since the previous report, in percent.
+             */
+            droppedFramesPct?: null | number;
+            /**
+             * Format: int32
+             * @description Number of video streams the page decodes (paused sources do not count).
+             */
+            decodedStreams?: null | number;
+            /**
+             * Format: int32
+             * @description Of those, the number decoded in software.
+             */
+            softwareDecodedStreams?: null | number;
         };
         /** @description Output settings for the Regie. */
         OutputSettingsDto: {
@@ -2333,6 +2363,21 @@ export interface components {
             lastReportAt: null | string;
             /** @description Every output link of the production, ordered by name. */
             links: components["schemas"]["OutputLinkStatusDto"][];
+            /**
+             * Format: double
+             * @description Dropped frames of the output page that reported last, in percent.
+             */
+            droppedFramesPct?: null | number;
+            /**
+             * Format: int32
+             * @description Streams that page decodes.
+             */
+            decodedStreams?: null | number;
+            /**
+             * Format: int32
+             * @description Of those, the streams decoded in software.
+             */
+            softwareDecodedStreams?: null | number;
         };
         /**
          * @description How a device was paired.
@@ -2962,19 +3007,43 @@ export interface components {
         SlotState: "starting" | "live" | "paused" | "ended" | "failed";
         /** @description Telemetry of one slot (camera or screen) of a device. */
         SlotTelemetryDto: {
+            /** @description Slot name. */
             slot: string;
+            /** @description Slot state. */
             state: components["schemas"]["SlotState"];
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description Width of the largest layer the sender encodes.
+             */
             width: null | number;
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description Height of the largest layer the sender encodes.
+             */
             height: null | number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Frames per second of the largest layer.
+             */
             fps: null | number;
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description Send bit rate over all layers.
+             */
             bitrateKbps: null | number;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description Packet loss reported by the SFU.
+             */
             packetLossPct: null | number;
+            /** @description Video codec, e.g. "h264" or "vp9". */
             codec: null | string;
+            /** @description Encoder implementation the browser names (e.g. "libvpx", "OpenH264", "VideoToolbox"), where it tells the page. */
+            encoder?: null | string;
+            /** @description True for a power-efficient (hardware) encoder, false for software, null when the browser does not say. */
+            hardwareEncoder?: null | boolean;
+            /** @description Why the sender lowers the picture right now: "cpu" (the computer cannot keep up), "bandwidth" or "other"; null when it does not. */
+            qualityLimitation?: null | string;
         };
         /** @description A source that scene items can show. */
         SourceDto: {

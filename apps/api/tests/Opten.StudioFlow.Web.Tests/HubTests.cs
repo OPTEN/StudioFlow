@@ -134,6 +134,23 @@ public sealed class StudioHubTests(StudioFlowApp app) : IClassFixture<StudioFlow
     }
 
     [Fact]
+    public async Task Telemetry_EncoderAndCpuLimit_AreRelayedToTheRegie()
+    {
+        var admin = await app.AdminAsync();
+        var credentials = await app.PairPhoneAsync(admin);
+        await using var hub = Studio(admin);
+        var telemetry = HubProbe.On<DeviceTelemetryMessage>(hub, HubMethods.Telemetry);
+        await hub.StartAsync(TestContext.Current.CancellationToken);
+        await hub.InvokeAsync<ProductionChangesDto>(HubMethods.Subscribe, admin.ProductionId, null, TestContext.Current.CancellationToken);
+
+        await app.DeviceClient(credentials).PostJsonAsync("/api/device/report", new DeviceReportDto(RtcState.Connected, [new SlotTelemetryDto("camera", SlotState.Live, 1920, 1080, 30, 4000, 0, "h264", "OpenH264", false, "cpu")], 50, null, "4g", 40, null)).ExpectAsync(HttpStatusCode.NoContent);
+        var message = await telemetry.NextAsync(m => m.DeviceId == credentials.DeviceId);
+
+        var slot = message.Telemetry.Slots[0];
+        Assert.Equal(("OpenH264", false, "cpu"), (slot.Encoder, slot.HardwareEncoder, slot.QualityLimitation));
+    }
+
+    [Fact]
     public async Task StudioHub_WithoutSession_IsRejected()
     {
         await using var hub = app.Hub(HubMethods.StudioHubPath);
