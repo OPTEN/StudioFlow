@@ -1,0 +1,192 @@
+<form class="c-srv" novalidate autocomplete="off" (submit)="save($event)">
+  <p class="c-srv__intro">{{ t('regie.server.backup.intro') }}</p>
+
+  <div class="c-srv__grid">
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-schedule">{{
+        t('regie.server.backup.scheduleLabel')
+      }}</label>
+      <input
+        id="backup-schedule"
+        class="c-input c-srv__mono"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="100"
+        placeholder="0 3 * * *"
+        [formControl]="schedule"
+        aria-describedby="backup-schedule-hint backup-schedule-error"
+        [class.is-invalid]="fieldError('schedule')"
+        [attr.aria-invalid]="fieldError('schedule') ? 'true' : null"
+      />
+    </div>
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-timezone">{{
+        t('regie.server.backup.timezoneLabel')
+      }}</label>
+      <input
+        id="backup-timezone"
+        class="c-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="64"
+        placeholder="Europe/Zurich"
+        [formControl]="timezone"
+        aria-describedby="backup-timezone-hint backup-timezone-error"
+        [class.is-invalid]="fieldError('timezone')"
+        [attr.aria-invalid]="fieldError('timezone') ? 'true' : null"
+      />
+    </div>
+  </div>
+  <p class="c-hint" id="backup-schedule-hint">{{ t('regie.server.backup.scheduleHint') }}</p>
+  @if (fieldError('schedule'); as message) {
+    <p class="c-field-error" id="backup-schedule-error" role="alert">{{ message }}</p>
+  }
+  <p class="c-hint" id="backup-timezone-hint">{{ t('regie.server.backup.timezoneHint') }}</p>
+  @if (fieldError('timezone'); as message) {
+    <p class="c-field-error" id="backup-timezone-error" role="alert">{{ message }}</p>
+  }
+
+  <div class="c-srv__grid">
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-keep-daily">{{
+        t('regie.server.backup.keepDailyLabel')
+      }}</label>
+      <input
+        id="backup-keep-daily"
+        class="c-input c-srv__mono"
+        type="number"
+        min="1"
+        [attr.max]="limits.daily"
+        step="1"
+        [formControl]="keepDaily"
+        aria-describedby="backup-keep-daily-error"
+        [class.is-invalid]="fieldError('keepDaily')"
+        [attr.aria-invalid]="fieldError('keepDaily') ? 'true' : null"
+      />
+      @if (fieldError('keepDaily'); as message) {
+        <p class="c-field-error" id="backup-keep-daily-error" role="alert">{{ message }}</p>
+      }
+    </div>
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-keep-weekly">{{
+        t('regie.server.backup.keepWeeklyLabel')
+      }}</label>
+      <input
+        id="backup-keep-weekly"
+        class="c-input c-srv__mono"
+        type="number"
+        min="1"
+        [attr.max]="limits.weekly"
+        step="1"
+        [formControl]="keepWeekly"
+        aria-describedby="backup-keep-weekly-error"
+        [class.is-invalid]="fieldError('keepWeekly')"
+        [attr.aria-invalid]="fieldError('keepWeekly') ? 'true' : null"
+      />
+      @if (fieldError('keepWeekly'); as message) {
+        <p class="c-field-error" id="backup-keep-weekly-error" role="alert">{{ message }}</p>
+      }
+    </div>
+  </div>
+
+  <div class="c-srv__group">
+    <h3 class="c-srv__group-title">{{ t('regie.server.backup.offsiteHeading') }}</h3>
+    <p class="c-srv__note">{{ t('regie.server.backup.offsiteIntro') }}</p>
+
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-remote">{{
+        t('regie.server.backup.offsiteRemoteLabel')
+      }}</label>
+      <input
+        id="backup-remote"
+        class="c-input c-srv__mono"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="240"
+        placeholder="offsite:studioflow"
+        [formControl]="remote"
+        aria-describedby="backup-remote-hint backup-remote-error"
+        [class.is-invalid]="fieldError('remote')"
+        [attr.aria-invalid]="fieldError('remote') ? 'true' : null"
+      />
+      <p class="c-hint" id="backup-remote-hint">{{ t('regie.server.backup.offsiteRemoteHint') }}</p>
+      @if (fieldError('remote'); as message) {
+        <p class="c-field-error" id="backup-remote-error" role="alert">{{ message }}</p>
+      }
+    </div>
+
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-config">{{
+        t('regie.server.backup.offsiteConfigLabel')
+      }}</label>
+      <textarea
+        id="backup-config"
+        class="c-input c-srv__textarea c-srv__mono"
+        rows="5"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        [formControl]="config"
+        [attr.placeholder]="configStored() ? '••••••••' : null"
+        aria-describedby="backup-config-hint backup-config-error"
+        [class.is-invalid]="fieldError('config')"
+        [attr.aria-invalid]="fieldError('config') ? 'true' : null"
+      ></textarea>
+      <p class="c-hint" id="backup-config-hint">
+        {{
+          configStored()
+            ? t('regie.server.backup.offsiteConfigStored')
+            : t('regie.server.backup.offsiteConfigHint')
+        }}
+      </p>
+      @if (fieldError('config'); as message) {
+        <p class="c-field-error" id="backup-config-error" role="alert">{{ message }}</p>
+      }
+    </div>
+
+    <div class="c-srv__field">
+      <label class="c-srv__label" for="backup-age">{{
+        t('regie.server.backup.offsiteAgeLabel')
+      }}</label>
+      <textarea
+        id="backup-age"
+        class="c-input c-srv__textarea c-srv__mono"
+        rows="3"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        [formControl]="age"
+        aria-describedby="backup-age-hint backup-age-error"
+        [class.is-invalid]="fieldError('age')"
+        [attr.aria-invalid]="fieldError('age') ? 'true' : null"
+      ></textarea>
+      <p class="c-hint" id="backup-age-hint">{{ t('regie.server.backup.offsiteAgeHint') }}</p>
+      @if (fieldError('age'); as message) {
+        <p class="c-field-error" id="backup-age-error" role="alert">{{ message }}</p>
+      }
+    </div>
+
+    <label class="c-check">
+      <input type="checkbox" [formControl]="unencrypted" />
+      {{ t('regie.server.backup.offsiteUnencrypted') }}
+    </label>
+  </div>
+
+  @if (errorText(); as text) {
+    <p class="c-srv__result c-srv__result--bad" role="alert">
+      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
+    </p>
+  }
+  @if (noticeText(); as text) {
+    <p class="c-srv__warning" role="status">{{ text }}</p>
+  }
+
+  <div class="c-srv__actions">
+    <button class="c-btn c-btn--fill" type="submit" [disabled]="saving()">
+      {{ saving() ? t('regie.server.saving') : t('regie.server.save') }}
+    </button>
+  </div>
+</form>

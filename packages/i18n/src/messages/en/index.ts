@@ -27,6 +27,7 @@ import { regiePairing } from './regie-pairing';
 import { regiePlaceholders } from './regie-placeholders';
 import { regieProperties } from './regie-properties';
 import { regieScenes } from './regie-scenes';
+import { regieServer } from './regie-server';
 import { regieSettings } from './regie-settings';
 import { regieSetup } from './regie-setup';
 import { regieSources } from './regie-sources';
@@ -73,6 +74,7 @@ export const en = {
   ...regiePlaceholders,
   ...regieProperties,
   ...regieScenes,
+  ...regieServer,
   ...regieSettings,
   ...regieSetup,
   ...regieSources,

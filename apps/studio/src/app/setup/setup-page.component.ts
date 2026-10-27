@@ -29,6 +29,7 @@ import {
   type PasswordReason,
   type RepeatReason,
 } from '../core/auth/password-rules';
+import { SERVER_SETUP_PATH } from '../core/state/server-settings.guard';
 import { RefusedFields, focusFirstInvalid } from '../core/ui/form-feedback';
 import { IconComponent } from '../core/ui/icon.component';
 import { LanguageSelectComponent } from '../core/ui/language-select.component';
@@ -72,8 +73,8 @@ function usernameInvalidMsg(): Msg {
  * enters the one-time setup code from the server log, a username and a password (twice). The form says what is wrong
  * next to a field as soon as it is left, and on submit moves the focus to the first field that needs attention. The
  * API has the last word (wrong code, rules the browser does not know such as the list of common passwords, an account
- * that was created meanwhile). After success the new account is signed in and the Regie opens. The page shares the
- * look of the login page.
+ * that was created meanwhile). After success the new account is signed in and the wizard of the server settings opens
+ * (step 2 of 4: media address, address and certificate, embedding). The page shares the look of the login page.
  */
 @Component({
   selector: 'sf-setup-page',
@@ -158,7 +159,7 @@ export class SetupPageComponent {
     this.refused.set({});
     try {
       await this.auth.completeSetup(code.trim(), username.trim(), password);
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl(SERVER_SETUP_PATH);
     } catch (error) {
       await this.showFailure(ApiError.from(error));
     } finally {

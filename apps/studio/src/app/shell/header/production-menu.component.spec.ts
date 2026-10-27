@@ -59,6 +59,15 @@ describe('ProductionMenuComponent: change password', () => {
     expect(link?.getAttribute('href')).toBe('/audit');
   });
 
+  it('links to the server settings page next to the audit log', async () => {
+    await setup();
+
+    const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('a.c-menu-item'));
+
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Audit log', 'Server settings']);
+    expect(links[1].getAttribute('href')).toBe('/settings');
+  });
+
   it('opens the form in the menu and goes back to the menu on cancel', async () => {
     await setup();
     item('Change password').click();

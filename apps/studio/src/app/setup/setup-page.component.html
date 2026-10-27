@@ -3,6 +3,10 @@
     <form class="c-login__form" novalidate [formGroup]="form" (submit)="submit($event)">
       <h1 class="c-login__brand"><svg sfIcon="mark"></svg>StudioFlow</h1>
       <h2 class="c-login__lead">{{ t('regie.setup.lead') }}</h2>
+      <p class="c-setup__step">
+        {{ t('regie.server.wizard.step', { current: 1, total: 4 }) }} ·
+        {{ t('regie.server.wizard.stepsAccount') }}
+      </p>
       <p class="c-setup__intro">{{ t('regie.setup.intro') }}</p>
 
       <div class="c-login__field">

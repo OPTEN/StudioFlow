@@ -237,7 +237,14 @@ describe('SetupPageComponent', () => {
     expect(document.activeElement).toBe(input('setup-password'));
   });
 
-  it('creates the account with the trimmed values and opens the Regie', async () => {
+  it('says that the account is step 1 of 4 of the setup', async () => {
+    await setup();
+    expect(element.querySelector('.c-setup__step')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Step 1 of 4 · Account',
+    );
+  });
+
+  it('creates the account with the trimmed values and continues with the server wizard', async () => {
     await setup();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fill(' k7qm-3xd2 ', ' regie ');
@@ -257,7 +264,7 @@ describe('SetupPageComponent', () => {
     );
     request.flush({ username: 'regie' });
     await render();
-    expect(navigate).toHaveBeenCalledWith('/');
+    expect(navigate).toHaveBeenCalledWith('/setup/server');
   });
 
   it('ignores a second submit while the first one is running', async () => {

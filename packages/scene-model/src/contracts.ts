@@ -11,13 +11,19 @@ export type { components, operations, paths } from './generated/api';
 
 export type {
   AddSceneItemRequest,
+  AddressSettingsDto,
   AllocateSlotRequest,
+  ApplyStatusDto,
+  ApplyTargetDto,
   AssetDto,
   AssetKind,
   AssignPlaceholderRequest,
   AuditCategory,
   AuditEntryDto,
   AuditPageDto,
+  BackupEntryDto,
+  BackupSettingsDto,
+  BackupsDto,
   BandwidthTestResultDto,
   BorderDto,
   BroadcastState,
@@ -32,6 +38,7 @@ export type {
   CanvasDto,
   CanvasFormat,
   CanvasResolution,
+  CertificateInfoDto,
   ChangeCanvasRequest,
   ChangePasswordRequest,
   CreateInviteRequest,
@@ -56,6 +63,8 @@ export type {
   DeviceTelemetryDto,
   DeviceTelemetryMessage,
   DuplicateProductionRequest,
+  DnsProviderDto,
+  EmbeddingSettingsDto,
   HttpValidationProblemDetails,
   ImportPlaceholderDto,
   ImportPreviewDto,
@@ -71,6 +80,10 @@ export type {
   LogEntryDto,
   LoginRequest,
   LostBehaviorDto,
+  MediaSettingsDto,
+  MediaSuggestionsDto,
+  MediaTestDto,
+  MediaTestRequest,
   OutputChangesDto,
   OutputLinkDto,
   OutputLinkStatusDto,
@@ -101,6 +114,7 @@ export type {
   SceneDto,
   SceneItemDto,
   SceneLayoutMode,
+  ServerSettingsDto,
   SessionDto,
   SetPreviewRequest,
   SetupRequest,
@@ -125,10 +139,15 @@ export type {
   TextThemeDto,
   TransitionDto,
   TransitionKind,
+  UpdateAddressRequest,
+  UpdateBackupRequest,
+  UpdateEmbeddingRequest,
+  UpdateMediaRequest,
   UpdateOutputAccessRequest,
   UpdateProductionRequest,
   UpdateSceneRequest,
   UpdateTextSourceRequest,
+  UploadCertificateRequest,
 } from './generated/api';
 
 /** Event subtypes under their short names (the generator prefixes them with `ProductionEvent`). */
@@ -227,3 +246,39 @@ export const FIELD_ERROR_CODES = {
 } as const;
 
 export type FieldErrorCode = (typeof FIELD_ERROR_CODES)[keyof typeof FIELD_ERROR_CODES];
+
+/**
+ * Reasons in the field errors (`errors`) of a `validation_failed` answer to the server settings (first-run wizard and
+ * "Server settings"). Mirrors `SettingsFieldErrors` in the C# contracts.
+ */
+export const SETTINGS_FIELD_ERROR_CODES = {
+  mediaAddressInvalid: 'media_address_invalid',
+  tlsModeUnknown: 'tls_mode_unknown',
+  domainRequired: 'domain_required',
+  domainInvalid: 'domain_invalid',
+  emailInvalid: 'email_invalid',
+  credentialRequired: 'credential_required',
+  credentialInvalid: 'credential_invalid',
+  credentialUnknown: 'credential_unknown',
+  certificateRequired: 'certificate_required',
+  certificateInvalid: 'certificate_invalid',
+  privateKeyInvalid: 'private_key_invalid',
+  privateKeyEncrypted: 'private_key_encrypted',
+  certificateKeyMismatch: 'certificate_key_mismatch',
+  certificateExpired: 'certificate_expired',
+  certificateNotYetValid: 'certificate_not_yet_valid',
+  certificateNameMismatch: 'certificate_name_mismatch',
+  originInvalid: 'origin_invalid',
+  tooManyOrigins: 'too_many_origins',
+  scheduleInvalid: 'schedule_invalid',
+  timezoneInvalid: 'timezone_invalid',
+  keepInvalid: 'keep_invalid',
+  remoteInvalid: 'remote_invalid',
+  rcloneConfigInvalid: 'rclone_config_invalid',
+  remoteNotInConfig: 'remote_not_in_config',
+  ageRecipientInvalid: 'age_recipient_invalid',
+  ageRecipientRequired: 'age_recipient_required',
+} as const;
+
+export type SettingsFieldErrorCode =
+  (typeof SETTINGS_FIELD_ERROR_CODES)[keyof typeof SETTINGS_FIELD_ERROR_CODES];
