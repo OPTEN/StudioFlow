@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test';
+import { chromium, type BrowserContext } from '@playwright/test';
 import { TEXT } from '../../support/text';
 import { CHROMIUM_ARGS } from '../../support/fake-media';
 import { installInitScript } from '../../support/net';
@@ -16,6 +16,16 @@ import { t } from '../../support/tags';
  * Chromium (Firefox has no stamp camera or canvas capture in the sender; the fake sources of the Chromium senders are
  * the pictures). Video plays, the hold frame and the slates work, the stage letterboxes like in Chromium.
  */
+
+/** Whether this Firefox can receive H.264 over WebRTC (asked on a blank page of the output context). */
+async function decodesH264(context: BrowserContext): Promise<boolean> {
+  const page = await context.newPage();
+  try {
+    return await page.evaluate(() => (RTCRtpReceiver.getCapabilities('video')?.codecs ?? []).some((codec) => /\/h264$/i.test(codec.mimeType)));
+  } finally {
+    await page.close();
+  }
+}
 
 test.describe('OUT other engines (Firefox)', () => {
   test(
@@ -41,18 +51,27 @@ test.describe('OUT other engines (Firefox)', () => {
           return laptop;
         },
       };
-      const camera = await addCamera(deps, 'Camera Fox');
-      const screens = await addScreens(deps, 'Laptop Fox', 1);
-      const scene = production.sceneIds[0]!;
-      const cameraItem = await placeItem(api, production, scene, camera.source, { x: 0, y: 0, w: 1280, h: 720, fit: 'cover', radius: 0, holdMs: 1500 });
-      await placeItem(api, production, scene, screens.sources[0]!, { x: 1300, y: 0, w: 600, h: 338, fit: 'contain', radius: 0 });
-
       // Firefox: no camera/microphone permissions in the context options (it rejects them), the probe and the init script as in Chromium.
       const context = await browser.newContext({ baseURL: config.baseURL, ignoreHTTPSErrors: true, locale: 'en-US', timezoneId: 'Europe/Zurich', viewport: { width: 1280, height: 720 } });
       onCleanup(() => context.close());
       await installInitScript(context);
       await installProbe(context);
       await installUiInit(context, { testHooks: false });
+
+      // Phones publish H.264 only. A Firefox without the OpenH264 plugin (the Playwright build on Linux; a desktop Firefox
+      // downloads the plugin itself) cannot decode it, so there the moving item is a second laptop screen (VP9) instead.
+      const h264 = await decodesH264(context);
+      test.info().annotations.push({
+        type: 'environment',
+        description: h264 ? 'Firefox decodes H.264: the moving item is a phone camera.' : 'Firefox without an H.264 decoder (no OpenH264): the moving item is a laptop screen (VP9).',
+      });
+      const moving = h264 ? await addCamera(deps, 'Camera Fox') : await addScreens(deps, 'Laptop Fox 2', 1);
+      const movingSource = 'phone' in moving ? moving.source : moving.sources[0]!;
+      const movingPage = 'phone' in moving ? moving.phone.page : moving.laptop.page;
+      const screens = await addScreens(deps, 'Laptop Fox', 1);
+      const scene = production.sceneIds[0]!;
+      const cameraItem = await placeItem(api, production, scene, movingSource, { x: 0, y: 0, w: 1280, h: 720, fit: 'cover', radius: 0, holdMs: 1500 });
+      await placeItem(api, production, scene, screens.sources[0]!, { x: 1300, y: 0, w: 600, h: 338, fit: 'contain', radius: 0 });
       const output = await OutputPage.open(context, production, {}, { viewport: { width: 1280, height: 720 } });
       const probe = new OutputProbe(output);
       await expect.poll(() => output.slateText(), { timeout: 20_000 }).toContain(TEXT.slate.standby);
@@ -73,13 +92,13 @@ test.describe('OUT other engines (Firefox)', () => {
         .toBe(true);
       expect(output.problems.pageErrors, 'no uncaught error in Firefox').toEqual([]);
 
-      // The picture is the one of the sources: the screen's red in its item, a moving camera picture.
+      // The picture is the one of the sources: the screen's red in its item, a moving picture in the other one.
       const stage = await output.stagePixels();
       expect(toneOf(stage.mean({ x: 1380, y: 80, width: 440, height: 200 })), 'S1 (red) in the screen item').toBe('red');
       expect(stage.image.meanLuma(), 'not black').toBeGreaterThan(20);
 
       // Hold frame: the sender goes away, the last frame stays, later it is darkened.
-      await camera.phone.page.close();
+      await movingPage.close();
       await probe.waitForItemState(cameraItem.id, 'hold', 30_000);
       const hold = await probe.snapshot(true);
       expect(hold.items.find((item) => item.id === cameraItem.id)!.luma, 'the hold frame is not black').toBeGreaterThan(15);
