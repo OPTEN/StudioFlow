@@ -119,4 +119,25 @@ describe('animatePresence', () => {
 
     expect(onEnd).toHaveBeenCalledTimes(1);
   });
+
+  it('does not end through the safety timer while the animation still moves', async () => {
+    const animation = {
+      currentTime: 250,
+      finished: new Promise<void>(() => undefined),
+      cancel: () => undefined,
+    };
+    vi.spyOn(Element.prototype, 'animate').mockImplementation(
+      () => animation as unknown as Animation,
+    );
+    const onEnd = vi.fn();
+
+    animatePresence(element(), true, { x: 0, y: 0 }, 300, onEnd);
+    await vi.advanceTimersByTimeAsync(400);
+    animation.currentTime = 290;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onEnd).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
 });

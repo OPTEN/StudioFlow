@@ -1,3 +1,5 @@
+import { watchForStall } from './stall-guard';
+
 /** A running show or hide animation of a text. */
 export interface PresenceAnimation {
   /** Jumps to the end state (calls `onEnd` if it did not run yet). Idempotent. */
@@ -9,12 +11,6 @@ export interface PresenceOffset {
   readonly x: number;
   readonly y: number;
 }
-
-/**
- * Extra time after which an animation counts as complete even when the browser never reports the end (background
- * tab, element not rendered): showing and hiding must always run to completion.
- */
-const SAFETY_MARGIN_MS = 100;
 
 /** Decelerates when showing, accelerates when hiding. */
 const EASING_SHOW = 'cubic-bezier(0.2, 0, 0, 1)';
@@ -35,16 +31,14 @@ export function animatePresence(
 ): PresenceAnimation {
   let ended = false;
   let animation: Animation | null = null;
-  let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  let stopWatching: (() => void) | null = null;
 
   function end(): void {
     if (ended) {
       return;
     }
     ended = true;
-    if (safetyTimer !== null) {
-      clearTimeout(safetyTimer);
-    }
+    stopWatching?.();
     onEnd();
     try {
       animation?.cancel();
@@ -64,7 +58,9 @@ export function animatePresence(
         fill: 'forwards',
       });
       animation.finished.then(end, () => undefined);
-      safetyTimer = setTimeout(end, durationMs + SAFETY_MARGIN_MS);
+      // Showing and hiding must always run to completion, also when the browser never reports the end (background
+      // tab, element not rendered); an animation that is merely late is left to finish by itself.
+      stopWatching = watchForStall(animation, durationMs, end);
     } catch {
       end();
     }
