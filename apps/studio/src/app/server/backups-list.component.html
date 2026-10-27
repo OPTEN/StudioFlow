@@ -1,0 +1,68 @@
+<div class="c-srv">
+  @if (state(); as backups) {
+    @if (!backups.serviceSeen) {
+      <p class="c-srv__result c-srv__result--bad" role="status">
+        <span class="c-lamp is-warn" aria-hidden="true"></span
+        ><span>{{ t('regie.server.backup.listNotSeen') }}</span>
+      </p>
+    } @else if (backups.postponed) {
+      <p class="c-srv__result" role="status">
+        <span class="c-lamp is-warn" aria-hidden="true"></span
+        ><span>{{ t('regie.server.backup.listPostponed') }}</span>
+      </p>
+    } @else if (backups.running) {
+      <p class="c-srv__result" role="status">
+        <span class="c-lamp is-warn" aria-hidden="true"></span
+        ><span>{{ t('regie.server.backup.listRunning') }}</span>
+      </p>
+    } @else if (requested()) {
+      <p class="c-srv__result" role="status">
+        <span class="c-lamp" aria-hidden="true"></span
+        ><span>{{ t('regie.server.backup.listRequested') }}</span>
+      </p>
+    }
+    @if (backups.lastError) {
+      <p class="c-srv__result c-srv__result--bad" role="alert">
+        <span class="c-lamp is-bad" aria-hidden="true"></span
+        ><span>{{ t('regie.server.backup.listFailed') }}</span>
+      </p>
+    }
+
+    @if (rows().length > 0) {
+      <table class="c-srv__table">
+        <tbody>
+          @for (row of rows(); track row.name) {
+            <tr>
+              <td class="c-srv__mono">{{ row.name }}</td>
+              <td>{{ row.kind }}</td>
+              <td class="c-srv__mono">{{ row.size }}</td>
+              <td class="c-srv__mono">{{ row.time }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="c-hint">{{ t('regie.server.backup.listEmpty') }}</p>
+    }
+  } @else if (loadFailed()) {
+    <p class="c-srv__result c-srv__result--bad" role="alert">
+      <span class="c-lamp is-bad" aria-hidden="true"></span
+      ><span>{{ t('regie.server.loadError') }}</span>
+    </p>
+  } @else {
+    <p class="c-hint">{{ t('regie.server.loading') }}</p>
+  }
+
+  <p class="c-hint">{{ t('regie.server.backup.listRestore') }}</p>
+
+  <div class="c-srv__actions">
+    <button
+      class="c-btn"
+      type="button"
+      [disabled]="requesting() || !state()?.serviceSeen"
+      (click)="backUpNow()"
+    >
+      {{ t('regie.server.backup.listNow') }}
+    </button>
+  </div>
+</div>

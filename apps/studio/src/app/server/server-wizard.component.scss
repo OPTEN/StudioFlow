@@ -1,0 +1,69 @@
+// First-run wizard after the account: the login surface (login-page.component.scss is loaded first), wider for the forms,
+// with a progress bar of four segments. Tokens only.
+@use 'mixins' as *;
+
+.c-wizard__col {
+  width: min(600px, 100%);
+}
+
+.c-wizard__head {
+  display: grid;
+  gap: 18px;
+}
+
+.c-wizard__progress {
+  display: grid;
+  gap: 8px;
+}
+
+.c-wizard__bar {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.c-wizard__seg {
+  background: var(--seam-strong);
+  border-radius: 2px;
+  height: 3px;
+
+  &.is-done {
+    background: var(--text-2);
+  }
+
+  &.is-current {
+    background: var(--blue);
+  }
+}
+
+.c-wizard__step {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+}
+
+.c-wizard__section {
+  display: grid;
+  gap: 14px;
+}
+
+.c-wizard__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.c-wizard__text {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+}
+
+.c-wizard__link {
+  color: var(--blue);
+}
+
+.c-wizard__skip {
+  border-top: 1px solid var(--seam);
+  padding-top: 12px;
+}

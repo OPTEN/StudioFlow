@@ -1,0 +1,87 @@
+// Server settings page: header bar like the Regie, one hairline, then the sections separated by hairlines (no cards).
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.c-set {
+  background: var(--seam);
+  display: grid;
+  gap: 1px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.c-set__top {
+  align-items: center;
+  background: var(--panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 50px;
+  padding: 6px var(--gr) 6px var(--gl);
+}
+
+.c-set__brand {
+  align-items: center;
+  display: flex;
+  font-size: 16.5px;
+  font-weight: 700;
+  gap: 9px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.c-set__title {
+  @include label-text;
+  margin: 0;
+}
+
+.c-set__spacer {
+  flex: 1 1 auto;
+}
+
+.c-set__back {
+  text-decoration: none;
+}
+
+.c-set__main {
+  background: var(--panel);
+  overflow: auto;
+  padding: 4px var(--gr) 32px var(--gl);
+}
+
+.c-set__section {
+  border-bottom: 1px solid var(--seam);
+  display: grid;
+  gap: 14px;
+  padding: 18px 0;
+}
+
+.c-set__heading {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.c-set__services {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.c-set__service {
+  align-items: center;
+  display: grid;
+  font-size: 13px;
+  gap: 10px;
+  grid-template-columns: 14px minmax(110px, auto) 1fr;
+}
+
+.c-set__service-state {
+  color: var(--text-2);
+}

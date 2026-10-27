@@ -1,0 +1,77 @@
+<form class="c-srv" novalidate (submit)="save($event)">
+  <p class="c-srv__intro">{{ t('regie.server.media.intro') }}</p>
+
+  <div class="c-srv__field">
+    <label class="c-srv__label" for="media-address">{{ t('regie.server.media.label') }}</label>
+    <input
+      id="media-address"
+      class="c-input c-srv__mono"
+      type="text"
+      inputmode="decimal"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="15"
+      [formControl]="address"
+      aria-describedby="media-address-hint media-address-error"
+      [class.is-invalid]="addressError()"
+      [attr.aria-invalid]="addressError() ? 'true' : null"
+    />
+    <p class="c-hint" id="media-address-hint">{{ t('regie.server.media.hint') }}</p>
+    @if (addressError(); as message) {
+      <p class="c-field-error" id="media-address-error" role="alert">{{ message }}</p>
+    }
+    @if (fromHost() || interfaces().length > 0) {
+      <div class="c-srv__suggestions">
+        @if (fromHost(); as host) {
+          <button class="c-btn c-btn--sm" type="button" (click)="use(host)">
+            {{ t('regie.server.media.suggest', { address: host }) }}
+          </button>
+          <span class="c-hint">{{ t('regie.server.media.suggestFromHost') }}</span>
+        }
+        @for (candidate of interfaces(); track candidate) {
+          <button class="c-btn c-btn--sm" type="button" (click)="use(candidate)">
+            {{ t('regie.server.media.suggest', { address: candidate }) }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <p class="c-hint">{{ t('regie.server.media.testNote') }}</p>
+
+  <p
+    class="c-srv__result"
+    [class.c-srv__result--bad]="check() && check()?.kind !== 'ok'"
+    role="status"
+    aria-live="polite"
+  >
+    @if (testing()) {
+      <span class="c-lamp is-warn" aria-hidden="true"></span>
+      <span>{{ t('regie.server.media.testing') }}</span>
+    } @else if (checkText(); as text) {
+      <span class="c-lamp" [class.is-bad]="check()?.kind !== 'ok'" aria-hidden="true"></span>
+      <span>{{ text }}</span>
+    }
+  </p>
+
+  <p class="c-hint">{{ t('regie.server.media.changeNote') }}</p>
+
+  @if (errorText(); as text) {
+    <p class="c-srv__result c-srv__result--bad" role="alert">
+      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
+    </p>
+  }
+
+  <div class="c-srv__actions">
+    <button class="c-btn" type="button" [disabled]="busy()" (click)="test()">
+      {{ testing() ? t('regie.server.media.testing') : t('regie.server.media.test') }}
+    </button>
+    <button class="c-btn c-btn--fill" type="submit" [disabled]="busy()">
+      @if (saving()) {
+        {{ t('regie.server.saving') }}
+      } @else {
+        {{ mode() === 'next' ? t('regie.server.wizard.next') : t('regie.server.save') }}
+      }
+    </button>
+  </div>
+</form>

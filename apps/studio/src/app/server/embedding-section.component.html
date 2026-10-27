@@ -1,0 +1,41 @@
+<form class="c-srv" novalidate (submit)="save($event)">
+  <p class="c-srv__intro">{{ t('regie.server.embedding.intro') }}</p>
+
+  <div class="c-srv__field">
+    <label class="c-srv__label" for="embedding-origins">{{
+      t('regie.server.embedding.label')
+    }}</label>
+    <textarea
+      id="embedding-origins"
+      class="c-input c-srv__textarea c-srv__mono"
+      rows="4"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      [formControl]="origins"
+      aria-describedby="embedding-origins-hint embedding-origins-error"
+      [class.is-invalid]="problemText()"
+      [attr.aria-invalid]="problemText() ? 'true' : null"
+    ></textarea>
+    <p class="c-hint" id="embedding-origins-hint">{{ t('regie.server.embedding.hint') }}</p>
+    @if (problemText(); as text) {
+      <p class="c-field-error" id="embedding-origins-error" role="alert">{{ text }}</p>
+    }
+  </div>
+
+  @if (errorText(); as text) {
+    <p class="c-srv__result c-srv__result--bad" role="alert">
+      <span class="c-lamp is-bad" aria-hidden="true"></span><span>{{ text }}</span>
+    </p>
+  }
+
+  <div class="c-srv__actions">
+    <button class="c-btn c-btn--fill" type="submit" [disabled]="saving()">
+      @if (saving()) {
+        {{ t('regie.server.saving') }}
+      } @else {
+        {{ mode() === 'next' ? t('regie.server.wizard.finish') : t('regie.server.save') }}
+      }
+    </button>
+  </div>
+</form>

@@ -669,6 +669,89 @@ export class StudioApiService {
     return { text: response.body ?? '', fileName: fileName ?? `studioflow-audit.${format}` };
   }
 
+  // ---------------------------------------------------------------- Server settings
+
+  /** `GET /api/settings`: the settings of the installation (never a secret). */
+  getServerSettings(): Promise<ApiResult<'getServerSettings'>> {
+    return this.call(this.http.get<ApiResult<'getServerSettings'>>('/api/settings'));
+  }
+
+  /** `GET /api/settings/status`: whether Caddy, LiveKit and the backup service run the saved settings. */
+  getServerSettingsStatus(): Promise<ApiResult<'getServerSettingsStatus'>> {
+    return this.call(this.http.get<ApiResult<'getServerSettingsStatus'>>('/api/settings/status'));
+  }
+
+  /** `PUT /api/settings/media`: saves the media address. 400 `media_address_invalid`, 409 `broadcast_live`. */
+  updateMediaSettings(
+    body: ApiBody<'updateMediaSettings'>,
+  ): Promise<ApiResult<'updateMediaSettings'>> {
+    return this.call(this.http.put<ApiResult<'updateMediaSettings'>>('/api/settings/media', body));
+  }
+
+  /** `GET /api/settings/media/suggestions`: addresses the server can suggest for the media address. */
+  getMediaSuggestions(): Promise<ApiResult<'getMediaSuggestions'>> {
+    return this.call(
+      this.http.get<ApiResult<'getMediaSuggestions'>>('/api/settings/media/suggestions'),
+    );
+  }
+
+  /**
+   * `POST /api/settings/media/test`: lets LiveKit announce the address for two minutes and returns the tokens of two
+   * throw-away participants. 400 `media_address_invalid`, 409 `broadcast_live`, 503 when LiveKit did not restart.
+   */
+  startMediaTest(body: ApiBody<'startMediaTest'>): Promise<ApiResult<'startMediaTest'>> {
+    return this.call(this.http.post<ApiResult<'startMediaTest'>>('/api/settings/media/test', body));
+  }
+
+  /** `DELETE /api/settings/media/test`: ends a test without saving; LiveKit returns to the saved address. */
+  endMediaTest(): Promise<void> {
+    return this.call(this.http.delete<void>('/api/settings/media/test'));
+  }
+
+  /** `PUT /api/settings/address`: saves the address and the certificate mode. 400 with the broken fields. */
+  updateAddressSettings(
+    body: ApiBody<'updateAddressSettings'>,
+  ): Promise<ApiResult<'updateAddressSettings'>> {
+    return this.call(
+      this.http.put<ApiResult<'updateAddressSettings'>>('/api/settings/address', body),
+    );
+  }
+
+  /** `PUT /api/settings/certificate`: stores the certificate and the key of the mode `custom`. 400 with the reason. */
+  uploadCertificate(body: ApiBody<'uploadCertificate'>): Promise<ApiResult<'uploadCertificate'>> {
+    return this.call(
+      this.http.put<ApiResult<'uploadCertificate'>>('/api/settings/certificate', body),
+    );
+  }
+
+  /** `PUT /api/settings/embedding`: saves the origins that may embed the output. 400 `origin_invalid`. */
+  updateEmbeddingSettings(
+    body: ApiBody<'updateEmbeddingSettings'>,
+  ): Promise<ApiResult<'updateEmbeddingSettings'>> {
+    return this.call(
+      this.http.put<ApiResult<'updateEmbeddingSettings'>>('/api/settings/embedding', body),
+    );
+  }
+
+  /** `PUT /api/settings/backup`: saves the schedule and the off-site target. 400 with the broken fields. */
+  updateBackupSettings(
+    body: ApiBody<'updateBackupSettings'>,
+  ): Promise<ApiResult<'updateBackupSettings'>> {
+    return this.call(
+      this.http.put<ApiResult<'updateBackupSettings'>>('/api/settings/backup', body),
+    );
+  }
+
+  /** `GET /api/settings/backups`: the latest backups and the state of the backup service. */
+  listBackups(): Promise<ApiResult<'listBackups'>> {
+    return this.call(this.http.get<ApiResult<'listBackups'>>('/api/settings/backups'));
+  }
+
+  /** `POST /api/settings/backups`: asks the backup service for a backup now (202). 409 when the service is not there. */
+  requestBackup(): Promise<void> {
+    return this.post<void>('/api/settings/backups');
+  }
+
   // ---------------------------------------------------------------- Helpers
 
   private production(productionId: string, suffix = ''): string {

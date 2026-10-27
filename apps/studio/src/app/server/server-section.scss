@@ -1,0 +1,146 @@
+// A section of the server settings (the same in the first-run wizard and on the "Server settings" page): the intro, labelled
+// fields, hints, the result of a test and the row of actions. Only tokens; both themes follow.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.c-srv {
+  display: grid;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.c-srv__intro {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+}
+
+.c-srv__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.c-srv__label {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.c-srv__mono {
+  @include mono;
+}
+
+.c-srv__row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.c-srv__grid {
+  display: grid;
+  gap: 10px 14px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.c-srv__group {
+  border-top: 1px solid var(--seam);
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.c-srv__group-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.c-srv__note {
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+}
+
+.c-srv__link {
+  color: var(--blue);
+}
+
+// The outcome of a test or of applying the settings: a sentence with a lamp, never only a colour.
+.c-srv__result {
+  align-items: flex-start;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  margin: 0;
+
+  .c-lamp {
+    margin-top: 5px;
+  }
+}
+
+.c-srv__result--ok {
+  color: var(--text);
+}
+
+.c-srv__result--bad {
+  color: var(--red);
+}
+
+.c-srv__warning {
+  border: 1px dashed var(--amber);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: 13px;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.c-srv__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.c-srv__textarea {
+  height: auto;
+  line-height: 1.45;
+  min-height: 84px;
+  padding: 6px 9px;
+  resize: vertical;
+}
+
+.c-srv__file {
+  color: var(--text-2);
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.c-srv__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.c-srv__table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+
+  td {
+    border-bottom: 1px solid var(--seam);
+    color: var(--text-2);
+    padding: 6px 12px 6px 0;
+    vertical-align: baseline;
+  }
+
+  td:first-child {
+    color: var(--text);
+  }
+}

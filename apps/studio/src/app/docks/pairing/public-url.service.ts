@@ -8,7 +8,7 @@ export function displayUrl(url: string): string {
 }
 
 /**
- * The public base URL of the installation (`GET /api/system/info`, `STUDIOFLOW_PUBLIC_BASE_URL`) for the short join
+ * The public base URL of the installation (`GET /api/system/info`: the address of the server settings) for the short join
  * address "‹host›/join". Until it is loaded (or when the request fails) the address of this page is used, which is
  * the same host in a normal installation.
  */
