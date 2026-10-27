@@ -77,6 +77,8 @@ async function recordFreshState(): Promise<StackState['fresh']> {
 
 export default async function globalSetup(): Promise<void> {
   process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+  // Moves this run onto its own range of fake client addresses (support/unique-ip.ts); workers inherit it.
+  process.env['E2E_RUN_SLOT'] = String(Math.floor(Date.now() / 60_000) % 4);
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   startEventLog(path.join(OUTPUT_DIR, 'logs', 'docker-events.jsonl'));
   const keepStack = process.env['E2E_KEEP_STACK'] === '1';
