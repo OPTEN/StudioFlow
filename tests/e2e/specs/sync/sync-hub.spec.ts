@@ -43,7 +43,7 @@ test.describe('SYNC studio hub', () => {
     onCleanup(() => b.stop());
     await b.open(production.id);
     await expect.poll(() => a.presence()).toBe(2);
-    expect(b.presence()).toBe(2);
+    await expect.poll(() => b.presence()).toBe(2);
     const raw = await openRawHub(config.baseURL, 'studio', { cookie: api.cookie });
     expect(raw.status).toBe(101);
     await invokeRaw(raw, 'Subscribe', [production.id, null]);
