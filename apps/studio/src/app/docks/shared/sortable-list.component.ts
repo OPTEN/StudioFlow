@@ -626,9 +626,17 @@ export class SortableListComponent {
     return this.rowElements().find((row) => row.dataset['sortableId'] === id);
   }
 
-  /** The nearest ancestor that scrolls along the axis, else the page. */
+  /**
+   * The nearest ancestor that scrolls along the axis, else the page. `<body>` and `<html>` are never taken as such an
+   * ancestor: their `overflow: auto` (the stacked layout) is handed to the viewport, so they report overflowing content
+   * but do not scroll (`scrollTop` stays 0) and their rectangle moves up the screen with the page. The page is scrolled
+   * through `document.scrollingElement` and measured by the viewport.
+   */
   private scrollerOf(axis: Axis): Scroller {
     for (let element: HTMLElement | null = this.host; element; element = element.parentElement) {
+      if (element === this.document.body || element === this.document.documentElement) {
+        break;
+      }
       const style = this.window.getComputedStyle(element);
       const overflow = axis === 'y' ? style.overflowY : style.overflowX;
       const overflowing =

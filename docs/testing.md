@@ -1128,9 +1128,9 @@ Strings: knock card “{Name} wants to join”, “Does the laptop show the same
 - Steps: drag the last scene to the top of the Scenes dock; press key 1.
 - Expect: one `PUT …/scenes/order`, no switch of the dragged scene, API order, keycaps and the other operator follow; key 1 puts the new first scene live.
 
-**E2E-SCENE-35** · P1 · pw — Reorder on a touch screen (`pixel-7`)
+**E2E-SCENE-35** · P1 · pw — Reorder on a touch screen (`pixel-7`, `iphone-15`, `ipad`)
 - Steps: with a finger: drag from the handle; start a swipe at once; press and hold on a row, then drag.
-- Expect: the handle drags at once, the swipe drags nothing and sends nothing, the held row is lifted after the hold and dropped at the new place.
+- Expect: the handle drags at once, the swipe drags nothing and sends nothing, the held row is lifted after the hold and dropped at the new place; also on the small `iphone-15` screen, where the page has scrolled to the list first (the list measures its scroll area by the window, not by `<body>`).
 
 ### 2.4 SWITCH – Switching, broadcast, tally
 

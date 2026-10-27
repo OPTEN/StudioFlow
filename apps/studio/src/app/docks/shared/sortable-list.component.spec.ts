@@ -341,6 +341,39 @@ describe('SortableListComponent', () => {
       expect(host.reorders).toEqual([['b', 'c', 'a', 'd', 'e']]);
     });
 
+    describe('in the stacked layout, where the page scrolls', () => {
+      beforeEach(() => {
+        // `body { overflow: auto; height: 100% }` hands its overflow to the viewport: it reports overflowing content and
+        // computes to `auto`, but it does not scroll and its rectangle moves up the screen with the page.
+        document.body.style.overflowY = 'auto';
+        Object.defineProperty(document.body, 'scrollHeight', { configurable: true, value: 2000 });
+        Object.defineProperty(document.body, 'clientHeight', { configurable: true, value: 600 });
+      });
+
+      afterEach(() => {
+        document.body.style.overflowY = '';
+        delete (document.body as { scrollHeight?: number }).scrollHeight;
+        delete (document.body as { clientHeight?: number }).clientHeight;
+      });
+
+      it('drops a row that was lifted after the page was scrolled', async () => {
+        await setup();
+        // Scrolled so far that the rectangle of the body ends above the pointer (the stub puts it at 0 to 40).
+        scrollTop = 500;
+        await dragTo(pick('a'), 0, centre(3) + 5);
+        expect(host.reorders).toEqual([['b', 'c', 'd', 'a', 'e']]);
+      });
+
+      it('measures the visible list by the window, so a row dropped far outside it still cancels', async () => {
+        await setup();
+        scrollTop = 500;
+        await dragTo(pick('a'), 0, centre(3), false);
+        pointer('pointermove', document, 900, centre(3));
+        pointer('pointerup', document, 900, centre(3));
+        expect(host.reorders).toEqual([]);
+      });
+    });
+
     describe('in a short window', () => {
       const WINDOW_HEIGHT = 150;
       let height: number;
