@@ -97,6 +97,11 @@ Pinned details of the implementation (spec 4.10, runbook chapter 20):
 - Security: the output page and the Regie subscribe to every audio track, so an output link also gives access to the microphones that are
   muted in the mixer. This is accepted for the proxy case (links are secret, per link IP restriction) and is a reason for the Air mode
   to use its own room and tokens (later).
+- Duplicate, export and import: the channels of **videos** travel in the manifest (format version 2, `audioChannels`, key `asset:aN`), so a
+  copy sounds like the original; the channels of **devices** (station, microphones, screen sound) do not, because devices are never
+  copied and a placeholder carries no sound: a new device starts with the defaults of its kind. A file of version 1 imports and its
+  videos get the defaults. An imported video is probed again for sound (`hasAudio`, as an upload is), a duplicate keeps the
+  value of the original.
 - Measurements (E2E on a loaded machine, tones of 440–1100 Hz): mute or fader change heard 6–60 ms after the answer of the request,
   end of the broadcast silent within about 450 ms, the sound of the station reaches the output unchanged in level (±2 dB); the delay
   from the microphone to the output page is 190–640 ms (median 510 ms) with the fake source on a machine at load average 25, recorded by E2E-AUD-16. Lip sync: the sound and the picture of a source travel in separate
@@ -255,8 +260,8 @@ Pinned details (implementation, spec 4.2.2):
 9. **Names.** The copy is "{name} (copy)"; a name that exists gets " (2)", " (3)" (also for an import, the preview shows the
    final name and a warning). There is no limit on the number of productions.
 10. **Format.** `formatVersion` starts at 1; the manifest has no ids, parts refer to each other by keys of the file. Older
-   versions are migrated in memory (`ManifestMigrator`), newer ones are `unsupported_format`. A part that comes later (the audio
-   mixer of #7) is a new version with a migration that adds an empty part. The file extension is `.studioflow.zip`, the media
+   versions are migrated in memory (`ManifestMigrator`), newer ones are `unsupported_format`. A part that comes later is a new
+   version with a migration that adds an empty part: version 2 is the audio mixer of #7 (`audioChannels`, the channels of videos). The file extension is `.studioflow.zip`, the media
    keep their extension under `media/`, each with its SHA-256.
 11. **Limits** (`Transfer:*`, validated at startup): file 4 GiB (Caddy 4100 MiB), 1000 files, 8 GiB unpacked, manifest 8 MiB,
     compression ratio 100 from 1 MiB, plus the domain limits (99 scenes, 32 items, 64 texts, 100 device sources). The ZIP is

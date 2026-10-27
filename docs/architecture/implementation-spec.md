@@ -179,20 +179,27 @@ a duplicate is a capture that is planned and stored again without the ZIP file i
 | Media (images, videos) | yes, file by file, with a new id, the same code (M1 …) and name | "export always includes the media" |
 | Scenes in order: name, layout mode, background (colour, medium), all items in list order with every field (rectangle, fit, crop, radius, mirror, rotation, hidden, locked, border, "on failure" hold and fallback) | yes, with new scene and item ids | the work |
 | Devices (cameras, screens) | **as placeholders**: code, name, slot kind, only those a scene uses | a device belongs to one production and one physical station |
+| Audio mixer (#7): the channels of videos with sound (fader, mute, mode, delay) | yes, under the new id of the video (`audioChannels`, format version 2) | the work on the sound; the other settings of a video travel with it |
+| Audio mixer: the channels of devices (audio station, microphones, sound of a screen) | no | they belong to the device that fills the place; a new device starts with the defaults of its kind (station always on, microphones muted) |
 | Program and preview scene, last transition, broadcast state (`liveSince`, `endedAt`) | no: standby, first scene on program, no preview | a copy starts fresh |
 | Pairings, pairing requests, invites, device secrets, telemetry, incidents | no | secrets and live state |
 | Output links, their keys and IP restrictions (#9) | no: the copy gets a fresh default link ("Proxy") with a new key and no restriction | a key must not travel |
 | Log (`recentLog`), audit entries, `isActive`, `createdAt` | no | history belongs to the original |
 | Scene `version`, revision counter, undo steps | no | new objects |
 
-**Format** (`manifest.json`, `ManifestFormat`): `{ format: "studioflow-production", formatVersion: 1, app: { version, exportedAt },
-production, texts[], assets[], placeholders[], scenes[] }`. Nothing refers to an id: parts refer to each other by **keys**
+**Format** (`manifest.json`, `ManifestFormat`): `{ format: "studioflow-production", formatVersion: 2, app: { version, exportedAt },
+production, texts[], assets[], placeholders[], scenes[], audioChannels[] }`. Nothing refers to an id: parts refer to each other by **keys**
 local to the file (`asset:a1`, `text:t1`, `placeholder:p1`), so importing assigns every id anew. Assets carry `file`
 (`media/a1.png`, the extension from the file) and `sha256`; the ZIP holds `manifest.json` and `media/*` only. Strict reading:
 an unknown property, a missing required one or a wrong type is `invalid_archive`. `formatVersion` starts at 1. An older
 file is migrated step by step in memory (`ManifestMigrator`, one function per version, run on `JsonNode` before the typed
-read); a newer one is `unsupported_format`. A change of the format bumps the version and adds a migration: the mixer of
-issue #7 adds `audioChannels` that way.
+read); a newer one is `unsupported_format`. A change of the format bumps the version and adds a migration. Version 2 (the
+audio mixer of issue #7) adds `audioChannels[] { source: "asset:a2", gainDb, muted, mode (follow | off), syncOffsetMs }`, one per
+video that has a channel; the step 1 → 2 adds an empty list, so a file of version 1 imports and its videos start with the
+defaults of a new video (0 dB, not muted, follows the picture). The plan checks the channels like a request to the mixer (the
+source must be a video of the file, once; −100 … +10 dB, 0 … 500 ms, never `always`) and `invalid_archive` names the path
+(`audioChannels[1].gainDb`); a channel of a video that has no sound in this installation is left out, and every video with sound
+gets its channel when the production is created.
 
 **Placeholders.** `ProductionSnapshot.placeholders: SourcePlaceholderDto[] { id (plh_…), sourceId, code, kind, label? }`. A placeholder
 is a device source of the original that no device of this production fills: its `sourceId` is a normal device reference
