@@ -653,11 +653,16 @@ test.describe('OUT transitions', () => {
         target = target === a ? b : a;
       }
       const frames = (await cast.stop()).map((frame) => new DecodedFrame(frame.t, frame.png));
-      const lumas = frames.filter((frame) => starts.some((start) => frame.t >= start - 100 && frame.t <= start + 700)).map((frame) => frame.luma(CENTRE));
+      const around = frames.flatMap((frame) => {
+        const index = starts.findIndex((start) => frame.t >= start - 100 && frame.t <= start + 700);
+        return index < 0 ? [] : [{ fade: index, ms: Math.round(frame.t - starts[index]!), luma: frame.luma(CENTRE) }];
+      });
+      const lumas = around.map((sample) => sample.luma);
       const stats = summarize(lumas);
-      await recordMeasurement(test.info(), 'switch-09-fade', { frames: frames.length, lumas: stats }, `stage luminance during 20 fades: min ${stats.min.toFixed(0)}, p50 ${stats.p50.toFixed(0)}`);
+      const darkest = around.reduce((worst, sample) => (sample.luma < worst.luma ? sample : worst), around[0]!);
+      await recordMeasurement(test.info(), 'switch-09-fade', { frames: frames.length, lumas: stats, darkest, dark: around.filter((sample) => sample.luma < 20) }, `stage luminance during 20 fades: min ${stats.min.toFixed(0)}, p50 ${stats.p50.toFixed(0)}`);
       expect(lumas.length, 'frames were recorded around the fades').toBeGreaterThan(100);
-      expect(stats.min, 'no dark frame while fading (mean luminance >= 20)').toBeGreaterThanOrEqual(20);
+      expect(stats.min, `no dark frame while fading (mean luminance >= 20); the darkest was fade ${darkest.fade} at ${darkest.ms} ms from the request`).toBeGreaterThanOrEqual(20);
     },
   );
 });

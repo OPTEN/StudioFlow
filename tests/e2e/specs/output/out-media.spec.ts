@@ -249,18 +249,25 @@ test.describe('OUT media and reports', () => {
         expect(payload.fps!).toBeLessThanOrEqual(144);
         expect(payload.latencyMs, 'estimated latency').not.toBeNull();
       }
-      // outputStatusChanged reaches the Regie at most every 5 s, unless a value changed by more than 20 %.
+      // outputStatusChanged reaches the Regie at most every 5 s, unless a value changed by more than 20 % or the share of dropped frames
+      // crossed 5 %, the point from which the Regie says "drops frames" (issue 12).
       const statusEvents = studio
         .of('event')
         .filter((entry) => (entry.args[0] as { type: string }).type === 'outputStatusChanged')
-        .map((entry) => ({ at: entry.at, status: (entry.args[0] as { status: { state: string; consumers: number; latencyMs: number | null; fps: number | null } }).status }));
+        .map((entry) => ({ at: entry.at, status: (entry.args[0] as { status: { state: string; consumers: number; latencyMs: number | null; fps: number | null; droppedFramesPct?: number | null } }).status }));
       expect(statusEvents.length, 'the status reached the Regie').toBeGreaterThanOrEqual(1);
       for (let index = 1; index < statusEvents.length; index++) {
         const previous = statusEvents[index - 1]!;
         const current = statusEvents[index]!;
         const gap = current.at - previous.at;
         const changed = (a: number | null, b: number | null) => a === null || b === null ? a !== b : Math.abs(b - a) > 0.2 * Math.max(Math.abs(a), 1);
-        const justified = current.status.state !== previous.status.state || current.status.consumers !== previous.status.consumers || changed(previous.status.latencyMs, current.status.latencyMs) || changed(previous.status.fps, current.status.fps);
+        const dropping = (value: number | null | undefined) => (value ?? 0) >= 5;
+        const justified =
+          current.status.state !== previous.status.state ||
+          current.status.consumers !== previous.status.consumers ||
+          changed(previous.status.latencyMs, current.status.latencyMs) ||
+          changed(previous.status.fps, current.status.fps) ||
+          dropping(previous.status.droppedFramesPct) !== dropping(current.status.droppedFramesPct);
         expect(gap >= 4500 || justified, `status events ${gap} ms apart need a >20 % change: ${JSON.stringify([previous.status, current.status])}`).toBe(true);
       }
       // The camera and the page share the machine with everything else: a starved sender sends 8 frames a second and the estimate grows
