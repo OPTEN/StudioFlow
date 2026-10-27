@@ -66,6 +66,12 @@ export class SceneRowComponent {
   readonly scene = input.required<SceneDto>();
   /** Row model (see `sceneRowView`). */
   readonly view = input.required<SceneRowView>();
+  /**
+   * Switching is blocked (a fade runs or a switch is in flight): the row is dimmed (`is-blocked`) and the click
+   * is ignored. Neither a native `disabled` nor `aria-disabled`: the row keeps its focus and stays a drag handle for
+   * reordering, and a test or operator click is not held back until the guard ends and then sent after all.
+   */
+  readonly blocked = input(false);
 
   /** The operator chose the scene (click, Enter, Space): the dock calls `SwitcherService.chooseScene`. */
   readonly choose = output<string>();

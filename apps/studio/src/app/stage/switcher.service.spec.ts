@@ -10,7 +10,7 @@ import {
 import { KeyboardService } from '../core/ui/keyboard.service';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
-import { SwitcherService } from './switcher.service';
+import { IN_FLIGHT_TIMEOUT_MS, SwitcherService } from './switcher.service';
 
 const BASE = `/api/productions/${PRODUCTION_ID}`;
 
@@ -53,6 +53,22 @@ describe('SwitcherService', () => {
     harness?.http.verify();
   });
 
+  /** The hub event of a program switch (a cut, so no fade guard follows). */
+  const emitSwitch = (
+    programSceneId: string,
+    previousProgramSceneId: string,
+    previewSceneId: string | null = null,
+  ): void => {
+    harness.emitEvent({
+      type: 'programSwitched',
+      programSceneId,
+      previewSceneId,
+      previousProgramSceneId,
+      transition: { kind: 'cut', durationMs: 0 },
+      at: new Date().toISOString(),
+    });
+  };
+
   /** Resolves once the switching request that a key started is answered, instead of guessing how many ticks it takes. */
   const untilIdle = (): Promise<void> => vi.waitFor(() => expect(switcher.busy()).toBe(false));
 
@@ -71,7 +87,11 @@ describe('SwitcherService', () => {
     harness.http.expectNone(`${BASE}/program`);
     request.flush(productionFixture({ programSceneId: 'scn_b' }));
     await done;
-    expect(switcher.busy()).toBe(false);
+    // The response alone does not end the guard: the store is fed by the hub event (issue 55).
+    expect(switcher.commandInFlight()).toBe(true);
+    emitSwitch('scn_b', 'scn_a');
+    await harness.settle();
+    expect(switcher.commandInFlight()).toBe(false);
   });
 
   it('does nothing for the scene that is already on air', async () => {
@@ -142,8 +162,10 @@ describe('SwitcherService', () => {
     const choose = switcher.chooseScene('scn_c');
     const preview = harness.http.expectOne(`${BASE}/preview`);
     expect(preview.request.body).toEqual({ sceneId: 'scn_c' });
-    preview.flush(productionFixture());
+    preview.flush(productionFixture({ previewSceneId: 'scn_c' }));
     await choose;
+    emitSwitch('scn_a', 'scn_a', 'scn_c');
+    await harness.settle();
     expect(switcher.canTake()).toBe(true);
     const take = switcher.take();
     const request = harness.http.expectOne(`${BASE}/take`);
@@ -166,7 +188,84 @@ describe('SwitcherService', () => {
     request.flush(productionFixture({ previewSceneId: 'scn_b' }));
   });
 
-  it('ignores 409 transition_running silently and shows other errors', async () => {
+  it('request then event: the in-flight state lasts until the hub event, a second Take sends nothing', async () => {
+    await setup({ studio: true, preview: 'scn_b' });
+    const first = switcher.take();
+    const request = harness.http.expectOne(`${BASE}/take`);
+    expect(switcher.commandInFlight()).toBe(true);
+    expect(switcher.canTake()).toBe(false);
+    // Double Take while in flight: nothing goes out.
+    await expect(switcher.take()).resolves.toBe(false);
+    harness.http.expectNone(`${BASE}/take`);
+    request.flush(productionFixture({ programSceneId: 'scn_b', previewSceneId: 'scn_a' }));
+    await first;
+    // The response is here, the event is not: still guarded.
+    expect(switcher.commandInFlight()).toBe(true);
+    await expect(switcher.take()).resolves.toBe(false);
+    await switcher.chooseScene('scn_c');
+    harness.http.expectNone(`${BASE}/take`);
+    harness.http.expectNone(`${BASE}/preview`);
+    harness.emitEvent({
+      type: 'programSwitched',
+      programSceneId: 'scn_b',
+      previewSceneId: 'scn_a',
+      previousProgramSceneId: 'scn_a',
+      transition: { kind: 'cut', durationMs: 0 },
+      at: new Date().toISOString(),
+    });
+    await harness.settle();
+    expect(switcher.commandInFlight()).toBe(false);
+  });
+
+  it('an event that arrives before the response leaves nothing to wait for', async () => {
+    await setup();
+    const done = switcher.chooseScene('scn_b');
+    const request = harness.http.expectOne(`${BASE}/program`);
+    emitSwitch('scn_b', 'scn_a');
+    await harness.settle();
+    request.flush(productionFixture({ programSceneId: 'scn_b' }));
+    await done;
+    expect(switcher.commandInFlight()).toBe(false);
+  });
+
+  it('request then error: the in-flight state ends and the operator gets the notice', async () => {
+    await setup();
+    toasts.dismiss();
+    const done = switcher.chooseScene('scn_b');
+    harness.http
+      .expectOne(`${BASE}/program`)
+      .flush({ code: 'transition_running' }, { status: 409, statusText: 'Conflict' });
+    await done;
+    expect(switcher.commandInFlight()).toBe(false);
+    expect(toasts.current()?.message).toBe('A fade is still running. Please wait a moment.');
+  });
+
+  it('a lost event cannot lock switching: the safety timeout ends the in-flight state', async () => {
+    vi.useFakeTimers();
+    await setup();
+    const done = switcher.chooseScene('scn_b');
+    harness.http.expectOne(`${BASE}/program`).flush(productionFixture({ programSceneId: 'scn_b' }));
+    await done;
+    expect(switcher.commandInFlight()).toBe(true);
+    vi.advanceTimersByTime(IN_FLIGHT_TIMEOUT_MS - 1);
+    expect(switcher.commandInFlight()).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(switcher.commandInFlight()).toBe(false);
+  });
+
+  it('a double scene click and the keys send one request while in flight', async () => {
+    await setup();
+    const off = switcher.registerShortcuts();
+    const keyboard = TestBed.inject(KeyboardService);
+    void switcher.chooseScene('scn_b');
+    harness.http.expectOne(`${BASE}/program`);
+    void switcher.chooseScene('scn_b');
+    keyboard.handle(new KeyboardEvent('keydown', { key: '3', cancelable: true }));
+    harness.http.expectNone(`${BASE}/program`);
+    off();
+  });
+
+  it('shows 409 transition_running and other errors as a notice', async () => {
     await setup();
     toasts.dismiss();
     const first = switcher.chooseScene('scn_b');
@@ -174,7 +273,8 @@ describe('SwitcherService', () => {
       .expectOne(`${BASE}/program`)
       .flush({ code: 'transition_running' }, { status: 409, statusText: 'Conflict' });
     await first;
-    expect(toasts.current()).toBeNull();
+    expect(toasts.current()?.message).toContain('fade is still running');
+    toasts.dismiss();
     const second = switcher.chooseScene('scn_b');
     harness.http
       .expectOne(`${BASE}/program`)
@@ -237,10 +337,12 @@ describe('SwitcherService', () => {
     const off = switcher.registerShortcuts();
     const keyboard = TestBed.inject(KeyboardService);
     keyboard.handle(new KeyboardEvent('keydown', { key: '3', cancelable: true }));
-    harness.http.expectOne(`${BASE}/preview`).flush(productionFixture());
+    harness.http.expectOne(`${BASE}/preview`).flush(productionFixture({ previewSceneId: 'scn_c' }));
+    emitSwitch('scn_a', 'scn_a', 'scn_c');
     await untilIdle();
     keyboard.handle(new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true }));
     harness.http.expectOne(`${BASE}/take`).flush(productionFixture());
+    emitSwitch('scn_c', 'scn_a', 'scn_a');
     await untilIdle();
     off();
     keyboard.handle(new KeyboardEvent('keydown', { key: '1', cancelable: true }));

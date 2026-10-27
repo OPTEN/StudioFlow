@@ -138,6 +138,18 @@ describe('ControlColumnComponent', () => {
     expect(request.request.body).toEqual({ transition: { kind: 'fade', durationMs: 300 } });
     request.flush(productionFixture({ programSceneId: 'scn_b', previewSceneId: 'scn_a' }));
     await render();
+    // Still disabled: the response is here, the hub event of the switch is not (issue 55).
+    expect(take()?.disabled).toBe(true);
+    harness.emitEvent({
+      type: 'programSwitched',
+      programSceneId: 'scn_b',
+      previewSceneId: 'scn_a',
+      previousProgramSceneId: 'scn_a',
+      transition: { kind: 'cut', durationMs: 0 },
+      at: new Date().toISOString(),
+    });
+    await harness.settle();
+    await render();
     expect(take()?.disabled).toBe(false);
   });
 
