@@ -957,7 +957,7 @@ approval or blocked. A release must be 3 days old before it is proposed. Images 
 For `.NET and EF Core` check that the SDK image and the runtime image come from the same release (comment in
 `apps/api/Dockerfile`). Merge, then update the server (section 8) when no broadcast is planned.
 
-**LiveKit.** Server and client are a pair: the specs document how version 1.13.10 of the server and 2.23.0 of the client
+**LiveKit.** Server and client are a pair: the specs document how version 1.13.11 of the server and 2.23.0 of the client
 behave. Tick the LiveKit group on the dashboard only when both are meant to move. Then run the workflow **E2E full**
 (Actions › E2E full › Run workflow, branch of the pull request) and read the LiveKit and net areas of the result before
 merging. Test with real phones once (`docs/testing.md`, section 4).
