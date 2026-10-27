@@ -119,7 +119,7 @@ export class OutputPopoverComponent {
         link,
         state,
         stateText: linkStateText(state),
-        detail: state === 'none' ? this.lastSeenText(link) : null,
+        detail: state === 'none' ? this.lastSeenText(link) : this.audioDetail(link.id, state),
         lamp: state === 'connected' ? '' : state === 'stale' ? 'is-warn' : 'is-idle',
       };
     }),
@@ -262,6 +262,14 @@ export class OutputPopoverComponent {
     const name = value.trim().toLowerCase();
     return name && this.links().some((link) => link.name.toLowerCase() === name)
       ? { taken: true }
+      : null;
+  }
+
+  /** A connected link whose page cannot play sound says so under its name (the browser waits for a click). */
+  private audioDetail(linkId: string, state: OutputState): string | null {
+    const audio = this.status()?.links.find((entry) => entry.linkId === linkId)?.audio;
+    return state === 'connected' && audio?.state === 'blocked'
+      ? t('regie.audio.output.blocked')
       : null;
   }
 

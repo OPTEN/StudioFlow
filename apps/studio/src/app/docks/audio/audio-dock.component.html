@@ -1,0 +1,69 @@
+<sf-dock-frame dock="audio" [count]="loading() ? null : rows().length">
+  <button
+    sfDockActions
+    class="c-ibtn"
+    type="button"
+    data-testid="audio-undo"
+    [disabled]="!commands.canUndo()"
+    [attr.aria-label]="t('regie.audio.dock.undo')"
+    [title]="t('regie.audio.dock.undo')"
+    (click)="commands.undo()"
+  >
+    <svg sfIcon="undo"></svg>
+  </button>
+  <button
+    sfDockActions
+    class="c-ibtn"
+    type="button"
+    data-testid="audio-redo"
+    [disabled]="!commands.canRedo()"
+    [attr.aria-label]="t('regie.audio.dock.redo')"
+    [title]="t('regie.audio.dock.redo')"
+    (click)="commands.redo()"
+  >
+    <svg sfIcon="redo"></svg>
+  </button>
+  <span sfDockActions class="c-pop-wrap">
+    <button
+      class="c-btn c-btn--sm"
+      type="button"
+      data-testid="audio-monitor"
+      aria-haspopup="dialog"
+      [class.is-active]="monitoring()"
+      [sfPopoverTrigger]="monitorPopover"
+    >
+      <svg sfIcon="headphones" [size]="14"></svg>{{ t('regie.audio.dock.monitor') }}
+    </button>
+    @if (popovers.isOpen(monitorPopover)) {
+      <sf-audio-monitor-popover />
+    }
+  </span>
+
+  @if (loading()) {
+    <div class="c-empty">
+      <strong>{{ t('regie.audio.dock.loadingTitle') }}</strong
+      >{{ t('regie.docks.loadingText') }}
+    </div>
+  } @else {
+    @if (audio.state() === 'blocked') {
+      <p class="c-hint c-audio-dock__note" data-testid="audio-suspended">
+        {{ t('regie.audio.dock.suspended') }}
+      </p>
+    } @else if (audio.state() === 'unavailable') {
+      <p class="c-hint c-audio-dock__note">{{ t('regie.audio.dock.unavailable') }}</p>
+    }
+    <div class="c-audio-dock__list" role="list">
+      @for (row of rows(); track row.sourceId) {
+        <sf-audio-row role="listitem" [row]="row" [silent]="audio.silent().has(row.sourceId)" />
+      } @empty {
+        <div class="c-empty">
+          <strong>{{ t('regie.audio.dock.emptyTitle') }}</strong
+          >{{ t('regie.audio.dock.emptyText') }}
+        </div>
+      }
+    </div>
+    @if (rows().length > 0) {
+      <p class="c-hint c-audio-dock__note">{{ t('regie.audio.dock.shortcut') }}</p>
+    }
+  }
+</sf-dock-frame>

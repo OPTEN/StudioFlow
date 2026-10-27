@@ -21,12 +21,16 @@ describe('dock layout model', () => {
   it('accepts a complete stored layout and fills missing optional values', () => {
     const layout = validateLayout({
       v: 1,
-      zones: { left: ['scenes'], bottom: ['src', 'insp'], right: ['st'] },
+      zones: { left: ['scenes'], bottom: ['src', 'insp', 'audio'], right: ['st'] },
       weights: { src: 1.5 },
       leftW: 300,
     });
     expect(layout).not.toBeNull();
-    expect(layout?.zones).toEqual({ left: ['scenes'], bottom: ['src', 'insp'], right: ['st'] });
+    expect(layout?.zones).toEqual({
+      left: ['scenes'],
+      bottom: ['src', 'insp', 'audio'],
+      right: ['st'],
+    });
     expect(layout?.weights.src).toBe(1.5);
     expect(layout?.weights.insp).toBe(1.2);
     expect(layout?.leftW).toBe(300);
@@ -40,7 +44,10 @@ describe('dock layout model', () => {
     ['a dock missing', { v: 1, zones: { left: [], bottom: ['scenes', 'src', 'insp'], right: [] } }],
     [
       'a dock twice',
-      { v: 1, zones: { left: ['st'], bottom: ['scenes', 'src', 'insp', 'st'], right: [] } },
+      {
+        v: 1,
+        zones: { left: ['st'], bottom: ['scenes', 'src', 'insp', 'st', 'audio'], right: [] },
+      },
     ],
     [
       'an unknown dock',
@@ -60,15 +67,49 @@ describe('dock layout model', () => {
     expect(validateLayout(raw)).toBeNull();
   });
 
+  it('adds the Audio dock to the end of the bottom zone of a layout stored before it existed', () => {
+    const stored = {
+      v: 1,
+      zones: { left: ['scenes'], bottom: ['src', 'insp'], right: ['st'] },
+      hidden: ['insp'],
+    };
+    const layout = validateLayout(stored);
+    expect(layout?.zones).toEqual({
+      left: ['scenes'],
+      bottom: ['src', 'insp', 'audio'],
+      right: ['st'],
+    });
+    expect(layout?.hidden).toEqual(['insp']);
+    expect(layout?.weights.audio).toBe(defaultLayout().weights.audio);
+    // The migrated layout is a complete layout: it validates again as it is.
+    expect(validateLayout(layout)).toEqual(layout);
+    // The old default arrangement becomes the new default arrangement.
+    expect(
+      validateLayout({
+        v: 1,
+        zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st'], right: [] },
+      })?.zones,
+    ).toEqual(defaultLayout().zones);
+  });
+
+  it('shows the Audio dock after Stations by default', () => {
+    expect(defaultLayout().zones.bottom).toEqual(['scenes', 'src', 'insp', 'st', 'audio']);
+  });
+
   it('moves docks and reports unchanged moves', () => {
     const layout = defaultLayout();
     const moved = moveDock(layout, 'st', 'right', 0);
-    expect(moved.zones).toEqual({ left: [], bottom: ['scenes', 'src', 'insp'], right: ['st'] });
+    expect(moved.zones).toEqual({
+      left: [],
+      bottom: ['scenes', 'src', 'insp', 'audio'],
+      right: ['st'],
+    });
     expect(moveDock(layout, 'scenes', 'bottom', 0)).toBe(layout);
     expect(moveDock(layout, 'scenes', 'bottom', 99).zones.bottom).toEqual([
       'src',
       'insp',
       'st',
+      'audio',
       'scenes',
     ]);
   });
@@ -76,29 +117,29 @@ describe('dock layout model', () => {
   it('steps through left → bottom → right with the grip keys', () => {
     const layout = defaultLayout();
     expect(stepTarget(layout, 'scenes', -1)).toEqual({ zone: 'left', index: 0 });
-    expect(stepTarget(layout, 'st', 1)).toEqual({ zone: 'right', index: 0 });
+    expect(stepTarget(layout, 'audio', 1)).toEqual({ zone: 'right', index: 0 });
     expect(stepTarget(layout, 'src', 1)).toEqual({ zone: 'bottom', index: 2 });
     const left = layoutWith({
-      zones: { left: ['scenes'], bottom: ['src', 'insp', 'st'], right: [] },
+      zones: { left: ['scenes'], bottom: ['src', 'insp', 'st', 'audio'], right: [] },
     });
     expect(stepTarget(left, 'scenes', -1)).toBeNull();
     expect(stepTarget(left, 'scenes', 1)).toEqual({ zone: 'bottom', index: 0 });
   });
 
   it('puts the pairing dock in place of Sources and Properties', () => {
-    expect(visibleZones(defaultLayout(), true).bottom).toEqual(['scenes', 'pair', 'st']);
+    expect(visibleZones(defaultLayout(), true).bottom).toEqual(['scenes', 'pair', 'st', 'audio']);
     const sides = layoutWith({
-      zones: { left: ['insp'], bottom: ['scenes', 'src'], right: ['st'] },
+      zones: { left: ['insp'], bottom: ['scenes', 'src', 'audio'], right: ['st'] },
     });
     expect(pairSlot(sides)).toEqual({ zone: 'left', index: 0 });
     expect(visibleZones(sides, true)).toEqual({
       left: ['pair'],
-      bottom: ['scenes'],
+      bottom: ['scenes', 'audio'],
       right: ['st'],
     });
     const hidden = layoutWith({
       hidden: ['src', 'insp'],
-      zones: { left: [], bottom: ['scenes', 'src', 'insp'], right: ['st'] },
+      zones: { left: [], bottom: ['scenes', 'src', 'insp', 'audio'], right: ['st'] },
     });
     expect(pairSlot(hidden)).toEqual({ zone: 'right', index: 0 });
   });
@@ -108,6 +149,7 @@ describe('dock layout model', () => {
       'scenes',
       'src',
       'st',
+      'audio',
     ]);
   });
 });
@@ -143,10 +185,19 @@ describe('DockLayoutService', () => {
     );
   });
 
+  it('restores a layout that was stored before the Audio dock existed, with the dock added', () => {
+    const layout = setup({
+      v: 1,
+      zones: { left: [], bottom: ['scenes', 'src', 'insp'], right: ['st'] },
+    });
+    expect(layout.zones().right).toEqual(['st']);
+    expect(layout.zones().bottom).toEqual(['scenes', 'src', 'insp', 'audio']);
+  });
+
   it('restores a valid stored layout', () => {
     const layout = setup({
       ...defaultLayout(),
-      zones: { left: [], bottom: ['scenes', 'src', 'insp'], right: ['st'] },
+      zones: { left: [], bottom: ['scenes', 'src', 'insp', 'audio'], right: ['st'] },
     });
     expect(layout.zones().right).toEqual(['st']);
     expect(layout.hasSideDocks()).toBe(true);
@@ -180,10 +231,10 @@ describe('DockLayoutService', () => {
     const layout = setup();
     layout.setShown('src', false);
     expect(layout.isShown('src')).toBe(false);
-    expect(layout.zones().bottom).toEqual(['scenes', 'insp', 'st']);
+    expect(layout.zones().bottom).toEqual(['scenes', 'insp', 'st', 'audio']);
     expect(stored().hidden).toEqual(['src']);
     layout.setShown('src', true);
-    expect(layout.zones().bottom).toEqual(['scenes', 'src', 'insp', 'st']);
+    expect(layout.zones().bottom).toEqual(['scenes', 'src', 'insp', 'st', 'audio']);
   });
 
   it('resizes and resets, persisting on save', () => {
@@ -213,7 +264,7 @@ describe('DockLayoutService', () => {
     layout.togglePairing();
     expect(layout.pairingOpen()).toBe(true);
     expect(layout.pairingTab()).toBe('laptop');
-    expect(layout.zones().bottom).toEqual(['scenes', 'pair', 'st']);
+    expect(layout.zones().bottom).toEqual(['scenes', 'pair', 'st', 'audio']);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(layout.pairingOpen()).toBe(false);
   });

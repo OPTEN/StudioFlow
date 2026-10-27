@@ -43,6 +43,22 @@ describe('KeyboardService', () => {
     expect(scenes).toEqual([0, 8]);
   });
 
+  it('maps M to the mute shortcut of the audio mixer and leaves it alone when nothing handles it', () => {
+    const calls: string[] = [];
+    cleanup.push(keyboard.register('mute', () => (calls.push('mute'), true)));
+    expect(press('m').defaultPrevented).toBe(true);
+    expect(press('M').defaultPrevented).toBe(true);
+    press('m', { repeat: true });
+    press('m', { ctrlKey: true });
+    focus('<input type="text">');
+    press('m');
+    expect(calls).toEqual(['mute', 'mute']);
+
+    cleanup.splice(0).forEach((off) => off());
+    document.body.innerHTML = '';
+    expect(press('m').defaultPrevented).toBe(false);
+  });
+
   it('ignores shortcuts while typing, but not Escape', () => {
     const scenes: number[] = [];
     let escapes = 0;

@@ -403,6 +403,25 @@ export class StudioApiService {
     );
   }
 
+  // ---------------------------------------------------------------- Audio
+
+  /**
+   * `PUT …/audio/channels`: sets channels of the mixer (fader, mute, mode, sync offset); the other channels stay.
+   * `adjusting` marks the requests of a fader drag, which are not written to the audit log. 400 `validation_failed` with
+   * the field paths; returns the channels of the production.
+   */
+  setAudioChannels(
+    productionId: string,
+    body: ApiBody<'setAudioChannels'>,
+  ): Promise<ApiResult<'setAudioChannels'>> {
+    return this.call(
+      this.http.put<ApiResult<'setAudioChannels'>>(
+        this.production(productionId, '/audio/channels'),
+        body,
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------- Devices
 
   /** `PATCH …/devices/{deviceId}`: rename. */

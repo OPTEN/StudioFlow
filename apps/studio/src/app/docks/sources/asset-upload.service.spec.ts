@@ -29,6 +29,7 @@ function asset(id: string, name: string): AssetDto {
     width: 1920,
     height: 1080,
     createdAt: '2026-10-22T10:00:00.000Z',
+    hasAudio: false,
     contentUrl: `/api/productions/${PRODUCTION_ID}/assets/${id}/content`,
   };
 }

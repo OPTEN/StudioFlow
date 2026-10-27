@@ -1,0 +1,176 @@
+// One channel of the Audio dock: head (code, name, PGM, PFL, mute, details), meter + fader + dB, details.
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.c-audio {
+  border-bottom: 1px solid var(--seam);
+  padding: 8px 10px 9px;
+
+  &.is-selected {
+    background: var(--raised);
+    box-shadow: inset 2px 0 0 var(--blue);
+  }
+
+  // A muted or switched-off channel keeps its place but reads quieter.
+  &.is-muted .c-audio__name,
+  &.is-off .c-audio__name {
+    opacity: 0.6;
+  }
+
+  &.is-silent {
+    background: var(--amber-wash);
+  }
+}
+
+.c-audio__head {
+  align-items: center;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto auto auto auto;
+}
+
+.c-audio__icon {
+  color: var(--muted);
+  justify-self: center;
+}
+
+.c-audio__main {
+  min-width: 0;
+}
+
+.c-audio__name {
+  @include ellipsis;
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.c-audio__sub {
+  @include ellipsis;
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.c-audio__state {
+  margin-left: 6px;
+}
+
+// PFL and mute: small toggle buttons; pressed = raised with the selected shadow, like a segment.
+.c-audio__btn {
+  @include state-transition(background-color, color);
+  background: transparent;
+  border: 1px solid var(--seam-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  cursor: pointer;
+  font: 700 11.5px / 1 var(--font-ui);
+  height: 26px;
+  letter-spacing: 0.04em;
+  min-width: 30px;
+  padding: 0 7px;
+
+  &:hover {
+    background: var(--raised);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--raised-2);
+    box-shadow: var(--shadow-selected);
+    color: var(--text);
+  }
+}
+
+// A muted channel is cut off from the program: the row says so in the one hue that means "cut off".
+.c-audio__btn--mute[aria-pressed='true'] {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.c-audio__more svg {
+  transition: transform var(--dur-reveal) var(--ease);
+
+  &.is-open {
+    transform: rotate(180deg);
+  }
+}
+
+.c-audio__mix {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 9ch;
+  margin-top: 6px;
+}
+
+// The meter sits behind the fader: one 6 px bar, the fader's track is transparent over it.
+.c-audio__track {
+  height: 22px;
+  position: relative;
+}
+
+.c-audio__meter {
+  background: var(--raised-2);
+  border-radius: 3px;
+  height: 6px;
+  left: 0;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: 8px;
+}
+
+.c-audio__fill {
+  background: var(--text-2);
+  height: 100%;
+  transform-origin: left center;
+  transition: transform 50ms linear;
+  width: 100%;
+
+  &.is-hot {
+    background: var(--red);
+  }
+
+  @include reduced-motion {
+    transition: none;
+  }
+}
+
+.c-audio__fader {
+  accent-color: var(--blue);
+  background: transparent;
+  height: 22px;
+  inset: 0;
+  margin: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.c-audio__db {
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.c-audio__details {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 8px;
+}
+
+.c-audio__field {
+  display: grid;
+  gap: 4px;
+}
+
+.c-audio__hint {
+  flex-basis: 100%;
+  margin: 0;
+}

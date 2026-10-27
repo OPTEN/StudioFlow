@@ -75,7 +75,11 @@
         }
       </span>
     </span>
-    <sf-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
+    @if (view().audioOnly) {
+      <span class="c-st__audio" aria-hidden="true"><svg sfIcon="mic" [size]="18"></svg></span>
+    } @else {
+      <sf-station-thumb [sourceId]="view().thumbSourceId" [dimmed]="down()" />
+    }
     <svg class="c-st__chev" sfIcon="chev"></svg>
   </button>
 

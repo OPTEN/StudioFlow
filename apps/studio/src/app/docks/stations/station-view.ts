@@ -68,6 +68,8 @@ export interface StationView {
   readonly line: StationLine;
   /** Source for the small live thumbnail (camera, else the first screen), or null. */
   readonly thumbSourceId: string | null;
+  /** The device has no picture, only sound (the audio station): the row shows a microphone instead of a thumbnail. */
+  readonly audioOnly: boolean;
   /** Recovered incidents of the station's sources, waiting for "Seen". */
   readonly recovered: readonly IncidentDto[];
   /** Screen slots whose sharing ended ("Ask to share again"). */
@@ -269,6 +271,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     line,
     thumbSourceId: thumb?.id ?? null,
     cpuLimited,
+    audioOnly: thumb === null && sources.some((source) => source.kind === 'audio'),
     recovered,
     endedScreens: sources.filter((source) => source.kind === 'screen' && source.status === 'ended'),
     canSwitchCamera: device.kind === 'phone' && !!camera && camera.status === 'ok',

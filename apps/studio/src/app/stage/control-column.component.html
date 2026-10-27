@@ -52,6 +52,20 @@
     <svg sfIcon="plus" [size]="14"></svg>
   </button>
 </div>
+@if (hasAudio()) {
+  <div class="c-program-level" data-testid="program-level" [title]="t('regie.audio.program.title')">
+    <span class="c-control-column__label">{{ t('regie.audio.program.label') }}</span>
+    <div class="c-program-level__bar" aria-hidden="true">
+      <div
+        class="c-program-level__fill"
+        data-testid="program-meter"
+        [class.is-hot]="programHot()"
+        [style.transform]="'scaleX(' + programFill() + ')'"
+      ></div>
+    </div>
+    <span class="c-program-level__value u-mono" data-testid="program-db">{{ programText() }}</span>
+  </div>
+}
 @if (switcher.studioMode()) {
   <button
     class="c-take"

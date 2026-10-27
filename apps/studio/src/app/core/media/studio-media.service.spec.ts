@@ -107,6 +107,7 @@ describe('StudioMediaService', () => {
             width: 1920,
             height: 1080,
             createdAt: '',
+            hasAudio: false,
             contentUrl: '/api/productions/x/assets/ast_aaaaaaaaaaaaaaaa/content',
           },
         ],

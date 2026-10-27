@@ -22,6 +22,7 @@ import {
   stationOrder,
   tallyOf,
   type AssetDto,
+  type AudioChannelDto,
   type CanvasSize,
   type DeviceDto,
   type HealthSummary,
@@ -223,6 +224,10 @@ export class ProductionStoreService {
    */
   readonly placeholders = computed<readonly SourcePlaceholderDto[]>(
     () => this.stateSignal()?.placeholders ?? EMPTY_LIST,
+  );
+  /** The channels of the audio mixer by source id. */
+  readonly audioChannels = computed<ReadonlyMap<string, AudioChannelDto>>(
+    () => this.stateSignal()?.audioChannels ?? EMPTY_MAP,
   );
   /** Devices by id. */
   readonly devices = computed<ReadonlyMap<string, DeviceDto>>(

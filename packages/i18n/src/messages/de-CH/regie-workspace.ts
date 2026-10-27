@@ -2,6 +2,7 @@ import type { Translation } from '../../types';
 import type { regieWorkspace as en } from '../en/regie-workspace';
 
 export const regieWorkspace: Translation<typeof en> = {
+  'regie.workspace.dock.audio': 'Ton',
   'regie.workspace.dock.insp': 'Eigenschaften',
   'regie.workspace.dock.pair': 'Gerät koppeln',
   'regie.workspace.dock.scenes': 'Szenen',

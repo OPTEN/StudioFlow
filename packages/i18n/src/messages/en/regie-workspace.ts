@@ -2,6 +2,7 @@ import type { Namespace } from '../../types';
 
 /** The dock workspace: dock titles and region names, splitters, the drop strips and the layout toasts. */
 export const regieWorkspace = {
+  'regie.workspace.dock.audio': 'Audio',
   'regie.workspace.dock.insp': 'Properties',
   'regie.workspace.dock.pair': 'Pair device',
   'regie.workspace.dock.scenes': 'Scenes',

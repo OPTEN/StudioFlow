@@ -10,7 +10,9 @@ export type ShortcutId =
   /** Ctrl/Cmd+Z. */
   | 'undo'
   /** Ctrl/Cmd+Shift+Z and Ctrl+Y. */
-  | 'redo';
+  | 'redo'
+  /** M: mutes (or unmutes) the selected channel of the audio mixer. */
+  | 'mute';
 
 /**
  * A shortcut handler. Returns true when it acted; only then the browser default (scrolling on Space, the browser's
@@ -56,6 +58,7 @@ export function isTypingTarget(element: Element | null): boolean {
  * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo;
  * - other combinations with Ctrl, Cmd or Alt are left to the browser;
  * - Space triggers `take` unless the focus is on a button or link (Space activates those);
+ * - M triggers `mute` (the selected audio channel);
  * - 1–9 trigger `scene`. Auto-repeat of Space and digits is ignored, so holding a key never fires twice.
  *
  * Several handlers per id are allowed; the most recently registered one runs first and the first that returns true
@@ -120,6 +123,12 @@ export class KeyboardService {
         return;
       }
       if (this.run('take', -1)) {
+        event.preventDefault();
+      }
+      return;
+    }
+    if (key === 'm') {
+      if (!event.repeat && this.run('mute', -1)) {
         event.preventDefault();
       }
       return;

@@ -1,0 +1,154 @@
+@let r = row();
+<div
+  class="c-audio"
+  role="group"
+  [class.is-selected]="selected()"
+  [class.is-muted]="muted()"
+  [class.is-off]="r.channel.mode === 'off'"
+  [class.is-silent]="silent()"
+  [attr.data-source]="r.sourceId"
+  [attr.aria-label]="t('regie.audio.row.group', { name: r.code + ' ' + r.name })"
+  (click)="select()"
+  (focusin)="select()"
+>
+  <div class="c-audio__head">
+    <svg class="c-audio__icon" [sfIcon]="r.icon" [size]="14"></svg>
+    <span class="c-code">{{ r.code }}</span>
+    <span class="c-audio__main">
+      <span class="c-audio__name">{{ r.name }}</span>
+      <span class="c-audio__sub">
+        {{ r.roleText }}
+        @if (stateWord(); as word) {
+          <span class="c-audio__state" [class.c-state--warn]="silent()" data-testid="audio-state">{{
+            word
+          }}</span>
+        }
+      </span>
+    </span>
+    @if (r.onAir) {
+      <span class="c-tag c-tag--pgm">PGM</span>
+    }
+    <button
+      class="c-audio__btn c-audio__btn--pfl"
+      type="button"
+      data-testid="audio-pfl"
+      [attr.aria-pressed]="listening()"
+      [attr.aria-label]="
+        listening()
+          ? t('regie.audio.row.pflStop', { name: r.name })
+          : t('regie.audio.row.pflStart', { name: r.name })
+      "
+      [title]="
+        listening()
+          ? t('regie.audio.row.pflStop', { name: r.name })
+          : t('regie.audio.row.pflStart', { name: r.name })
+      "
+      (click)="togglePfl()"
+    >
+      {{ t('regie.audio.row.pfl') }}
+    </button>
+    <button
+      class="c-audio__btn c-audio__btn--mute"
+      type="button"
+      data-testid="audio-mute"
+      aria-keyshortcuts="M"
+      [attr.aria-pressed]="muted()"
+      [attr.aria-label]="
+        muted()
+          ? t('regie.audio.row.unmuteName', { name: r.name })
+          : t('regie.audio.row.muteName', { name: r.name })
+      "
+      [title]="
+        muted()
+          ? t('regie.audio.row.unmuteName', { name: r.name })
+          : t('regie.audio.row.muteName', { name: r.name })
+      "
+      (click)="toggleMute()"
+    >
+      {{ t('regie.audio.row.mute') }}
+    </button>
+    <button
+      class="c-ibtn c-audio__more"
+      type="button"
+      data-testid="audio-more"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="detailId()"
+      [attr.aria-label]="t('regie.audio.row.details', { name: r.name })"
+      [title]="t('regie.audio.row.details', { name: r.name })"
+      (click)="open.set(!open())"
+    >
+      <svg sfIcon="chev" [size]="14" [class.is-open]="open()"></svg>
+    </button>
+  </div>
+
+  <div class="c-audio__mix">
+    <div class="c-audio__track">
+      <div class="c-audio__meter" aria-hidden="true">
+        <div
+          class="c-audio__fill"
+          data-testid="audio-meter"
+          [class.is-hot]="hot()"
+          [style.transform]="'scaleX(' + fill() + ')'"
+        ></div>
+      </div>
+      <input
+        class="c-audio__fader"
+        type="range"
+        min="0"
+        max="1"
+        step="0.005"
+        data-testid="audio-fader"
+        [value]="r.position"
+        [attr.aria-label]="t('regie.audio.row.fader', { name: r.name })"
+        [attr.aria-valuetext]="valueText()"
+        [title]="t('regie.audio.row.resetHint')"
+        (input)="onFader($event)"
+        (change)="onFaderCommit($event)"
+        (dblclick)="resetFader()"
+      />
+    </div>
+    <output class="c-audio__db u-mono" data-testid="audio-db">{{ r.dbText }} dB</output>
+  </div>
+
+  @if (open()) {
+    <div class="c-audio__details" [id]="detailId()">
+      <div class="c-audio__field">
+        <span class="c-label" [id]="modeLabelId()">{{ t('regie.audio.row.mode') }}</span>
+        <div class="c-seg" role="group" [attr.aria-labelledby]="modeLabelId()">
+          @for (mode of r.modes; track mode) {
+            <button
+              type="button"
+              [attr.data-testid]="'audio-mode-' + mode"
+              [attr.aria-pressed]="r.channel.mode === mode"
+              [title]="modeHint(mode)"
+              (click)="setMode(mode)"
+            >
+              {{ modeLabel(mode) }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="c-audio__field">
+        <label class="c-label" [for]="syncId()">{{ t('regie.audio.row.sync') }}</label>
+        <div class="c-num">
+          <input
+            class="c-num__input"
+            type="number"
+            data-testid="audio-sync"
+            step="10"
+            [id]="syncId()"
+            [min]="0"
+            [max]="limits.maxSyncOffsetMs"
+            [value]="r.channel.syncOffsetMs"
+            [attr.aria-describedby]="syncId() + '-hint'"
+            (change)="onSync($event)"
+          />
+          <span class="c-num__unit">{{ t('regie.audio.row.syncUnit') }}</span>
+        </div>
+      </div>
+      <p class="c-hint c-audio__hint" [id]="syncId() + '-hint'">
+        {{ t('regie.audio.row.syncHint') }}
+      </p>
+    </div>
+  }
+</div>

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import { formatClock, formatPercent } from '@studioflow/scene-model';
+import { audioExpected, formatClock, formatPercent } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -72,7 +72,20 @@ export class HeaderComponent {
       .map((link) => link.name)
       .join(' + '),
   );
-  /** Tooltip of the chip: every link with its state ("Proxy · connected"), and why it warns. */
+  /**
+   * A connected output page cannot play sound (the browser waits for a click) while the mixer expects sound: the chip
+   * says "Audio blocked" (issue #7). Nothing is blocked when no channel could be heard.
+   */
+  protected readonly audioBlocked = computed(() => {
+    const state = this.store.state();
+    if (!state || !audioExpected(state)) {
+      return false;
+    }
+    return (this.store.outputStatus()?.links ?? []).some(
+      (link) => link.state === 'connected' && link.audio?.state === 'blocked',
+    );
+  });
+  /** Tooltip of the chip: every link with its state ("Proxy · connected"), why it warns and why the audio is blocked. */
   protected readonly outputTitle = computed(() => {
     const links = this.store.outputStatus()?.links ?? [];
     const lines = links.map((link) =>
@@ -81,6 +94,9 @@ export class HeaderComponent {
     const { dropping, droppedPct } = this.load();
     if (dropping && droppedPct !== null) {
       lines.push(t('regie.load.output.droppingHint', { percent: formatPercent(droppedPct) }));
+    }
+    if (this.audioBlocked()) {
+      lines.push(t('regie.audio.output.blockedHint'));
     }
     return lines.length > 0 ? lines.join('\n') : null;
   });

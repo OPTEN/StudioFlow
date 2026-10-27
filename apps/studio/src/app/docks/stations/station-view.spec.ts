@@ -72,6 +72,24 @@ describe('station view', () => {
     expect(view.ariaLabel).toBe('K1 Phone stage left, on Program');
   });
 
+  it('shows a microphone instead of a picture for the audio station, which is on Program with its mode', () => {
+    const mic = sourceFixture(DEVICE, 'mic', 'A1', { label: 'Mixing desk' });
+    const view = stationView(
+      deviceFixture(DEVICE, 'Mixing desk', { kind: 'audioStation', telemetry: telemetry() }),
+      context([mic], {}, 'program'),
+    );
+    expect(view.audioOnly).toBe(true);
+    expect(view.thumbSourceId).toBeNull();
+    expect(view.codes).toEqual(['A1']);
+    expect(view.tally).toBe('program');
+    expect(view.canSwitchCamera).toBe(false);
+    expect(view.canControlCamera).toBe(false);
+    // A phone whose microphone is on has a picture too: its thumbnail stays.
+    const phone = stationView(deviceFixture(DEVICE, 'Phone'), context([camera, mic]));
+    expect(phone.audioOnly).toBe(false);
+    expect(phone.thumbSourceId).toBe(camera.id);
+  });
+
   it('warns about a low battery unless the phone is charging', () => {
     const low = stationView(
       deviceFixture(DEVICE, 'Phone', { telemetry: telemetry({ batteryPct: 14 }) }),

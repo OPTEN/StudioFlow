@@ -6,14 +6,14 @@ import type { PlainMessageKey } from '@studioflow/i18n';
  */
 
 /** The movable docks. */
-export type DockId = 'scenes' | 'src' | 'insp' | 'st';
+export type DockId = 'scenes' | 'src' | 'insp' | 'st' | 'audio';
 /** Every dock that can appear in a zone, including the temporary pairing dock. */
 export type DockSlotId = DockId | 'pair';
 /** Dock zones around the stage. */
 export type DockZone = 'left' | 'bottom' | 'right';
 
 /** The movable docks in default order. */
-export const DOCK_IDS: readonly DockId[] = ['scenes', 'src', 'insp', 'st'];
+export const DOCK_IDS: readonly DockId[] = ['scenes', 'src', 'insp', 'st', 'audio'];
 /** Zones in keyboard order (the grip arrows walk left → bottom → right). */
 export const DOCK_ZONES: readonly DockZone[] = ['left', 'bottom', 'right'];
 
@@ -23,6 +23,7 @@ export const DOCK_TITLE_KEYS = {
   src: 'regie.workspace.dock.src',
   insp: 'regie.workspace.dock.insp',
   st: 'regie.workspace.dock.st',
+  audio: 'regie.workspace.dock.audio',
   pair: 'regie.workspace.dock.pair',
 } as const satisfies Record<DockSlotId, PlainMessageKey>;
 
@@ -66,12 +67,12 @@ export const LAYOUT_LIMITS = {
   weightMax: 20,
 } as const;
 
-/** The default layout: Scenes | Sources | Properties | Stations at the bottom. */
+/** The default layout: Scenes | Sources | Properties | Stations | Audio at the bottom. */
 export function defaultLayout(): DockLayout {
   return {
     v: 1,
-    zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st'], right: [] },
-    weights: { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, pair: 2.2 },
+    zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st', 'audio'], right: [] },
+    weights: { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, audio: 1, pair: 2.2 },
     hidden: [],
     bottomH: null,
     leftW: 320,
@@ -95,7 +96,8 @@ function isDockId(value: unknown): value is DockId {
 /**
  * Validates stored JSON. Returns null on ANY inconsistency (wrong version, a dock missing or twice, unknown ids,
  * values out of range); the caller then uses {@link defaultLayout}. Missing optional values (weights of single docks,
- * `hidden`, sizes) take their defaults, like the prototype `loadLayout`.
+ * `hidden`, sizes) take their defaults, like the prototype `loadLayout`. A layout stored before the Audio dock existed
+ * is valid otherwise: the dock joins the end of the bottom zone.
  */
 export function validateLayout(raw: unknown): DockLayout | null {
   if (!isRecord(raw) || raw['v'] !== 1 || !isRecord(raw['zones'])) {
@@ -117,6 +119,10 @@ export function validateLayout(raw: unknown): DockLayout | null {
       seen.add(id);
       zones[zone].push(id);
     }
+  }
+  if (!seen.has('audio') && seen.size === DOCK_IDS.length - 1) {
+    seen.add('audio');
+    zones.bottom.push('audio');
   }
   if (seen.size !== DOCK_IDS.length) {
     return null;
