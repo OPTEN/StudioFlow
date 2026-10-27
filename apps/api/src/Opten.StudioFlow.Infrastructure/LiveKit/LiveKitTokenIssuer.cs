@@ -106,10 +106,11 @@ internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOpti
 
     /// <summary>
     /// The WebSocket URL a client connects to. In this order: <c>LiveKit:PublicUrl</c> when an operator set one; else the
-    /// origin the caller used for this very request (<c>wss://</c> and the <c>Host</c> that Caddy passes on, so a page opened
-    /// by the IP address or a second name connects to the same name, which is also the one its Content-Security-Policy
-    /// <c>connect-src</c> allows: Caddy writes <c>wss://{hostport}</c> from the same header); else, outside a request, the
-    /// public base URL of the server settings.
+    /// <c>Host</c> of this very request (the name Caddy passes on, so a page opened by the IP address or a second name connects
+    /// to that same name, which is also the one its Content-Security-Policy <c>connect-src</c> allows: Caddy writes
+    /// <c>wss://{hostport}</c> from the same header) with the scheme of the public base URL (the stack serves HTTPS only, so
+    /// <c>wss</c>; a development setup with an <c>http</c> base URL gets <c>ws</c>); else, outside a request, the public base
+    /// URL of the server settings.
     /// </summary>
     private string ClientUrl()
     {
@@ -119,13 +120,13 @@ internal sealed class LiveKitTokenIssuer(IOptions<LiveKitOptions> options, IOpti
             return configured;
         }
 
-        if (requests?.HttpContext?.Request is { } request && request.Host.HasValue && IsHostAndPort(request.Host.Value))
-        {
-            return $"{(request.IsHttps ? "wss" : "ws")}://{request.Host.Value}";
-        }
-
         var origin = new Uri(studio.Value.BaseUrl);
         var scheme = origin.Scheme == Uri.UriSchemeHttps ? "wss" : "ws";
+        if (requests?.HttpContext?.Request is { } request && request.Host.HasValue && IsHostAndPort(request.Host.Value))
+        {
+            return $"{scheme}://{request.Host.Value}";
+        }
+
         return $"{scheme}://{origin.Authority}";
     }
 

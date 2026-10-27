@@ -176,14 +176,14 @@ public sealed class LiveKitTokenIssuerTests
 {
     private static readonly TimeProvider Clock = TimeProvider.System;
 
-    private static LiveKitTokenIssuer Issuer(string publicUrl = "", HttpContext? request = null) => new(
+    private static LiveKitTokenIssuer Issuer(string publicUrl = "", HttpContext? request = null, string baseUrl = "https://studioflow.example.com/") => new(
         Options.Create(new LiveKitOptions { ApiKey = "key", ApiSecret = "sk-secret-with-more-than-thirty-two-chars", PublicUrl = publicUrl }),
-        Options.Create(new StudioFlowOptions { PublicBaseUrl = "https://studioflow.example.com/" }),
+        Options.Create(new StudioFlowOptions { PublicBaseUrl = baseUrl }),
         Clock,
         new HttpContextAccessor { HttpContext = request });
 
-    /// <summary>A request as the API sees it behind Caddy: the Host of the browser, the scheme from X-Forwarded-Proto.</summary>
-    private static DefaultHttpContext Request(string host, string scheme = "https")
+    /// <summary>A request as the API sees it behind Caddy: the Host of the browser (the scheme is not used, the base URL decides).</summary>
+    private static DefaultHttpContext Request(string host, string scheme = "http")
     {
         var context = new DefaultHttpContext();
         context.Request.Scheme = scheme;
@@ -191,25 +191,34 @@ public sealed class LiveKitTokenIssuerTests
         return context;
     }
 
-    public static TheoryData<string, string, string> CallerAddresses => new()
+    public static TheoryData<string, string> CallerAddresses => new()
     {
-        { "127.0.0.1:8491", "https", "wss://127.0.0.1:8491" },
-        { "localhost:8491", "https", "wss://localhost:8491" },
-        { "studioflow.example.com", "https", "wss://studioflow.example.com" },
-        { "studioflow.example.com:9443", "https", "wss://studioflow.example.com:9443" },
-        { "192.168.1.50:8443", "https", "wss://192.168.1.50:8443" },
-        { "[::1]:8443", "https", "wss://[::1]:8443" },
-        { "192.168.1.50:8080", "http", "ws://192.168.1.50:8080" },
+        { "127.0.0.1:8491", "wss://127.0.0.1:8491" },
+        { "localhost:8491", "wss://localhost:8491" },
+        { "studioflow.example.com", "wss://studioflow.example.com" },
+        { "studioflow.example.com:9443", "wss://studioflow.example.com:9443" },
+        { "192.168.1.50:8443", "wss://192.168.1.50:8443" },
+        { "[::1]:8443", "wss://[::1]:8443" },
     };
 
     [Theory]
     [MemberData(nameof(CallerAddresses))]
-    public void ClientUrl_ARequest_IsTheAddressTheCallerUsed(string host, string scheme, string expected)
+    public void ClientUrl_ARequest_IsTheAddressTheCallerUsed(string host, string expected)
     {
         // A page opened by the IP address or a second name connects to that same name: it is the one its Content-Security-Policy allows.
-        var dto = Issuer(request: Request(host, scheme)).IssueViewerToken("prd_x", "studio_a", "Regie");
+        // The request may arrive as plain http (the API sits behind Caddy; a direct call has no forwarded protocol): the base URL says https.
+        var dto = Issuer(request: Request(host)).IssueViewerToken("prd_x", "studio_a", "Regie");
 
         Assert.Equal(expected, dto.Url);
+    }
+
+    [Fact]
+    public void ClientUrl_AnHttpBaseUrl_GivesPlainWebSocketsOnTheHostOfTheRequest()
+    {
+        // Development: the API is reached over http (appsettings.Development.json).
+        var dto = Issuer(request: Request("localhost:5298"), baseUrl: "http://localhost:5298").IssueViewerToken("prd_x", "studio_a", "Regie");
+
+        Assert.Equal("ws://localhost:5298", dto.Url);
     }
 
     [Fact]
