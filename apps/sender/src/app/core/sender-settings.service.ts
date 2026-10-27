@@ -22,6 +22,15 @@ export interface SenderSettings {
   readonly dark: boolean;
   /** The camera was running when the page was left: start it again after a reload. */
   readonly cameraOn: boolean;
+  /**
+   * The microphone was on (true) or switched off on purpose (false) when the page was left; null if it was never
+   * touched: an audio station then starts its microphone by itself, phones and laptops keep it off.
+   */
+  readonly micOn: boolean | null;
+  /** Audio input chosen for the microphone (browser device id), null for the default input. */
+  readonly micInput: string | null;
+  /** “Share audio” is ticked for the next screen share. */
+  readonly shareScreenAudio: boolean;
   /** Screen slots that were shared when the page was left (they need a new click, see “Share again”). */
   readonly sharedScreens: readonly string[];
   /** Screen slots with the option “Video in screen” (30 instead of 15 frames per second), kept across reloads. */
@@ -40,6 +49,9 @@ export const DEFAULT_SETTINGS: SenderSettings = {
   resolution: 720,
   dark: false,
   cameraOn: true,
+  micOn: null,
+  micInput: null,
+  shareScreenAudio: false,
   sharedScreens: [],
   videoScreens: [],
   techCheck: null,
@@ -151,6 +163,14 @@ export function parseSettings(value: unknown): SenderSettings {
     resolution,
     dark: raw['dark'] === true,
     cameraOn: raw['cameraOn'] !== false,
+    micOn: typeof raw['micOn'] === 'boolean' ? raw['micOn'] : null,
+    micInput:
+      typeof raw['micInput'] === 'string' &&
+      raw['micInput'] !== '' &&
+      raw['micInput'].length <= MAX_LENS_ID_LENGTH
+        ? raw['micInput']
+        : null,
+    shareScreenAudio: raw['shareScreenAudio'] === true,
     sharedScreens: parseScreenSlots(raw['sharedScreens']),
     videoScreens: parseScreenSlots(raw['videoScreens']),
     techCheck: parseTechCheck(raw['techCheck']),

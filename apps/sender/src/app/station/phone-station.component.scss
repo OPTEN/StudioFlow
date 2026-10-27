@@ -178,11 +178,12 @@
   z-index: z(controls);
 
   @media (min-width: 600px) {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
   }
 }
 
-.c-phone__toggle {
+.c-phone__toggle,
+.c-phone__mic {
   grid-column: 1 / -1;
 
   @media (min-width: 600px) {
@@ -196,6 +197,7 @@
 }
 
 .c-phone__check,
+.c-phone__mic,
 .c-phone__dark-toggle {
   white-space: nowrap;
 }

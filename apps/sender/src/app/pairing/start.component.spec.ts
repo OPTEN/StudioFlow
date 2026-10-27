@@ -103,6 +103,31 @@ describe('StartComponent (pairing form)', () => {
     expect(navigate).toHaveBeenCalledWith(['/waiting']);
   });
 
+  it('offers the audio station and knocks with that kind and a name for it', async () => {
+    const element = await render({
+      isPhone: () => false,
+      canShareScreen: () => true,
+      platform: () => 'Windows · Edge',
+    });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const option = element.querySelector<HTMLInputElement>('input[value="audioStation"]')!;
+    expect(option.closest('label')?.textContent).toContain('Audio station (mixing desk)');
+
+    option.click();
+    await settle();
+    expect(nameInput(element).value).toBe('Audio station');
+
+    element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    await settle(10);
+
+    expect(createPairingRequest).toHaveBeenCalledWith({
+      name: 'Audio station',
+      kind: 'audioStation',
+      platform: 'Windows · Edge',
+    });
+    expect(navigate).toHaveBeenCalledWith(['/waiting']);
+  });
+
   it('requires a name', async () => {
     const element = await render({ isPhone: () => false, canShareScreen: () => true });
     const input = nameInput(element);
@@ -141,6 +166,7 @@ describe('device kind and default name', () => {
     ['phone', 'Android · Chrome', 'Phone Android'],
     ['laptop', 'macOS · Chrome', 'Laptop macOS'],
     ['laptop', 'Unknown platform', 'Laptop'],
+    ['audioStation', 'Windows · Edge', 'Audio station'],
   ] as const)('suggests a name for %s on %s', (kind, platform, name) => {
     expect(defaultDeviceName(kind, platform)).toBe(name);
   });

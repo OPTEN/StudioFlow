@@ -41,6 +41,7 @@ import { regieText } from './regie-text';
 import { regieTransfer } from './regie-transfer';
 import { regieWorkspace } from './regie-workspace';
 import { renderer } from './renderer';
+import { senderAudio } from './sender-audio';
 import { senderCameraProblem } from './sender-camera-problem';
 import { senderCore } from './sender-core';
 import { senderNotices } from './sender-notices';
@@ -91,6 +92,7 @@ export const en = {
   ...regieTransfer,
   ...regieWorkspace,
   ...renderer,
+  ...senderAudio,
   ...senderCameraProblem,
   ...senderCore,
   ...senderNotices,

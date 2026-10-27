@@ -52,7 +52,6 @@ export const regieAudio: Translation<typeof en> = {
   'regie.audio.role.video': 'Videoton',
 
   'regie.audio.row.details': 'Modus und Laufzeitversatz von {name}',
-  'regie.audio.row.error': 'Die Mischpult-Änderung wurde nicht gespeichert.',
   'regie.audio.row.fader': 'Pegel von {name}',
   'regie.audio.row.faderText': '{value} dB',
   'regie.audio.row.group': 'Tonkanal {name}',

@@ -107,6 +107,17 @@
                 {{ t('sender.station.laptop.videoHint') }}
               </p>
             }
+            @if (slot.state === 'live') {
+              @if (hasSound(slot)) {
+                <p class="c-slot__message" data-testid="screen-sound">
+                  {{ t('sender.audio.screen.withSound') }}
+                </p>
+              } @else if (shareAudio()) {
+                <p class="c-slot__message" data-testid="screen-no-sound">
+                  {{ t('sender.audio.screen.noSound') }}
+                </p>
+              }
+            }
           </div>
           <div class="c-slot__actions">
             @switch (slot.state) {
@@ -250,6 +261,26 @@
       }
     </ul>
 
+    @if (mic() !== null) {
+      <sf-mic-panel />
+    }
+
+    @if (canShareScreen) {
+      <div class="c-laptop__audio">
+        <label class="c-laptop__check-row">
+          <input
+            class="c-laptop__checkbox"
+            type="checkbox"
+            data-testid="share-audio"
+            [checked]="shareAudio()"
+            (change)="setShareAudio($event)"
+          />
+          <span>{{ t('sender.audio.screen.label') }}</span>
+        </label>
+        <p class="c-field__hint">{{ t('sender.audio.screen.explain') }}</p>
+      </div>
+    }
+
     <div class="c-laptop__add">
       @if (screens().length === 0 && canShareScreen) {
         <button class="c-button c-button--fill c-button--large" type="button" (click)="addScreen()">
@@ -266,6 +297,12 @@
         <button class="c-button" type="button" (click)="session.addCamera()">
           <sf-icon name="camera" />
           {{ t('sender.station.laptop.addCamera') }}
+        </button>
+      }
+      @if (mic() === null) {
+        <button class="c-button" type="button" data-testid="mic-add" (click)="session.startMic()">
+          <sf-icon name="mic" />
+          {{ t('sender.audio.add') }}
         </button>
       }
     </div>

@@ -21,6 +21,7 @@ export const senderPairing = {
 
   'sender.pairing.start.foot':
     'Scanning the QR code from the control room is even faster: just use the camera app of your phone.',
+  'sender.pairing.start.kindAudioStation': 'Audio station (mixing desk)',
   'sender.pairing.start.kindLaptop': 'Laptop (screen)',
   'sender.pairing.start.kindLegend': 'What does this device send?',
   'sender.pairing.start.kindPhone': 'Phone (camera)',

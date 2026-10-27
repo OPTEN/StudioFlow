@@ -20,18 +20,25 @@ export const SLOT_ERRORS = {
   screenLimit: msg('sender.station.error.screenLimit', { max: LIMITS.screensPerDevice }),
   cameraLimit: msg('sender.station.error.cameraLimit'),
   phoneCamera: msg('sender.station.error.phoneCamera'),
+  micLimit: msg('sender.audio.error.micLimit'),
 } as const satisfies Readonly<Record<string, Msg>>;
 
 /**
  * Error for a failed `POST /api/device/slots`: 400 when a phone asks for a screen, 409 `limit_reached` for the
  * tenth screen or a second camera, otherwise the general API message (e.g. “The server is not reachable right now”).
  */
-export function allocateSlotError(error: unknown, kind: 'camera' | 'screen'): ActionError {
+export function allocateSlotError(
+  error: unknown,
+  kind: 'camera' | 'screen' | 'audio',
+): ActionError {
   const apiError = toApiError(error);
   if (apiError.status === 400 && kind === 'screen') {
     return SLOT_ERRORS.phoneScreen;
   }
   if (apiError.status === 409 && apiError.code === ERROR_CODES.limitReached) {
+    if (kind === 'audio') {
+      return SLOT_ERRORS.micLimit;
+    }
     return kind === 'screen' ? SLOT_ERRORS.screenLimit : SLOT_ERRORS.cameraLimit;
   }
   return apiError;

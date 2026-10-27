@@ -34,6 +34,11 @@ type RedeemState = 'redeeming' | 'already' | 'expired' | 'failed';
 export class RedeemComponent implements OnInit {
   /** Invite token from the route. */
   readonly token = input.required<string>();
+  /**
+   * `?station=audio` on a laptop link: the person at the mixing desk pairs this laptop as the audio station (the server
+   * honours it only for a laptop link).
+   */
+  readonly station = input<string | undefined>(undefined);
 
   private readonly router = inject(Router);
   private readonly redeemer = inject(RedeemService);
@@ -64,9 +69,10 @@ export class RedeemComponent implements OnInit {
     this.busy.set(true);
     this.state.set('redeeming');
     this.error.set(null);
+    const detected = detectDeviceKind(this.environment);
     const outcome = await this.redeemer.redeem(
       this.token(),
-      detectDeviceKind(this.environment),
+      detected === 'laptop' && this.station() === 'audio' ? 'audioStation' : detected,
       this.environment.platform(),
     );
     this.busy.set(false);

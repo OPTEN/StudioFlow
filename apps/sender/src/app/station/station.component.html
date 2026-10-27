@@ -1,4 +1,8 @@
-<sf-tally-frame [state]="tally()" [thin]="dark()" [compact]="kind() === 'laptop'" />
+<sf-tally-frame
+  [state]="tally()"
+  [thin]="dark()"
+  [compact]="kind() === 'laptop' || kind() === 'audioStation'"
+/>
 
 @switch (phase()) {
   @case ('blocked') {
@@ -36,6 +40,9 @@
       }
       @case ('laptop') {
         <sf-laptop-station [justPaired]="justPaired()" (openTechCheck)="openTechCheck()" />
+      }
+      @case ('audioStation') {
+        <sf-audio-station (openTechCheck)="openTechCheck()" />
       }
       @default {
         <main class="c-station-state">

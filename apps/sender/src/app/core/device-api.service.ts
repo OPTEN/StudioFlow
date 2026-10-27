@@ -97,8 +97,8 @@ export class DeviceApiService {
     return this.call(this.http.post<LiveKitTokenDto>('/api/device/livekit-token', null));
   }
 
-  /** `POST /api/device/slots`: another screen or the optional laptop camera (409 `limit_reached`). */
-  allocateSlot(kind: Extract<SourceKind, 'camera' | 'screen'>): Promise<DeviceSlotDto> {
+  /** `POST /api/device/slots`: another screen, the optional laptop camera or the microphone (409 `limit_reached`). */
+  allocateSlot(kind: Extract<SourceKind, 'camera' | 'screen' | 'audio'>): Promise<DeviceSlotDto> {
     return this.call(this.http.post<DeviceSlotDto>('/api/device/slots', { kind }));
   }
 

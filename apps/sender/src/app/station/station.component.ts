@@ -13,6 +13,7 @@ import { AppUpdateService } from '../core/app-update.service';
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
 import { IconComponent } from '../shared/icon.component';
+import { AudioStationComponent } from './audio-station.component';
 import { ConnectionStatusComponent } from './connection-status.component';
 import { DeviceSessionService } from './device-session.service';
 import { LaptopStationComponent } from './laptop-station.component';
@@ -27,12 +28,13 @@ const GREETING_MS = 8000;
 const UNREACHABLE_AFTER_MS = 5000;
 
 /**
- * `/join/station`: the paired device. Owns the {@link DeviceSessionService}, renders the phone or laptop UI, the
+ * `/join/station`: the paired device. Owns the {@link DeviceSessionService}, renders the phone, laptop or audio station UI, the
  * tally frame, Regie messages, the technical check and the screens for blocked devices and replaced sessions.
  */
 @Component({
   selector: 'sf-station',
   imports: [
+    AudioStationComponent,
     ConnectionStatusComponent,
     IconComponent,
     LaptopStationComponent,
@@ -62,11 +64,15 @@ export class StationComponent {
   protected readonly dark = computed(
     () => this.session.settings().dark && this.kind() === 'phone' && this.phase() !== 'blocked',
   );
-  protected readonly tally = computed(() =>
-    this.phase() === 'online' || this.phase() === 'connecting'
-      ? this.session.tally().overall
-      : 'off',
-  );
+  protected readonly tally = computed(() => {
+    if (this.phase() !== 'online' && this.phase() !== 'connecting') {
+      return 'off';
+    }
+    // The audio station has no picture: its tally is the microphone, red while the Regie lets the sound through.
+    return this.kind() === 'audioStation'
+      ? (this.session.tally().slots['mic'] ?? 'off')
+      : this.session.tally().overall;
+  });
   protected readonly cameraCode = computed(() => this.session.camera()?.code ?? null);
   protected readonly showUpdate = computed(
     () => (this.updates.updateReady() || this.updates.broken()) && this.liveState.busy(),

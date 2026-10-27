@@ -1,0 +1,84 @@
+<section
+  class="c-mic"
+  data-testid="mic-panel"
+  aria-labelledby="mic-title"
+  [attr.data-state]="slot()?.state ?? 'none'"
+  [class.is-live]="session.micLive()"
+>
+  <header class="c-mic__head">
+    <sf-icon class="c-mic__icon" name="mic" />
+    @if (slot()?.code; as code) {
+      <span class="c-code">{{ code }}</span>
+    }
+    <h2 class="c-mic__title" id="mic-title">
+      {{ station() ? t('sender.audio.station.title') : t('sender.audio.title') }}
+    </h2>
+    @if (session.micLive()) {
+      <span class="c-tag c-tag--program" data-testid="mic-live">{{ t('sender.audio.live') }}</span>
+    }
+  </header>
+
+  @if (slot(); as mic) {
+    <p class="c-mic__state" data-testid="mic-state" [class.is-bad]="mic.state === 'failed'">
+      {{ stateText() }}
+    </p>
+    @if (mic.messageKey && mic.state !== 'live' && mic.state !== 'idle') {
+      <p class="c-mic__message" data-testid="mic-message">{{ t(mic.messageKey) }}</p>
+    }
+
+    <div class="c-field">
+      <label class="c-field__label" for="mic-input">{{ t('sender.audio.input') }}</label>
+      <select
+        class="c-field__input"
+        id="mic-input"
+        data-testid="mic-input"
+        [value]="selected()"
+        (change)="choose($event)"
+        (focus)="refresh()"
+      >
+        <option value="" [selected]="selected() === ''">
+          {{ t('sender.audio.input.default') }}
+        </option>
+        @for (input of inputs(); track input.id) {
+          <option [value]="input.id" [selected]="selected() === input.id">
+            {{ input.label }}
+          </option>
+        }
+      </select>
+    </div>
+
+    @if (running()) {
+      <sf-input-level [stream]="stream()" (silent)="silent.set($event)" />
+      @if (silent()) {
+        <div class="c-notice c-notice--warn" role="status" data-testid="mic-silent">
+          <p class="c-notice__text">
+            {{ station() ? t('sender.audio.silent') : t('sender.audio.silentVoice') }}
+          </p>
+        </div>
+      }
+    }
+
+    <p class="c-mic__note">
+      {{ station() ? t('sender.audio.note.station') : t('sender.audio.note.voice') }}
+    </p>
+
+    <div class="c-mic__actions">
+      <button
+        class="c-button"
+        type="button"
+        data-testid="mic-toggle"
+        [class.c-button--primary]="!running()"
+        (click)="toggle()"
+      >
+        <sf-icon name="mic" />
+        {{ running() ? t('sender.audio.stop') : t('sender.audio.start') }}
+      </button>
+    </div>
+  }
+
+  <p class="u-sr-only" aria-live="polite">
+    @if (session.micLive()) {
+      {{ t('sender.audio.liveSpoken') }}
+    }
+  </p>
+</section>

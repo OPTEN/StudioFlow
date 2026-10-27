@@ -178,6 +178,17 @@ describe('KnockService', () => {
     expect(api.createPairingRequest).toHaveBeenCalledTimes(1);
   });
 
+  it('survives a reload as an audio station', async () => {
+    create().request('Mixing desk', 'audioStation', 'x');
+    await settle();
+    TestBed.resetTestingModule();
+
+    const reloaded = create();
+
+    expect(reloaded.hasPending()).toBe(true);
+    expect(reloaded.knock()?.kind).toBe('audioStation');
+  });
+
   it('ignores corrupt pairing state from storage', () => {
     session.setRaw(STORAGE_KEYS.pairing, '{"requestId": 1}');
     expect(create().hasPending()).toBe(false);

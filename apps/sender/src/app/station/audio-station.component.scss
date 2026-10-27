@@ -1,0 +1,69 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.c-audio-station {
+  min-height: 100dvh;
+}
+
+// Header bar on panel graphite with a seam underline, like the laptop page.
+.c-audio-station__bar {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--seam);
+  display: flex;
+  flex-wrap: wrap;
+  gap: $SPACE_MD $SPACE_GUTTER;
+  min-height: 56px;
+  padding: calc(var(--safe-top) + #{$SPACE_SM}) max(#{$SPACE_GUTTER}, var(--safe-right)) $SPACE_SM
+    max(#{$SPACE_GUTTER}, var(--safe-left));
+}
+
+.c-audio-station__connection {
+  flex: 1 0 100%;
+  order: 3;
+
+  @include respond-to(sm) {
+    flex: 1 1 auto;
+    order: 0;
+  }
+}
+
+.c-audio-station__check {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.c-audio-station__main {
+  display: grid;
+  gap: $SPACE_STAGE;
+  margin: 0 auto;
+  max-width: 880px;
+  padding: $SPACE_XL max(#{$SPACE_GUTTER}, var(--safe-right))
+    calc(var(--safe-bottom) + #{$SPACE_XXL}) max(#{$SPACE_GUTTER}, var(--safe-left));
+}
+
+.c-audio-station__intro {
+  display: grid;
+  gap: $SPACE_SM;
+}
+
+.c-audio-station__title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.c-audio-station__lead {
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.c-audio-station__hint {
+  color: var(--muted);
+  font-size: 14px;
+}
