@@ -248,7 +248,7 @@ export class StudioApiService {
 
   /**
    * `POST …/duplicate`: a copy of the production (also while it is live); it is not the active production. 400 for an
-   * invalid name, 409 `limit_reached` at the limit of productions.
+   * invalid name.
    */
   duplicateProduction(
     productionId: string,
@@ -268,7 +268,7 @@ export class StudioApiService {
   /**
    * `POST /api/productions/import?dryRun=true` (multipart field `file`) with upload progress: what the import would do
    * (name, counts, size, placeholders, warnings). Nothing is stored. Rejects with an {@link ApiError}: 400
-   * `invalid_archive` / `unsupported_format`, 409 `limit_reached`, 413 `archive_too_large`, 415 `unsupported_media`.
+   * `invalid_archive` / `unsupported_format`, 409 `limit_reached` (more scenes, items or texts than a production may have), 413 `archive_too_large`, 415 `unsupported_media`.
    */
   previewImport(file: File, options: UploadOptions = {}): Promise<ImportPreviewDto> {
     return this.uploadFile<ImportPreviewDto>('/api/productions/import?dryRun=true', file, options);

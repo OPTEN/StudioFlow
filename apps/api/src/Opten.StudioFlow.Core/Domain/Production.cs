@@ -27,9 +27,6 @@ public sealed class Production
     /// <summary>Maximum number of scenes per production.</summary>
     public const int MaxScenes = 99;
 
-    /// <summary>Maximum number of productions of the installation; duplicating and importing stop here (<c>limit_reached</c>).</summary>
-    public const int MaxPerTenant = 100;
-
     /// <summary>Names of the scenes every new production starts with.</summary>
     public static IReadOnlyList<string> DefaultSceneNames { get; } = ["Welcome", "Presentation", "Break"];
 
