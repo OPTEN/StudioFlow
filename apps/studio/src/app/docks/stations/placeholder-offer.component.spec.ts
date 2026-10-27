@@ -77,7 +77,7 @@ describe('PlaceholderOfferComponent', () => {
     request.flush({ scenes: 1, items: 1 });
     await render();
     expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'The scenes now show K3 New phone in place of K1 · Stage phone.',
+      'The scenes now show New phone in place of K1 · Stage phone.',
     );
   });
 

@@ -37,7 +37,7 @@ describe('PlaceholderCommandsService', () => {
     expect(await done).toBe(true);
     expect(commands.busy(K1.id)).toBe(false);
     expect(toasts.current()?.message).toBe(
-      'The scenes now show K3 New phone in place of K1 · Stage phone.',
+      'The scenes now show New phone in place of K1 · Stage phone.',
     );
   });
 

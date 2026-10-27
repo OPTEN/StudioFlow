@@ -21,8 +21,10 @@ const MAX_OFFERS = 4;
   template: `
     @if (offers().length > 0) {
       <div class="c-st-offer" role="group" [attr.aria-label]="t('regie.placeholders.offer.text')">
-        <svg sfIcon="link" [size]="14"></svg>
-        <span class="c-st-offer__text">{{ t('regie.placeholders.offer.text') }}</span>
+        <span class="c-st-offer__head">
+          <svg sfIcon="link" [size]="14"></svg>
+          <span>{{ t('regie.placeholders.offer.text') }}</span>
+        </span>
         <span class="c-st-offer__actions">
           @for (offer of shown(); track offer.placeholder.id + offer.source.id) {
             <button
@@ -55,8 +57,16 @@ const MAX_OFFERS = 4;
       padding: 0 12px 10px 34px;
     }
 
-    .c-st-offer > .c-icon {
+    .c-st-offer__head {
+      align-items: flex-start;
+      display: flex;
+      flex: 1 1 100%;
+      gap: 6px;
+    }
+
+    .c-st-offer__head .c-icon {
       color: var(--blue);
+      margin-top: 2px;
     }
 
     .c-st-offer__actions {

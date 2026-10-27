@@ -122,7 +122,7 @@ describe('PlaceholderListComponent', () => {
     await render();
     expect(element.querySelector('.c-ph__picker')).toBeNull();
     expect(TestBed.inject(ToastService).current()?.message).toBe(
-      'The scenes now show K1 Phone one in place of K7 · Stage phone.',
+      'The scenes now show Phone one in place of K7 · Stage phone.',
     );
   });
 
