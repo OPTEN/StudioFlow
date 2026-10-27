@@ -272,15 +272,21 @@ public sealed class OutputTrackerTests
     }
 
     [Fact]
-    public void TakeChange_ChangedDecoderCount_PublishesImmediately()
+    public void TakeChange_ChangedDecoderCount_FollowsTheInterval()
     {
         tracker.Connect("c1", "olk_a", "10.0.0.5");
         tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 0), Build.T0);
         tracker.TakeChange(Build.T0);
 
-        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 3), Build.T0.AddSeconds(1));
+        // The count is the number of streams that decoded a frame in the last interval: it flickers on a busy computer.
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 2, 0), Build.T0.AddSeconds(2));
+        Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(2)));
+        tracker.Report("olk_a", new OutputReport(true, 100, 30, null, 0, 3, 3), Build.T0.AddSeconds(4));
+        Assert.Null(tracker.TakeChange(Build.T0.AddSeconds(4)));
 
-        Assert.Equal(3, tracker.TakeChange(Build.T0.AddSeconds(1))!.SoftwareDecodedStreams);
+        var published = tracker.TakeChange(Build.T0.AddSeconds(5))!;
+        Assert.Equal(3, published.DecodedStreams);
+        Assert.Equal(3, published.SoftwareDecodedStreams);
     }
 
     [Fact]
