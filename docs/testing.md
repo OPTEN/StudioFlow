@@ -1587,6 +1587,9 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 **E2E-OUT-17** · P1 · pw (`firefox-desktop`, `webkit-desktop`) — Output in other engines
 - Steps: scene with a timecode camera (Firefox canvas mode) live; open the output in Firefox and WebKit.
 - Expect: video renders and plays, hold frame and slates work, letterboxing identical; WebKit autoplay muted works.
+- Note: phones publish H.264 only. The Playwright build of Firefox on Linux has no OpenH264 plugin and cannot decode it
+  (a desktop Firefox downloads the plugin itself), so the Firefox test asks `RTCRtpReceiver.getCapabilities('video')` and
+  then uses a second laptop screen (VP9) as the moving item; the annotation `environment` of the test says which (#45).
 
 **E2E-OUT-18** · P1 · pw — Page weight and load
 - Steps: cold load with cache disabled; measure encoded bytes of `/o/…` document, JS, CSS.
