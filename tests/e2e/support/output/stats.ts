@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import type { TestInfo } from '@playwright/test';
 import { OUTPUT_DIR } from '../env';
@@ -50,62 +49,6 @@ export async function recordMeasurement(testInfo: TestInfo, name: string, data: 
   if (summary) testInfo.annotations.push({ type: 'measurement', description: `${name}: ${summary}` });
 }
 
-/**
- * Average CPU use of the whole machine while a measurement runs (the OUT numbers are taken on a shared machine: three other
- * stacks and their browsers run at the same time, so a latency figure is only meaningful next to the load it was taken under).
- */
-export function startCpuMonitor(): () => { busyPct: number; cores: number } {
-  const snapshot = () => os.cpus().map((cpu) => ({ idle: cpu.times.idle, total: Object.values(cpu.times).reduce((sum, value) => sum + value, 0) }));
-  const first = snapshot();
-  return () => {
-    const last = snapshot();
-    let idle = 0;
-    let total = 0;
-    last.forEach((cpu, index) => {
-      idle += cpu.idle - first[index]!.idle;
-      total += cpu.total - first[index]!.total;
-    });
-    return { busyPct: total === 0 ? 0 : Math.round((1 - idle / total) * 1000) / 10, cores: last.length };
-  };
-}
-
-/**
- * Waits until the whole machine is reasonably idle (the other test stacks run at the same time): `windowMs` windows of CPU
- * use, started again until one is at or below `maxBusyPct`. Returns how long it waited and the last figure; after `timeoutMs`
- * it gives up and returns `quiet: false` (the measurement then runs under load and says so).
- */
-export async function waitForQuietMachine(options: { maxBusyPct?: number; windowMs?: number; timeoutMs?: number } = {}): Promise<{ quiet: boolean; waitedMs: number; busyPct: number }> {
-  const { maxBusyPct = 40, windowMs = 6000, timeoutMs = 240_000 } = options;
-  const started = Date.now();
-  for (;;) {
-    const stop = startCpuMonitor();
-    await new Promise((resolve) => setTimeout(resolve, windowMs));
-    const { busyPct } = stop();
-    if (busyPct <= maxBusyPct) return { quiet: true, waitedMs: Date.now() - started, busyPct };
-    if (Date.now() - started > timeoutMs) return { quiet: false, waitedMs: Date.now() - started, busyPct };
-  }
-}
-
-/**
- * Runs a timed measurement up to `attempts` times until the machine was not saturated while it ran (CPU use of the whole
- * machine at or below `maxBusyPct`); returns the first such attempt, else the one with the lowest load. Every attempt is
- * kept for the record.
- */
-export async function measureWhenQuiet<T>(
-  measure: () => Promise<T>,
-  options: { attempts?: number; maxBusyPct?: number; quiet?: Parameters<typeof waitForQuietMachine>[0] } = {},
-): Promise<{ chosen: T & { cpu: { busyPct: number; cores: number } }; attempts: Array<T & { cpu: { busyPct: number; cores: number }; waitedMs: number }> }> {
-  const { attempts = 3, maxBusyPct = 60 } = options;
-  const all: Array<T & { cpu: { busyPct: number; cores: number }; waitedMs: number }> = [];
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const waited = await waitForQuietMachine(options.quiet);
-    const stop = startCpuMonitor();
-    const result = await measure();
-    const cpu = stop();
-    const entry = Object.assign(result as object, { cpu, waitedMs: waited.waitedMs }) as T & { cpu: { busyPct: number; cores: number }; waitedMs: number };
-    all.push(entry);
-    if (cpu.busyPct <= maxBusyPct) return { chosen: entry, attempts: all };
-  }
-  const best = [...all].sort((a, b) => a.cpu.busyPct - b.cpu.busyPct)[0]!;
-  return { chosen: best, attempts: all };
-}
+// The machine load, the waiting for a quiet machine and the gate of the timing thresholds live in quiet.ts (issue #39).
+export { QUIET_BUSY_PCT, judgeTiming, measureWhenQuiet, startCpuMonitor, timingGate, waitForQuietMachine } from './quiet';
+export type { CpuUse, QuietMeasurement, TimingGate } from './quiet';

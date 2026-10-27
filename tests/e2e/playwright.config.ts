@@ -15,7 +15,17 @@ dns.setDefaultResultOrder('ipv4first');
 const baseURL = process.env['E2E_BASE_URL'] ?? originFor('localhost', SETTINGS.httpsPort);
 
 /** Specs that need their own stack mode never run in the generic projects. */
-const SPECIAL = ['**/*.short-ttl.spec.ts', '**/*.disruptive.spec.ts', '**/*.firefox.spec.ts', '**/*.webkit.spec.ts', '**/*.mobile.spec.ts', '**/*.soak.spec.ts'];
+const OWN_PROJECT = ['**/*.short-ttl.spec.ts', '**/*.disruptive.spec.ts', '**/*.firefox.spec.ts', '**/*.webkit.spec.ts', '**/*.mobile.spec.ts', '**/*.soak.spec.ts'];
+
+/** The generic projects leave out these and the performance spec: that one only runs in the `perf` project. */
+const SPECIAL = [...OWN_PROJECT, '**/*.perf.spec.ts'];
+
+/**
+ * Tests tagged `@perf` hold a measurement (latency, frame rate, switching time, the performance budget) against absolute
+ * thresholds and need a machine with headroom: at least 4 cores and nothing else running (docs/testing.md 6.8). The
+ * generic projects, and with them the nightly run on the shared 2-vCPU runner, leave them out; the `perf` project runs them.
+ */
+const PERF_TAG = /@perf/;
 
 /** Specs that run the product in German: only the `i18n` project (locale `de-CH`) runs them. */
 const GERMAN = ['**/specs/i18n/**', '**/*.de.spec.ts'];
@@ -40,7 +50,7 @@ const projects: Project[] = [
   },
   {
     name: 'desktop-chromium',
-    grepInvert: /@smoke/,
+    grepInvert: new RegExp(`@smoke|${PERF_TAG.source}`),
     testIgnore: [...SPECIAL, ...GERMAN],
     use: { ...devices['Desktop Chrome'], ...chromiumUse },
   },
@@ -85,6 +95,17 @@ const projects: Project[] = [
     name: 'webkit',
     testMatch: '**/*.webkit.spec.ts',
     use: { ...devices['Desktop Safari'] },
+  },
+  {
+    // Every test tagged @perf, in any spec (the latency tests, the many-sources test, the performance budget; docs/testing.md
+    // 2.18 and 6.8): on demand or in the workflow `perf.yml`, never retried, on a machine with at least 4 cores that is not
+    // busy otherwise.
+    name: 'perf',
+    grep: PERF_TAG,
+    testIgnore: [...OWN_PROJECT, ...GERMAN],
+    use: { ...devices['Desktop Chrome'], ...chromiumUse },
+    timeout: 900_000,
+    retries: 0,
   },
   {
     name: 'soak',

@@ -4,7 +4,8 @@ import { CdpCounters } from '../../support/ui/counters';
 import { sleep } from '../../support/output/analysis';
 import { openProbedOutput } from '../../support/output/open';
 import { inboundVideo, type InboundVideo } from '../../support/output/rtc';
-import { recordMeasurement, startCpuMonitor, waitForQuietMachine } from '../../support/output/stats';
+import { defaultMaxWaitMs } from '../../support/output/quiet';
+import { judgeTiming, recordMeasurement, startCpuMonitor, timingGate, waitForQuietMachine } from '../../support/output/stats';
 import { FULL, addCamera, addScreens, goLive, placeItem, switchProgram, type Camera } from '../../support/output/world';
 import { t } from '../../support/tags';
 
@@ -14,6 +15,12 @@ import { t } from '../../support/tags';
  * single full-screen scene. The output page is measured: animation frame rate, decoded frames per second per source,
  * main-thread busy share (CDP TaskDuration), JS heap, received bytes, dropped frames. OUT_MANY_MINUTES scales the run
  * (default 3 minutes, the catalogue says 5).
+ *
+ * Ten senders and nine 1080p videos need a machine with at least 4 cores (the catalogue says so): on a 2-vCPU runner the
+ * whole machine is at 100 % and the animation frame rate of the output falls to 1 fps although it decodes everything it is
+ * sent (issue #39). So the frame rate and the main-thread share, the two figures a starved compositor and a preempted
+ * thread falsify, are held against T-FPS only if the machine had headroom in the 3 x 3 phase (`judgeTiming`, docs/testing.md
+ * 6.8). Decoding what the senders send, the received bytes, the heap, the drops and the incidents are enforced always.
  */
 
 const MINUTES = Number(process.env['OUT_MANY_MINUTES'] ?? 3);
@@ -82,7 +89,7 @@ test.describe('OUT many sources', () => {
       const frame = await output.frame();
       const counters = await CdpCounters.attach(frame);
       onCleanup(() => counters.detach());
-      const idleMachine = await waitForQuietMachine({ maxBusyPct: 60, timeoutMs: 60_000 });
+      const idleMachine = await waitForQuietMachine({ maxBusyPct: 60, timeoutMs: Math.min(60_000, defaultMaxWaitMs()) });
 
       const measure = async (name: string, seconds: number): Promise<PhaseResult> => {
         await sleep(8000); // settle: layers, simulcast switches
@@ -143,18 +150,17 @@ test.describe('OUT many sources', () => {
       phases.push(await measure('3x3 again', Math.max(15, Math.round(MINUTES * 60 * 0.1))));
 
       const incidents = (await api.getSnapshot(production.id)).body.incidents;
+      const gate = timingGate(phases[0]!.machineCpuBusyPct);
       await recordMeasurement(
         test.info(),
         'net-19-many-sources',
-        { minutes: MINUTES, phases, idleMachineBeforeMeasuring: idleMachine, openIncidents: incidents.filter((incident) => incident.endedAt === null).length, incidentsTotal: incidents.length, pageErrors: output.problems.pageErrors },
+        { minutes: MINUTES, phases, comparable: gate.enforce, idleMachineBeforeMeasuring: idleMachine, openIncidents: incidents.filter((incident) => incident.endedAt === null).length, incidentsTotal: incidents.length, pageErrors: output.problems.pageErrors },
         phases.map((phase) => `${phase.name}: rAF ${phase.rafFps.toFixed(0)} fps, decode ${phase.decodeFps.mean.toFixed(0)} fps/source (min ${phase.decodeFps.min.toFixed(0)}) of ${phase.producedFps.mean.toFixed(0)} sent, main thread ${(phase.busyShare * 100).toFixed(0)} %, heap ${phase.heapMB.toFixed(0)} MB, ${phase.inboundMbit.toFixed(1)} Mbit/s in, ${phase.droppedFrames} dropped, machine CPU ${phase.machineCpuBusyPct} %`).join(' | '),
       );
       const grid3 = phases[0]!;
       expect(grid3.videos, 'nine videos on the stage').toBe(9);
-      expect(grid3.rafFps, 'T-FPS: output frame rate in the 3 x 3 scene (hard 24)').toBeGreaterThanOrEqual(24);
       // The senders share the machine: their encoders do not always deliver 30 fps. The output must decode what is sent.
       expect(grid3.decodeFps.mean, `every picture is decoded at the rate the senders report to send (${grid3.producedFps.mean.toFixed(1)} fps)`).toBeGreaterThanOrEqual(grid3.producedFps.mean * 0.9);
-      expect(grid3.busyShare, 'T-FPS: output main-thread busy share (hard 60 %)').toBeLessThanOrEqual(0.6);
       expect(grid3.heapMB, 'JS heap below 400 MB').toBeLessThanOrEqual(400);
       expect(grid3.inboundMbit, 'total inbound below 20 Mbit/s (non-program sources at the lowest layer)').toBeLessThanOrEqual(20);
       for (const phase of phases) {
@@ -163,6 +169,10 @@ test.describe('OUT many sources', () => {
       expect(phases[2]!.videos, 'single full screen: one video').toBe(1);
       expect(incidents.filter((incident) => incident.endedAt === null), 'no incident').toEqual([]);
       expect(output.problems.pageErrors, 'no uncaught exception').toEqual([]);
+      await judgeTiming(test.info(), gate, () => {
+        expect(grid3.rafFps, 'T-FPS: output frame rate in the 3 x 3 scene (hard 24)').toBeGreaterThanOrEqual(24);
+        expect(grid3.busyShare, 'T-FPS: output main-thread busy share (hard 60 %)').toBeLessThanOrEqual(0.6);
+      });
     },
   );
 });

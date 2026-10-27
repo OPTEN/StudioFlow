@@ -11,6 +11,7 @@ wizard, driven over REST, SignalR, WebRTC, the real frontends and the operator c
 npm run test:e2e                                   # everything, in the order smoke > main > short-ttl > disruptive
 npx playwright test -c tests/e2e/playwright.config.ts --project=smoke
 npx playwright test -c tests/e2e/playwright.config.ts --project=disruptive specs/net
+npx playwright test -c tests/e2e/playwright.config.ts --project=perf              # every test tagged @perf: latency, many sources, switching times, the performance budget (docs/testing.md 2.18, 5.1, 6.8)
 npx playwright test -c tests/e2e/playwright.config.ts --grep "@p0"
 npx playwright test -c tests/e2e/playwright.config.ts --project=desktop-chromium --grep @ui-fixture   # the UI fixture smokes
 ```
@@ -32,6 +33,8 @@ Teardown removes containers and volumes. Logs of every service go to
 | `E2E_NO_BUILD=1` | `up -d` without `--build` (images from the last run) |
 | `E2E_BUG_REPORT=1` | run the tests of open known bugs as plain tests (raw failures as evidence) |
 | `E2E_NODE_IP` | node IP instead of the detected LAN IPv4 |
+| `PERF_SECONDS` | length of the idle window of E2E-PERF-01 in seconds (default 45; the dragging window is a third of it) |
+| `PERF_BUDGET_SCALE` | multiplies the load lines of the performance budget for a slower or faster machine (counts stay exact) |
 | `E2E_STACK=N` (1-5) | one of the five numbered stacks that run side by side, see "Parallel stacks" |
 | `E2E_PROJECT` | compose project (default `sf-e2e`, with `E2E_STACK=N` `sf-e2e-N`); `E2E_PROJECT=sf-e2e-N` (N = 1-5) alone also selects numbered stack N |
 | `E2E_HTTPS_PORT`, `E2E_API_PORT`, `E2E_LIVEKIT_PORT`, `E2E_POSTGRES_PORT`, `E2E_SUBNET` | move the test stack when the defaults are taken (each one overrides a value of `E2E_STACK`) |
@@ -150,7 +153,17 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
   and thresholds (`constants.ts`), UI fixtures (`ui/`, `browser/`).
 - `specs/<area>/` the tests. File suffixes choose the project: `*.disruptive.spec.ts`, `*.short-ttl.spec.ts`,
   `*.mobile.spec.ts`, `*.firefox.spec.ts`, `*.webkit.spec.ts`, `*.soak.spec.ts`; everything else runs in `smoke`
-  (tag `@smoke`) or `desktop-chromium`. `specs/i18n/` and `*.de.spec.ts` run in the `i18n` project only.
+  (tag `@smoke`) or `desktop-chromium`. `specs/i18n/` and `*.de.spec.ts` run in the `i18n` project only. The tag `@perf` (`t.perf()`)
+  chooses the project `perf` in any spec, and `desktop-chromium` leaves those tests out: they hold measurements against absolute
+  thresholds and need a machine with at least 4 cores and nothing else running, so the nightly run on the 2-vCPU runner does not
+  run them (docs/testing.md 6.8). The workflow `perf.yml` runs them on demand.
+- `support/perf/` the performance harness (issue #12): the reference scenario (`reference.ts`), CPU per browser and main thread
+  (`cpu.ts`), WebRTC statistics per role (`rtc.ts`) and the budget with its check (`budget.ts`, unit-tested in `budget.spec.ts`).
+  The container has no GPU, so the numbers compare builds on one machine; real devices are MAN-16.
+- `support/output/quiet.ts` timing tests on a machine without headroom (issue #39): `measureWhenQuiet` waits for a quiet machine only as
+  long as the time budget of the test allows (call `markTestStart` in `test.beforeEach`), `timingGate` says whether the machine was at
+  60 % CPU or less, `judgeTiming` runs the assertions on absolute timing thresholds and turns a failure on a busier machine into a
+  skip `not-comparable` (a pass stays a pass); what does not depend on the load stays outside it. Unit-tested in `quiet.spec.ts`.
 - `known-bugs.json` registry of confirmed product bugs and documentation differences (each open entry carries steps, expected, actual and evidence).
 
 ## Conventions

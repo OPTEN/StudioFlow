@@ -3,7 +3,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { sleep } from '../../support/output/analysis';
 import { openProbedOutput } from '../../support/output/open';
 import { inboundOf } from '../../support/output/rtc';
-import { recordMeasurement, summarize } from '../../support/output/stats';
+import { judgeTiming, recordMeasurement, startCpuMonitor, summarize, timingGate } from '../../support/output/stats';
 import { addCamera, goLive, placeItem } from '../../support/output/world';
 import { t } from '../../support/tags';
 
@@ -53,6 +53,7 @@ test.describe('OUT under CPU load', () => {
       const states = new Set<string>();
       const fps: number[] = [];
       const decode: number[] = [];
+      const stopCpu = startCpuMonitor();
       const started = Date.now();
       let before = await inboundOf(frame, production, cameras[0]!.source);
       let beforeAt = Date.now();
@@ -67,15 +68,20 @@ test.describe('OUT under CPU load', () => {
       const still = await output.waitForPlayingVideos(2, { minFps: 5, timeout: 20_000 });
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
       const stats = summarize(fps);
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
       await recordMeasurement(
         test.info(),
         'net-20-cpu-throttle',
-        { baselineFps: baseline, throttledFps: stats, decodeFps: summarize(decode), statesSeen: [...states], videosAtTheEnd: still.map((entry) => entry.fps) },
-        `rAF fps ${baseline.map((value) => value.toFixed(0)).join('/')} without throttle, p50 ${stats.p50.toFixed(1)} / min ${stats.min.toFixed(1)} at 4x; decode ${summarize(decode).p50.toFixed(1)} fps; output states ${[...states].join('/')}`,
+        { baselineFps: baseline, throttledFps: stats, decodeFps: summarize(decode), statesSeen: [...states], videosAtTheEnd: still.map((entry) => entry.fps), machineCpuBusyPct: machine.busyPct, comparable: gate.enforce },
+        `rAF fps ${baseline.map((value) => value.toFixed(0)).join('/')} without throttle, p50 ${stats.p50.toFixed(1)} / min ${stats.min.toFixed(1)} at 4x; decode ${summarize(decode).p50.toFixed(1)} fps; output states ${[...states].join('/')}; machine CPU ${machine.busyPct} %${gate.enforce ? '' : ' (not comparable)'}`,
       );
-      expect(stats.p50, 'T-FPS at CPU throttle 4x: the output renders at 20 fps or more (hard)').toBeGreaterThanOrEqual(20);
       expect([...states], 'the Regie never sees the output as stale or gone').toEqual(['connected']);
-      expect(summarize(decode).p50, 'the pictures are still decoded').toBeGreaterThanOrEqual(15);
+      // A throttled page on a machine without headroom is slower than the throttle says (docs/testing.md 6.8).
+      await judgeTiming(test.info(), gate, () => {
+        expect(stats.p50, 'T-FPS at CPU throttle 4x: the output renders at 20 fps or more (hard)').toBeGreaterThanOrEqual(20);
+        expect(summarize(decode).p50, 'the pictures are still decoded').toBeGreaterThanOrEqual(15);
+      });
     },
   );
 });

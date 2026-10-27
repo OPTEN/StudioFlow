@@ -12,6 +12,7 @@ import { collectLatencyRun } from '../../support/output/latency';
 import { openProbedOutput, recordHubFrames, type HubMessage, type ProbedOutput } from '../../support/output/open';
 import { type ItemState, type ProbeFrame } from '../../support/output/probe';
 import { inboundOf } from '../../support/output/rtc';
+import { defaultMaxWaitMs } from '../../support/output/quiet';
 import { recordMeasurement, startCpuMonitor, summarize, waitForQuietMachine } from '../../support/output/stats';
 import { addCamera, addScreens, goLive, placeItem, switchProgram, type Camera, type WorldDeps } from '../../support/output/world';
 import { t } from '../../support/tags';
@@ -504,7 +505,7 @@ test.describe('OUT netem on LiveKit', () => {
           await placeItem(api, production, world.sceneA, screens.sources[0]!, { x: 1280, y: 0, w: 640, h: 360, fit: 'contain', radius: 0 });
           await sleep(3000);
         }
-        await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: 120_000 });
+        await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: Math.min(120_000, defaultMaxWaitMs()) });
         const result = await impair(world, { api, production }, scenario.profile, { windowMs: 25_000, windows: scenario.id === 'E2E-NET-05' ? 8 : 3, settleMs: 8000 });
         const delta = result.median.latencyP50 - result.baseline.latency.p50;
         const m = result.median;
@@ -570,7 +571,7 @@ test.describe('OUT freeze budget and sender loss report', () => {
       test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const world = await liveWorld({ browser, deps, onCleanup }, { cameras: 1, latency: true });
-      await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: 120_000 });
+      await waitForQuietMachine({ maxBusyPct: 50, timeoutMs: Math.min(120_000, defaultMaxWaitMs()) });
       const result = await impair(world, { api, production }, { lossPct: 5 }, { windowMs: 25_000, windows: 6, settleMs: 8000 });
       const m = result.median;
       await recordMeasurement(
