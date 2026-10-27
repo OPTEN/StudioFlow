@@ -144,3 +144,7 @@ Generated from `apps/api` (`dotnet restore`; packages with assemblies, direct an
 | Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.3 | PostgreSQL |
 
 <!-- END generated:nuget -->
+
+## 6. Trademarks
+
+The OPTEN logo (symbol) in the header note "Sponsored by OPTEN" (`sfIcon="opten"`, `docs/brand/opten-symbol.svg`) is a trademark of OPTEN AG. It is not covered by the licence of the code and may only be used to refer to OPTEN AG. The same applies to the name and the logo "StudioFlow" in `docs/brand/`.

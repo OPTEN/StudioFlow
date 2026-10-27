@@ -117,4 +117,7 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.production.textPick': '{colour}, Farbwähler',
   'regie.header.production.textSample': 'Beispiel einer Bauchbinde',
   'regie.header.production.title': 'Titel',
+
+  'regie.header.sponsor.label': 'Gesponsert von OPTEN',
+  'regie.header.sponsor.prefix': 'Gesponsert von',
 };
