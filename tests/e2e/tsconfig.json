@@ -14,6 +14,6 @@
   },
   "files": [],
   "include": ["./**/*.ts"],
-  "exclude": ["./.output", "./node_modules"],
+  "exclude": ["./.output", "./node_modules", "./support/**/*.spec.ts"],
   "references": []
 }
