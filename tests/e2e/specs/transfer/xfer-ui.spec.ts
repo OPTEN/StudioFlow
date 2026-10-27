@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { CUT, parseOutputUrl } from '../../support/api';
+import { Scanner } from '../../support/a11y/axe';
 import { FULL, LEFT, putInScene } from '../../support/devices/fleet';
 import { openProbedOutput } from '../../support/output/open';
 import { addCamera, goLive } from '../../support/output/world';
@@ -46,6 +47,8 @@ test.describe('XFER regie', () => {
       const name = page.locator('#duplicate-name');
       await expect(name).toHaveValue(`${production.name} (copy)`);
       await expect(dialog).toContainText('Cameras and screens become placeholders');
+      const scanner = new Scanner(page);
+      await scanner.scan('xfer-duplicate-form', { include: ['[role=dialog][aria-label=Production]'] });
       await dialog.getByRole('button', { name: 'Duplicate', exact: true }).click();
       await expectToast(page, `Production “${production.name} (copy)” created.`);
       const copyItem = dialog.getByRole('button', { name: `${production.name} (copy)` });
@@ -74,6 +77,8 @@ test.describe('XFER regie', () => {
       const offer = paired.row.locator('sf-placeholder-offer').getByRole('button', { name: 'Use as K1 · Stage phone' });
       await expect(offer).toBeVisible();
       await regie.closePairing();
+      await scanner.scan('xfer-missing-sources-and-offer');
+      scanner.verify();
       await offer.click();
       await expectToast(page, 'in place of K1 · Stage phone');
       await expect(offer).toHaveCount(0);
@@ -129,6 +134,9 @@ test.describe('XFER regie', () => {
       await expect(page.locator('[data-testid="import-placeholders"]')).toContainText('K1');
       await expect(page.locator('[data-testid="import-placeholders"]')).toContainText('Stage phone');
       await expect(page.getByText('A production with this name exists already.')).toBeVisible();
+      const scanner = new Scanner(page);
+      await scanner.scan('xfer-import-preview', { include: ['[role=dialog][aria-label=Production]'] });
+      scanner.verify();
       expect((await api.listProductions()).body, 'the preview creates nothing').toHaveLength(before);
 
       await page.locator('[data-testid="import-submit"]').click();
@@ -183,6 +191,9 @@ test.describe('XFER regie', () => {
       // Assign K1 to the spare phone in the Sources dock (the station row offers the same).
       await missing.locator('[data-code="K1"]').getByRole('button', { name: 'Assign K1 · Stage phone' }).click();
       await expect(missing.locator('[data-code="K1"] .c-ph__picker')).toContainText('Show K1 · Stage phone as');
+      const scanner = new Scanner(regie.page);
+      await scanner.scan('xfer-assign-picker');
+      scanner.verify();
       await missing.locator(`[data-source="${spare.sourceId('camera')}"]`).click();
       await expectToast(regie.page, 'The scenes now show Spare phone in place of K1 · Stage phone.');
       await expect(missing.locator('[data-code="K1"]')).toHaveCount(0);
