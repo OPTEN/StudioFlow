@@ -7,12 +7,18 @@ import type { DesiredSize, SourceMediaProvider } from './types';
  * snapshot that is renewed every {@link STILL_REFRESH_MS}. Many thumbnails of one source share one hidden video and one
  * snapshot, so a Regie with six scenes that show the same camera copies its frame once per refresh instead of once per
  * thumbnail and second. The program and preview monitors are not served by the pool: they stay live.
+ *
+ * The snapshot is handed out as an image (a JPEG data URL), not as a canvas: a canvas on screen is a layer of its own
+ * that the browser keeps compositing, and sixteen of them cost the Regie as much GPU time as the videos they replaced
+ * (measured in the reference scenario with software rendering), while an image is a texture that does not change.
  */
 
 /** Interval of the snapshots (the issue asks for 1 to 2 seconds). */
 export const STILL_REFRESH_MS = 1500;
 /** Largest snapshot: thumbnails are tiny, so a LOW layer is all they ever need. */
 const STILL_LIMIT: DesiredSize = { width: 320, height: 180 };
+/** JPEG quality of a snapshot (about 10 kB at 320 x 180). */
+const STILL_QUALITY = 0.8;
 /** First snapshots of a source that has no picture yet, in ms after it was acquired. */
 const EARLY_TRIES_MS = [250, 700, 1200] as const;
 
@@ -26,12 +32,25 @@ export interface StillHolder {
 
 interface Feeder {
   readonly video: HTMLVideoElement;
+  /** Where frames are drawn before they are encoded; never in the document. */
   readonly canvas: HTMLCanvasElement;
+  /** The latest snapshot as an image URL, null before the first one. */
+  url: string | null;
   readonly holders: Set<StillHolder>;
   hasPicture: boolean;
   /** When the snapshot was taken last (the stalest one is renewed first), 0 before the first. */
   copiedAt: number;
   earlyTimers: ReturnType<typeof setTimeout>[];
+}
+
+/** The picture on a canvas as a JPEG data URL, or null where the browser cannot encode it. */
+function encodeStill(canvas: HTMLCanvasElement): string | null {
+  try {
+    const url = canvas.toDataURL('image/jpeg', STILL_QUALITY);
+    return url.startsWith('data:image/') ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Creates the hidden `<video>` that plays a source for its snapshot. */
@@ -101,10 +120,9 @@ export class StillPool {
     }
   }
 
-  /** The latest snapshot of a source, or null while it has no picture. */
-  canvasOf(sourceId: string): HTMLCanvasElement | null {
-    const feeder = this.feeders.get(sourceId);
-    return feeder?.hasPicture ? feeder.canvas : null;
+  /** The latest snapshot of a source as an image URL, or null while it has no picture. */
+  urlOf(sourceId: string): string | null {
+    return this.feeders.get(sourceId)?.url ?? null;
   }
 
   /** Number of sources that are being played (tests). */
@@ -128,9 +146,16 @@ export class StillPool {
   private createFeeder(sourceId: string): Feeder {
     const video = createFeederVideo(this.doc);
     const canvas = this.doc.createElement('canvas');
+    try {
+      // Drawn on the CPU and read back for the JPEG: no GPU surface for a canvas nobody sees.
+      canvas.getContext('2d', { willReadFrequently: true });
+    } catch {
+      // A browser without the option draws as it always does.
+    }
     const feeder: Feeder = {
       video,
       canvas,
+      url: null,
       holders: new Set(),
       hasPicture: false,
       copiedAt: 0,
@@ -180,9 +205,13 @@ export class StillPool {
     if (holders.length === 0 || (!force && !holders.some((holder) => holder.wanted()))) {
       return;
     }
-    if (!snapshotBudget.measure(() => copyVideoFrame(feeder.video, feeder.canvas, STILL_LIMIT))) {
+    const url = snapshotBudget.measure(() =>
+      copyVideoFrame(feeder.video, feeder.canvas, STILL_LIMIT) ? encodeStill(feeder.canvas) : null,
+    );
+    if (url === null) {
       return;
     }
+    feeder.url = url;
     feeder.hasPicture = true;
     feeder.copiedAt = performance.now();
     for (const holder of holders) {

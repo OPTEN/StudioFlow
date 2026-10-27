@@ -92,6 +92,8 @@ export class ItemView {
   /** Thumbnail: the device source whose snapshot this item shows, and the registration with the pool. */
   private stillSource: string | null = null;
   private stillHolder: StillHolder | null = null;
+  /** Thumbnail: the snapshot as an image (see {@link StillPool}); created with the first one. */
+  private stillImage: HTMLImageElement | null = null;
   private cancelReveal: (() => void) | null = null;
   private lostVisual: LostVisual = 'none';
   private lastState: SourceState['kind'] | null = null;
@@ -415,19 +417,31 @@ export class ItemView {
     }
     this.stillSource = null;
     this.stillHolder = null;
+    this.stillImage?.remove();
+    this.stillImage = null;
   }
 
-  /** Copies the snapshot of the pool into the hold frame canvas, which a thumbnail always shows. */
+  /** Shows the snapshot of the pool in the item's image, which a thumbnail always shows; a lost source keeps the last one. */
   private takeStill(): void {
     const sourceId = this.stillSource;
-    const snapshot = sourceId === null ? null : (this.ctx.stills()?.canvasOf(sourceId) ?? null);
-    if (sourceId === null || snapshot === null || this.lostVisual !== 'none') {
+    const url = sourceId === null ? null : (this.ctx.stills()?.urlOf(sourceId) ?? null);
+    if (url === null || this.lostVisual !== 'none') {
       return;
     }
-    const first = this.holdFrame === null;
-    this.storeHoldFrame(sourceId, (canvas) => copyHoldFrame(snapshot, canvas));
-    if (first && this.holdFrame !== null) {
-      // The first picture: the next render pass shows the canvas and gives it the fit and the mirror of the item.
+    let image = this.stillImage;
+    if (image === null) {
+      image = createElement(this.ctx.doc, 'img', 'sf-r-still', { ...FILL, display: 'none' });
+      image.alt = '';
+      image.decoding = 'async';
+      image.setAttribute('aria-hidden', 'true');
+      this.boxEl.append(image);
+      this.stillImage = image;
+    }
+    if (image.getAttribute('src') !== url) {
+      image.src = url;
+    }
+    if (image.style.display === 'none') {
+      // The first picture: the next render pass shows the image and gives it the fit and the mirror of the item.
       this.ctx.requestRender();
     }
   }
@@ -615,7 +629,11 @@ export class ItemView {
     }
     if (this.holdFrame) {
       setStyles(this.holdFrame, pictureStyles);
-      setVisible(this.holdFrame, this.lostVisual !== 'none' || this.stillSource !== null);
+      setVisible(this.holdFrame, this.lostVisual !== 'none');
+    }
+    if (this.stillImage) {
+      setStyles(this.stillImage, pictureStyles);
+      setVisible(this.stillImage, true);
     }
     setStyle(this.root, 'background-color', this.backgroundOf(state));
     // The blur sits in the copy; only a picture that could not be blurred there gets the (costly) CSS filter.

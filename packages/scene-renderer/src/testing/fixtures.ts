@@ -161,6 +161,14 @@ export function fakeCanvas2d(options: { readonly filter?: boolean } = {}): FakeC
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => context as unknown as CanvasRenderingContext2D,
   );
+  // The stills of thumbnails are encoded as images: every encoding gives a URL of its own.
+  let encoded = 0;
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(function (
+    this: HTMLCanvasElement,
+  ) {
+    encoded += 1;
+    return `data:image/jpeg;base64,still-${this.width}x${this.height}-${encoded}`;
+  });
   return {
     drawImage,
     clearRect,
