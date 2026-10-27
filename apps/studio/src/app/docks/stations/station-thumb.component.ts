@@ -1,13 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   effect,
   inject,
   input,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
+import { requestPixelRatio, watchVisibility } from '@studioflow/scene-renderer';
 import { StudioMediaService } from '../../core/media/studio-media.service';
 
 /** Thumbnail size in CSS px (prototype `.st-thumb`: 56 px, 16:9). */
@@ -24,8 +27,10 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
 /**
  * The small live picture of a station row (prototype `canvas.st-thumb`): a muted `<video>` registered with the
  * Regie's source provider, which sets its `srcObject` and keeps the last frame on loss. It requests a tiny layer
- * (56 × 32 CSS px × device pixel ratio), so many station thumbnails cost little bandwidth. Without media connection
- * it stays an empty well; a down source is dimmed.
+ * (56 × 32 CSS px × device pixel ratio, at most 1.5), so many station thumbnails cost little bandwidth. While the thumbnail
+ * cannot be seen (the Stations dock is hidden, its section is collapsed, the row is scrolled away, the tab is in the
+ * background) it asks for nothing, so the source is paused after a short while. Without media connection it stays an
+ * empty well; a down source is dimmed.
  */
 @Component({
   selector: 'sf-station-thumb',
@@ -76,9 +81,15 @@ export class StationThumbComponent {
 
   private readonly media = inject(StudioMediaService);
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly consumerId = `station-thumb-${++consumerCount}`;
+  /** On screen and in the foreground; true until the observer says otherwise. */
+  private readonly shown = signal(true);
 
   constructor() {
+    const visibility = watchVisibility(this.host, (visible) => this.shown.set(visible));
+    this.shown.set(visibility.visible());
+    inject(DestroyRef).onDestroy(() => visibility.dispose());
     effect((onCleanup) => {
       const provider = this.media.provider();
       const sourceId = this.sourceId();
@@ -89,17 +100,22 @@ export class StationThumbComponent {
       untracked(() => {
         // The muted property (not only the attribute) is what lets the browser autoplay the stream.
         video.muted = true;
-        const ratio = Math.min(3, Math.max(1, globalThis.devicePixelRatio || 1));
         provider.attach(sourceId, video);
-        provider.setDesiredSize(sourceId, this.consumerId, {
-          width: toLayerPixels(THUMB_WIDTH, ratio),
-          height: toLayerPixels(THUMB_HEIGHT, ratio),
-        });
       });
-      onCleanup(() => {
-        provider.setDesiredSize(sourceId, this.consumerId, null);
-        provider.detach(sourceId, video);
+      onCleanup(() => provider.detach(sourceId, video));
+    });
+    effect((onCleanup) => {
+      const provider = this.media.provider();
+      const sourceId = this.sourceId();
+      if (!provider || !sourceId || !this.shown()) {
+        return;
+      }
+      const ratio = requestPixelRatio();
+      provider.setDesiredSize(sourceId, this.consumerId, {
+        width: toLayerPixels(THUMB_WIDTH, ratio),
+        height: toLayerPixels(THUMB_HEIGHT, ratio),
       });
+      onCleanup(() => provider.setDesiredSize(sourceId, this.consumerId, null));
     });
   }
 }

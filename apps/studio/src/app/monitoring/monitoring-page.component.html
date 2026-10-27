@@ -103,6 +103,20 @@
                     <span class="c-mon-table__line">{{ slot.bitrate }}</span>
                   }
                 </td>
+                <td class="u-mono">
+                  @for (slot of row.slots; track slot.code) {
+                    <span class="c-mon-table__line">
+                      {{ slot.encoding }}
+                      @if (slot.cpuLimited) {
+                        <span
+                          class="c-tag c-tag--warn"
+                          [attr.title]="t('regie.load.cpuLimitHint')"
+                          >{{ t('regie.load.cpuLimit') }}</span
+                        >
+                      }
+                    </span>
+                  }
+                </td>
                 <td class="is-num u-mono">
                   @for (slot of row.slots; track slot.code) {
                     <span class="c-mon-table__line">{{ slot.loss }}</span>

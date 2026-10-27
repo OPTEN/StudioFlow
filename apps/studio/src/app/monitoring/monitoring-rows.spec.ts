@@ -79,6 +79,8 @@ describe('monitoring rows', () => {
         resolution: '1920 × 1080',
         fps: '30',
         bitrate: '2.8',
+        encoding: 'H.264',
+        cpuLimited: false,
         loss: '0.5%',
       },
     ]);
@@ -89,6 +91,51 @@ describe('monitoring rows', () => {
     });
     expect(third).toMatchObject({ stateWord: 'not connected', bitrateKbps: null, stale: false });
     expect(third.slots[0].bitrate).toBe('–');
+  });
+
+  it('names the encoder of a slot and ranks senders by their encoding load', () => {
+    const slot = (overrides: object) => ({
+      slot: 'camera' as const,
+      state: 'live' as const,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      bitrateKbps: 2000,
+      packetLossPct: 0,
+      codec: 'h264',
+      ...overrides,
+    });
+    const source = (id: string) => [sourceFixture(id, 'camera', 'K1')];
+    const device = (id: string, name: string, overrides: object) =>
+      deviceFixture(id, name, {
+        telemetry: telemetry(2000, { slots: [slot(overrides)] }),
+      });
+    const devices = [
+      device('dev_aaaaaaaaaaaaaaaa', 'Hardware', { hardwareEncoder: true }),
+      device('dev_bbbbbbbbbbbbbbbb', 'Software', { codec: 'vp9', hardwareEncoder: false }),
+      device('dev_cccccccccccccccc', 'Limited', {
+        codec: 'vp9',
+        hardwareEncoder: false,
+        qualityLimitation: 'cpu',
+      }),
+      device('dev_dddddddddddddddd', 'Unknown', { codec: null }),
+    ];
+    const list = monitoringRows(devices, (id) => source(id), NOW);
+    expect(list.map((row) => row.slots[0].encoding)).toEqual([
+      'H.264 · hardware',
+      'VP9 · software encoding',
+      'VP9 · software encoding',
+      '–',
+    ]);
+    expect(list.map((row) => row.slots[0].cpuLimited)).toEqual([false, false, true, false]);
+    expect(list.map((row) => row.encodingLoad)).toEqual([0, 1, 2, null]);
+    const worstFirst = sortMonitoringRows(list, { column: 'encoding', direction: 'desc' });
+    expect(worstFirst.map((row) => row.name)).toEqual([
+      'Limited',
+      'Software',
+      'Hardware',
+      'Unknown',
+    ]);
   });
 
   it('marks telemetry older than the server timeout as stale', () => {

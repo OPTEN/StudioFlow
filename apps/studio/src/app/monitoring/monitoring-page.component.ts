@@ -40,6 +40,7 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
   { id: 'resolution', label: 'regie.monitoring.column.resolution', numeric: false },
   { id: 'fps', label: null, unit: 'fps', numeric: true },
   { id: 'bitrate', label: null, unit: 'Mbit/s', numeric: true },
+  { id: 'encoding', label: 'regie.monitoring.column.encoding', numeric: false },
   { id: 'loss', label: 'regie.monitoring.column.loss', numeric: true },
   { id: 'rtt', label: null, unit: 'RTT', numeric: true },
   { id: 'battery', label: 'regie.monitoring.column.battery', numeric: true },
@@ -51,7 +52,8 @@ export const MONITORING_COLUMNS: readonly ColumnDefinition[] = [
 /**
  * The monitoring page `/monitoring` (spec 9.1, phase 2): a full-page table of every station with its live
  * telemetry (state, slot codes, resolution, fps, bit rate, packet loss, RTT, battery and charging, network, technical
- * check, last contact). It updates with the store's telemetry stream (every 2 s per device) and the shared clock;
+ * check, last contact) and how each slot is encoded on the sender (codec, hardware or software, and a "CPU at limit" tag
+ * where the sender lowers its picture, issue #12). It updates with the store's telemetry stream (every 2 s per device) and the shared clock;
  * stale values are dimmed. Every column sorts (ascending, descending, back to the Regie order). Same visual language
  * as the Regie: one graphite surface, hairlines, mono figures, lamps and washes.
  */

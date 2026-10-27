@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import { formatClock } from '@studioflow/scene-model';
+import { formatClock, formatPercent } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
 import { IconComponent } from '../../core/ui/icon.component';
@@ -9,6 +9,7 @@ import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../station-focus.service';
 import { BroadcastControlComponent } from './broadcast-control.component';
 import { LAYOUT_POPOVER, LayoutPopoverComponent } from './layout-popover.component';
+import { outputLoad } from './output-load';
 import { OUTPUT_POPOVER, OutputPopoverComponent, linkStateText } from './output-popover.component';
 import { ProductionMenuComponent } from './production-menu.component';
 import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
@@ -48,11 +49,16 @@ export class HeaderComponent {
   /** Header clock "HH:MM:SS" (local time). */
   protected readonly clockText = computed(() => formatClock(new Date(this.clock.now())));
 
-  /** Lamp of the output chip: green connected, amber stale, muted none. */
+  /** What the connected output pages report about their computer (dropped frames, software decoding). */
+  protected readonly load = computed(() => outputLoad(this.store.outputStatus()));
+  /** The consumer cannot keep up: the chip says so next to the lamp. */
+  protected readonly outputDropping = computed(() => this.load().dropping);
+
+  /** Lamp of the output chip: green connected, amber stale or dropping frames, muted none. */
   protected readonly outputLamp = computed(() => {
     switch (this.store.outputStatus()?.state) {
       case 'connected':
-        return '';
+        return this.load().dropping ? 'is-warn' : '';
       case 'stale':
         return 'is-warn';
       default:
@@ -66,16 +72,17 @@ export class HeaderComponent {
       .map((link) => link.name)
       .join(' + '),
   );
-  /** Tooltip of the chip: every link with its state ("Proxy · connected"). */
+  /** Tooltip of the chip: every link with its state ("Proxy · connected"), and why it warns. */
   protected readonly outputTitle = computed(() => {
     const links = this.store.outputStatus()?.links ?? [];
-    return links.length > 0
-      ? links
-          .map((link) =>
-            t('regie.output.link.line', { name: link.name, state: linkStateText(link.state) }),
-          )
-          .join('\n')
-      : null;
+    const lines = links.map((link) =>
+      t('regie.output.link.line', { name: link.name, state: linkStateText(link.state) }),
+    );
+    const { dropping, droppedPct } = this.load();
+    if (dropping && droppedPct !== null) {
+      lines.push(t('regie.load.output.droppingHint', { percent: formatPercent(droppedPct) }));
+    }
+    return lines.length > 0 ? lines.join('\n') : null;
   });
   protected readonly outputLatency = computed(() => {
     const latency = this.store.outputStatus()?.latencyMs;

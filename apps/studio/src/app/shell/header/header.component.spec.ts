@@ -210,6 +210,52 @@ describe('HeaderComponent', () => {
     );
   });
 
+  describe('output chip and the load of the output page', () => {
+    const link = (state: 'connected' | 'stale', droppedFramesPct: number | null) => ({
+      linkId: 'olk_a',
+      name: 'Proxy',
+      state,
+      consumers: 1,
+      addresses: [],
+      latencyMs: 90,
+      fps: 30,
+      lastReportAt: null,
+      droppedFramesPct,
+    });
+    const outputWith = (state: 'connected' | 'stale', droppedFramesPct: number | null) => ({
+      state,
+      consumers: 1,
+      addresses: [],
+      latencyMs: 90,
+      fps: 30,
+      lastReportAt: null,
+      links: [link(state, droppedFramesPct)],
+    });
+
+    it('warns "drops frames" in amber when the computer of the output page cannot keep up', async () => {
+      await setup(snapshotFixture({ outputStatus: outputWith('connected', 12) }));
+      expect(element.querySelector('.c-header__out-warn')?.textContent?.trim()).toBe(
+        'drops frames',
+      );
+      expect(element.querySelector('.c-chipbtn .c-lamp.is-warn')).not.toBeNull();
+      const title = element.querySelector('.c-chipbtn')?.getAttribute('title') ?? '';
+      expect(title).toContain('Proxy · connected');
+      expect(title).toContain('12% of the frames are dropped');
+    });
+
+    it('stays calm for a few dropped frames', async () => {
+      await setup(snapshotFixture({ outputStatus: outputWith('connected', 2) }));
+      expect(element.querySelector('.c-header__out-warn')).toBeNull();
+      expect(element.querySelector('.c-chipbtn .c-lamp.is-warn')).toBeNull();
+      expect(element.querySelector('.c-chipbtn')?.getAttribute('title')).toBe('Proxy · connected');
+    });
+
+    it('does not blame the computer of a page that is no longer connected', async () => {
+      await setup(snapshotFixture({ outputStatus: outputWith('stale', 40) }));
+      expect(element.querySelector('.c-header__out-warn')).toBeNull();
+    });
+  });
+
   it('shows no link name in the chip while no output link is connected', async () => {
     await setup();
     expect(element.querySelector('.c-header__out-links')).toBeNull();

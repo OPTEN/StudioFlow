@@ -18,6 +18,7 @@ import { regieCanvas } from './regie-canvas';
 import { regieCore } from './regie-core';
 import { regieDocks } from './regie-docks';
 import { regieHeader } from './regie-header';
+import { regieLoad } from './regie-load';
 import { regieLog } from './regie-log';
 import { regieLogin } from './regie-login';
 import { regieMedia } from './regie-media';
@@ -65,6 +66,7 @@ export const en = {
   ...regieCore,
   ...regieDocks,
   ...regieHeader,
+  ...regieLoad,
   ...regieLog,
   ...regieLogin,
   ...regieMedia,

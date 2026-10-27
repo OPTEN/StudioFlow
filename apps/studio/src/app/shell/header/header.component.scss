@@ -50,6 +50,12 @@
   max-width: 18ch;
 }
 
+// "drops frames" in the output chip: the computer of the output page cannot keep up.
+.c-header__out-warn {
+  @include ellipsis;
+  max-width: 14ch;
+}
+
 .c-header__presence {
   align-items: center;
   color: var(--text-2);

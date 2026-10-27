@@ -18,6 +18,7 @@ import { formatDateTime, t, tm, type Msg } from '@studioflow/i18n';
 import {
   DEFAULT_CANVAS_FORMAT,
   canvasSizeLabel,
+  formatPercent,
   formatRatioLabel,
   type OutputLinkDto,
   type OutputSettingsDto,
@@ -28,6 +29,7 @@ import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { PopoverDirective } from '../../core/ui/popover.directive';
 import { ToastService } from '../../core/ui/toast.service';
+import { outputLoad } from './output-load';
 import { LINK_NAME_MAX, OutputLinkComponent, requiredName } from './output-link.component';
 import { OBS_FPS } from './obs-scene-collection';
 
@@ -151,6 +153,30 @@ export class OutputPopoverComponent {
     const latency = this.status()?.latencyMs;
     return latency === null || latency === undefined ? null : `${Math.round(latency)} ms`;
   });
+  private readonly playback = computed(() => outputLoad(this.status()));
+  /** "3 streams · 2 in software": what the output page decodes; null while it reports nothing. */
+  protected readonly decoding = computed(() => {
+    const { decodedStreams, softwareStreams } = this.playback();
+    if (decodedStreams === null) {
+      return null;
+    }
+    const streams = t('regie.load.output.streams', { count: decodedStreams });
+    return softwareStreams
+      ? `${streams} · ${t('regie.load.output.inSoftware', { count: softwareStreams })}`
+      : streams;
+  });
+  /** Software decoding is worth a look (amber); hardware decoding or none is calm. */
+  protected readonly decodingClass = computed(() =>
+    (this.playback().softwareStreams ?? 0) > 0 ? 'c-state--warn' : '',
+  );
+  /** "12 %": the share of dropped frames; null while the page reports nothing. */
+  protected readonly dropped = computed(() => {
+    const { droppedPct } = this.playback();
+    return droppedPct === null ? null : formatPercent(droppedPct);
+  });
+  protected readonly droppedClass = computed(() =>
+    this.playback().dropping ? 'c-state--warn' : '',
+  );
   /** Changes whenever a link appears, goes, is renamed or changes its state. */
   private readonly stateKey = computed(() =>
     (this.status()?.links ?? [])

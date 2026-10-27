@@ -75,6 +75,7 @@ describe('MonitoringPageComponent', () => {
       '2560 × 1440',
       '15',
       '1.9',
+      'VP9',
       '0.2%',
       '12 ms',
       '–',
@@ -82,6 +83,43 @@ describe('MonitoringPageComponent', () => {
       'not run',
       '0 s ago',
     ]);
+  });
+
+  it('shows how a slot is encoded and flags a sender at its CPU limit', async () => {
+    hub.emit(HUB.telemetry, {
+      deviceId: 'dev_bbbbbbbbbbbbbbbb',
+      telemetry: {
+        at: new Date().toISOString(),
+        rtc: 'connected',
+        batteryPct: null,
+        charging: null,
+        network: 'ethernet',
+        rttMs: 12,
+        slots: [
+          {
+            slot: 'screen-1',
+            state: 'live',
+            width: 2560,
+            height: 1440,
+            fps: 9,
+            bitrateKbps: 900,
+            packetLossPct: 0,
+            codec: 'vp9',
+            hardwareEncoder: false,
+            qualityLimitation: 'cpu',
+          },
+        ],
+      },
+    });
+    await render();
+    const laptop = element.querySelectorAll('tbody tr')[1];
+    const encoding = Array.from(laptop.querySelectorAll('td'))[5];
+    expect(text(encoding)).toBe('VP9 · software encoding CPU at limit');
+    const tag = encoding.querySelector('.c-tag--warn');
+    expect(text(tag)).toBe('CPU at limit');
+    expect(tag?.getAttribute('title')).toContain('cannot encode fast enough');
+    const phone = element.querySelectorAll('tbody tr')[0];
+    expect(phone.querySelector('.c-tag--warn')).toBeNull();
   });
 
   it('sorts by a column header and marks it with aria-sort', async () => {

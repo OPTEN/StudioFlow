@@ -92,7 +92,13 @@ export class FakeSceneRenderer implements SceneRenderer {
   }
 
   stats(): RendererStats {
-    return { fps: 0, items: this.effectiveRects().size, videos: 0 };
+    return {
+      fps: 0,
+      items: this.effectiveRects().size,
+      videos: 0,
+      presentedFrames: 0,
+      droppedFrames: 0,
+    };
   }
 
   resize(): void {

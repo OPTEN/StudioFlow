@@ -21,6 +21,14 @@
         <span class="c-output-pop__muted">{{ t('regie.header.output.latencyNone') }}</span>
       }
     </dd>
+    @if (decoding(); as decoding) {
+      <dt>{{ t('regie.load.output.decodingLabel') }}</dt>
+      <dd [class]="decodingClass()">{{ decoding }}</dd>
+    }
+    @if (dropped(); as dropped) {
+      <dt>{{ t('regie.load.output.droppedLabel') }}</dt>
+      <dd class="u-mono" [class]="droppedClass()">{{ dropped }}</dd>
+    }
   </dl>
 
   @if (loadError(); as error) {

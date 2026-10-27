@@ -121,6 +121,56 @@ describe('OutputPopoverComponent', () => {
 
   afterEach(() => harness?.http.verify());
 
+  describe('load of the output page (issue #12)', () => {
+    function loaded(
+      droppedFramesPct: number | null,
+      decodedStreams: number | null,
+      softwareDecodedStreams: number | null,
+    ): OutputStatusDto {
+      const base = status({ olk_proxy: 'connected' }, { olk_proxy: 'Proxy' });
+      return {
+        ...base,
+        links: base.links.map((entry) => ({ ...entry, droppedFramesPct })),
+        decodedStreams,
+        softwareDecodedStreams,
+      };
+    }
+
+    function value(label: string): HTMLElement | null {
+      const term = Array.from(element.querySelectorAll('dt')).find(
+        (entry) => entry.textContent?.trim() === label,
+      );
+      return (term?.nextElementSibling as HTMLElement | null | undefined) ?? null;
+    }
+
+    it('says how many streams the page decodes and warns about software decoding', async () => {
+      await open([PROXY], loaded(3, 3, 1));
+      expect(value('Decoding')?.textContent?.trim()).toBe('3 streams · 1 in software');
+      expect(value('Decoding')?.classList.contains('c-state--warn')).toBe(true);
+      expect(value('Dropped frames')?.textContent?.trim()).toBe('3%');
+      expect(value('Dropped frames')?.classList.contains('c-state--warn')).toBe(false);
+    });
+
+    it('stays calm with hardware decoding, and warns about dropped frames from 5 %', async () => {
+      await open([PROXY], loaded(8, 2, 0));
+      expect(value('Decoding')?.textContent?.trim()).toBe('2 streams');
+      expect(value('Decoding')?.classList.contains('c-state--warn')).toBe(false);
+      expect(value('Dropped frames')?.classList.contains('c-state--warn')).toBe(true);
+    });
+
+    it('says "no stream" for a page that decodes nothing', async () => {
+      await open([PROXY], loaded(0, 0, 0));
+      expect(value('Decoding')?.textContent?.trim()).toBe('no stream');
+      expect(value('Dropped frames')?.textContent?.trim()).toBe('0%');
+    });
+
+    it('shows nothing about the load before the page reports it', async () => {
+      await open([PROXY], loaded(null, null, null));
+      expect(value('Decoding')).toBeNull();
+      expect(value('Dropped frames')).toBeNull();
+    });
+  });
+
   describe('links', () => {
     it('lists every link with its own state and when it was last seen', async () => {
       await open();

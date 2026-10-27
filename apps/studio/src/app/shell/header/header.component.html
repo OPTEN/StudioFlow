@@ -19,6 +19,11 @@
           <span class="c-header__out-links">{{ names }}</span>
         }
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
+        @if (outputDropping()) {
+          <span class="c-state--warn c-header__out-warn">{{
+            t('regie.load.output.dropping')
+          }}</span>
+        }
         <span class="u-mono">{{ outputLatency() }}</span>
         <svg sfIcon="chev" [size]="13"></svg>
       </button>

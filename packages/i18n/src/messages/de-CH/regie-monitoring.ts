@@ -8,6 +8,7 @@ export const regieMonitoring: Translation<typeof en> = {
 
   'regie.monitoring.column.battery': 'Akku',
   'regie.monitoring.column.codes': 'Quellen',
+  'regie.monitoring.column.encoding': 'Codierung',
   'regie.monitoring.column.loss': 'Verlust',
   'regie.monitoring.column.network': 'Netz',
   'regie.monitoring.column.resolution': 'Auflösung',

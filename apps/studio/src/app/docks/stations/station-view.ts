@@ -15,6 +15,7 @@ import {
   type TechCheckLevel,
 } from '@studioflow/scene-model';
 import { statusLamp, statusTone, type LampTone, type StateTone } from '../shared/source-view';
+import { decodingText, encodingView, type DecodingInput } from '../shared/stream-load';
 
 /**
  * Pure view model of the Stations dock (prototype "Stations": `stationLine`, `renderStations`): one station per
@@ -41,12 +42,14 @@ export type StationLine =
     }
   /** Back after an outage, until "Seen": "back was gone 9 s". */
   | { readonly kind: 'recovered'; readonly seconds: number }
-  /** Healthy: "2.8 Mbit/s 31 ms" and a low battery warning. */
+  /** Healthy: "2.8 Mbit/s 31 ms", a low battery warning and "CPU at limit" where the sender lowers its picture. */
   | {
       readonly kind: 'metrics';
       readonly rate: string;
       readonly rtt: string;
       readonly lowBattery: number | null;
+      /** "CPU at limit" (with the slot codes when the device has several), or null. */
+      readonly cpuLimit: string | null;
     };
 
 /** Everything a station row shows. */
@@ -71,6 +74,8 @@ export interface StationView {
   readonly endedScreens: readonly SourceDto[];
   /** "Switch camera" is offered (phone camera that is live). */
   readonly canSwitchCamera: boolean;
+  /** Codes of the slots whose sender is at its CPU limit (it lowers the picture), empty when none. */
+  readonly cpuLimited: readonly string[];
   /** The "Camera" panel is offered (a phone with a camera source, issue #11). */
   readonly canControlCamera: boolean;
   readonly blocked: boolean;
@@ -194,6 +199,16 @@ function stateLine(
   }
 }
 
+/** "CPU at limit", with the slot codes ("CPU at limit S1") when the device has several slots; null when none is limited. */
+export function cpuLimitText(codes: readonly string[], several: boolean): string | null {
+  if (codes.length === 0) {
+    return null;
+  }
+  return several
+    ? t('regie.load.cpuLimitCodes', { codes: codes.join(' ') })
+    : t('regie.load.cpuLimit');
+}
+
 /** Row model of one station (prototype `renderStations` + `stationLine`). */
 export function stationView(device: DeviceDto, context: StationContext): StationView {
   const { sources } = context;
@@ -212,6 +227,13 @@ export function stationView(device: DeviceDto, context: StationContext): Station
   const lowBattery =
     battery !== null && battery < LOW_BATTERY_PCT && telemetry?.charging !== true ? battery : null;
   const rate = totalBitrateKbps(telemetry);
+  const cpuLimited = sources
+    .filter((source) =>
+      (telemetry?.slots ?? []).some(
+        (slot) => slot.slot === source.slot && slot.qualityLimitation === 'cpu',
+      ),
+    )
+    .map((source) => source.code);
   const line: StationLine =
     stateLine(device, worst, status, sources.length > 1) ??
     (recovered.length > 0
@@ -224,6 +246,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
               ? String(Math.round(telemetry.rttMs))
               : MISSING_VALUE,
           lowBattery,
+          cpuLimit: cpuLimitText(cpuLimited, sources.length > 1),
         });
   const tallies = sources.map((source) => context.tallyOf(source.id));
   const tally: TallyState = tallies.includes('program')
@@ -245,6 +268,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     tally,
     line,
     thumbSourceId: thumb?.id ?? null,
+    cpuLimited,
     recovered,
     endedScreens: sources.filter((source) => source.kind === 'screen' && source.status === 'ended'),
     canSwitchCamera: device.kind === 'phone' && !!camera && camera.status === 'ok',
@@ -395,6 +419,7 @@ export function stationDetails(
       value: resolutionText(telemetry, sources),
       mono: true,
     },
+    ...encodingEntries(telemetry, sources),
     {
       label: t('regie.stations.detail.paired'),
       value: pairedText(device.pairedAt, nowMs),
@@ -426,6 +451,51 @@ export function stationDetails(
     });
   }
   return entries;
+}
+
+/**
+ * How each live slot is encoded on the sender ("H.264 · hardware", "VP9 · software encoding"), one entry per slot; a
+ * sender at its CPU limit says so. Nothing for a device that reports no codec yet.
+ */
+function encodingEntries(
+  telemetry: DeviceTelemetryDto | null,
+  sources: readonly SourceDto[],
+): DetailEntry[] {
+  const slots = (telemetry?.slots ?? []).filter((slot) => slot.codec);
+  return slots.map((slot) => {
+    const code = sources.find((source) => source.slot === slot.slot)?.code ?? slot.slot;
+    const view = encodingView(slot);
+    return {
+      label:
+        slots.length > 1
+          ? t('regie.load.detail.encodingCode', { code })
+          : t('regie.load.detail.encoding'),
+      value: view.cpuLimited ? `${view.text} · ${t('regie.load.cpuLimit')}` : view.text,
+      mono: true,
+    };
+  });
+}
+
+/**
+ * How this Regie decodes the pictures of the station's sources (“H.264 · hardware decoding”), one entry per source for
+ * which the browser tells; `stats` are the receive statistics of the media provider, by source id.
+ */
+export function decodingEntries(
+  sources: readonly SourceDto[],
+  stats: ReadonlyMap<string, DecodingInput | null>,
+): DetailEntry[] {
+  const known = sources.flatMap((source) => {
+    const text = decodingText(stats.get(source.id) ?? null);
+    return text === null ? [] : [{ source, text }];
+  });
+  return known.map(({ source, text }) => ({
+    label:
+      sources.length > 1
+        ? t('regie.load.detail.decodingCode', { code: source.code })
+        : t('regie.load.detail.decoding'),
+    value: text,
+    mono: true,
+  }));
 }
 
 /** The lamps of the tech check (Camera, Network, Upload), or null when it has not run yet. */

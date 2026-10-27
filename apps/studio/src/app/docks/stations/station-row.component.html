@@ -66,6 +66,11 @@
                 t('regie.stations.line.battery', { percent: percentText(line.lowBattery) })
               }}</span>
             }
+            @if (line.cpuLimit) {
+              <span class="c-state--warn" [attr.title]="t('regie.load.cpuLimitHint')">{{
+                line.cpuLimit
+              }}</span>
+            }
           }
         }
       </span>
@@ -96,6 +101,10 @@
       <div class="c-st__detail-in">
         <dl class="c-kv c-st__kv">
           @for (entry of details(); track entry.label) {
+            <dt>{{ entry.label }}</dt>
+            <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
+          }
+          @for (entry of decoding(); track entry.label) {
             <dt>{{ entry.label }}</dt>
             <dd [class.u-mono]="entry.mono">{{ entry.value }}</dd>
           }
