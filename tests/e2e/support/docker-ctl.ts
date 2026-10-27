@@ -81,11 +81,12 @@ export const livekitCtl = {
     if (result.code !== 0) throw new Error(`netem apply failed - tool unavailable (sch_netem/ifb/act_mirred missing?):\n${result.output.slice(-800)}`);
     return result.output;
   },
+  /** Removes the shaping; throws when `docker compose run` fails, so a shaping that stays on is not mistaken for a slow network. */
   async clearNetem(): Promise<void> {
-    await compose(['run', '--rm', 'netem', 'clear'], { profiles: ['chaos'] });
+    await compose(['run', '--rm', 'netem', 'clear'], { profiles: ['chaos'], check: true });
   },
   async showNetem(): Promise<string> {
-    return (await compose(['run', '--rm', 'netem', 'show'], { profiles: ['chaos'] })).output;
+    return (await compose(['run', '--rm', 'netem', 'show'], { profiles: ['chaos'], check: true })).output;
   },
 };
 

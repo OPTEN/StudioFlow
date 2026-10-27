@@ -44,8 +44,11 @@ test.afterAll(async () => {
   await restoreNetwork().catch(() => undefined);
 });
 
+/** After clearing the shaping the STUN responses take less than this (the shaped RTT is 0.4 s, 0.3 s proves it). */
+const NETEM_CLEARED_RTT_S = 0.15;
+
 /**
- * netem 200 ms: RTT of the ICE pair >= 0.3 s, back to < 0.05 s after clearing. The CI runners set E2E_NETEM=unavailable
+ * netem 200 ms: RTT of the ICE pair >= 0.3 s, back to < 0.15 s after clearing. The CI runners set E2E_NETEM=unavailable
  * (tests/e2e/load-netem-modules.sh) when the kernel has no sch_netem, ifb or act_mirred: the tool is then skipped.
  */
 async function checkNetem(viewer: LiveKitPage): Promise<void> {
@@ -58,14 +61,28 @@ async function checkNetem(viewer: LiveKitPage): Promise<void> {
     const rtt = await viewer.iceRtt();
     return rtt !== null && rtt >= 0.3 ? rtt : false;
   }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
+  // Throws when `docker compose run` fails; the qdiscs are looked at as well, so a shaping that stays on is reported as such
+  // and not as an RTT that does not recover.
   await livekitCtl.clearNetem();
-  const fastRtt = await waitUntil('RTT < 0.05 s after clear', async () => {
-    const rtt = await viewer.iceRtt();
-    return rtt !== null && rtt < 0.05 ? rtt : false;
+  const left = await livekitCtl.showNetem();
+  expect(left, `clearNetem left a netem qdisc in the namespace of LiveKit:\n${left}`).not.toMatch(/netem/);
+  // `currentRoundTripTime` is smoothed by the browser over the last STUN responses (one every 2.5-5 s): the 400 ms of the
+  // shaping decays over many pings, and on a busy runner it settles at the real RTT of that machine, which can be above
+  // 50 ms (issue 49). The plain average of the responses that arrived between two readings shows at once whether the
+  // delay is gone: below half of the 0.3 s that proved the shaping, with room for a loaded machine.
+  let previous = await viewer.iceRttTotals();
+  let newest: number | null = null;
+  const fastRtt = await waitUntil(`average RTT of the STUN responses < ${NETEM_CLEARED_RTT_S} s after clear`, async () => {
+    const totals = await viewer.iceRttTotals();
+    if (totals !== null && previous !== null && totals.responses > previous.responses) {
+      newest = (totals.totalSeconds - previous.totalSeconds) / (totals.responses - previous.responses);
+    }
+    previous = totals;
+    return newest !== null && newest < NETEM_CLEARED_RTT_S ? newest : false;
   }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
-  record('netem', slowRtt !== null && fastRtt !== null, `rtt under netem ${slowRtt}, after clear ${fastRtt}`);
+  record('netem', slowRtt !== null && fastRtt !== null, `rtt under netem ${slowRtt}, after clear ${fastRtt} (newest average ${newest}, smoothed ${await viewer.iceRtt()})`);
   expect(slowRtt, 'netem 200 ms shaped both directions (RTT >= 0.3 s)').not.toBeNull();
-  expect(fastRtt, 'clearNetem restores the RTT').not.toBeNull();
+  expect(fastRtt, `clearNetem restores the RTT (newest average ${newest} s, smoothed ${await viewer.iceRtt()} s)`).not.toBeNull();
 }
 
 test.describe('NET canary', () => {

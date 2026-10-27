@@ -370,6 +370,29 @@ export class LiveKitPage {
     });
   }
 
+  /**
+   * Sum over the nominated ICE pairs of the STUN round trips so far (`totalRoundTripTime` in seconds, `responsesReceived`).
+   * Unlike `currentRoundTripTime`, which the browser smooths over the last STUN responses (a delay that was removed
+   * decays over several pings of 2.5-5 s and a busy runner never gets below a tight threshold), the difference of two
+   * readings is the plain average RTT of the responses in between. Null when no pair is nominated.
+   */
+  async iceRttTotals(): Promise<{ totalSeconds: number; responses: number } | null> {
+    return this.page.evaluate(async () => {
+      const room = (window as any).__room;
+      const pcs: RTCPeerConnection[] = [room?.engine?.pcManager?.subscriber?.pc, room?.engine?.pcManager?.publisher?.pc].filter(Boolean);
+      let totals: { totalSeconds: number; responses: number } | null = null;
+      for (const pc of pcs) {
+        const report = await pc.getStats();
+        report.forEach((stat: any) => {
+          if (stat.type === 'candidate-pair' && stat.nominated && stat.state === 'succeeded' && typeof stat.totalRoundTripTime === 'number' && typeof stat.responsesReceived === 'number') {
+            totals = { totalSeconds: (totals?.totalSeconds ?? 0) + stat.totalRoundTripTime, responses: (totals?.responses ?? 0) + stat.responsesReceived };
+          }
+        });
+      }
+      return totals;
+    });
+  }
+
   /** Selected ICE candidate pair description (protocol and remote address) for the diagnostics. */
   async iceDescription(): Promise<string> {
     return this.page.evaluate(async () => {
