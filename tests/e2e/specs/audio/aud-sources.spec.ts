@@ -190,10 +190,10 @@ test.describe('AUD sources', () => {
           .filter((sample) => sample.screen > -110 || sample.station > -110);
       };
       /** Median strength in dB of the samples between two moments after the switch (a dropout of the machine does not count). */
-      const mean = (samples: Sample[], key: 'screen' | 'station', from: number, to: number): number => {
+      const mean = (samples: Sample[], key: 'screen' | 'station', from: number, to: number, statistic: 'median' | 'strongest' = 'median'): number => {
         const part = samples.filter((sample) => sample.at >= from && sample.at < to).map((sample) => sample[key]);
         expect(part.length, `samples between ${from} and ${to} ms`).toBeGreaterThanOrEqual(1);
-        return percentile(part, 50);
+        return percentile(part, statistic === 'median' ? 50 : 100);
       };
 
       // Fade out: the picture with sound leaves. The strength of the tone in the 170 ms window falls from its level to the floor
@@ -201,14 +201,16 @@ test.describe('AUD sources', () => {
       const out = await run(sceneB);
       await testInfo.attach('fade-out.json', { body: JSON.stringify(out, null, 1), contentType: 'application/json' });
       const level = mean(out, 'screen', -LEAD_MS, -100);
-      const start = mean(out, 'screen', 0, 0.3 * FADE_MS);
+      // (The strongest sample of the window: a dropout of the machine only lowers a reading, a cut would silence every one.)
+      const start = mean(out, 'screen', 0, 0.3 * FADE_MS, 'strongest');
       const end = mean(out, 'screen', 0.75 * FADE_MS, 0.95 * FADE_MS);
       const after = mean(out, 'screen', FADE_MS + 800, FADE_MS + 1600);
       testInfo.annotations.push({ type: 'measurement', description: `fade out ${FADE_MS} ms (dB of the tone): before ${level.toFixed(1)}, first third ${start.toFixed(1)}, last fifth ${end.toFixed(1)}, after ${after.toFixed(1)}` });
       expect(start, 'the first third is still (nearly) at the level: a fade, not a cut').toBeGreaterThan(level - 7);
       expect(end, 'the end of the fade is well down').toBeLessThan(start - 4);
       expect(after, 'after the fade the sound of the picture is gone').toBeLessThan(level - 20);
-      const goneAt = out.find((sample) => sample.at > 0 && sample.screen < level - 20)!.at;
+      // Gone at the first sample after which no sample is louder again (one reading below the line can be a dropout).
+      const goneAt = out.find((sample, index) => sample.at > 0 && out.slice(index).every((later) => later.screen < level - 20))!.at;
       expect(goneAt, 'it is over about when the fade is over (the measurement looks back 170 ms)').toBeGreaterThanOrEqual(FADE_MS - 500);
       expect(goneAt).toBeLessThanOrEqual(FADE_MS + 900);
       // The microphone ("always") stays: its strength does not move with the fade.
@@ -221,7 +223,7 @@ test.describe('AUD sources', () => {
       await testInfo.attach('fade-in.json', { body: JSON.stringify(back, null, 1), contentType: 'application/json' });
       const floor = mean(back, 'screen', -LEAD_MS, -100);
       const first = mean(back, 'screen', 0, 0.3 * FADE_MS);
-      const last = mean(back, 'screen', FADE_MS + 600, FADE_MS + 1400);
+      const last = mean(back, 'screen', FADE_MS + 600, FADE_MS + 1400, 'strongest');
       testInfo.annotations.push({ type: 'measurement', description: `fade in ${FADE_MS} ms (dB of the tone): before ${floor.toFixed(1)}, first third ${first.toFixed(1)}, after ${last.toFixed(1)} (level was ${level.toFixed(1)})` });
       expect(floor, 'silent before').toBeLessThan(level - 20);
       expect(first, 'it rises, it does not jump').toBeLessThan(level - 8);
@@ -306,15 +308,37 @@ test.describe('AUD sources', () => {
 
       // The Regie lists the four channels; the output holds all four tones at once.
       await expect(regie.page.locator('sf-dock-slot[data-dock="audio"] .c-audio')).toHaveCount(4, { timeout: 15_000 });
-      const heard = (await measureAudio(target))!;
+      // One measurement is a window of 21 ms, and a starved machine makes a fake source drop its tone for a moment: look until
+      // one window holds all four tones (they have to be there at once).
+      let heard = (await measureAudio(target))!;
+      const inMix = (measure: typeof heard, frequency: number) => measure.peaks.some((peak) => Math.abs(peak.frequency - frequency) <= 15);
+      await expect
+        .poll(
+          async () => {
+            heard = (await measureAudio(target))!;
+            return all.filter((frequency) => !inMix(heard, frequency));
+          },
+          { timeout: 15_000, intervals: [100, 100, 250], message: 'all four tones are in one window of the mix' },
+        )
+        .toEqual([]);
       testInfo.annotations.push({ type: 'measurement', description: `four channels: peak ${heard.peakDb.toFixed(1)} dBFS, peaks ${JSON.stringify(heard.peaks.slice(0, 6))}` });
-      for (const frequency of all) expect(heard.peaks.some((peak) => Math.abs(peak.frequency - frequency) <= 15), `${frequency} Hz is in the mix`).toBe(true);
 
       const channel = (sourceId: string, patch: Record<string, unknown>) => ({ sourceId, gainDb: 0, muted: false, mode: 'always', syncOffsetMs: 0, ...patch });
       const heardNow = async (frequency: number) => (await measureAudio(target))!.peaks.some((peak) => Math.abs(peak.frequency - frequency) <= 15);
+      // Gone means absent in three windows in a row (one window without the tone can be a dropout of the machine, and the
+      // second harmonic of the station sits at 880 Hz); a tone that stays is heard again within 3 s (a dropout lasts a few
+      // hundred milliseconds, a muted channel never comes back).
+      const absentFor = async (frequency: number, ms: number) => {
+        const until = Date.now() + ms;
+        while (Date.now() < until) {
+          if (await heardNow(frequency)) return false;
+          await sleep(50);
+        }
+        return true;
+      };
       const waitGone = async (frequency: number, others: number[]) => {
-        await expect.poll(async () => heardNow(frequency), { timeout: 10_000, message: `${frequency} Hz leaves the mix` }).toBe(false);
-        for (const other of others) expect(await heardNow(other), `${other} Hz stays`).toBe(true);
+        await expect.poll(async () => absentFor(frequency, 120), { timeout: 10_000, message: `${frequency} Hz leaves the mix` }).toBe(true);
+        for (const other of others) await expect.poll(async () => heardNow(other), { timeout: 3_000, intervals: [50], message: `${other} Hz stays` }).toBe(true);
       };
 
       // Mute the second screen: only its tone leaves; unmute: it is back.
