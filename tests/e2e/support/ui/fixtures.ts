@@ -2,7 +2,7 @@ import { test as base, expect } from '../fixtures';
 import { installUiInit, newUiContext, type NewUiContextOptions, type UiInitOptions } from './init';
 import { OutputPage, type EmbedOptions, type OutputFlags, type OutputTarget } from './output';
 import { RegiePage } from './regie';
-import { LaptopSender, PhoneSender } from './sender';
+import { AudioStationSender, LaptopSender, PhoneSender } from './sender';
 
 /**
  * Fixtures of the UI tests: `import { test, expect } from '../../support/ui/fixtures'` instead of `support/fixtures`
@@ -26,6 +26,7 @@ export interface UiFixtures {
   }) => Promise<RegiePage>;
   openPhone: (options?: NewUiContextOptions) => Promise<PhoneSender>;
   openLaptop: (options?: NewUiContextOptions) => Promise<LaptopSender>;
+  openAudioStation: (options?: NewUiContextOptions) => Promise<AudioStationSender>;
   openOutput: (
     target: OutputTarget,
     flags?: OutputFlags,
@@ -84,6 +85,14 @@ export const test = base.extend<UiFixtures & UiOptions>({
       const laptop = await LaptopSender.open(browser, withLocale(locale, options));
       onCleanup(() => laptop.close());
       return laptop;
+    });
+  },
+
+  openAudioStation: async ({ browser, onCleanup, locale }, use) => {
+    await use(async (options = {}) => {
+      const station = await AudioStationSender.open(browser, withLocale(locale, options));
+      onCleanup(() => station.close());
+      return station;
     });
   },
 

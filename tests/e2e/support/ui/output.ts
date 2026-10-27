@@ -28,6 +28,8 @@ export interface OutputFlags {
   transparent?: boolean;
   /** `lang=de-CH`: the language of the page, which has no setting of its own. */
   lang?: string;
+  /** `audio=off`: the page makes no sound at all (no audio context). */
+  audio?: 'off';
 }
 
 export interface EmbedOptions extends OutputFlags {
@@ -72,6 +74,7 @@ export function outputPath(target: OutputTarget, flags: OutputFlags = {}): strin
   if (flags.debug) query.set('debug', '1');
   if (flags.latency) query.set('latency', '1');
   if (flags.lang) query.set('lang', flags.lang);
+  if (flags.audio) query.set('audio', flags.audio);
   return `/o/${target.slug}?${query.toString()}`;
 }
 

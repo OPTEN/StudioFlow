@@ -40,7 +40,7 @@ export interface SenderHooks {
 
 export abstract class SenderPage {
   readonly problems: PageProblems;
-  abstract readonly kind: 'phone' | 'laptop';
+  abstract readonly kind: 'phone' | 'laptop' | 'audioStation';
 
   protected constructor(
     readonly context: BrowserContext,
@@ -73,10 +73,20 @@ export abstract class SenderPage {
   // --- pairing form and waiting screen -----------------------------------------------------------------------------
 
   /** Fills the pairing form (`/join/`): device name and kind, then “Continue”. */
-  async submitPairingForm(name: string, kind: 'phone' | 'laptop' = this.kind): Promise<void> {
+  async submitPairingForm(
+    name: string,
+    kind: 'phone' | 'laptop' | 'audioStation' = this.kind,
+  ): Promise<void> {
     await this.page.getByLabel('Device name').fill(name);
     await this.page
-      .getByRole('radio', { name: kind === 'phone' ? 'Phone (camera)' : 'Laptop (screen)' })
+      .getByRole('radio', {
+        name:
+          kind === 'phone'
+            ? 'Phone (camera)'
+            : kind === 'audioStation'
+              ? 'Audio station (mixing desk)'
+              : 'Laptop (screen)',
+      })
       .check();
     await this.page.getByRole('button', { name: 'Continue' }).click();
   }
@@ -380,6 +390,52 @@ export class LaptopSender extends SenderPage {
   /** The banner shown when the Regie asked to share again. */
   reshareBanner(): Locator {
     return this.page.getByText('The control room asks you to share the screen again');
+  }
+}
+
+/**
+ * The audio station (issue #7): a laptop at the mixing desk. Its one slot is `mic`; the page starts the microphone by
+ * itself and shows the input, the level and the “Mic live” tag.
+ */
+export class AudioStationSender extends SenderPage {
+  readonly kind = 'audioStation' as const;
+
+  /** An audio station in a context of its own (Desktop profile). */
+  static async open(browser: Browser, options: NewUiContextOptions = {}): Promise<AudioStationSender> {
+    const profile = options.profile ?? 'desktop';
+    const context = await newUiContext(browser, { ...options, profile });
+    return new AudioStationSender(context, await context.newPage(), profile, stackConfig(), true);
+  }
+
+  /** The microphone panel (`slot-mic`). */
+  panel(): Locator {
+    return this.slot('mic');
+  }
+
+  async micState(): Promise<SlotState | null> {
+    return this.slotState('mic');
+  }
+
+  async waitForMic(state: SlotState = 'live', timeout = 30_000): Promise<void> {
+    await this.waitForSlot('mic', state, timeout);
+  }
+
+  micToggle(): Locator {
+    return this.page.getByTestId('mic-toggle');
+  }
+
+  inputSelect(): Locator {
+    return this.page.getByTestId('mic-input');
+  }
+
+  /** The “Mic live” tag. */
+  micLive(): Locator {
+    return this.page.getByTestId('mic-live');
+  }
+
+  /** The level readout, e.g. “-12 dB”. */
+  levelText(): Locator {
+    return this.page.getByTestId('input-level-db');
   }
 }
 

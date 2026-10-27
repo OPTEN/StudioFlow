@@ -165,7 +165,7 @@ export interface PairedDevice {
   id: string;
   credentials: DeviceCredentialsDto;
   name: string;
-  kind: 'phone' | 'laptop';
+  kind: 'phone' | 'laptop' | 'audioStation';
   method: 'qr' | 'code' | 'link';
   /** Device REST client (through `base`). */
   api: DeviceApi;
@@ -183,7 +183,7 @@ export interface PairContext {
   stack: Stack;
 }
 
-function makeDevice(credentials: DeviceCredentialsDto, name: string, kind: 'phone' | 'laptop', method: PairedDevice['method'], base: string, forwardedFor: string | undefined, codes: Record<string, string>): PairedDevice {
+function makeDevice(credentials: DeviceCredentialsDto, name: string, kind: PairedDevice['kind'], method: PairedDevice['method'], base: string, forwardedFor: string | undefined, codes: Record<string, string>): PairedDevice {
   const api = new DeviceApi(base, credentials, forwardedFor);
   return {
     id: credentials.deviceId,
@@ -194,7 +194,7 @@ function makeDevice(credentials: DeviceCredentialsDto, name: string, kind: 'phon
     api,
     bearer: api.bearer,
     codes,
-    sourceId: (slot = kind === 'phone' ? 'camera' : 'screen-1') => `${credentials.deviceId}/${slot}`,
+    sourceId: (slot = kind === 'phone' ? 'camera' : kind === 'audioStation' ? 'mic' : 'screen-1') => `${credentials.deviceId}/${slot}`,
   };
 }
 
@@ -241,6 +241,26 @@ export async function pairLaptopByLink(context: PairContext, options: { name?: s
   });
   if (redeemed.status !== 200) throw new Error(`redeem failed: ${redeemed.status} ${redeemed.raw.text()}`);
   const device = makeDevice(redeemed.body, options.name ?? 'Laptop', 'laptop', 'link', stack.anonymousBase, ip, {});
+  device.codes = await describeSlots(device.api);
+  device.name = (await device.api.getDeviceSelf()).body.name;
+  return device;
+}
+
+/** Link flow for the audio station: a laptop link that the person at the mixing desk redeems as `audioStation`. */
+export async function pairAudioStationByLink(context: PairContext, options: { name?: string; clientId?: string } = {}): Promise<PairedDevice> {
+  const { production, stack } = context;
+  const invite = await production.api.createInvite(production.id, { kind: 'laptopLink' });
+  if (invite.status !== 201) throw new Error(`createInvite failed: ${invite.status} ${invite.raw.text()}`);
+  const ip = stack.forwardedForWorks ? uniqueIp() : undefined;
+  const publicApi = new PublicApi(stack.anonymousBase, ip);
+  const redeemed = await publicApi.redeemInvite(inviteToken(invite.body.url), {
+    clientId: options.clientId ?? `cli-${Math.random().toString(36).slice(2, 12)}`,
+    name: options.name,
+    kind: 'audioStation',
+    platform: 'Windows · Chrome',
+  });
+  if (redeemed.status !== 200) throw new Error(`redeem failed: ${redeemed.status} ${redeemed.raw.text()}`);
+  const device = makeDevice(redeemed.body, options.name ?? 'Audio station', 'audioStation', 'link', stack.anonymousBase, ip, {});
   device.codes = await describeSlots(device.api);
   device.name = (await device.api.getDeviceSelf()).body.name;
   return device;
