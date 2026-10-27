@@ -1,8 +1,8 @@
 // Consistency of the release files. Run by CI (job lint-typecheck) and locally: node infra/release/check.mjs
 //
-//  1. One version everywhere: .release-please-manifest.json, package.json, package-lock.json, Directory.Build.props and
-//     the default image tags of docker-compose.release.yml (release-please changes all of them in the release pull
-//     request, docs/releasing.md).
+//  1. One version everywhere: .release-please-manifest.json, package.json, package-lock.json and Directory.Build.props
+//     (release-please changes all of them in the release pull request, docs/releasing.md). docker-compose.release.yml
+//     holds no version: its image tag defaults to "latest", so it is the same file for every release.
 //  2. docker-compose.release.yml is the twin of docker-compose.yml: the same services with the same settings, except
 //     that the images we build are pulled instead of built and the netem test service is missing.
 //
@@ -20,6 +20,7 @@ const problems = [];
 const IMAGES = {
   caddy: 'studioflow-web',
   api: 'studioflow-api',
+  livekit: 'studioflow-livekit',
   backup: 'studioflow-backup',
 };
 
@@ -30,12 +31,6 @@ const lock = readJson('package-lock.json');
 const props = /<Version>([^<]+)<\/Version>[^\n]*x-release-please-version/.exec(
   read('apps/api/Directory.Build.props'),
 );
-const composeTags = [
-  ...read('docker-compose.release.yml').matchAll(
-    /\$\{STUDIOFLOW_IMAGE_TAG:-([^}]*)\}[^\n]*x-release-please-version/g,
-  ),
-].map((match) => match[1]);
-
 const versions = {
   '.release-please-manifest.json': readJson('.release-please-manifest.json')['.'],
   'package.json': readJson('package.json').version,
@@ -43,15 +38,6 @@ const versions = {
   'package-lock.json (packages[""])': lock.packages?.['']?.version,
   'apps/api/Directory.Build.props': props?.[1],
 };
-composeTags.forEach(
-  (tag, index) => (versions[`docker-compose.release.yml (image ${index + 1})`] = tag),
-);
-
-if (composeTags.length !== Object.keys(IMAGES).length) {
-  problems.push(
-    `docker-compose.release.yml must have ${Object.keys(IMAGES).length} image lines marked x-release-please-version (${Object.values(IMAGES).join(', ')}), found ${composeTags.length}.`,
-  );
-}
 for (const [file, version] of Object.entries(versions)) {
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(String(version))) {
     problems.push(`${file}: "${version}" is not a version (X.Y.Z).`);
@@ -65,10 +51,16 @@ if (new Set(Object.values(versions)).size > 1) {
   );
 }
 const extraFiles = config.packages?.['.']?.['extra-files'] ?? [];
-for (const file of ['apps/api/Directory.Build.props', 'docker-compose.release.yml']) {
-  if (!extraFiles.includes(file))
-    problems.push(`release-please-config.json: ${file} is missing in extra-files.`);
-}
+if (!extraFiles.includes('apps/api/Directory.Build.props'))
+  problems.push(
+    'release-please-config.json: apps/api/Directory.Build.props is missing in extra-files.',
+  );
+if (extraFiles.includes('docker-compose.release.yml'))
+  problems.push(
+    'release-please-config.json: docker-compose.release.yml must not be in extra-files, it has no version (the image tag defaults to latest).',
+  );
+if (/x-release-please-version/.test(read('docker-compose.release.yml')))
+  problems.push('docker-compose.release.yml must not carry x-release-please-version markers.');
 
 // --- 2. compose twins -----------------------------------------------------------------------------------------
 
@@ -112,7 +104,7 @@ try {
     if (service.build) problems.push(`docker-compose.release.yml: service ${name} must not build.`);
   }
   for (const [name, image] of Object.entries(IMAGES)) {
-    const expected = `\${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/${image}:\${STUDIOFLOW_IMAGE_TAG:-${versions['package.json']}}`;
+    const expected = `\${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/${image}:\${STUDIOFLOW_IMAGE_TAG:-latest}`;
     const actual = release.services[name]?.image;
     if (actual !== expected)
       problems.push(

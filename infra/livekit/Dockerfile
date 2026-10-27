@@ -7,6 +7,11 @@
 ARG LIVEKIT_VERSION=v1.13.10
 FROM livekit/livekit-server:${LIVEKIT_VERSION}
 
+# The commit this image was built from. CI and the release workflow pass it to every image (the images are built from the
+# same commit and can be told apart in `docker inspect`); nothing in the image reads it.
+ARG STUDIOFLOW_REVISION=unknown
+LABEL org.opencontainers.image.revision=${STUDIOFLOW_REVISION}
+
 COPY infra/livekit/supervisor.sh /usr/local/bin/livekit-supervisor
 RUN chmod 755 /usr/local/bin/livekit-supervisor \
  && mkdir -p /lk
