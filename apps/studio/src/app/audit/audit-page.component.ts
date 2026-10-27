@@ -84,13 +84,14 @@ export class AuditPageComponent {
   protected readonly filtered = computed(() => hasFilters(this.filters()));
   protected readonly loadMoreAnchor = viewChild<ElementRef<HTMLElement>>('loadMoreAnchor');
 
+  /** The request for the list of productions while it is on its way: "Last broadcast" needs it to find the active one. */
+  private productionsPending: Promise<void> | null = this.loadProductions();
   private lastQuery: AuditQuery | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private resolution = 0;
 
   constructor() {
     const destroyRef = inject(DestroyRef);
-    void this.loadProductions();
     effect(() => {
       const filters = this.filters();
       untracked(() => void this.apply(filters));
@@ -251,6 +252,8 @@ export class AuditPageComponent {
       this.productions.set(await this.api.listProductions());
     } catch {
       // The filter then offers "All productions" only.
+    } finally {
+      this.productionsPending = null;
     }
   }
 
@@ -263,8 +266,17 @@ export class AuditPageComponent {
     }
     let broadcast: BroadcastRange | null = null;
     if (filters.range === 'lastBroadcast') {
-      if (filters.production === '' && this.chooseActiveProduction()) {
-        return;
+      if (filters.production === '') {
+        if (this.productionsPending !== null) {
+          // The operator was quicker than the list of productions: without it no production is active yet.
+          await this.productionsPending;
+          if (resolution !== this.resolution) {
+            return;
+          }
+        }
+        if (this.chooseActiveProduction()) {
+          return;
+        }
       }
       broadcast = await this.findLastBroadcast(filters.production);
       if (resolution !== this.resolution) {

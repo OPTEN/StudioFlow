@@ -111,7 +111,8 @@ test.describe('AUDIT audit log page', () => {
       // The export itself is in the log.
       await page.getByLabel('Time range').selectOption({ label: 'Any time' });
       await page.getByLabel('Production').selectOption({ label: 'All productions' });
-      await expect(page.getByRole('table').getByText(/^Audit log exported as csv, 4 rows$/)).toBeVisible();
+      // Earlier runs on the same stack (a retry, a repetition) left the same entry behind: one of them is enough.
+      await expect(page.getByRole('table').getByText(/^Audit log exported as csv, 4 rows$/).first()).toBeVisible();
     },
   );
 
