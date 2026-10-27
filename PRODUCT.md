@@ -15,6 +15,7 @@ Angular (standalone, signals, OnPush) for the Regie (control room) and the sende
 - **Regie operator (primary):** one person, at most two at the same time, internal to OPTEN. Works on site during a webinar on a 14–16 inch laptop in normal room light, builds scenes beforehand and switches between them during the broadcast.
 - **Speakers:** share one or more screens from their own laptop through the sender page in the browser.
 - **Camera phones:** permanently mounted smartphones that act as cameras through the sender PWA and run unattended once set up.
+- **Audio station:** a laptop at the mixing desk that sends the finished mix as sound, through the sender page, and starts it by itself.
 - **Output consumer:** a proxy opens the output page (16:9 by default, as an iframe) and distributes the picture to about 30 people.
 
 ## Product Purpose
@@ -32,20 +33,21 @@ Everything runs in the browser and on your own server: phones and laptops become
 - On site, all devices on the same Wi-Fi; the server runs locally (a PC with Docker) or as a VPS under the operator's own control.
 - Before the webinar: pair devices (phones by QR code, laptops by short URL with a code and approval, or by invite link) and build scenes.
 - During the webinar: take a scene live with one click or, with Studio Mode on, check it in the preview first and send it to the program with Take.
-- Audio runs outside StudioFlow through a mixing desk; the architecture stays prepared for audio.
+- The sound of the webinar comes from the mixing desk through an audio station; the mixer of StudioFlow only decides what of it, of shared screens and of videos is heard on the output. Audio levels per scene and a preview mix come later.
 - Terms from OBS and broadcasting: scene, source, item, preview, program, take, tally, slate, fallback.
 
 ## Capabilities and Constraints
 
-- Sources: camera, screen (several per laptop), image, video; later text, overlays and web pages.
+- Sources: camera, screen (several per laptop), image, video, text and lower thirds, and sound: the audio station, the sound of screens and videos, and microphones of phones and laptops (muted until the Regie lets them through); later overlays and web pages.
+- Sound: one mixer per production (fader −∞ … +10 dB, mute, mode, sync offset), mixed on the output page with Web Audio; the proxy is assumed to be an OBS browser source with “Control audio via OBS”.
 - Output: one canvas per production from a fixed list (16:9, 9:16, 1:1, 4:3 at 720p or 1080p), 16:9 at 1080p (1920 × 1080) by default, embeddable as an iframe, without controls.
 - Latency target on site: about 0.15 s glass to glass (estimate, not yet measured).
 - Login: one admin account from appsettings or `.env`, no SSO.
 - Stability: automatic reconnect without limit; sources return to their place in the scene through device ID and slot.
-- Regie workspace like OBS: docks (Scenes, Sources, Properties, Stations) can be arranged freely, resized and hidden; the layout is stored per browser.
+- Regie workspace like OBS: docks (Scenes, Sources, Properties, Stations, Audio) can be arranged freely, resized and hidden; the layout is stored per browser.
 - Fonts and assets come from the project's own build, without external CDNs, because the Regie runs on the LAN.
 - Multi-tenancy is provided for in the data model; for now only OPTEN uses the system.
-- Later, not now: restream, recording, audio in StudioFlow, public air mode for viewers without a proxy.
+- Later, not now: restream, recording, audio levels per scene, public air mode for viewers without a proxy.
 
 ## Brand Commitments
 

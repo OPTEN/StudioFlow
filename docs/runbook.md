@@ -18,7 +18,7 @@ The stack makes its own secrets on the first start, and the first-run wizard in 
 | `init` | Runs once per start and exits: makes the internal secrets (database password, LiveKit key pair) on the first start and never again | `secrets` |
 | `caddy` | HTTPS, certificates, serves the Regie (`/`), sender (`/join`) and output (`/o/…`), forwards the API and signalling. Its configuration comes from the API | `caddy_data` (certificates, local CA), `caddy_config`, `caddy_certs` (an uploaded certificate) |
 | `api` | ASP.NET Core: login, scenes, devices, tokens, SignalR, the server settings | `media` (images, videos), `keys` (login keys) |
-| `livekit` | SFU: forwards the video of the phones and laptops. A thin wrapper restarts it when the media address changes | `livekit_config` |
+| `livekit` | SFU: forwards the video and the sound of the phones and laptops. A thin wrapper restarts it when the media address changes | `livekit_config` |
 | `postgres` | Database | `pgdata` |
 | `backup` | Scheduled and manual backups, restore (section 7) | `backups`, `backup_status`, `backup_config` |
 
@@ -534,6 +534,8 @@ state, `git pull --ff-only` aborts without restarting anything.
 - [ ] If the picture goes into Teams, Zoom or Webex through OBS (section 18): the link "Teams camera" shows "connected"
       in the output chip, a second participant sees the picture, background effects are off, and the computer with OBS
       and Teams is not the Regie laptop.
+- [ ] Sound (section 20): the audio station is paired and plays by itself after a reload, the proxy's audio comes through
+      the browser source in OBS ("Control audio via OBS") and the output chip does not say "Audio blocked".
 
 **On site, 60 minutes before**
 
@@ -544,6 +546,8 @@ state, `git pull --ff-only` aborts without restarting anything.
 - [ ] **Tech check** in every sender: camera, network, bandwidth (≥ 6 Mbit/s good, ≥ 3 Mbit/s tight).
 - [ ] Monitoring view: bitrate, packet loss and battery of all stations unremarkable.
 - [ ] Output at the proxy: picture current, latency in the output chip plausible; test switch.
+- [ ] Sound: audio station shows "Sending" with a moving level and a plausible input; start the broadcast for a moment and
+      listen at the proxy (or in OBS); the meter of the program above Take moves; end the broadcast again.
 - [ ] `docker compose run --rm backup backup-now`.
 - [ ] With automatic backups: `docker compose exec api wget -q -O - http://127.0.0.1:8080/health/ready` prints `Healthy`
       (otherwise it lists what is wrong with the backups, section 7.2); Server settings shows all three services
@@ -629,6 +633,26 @@ when one of them is at its limit, in amber, while the picture is still there:
 
 How much hardware the audience's computer uses cannot be measured in the container the automated tests run in; the manual
 measurement on real devices is MAN-16 (`docs/testing.md`).
+
+### No sound
+
+- Output chip says **"Audio blocked"**: the browser keeps the output page silent until somebody clicked it. In an OBS browser
+  source switch on "Control audio via OBS" (the downloaded scene collection has it on) or click the page once
+  (a "Sound on" button shows in its corner); in an iframe the page needs `allow="autoplay"` (section 19.3) and
+  often one click on the embedding page.
+- Output page open with `?audio=off`? That page is silent on purpose.
+- Audio dock: is the channel **muted**, the fader down, the mode **Off**, or **Follows the picture** with no picture of it in the
+  program? Nothing is heard before the broadcast is live ("PGM" in the row says that the channel is on air).
+- The row says **"no signal for 10 s"**: the sender delivers silence. Audio station: cable of the mixing desk, the chosen input
+  on the page ("Audio input"), the desk's output level. Laptop screen: the sound is only shared when "Share audio" was ticked
+  *and* the browser delivered it ("with sound" next to the screen; otherwise "No sound is shared with this screen").
+- The row says **"no sound"** or the status line **"A1 microphone stopped"** / **"A1 no sound"**: the microphone was switched
+  off on the page, pulled out, taken by another program or its permission was taken back; the page looks for it by itself
+  and the incident heals when it is back.
+- Sound is there but late against the picture: open the row in the Audio dock (chevron) and raise **Sync offset** (0 to 500 ms)
+  until lips and sound fit; the picture arrives with its own delay, the offset only delays the sound.
+- Hum or echo in the Regie: monitoring is off by default (Audio dock → Monitor). With the program on loudspeakers the
+  microphones hear it again: use headphones (Chromium can send the monitor to another device).
 
 ### High latency
 
@@ -1160,3 +1184,66 @@ Give the iframe the shape of the canvas, or the output shows bars. For 9:16 at 1
 
 OBS: the browser source and the canvas need the size of the canvas; the "Use as camera" box names it in step 3 and the
 downloaded scene collection already carries it (download it again after a change of format).
+
+## 20. Audio
+
+Audio is mixed by StudioFlow on the output page: the sound of the program arrives together with the picture at the proxy
+(decision #7: the proxy is an OBS browser source with "Control audio via OBS", or another browser that is allowed to play
+sound). There is one mixer per production, set in the **Audio** dock of the Regie; levels per scene and a separate preview
+mix do not exist yet.
+
+### 20.1 The audio station (the sound of the mixing desk)
+
+1. On a laptop at the mixing desk (Chrome or Edge, a cable from the desk's output to a line or USB input of the laptop, no
+   other program using that input) open `https://<server>/join/`, name it ("Mixing desk"), pick **Audio station (mixing
+   desk)** and approve it in the Regie (Pair device → Laptop), or open an invite link of a laptop with `?station=audio`
+   appended to it.
+2. Allow the microphone when the browser asks, choose the **audio input** of the desk on the page and watch the level move.
+   The page sends the sound **as it comes**: stereo, no echo cancellation, no noise suppression, no automatic gain, Opus
+   at about 128 kbit/s. Set the level at the desk, not in the browser.
+3. The page starts the sound **by itself** whenever it is opened (also after a restart of the laptop and the browser), unless
+   somebody pressed "Switch microphone off". Keep the tab open, the laptop awake and on its charger; the page holds the screen
+   awake.
+4. In the Regie the station is the channel **A1**: always audible while the broadcast is live, 0 dB. Nothing else is needed.
+
+### 20.2 Other sound
+
+- **Shared screens:** a laptop ticks **Share audio** before it shares. Chrome and Edge on **Windows** can then share the sound of
+  the whole computer when the *entire screen* is shared; with a browser tab, any browser based on Chromium can share the sound
+  of that tab (tick "Also share tab audio" in the dialog); Firefox and Safari share no sound at all. The sender says "with
+  sound" or "No sound is shared with this screen". The sound **follows the picture**: it is heard while the screen is shown in the
+  live scene. Change the mode to **Always** to hear it without its picture.
+- **Videos:** a video with an audio track has a channel that follows its picture (MP4 and WebM; the track is detected when the
+  file is uploaded).
+- **Microphones of phones and laptops:** a phone has a "Microphone off" button, a laptop "Add microphone". They start **muted** in
+  the mixer, so nothing is on air by accident: unmute the channel in the Audio dock when the speaker is allowed to be heard. It
+  then follows the picture of its device (the phone's camera, the laptop's screens); switch the mode to Always to hear it
+  independently of any picture. The sender shows **"Mic live"** while its microphone is on air. These microphones use the
+  browser's echo cancellation and noise suppression; use headphones at the speaker, or the mixing desk, if there is echo.
+
+### 20.3 The Audio dock
+
+- A row per channel: **PFL** (listen to this channel before its fader and mute, also off air), **M** (mute, also the key M for
+  the selected channel), the fader (−∞ to +10 dB; double click = 0 dB, arrow keys, Home and End), the level, and under the
+  chevron the **mode** (Always, Follows the picture, Off) and the **sync offset**.
+- The meters and the "Program" level above Take start with the first click on the Regie page (a note says so).
+- **Monitor** (Audio dock): Off after every reload, Program (the mix as the output plays it) or one channel with PFL; in Chromium
+  the monitor can go to headphones. Use **headphones**: the Regie laptop's loudspeakers sound into the microphones.
+- Ctrl+Z / Ctrl+Shift+Z in the dock undo and redo the mixer. Every change is in the audit log ("A1 muted", "A1 gain -6.0 dB").
+- A fade between scenes fades the sound of the leaving and the arriving picture with the same duration; going live and ending
+  the broadcast take 0.3 s; a cut, a mute and a fader move 20 ms.
+
+### 20.4 What can go wrong
+
+See "No sound" in section 11. Good to know:
+
+- A **loud room is not a silence warning**: "no signal for 10 s" only appears for a channel that is on air and delivers
+  nothing (levels under −60 dBFS); it is a hint, not an incident, and goes with the next sound.
+- An audio station whose microphone is unplugged is an incident "A1 microphone stopped" while it is on air; plugged in again the page
+  finds it by itself.
+- **Security:** the output page and the Regie receive **every** microphone of the production (they have to, to mix them).
+  Anyone who holds an output link can listen to all of them, also microphones that are muted in the mixer, by opening the page
+  with developer tools. Keep output links private, restrict them by IP address and regenerate the key after an event; the planned
+  public air mode will use its own room so that it can hand out only the mix.
+- The sync offset delays the sound; it cannot make it earlier. The picture comes through the browser with about 0.15 s of delay, the
+  sound with about the same; a larger difference is usually the proxy.
