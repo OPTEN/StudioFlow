@@ -181,7 +181,13 @@ the stamp bar, so a test tells the screens apart by pixels; `screen: 'native'` k
   a lost connection); a 401/403 ends the loop. Register reconnect handlers with `hub.onReconnected(...)`, not with
   `hub.connection.onreconnected(...)`.
 - Failed logins and anonymous calls use a fake client address on the direct API port (`X-Forwarded-For`), so rate
-  limits and lockouts never leak between tests.
+  limits and lockouts never leak between tests. `uniqueIp()` (`support/unique-ip.ts`, unit test `unique-ip.spec.ts`) is a
+  pure function of three numbers: `10.a.b.c` with `a` 100-199, `b` 0-255, `c` 1-254 from the index
+  `(runSlot * 200 + workerIndex) * 8128 + counter`. `workerIndex` is Playwright's `TEST_WORKER_INDEX` (unique per run, also
+  after a worker restart), `counter` counts the calls in that worker process, `runSlot` (0-3, `E2E_RUN_SLOT`, set by global
+  setup from the start minute) keeps back-to-back runs on a reused stack on different ranges. Two workers therefore never
+  share an address, no octet is invalid, and a worker that uses up its 8128 addresses (or a run with 200+ workers) throws
+  instead of wrapping around to a duplicate.
 - Disruptive specs restore the stack themselves (`ensureHealthy()` after every test).
 - Nothing in a spec names `sf-e2e`, a port or a subnet: take names from `support/env.ts` (`PROJECT`, `containerNameOf`,
   `volumeNameOf`, `imageNameOf`, `stackConfig()`), so a spec runs on every numbered stack. The origin of the stack is

@@ -3,13 +3,8 @@ import type { SourceDto } from '../../../packages/scene-model/src/contracts';
 import { stackConfig } from './env';
 import { OutputHub } from './hubs';
 import { sleep } from './shell';
-
-/** Fake client addresses for the direct API port (X-Forwarded-For), so rate limits are per test, not per machine. */
-let ipCounter = (Date.now() % 60_000) + Math.floor(Math.random() * 1000);
-export function uniqueIp(): string {
-  ipCounter += 1;
-  return `10.${200 + (Math.floor(ipCounter / 65_536) % 50)}.${Math.floor(ipCounter / 256) % 256}.${(ipCounter % 254) + 1}`;
-}
+import { uniqueIp } from './unique-ip';
+export { uniqueIp };
 
 /** What the test harness knows about the stack it runs against (worker scope). */
 export interface Stack {

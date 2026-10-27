@@ -39,6 +39,7 @@ export default defineConfig({
             'packages/scene-model/src/**/*.spec.ts',
             'packages/realtime-client/src/**/*.spec.ts',
             'tools/lib/**/*.spec.ts',
+            'tests/e2e/support/*.spec.ts',
             'tests/e2e/support/perf/**/*.spec.ts',
             'tests/e2e/support/output/**/*.spec.ts',
           ],
