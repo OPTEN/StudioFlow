@@ -99,7 +99,7 @@ test.describe('Keyboard-only Regie', () => {
     expect(names.findIndex((name) => /^Take/i.test(name)), 'Take follows the duration stepper').toBeGreaterThan(names.indexOf('Longer fade'));
 
     // closed station details are inert: none of their buttons is a stop
-    expect(names.filter((name) => /^(Send message|Rename|Block device|Switch camera)$/.test(name)), 'collapsed station details are not focusable').toEqual([]);
+    expect(names.filter((name) => /^(Camera|Send message|Rename|Block device|Switch camera)$/.test(name)), 'collapsed station details are not focusable').toEqual([]);
 
     // Shift+Tab walks back over the same stops
     await focusTop(page);
@@ -120,7 +120,7 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Tab');
     const inside = (await describeActive(page))!;
     expect(inside.area, 'the next Tab enters the opened station detail').toBe('region:Stations');
-    expect(inside.name, 'the first control of the opened detail').toMatch(/Send message|Rename|Switch camera|Ask to share again|Block device/);
+    expect(inside.name, 'the first control of the opened detail').toMatch(/^(Camera|Send message|Rename|Switch camera|Ask to share again|Block device)$/);
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Enter');
     await expect(row).toHaveAttribute('aria-expanded', 'false');
