@@ -9,9 +9,6 @@
 name: E2E full
 
 on:
-  schedule:
-    # Monday to Friday, 01:17 UTC (an odd minute: scheduled runs at the full hour are delayed when GitHub is busy).
-    - cron: '17 1 * * 1-5'
   workflow_dispatch:
 
 concurrency:
