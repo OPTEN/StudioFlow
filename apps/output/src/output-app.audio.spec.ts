@@ -308,7 +308,7 @@ describe('output app: audio', () => {
     const mix = new FakeMix('blocked');
     const { sent } = await boot({}, { mix });
     const button = document.querySelector<HTMLButtonElement>('.c-sound-on');
-    expect(button?.hidden).toBe(false);
+    expect(button).not.toBeNull();
     expect(button?.textContent).toBe('Sound on');
     await flush(REPORT_INTERVAL_MS);
     expect(sent().at(-1)?.audio?.state).toBe('blocked');
@@ -317,7 +317,7 @@ describe('output app: audio', () => {
     button?.click();
     await flush();
     expect(mix.resume).toHaveBeenCalled();
-    expect(button?.hidden).toBe(true);
+    expect(document.querySelector('.c-sound-on'), 'the button goes away').toBeNull();
     await flush(REPORT_INTERVAL_MS);
     expect(sent().at(-1)?.audio?.state).toBe('running');
   });
@@ -329,12 +329,12 @@ describe('output app: audio', () => {
     document.body.click();
     await flush();
     expect(mix.state).toBe('running');
-    expect(document.querySelector<HTMLButtonElement>('.c-sound-on')?.hidden).toBe(true);
+    expect(document.querySelector('.c-sound-on')).toBeNull();
     current?.app.dispose();
 
     const quiet = new FakeMix('blocked');
     const { hub } = await boot({}, { mix: quiet });
-    expect(document.querySelector<HTMLButtonElement>('.c-sound-on')?.hidden).toBe(false);
+    expect(document.querySelector('.c-sound-on')).not.toBeNull();
     hub.emit(
       HUB.event,
       audioChannelsChanged(
@@ -343,7 +343,7 @@ describe('output app: audio', () => {
       ),
     );
     await flush();
-    expect(document.querySelector<HTMLButtonElement>('.c-sound-on')?.hidden).toBe(true);
+    expect(document.querySelector('.c-sound-on')).toBeNull();
   });
 
   it('shows the mix in the debug panel data', async () => {

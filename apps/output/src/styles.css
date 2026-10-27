@@ -97,10 +97,6 @@ html.is-cursor-idle * {
   cursor: pointer;
 }
 
-.c-sound-on[hidden] {
-  display: none;
-}
-
 .c-sound-on:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
