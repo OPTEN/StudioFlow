@@ -1,12 +1,13 @@
 import dgram from 'node:dgram';
 import net from 'node:net';
 import { SETTINGS, type StackSettings } from './env';
+import { exec } from './shell';
 import { docker } from './stack';
 
 /**
  * Checks that run before a stack starts, so two stacks on one machine fail with a message that names the clash
  * instead of a Docker error halfway through `compose up`: host ports (the ones Docker publishes for this stack) and the
- * compose subnet.
+ * compose subnet. `assertFfmpeg` checks the one tool the harness needs on the host.
  */
 
 interface PortCheck {
@@ -167,4 +168,25 @@ export async function assertStackFree(settings: StackSettings = SETTINGS): Promi
       `Stack ${settings.project} cannot start:\n${list}\nStop what holds them, or use another stack (E2E_STACK=1..4) or move the values with E2E_*_PORT / E2E_SUBNET (tests/e2e/README.md, "Parallel stacks").`,
     );
   }
+}
+
+/** The encoders that make the sample media (`MEDIA_SAMPLES` in media-samples.ts): H.264, VP8 and WebP are options of an ffmpeg build. */
+export const FFMPEG_ENCODERS = ['libx264', 'libvpx', 'libwebp_anim'] as const;
+
+/**
+ * Throws unless `ffmpeg` runs and has the encoders of {@link FFMPEG_ENCODERS}. The harness generates its sample media with
+ * it; without it the tests would run on stubs that prove nothing (a 1x1 picture, a clip without frames).
+ */
+export async function assertFfmpeg(): Promise<void> {
+  const install = 'Install ffmpeg (Linux: sudo apt-get install ffmpeg, macOS: brew install ffmpeg, Windows: winget install Gyan.FFmpeg) and run again (docs/testing.md 6.6).';
+  let encoders: string;
+  try {
+    const version = await exec('ffmpeg', ['-hide_banner', '-version'], { timeoutMs: 30_000 });
+    if (version.code !== 0) throw new Error(`ffmpeg -version exited with ${version.code}: ${version.output.trim().slice(-300)}`);
+    encoders = (await exec('ffmpeg', ['-hide_banner', '-encoders'], { timeoutMs: 30_000 })).stdout;
+  } catch (error) {
+    throw new Error(`The E2E harness needs ffmpeg for its sample media, but it cannot run it: ${(error as Error).message}\n${install}`);
+  }
+  const missing = FFMPEG_ENCODERS.filter((name) => !new RegExp(`^\\s*[VAS][.\\w]{5}\\s+${name}\\s`, 'm').test(encoders));
+  if (missing.length > 0) throw new Error(`The ffmpeg on this machine lacks the encoders ${missing.join(', ')}, which the E2E harness needs for its sample media.\n${install}`);
 }

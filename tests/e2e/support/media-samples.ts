@@ -4,7 +4,7 @@ import zlib from 'node:zlib';
 import { ASSET_DIR } from './env';
 import { exec } from './shell';
 
-/** Test data of docs/testing.md 1.8: valid media (ffmpeg, with a byte-level fallback) and spoofed/hostile files. */
+/** Test data of docs/testing.md 1.8: valid media (made by ffmpeg, there is no fallback) and spoofed/hostile files. */
 
 function crc32(buffer: Buffer): number {
   const fn = (zlib as unknown as { crc32?: (data: Buffer) => number }).crc32;
@@ -104,46 +104,55 @@ export interface SampleSet {
 
 let cache: SampleSet | undefined;
 
-const WEBP_1X1 = Buffer.from('524946461a000000574542505650384c0d0000002f0000001007101111888888fe0700', 'hex');
+/** Only for the polyglot sample, which needs a few valid bytes to put a script into. */
 const JPEG_1X1 = Buffer.from(
   'ffd8ffe000104a46494600010100000100010000ffdb004300030202020202030202020303030304060404040404080606050609080a0a090809090a0c0f0c0a0b0e0b09090d110d0e0f101011100a0c12131210130f101010ffc9000b080001000101011100ffcc000600101005ffda0008010100003f00d2cf20ffd9',
   'hex',
 );
 
-async function ffmpeg(args: string[]): Promise<boolean> {
-  try {
-    const result = await exec('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { timeoutMs: 60_000 });
-    return result.code === 0;
-  } catch {
-    return false;
-  }
+/** The valid media of the sample set: a real picture and a playable clip per format (the MP4 is H.264, the WebM VP8). */
+const MEDIA_SAMPLES: ReadonlyArray<{ name: string; args: string[] }> = [
+  { name: 'photo.jpg', args: ['-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=1', '-frames:v', '1', '-q:v', '4'] },
+  { name: 'photo.webp', args: ['-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=1', '-frames:v', '1', '-c:v', 'libwebp_anim', '-lossless', '0'] },
+  { name: 'clip.mp4', args: ['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15', '-t', '3', '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'] },
+  { name: 'clip.webm', args: ['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15', '-t', '3', '-an', '-c:v', 'libvpx', '-b:v', '200k'] },
+];
+
+/** Runs ffmpeg and throws with the end of its output when it cannot run or fails. */
+async function ffmpeg(args: string[]): Promise<void> {
+  const result = await exec('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { timeoutMs: 60_000 });
+  if (result.code !== 0) throw new Error(`ffmpeg exited with ${result.code}: ${result.output.trim().slice(-600)}`);
 }
 
-/** Generates (once) and returns the sample set. Files are also written to .output/assets for browser tests. */
+/**
+ * Generates (once) and returns the sample set. Files are also written to .output/assets for browser tests. The media are
+ * made by ffmpeg (`assertFfmpeg` in preflight.ts checks for it before the stack starts); when one cannot be made this
+ * throws, because a test on a stub (a 1x1 picture, a clip without frames) proves nothing about media.
+ */
 export async function generateSamples(): Promise<SampleSet> {
   if (cache) return cache;
   fs.mkdirSync(ASSET_DIR, { recursive: true });
   const file = (name: string) => path.join(ASSET_DIR, name);
-  const read = (name: string, fallback: Buffer): Buffer =>
-    fs.existsSync(file(name)) && fs.statSync(file(name)).size > 0 ? fs.readFileSync(file(name)) : fallback;
+  const made = (name: string) => fs.existsSync(file(name)) && fs.statSync(file(name)).size > 0;
 
   fs.writeFileSync(file('tiny.png'), makePng(1, 1));
-  if (!fs.existsSync(file('photo.jpg'))) await ffmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=1', '-frames:v', '1', '-q:v', '4', file('photo.jpg')]);
-  if (!fs.existsSync(file('photo.webp'))) {
-    await ffmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=1', '-frames:v', '1', '-c:v', 'libwebp_anim', '-lossless', '0', file('photo.webp')]);
+  const failures: string[] = [];
+  for (const sample of MEDIA_SAMPLES) {
+    if (made(sample.name)) continue;
+    try {
+      await ffmpeg([...sample.args, file(sample.name)]);
+      if (!made(sample.name)) throw new Error('ffmpeg wrote no file');
+    } catch (error) {
+      failures.push(`${sample.name}: ${(error as Error).message}`);
+    }
   }
-  if (!fs.existsSync(file('clip.mp4'))) {
-    await ffmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15', '-t', '3', '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file('clip.mp4')]);
-  }
-  if (!fs.existsSync(file('clip.webm'))) {
-    await ffmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15', '-t', '3', '-an', '-c:v', 'libvpx', '-b:v', '200k', file('clip.webm')]);
-  }
+  if (failures.length > 0) throw new Error(`The sample media could not be generated with ffmpeg (docs/testing.md 6.6):\n${failures.join('\n')}`);
 
   const tinyPng = makePng(1, 1);
-  const photoJpg = read('photo.jpg', JPEG_1X1);
-  const photoWebp = read('photo.webp', WEBP_1X1);
-  const clipMp4 = read('clip.mp4', padTo(makeFtyp('isom'), 4096));
-  const clipWebm = read('clip.webm', padTo(makeEbml('webm'), 4096));
+  const photoJpg = fs.readFileSync(file('photo.jpg'));
+  const photoWebp = fs.readFileSync(file('photo.webp'));
+  const clipMp4 = fs.readFileSync(file('clip.mp4'));
+  const clipWebm = fs.readFileSync(file('clip.webm'));
 
   const svg = Buffer.from('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" onload="window.__xss=1"><script>window.__xss=1</script></svg>');
   const html = Buffer.from('<!doctype html><html><body><script>window.__xss=1</script></body></html>');

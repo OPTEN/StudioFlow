@@ -4,7 +4,7 @@ import path from 'node:path';
 import { ENV_FILE, OUTPUT_DIR, PROJECT, REPO_ROOT, SETTINGS, STATE_FILE, containerNameOf, renderEnvFile, stackConfig } from './support/env';
 import { generateSamples } from './support/media-samples';
 import { detectLanIPv4 } from './support/network-info';
-import { assertStackFree } from './support/preflight';
+import { assertFfmpeg, assertStackFree } from './support/preflight';
 import { exec } from './support/shell';
 import { allHealthy, compose, ensureHealthy, docker } from './support/stack';
 
@@ -81,6 +81,7 @@ export default async function globalSetup(): Promise<void> {
   const keepStack = process.env['E2E_KEEP_STACK'] === '1';
   const reuse = process.env['E2E_REUSE_STACK'] === '1';
 
+  await assertFfmpeg();
   await generateSamples();
 
   if (reuse && fs.existsSync(ENV_FILE) && (await allHealthy())) {

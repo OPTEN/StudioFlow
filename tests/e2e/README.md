@@ -78,6 +78,11 @@ Keep the browsers apart as well: cookies are per host name, not per port, so one
 `H-STACK-02` (smoke) checks that the stack under test is the selected one: compose project label, network and subnet,
 fixed addresses, published ports, public URL and volumes.
 
+The sample media (JPEG, WebP, MP4/H.264, WebM/VP8) are made by `ffmpeg` in the global setup. It must be installed with
+the encoders libx264, libvpx and libwebp: the setup checks that first (`assertFfmpeg` in `support/preflight.ts`) and
+stops with the install hint, and `generateSamples` throws when a file cannot be made, so no test runs on a stub.
+`H-MEDIA-01` (smoke) probes the samples, `H-MEDIA-02` the message of the preflight.
+
 ## CI
 
 GitHub Actions runs the harness as numbered stack 1 (`docs/testing.md` 6.1). `ci.yml` (every pull request and push to
