@@ -917,8 +917,9 @@ reusable sortable list on pointer events (mouse, pen, touch; no HTML5 drag and d
 dock is unaffected). A row is dragged by its handle (grip, shown on hover and focus, always on touch screens) or by a
 press on the row that moves 4 px; a finger needs a press and hold of 350 ms on the row (the handle drags at once), so
 swiping still scrolls. The row follows the pointer, the others make room, a Signal Blue line marks the target, the
-list scrolls near its edges, Escape or a drop away from the list restores the order, and the click that ends a drag
-never selects the row. Keyboard: Space/Enter on the handle picks the row up, arrows/Home/End move it, Space/Enter
+list scrolls near its edges (the nearest scrolling ancestor, else the page; `<body>` and `<html>` never count as
+ancestors: in the stacked layout their `overflow: auto` belongs to the viewport), Escape or a drop away from the list
+restores the order, and the click that ends a drag never selects the row. Keyboard: Space/Enter on the handle picks the row up, arrows/Home/End move it, Space/Enter
 drops it, Escape or leaving the handle cancels; Alt+Up/Down anywhere in a row moves it one place (with Shift to the
 very front or back). Every step is announced in a live region (“K1 Phone stage left moved to position 2 of 5.”,
 `aria-live`, English and de-CH). The new order is shown at once and sent once on drop; moves made while a request runs
