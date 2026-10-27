@@ -134,7 +134,9 @@ Implementation details fixed with the work on #12 (spec 7, 8.3, 8.4, 9.1–9.3, 
 7. **What the output receives.** The program scene and the preview scene, nothing else. The preview scene's sources are
    requested at the size they will have on stage (not the lowest layer any more). A source nobody asks a picture for is
    paused (`setEnabled(false)`: the SFU stops forwarding, the browser stops decoding): on the output after 5 s, in the Regie
-   after 10 s, and 1.5 s after its track arrives without a consumer. A paused element is emptied (`srcObject = null`), so a
+   after 10 s, and 1.5 s after its track arrives without a consumer once the page has asked for a picture of anything (a page
+   that is still loading registers its consumers later than its tracks arrive, which takes seconds on a busy computer; pausing
+   there would cost the first picture a round trip and a keyframe, so the normal time holds until then). A paused element is emptied (`srcObject = null`), so a
    stale picture is never shown when the source returns; the next request resumes it and the picture is back with the next
    keyframe (about 0.5 s). Paused sources do not count as decoded streams.
 8. **Scene thumbnails are stills.** One hidden video per source, shared by all thumbnails of a provider, and a snapshot of at

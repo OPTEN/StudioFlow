@@ -723,7 +723,8 @@ once more right after a camera command.
   where supported) and ≈ 50 ms on the output. The output asks for the **program scene** (the size of each item on the
   canvas) and the **preview scene** (the size it will have on stage, so a Take shows its picture at once); it asks for
   nothing else. A source nobody asks a picture for is paused (`setEnabled(false)`: the SFU stops forwarding and the
-  browser stops decoding): on the output after 5 s, in the Regie after 10 s, and 1.5 s after its track arrives; the next
+  browser stops decoding): on the output after 5 s, in the Regie after 10 s, and 1.5 s after its track arrives once some consumer has asked for a
+  picture of anything (before that the page is still loading and the normal time holds); the next
   request resumes it at once and its picture is back with the next keyframe (about 0.5 s, decision #12). A paused video
   element is emptied, so a stale picture never shows. Monitors, thumbnails and station thumbnails of the Regie ask for
   nothing while they cannot be seen (8.3), and the requested size never exceeds the displayed size at a pixel ratio of

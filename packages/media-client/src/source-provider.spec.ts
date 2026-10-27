@@ -283,6 +283,8 @@ describe('LiveKitSourceProvider', () => {
 
     it('pauses a track nobody asked for 1.5 s after it arrives (the output decodes only what it shows or prepares)', () => {
       const { room, provider } = setup('output');
+      // The page has rendered: it asks for a picture of another source.
+      need(provider, SCREEN);
       const { publication } = room.subscribe(DEVICE, 'camera');
       expect(publication.setEnabled).not.toHaveBeenCalled();
       vi.advanceTimersByTime(1_499);
@@ -293,6 +295,31 @@ describe('LiveKitSourceProvider', () => {
       expect(publication.setVideoDimensions).not.toHaveBeenCalled();
       // The source is still known and live: switching to a scene that shows it needs only a picture, not a subscription.
       expect(provider.availability(CAMERA)).toEqual({ state: 'live' });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the normal grace time for a track that arrives while the page is still loading (nobody has asked for a picture yet)', () => {
+      const { room } = setup('output');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      // Loading a page on a busy computer takes seconds: pausing at 1.5 s would cost the first picture a round trip to the SFU
+      // and the wait for a keyframe (issue 12, E2E-OUT-02 in an iframe).
+      vi.advanceTimersByTime(4_999);
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+    });
+
+    it('starts the short grace time when the page asks for its first picture', () => {
+      const { room, provider } = setup('output');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      vi.advanceTimersByTime(3_000);
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      // The page has rendered; the camera is in no scene it shows.
+      need(provider, SCREEN);
+      vi.advanceTimersByTime(1_499);
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
       expect(vi.getTimerCount()).toBe(0);
     });
 
@@ -309,6 +336,7 @@ describe('LiveKitSourceProvider', () => {
 
     it('resumes a paused source when a consumer asks, with the size it asks for', () => {
       const { room, provider } = setup('output');
+      need(provider, SCREEN);
       const { publication } = room.subscribe(DEVICE, 'camera');
       vi.advanceTimersByTime(1_500);
       expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
@@ -411,11 +439,21 @@ describe('LiveKitSourceProvider', () => {
       expect(publication.setVideoQuality).not.toHaveBeenCalled();
     });
 
-    it('pauses a track nobody asked for 1.5 s after it arrives', () => {
-      const { room } = setup('studio');
+    it('pauses a track nobody asked for 1.5 s after it arrives, once the page has asked for a picture of something', () => {
+      const { room, provider } = setup('studio');
+      need(provider, SCREEN);
       const { publication } = room.subscribe(DEVICE, 'camera');
       expect(publication.setEnabled).not.toHaveBeenCalled();
       vi.advanceTimersByTime(1_500);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+    });
+
+    it('keeps the normal 10 s for a track that arrives before the page has asked for any picture', () => {
+      const { room } = setup('studio');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      vi.advanceTimersByTime(9_999);
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
       expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
     });
 
