@@ -1,5 +1,11 @@
 import { ITEM_BOUNDS, isHexColor, snapRotation, type Rotation } from '@studioflow/scene-model';
-import type { BorderDto, CropDto, ItemFit, SceneItemDto } from '@studioflow/scene-model';
+import type {
+  BorderDto,
+  CanvasSize,
+  CropDto,
+  ItemFit,
+  SceneItemDto,
+} from '@studioflow/scene-model';
 
 import type { CanvasRect, DesiredSize } from './types';
 
@@ -128,16 +134,33 @@ function roundUpToStep(value: number): number {
   return Math.max(DESIRED_SIZE_STEP, Math.ceil(safe / DESIRED_SIZE_STEP) * DESIRED_SIZE_STEP);
 }
 
+/** The media box of an item at `rect`: the unrotated, uncropped picture the source has to deliver. */
+export function pictureBoxOf(rect: CanvasRect, look: Pick<ItemLook, 'crop' | 'rotation'>): Box {
+  const outer = cropBox(rect.w, rect.h, look.crop);
+  return mediaBox(outer.width, outer.height, look.rotation);
+}
+
 /**
  * Picture size a source needs to look sharp: the media box (uncropped, unrotated picture) in screen pixels times the
- * device pixel ratio, rounded up to 16 px steps (fewer layer switches) and at least 16 px.
+ * device pixel ratio, rounded up to 16 px steps (fewer layer switches) and at least 16 px. With `canvas` the request
+ * never exceeds the production's canvas (its longer side, so a rotated picture is no special case): nothing on the
+ * output looks sharper than the canvas, however large the window or the crop is. The aspect ratio is kept.
  */
-export function desiredPixelSize(media: Box, scale: number, devicePixelRatio: number): DesiredSize {
+export function desiredPixelSize(
+  media: Box,
+  scale: number,
+  devicePixelRatio: number,
+  canvas?: CanvasSize,
+): DesiredSize {
   const factor =
     scale * (Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1);
+  const width = media.width * factor;
+  const height = media.height * factor;
+  const limit = canvas ? Math.max(canvas.width, canvas.height) : Number.POSITIVE_INFINITY;
+  const fit = Number.isFinite(limit) && limit > 0 ? Math.min(1, limit / width, limit / height) : 1;
   return {
-    width: roundUpToStep(media.width * factor),
-    height: roundUpToStep(media.height * factor),
+    width: roundUpToStep(width * fit),
+    height: roundUpToStep(height * fit),
   };
 }
 

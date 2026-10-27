@@ -5,6 +5,18 @@ export function devicePixelRatioNow(): number {
 }
 
 /**
+ * The most a picture is requested for: a display with a pixel ratio above 1.5 gets the size of 1.5. A 4K screen at 200 %
+ * would otherwise ask the senders for a layer with 1.8 times the pixels (issue #12), for a sharpness nobody sees on a
+ * monitor or in a broadcast.
+ */
+export const MAX_REQUEST_PIXEL_RATIO = 1.5;
+
+/** The pixel ratio picture sizes are requested for: the device pixel ratio, at most {@link MAX_REQUEST_PIXEL_RATIO}. */
+export function requestPixelRatio(): number {
+  return Math.min(devicePixelRatioNow(), MAX_REQUEST_PIXEL_RATIO);
+}
+
+/**
  * Calls `onChange` when the device pixel ratio changes (window moved to another display, browser zoom); a
  * ResizeObserver does not notice that, but desired picture sizes depend on it. Returns a stop function.
  */

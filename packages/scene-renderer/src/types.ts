@@ -84,6 +84,12 @@ export interface SceneRendererOptions {
   /** Size of the canvas in pixels: the production's format and resolution. Default 1920 × 1080; `setCanvas` changes it. */
   readonly canvas?: CanvasSize;
   /**
+   * Stops asking for pictures while the renderer cannot be seen: its container is not on screen (hidden dock, collapsed
+   * section, scrolled away) or the page is in the background. Default: true for `monitor` and `thumbnail`, false for the
+   * `output`, which keeps running wherever it is shown (an OBS source that is switched off keeps its pictures).
+   */
+  readonly pauseWhenHidden?: boolean;
+  /**
    * Letterbox and canvas background. `transparent` (output `?bg=transparent`, overlays in OBS/vMix) also skips the
    * scene background colour; a scene background image is still drawn. Default `black`.
    */
@@ -114,12 +120,19 @@ export interface SceneRendererOptions {
 
 /** Rendering statistics for the output report and debug overlay. */
 export interface RendererStats {
-  /** Animation frames per second of the page; 0 until measured (measuring starts with the first call). */
+  /**
+   * Frames per second the videos of the stage present (the busiest one), over the last second or two; 0 on the first
+   * call, without video, or when frames do not run (hidden page).
+   */
   readonly fps: number;
   /** Items currently shown on the stage. */
   readonly items: number;
   /** `<video>` elements currently owned by the stage. */
   readonly videos: number;
+  /** Frames the videos presented since the first call, cumulative (take the difference of two calls). */
+  readonly presentedFrames: number;
+  /** Frames the browser dropped before it could present them, cumulative (the machine cannot keep up). */
+  readonly droppedFrames: number;
 }
 
 /** Placement of the stage inside a container (letterbox, centred). */
@@ -151,7 +164,10 @@ export interface SceneRenderer {
   transitionTo(scene: SceneDto | null, transition: TransitionDto): Promise<void>;
   /** Shows a standby/end slate above everything (fade 300 ms); null hides it. */
   showSlate(slate: SlateDto | null, assetUrl?: string | null): void;
-  /** Output: requests a small picture for the device sources of these scenes that are not on stage. */
+  /**
+   * Output: the scenes whose sources are kept ready (the preview scene): each device source is requested at the size it
+   * will have on stage. Sources of every other scene are not requested at all.
+   */
   setPreloadScenes(scenes: readonly SceneDto[]): void;
   /** Re-reads the callbacks (`statusOf`, `textOf`, `textTheme`) and renders again: sources or text colours changed. */
   refresh(): void;

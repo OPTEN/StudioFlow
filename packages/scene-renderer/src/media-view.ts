@@ -10,6 +10,8 @@ const MEDIA_STYLES: StyleMap = { ...FILL, display: 'block', 'pointer-events': 'n
 export interface MediaHost {
   readonly doc: Document;
   readonly provider: SourceMediaProvider;
+  /** Thumbnails show snapshots of device sources instead of playing them (see {@link StillPool}). */
+  readonly stillPictures: boolean;
   /** Runs provider code without letting errors escape. */
   guard(run: () => void): void;
 }
@@ -76,6 +78,11 @@ export class MediaView {
   ) {
     switch (source.kind) {
       case 'device': {
+        if (host.stillPictures) {
+          // The item draws the snapshot of the pool: no element, no registration with the provider.
+          this.element = this.video = null;
+          break;
+        }
         const video = createDeviceVideo(host.doc);
         this.element = this.video = video;
         host.guard(() => host.provider.attach(source.sourceId, video));

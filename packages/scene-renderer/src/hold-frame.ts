@@ -105,6 +105,55 @@ export function copyHoldFrame(source: HTMLCanvasElement, target: HTMLCanvasEleme
   }
 }
 
+/**
+ * Blurs a copy once, in place (issue #12): the held state of an item shows its last picture blurred, and a CSS `filter`
+ * on the live element would make the browser re-run the blur for every frame. Returns false when there is nothing to
+ * blur or the browser refuses (the copy then stays sharp under the dark scrim).
+ */
+export function blurCanvas(canvas: HTMLCanvasElement, radius: number): boolean {
+  if (canvas.width === 0 || canvas.height === 0 || !(radius > 0)) {
+    return false;
+  }
+  try {
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return false;
+    }
+    const { width, height } = canvas;
+    const copy = canvas.ownerDocument.createElement('canvas');
+    if (typeof context.filter === 'string') {
+      copy.width = width;
+      copy.height = height;
+      const copyContext = copy.getContext('2d');
+      if (!copyContext) {
+        return false;
+      }
+      copyContext.drawImage(canvas, 0, 0);
+      context.clearRect(0, 0, width, height);
+      context.filter = `blur(${radius}px)`;
+      context.drawImage(copy, 0, 0);
+      context.filter = 'none';
+      return true;
+    }
+    // No canvas filter (Safari): a picture shrunk and drawn large again is as soft as a blur of that radius.
+    const shrink = Math.min(32, Math.max(2, Math.round(radius * 0.8)));
+    copy.width = Math.max(1, Math.round(width / shrink));
+    copy.height = Math.max(1, Math.round(height / shrink));
+    const copyContext = copy.getContext('2d');
+    if (!copyContext) {
+      return false;
+    }
+    copyContext.imageSmoothingEnabled = true;
+    copyContext.drawImage(canvas, 0, 0, copy.width, copy.height);
+    context.clearRect(0, 0, width, height);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(copy, 0, 0, width, height);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Frees the pixel buffer of a copy right away and removes it. */
 export function releaseCanvas(canvas: HTMLCanvasElement): void {
   canvas.width = 0;
