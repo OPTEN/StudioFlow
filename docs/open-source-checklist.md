@@ -30,11 +30,11 @@ The README logo block, for the README rewrite:
 
 `logo-light.svg` has dark ink for light backgrounds, `logo-dark.svg` has light ink for dark backgrounds.
 
-## 2. Waits for other work
+## 2. Waits for other work (nothing is left)
 
 | Item | Why | What to do afterwards |
 |---|---|---|
-| **README rewrite** (English, logo, features, architecture, configuration, roadmap, badges) | #27 added a "Quick start" section for the zero-config install (`docker compose up -d`, the setup code, the wizard, the ports). The rest of `README.md` is still the status note of the planning phase and links private claude.ai artifacts | Write it now; use the logo block above; keep the quick start; link `releases/latest/download/studioflow-prototype.html` and the files of section 1 |
+| ~~**README rewrite**~~ **Done** (English, logo, screenshots, features, prototype download, quick start, architecture, development, configuration, roadmap, badges). Screenshots: `docs/assets/screenshot-*.png`, made by `tests/e2e/specs/ui/ui-readme-screens.spec.ts` (see its header; opt-in with `E2E_README_SCREENSHOTS=1`) | The quick start of #27 (zero-config install) was kept; the planning-phase text and the private claude.ai links are gone | Nothing; when the product looks different, run the capture spec again |
 | Defaults of `tools/github-repo-settings.sh` | Done: the default is `OPTEN/StudioFlow` since the rename (2026-10-27) | |
 
 ## 3. Review of the internal material
@@ -43,12 +43,12 @@ Reviewed on 2026-10-26. "Recommendation" is what we suggest; the owner decides.
 
 | Item | What it is | Recommendation |
 |---|---|---|
-| `.impeccable/` (4.9 MB) | State of the design tool: `design.json` (design tokens with German names), `decision-payload.json` and `questions/` (the German design decision round "Inspizientenpult"), `surfaces/prototype-regie-html.md` (German brief), `qualitybar/` and `review/` (screenshots of the prototype and of both themes). No secrets, no personal data, but internal process material in German | **Move to `docs/history/design/`** (keep) or drop the screenshots (`review/`, `qualitybar/`: about 4.9 MB of binary files that every clone downloads). If it moves, change `tools/capture.ps1`, `tests/e2e/specs/ui/ui-theme-screens.spec.ts` (writes `review/themes`), `tools/german-allowlist/foundation.json`, `.dockerignore`, `.prettierignore` and the table in the README |
+| `.impeccable/` (4.9 MB) | State of the design tool: `design.json` (design tokens with German names), `decision-payload.json` and `questions/` (the German design decision round "Inspizientenpult"), `surfaces/prototype-regie-html.md` (German brief), `qualitybar/` and `review/` (screenshots of the prototype and of both themes). No secrets, no personal data, but internal process material in German | **Move to `docs/history/design/`** (keep) or drop the screenshots (`review/`, `qualitybar/`: about 4.9 MB of binary files that every clone downloads). If it moves, change `tools/capture.ps1`, `tests/e2e/specs/ui/ui-theme-screens.spec.ts` (writes `review/themes`), `tools/german-allowlist/foundation.json`, `.dockerignore` and `.prettierignore` |
 | `docs/history/` (760 KB) | The German architecture plan (draft 2) and draft 1, three screenshots. The plan links five **private claude.ai artifacts** (they do not open for outsiders), names `flowstudio.opten.ch` and the client id `opten` | Keep (history, unchanged by decision #6). Optional: replace the artifact links and the domain by plain text, because outsiders get dead links. It states that it is historical and in German |
 | `docs/STATUS.md` | Internal hand-over of the working sessions: working mode of the AI sessions, local environment of the maintainer, commit trailer rule, follow-ups | **Move to `docs/history/` or delete** before going public; the contents that matter are in `docs/decisions.md`, `docs/testing.md` and `CONTRIBUTING.md`. The personal path was already anonymised |
-| `README.md` (planning-phase status) | Links to private claude.ai artifacts ("Plan", "Prototype", "Empty artifact"), a table of the planning folders, open questions with `studioflow.opten.ch` | Replace completely (section 2) |
+| `README.md` (planning-phase status) | Replaced by the English README (done). The `.impeccable/` table of the old README is gone, so moving `.impeccable/` no longer touches it | Nothing |
 | `tools/make-artifact.ps1`, `tools/capture.ps1`, `tools/mobile-wrap.html` | Helpers of the design phase: turn HTML into a Claude artifact, capture review screenshots with Edge | Move to `docs/history/` with `.impeccable/` or delete; not needed for development |
-| `PRODUCT.md` | Product brief: says the operator is "internal to OPTEN" and "for now only OPTEN uses the system" | Reword for a public audience when the README is written (the product is for any organisation) |
+| `PRODUCT.md` | Product brief: said the operator is "internal to OPTEN" | Reworded for a public audience (done with the README) |
 | `docs/architecture/implementation-spec.md` line 68 | "OPTEN standards apply (read the instruction files listed in your CLAUDE.md ...)" refers to internal instruction files | Reword: the conventions are in `CONTRIBUTING.md` and `.editorconfig` |
 | Comments "OPTEN C# standard/convention" in `.editorconfig`, `apps/api/Directory.Build.props`, the test projects | Name the organisation's coding standard | Harmless; keep, or say "the C# conventions of this repository" |
 | `docs/security-review.md` | The audit report of an automated agent (22 October 2026) with an "Umbraco hardening" section that does not apply | Keep as the published review of the design; the local path and the agent name were removed. Optionally move the "not applicable" sections out |

@@ -12,7 +12,7 @@ Angular (standalone, signals, OnPush) for the Regie (control room) and the sende
 
 ## Users
 
-- **Regie operator (primary):** one person, at most two at the same time, internal to OPTEN. Works on site during a webinar on a 14–16 inch laptop in normal room light, builds scenes beforehand and switches between them during the broadcast.
+- **Regie operator (primary):** one person, at most two at the same time, from the organisation that runs the system. Works on site during a webinar on a 14–16 inch laptop in normal room light, builds scenes beforehand and switches between them during the broadcast.
 - **Speakers:** share one or more screens from their own laptop through the sender page in the browser.
 - **Camera phones:** permanently mounted smartphones that act as cameras through the sender PWA and run unattended once set up.
 - **Audio station:** a laptop at the mixing desk that sends the finished mix as sound, through the sender page, and starts it by itself.
@@ -46,7 +46,7 @@ Everything runs in the browser and on your own server: phones and laptops become
 - Stability: automatic reconnect without limit; sources return to their place in the scene through device ID and slot.
 - Regie workspace like OBS: docks (Scenes, Sources, Properties, Stations, Audio) can be arranged freely, resized and hidden; the layout is stored per browser.
 - Fonts and assets come from the project's own build, without external CDNs, because the Regie runs on the LAN.
-- Multi-tenancy is provided for in the data model; for now only OPTEN uses the system.
+- Multi-tenancy is provided for in the data model; for now each installation serves one organisation.
 - Later, not now: restream, recording, audio levels per scene, public air mode for viewers without a proxy.
 
 ## Brand Commitments
