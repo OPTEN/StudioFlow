@@ -21,12 +21,27 @@ export const net = {
   async browserOffline(context: BrowserContext, offline: boolean): Promise<void> {
     await context.setOffline(offline);
   },
-  /** Offline plus closing every tracked WebSocket and RTCPeerConnection: the closest software "Wi-Fi is gone". */
-  async cut(context: BrowserContext): Promise<void> {
+  /**
+   * Closing every tracked WebSocket and RTCPeerConnection, then offline: the closest software "Wi-Fi is gone". The close
+   * comes first and is waited for (init script, `__sfNet.cut`): with `setOffline` first the browser sometimes swallows the
+   * Close frame, the server then notices only a silent loss and the connection that "ended cleanly" outlives the test's
+   * `T-DETECT-CLEAN` (issue 30). Returns `at`, the moment (`Date.now()` inside the page) the connections were closed:
+   * start the clock of a detection time there, so the round trips of the harness are not counted. `clean` is false when
+   * a socket did not finish its close handshake within a second.
+   */
+  async cut(context: BrowserContext): Promise<{ at: number; clean: boolean }> {
+    const cuts = await Promise.all(
+      context.pages().map((page) =>
+        page.evaluate(() => (window as unknown as { __sfNet?: { cut(): Promise<{ at: number; clean: boolean }> } }).__sfNet?.cut()).catch(() => undefined),
+      ),
+    );
     await context.setOffline(true);
-    await Promise.all(context.pages().map((page) => page.evaluate(() => (window as unknown as { __sfNet?: { cut(): void } }).__sfNet?.cut()).catch(() => undefined)));
+    const done = cuts.filter((cut): cut is { at: number; clean: boolean } => cut !== undefined);
+    return { at: done.length > 0 ? Math.min(...done.map((cut) => cut.at)) : Date.now(), clean: done.every((cut) => cut.clean) };
   },
+  /** Lets the pages open connections again, then clears offline so the browser fires `online`. */
   async restore(context: BrowserContext): Promise<void> {
+    await Promise.all(context.pages().map((page) => page.evaluate(() => (window as unknown as { __sfNet?: { restore(): void } }).__sfNet?.restore()).catch(() => undefined)));
     await context.setOffline(false);
   },
   /** Throttles HTTP of one page through CDP (WebSocket frames and WebRTC are not reliably affected). */

@@ -40,6 +40,8 @@ export interface StationEntry {
 }
 
 export interface Places {
+  /** `Date.now()` inside the page when the DOM was read (the clock of the machine, like the one of every other page). */
+  readAt: number;
   header: { text: string; lamp: string };
   strip: StripEntry[];
   stripCalm: string | null;
@@ -88,6 +90,7 @@ export async function readPlaces(page: Page): Promise<Places> {
       });
 
     return {
+      readAt: Date.now(),
       header: { text: text(health), lamp: healthLamp ? [...healthLamp.classList].filter((name) => name.startsWith('is-')).join(' ') : '' },
       strip,
       stripCalm: text(document.querySelector('sf-status-line .c-status__ok')) || null,
@@ -204,8 +207,10 @@ export function checkOutage(places: Places, code: string, kind: OutageKind, opti
 }
 
 /**
- * Polls the six places every 100 ms until they all show the outage of `code`. Resolves with the time from the call to the
- * moment the last place changed (the caller starts its own clock at the cause: call this right after cutting the cable).
+ * Polls the six places every 100 ms until they all show the outage of `code`. Resolves with the time from `startedAt`
+ * (default: the call; a caller that cut the cable passes the moment of the cut) to the DOM read that showed all places,
+ * both taken from the clocks inside the browsers: the round trips of the harness (CDP, the poll's own evaluate) are not
+ * counted into a detection time.
  */
 export async function waitForOutage(
   regie: RegiePage,
@@ -229,7 +234,7 @@ export async function waitForOutage(
   } catch (error) {
     throw new Error(`${(error as Error).message}\nplaces: ${JSON.stringify(last?.check.places)}\ndetail: ${JSON.stringify(last?.check.detail, null, 1)}`);
   }
-  return { elapsedMs: Date.now() - startedAt, check: last!.check, places: last!.places };
+  return { elapsedMs: last!.places.readAt - startedAt, check: last!.check, places: last!.places };
 }
 
 /** The recovered state in the places that keep it until “Seen”: strip entry, station line and box. */
