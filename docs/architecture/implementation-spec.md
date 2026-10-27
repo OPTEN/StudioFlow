@@ -43,13 +43,13 @@ packages/scene-model/      generated contracts + pure state/model helpers (no DO
 packages/realtime-client/  SignalR wrapper with endless reconnect + revisioned state sync
 packages/scene-renderer/   framework-free DOM renderer for monitors, thumbnails and output
 packages/media-client/     livekit-client wrapper: sessions with endless reconnect, source provider, publisher, stats
-infra/caddy/         Dockerfile (xcaddy + DNS module + built frontends), Caddyfile, TLS snippets
-infra/backup/        backup service: Dockerfile, entrypoint, backup-job.sh (automatic backups), status file helpers
-infra/scripts/       common.sh, backup-core.sh and StudioFlow.psm1 shared by the ops scripts
-(LiveKit is configured inline in docker-compose.yml via LIVEKIT_CONFIG)
+infra/caddy/         Dockerfile (xcaddy + DNS modules + built frontends), bootstrap Caddyfile, snippets, DNS provider snippets
+infra/livekit/       Dockerfile (LiveKit server + supervisor), supervisor.sh (restarts the server when livekit.yaml changes)
+infra/backup/        backup service and commands: Dockerfile, entrypoint, serve.sh, backup-job.sh, restore.sh, helpers
+infra/release/       check.mjs (versions, compose twins), build-bundle.sh, QUICKSTART.md
 tests/e2e/           Playwright end-to-end tests against the compose stack
 docs/                architecture, runbook, security review, testing report
-docker-compose.yml, .env.example, setup.sh, setup.ps1, backup.sh, restore.sh, update.sh
+docker-compose.yml, docker-compose.release.yml, .env.example (optional overrides; no host scripts)
 ```
 
 Tooling: one root `package.json` (npm, Node ≥ 22.12), one root `angular.json` (projects `studio`, `sender`),
@@ -492,8 +492,8 @@ restriction belongs to the link, not to the production. Keys are 32 random bytes
 Regenerating or revoking a link invalidates its key immediately and disconnects **only the pages of that link** (hub
 abort of the link's connections + LiveKit `RemoveParticipant` for identities `output_{slug}_{linkId}_*`); the other
 links are not affected. Narrowing the IP restriction disconnects the link's pages from addresses that are no longer
-allowed. Embedding is limited by `frame-ancestors` from `STUDIOFLOW_FRAME_ANCESTORS` (Caddy; shown read-only in the
-Regie).
+allowed. Embedding is limited by `frame-ancestors` from the embedding origins of the server settings (the wizard and
+"Server settings"; Caddy sets the header; the output panel of the Regie shows them read-only).
 
 Output status: the API tracks output hub connections (count, remote IPs) and reports (`OutputReport` every 2 s) **per
 link**. A link is `connected` if ≥ 1 of its pages is connected and reported `rendering` within 6 s, `stale` if
@@ -521,7 +521,7 @@ de-CH).
 | `security` | login.succeeded, login.failed, login.locked, logout, account.setup, account.password.changed, account.reset, audit.exported |
 | `media` | asset.uploaded, asset.deleted |
 | `output` | output.link.created, output.link.renamed, output.link.revoked, output.key.regenerated, output.access.changed (every one with the link `name`; the key itself is never recorded) |
-| `system` | audit.retention |
+| `system` | audit.retention, settings.media.changed, settings.address.changed (also for an uploaded certificate), settings.embedding.changed, settings.backup.changed, backup.requested |
 
 Not audited: the preview (too frequent), the phone QR invite (renewed every half hour; entries of older versions stay and
 are hidden from the view), zoom, focus, brightness and light of a phone camera (only a lens switch is). Account entries
@@ -700,14 +700,15 @@ once more right after a camera command.
 - Room service (Twirp, `POST http://livekit:7880/twirp/livekit.RoomService/{Method}`, `Authorization: Bearer
   {admin JWT}`, JSON; requests camelCase or snake_case, **responses snake_case**, int64 as strings):
   RemoveParticipant (block, regenerating or revoking an output link; 404 if absent is fine), ListParticipants (seed + reconcile).
-- Server: `livekit/livekit-server:v1.13.10`, config passed as `LIVEKIT_CONFIG` (YAML body; compose interpolates the
-  key) – `port 7880`, `rtc.tcp_port 7881`, `rtc.udp_port 7882`, `rtc.use_external_ip false`, node IP via `NODE_IP`
-  env, `room.empty_timeout 300`, `room.departure_timeout 20`, `webhook.api_key` (must equal the key) +
-  `webhook.urls`. `LIVEKIT_KEYS: "{key}: {secret}"` – the secret must start with a letter and be ≥ 32 chars (YAML
-  parses an all-digit secret as a number and drops it): `sk` + 40 hex chars. Healthcheck
+- Server: `livekit/livekit-server:v1.13.10` in the wrapper image `infra/livekit` (section 10), config in `livekit.yaml`
+  written by the API into the volume `livekit_config` (the supervisor restarts the server when it changes) – `port 7880`,
+  `rtc.tcp_port 7881`, `rtc.udp_port 7882`, `rtc.use_external_ip false`, `rtc.node_ip` = the saved media address,
+  `room.empty_timeout 300`, `room.departure_timeout 20`, `webhook.api_key` (must equal the key) + `webhook.urls`, `keys`
+  `{key}: {secret}` from `/secrets` – the secret must start with a letter and be ≥ 32 chars (YAML parses an all-digit secret
+  as a number and drops it): the init service makes `sk` + 46 alphanumeric characters. Healthcheck
   `wget -q -O /dev/null http://127.0.0.1:7880/`. Caddy forwards the whole `/rtc` prefix (`/rtc`, `/rtc/v1`,
-  `…/validate`); never expose `/twirp`. `NODE_IP` = the host's LAN IPv4 (works for LAN and same-host clients);
-  `127.0.0.1` only for single-machine tests.
+  `…/validate`); never expose `/twirp`. The media address (`rtc.node_ip`) is the host's LAN IPv4 (works for LAN and same-host
+  clients), chosen in the wizard and changed under "Server settings"; `127.0.0.1` only for single-machine tests.
 - Publishing (sender): camera H.264, simulcast layers 1080p/540p/270p (or 720p/360p/180p), `contentHint = 'motion'`;
   screens VP9 with H.264 backup codec, `contentHint = 'detail'`, simulcast off, max 1440p/15–30 fps;
   dynacast on; no audio.
@@ -716,7 +717,7 @@ once more right after a camera command.
   quality per source from the scene model: program items → dimensions of the item on the canvas (HIGH for large
   items), preview scene items → HIGH (preload before a take), all other scenes' sources → LOW; jitter buffer ≈ 50 ms.
 - The LiveKit URL for clients is the same origin (`wss://{host}`); Caddy proxies `/rtc` to LiveKit 7880. Media goes
-  directly to 7881/tcp and 7882/udp on `STUDIOFLOW_NODE_IP`.
+  directly to 7881/tcp and 7882/udp (`STUDIOFLOW_RTC_TCP_PORT`, `STUDIOFLOW_RTC_UDP_PORT`) on the saved media address.
 
 Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) that the implementation must respect:
 - `DefaultReconnectPolicy` gives up after ~40 s. Use a policy that never returns null (cap 5 s). The SDK still gives
@@ -1020,95 +1021,181 @@ Teams/Zoom”).
 
 ## 10. Infrastructure
 
-Operations (English): `docs/runbook.md`. Every variable is documented in `.env.example`.
+Operations (English): `docs/runbook.md`. The optional overrides are documented in `.env.example`. **Zero-config install**
+(issue #27, decisions in `docs/decisions.md`): `docker compose up -d` is the whole installation. There is no host script and
+no required variable; the settings an operator chooses (media address, address and certificate, embedding, backup schedule
+and off-site target) are *server settings* in the database, entered in the first-run wizard and in the Regie page "Server
+settings", and the API hands them to the other services over the internal network.
 
 `docker-compose.yml` (project `studioflow`, network `studioflow` with subnet `${STUDIOFLOW_SUBNET:-172.30.0.0/24}`).
-All services: `restart: unless-stopped`, `no-new-privileges`, json-file logs 5 × 10 MB, a healthcheck, `depends_on`
-with `condition: service_healthy` (caddy waits for api and livekit, api waits for postgres). Required variables fail
-fast (`${VAR:?…}`); optional variables have their default in `docker-compose.yml` and nowhere else.
+All long-running services: `restart: unless-stopped`, `no-new-privileges`, json-file logs 5 × 10 MB, a healthcheck,
+`depends_on` with `condition: service_healthy` (caddy waits for api, api waits for postgres) and
+`condition: service_completed_successfully` for `init`. Every variable has its default in `docker-compose.yml` and
+nowhere else; none is required (`${VAR:-default}`). No container has the Docker socket.
 
-- `caddy`: build context = repository root, `infra/caddy/Dockerfile`: stage 1 `node:22.22.3-alpine` (`npm ci`,
-  `npm run build:web`), stage 2 `caddy:2.11.7-builder-alpine` + xcaddy with the DNS modules cloudflare v0.2.4,
-  infomaniak v1.0.2, hetzner/v2 v2.0.1, desec v1.1.0, route53 v1.6.2, gandi v1.2.1, ovh v1.1.0, stage 3
-  `caddy:2.11.7-alpine` with `dist/studio/browser` → `/srv/studio`, `dist/sender/browser` → `/srv/join`,
-  `dist/output` → `/srv/o`. The build runs `caddy validate` for every TLS mode (except `custom`, which needs mounted
-  files) with a throwaway data directory, so no CA is baked into the image. Runs as uid 10001 without capabilities
-  (`cap_drop: ALL`, sysctl `net.ipv4.ip_unprivileged_port_start=0`). Ports 80/tcp, 443/tcp, 443/udp. Volumes
-  `caddy_data:/data` (certificates, local CA – must survive), `caddy_config:/config`. Healthcheck in the image:
-  `wget --spider http://127.0.0.1:2020/healthz` (loopback-only listener).
-- `api`: build `apps/api` (own Dockerfile and `.dockerignore`), non-root, `cap_drop: ALL`, port 8080 inside the
-  network only. Volumes `media:/data/media`, `keys:/data/keys`. Healthcheck
-  `wget -q -O /dev/null http://127.0.0.1:8080/health/live`.
-- `livekit`: `livekit/livekit-server:v1.13.10`, `cap_drop: ALL`, config as `LIVEKIT_CONFIG` YAML inside
-  `docker-compose.yml` (interpolated from `.env`; `infra/livekit/` is not used): `port 7880`, `rtc.tcp_port 7881`,
-  `rtc.udp_port 7882`, `rtc.use_external_ip false`, `room.auto_create true`, `room.empty_timeout 300`,
-  `room.departure_timeout 20`, `webhook.api_key` = the key, `webhook.urls [http://api:8080/api/livekit/webhook]`.
-  `LIVEKIT_KEYS: "{key}: {secret}"`, `NODE_IP` = `STUDIOFLOW_NODE_IP`. Ports 7881/tcp and 7882/udp only. Healthcheck
-  `wget -q -O /dev/null http://127.0.0.1:7880/`.
-- `postgres`: `postgres:17.11-alpine`, database and user `studioflow`, volume `pgdata`, healthcheck
-  `pg_isready -h 127.0.0.1 -U studioflow -d studioflow` (TCP: during the first initialisation only the socket
-  listens), `stop_grace_period: 30s`, `cap_drop: ALL` with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`,
-  `SETUID` (the official entrypoint fixes ownership and mode of the data and socket directories as root and then drops
-  to the user `postgres`; without `DAC_OVERRIDE` a restart on a non-empty volume fails).
+- `init`: the postgres image, `network_mode: none`, `read_only`, `cap_drop: ALL` + `CHOWN`, `FOWNER`, runs once per start. It
+  creates `/secrets/postgres-password`, `/secrets/livekit-api-key` and `/secrets/livekit-api-secret` **if they are missing**
+  (mode 600, owner uid 1654 = the API user; 32 alphanumeric characters, `API` + 12 and `sk` + 46 alphanumeric characters),
+  never replaces an existing one and never prints one (it logs `secrets: <name> created` and `secrets: ready`). A
+  `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY` or `LIVEKIT_API_SECRET` in the environment (an old `.env`) is adopted instead of a
+  random value, on the first start only. It also hands the shared volumes `caddy_certs`, `livekit_config` and `backup_config`
+  to the API user.
+- `caddy`: build context = repository root, `infra/caddy/Dockerfile`: stage 1 `node:22.22.3-alpine` (`npm ci`, studio and
+  sender builds, the output build with `STUDIOFLOW_REVISION`), stage 2 `caddy:2.11.7-builder-alpine` + xcaddy with the DNS
+  modules cloudflare v0.2.4, infomaniak v1.0.2, hetzner/v2 v2.0.1, desec v1.1.0, route53 v1.6.2, gandi v1.2.1, ovh v1.1.0,
+  stage 3 `caddy:2.11.7-alpine` with `dist/studio/browser` → `/srv/studio`, `dist/sender/browser` → `/srv/join`,
+  `dist/output` → `/srv/o` and the licence files. The build runs `validate.sh`: `caddy validate` of the bootstrap
+  Caddyfile and, for every DNS provider, of a Caddyfile in the shape the API pushes (a domain site with the DNS challenge, a
+  site with the local CA, the catch-all), with a throwaway data directory, so no CA is baked into the image. Runs as uid 10001
+  without capabilities (`cap_drop: ALL`, sysctl `net.ipv4.ip_unprivileged_port_start=0`, so `STUDIOFLOW_HTTPS_PORT=443`
+  works). Published: `${STUDIOFLOW_HTTPS_PORT:-8443}` tcp and udp, host and container port the same number (HTTP/3
+  advertises the port Caddy listens on). **Nothing listens on port 80** (no redirect, no HTTP-01). Volumes `caddy_data:/data`
+  (certificates, ACME account, local CA – must survive), `caddy_config:/config`, `caddy_certs:/certs:ro` (an uploaded
+  certificate, written by the API). Healthcheck in the image: `wget --spider http://127.0.0.1:2020/healthz` (loopback-only
+  listener).
+- `api`: build `apps/api` (own Dockerfile and `.dockerignore`), non-root, `cap_drop: ALL`, port 8080 inside the network only.
+  Volumes `media:/data/media`, `keys:/data/keys`, `secrets:/secrets:ro`, `caddy_certs`, `livekit_config`, `backup_config`
+  (read/write: it writes the configuration of the other services), `backup_status:/data/backup-status:ro`. Healthcheck
+  `wget -q -O /dev/null http://127.0.0.1:8080/health/live`. The environment names the wiring (`INSTALL__*`, section "Server
+  settings" below), not the choices of the operator. The key pair of LiveKit and the database password are read from
+  `/secrets` (`SecretFiles`), the connection string carries no password.
+- `livekit`: build `infra/livekit/Dockerfile` (`FROM livekit/livekit-server:v1.13.10`, the version pinned in the Dockerfile and
+  moved by Renovate with `livekit-client`) with the supervisor `infra/livekit/supervisor.sh` as `ENTRYPOINT` (POSIX `sh`,
+  busybox). `cap_drop: ALL`. Ports `${STUDIOFLOW_RTC_TCP_PORT:-7881}/tcp` and `${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp` only,
+  host and container port the same number (LiveKit announces the container-side port). Volume `livekit_config:/lk`: the
+  API writes `livekit.yaml` (`port 7880`, `rtc.tcp_port`, `rtc.udp_port`, `rtc.node_ip` = the saved media address,
+  `rtc.use_external_ip false`, `keys`, `room.auto_create true`, `room.empty_timeout 300`, `room.departure_timeout 20`,
+  `webhook.api_key` = the key, `webhook.urls [http://api:8080/api/livekit/webhook]`); the supervisor starts the server with
+  it, polls the file once a second, and when its SHA-256 changes sends SIGTERM (SIGKILL after 10 s) and starts the server
+  again. It writes `applied.json` (`{"configSha256": …}`) next to the file once the server answers on 7880, and removes it
+  while the server is down, so the API knows which configuration runs. No restart of the container, no Docker socket.
+  Healthcheck `wget -q -O /dev/null http://127.0.0.1:7880/`. Before the wizard (no media address) the server announces the
+  addresses of its own interfaces, which only works inside the compose network.
+- `postgres`: `postgres:17.11-alpine`, database and user `studioflow`, `POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password`
+  (volume `secrets:/run/secrets:ro`), volume `pgdata`, healthcheck `pg_isready -h 127.0.0.1 -U studioflow -d studioflow` (TCP:
+  during the first initialisation only the socket listens), `stop_grace_period: 30s`, `cap_drop: ALL` with `cap_add`
+  `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` (the official entrypoint fixes ownership and mode of the data and
+  socket directories as root and then drops to the user `postgres`; without `DAC_OVERRIDE` a restart on a non-empty volume
+  fails).
+- `backup`: build `infra/backup/Dockerfile` on the pinned PostgreSQL image (`ARG POSTGRES_IMAGE`; plus `age`, `bash`, `jq`,
+  `rclone`, `supercronic`, `tzdata`), `read_only` with tmpfs `/tmp`, `cap_drop: ALL` + `CHOWN`, `DAC_OVERRIDE`,
+  `DAC_READ_SEARCH`, `FOWNER` (restore replaces files of other users; this is the one service with these capabilities and the
+  only one that mounts the data volumes `media`, `keys`, `caddy_data` at `/volumes/<name>` read-write). Other volumes:
+  `backups:/backups`, `backup_status:/status`, `backup_config:/config:ro`, `secrets:/run/secrets:ro`. The default command
+  `serve` (`infra/backup/serve.sh`) follows the server settings (below). The same image runs the operator commands, in a
+  one-off container of the same service: `docker compose run --rm backup backup-now | list | restore <folder> [--verify]
+  [--yes] [--no-safety-backup] [--force]` (`entrypoint.sh`). Healthcheck `healthcheck.sh` (the scheduler process runs; whether the backups succeed is shown by the status file and the readiness check of the API).
 - Profile `chaos`: `netem` (built from `infra/netem`, `network_mode: service:livekit`, `cap_add: NET_ADMIN`):
   `docker compose --profile chaos run --rm netem apply <delay_ms> <jitter_ms> <loss_pct> [rate] | clear | show`
-  (egress and ingress via ifb; affects media, signalling and API ↔ LiveKit).
-- Profile `tools`: `toolbox` (the postgres image, no network, volumes media/keys/caddy_data at `/volumes/<name>`),
-  started on demand by the backup and restore scripts.
+  (egress and ingress via ifb; affects media, signalling and API ↔ LiveKit). Only in `docker-compose.yml`.
+- Volumes: `secrets`, `caddy_data`, `caddy_config`, `caddy_certs`, `livekit_config`, `backup_config`, `media`, `keys`, `pgdata`,
+  `backups`, `backup_status`. `secrets` is not part of a backup (the database password belongs to the data of `pgdata`; a
+  restore on another server works with that server's secrets).
 - `docker-compose.override.example.yml`: local development (API on 127.0.0.1:5298, LiveKit signalling 127.0.0.1:7880,
-  PostgreSQL 127.0.0.1:5432, `ASPNETCORE_ENVIRONMENT=Development`) and the certificate mount for TLS mode `custom`.
+  PostgreSQL 127.0.0.1:5432, `ASPNETCORE_ENVIRONMENT=Development`).
 
 Images and versions (issue #18, process in `docs/releasing.md`):
 
 - One version for every part (lockstep), kept by release-please in `.release-please-manifest.json`, `package.json`,
-  `apps/api/Directory.Build.props` (`<Version>`) and the default tag in `docker-compose.release.yml`;
-  `infra/release/check.mjs` fails CI when they differ. `GET /api/system/info` returns `version` as `0.4.2+1a2b3c4`
-  (version plus the commit the image was built from; the Docker build argument `STUDIOFLOW_REVISION` becomes the
-  `SourceRevisionId`). The Regie shows it in the settings popover (from that endpoint). The output page is served
+  `package-lock.json` and `apps/api/Directory.Build.props` (`<Version>`); `infra/release/check.mjs` fails CI when they differ.
+  `docker-compose.release.yml` has no version: its image tag defaults to `latest`. `GET /api/system/info` returns `version`
+  as `0.4.2+1a2b3c4` (version plus the commit the image was built from; the Docker build argument `STUDIOFLOW_REVISION`
+  becomes the `SourceRevisionId`). The Regie shows it in the settings popover (from that endpoint). The output page is served
   without a session, so it carries its version in the bundle: Vite defines `__STUDIOFLOW_VERSION__` from the `version` in
   `package.json` plus the same build argument (`apps/output/src/build-info.ts`; the `web` image build passes it to
   `npm run build:output`), and the `?debug=1` overlay prints `StudioFlow 0.4.2+1a2b3c4` as its last line (just the
   version when the build does not know its commit).
-- Published images (GHCR, `linux/amd64`): `ghcr.io/opten/studioflow-web` (the `caddy` service: Caddy, Caddyfile,
-  frontends, licence files under `/licenses/` and `/3rdpartylicenses.txt`), `ghcr.io/opten/studioflow-api` and `ghcr.io/opten/studioflow-backup` (the `backup` service, profile `backup`). Tags `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`,
-  `latest`. OCI labels, SBOM, provenance and a keyless cosign signature on every image.
+- Published images (GHCR, `linux/amd64`): `ghcr.io/opten/studioflow-web` (the `caddy` service: Caddy, the static Caddy files,
+  frontends, licence files under `/licenses/` and `/3rdpartylicenses.txt`), `ghcr.io/opten/studioflow-api`,
+  `ghcr.io/opten/studioflow-livekit` (the `livekit` service) and `ghcr.io/opten/studioflow-backup` (the `backup` service). Tags
+  `sha-<7>` (every commit on `main`), `main`, `X.Y.Z`, `X.Y`, `latest`. OCI labels, SBOM, provenance and a keyless cosign
+  signature on every image.
 - `docker-compose.release.yml` is the twin of `docker-compose.yml` with `image:` instead of `build:` and without `netem`:
-  `${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-{web,api,backup}:${STUDIOFLOW_IMAGE_TAG:-<release>}`. The release
-  bundle ships it as `docker-compose.yml`. `setup`, `update`, `backup` and `restore` detect the mode from the Compose
-  file (no `build:` section = ready-made images); `update --version X` writes `STUDIOFLOW_IMAGE_TAG` to `.env`.
+  `${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-{web,api,livekit,backup}:${STUDIOFLOW_IMAGE_TAG:-latest}`. The
+  release bundle ships it as `docker-compose.yml`, with `.env.example`, the runbook and `QUICKSTART.md`; **no script**.
 
-Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS modes in `infra/caddy/tls/`):
+Server settings (issue #27). One row in the table `server_settings` (migration `AddServerSettings`), written by the use cases
+of `ServerSettingsService` and read through `ServerSettingsState`; secrets in it (DNS credentials, the private key of an
+uploaded certificate, the rclone configuration) are encrypted with the ASP.NET Core Data Protection keys (`ISecretProtector`,
+volume `keys`) and are never part of an answer, a log line or an audit detail. REST (admin, CSRF header): `GET /api/settings`,
+`GET /api/settings/status` (does Caddy / LiveKit / the backup service run the saved settings), `PUT /api/settings/media`
+(IPv4 address; restarts LiveKit; 409 `broadcast_live` while a broadcast is live), `GET /api/settings/media/suggestions`,
+`POST` and `DELETE /api/settings/media/test` (LiveKit announces a candidate address for 2 minutes so the browser can run a
+WebRTC round trip; the saved address comes back by itself), `PUT /api/settings/address` (certificate mode `internal`,
+`custom` or `dns-<provider>`, domain, e-mail, delegated challenge domain, credentials of the provider),
+`PUT /api/settings/certificate` (PEM chain and private key, optional `domain`; checked for a parseable chain, a matching
+unencrypted key, validity and the covered names), `PUT /api/settings/embedding` (frame ancestors), `PUT /api/settings/backup`
+(schedule, time zone, retention, off-site remote, rclone configuration, age recipients), `GET /api/settings/backups`
+(latest backups and the state of the service) and `POST /api/settings/backups` (202: "Back up now"). A rejected input is 400
+`validation_failed` with the field and a code per field (`SETTINGS_FIELD_ERROR_CODES`); nothing is saved. Audit actions (all
+category `system`): `settings.media.changed`, `settings.address.changed`, `settings.embedding.changed`,
+`settings.backup.changed`, `backup.requested`.
 
-- Site `{$STUDIOFLOW_DOMAIN} {$STUDIOFLOW_EXTRA_HOSTS}`, `default_sni {$STUDIOFLOW_DEFAULT_SNI}` (clients without
-  SNI, i.e. access by IP), `trusted_proxies static {$STUDIOFLOW_TRUSTED_PROXIES}` (default `127.0.0.1/32` = nobody,
-  so LAN clients cannot spoof `X-Forwarded-For`), server timeouts `read_body_idle 5m`, `write_idle 2m`.
-- TLS: `import /etc/caddy/tls/{$STUDIOFLOW_TLS_MODE}.caddy` (an unknown mode fails at startup).
-  `internal` = Caddy's local CA (`skip_install_trust`; the root is served at `/ca.crt` as
-  `application/x-x509-ca-cert`, only in this mode); `acme` = Let's Encrypt HTTP-01/TLS-ALPN (public reachability);
-  `custom` = `/certs/fullchain.pem` + `/certs/privkey.pem`; `dns-cloudflare | dns-infomaniak | dns-hetzner |
-  dns-desec | dns-route53 | dns-gandi | dns-ovh` = Let's Encrypt DNS-01 with `resolvers {$STUDIOFLOW_DNS_RESOLVERS}`
-  and `dns_challenge_override_domain {$STUDIOFLOW_DNS_CHALLENGE_DOMAIN}`. The override defaults to
-  `_acme-challenge.{domain}`, which is exactly Caddy's own record name; set it to the CNAME target when
-  `_acme-challenge` is delegated (providers without a module, e.g. Hostpoint or cyon → deSEC or Cloudflare).
-  Provider secrets are read at runtime (`{env.…}`); certificates renew automatically.
+The account is step 1 of the wizard (`POST /api/auth/setup` with the setup code, section 5); the flag `configured` is set when
+the wizard saves the media address. Until then the Regie leads an admin to `/setup/server` (the `configuredGuard`), afterwards
+`/setup/server` leads to `/` (the `wizardGuard`).
+
+How the settings reach the other services (`ServerConfigApplier`, called after every change and by the maintenance loop every
+5 seconds; idempotent and cheap when nothing changed, so a restarted Caddy or LiveKit is brought back to the saved state by the
+same call; a failure is recorded in the status and retried, it never fails the save):
+
+- **Caddy**: the API renders a Caddyfile (`CaddyfileRenderer`: which sites exist and how each gets its certificate; the static
+  parts are in the image) and posts it to the **admin API of Caddy** (`http://caddy:2019/load`), which loads it without
+  dropping a connection. The admin listener binds `0.0.0.0:2019` inside the container, is not published and is reachable on
+  the compose network only (`origins caddy:2019 localhost:2019 127.0.0.1:2019`). The server of the pushed
+  configuration is named `sf-` plus 12 hex characters of the Caddyfile, by which the API recognises in a `GET` that Caddy runs
+  the saved state. Caddy starts with a **bootstrap** Caddyfile (`infra/caddy/Caddyfile`: a catch-all site on the HTTPS port with
+  `tls internal { on_demand }` that answers `503 StudioFlow is starting`); the real configuration arrives a few seconds
+  later, and again after every restart of Caddy.
+- **LiveKit**: `livekit.yaml` in `livekit_config`, written atomically; the supervisor restarts the server; `applied.json`
+  confirms (see `livekit`). A media address under test is announced for at most 2 minutes.
+- **Backup service**: `backup-settings.json` (schedule, time zone, retention, off-site remote, age recipients, hashes) and
+  `rclone.conf` in `backup_config`; a request for "Back up now" is a file `backup-now` with a new token in the same volume. The
+  service answers in `backup_status/backup-status.json`.
+- **Uploaded certificate**: certificate chain and key as files in `caddy_certs` (mode 600 for the key), loaded by the pushed
+  Caddyfile with `tls /certs/fullchain.pem /certs/privkey.pem`.
+
+`INSTALL__*` (the `Install` options, fixed by `docker-compose.yml`, never by the operator's choice): `HTTPSPORT`, `SECRETSPATH`
+(`/secrets`), `CADDYADMINURL` (`http://caddy:2019`), `CADDYCERTSPATH`, `LIVEKITCONFIGPATH`, `BACKUPCONFIGPATH`,
+`LIVEKITRTCTCPPORT`, `LIVEKITRTCUDPPORT`, `HSTSMAXAGE`.
+
+Caddy (`infra/caddy/`: `Caddyfile` bootstrap, `global.caddy`, `servers.caddy`, `health.caddy`, `studioflow.caddy` with the
+snippets, `snippets/log-redact.caddy`, `tls/dns-<provider>.caddy`, `validate.sh`):
+
+- Sites (rendered by the API): one site for the saved domain (if any) with its certificate, and a catch-all site on the HTTPS
+  port with `tls internal { on_demand }` and an `ask` endpoint (`http://api:8080/internal/tls/ask`, reachable inside the
+  network only, not through Caddy: it answers 200 for any host name or IP address of a sensible form, refuses everything else
+  and admits at most 60 new names per minute), so the Regie opens by whatever name or IP address the browser used, before any
+  domain exists. `trusted_proxies static {$STUDIOFLOW_TRUSTED_PROXIES}` (default `127.0.0.1/32` = nobody, so LAN clients
+  cannot spoof `X-Forwarded-For`), server timeouts `read_body_idle 5m`, `write_idle 2m`. `auto_https disable_redirects`:
+  there is no listener on port 80.
+- TLS per site, from the saved certificate mode: `internal` = Caddy's local CA (`skip_install_trust`; the root is served at
+  `/ca.crt` as `application/x-x509-ca-cert` from `/data/caddy/pki/authorities/local/root.crt` only, `root.key` stays
+  unreachable); `custom` = the uploaded files; `dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 |
+  dns-gandi | dns-ovh` = Let's Encrypt DNS-01 with `resolvers {$STUDIOFLOW_DNS_RESOLVERS}` and, when set,
+  `dns_challenge_override_domain` (the CNAME target when `_acme-challenge` is delegated: providers without a module, e.g.
+  Hostpoint or cyon → deSEC or Cloudflare). The credentials are written into the pushed Caddyfile as quoted literals (only the
+  API and Caddy see it; the admin API is internal); the values were validated to contain no character that ends a token.
+  Certificates renew automatically. HTTP-01 and TLS-ALPN (`acme`) are gone.
 - Routes: `POST /api/productions/{id}/assets[/]` → api with body ≤ `STUDIOFLOW_MAX_UPLOAD` and response header timeout
   15 min; `POST /api/productions/import[/]` → api with body ≤ `STUDIOFLOW_MAX_IMPORT` and 15 min (the export is a plain `GET`
   that streams, so it takes the default route); all other `/api/*` → api with body ≤ `STUDIOFLOW_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
   timeout: long polling); `/rtc`, `/rtc/*` → livekit:7880; `/twirp`, `/twirp/*` and `/api/livekit/*` (webhooks arrive
-  inside the network) → 404;
+  inside the network) → 404; `/internal/*` is not proxied (the SPA answers);
   `/j/{token}` → 302 `/join/i/{token}`; `/join` → 308 `/join/`, `/o` → 308 `/o/` (query kept); `/join/*` sender SPA
   (`/srv/join`), `/o/*` output SPA (`/srv/o`), everything else studio SPA (`/srv/studio`). SPA fallback: paths without
   a file extension get `index.html`, missing files stay 404. Proxies use `dial_timeout 5s` and `stream_close_delay 5m`
   (WebSockets survive a config reload). The API's `/health/*` is not reachable through Caddy.
-- Headers on every response: `Strict-Transport-Security: max-age={STUDIOFLOW_HSTS_MAX_AGE}; includeSubDomains`,
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no `Server`;
-  every header exactly once: the proxies to the API, the hubs and LiveKit drop the upstream's `X-Content-Type-Options`
-  (`header_down`), the API keeps sending its own for direct access.
+- Headers on every response: `Strict-Transport-Security: max-age=…; includeSubDomains` (31536000 for a site with a certificate
+  that browsers trust; 3600 for the local CA, because a browser must not remember "https only" for a year for a certificate it
+  trusts by hand), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, no
+  `Server`; every header exactly once: the proxies to the API, the hubs and LiveKit drop the upstream's
+  `X-Content-Type-Options` (`header_down`), the API keeps sending its own for direct access.
   HTML areas: `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://{host}
   wss://{host}; worker-src 'self'; manifest-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self';
   form-action 'self'; frame-ancestors …; upgrade-insecure-requests` with `frame-ancestors 'none'` for `/` and `/join/`
-  and `'self' {STUDIOFLOW_FRAME_ANCESTORS}` for `/o/`. `'unsafe-inline'` for styles only, because Angular injects
+  and `'self'` plus the saved embedding origins for `/o/`. `'unsafe-inline'` for styles only, because Angular injects
   component styles at runtime. `Permissions-Policy`: studio `camera=(), microphone=(), display-capture=(),
   clipboard-write=(self), screen-wake-lock=(self), fullscreen=(self), autoplay=(self)`; sender `camera=(self),
   microphone=(self), display-capture=(self), screen-wake-lock=(self), fullscreen=(self), clipboard-write=(self)`; output
@@ -1125,87 +1212,64 @@ Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS mod
 - The studio has no service worker (only the sender, scope `/join/`). Adding one to the studio requires
   `navigationUrls` exclusions for `/join`, `/o`, `/api`, `/hubs` and `/rtc`.
 
-Configuration contract (`.env` → compose → containers). Compose passes only the variables a service needs; the API
-reads ASP.NET Core configuration (double underscore = section separator, names case-insensitive):
+Backup service (`infra/backup/`: `entrypoint.sh`, `serve.sh`, `backup-job.sh`, `restore.sh`, `common.sh`, `backup-core.sh`,
+`settings.sh`, `status.sh`, `healthcheck.sh`): `serve` reads `backup-settings.json`, builds the crontab for `supercronic` from
+the schedule and the time zone, restarts the scheduler when the settings change, and runs "Back up now" requests; a setting it
+cannot use (an unknown time zone, a remote the rclone configuration does not define) switches the schedule off and says why
+in the status file (`settingsError`). A run (`backup-job.sh --label auto|manual|pre-restore`) waits while a production is live
+(automatic runs only; `BACKUP_LIVE_POLL_SECONDS`), dumps the database (`pg_dump -Fc` over the network), archives `keys` and
+`caddy_data` into `YYYY-MM-DD_HHMM_<label>[-N]/` with `backup-info.txt` and `SHA256SUMS`, loads the dump into a throwaway
+database, keeps for the label `auto` the newest backup of the last `keepDaily` days and `keepWeekly` weeks, copies new media
+files to `backups/media/` (incremental) and, with an off-site remote, copies everything to the rclone remote encrypted with
+`age` (media per file; `SHA256SUMS` last). It writes `backup-status.json` (state, schedule, last attempt, last success, off-site
+state, latest backups) to `backup_status`; the API mounts that volume read-only, lists the latest backups from it, and the
+readiness check `backup` of `/health/ready` reads it: it answers Degraded (HTTP 200) with the reasons instead of failing
+readiness, and reports on automatic backups only (Healthy while no schedule is set). `restore` verifies the checksums, refuses
+while the API holds database connections (the operator stops `caddy api livekit` first; there is no Docker socket) or a
+production is live (`--force`), takes a safety backup (`…_pre-restore`), restores the dump into a new database with
+`pg_restore --no-owner --no-privileges --exit-on-error` and swaps it in by renaming (the old database stays intact if the
+restore fails), replaces the volumes and tells the operator to start the stack. `--verify` only checks the checksums, loads the
+dump into the throwaway database `studioflow_verify` and reads the archives (prints the table count and the newest migration;
+nothing is replaced or stopped). A backup without `media.tar.gz` takes the media from the folder `media/` next to it.
 
-| Variable (`.env`) | Used by | Meaning / default |
+Environment contract. Everything is optional; compose passes only what a service needs. Overrides (a `.env` next to the
+compose file, `.env.example`):
+
+| Variable | Used by | Meaning / default |
 |---|---|---|
-| `STUDIOFLOW_DOMAIN` | caddy, api | **Required.** Host name of the site, e.g. `studioflow.example.com` (tests: `localhost`; in mode `internal` also an IP) |
-| `STUDIOFLOW_NODE_IP` | livekit | **Required.** IPv4 that LiveKit announces for media (`NODE_IP`): the server's LAN IP (VPS: public IP); `127.0.0.1` only for single-machine tests |
-| `STUDIOFLOW_TLS_MODE` | caddy | **Required.** `internal` \| `acme` \| `custom` \| `dns-cloudflare` \| `dns-infomaniak` \| `dns-hetzner` \| `dns-desec` \| `dns-route53` \| `dns-gandi` \| `dns-ovh` |
-| `STUDIOFLOW_EXTRA_HOSTS` | caddy | Further site addresses, space-separated (mode `internal`, e.g. the IP); default empty |
-| `STUDIOFLOW_DEFAULT_SNI` | caddy | Certificate for clients without SNI; default `STUDIOFLOW_DOMAIN` (setup sets the first IP of the extra hosts) |
-| `STUDIOFLOW_PUBLIC_BASE_URL` | api → `STUDIOFLOW__PUBLICBASEURL` | Base of invite, QR and output URLs; default `https://${STUDIOFLOW_DOMAIN}` (override only for a non-443 port) |
-| `STUDIOFLOW_ACME_EMAIL` | caddy | Let's Encrypt account e-mail (`acme`, `dns-*`); default empty |
-| `CF_API_TOKEN` | caddy | `dns-cloudflare` (Zone:Read, DNS:Edit) |
-| `INFOMANIAK_API_TOKEN` | caddy | `dns-infomaniak` (scopes `domain:read dns:read dns:write`) |
-| `HETZNER_API_TOKEN` | caddy | `dns-hetzner` (Hetzner Cloud DNS API) |
-| `DESEC_TOKEN` | caddy | `dns-desec` |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | caddy | `dns-route53` |
-| `GANDI_BEARER_TOKEN` | caddy | `dns-gandi` (personal access token) |
-| `OVH_ENDPOINT`, `OVH_APPLICATION_KEY`, `OVH_APPLICATION_SECRET`, `OVH_CONSUMER_KEY` | caddy | `dns-ovh` |
-| `STUDIOFLOW_DNS_CHALLENGE_DOMAIN` | caddy | `dns-*`: where the TXT record is written; default `_acme-challenge.${STUDIOFLOW_DOMAIN}`; the CNAME target when delegated |
-| `STUDIOFLOW_DNS_RESOLVERS` | caddy | `dns-*`: resolvers for the propagation check; default `1.1.1.1 9.9.9.9` |
-| `STUDIOFLOW_HSTS_MAX_AGE` | caddy | Seconds; default `31536000` (setup writes `3600` for `internal`) |
-| `STUDIOFLOW_FRAME_ANCESTORS` | caddy, api → `STUDIOFLOW__FRAMEANCESTORS` | Additional origins allowed to embed `/o/*`, space-separated (`'self'` is always allowed and not part of the value); default empty. The API gets the effective list (`'self' …`) and shows it read-only |
+| `STUDIOFLOW_HTTPS_PORT` | caddy, api (`INSTALL__HTTPSPORT`) | Published HTTPS port (tcp and udp), also the port Caddy listens on; default `8443`. The API builds every link with it (`https://host:port`, no suffix for 443) |
+| `STUDIOFLOW_RTC_TCP_PORT`, `STUDIOFLOW_RTC_UDP_PORT` | livekit, api | Media ports, default `7881` and `7882`; the same number on the host and in the container |
+| `STUDIOFLOW_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `studioflow`; default `172.30.0.0/24` (only Caddy can reach the API) |
 | `STUDIOFLOW_TRUSTED_PROXIES` | caddy | CIDRs of proxies in front of Caddy whose `X-Forwarded-For` is trusted; default `127.0.0.1/32` (nobody) |
+| `STUDIOFLOW_HSTS_MAX_AGE` | api (`INSTALL__HSTSMAXAGE`) | HSTS seconds of every site. Empty (default): `31536000` for a site with a trusted certificate (DNS challenge, upload), `3600` for the local CA |
+| `STUDIOFLOW_DNS_RESOLVERS` | caddy | `dns-*`: resolvers for the propagation check; default `1.1.1.1 9.9.9.9` |
 | `STUDIOFLOW_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
 | `STUDIOFLOW_MAX_IMPORT` | caddy | Body limit of the import route; default `4100MiB` (the 4 GiB the API accepts + multipart overhead) |
 | `STUDIOFLOW_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
-| `STUDIOFLOW_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `studioflow`; default `172.30.0.0/24` (only Caddy can reach the API) |
-| – | api | No account setting: the Regie account is created in the first-run setup and lives in the database. `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of older versions are ignored (the API warns when it sees them; setup leaves them out of a new `.env`). `ADMIN__SESSIONLIFETIME` and `ADMIN__LOCKOUT__*` stay |
-| `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `studioflow`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
-| `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__STUDIOFLOW` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=studioflow;Username=studioflow;Password=…` |
 | `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | Default `26214400`, `1073741824` |
 | `TRANSFER__MAXIMPORTBYTES`, `TRANSFER__MAXENTRIES`, `TRANSFER__MAXUNPACKEDBYTES`, `TRANSFER__MAXMANIFESTBYTES`, `TRANSFER__MAXCOMPRESSIONRATIO` | api (optional, not passed by compose: `docker-compose.override.yml`) | Limits of an import (4.2.2): file 4 GiB (1 MiB to 1 TiB), files in it 1000, unpacked 8 GiB (not below the file limit), manifest 8 MiB, ratio 100; validated at startup |
-| – | api | Fixed: `MEDIA__PATH=/data/media`, `DATAPROTECTION__KEYSPATH=/data/keys` |
+| `AUDIT_RETENTION_DAYS`, `AUDIT_IP_RETENTION_DAYS` | api | Default `365`, `90` |
+| `BACKUP_WARN_AFTER_HOURS`, `BACKUP_LIVE_POLL_SECONDS` | api, backup | Default `48`, `300` |
+| `STUDIOFLOW_IMAGE_TAG`, `STUDIOFLOW_IMAGE_REGISTRY` | `docker-compose.release.yml` | Image version (default `latest`) and registry path (default `ghcr.io/opten`) |
+| `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | init | Adopted from an older installation on the first start; otherwise random |
+| – | api | No account setting: the Regie account is created in the first-run setup and lives in the database. `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of older versions are ignored (the API warns when it sees them). `ADMIN__SESSIONLIFETIME` and `ADMIN__LOCKOUT__*` stay |
+| – | api | Fixed: `MEDIA__PATH=/data/media`, `DATAPROTECTION__KEYSPATH=/data/keys`, `LIVEKIT__INTERNALURL=http://livekit:7880`, `BACKUP__STATUSFILE`, the `INSTALL__*` paths |
 
-Nothing but Caddy (80/tcp, 443/tcp+udp) and LiveKit media (7881/tcp, 7882/udp) is published.
+The former variables `STUDIOFLOW_DOMAIN`, `STUDIOFLOW_NODE_IP`, `STUDIOFLOW_TLS_MODE`, `STUDIOFLOW_EXTRA_HOSTS`,
+`STUDIOFLOW_DEFAULT_SNI`, `STUDIOFLOW_PUBLIC_BASE_URL`, `STUDIOFLOW_ACME_EMAIL`, the DNS provider tokens,
+`STUDIOFLOW_DNS_CHALLENGE_DOMAIN`, `STUDIOFLOW_FRAME_ANCESTORS` and the `BACKUP_*` choices are server settings now and are not
+read from the environment. `STUDIOFLOW__PUBLICBASEURL` (`StudioFlow:PublicBaseUrl`) can still be set to override the base of
+the links the API builds (for a deployment behind another proxy).
 
-Scripts (repository root; bash and PowerShell 7.4+ with the same options and behaviour; shared code in
-`infra/scripts/common.sh` and `infra/scripts/StudioFlow.psm1`; messages in English, ASCII only (no i18n layer); `--help` / `Get-Help -Full`):
+Published ports: `${STUDIOFLOW_HTTPS_PORT:-8443}` tcp and udp (Caddy) and the media ports (LiveKit). Nothing else, and nothing on 80.
 
-- `setup.sh` / `setup.ps1`: interactive or `--non-interactive` (`--domain`, `--node-ip` (default: source address of the
-  default route, confirmed interactively), `--tls-mode`, `--acme-email`, `--dns-challenge-domain`, `--extra-hosts`,
-  `--frame-ancestors`, `--env-file`, `--force`, `--start`; PowerShell: `-Domain`, `-NodeIp`, …). Provider credentials
-  come from the environment, the existing `.env` or a hidden prompt. Generates the LiveKit secret and the PostgreSQL
-  password; it asks for no password, because the Regie account is created in the first-run setup. Writes `.env`
-  atomically with mode 600; refuses to overwrite it without `--force`, then keeps `.env.backup-<time>` and reuses the
-  PostgreSQL password and the LiveKit key pair (account settings of older versions are not carried over, with a
-  notice). With `--start` (an interactive run asks) it starts the stack and prints the setup code from `docker compose
-  logs api`, retrying while the API starts (`sf_show_setup_code` / `Show-SfSetupCode`: the newest of the line
-  `Setup code: XXXX-XXXX` and the line `The Regie account exists` counts).
-- `backup.sh` / `backup.ps1` (`--dir`, `--keep N`, `--label`): `pg_dump -Fc` via `docker compose exec`, the volumes
-  media, keys and caddy_data as `.tar.gz` (via `toolbox`), `backup-info.txt` and `SHA256SUMS` into
-  `backups/YYYY-MM-DD_HHMM[_label]/`; retention keeps the newest N by completion time. The folder logic (names,
-  `backup-info.txt`, `SHA256SUMS`, checksum check, retention) is `infra/scripts/backup-core.sh`, which the backup
-  service uses as well.
-- `restore.sh` / `restore.ps1` (`<dir>`, `--verify`, `--yes`, `--no-safety-backup`, `--force`): verifies the checksums, asks for
-  confirmation, refuses while live, takes a safety backup (`…_pre-restore`), stops api and caddy, restores the dump into
-  a new database with `pg_restore --no-owner --no-privileges --exit-on-error` and swaps it in by renaming (the old
-  database stays intact if the restore fails, and no objects of a newer schema survive), replaces the volumes, starts
-  the stack and waits until it is healthy. `--verify` only checks the checksums and loads the dump into the throwaway
-  database `studioflow_verify` of the running PostgreSQL (prints the table count and the newest migration; nothing is
-  replaced). A backup without `media.tar.gz` (from the backup service) takes the media from the folder `media/` next to it.
-- `backup` service (compose profile `backup`, issue 16; image from `infra/backup/Dockerfile`, built from the PostgreSQL
-  image; `supercronic` runs `infra/backup/backup-job.sh` on `BACKUP_SCHEDULE`): waits while a production is live, dumps the
-  database (`pg_dump` over the network), archives `keys` and `caddy_data` read-only from the mounted volumes into
-  `YYYY-MM-DD_HHMM_auto/` in the volume `backups`, loads the dump into a throwaway database, keeps the newest backup of
-  the last `BACKUP_KEEP_DAILY` days and `BACKUP_KEEP_WEEKLY` weeks, copies new media files to `backups/media/`, and, with
-  `BACKUP_RCLONE_REMOTE`, copies everything to the rclone remote encrypted with `age` (`BACKUP_AGE_RECIPIENT`; media
-  per file). It writes `backup-status.json` to the volume `backup_status`; the API mounts that volume read-only and
-  `Backup:StatusFile`, `Backup:Schedule`, `Backup:WarnAfterHours` (`BACKUP__*`) configure the readiness check
-  `backup` of `/health/ready`, which answers Degraded (HTTP 200) with the reasons instead of failing readiness.
-- `update.sh` / `update.ps1` (`--backup`, `--no-pull`, `--force`): refuses while a broadcast is live or its state is
-  unknown, `git pull --ff-only`, `docker compose up -d --build --remove-orphans --wait`, prints the status.
-
-What the scripts and Caddy require from the API image:
+What Caddy and the operator commands require from the API image:
 - `ENTRYPOINT`/`WORKDIR` such that `dotnet Opten.StudioFlow.Web.dll` works in the working directory, BusyBox `wget`
   for the healthcheck, `/health/live` on port 8080.
 - `reset-admin [--yes]`: deletes the Regie account (section 5); exit 0, 2 when the operator did not confirm, 1 on
   errors (only the exception type is printed).
-- `broadcast-status`: exit code 3 if any production is live, 0 if none, any other code on error (`update` and
-  `restore` then refuse unless forced).
+- `broadcast-status`: prints `live` (exit code 3) or `idle` (0), any other code on error; the runbook uses it before an update,
+  and the backup service reads the same fact from the database.
 - Trust `X-Forwarded-*` only from
   `FORWARDEDHEADERS__KNOWNNETWORKS__0` (ForwardLimit 1: Caddy replaces any client-sent `X-Forwarded-For`).
 

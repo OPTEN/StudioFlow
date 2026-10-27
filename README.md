@@ -11,6 +11,17 @@ StudioFlow is a web-based Regie (control room) modelled on OBS, made for webinar
 
 As of 22 October 2026: the plan and the clickable Regie prototype are done. There is no product code yet.
 
+## Quick start
+
+You need Docker (Engine on Linux, Docker Desktop on Windows or macOS) with Compose v2.24 or newer. There is no script to run and no file to write.
+
+```bash
+docker compose up -d      # from the folder of a release (ready-made images) or of a clone (builds the images)
+docker compose logs api   # the line "Setup code: XXXX-XXXX"
+```
+
+Open `https://<address of this computer>:8443/`, accept the certificate warning once, enter the setup code and follow the first-run wizard in the Regie: account, media address (with a connection test), address and certificate, embedding. Port 8443 (tcp and udp) and the media ports 7881/tcp and 7882/udp must be open in the firewall; nothing listens on port 80. Updating is `docker compose pull && docker compose up -d`, backing up is `docker compose run --rm backup backup-now`. Everything else, including the optional `.env` overrides, is in `docs/runbook.md`.
+
 ## What is where
 
 | Path | Content |
@@ -79,7 +90,7 @@ Both pages are private. You can share them with “Share” on the respective pa
 ## Open
 
 - **Proxy:** What exactly is the proxy, for example a browser source? Whether air mode becomes necessary depends on this.
-- **Certificate:** Which domain and which DNS provider, for example `studioflow.opten.ch`?
+- **Certificate:** Which domain and which DNS provider, for example `studioflow.example.com`?
 - **Server:** Does it run on the Regie laptop or on the VPS? Recommendation: a VPS or a second computer connected by cable.
 - **Empty artifact:** The empty design artifact “StudioFlow Regie” (https://claude.ai/artifact/NkhevB8Mp4ez2SmZoufRkN) is not needed and can be deleted.
 - **Docks:** Dragging and docking have been tested by hand, but not captured as a screenshot.

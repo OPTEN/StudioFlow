@@ -241,6 +241,46 @@ Taken on 2026-10-26, following the recommendations of the issue.
 4. The wizard covers account, media address, address and certificate, embedding. The backup schedule and the off-site
    `rclone` target are only in "Server settings", to keep the first run short.
 
+### #27 pinned details
+
+Fixed during the implementation (design: `docs/architecture/implementation-spec.md` section 10, operation: `docs/runbook.md`).
+
+1. **Secrets.** The `init` service makes `postgres-password`, `livekit-api-key` and `livekit-api-secret` once into the volume
+   `secrets` (mode 600, owner uid 1654 = the API) and never again; it adopts `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY` and
+   `LIVEKIT_API_SECRET` of an old `.env` on the first start. The volume is not part of a backup (a restore on a new server
+   works with the new secrets). Nothing prints a secret, no endpoint returns one.
+2. **Wizard and settings.** Step 1 is the existing setup of #4 (setup code). Steps 2 to 4 save what the API stores in one row
+   of the database; the media step sets `configured`, and until then an admin is led to `/setup/server`. A server that was
+   set up with the scripts has an account, so its wizard starts at step 2; the old `.env` values (domain, mode, tokens, node
+   IP, embedding) are not imported, the operator enters them (runbook 5.5).
+3. **Media address test.** The API lets LiveKit announce the candidate address for 2 minutes; the browser joins two
+   throw-away participants through the same origin (`wss://host`) and sends a data message through the media server and
+   back. The test names the stage that failed (signalling, transport, data). A change of the saved address restarts LiveKit
+   and is refused while a broadcast is live.
+4. **Certificates.** `internal` (local CA; a domain is optional, a first visit by IP works through on-demand certificates
+   whose `ask` endpoint is internal; `ca.crt` is served; HSTS 3600 s because the browser trusts it by hand), `dns-<provider>`
+   for cloudflare, infomaniak, hetzner, desec, route53, gandi and ovh (credentials encrypted in the database, optional
+   delegated challenge domain for providers without a module), and `custom` (PEM chain and an unencrypted key, checked for
+   parse, match, validity and names). No HTTP-01 and no TLS-ALPN: they need port 80 or 443.
+5. **Ports.** Host and container port are the same number (HTTP/3 and LiveKit announce the container-side port).
+   `STUDIOFLOW_HTTPS_PORT=443` works because Caddy runs with `net.ipv4.ip_unprivileged_port_start=0`. Every link the API
+   builds uses `https://<domain or media address>:<port>` (no suffix for 443).
+6. **How Caddy follows the settings.** Caddy starts with a bootstrap Caddyfile that answers 503; the API pushes the real one
+   to `http://caddy:2019/load`, again after every change and whenever it finds Caddy on the bootstrap again (the maintenance
+   loop, every 5 seconds). The loaded server is named `sf-<12 hex of the Caddyfile>`.
+7. **LiveKit client URL (issue 44).** The URL in a token is `wss://<Host of the request>` (the scheme from the forwarded
+   protocol); `LiveKit:PublicUrl` overrides, and outside a request the base URL of the settings is used. It is therefore the
+   same name the page was opened with, which is the one its CSP allows.
+8. **Backup service.** Automatic backups are off until a schedule is saved (as `COMPOSE_PROFILES=backup` was before). Labels
+   `_auto`, `_manual`, `_pre-restore`; only `_auto` is pruned, locally and at the off-site target. "Back up now" is a request
+   file in the volume `backup_config`; restore is a command only and refuses while the API holds database connections (the
+   operator stops `caddy api livekit`; there is no Docker socket). The service has `CHOWN`, `DAC_OVERRIDE`,
+   `DAC_READ_SEARCH` and `FOWNER`: restore must replace files of other users, nothing else mounts the data volumes.
+9. **Release.** Four images (`web`, `api`, `livekit`, `backup`); `docker-compose.release.yml` has the tag `latest` and no
+   version marker; the bundle has no script. A server pins a version with `STUDIOFLOW_IMAGE_TAG`.
+10. **Port in use.** Docker 29 starts a container that failed on a taken port without its network and ports on the next
+    `up -d`; the runbook says `docker compose up -d --force-recreate caddy` after freeing the port, or to choose another port.
+
 ### #6 pinned details
 
 The details below were fixed for the parallel work on #6 (design: [architecture/i18n-design.md](architecture/i18n-design.md),

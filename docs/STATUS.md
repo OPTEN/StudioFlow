@@ -21,7 +21,7 @@ rules in `docs/i18n.md`.
 - .NET SDK 10, Docker Desktop 29 (start it first), Playwright browsers installed (chromium, firefox, webkit).
 - No `pwsh`; PowerShell scripts are parsed with Windows PowerShell 5.1 (scripts are ASCII-only English, see D9).
 - E2E: `tests/e2e/stack.sh up|test|down <n>` with the numbered stacks 1-5 (avoid port clashes), see
-  `tests/e2e/README.md`. The harness performs the first-run setup (#4) of a fresh stack itself.
+  `tests/e2e/README.md`. The harness completes the first-run wizard (#4, #27) of a fresh stack itself.
 - No Python on the machine; use Node for scripted edits.
 
 ### Cloud container (Claude Code on the web, from 2026-10-26 evening)
@@ -60,7 +60,7 @@ The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What 
 | #11 camera control | done, closed (tap-to-focus and pinch-zoom not built; real-phone test MAN-14 is manual) | up to bead7c6 |
 | #13 text and lower thirds | done, closed | d59adbd .. 65288d3 |
 | #17 audit log | done, closed | 401f95d .. 921e9e2 |
-| #27 zero-config install | decisions recorded only | bfb6e41 |
+| #27 zero-config install | done: `docker compose up -d` and the first-run wizard, no host scripts, port 8443, four images; the runbook, the spec section 10 and the catalogue are rewritten | see the merge of the branch |
 
 ## In progress (2026-10-26, evening, cloud session)
 

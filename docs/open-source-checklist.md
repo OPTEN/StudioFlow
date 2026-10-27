@@ -16,6 +16,7 @@ Decisions: `docs/decisions.md`, section "#5 Open source". Nothing in this list d
 | Secret scan of the full history: 17 findings, all test fixtures, none real; allowlist `.gitleaks.toml`, result recorded | `docs/security-review.md`, `.gitleaks.toml` |
 | `Opten.` namespace prefix: kept | `docs/decisions.md` #5, 3 |
 | Examples use `studioflow.example.com` and `example.com` instead of `studioflow.opten.ch` and a personal address | code comments, unit tests, prototype, `docs/testing.md`, `docs/architecture/implementation-spec.md`, generated contracts (regenerated) |
+| `studioflow.opten.ch` in the installation material replaced by `studioflow.example.com` (zone `example.com`) | `.env.example`, `docs/runbook.md` (sections 2 to 5 rewritten by #27), `README.md`, the generated contracts; the scripts are gone |
 | Personal local path and the name of the audit agent removed | `docs/STATUS.md`, `docs/security-review.md` |
 
 The README logo block, for the README rewrite:
@@ -33,8 +34,7 @@ The README logo block, for the README rewrite:
 
 | Item | Why | What to do afterwards |
 |---|---|---|
-| **README rewrite** (English, logo, features, quick start, architecture, configuration, roadmap, badges) | The quick start describes the zero-config install of #27. The current `README.md` is the status note of the planning phase and links private claude.ai artifacts | Write it after #27; use the logo block above; link `releases/latest/download/studioflow-prototype.html` and the files of section 1 |
-| `studioflow.opten.ch` in the installation material | `setup.sh`, `setup.ps1`, `.env.example` and `docs/runbook.md` (sections 2 to 4: lines about the example domain, the DNS record and the deSEC CNAME, including the zone `opten.ch`) are rewritten by #27 | After #27 replace the example by `studioflow.example.com` (the zone `opten.ch` by `example.com`): `grep -rn "opten\.ch" --exclude-dir=node_modules --exclude-dir=.git .` should then only find the history documents |
+| **README rewrite** (English, logo, features, architecture, configuration, roadmap, badges) | #27 added a "Quick start" section for the zero-config install (`docker compose up -d`, the setup code, the wizard, the ports). The rest of `README.md` is still the status note of the planning phase and links private claude.ai artifacts | Write it now; use the logo block above; keep the quick start; link `releases/latest/download/studioflow-prototype.html` and the files of section 1 |
 | Defaults of `tools/github-repo-settings.sh` | Done: the default is `OPTEN/StudioFlow` since the rename (2026-10-27) | |
 
 ## 3. Review of the internal material

@@ -92,9 +92,8 @@ hook (`data-testid`, `window.__fs…`, localStorage key) uses the names fixed in
 
 ```
 playwright.config.ts          projects (1.4), workers: 1, reporters, global setup/teardown
-env/test.env                  committed, test-only values (1.2.3)
-env/test-short.env            overrides for the short-TTL profile
-docker-compose.test.yml       override file (1.2.2)
+.env.e2e[.<project>]          written by global setup, git-ignored: only overrides, no secret (1.2.3)
+docker-compose.e2e.yml        override file (1.2.2); docker-compose.short-ttl.yml and docker-compose.short-livekit.yml for the short-TTL profile
 global-setup.ts               build/start stack, wait healthy, pull sidecar images, generate fixtures, smoke login
 global-teardown.ts            docker compose logs to results/, down -v (unless E2E_KEEP_STACK=1)
 fixtures/                     test.extend(): stack, apiClient, production, adminPage, adminPage2, pairPhone, pairLaptop, openOutput, embedHost, net, docker, lk, clock
@@ -106,41 +105,45 @@ results/                      gitignored: junit.xml, latency-*.json, soak-*.csv,
 
 #### 1.2.2 Starting the stack
 
+The stack is started as an operator starts it (issue #27): `docker compose up -d`, no secret and no script. The harness
+(`tests/e2e/global-setup.ts`, `support/stack.ts`, `stack.sh`, `stack.ps1`) writes an env file that holds only overrides and runs
+
 ```
-docker compose -p sf-e2e --env-file tests/e2e/env/test.env \
-  -f docker-compose.yml -f tests/e2e/docker-compose.test.yml up -d --build --wait --wait-timeout 600
+docker compose -p sf-e2e --env-file tests/e2e/.env.e2e \
+  -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yml up -d --build --wait --wait-timeout 600
 ```
 
-`docker-compose.test.yml` (the production `docker-compose.yml` is never edited by tests):
+`docker-compose.e2e.yml` (the production `docker-compose.yml` is never edited by tests):
 - publishes `127.0.0.1:18081:8080` (api: direct access that bypasses Caddy for header-trust tests), `127.0.0.1:17880:7880` (livekit admin/Twirp for the `lk` helper), `127.0.0.1:15432:5432` (postgres for audit and DB assertions), as `docker-compose.override.example.yml` does for development;
-- CI uses the fixed 80/443 of the base file. On developer machines where they are taken the override replaces the list with `caddy.ports: !override ["18080:80", "18443:443", "18443:443/udp"]` and `test.env` sets `STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:18443` (the base file has no port variables, [GAP-16]);
+- the HTTPS port is `STUDIOFLOW_HTTPS_PORT` (443 for the unnumbered stack, 8491 to 8495 for the numbered ones, `tests/e2e/README.md`); nothing listens on port 80;
 - sets `STUDIOFLOW_SUBNET=172.31.250.0/24` (the variable the base file uses for the network and for the API's trusted forwarded-header network) and gives each service a fixed `ipv4_address` on the `studioflow` network (livekit `.10`, api `.11`, postgres `.12`, caddy `.13`) so `docker network connect --ip` restores the same address after a disconnect; with `-p sf-e2e` the network is `sf-e2e_studioflow`;
 - sets `ASPNETCORE_ENVIRONMENT=Production` for the api (cookie flags are asserted in their production form; INT tests cover `Testing`);
 - keeps the image pins, healthchecks and restart policies of the base file (they are part of the system under test, see OPS).
 
 Profiles:
-- **default** (all OS, Docker Desktop included): `STUDIOFLOW_DOMAIN=localhost`, `STUDIOFLOW_NODE_IP=127.0.0.1`, browsers run on the host.
-- **netns** (Linux CI only, `E2E_PROFILE=netns`, tests tagged `@netns`): `STUDIOFLOW_DOMAIN=sf.e2e.test` (all browsers use `--host-resolver-rules="MAP sf.e2e.test 172.31.250.1"`), `STUDIOFLOW_NODE_IP=172.31.250.1` (bridge gateway, reachable from the host and from containers), and sender browsers run in **phone host containers** (`mcr.microsoft.com/playwright:v<pw-version>-noble`, `npx playwright run-server --port 3000`, joined to the compose network, connected with `chromium.connect()`). This gives each phone its own network namespace, so netem/disconnect on the *phone container* impairs hub and media of that phone only (real uplink loss).
-- **short-ttl** (project `short-ttl`, tests tagged `@short-ttl`): `env/test-short.env` sets the TTL keys of [GAP-01]; the project restarts the api at its start and end.
+- **default** (all OS, Docker Desktop included): the domain `localhost`, the media address of the machine (the detected LAN IPv4, fallback `127.0.0.1`; `E2E_NODE_IP`), browsers run on the host.
+- **netns** (Linux CI only, `E2E_PROFILE=netns`, tests tagged `@netns`): the domain `sf.e2e.test` (all browsers use `--host-resolver-rules="MAP sf.e2e.test 172.31.250.1"`), the media address `172.31.250.1` (bridge gateway, reachable from the host and from containers), and sender browsers run in **phone host containers** (`mcr.microsoft.com/playwright:v<pw-version>-noble`, `npx playwright run-server --port 3000`, joined to the compose network, connected with `chromium.connect()`). This gives each phone its own network namespace, so netem/disconnect on the *phone container* impairs hub and media of that phone only (real uplink loss).
+- **short-ttl** (project `short-ttl`, tests tagged `@short-ttl`): `docker-compose.short-ttl.yml` and `docker-compose.short-livekit.yml` set the TTL keys of [GAP-01]; the project recreates the api and LiveKit at its start and end.
 
-#### 1.2.3 Test environment (`env/test.env`, committed because test-only)
+#### 1.2.3 Test environment (`tests/e2e/.env.e2e`, written by global setup, git-ignored)
 
 ```
-STUDIOFLOW_DOMAIN=localhost
-STUDIOFLOW_TLS_MODE=internal                 # Caddy local CA; browsers use ignoreHTTPSErrors
-STUDIOFLOW_NODE_IP=127.0.0.1
+STUDIOFLOW_HTTPS_PORT=443                    # numbered stacks: 8491 ... 8495
+STUDIOFLOW_RTC_TCP_PORT=7881                 # STUDIOFLOW_RTC_UDP_PORT=7882
 STUDIOFLOW_SUBNET=172.31.250.0/24
-STUDIOFLOW_FRAME_ANCESTORS=https://embed.e2e.test   # 'self' is always allowed by Caddy
-# STUDIOFLOW_PUBLIC_BASE_URL=https://localhost:18443   # only when Caddy is not on 443 (port override of docker-compose.test.yml)
-LIVEKIT_API_KEY=e2e_lk_key
-LIVEKIT_API_SECRET=<fixed test-only value, starts with a letter, ≥ 32 chars>
-POSTGRES_PASSWORD=<fixed test-only value>
+MEDIA__MAXIMAGEBYTES=...  MEDIA__MAXVIDEOBYTES=...   # small limits so the size tests stay fast
+E2E_NODE_IP=<the media address>  E2E_API_PORT=...  E2E_LIVEKIT_PORT=...  E2E_POSTGRES_PORT=...  E2E_IP_*=...
 ```
 
-There is no account setting. The harness creates the Regie account (user `e2e-admin`, a fixed test-only password) once per stack in the
-**first-run setup**: global setup, and every `ensureHealthy`, reads the setup code from `docker compose logs api`, `POST`s `/api/auth/setup` on the
-direct API port and then logs in (`support/stack.ts`, `ensureHarnessAccount`). A reused stack that has the account is left alone. The values are never
-used outside tests; the production checks (E2E-OPS-02) assert that `setup.sh` never emits fixed values.
+There is **no secret** in the file. The stack makes its own (the `init` service); the harness reads the LiveKit key pair and the
+database password from the running containers into `.output/<project>/stack-secrets.json` (`writeStackSecrets`). The server is
+set up the way an operator does it in the wizard, through the admin API (`ensureHarnessAccount`, `ensureHarnessConfigured`):
+global setup, and every `ensureHealthy`, reads the setup code from `docker compose logs api`, `POST`s `/api/auth/setup` on the
+direct API port (user `e2e-admin`, a fixed test-only password), logs in, and, if the server is not configured yet, saves the
+media address (`E2E_NODE_IP`), the local certificate with the domain `localhost` and the embedding origins
+`https://embed.e2e.test https://embed.test`, then waits until Caddy, LiveKit and the backup service run the saved settings
+(`GET /api/settings/status`). A reused stack that has the account and the settings is left alone. The values are never used
+outside tests; the production checks (E2E-OPS-31, -34) assert that no script exists and that the secrets are made by the stack.
 
 #### 1.2.4 Resetting state and isolation
 
@@ -610,7 +613,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **E2E-AUTH-09** · P0 · pw — Security headers on every entry point
 - Steps: `GET` `/`, `/login`, `/join/`, `/join/i/x`, `/o/webinar?k=x`, `/api/system/info` (authenticated), a hashed asset, `index.html`, `ngsw.json`, `/j/x`.
-- Expect: `Strict-Transport-Security` with `max-age` = `STUDIOFLOW_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year; `setup.sh` writes 3600 for TLS mode `internal`, the test env leaves the default); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `microphone=(self)`, `display-capture=(self)` (spec 10 and the Caddyfile; no audio track is published) [DOC-01]; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `STUDIOFLOW_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
+- Expect: `Strict-Transport-Security` with `max-age` = `STUDIOFLOW_HSTS_MAX_AGE` (default 31536000, i.e. ≥ 1 year, for a site with a trusted certificate; 3600 for the local certificate unless the variable is set - the test env sets it to one year); `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; exactly one `Content-Security-Policy` fulfilling the invariants **I-CSP**: no `unsafe-eval`; `script-src` without `unsafe-inline`, `*`, `data:`, `http:`; `object-src 'none'`; `base-uri` `'self'` or `'none'`; `form-action 'self'`; `default-src` `'self'` or `'none'`; `connect-src` contains `'self'` and the explicit `wss://<host>` (Safari); `img-src` contains `data: blob:`; `media-src` contains `blob:`; no external host anywhere except the frame-ancestors list [GAP-14]. `Permissions-Policy`: `/join/*` allows `camera=(self)`, `microphone=(self)`, `display-capture=(self)` (spec 10 and the Caddyfile; no audio track is published) [DOC-01]; all other paths disable `camera`, `display-capture`, `microphone`; `/o/*` does not disable `autoplay` or `fullscreen`. `frame-ancestors 'none'` everywhere except `/o/*` (`'self'` plus the origins of `STUDIOFLOW_FRAME_ANCESTORS`); `/o/*` sends no `X-Frame-Options`. Cache: hashed files `immutable`, `index.html` and `ngsw*.json` `no-cache`.
 
 **E2E-AUTH-10** · P0 · pw — Embedding limited by frame-ancestors
 - Steps: `embedHost` serves a page at `https://embed.e2e.test` (allowed) and `https://other.e2e.test` (not allowed) each containing `<iframe src="https://localhost/o/{slug}?k=…" allow="autoplay; fullscreen">`; also iframes of `/`, `/join/`, `/login`.
@@ -2045,58 +2048,53 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 ### 2.11 OPS – Operations
 
-These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a Windows runner) and drive Docker and the shell through the `shell`/`docker` fixtures; the Playwright runner is used for reporting only (a browser is opened only where a test says so).
+The stack is started and operated as an operator does (issue #27): `docker compose up -d` with no `.env` and no script, set up through the first-run wizard, backed up and restored with `docker compose run --rm backup ...`, updated with `docker compose pull && docker compose up -d`. The specs therefore need Docker and nothing else on the host; they call `docker compose` and `docker` through the `compose`/`docker` helpers of `tests/e2e/support/stack.ts` and `ops.ts` (the same on Linux, macOS and Windows) and use a browser only where a test says so. The harness itself starts every stack this way and completes the wizard through the admin API (`tests/e2e/README.md`); the `ops-wizard` specs start from nothing and do it by hand. Files: `ops-static.spec.ts` (compose and image contents, no stack changes), `ops-stack.disruptive.spec.ts`, `ops-backup.disruptive.spec.ts`, `ops-update.disruptive.spec.ts`, `ops-wizard.disruptive.spec.ts`, `ops-address.spec.ts`.
 
-**E2E-OPS-01** · P1 · pw — Compose file and `.env.example` consistency
-- Steps: `docker compose config --format json` with a generated `.env`; extract all `${VAR}` references; compare with `.env.example`.
-- Expect: valid; every variable used by compose or the apps is documented in `.env.example`; each required variable that is removed makes `docker compose config` fail fast with its “set it in .env” message; no secret has a non-empty default value in `.env.example`; images are pinned (`livekit/livekit-server:v…`, `postgres:17.x-alpine`, never `latest`/untagged; a digest behind the tag is allowed, Renovate adds it); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22), and `depends_on` with `condition: service_healthy` where required (caddy → api, livekit; api → postgres).
+**E2E-OPS-01** · P0 · pw — Compose files are zero-config and consistent
+- Steps: `docker compose config --format json` of `docker-compose.yml` and `docker-compose.release.yml` with an empty environment and no `.env`; compare the two; extract all `${VAR}` references and compare them with `.env.example`.
+- Expect: both files are valid with no variable and no `.env` (no `${VAR:?…}`); the release file names `ghcr.io/opten/studioflow-{web,api,livekit,backup}:latest`, carries no version marker and differs from the build file only in `image`/`build` and the missing `netem`; images are pinned (`livekit/livekit-server:v…` in the LiveKit Dockerfile, `postgres:17.x-alpine`, never `latest` for third-party images); every long-running service has `restart: unless-stopped`, a `healthcheck`, `no-new-privileges` and `cap_drop: ALL` (postgres adds back only `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` for the entrypoint of the official image, BUG-22; the backup service `CHOWN`, `DAC_OVERRIDE`, `DAC_READ_SEARCH`, `FOWNER`), and waits for `init` (`service_completed_successfully`); every variable of the Compose files is documented in `.env.example` with an empty value, and `.env.example` holds no secret and none of the retired variables (`STUDIOFLOW_DOMAIN`, `STUDIOFLOW_NODE_IP`, `STUDIOFLOW_TLS_MODE`, DNS tokens, `STUDIOFLOW_FRAME_ANCESTORS`, `COMPOSE_PROFILES`, `BACKUP_SCHEDULE`).
 
-**E2E-OPS-02** · P0 · pw — `setup.sh` produces a valid `.env`
-- Steps: run `./setup.sh --non-interactive --domain localhost --node-ip 127.0.0.1 --tls-mode internal --env-file <dir>/.env` twice into two directories, once without `--node-ip` (auto-detection); the options of older versions (`--admin-password-stdin`, `--generate-password`, `--plain-password`); a `.env` with `ADMIN__USERNAME`/`ADMIN__PASSWORD`/`ADMIN__PASSWORDHASH` replaced with `--force`; invalid inputs (invalid IP, `--tls-mode foo`, an unknown option; an empty domain only with a public TLS mode – in mode `internal` setup uses the node IP as the domain, as its prompt says [DOC-05]); an existing `.env` without and with `--force`; the PowerShell twin is `E2E-OPS-03`.
-- Expect: file created; contains domain, node IP (auto-detected private IPv4 when omitted), TLS mode; no `ADMIN__*` line and no password prompt or display (the Regie account is created in the first-run setup; the next-steps text names `docker compose logs api | grep 'Setup code'`); secrets random and different between the two runs (LiveKit secret ≥ 32 characters starting with a letter, database password 32 letters/digits, all URL-safe; `LIVEKIT_API_KEY` is the non-secret `studioflow`); no value equals a known default/placeholder (`changeme`, `password`, `secret`, `devkey`, `example`); `STUDIOFLOW_HSTS_MAX_AGE=3600` for `internal`; `git check-ignore .env` true; the old options are unknown (exit 1, no file); old account settings are dropped with the notice "no longer used" and the old password is never printed; invalid inputs exit ≠ 0 with an `Error: …` message and write no file; an existing `.env` is replaced only with `--force`, which keeps a `.env.backup-<time>` copy and keeps the existing secrets. With `--start` the script starts the stack and prints the setup code (or "The Regie account exists already").
-
-**E2E-OPS-03** · P1 · pw (Windows runner) — `setup.ps1`
-- Steps/Expect: as -02 with `setup.ps1` (same options, same results); ACL of `.env` limited to the current user.
+**E2E-OPS-02, E2E-OPS-03** — retired by #27: the `setup` scripts do not exist any more. What they covered is now E2E-OPS-31 (no script), -34 (secrets), WIZ-01 and OPS-38 to -41 (the settings and their validation).
 
 **E2E-OPS-04** · P0 · pw — Fresh machine start
-- Steps: clean checkout, no volumes, no images; `./setup.sh`; `docker compose up -d --build`; measure.
-- Expect: the build succeeds from lock files only (`npm ci`, locked NuGet restore); start-to-healthy ≤ 120 s after the images are built; `GET /health/ready` 200; `/` serves the Regie login; admin login works; the default production “Webinar” (slug `webinar`, active, broadcast standby) with scenes “Welcome”, “Presentation”, “Break” exists and the program scene is “Welcome”; output URL shows the standby slate; a second `up -d` changes nothing (no restart, no new migration).
+- Steps: `docker compose down --volumes`; `docker compose up -d` with no variable (images built or pulled already); measure; read the logs of `init` and of every service.
+- Expect: the `init` service made `postgres-password`, `livekit-api-key` and `livekit-api-secret` (`secrets: <name> created`, no value in any log; files mode 600, owner uid 1654) and exited 0; all five services are healthy within 120 s; `GET /health/ready` 200; `/` serves the Regie (by the name `localhost` and by `127.0.0.1`, a certificate of the local CA made on demand) within a minute (Caddy answers 503 “starting” until the API has pushed its configuration); the first-run setup is open (`GET /api/auth/setup` answers `{"setupRequired":true}`, the API log has `Setup code: XXXX-XXXX`, `GET /api/settings` is 401); `/ca.crt` is downloadable before anybody has signed in.
 
 **E2E-OPS-05** · P1 · pw — Healthchecks are real
-- Steps: `docker inspect` health of each container; then show that each check exercises its service ([command] tests, DOC-07): run the healthcheck command inside the running container (exit 0) and in a container of the same image without the service (exit ≠ 0); `docker compose stop postgres` (api readiness must fail). `docker pause` is not used: Docker 29 marks a paused container unhealthy at once, even for a check that is just `true`.
-- Expect: caddy, api, livekit, postgres report `healthy` when OK; each check fails when its service is missing (the checks exercise the service: `pg_isready` over TCP, API `GET /health/live` on 127.0.0.1:8080, LiveKit `GET /` on 127.0.0.1:7880, Caddy's loopback `127.0.0.1:2020/healthz` from the image); `depends_on: service_healthy` ordering verified: with postgres stopped `docker compose up -d api` starts postgres first and api only after it is healthy.
+- Steps: `docker inspect` health of each container; then show that each check exercises its service ([command] tests, DOC-07): run the healthcheck command inside the running container (exit 0) and in a container of the same image without the service (exit ≠ 0); `docker pause` of each service (reported unhealthy within interval × retries, healthy again after `unpause`); `docker compose stop postgres` then `up -d api` (ordering).
+- Expect: caddy, api, livekit, postgres and backup report `healthy`, `init` has exited 0; each check fails when its service is missing (`pg_isready` over TCP, API `GET /health/live` on 127.0.0.1:8080, LiveKit `GET /` on 127.0.0.1:7880, Caddy's loopback `127.0.0.1:2020/healthz` from the image, the scheduler process of the backup service); `depends_on` ordering: with postgres stopped `docker compose up -d api` runs `init`, starts postgres first and the API only after it is healthy.
 
 **E2E-OPS-06** · P0 · pw — Restart policy and volumes
-- Steps: crash each service (`kill -TERM 1` inside the container, `kill -QUIT 1` for PostgreSQL; since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04]); `docker compose down` then `up -d`; `down -v`.
-- Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial) and PostgreSQL data persist; `down -v` removes them; volume names `caddy_data`, `caddy_config`, `media`, `keys`, `pgdata` (plus `backups` and `backup_status` with the profile `backup`).
+- Steps: crash each service (`kill -TERM 1` inside the container, `kill -QUIT 1` for PostgreSQL; since Docker 29 a `docker kill` counts as a manual stop and the restart policy does not bring the container back [DOC-04]); `docker compose down` then `up -d`; restart Caddy.
+- Expect: each service is running again ≤ 20 s and healthy ≤ 60 s; a restarted Caddy gets its configuration back from the API without anybody touching it; after `down`/`up` scenes, devices, assets, Data Protection keys (admin session still valid), the Caddy certificate (same serial), the secrets and PostgreSQL data persist; the volumes are `caddy_config`, `caddy_data`, `keys`, `media`, `pgdata`, `secrets` (plus `caddy_certs`, `livekit_config`, `backup_config`, `backups`, `backup_status`).
 
-**E2E-OPS-07** · P0 · pw — Backup
-- Steps: seed data (scenes, 2 devices, image + video asset); run `./backup.sh` while the stack is running and the Regie is used; run it twice within a minute; run `./backup.sh --label pre-test`; run it three times with `--keep 2`; run it with the stack stopped; kill it half way.
-- Expect: exit 0; folder `backups/YYYY-MM-DD_HHMM[_label]/` (a second run within the same minute gets the suffix `-2`; mode 700) containing `database.dump` (valid `pg_restore --list`), `media.tar.gz` (lists the uploaded files), `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (all checksums verify); the Regie stays responsive during the backup (switch latency within `T-SWITCH` + 100 ms); `--keep 2` leaves only the two newest dated folders; stack stopped → exit ≠ 0 with “PostgreSQL is not running”; an aborted backup leaves no partial folder; `.env` is not part of the backup.
+**E2E-OPS-07** · P0 · pw — Backup now
+- Steps: seed data (scenes, 2 devices, image + video asset); `docker compose run --rm backup backup-now` while the stack is running and the Regie is used; twice within a minute; with PostgreSQL stopped; with a wrong database password (the job of an automatic run).
+- Expect: exit 0; folder `YYYY-MM-DD_HHMM_manual/` (a second run within the same minute gets the suffix `-2`) containing `database.dump` (valid `pg_restore --list`), `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (all checksums verify), and the media as an incremental copy in `media/` next to it; `backup-info.txt` names the PostgreSQL version; the Regie stays responsive during the backup; `list` shows the folder; PostgreSQL stopped → exit ≠ 0 with the reason and no partial folder; a failed run is recorded (`lastAttempt.ok` false with `pg_dump failed.`), `/health/ready` names the failure while automatic backups are on, and the next successful run clears it; the secrets of the stack are not part of the backup.
 
 **E2E-OPS-08** · P0 · pw — Restore round trip
-- Steps: seed (production with 5 scenes, 2 devices with known credentials, 2 assets, rotated output key, ended broadcast); backup; `docker compose down -v`; fresh `.env` (same admin credentials, new LiveKit/DB secrets); `./restore.sh backups/<dir> --yes`; compare. Also: a flipped byte in `database.dump` (checksum), a corrupted dump with a matching checksum, restore into a running stack, restore while a broadcast is live (without and with `--force`), `--no-safety-backup`, an older-schema backup, restore without `--yes`.
-- Expect: snapshot JSON equal to the pre-backup snapshot (ignoring revision and server time); devices recognised with their old credentials; assets byte-identical (SHA-256); the old output URL works; the admin session from before the backup is still valid (keys volume) and the Caddy certificate is the old one; audit rows present; a checksum mismatch aborts before anything is touched; unless `--no-safety-backup` a safety backup `…_pre-restore` of the current state is written first; a corrupted dump exits ≠ 0 and the existing database stays intact (the dump is restored into a new database that replaces the old one only on success); a live broadcast blocks the restore unless `--force`; without `--yes` a confirmation is asked; an older schema is migrated at API start.
+- Steps: seed (production with 5 scenes, 2 devices with known credentials, 2 assets, rotated output key, ended broadcast); `backup-now`; change everything; (a) `restore <folder> --yes` while the API runs; (b) `docker compose stop caddy api livekit`, restore, `up -d`; (c) `docker compose down -v`, `up -d`, stop the three, restore into the new volumes; also a corrupted dump with a matching checksum, restore without `--yes` and without a terminal, restore while a broadcast is live (without and with `--force`), invalid calls (no folder, a missing folder, a folder without `SHA256SUMS`, an unknown option).
+- Expect: (a) exit 1 with “The API is running” and the exact `docker compose stop caddy api livekit` command, nothing changed; (b) snapshot JSON equal to the pre-backup snapshot (ignoring revision and server time); devices recognised with their old credentials; assets byte-identical (SHA-256), taken from the incremental copy (“Volume media from the incremental copy”); the old output URL works and the rotated one does not; the admin session from before the backup is still valid (keys volume) and the Caddy certificate is the old one; audit rows present; the settings of the wizard come back with the database; a safety backup `…_pre-restore` of the current state is written first (not with `--no-safety-backup`); (c) the same on fresh volumes with new secrets; a checksum mismatch aborts before anything is touched; a corrupted dump exits ≠ 0 with “pg_restore failed. The previous database is unchanged.” and no half-restored database; a live broadcast blocks the restore unless `--force`; without `--yes` and without a terminal the command aborts changing nothing.
 
-**E2E-OPS-09** · P0 · pw — `update.sh` refuses while live [GAP-31]
-- Steps: local bare git remote with one extra commit; (a) broadcast `live`, (b) `standby`, (c) `ended`, (d) api container stopped while the other services run, (e) the whole stack stopped; also `--no-pull`, `--backup`, `--force`, and a remote that is not fast-forward.
-- Expect: the script asks the API image: `docker compose exec api dotnet Opten.StudioFlow.Web.dll broadcast-status` (exit 0 = none live, 3 = live, anything else = unknown; [GAP-31]); (a) exit ≠ 0 with “A broadcast is LIVE …”, no `git pull`, no rebuild, container ids and uptime unchanged; (b)(c) `git pull --ff-only`, `docker compose up -d --build`, waits until all services are healthy, volumes retained, “Update complete.”; (d) refuses (state unknown) unless `--force`; (e) proceeds (“the stack is not running, no broadcast is live”); `--backup` writes a `…_pre-update` backup first; a non-fast-forward pull aborts without restarting anything; `--no-pull` rebuilds only.
+**E2E-OPS-09** · P0 · pw — Update with `docker compose pull && docker compose up -d` [GAP-31]
+- Steps: seed data and a paired phone; (a) `up -d --force-recreate` of all services (what an update does with new images); (b) the same while a broadcast is live; (c) `docker compose pull` against a registry that cannot be reached; (d) the release file against the running stack, with the images tagged as a release would be (`--pull never` stands in for the pull).
+- Expect: (a) scenes, devices, assets, admin session, certificate, secrets, settings and backups unchanged, the volumes retained; (b) the broadcast is still live afterwards: nothing refuses or waits (the runbook says never to update during a broadcast, section 8; the operator picks the moment and checks with `broadcast-status` of the API image, exit code 3 = live); (c) the pull fails and the running stack and its images are unchanged; (d) the containers run the four release images, the same volumes, secrets and settings, no `.env`, device credentials valid.
 
 **E2E-OPS-10** · P2 · pw — Update with a new migration
-- Steps: build a variant image with an extra EF migration; run `update.sh`.
+- Steps: build a variant image with an extra EF migration; `docker compose up -d`.
 - Expect: migration applied at API start, data preserved, health green; a downgrade (older image on newer schema) is rejected with a clear log message rather than corrupting data.
 
-**E2E-OPS-11** · P1 · pw — TLS modes
-- Steps: `internal`: HTTPS works with Caddy's local CA, the root certificate is downloadable at `https://<domain>/ca.crt`, an IP listed in `STUDIOFLOW_EXTRA_HOSTS` works; `dns-cloudflare` without `CF_API_TOKEN`; `acme` on an unreachable domain; `custom` without `./certs/fullchain.pem`; `STUDIOFLOW_TLS_MODE=foo` (mode names as in `.env.example`, [GAP-16]).
-- Expect: internal works; a missing token or certificate makes Caddy unhealthy/exit with a clear log line while the other services keep running; unknown mode → startup error naming the variable; no certificate warning in `internal` mode after trusting the CA (manual MAN-05 for real devices).
+**E2E-OPS-11** · P1 · pw — Certificate modes
+- Steps: (a) local certificate: HTTPS works with Caddy's local CA by the IP address and by a saved domain, `https://<host>:<port>/ca.crt` returns the root certificate (and `root.key` is not reachable); (b) `dns-cloudflare` without a token, with a token of the wrong shape, and with an unknown field; (c) `custom` without a certificate; a mode that does not exist (`acme`, `http`, `foo`); (d) an uploaded certificate (E2E-OPS-40).
+- Expect: (a) works; (b)(c) the settings are refused with 400 `validation_failed`, the field and the code, and nothing is saved; no certificate warning after trusting the CA (manual MAN-05 for real devices); HTTP-01 does not exist (nothing listens on port 80, E2E-OPS-31). Covered by E2E-OPS-38, -40 and WIZ-01/02; the DNS challenge against a real provider is manual.
 
 **E2E-OPS-12** · P0 · pw — Network exposure
-- Steps: `docker compose config` (base file only) and `docker port` on a base stack.
-- Expect: published ports: caddy 80/tcp, 443/tcp and 443/udp (HTTP/3), livekit 7881/tcp and 7882/udp only; api 8080, postgres 5432, livekit 7880 and Caddy's loopback health listener (2020) / admin API are not published; services of the profiles `chaos` and `tools` publish nothing; from the host the unpublished ports are unreachable.
+- Steps: `docker compose config` of both files and `docker port` on the stack; probes from the LAN address of the machine.
+- Expect: published ports: caddy `${STUDIOFLOW_HTTPS_PORT}` tcp and udp (HTTP/3), livekit 7881/tcp and 7882/udp only; api 8080, postgres 5432, livekit 7880, Caddy's loopback health listener (2020) and the admin API (2019) are not published; `init` and `backup` publish nothing; from the LAN address those ports and the ports 80 and 443 (on a stack that does not use 443) are closed, the HTTPS port and 7881 are open.
 
 **E2E-OPS-13** · P1 · pw — Container hardening
-- Steps: `docker exec api id -u`; inspect images and containers.
-- Expect: the API runs as non-root (uid ≠ 0); every service runs with `no-new-privileges` and `cap_drop: ALL` (`docker inspect`; postgres with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID` only, and the server process runs as `postgres`, BUG-22); no secret in image layers, `Config.Env` of images, or `docker history`; `.dockerignore` excludes `.env`, `.git`, `node_modules`; `docker inspect` of running containers shows secrets only as runtime env of the services that need them.
+- Steps: `docker exec api id -u`; inspect images and containers; search images, `docker history`, environments and logs for the secrets of the stack.
+- Expect: the API and LiveKit run as non-root (uid ≠ 0); every container runs with `no-new-privileges` and `cap_drop: ALL` (postgres and the backup service with the `cap_add` of E2E-OPS-01 only; the server process of postgres runs as `postgres`, BUG-22); the secrets (database password, LiveKit key pair) are in files of the volume `secrets` (mode 600, owner = the API user) and in no container environment, image layer, `docker history`, log or answer; `.dockerignore` excludes `.env`, `.git`, `node_modules`.
 
 **E2E-OPS-14** · P1 · pw — Logs after a full scenario
 - Steps: run the soak-light scenario (pairing, switching, uploads, block, key rotation, restarts) and read `docker compose logs`.
@@ -2107,26 +2105,26 @@ These specs run in an isolated copy of the repository on Linux (`setup.ps1` on a
 - Expect: the unconfirmed run prints "Type yes to continue", exits 2 and says the account was not changed; the unreachable database exits 1 and the output holds no connection string or password; the api container has no `ADMIN__USERNAME`/`ADMIN__PASSWORD` variable. The reset on the running stack is `E2E-AUTH-30`.
 
 **E2E-OPS-16** · P1 · pw — No external requests at runtime
-- Steps: run the stack on a Docker network created with `--internal` (no egress) in `internal` TLS mode; open Regie, sender, output; record all requests.
+- Steps: run the stack on a Docker network created with `--internal` (no egress) with the local certificate; open Regie, sender, output; record all requests.
 - Expect: everything works; every request (including fonts, icons, scripts, source maps) goes to the stack origin; no DNS lookups for foreign hosts from the browser; the containers make no outbound connections other than to each other (checked via `docker network inspect` / `ss` in the containers).
 
 **E2E-OPS-17** · P2 · pw — Idle resource baseline
 - Steps: 6 devices connected idle 5 min; `docker stats`.
-- Expect: informational limits: api ≤ 300 MB RSS, livekit ≤ 300 MB, caddy ≤ 100 MB, postgres ≤ 300 MB; CPU idle < 10 % each; values recorded.
+- Expect: informational limits: api ≤ 300 MB RSS, livekit ≤ 300 MB, caddy ≤ 100 MB, postgres ≤ 300 MB, backup ≤ 100 MB; CPU idle < 10 % each; values recorded.
 
 **E2E-OPS-18** · P1 · pw — Host header and AllowedHosts
 - Steps: request the stack with `Host: evil.example` (direct to the published API port in the test override) and through Caddy with a foreign SNI.
-- Expect: API answers 400 when `AllowedHosts` is restricted to `STUDIOFLOW_DOMAIN` (the repository default `*` is flagged); Caddy serves no site for a foreign host.
+- Expect: API answers 400 when `AllowedHosts` is restricted to the saved domain (the repository default `*` is flagged); Caddy answers a name it has no site for with the catch-all site (local certificate, same application), which is why the CSP and the LiveKit URL follow the Host the caller used (E2E-OPS-42).
 
 **E2E-OPS-19** · P2 · pw — Time zone and clock
 - Steps: compare `date` in containers with the host; Regie clock vs `ServerTime`.
 - Expect: containers UTC; API timestamps ISO-8601 with offset; Regie clock shows browser local time in 24 h.
 
-Automatic backups (issue 16, runbook section 7.2 to 7.4). The service is the compose profile `backup`; the specs start it per test on fresh volumes and remove it afterwards (`ops-backup-auto.disruptive.spec.ts`), the static and unit specs are in `ops-static.spec.ts`.
+Backups (runbook section 7). The backup service is part of the stack; its schedule and its off-site target come from the server settings (the API writes them into the volume `backup_config`). The commands run in the same image: `docker compose run --rm backup backup-now | list | restore`.
 
-**E2E-OPS-20** · P1 · pw — The backup service in the compose file; scripts and configuration files
-- Steps: `docker compose config` without and with the profile `backup`; read the shell, PowerShell, compose, `.env.example` and Renovate files.
-- Expect: the service is not part of the default stack; with the profile it has `restart: unless-stopped`, a healthcheck, `no-new-privileges`, `cap_drop: ALL` with `cap_add` `DAC_READ_SEARCH` only, a read-only root file system, publishes nothing, depends on a healthy postgres, mounts `media`, `keys` and `caddy_data` read-only and is built from the PostgreSQL image of the stack (`POSTGRES_IMAGE`); the API mounts `backup_status` read-only and never `backups`; all scripts and configuration are ASCII only (D9), the shell scripts pass `bash -n` and have LF line endings, the PowerShell scripts parse; image pins may carry a digest (Renovate).
+**E2E-OPS-20** · P1 · pw — The backup service in the compose file; shell code and configuration files
+- Steps: `docker compose config`; read the shell scripts, compose, `.env.example` and Renovate files.
+- Expect: the service is part of the default stack; `restart: unless-stopped`, a healthcheck, `no-new-privileges`, `cap_drop: ALL` with `cap_add` `CHOWN`, `DAC_OVERRIDE`, `DAC_READ_SEARCH`, `FOWNER` only, a read-only root file system, publishes nothing, depends on `init` and a healthy postgres, mounts `media`, `keys` and `caddy_data` read-write (restore replaces them; no other service mounts them that way) and is built from the PostgreSQL image of the stack (`POSTGRES_IMAGE`); the API mounts `backup_status` read-only and never `backups`; all shell code and configuration are ASCII only (D9), the shell scripts pass `bash -n`, have LF line endings and the executable bit in the repository; image pins may carry a digest (Renovate).
 
 **E2E-OPS-21** · P1 · pw (no stack) — Retention by days and weeks
 - Steps: `sf_backup_expired 7 4` over 30 daily backups, a second backup on the last day and a foreign name; `2 1` over backups with gaps; empty input.
@@ -2137,34 +2135,90 @@ Automatic backups (issue 16, runbook section 7.2 to 7.4). The service is the com
 - Expect: the intact folder passes; the first problem is named (`Checksum mismatch: keys.tar.gz`, `File listed in SHA256SUMS is missing: ...`, `Invalid entry in SHA256SUMS: ../escape`); the second folder of a minute gets `-2`.
 
 **E2E-OPS-23** · P0 · pw — Schedule creates a backup, status and readiness
-- Steps: `BACKUP_SCHEDULE='* * * * *'`; wait for the first backup; read the folder, the status file and `GET /health/ready`; copy the folder out and run `restore.sh --verify`.
-- Expect: a folder `..._auto` with `database.dump`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (no `media.tar.gz`); the log reports the verification of the dump; `lastSuccess` and `lastAttempt.ok` in the status file; `/health/ready` is 200 with `Degraded` and the hint that no off-site copy is configured (a warning, no outage); `--verify` exits 0, prints the table count and the newest migration and leaves no `studioflow_verify` database.
+- Steps: save the schedule `* * * * *` (time zone Europe/Zurich) through `PUT /api/settings/backup`; wait for the first backup; read the folder, the status file and `GET /health/ready`; switch the schedule off.
+- Expect: the backup service takes the settings over (`GET /api/settings/status`); a folder `..._auto` with `database.dump`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt` and `SHA256SUMS` (no `media.tar.gz`); the log reports the verification of the dump; `lastSuccess` and `lastAttempt.ok` in the status file; `/health/ready` is 200 with `Degraded` and the hint that no off-site copy is configured (a warning, no outage); with the schedule empty the scheduler says “Automatic backups are off”.
 
-**E2E-OPS-24** · P0 · pw — `restore.sh --verify` detects damage
+**E2E-OPS-24** · P0 · pw — `restore --verify` detects damage
 - Steps: a flipped byte in `database.dump`; a changed `keys.tar.gz`; a truncated dump with a rewritten checksum; a folder without `SHA256SUMS`.
 - Expect: exit 1 with `Checksum mismatch: database.dump`, `Checksum mismatch: keys.tar.gz`, `The dump could not be loaded` and `SHA256SUMS is missing`; no throwaway database is left; nothing is stopped.
 
 **E2E-OPS-25** · P1 · pw — Retention in the service
-- Steps: `BACKUP_KEEP_DAILY=2`, `BACKUP_KEEP_WEEKLY=1`; six old folders with `SHA256SUMS`, an unfinished `_auto` folder and a foreign folder; run the job.
-- Expect: the new backup and the newest old one remain; the other old folders and the unfinished folder are removed; the foreign folder stays.
+- Steps: keep 2 daily and 1 weekly backup (settings); six old `_auto` folders with `SHA256SUMS`, a manual and a safety folder, an unfinished `_auto` folder and a foreign folder; run the job.
+- Expect: the new backup and the newest old one remain; the other old `_auto` folders and the unfinished folder are removed; the manual, the safety and the foreign folder stay.
 
-**E2E-OPS-26** · P0 · pw — No backup during a broadcast
-- Steps: start the broadcast of a production, run the job, wait; end the broadcast.
-- Expect: while live no folder is created and the status file says `postponed` with `postponedSince`; after the end the backup runs, exit 0, the state is `idle`.
+**E2E-OPS-26** · P0 · pw — No automatic backup during a broadcast
+- Steps: start the broadcast of a production, run the job (`--label auto`), wait; end the broadcast.
+- Expect: while live no folder is created, the status file says `postponed` with `postponedSince` and `GET /api/settings/backups` says `postponed`; after the end the backup runs, exit 0, the state is `idle`. A manual backup does not wait.
 
-**E2E-OPS-27** · P0 · pw — A failed run is visible
-- Steps: run the job with a wrong database password, then correctly.
-- Expect: exit 1 `pg_dump failed.`, no partial folder, `lastAttempt.ok` false with the message, no `lastSuccess`; `/health/ready` names the failure; the next successful run clears it.
+**E2E-OPS-27** — merged into E2E-OPS-07 (a failed run is visible).
 
 **E2E-OPS-28** · P1 · pw — Off-site copy with age; refusal of unsafe settings
-- Steps: an rclone remote of type `local` and a generated age key; upload an image; run the job twice; decrypt with the private key outside the stack; start the service with a remote and no key, and with an invalid schedule.
-- Expect: only `.age` files and `SHA256SUMS` at the target, one dated folder (the older one pruned), the media file once and not again on the second run; the decrypted files pass `restore.sh --verify` and the image equals the upload; `/health/ready` is plain `Healthy`; the service stops with `BACKUP_RCLONE_REMOTE is set without BACKUP_AGE_RECIPIENT` and `BACKUP_SCHEDULE is not a valid cron expression`.
+- Steps: an rclone remote of type `local` and a generated age key; save the settings; upload an image; run the job twice; decrypt with the private key outside the stack; save a remote with no key.
+- Expect: the settings with a remote and no key are refused (400, `age_recipient_required`) and never return the rclone configuration; only `.age` files and `SHA256SUMS` at the target, one dated folder (the older one pruned), the media file once and not again on the second run; the decrypted files pass `restore --verify` and the image equals the upload; `/health/ready` is plain `Healthy`.
 
-**E2E-OPS-29** · P0 · pw — Restore from an automatic backup
-- Steps: seed scenes and an image, run the job, copy the folder and `media/` out, change the scenes and delete the image, `restore.sh <folder> --yes --no-safety-backup`.
-- Expect: `Volume media from the incremental copy`; scenes as before; the image is back, readable by the API and byte-identical.
+**E2E-OPS-29** — merged into E2E-OPS-08 (restore with the media from the incremental copy).
 
-API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when automatic backups are off or everything is recent, and Degraded (never an exception) for a missing, unreadable or empty status file, a failed last run, a last backup or off-site copy older than `Backup:WarnAfterHours`, a missing off-site target and no backup after the grace period; `/health/ready` prints `Healthy` alone or the status followed by one line per failing check.
+**E2E-OPS-30** — reserved.
+
+**E2E-OPS-31** · P0 · pw — No host scripts, no Docker socket, no port 80
+- Steps: look for `setup`, `update`, `backup`, `restore` (`.sh`, `.ps1`) and `infra/scripts`; read the compose files; `docker inspect` of the running containers; probe the ports from inside the stack and the host.
+- Expect: none of the scripts exists and no compose file refers to one; no service mounts the Docker socket, runs privileged or joins the host network; no running container has the socket; nothing listens on port 80, and Caddy listens only on the HTTPS port (and on the admin and health ports inside the container).
+
+**E2E-OPS-32** · P0 · pw — The Caddy admin API stays inside
+- Steps: `GET http://caddy:2019/config/apps/http/servers` from the API container; `/config/` through the HTTPS port; port 2019 on the LAN address of the machine.
+- Expect: the API sees the running server, named `sf-` and 12 hex characters; the HTTPS port answers `/config/` with the page of the Regie (the admin routes are not part of the public site); port 2019 is closed on the LAN address.
+
+**E2E-OPS-33** — reserved.
+
+**E2E-OPS-34** · P0 · pw — Secrets are made exactly once
+- Steps: read the hashes of the three secrets; `docker compose run --rm init`; recreate `postgres` and `api`; in a second project with new volumes run `init` with `POSTGRES_PASSWORD`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` set (the values of an old `.env`), then again with other values.
+- Expect: three different secrets; the second run of `init` prints `secrets: ready` and creates nothing; the hashes are unchanged after every step; the database still opens with the stored password and the API reads the secrets; in the new project the first run adopts the three given values (mode 600, owner uid 1654) and the second run keeps them.
+
+**E2E-OPS-35** · P0 · pw — A taken port is named
+- Steps: stop Caddy, listen on the HTTPS port with another program, `docker compose up -d caddy`; release the port, `up -d --force-recreate caddy`.
+- Expect: the start fails with Docker's own message that names the port (`address already in use` / `port is already allocated`) and Caddy is not running; after the port is free `--force-recreate` brings Caddy up and the stack answers on the port (with Docker 29 a plain `up -d` starts the container that failed without its network, runbook section 11).
+
+**E2E-OPS-36** · P0 · pw — The settings survive restarts
+- Steps: read the settings; `restart api`; `down` and `up -d`.
+- Expect: the settings are equal after each step (media address, domain, embedding); the site answers under the saved address with the embedding origins in the CSP; LiveKit announces the saved media address.
+
+**E2E-OPS-37** · P0 · pw — "Back up now"
+- Steps: `POST /api/settings/backups`; wait for the folder; `GET /api/settings/backups`; `restore --verify` of the new folder.
+- Expect: 202; a `_manual` folder appears and is listed with its kind; `backup.requested` is in the audit log; the backup verifies.
+
+**E2E-OPS-38** · P0 · pw — Setup code, authentication and validation of the settings
+- Steps: (stack, fresh) a wrong setup code five times from one address, then the right code; a wrong code from another address; every settings route without a session; `/internal/tls/ask` through the HTTPS port and on the compose network; (api) every input of the media, address, certificate, embedding and backup settings with invalid values (wrong IPv4 forms, unknown mode, `acme`, `http`, an IP as domain, missing or malformed credentials, an unknown credential field, a bad e-mail, custom without a certificate, malformed and too many origins, schedules, time zones, retention, remotes, rclone configurations, age keys); a change without the `X-StudioFlow` header.
+- Expect: the first four wrong codes are 403 `setup_code_invalid`, the fifth is refused as well, then even the right code is 429 with `Retry-After` and no account exists, while another address is not locked out; every settings route is 401 without the admin session; the internal route is not part of the public site (the Regie page answers) and the API answers Caddy with 200 on the compose network; every invalid input is 400 `validation_failed` with the field and a code, `GET /api/settings` is equal before and after, and a change without the CSRF header is 403.
+
+**E2E-OPS-39** · P0 · pw — Secrets of the settings are never shown
+- Steps: save DNS credentials and an rclone configuration with known probe values; read every settings answer, the `server_settings` table, the logs of all services and the audit details.
+- Expect: the probe values appear nowhere (the table holds them encrypted); the answers say only that a credential is stored.
+
+**E2E-OPS-40** · P0 · pw — An uploaded certificate
+- Steps: upload a certificate and key made for the test (`support/selfsigned.ts`): nonsense, a key that is no key, a key with a password, a key of another certificate, a certificate for another name, an expired and a not-yet-valid one, the mode `custom` without a stored certificate, then a valid one; look at the certificate Caddy presents for the name; switch back to the local certificate.
+- Expect: each invalid upload is 400 with its field and code (`certificate_invalid`, `private_key_invalid`, `private_key_encrypted`, `certificate_key_mismatch`, `certificate_name_mismatch`, `certificate_expired`, `certificate_not_yet_valid`); the valid one is stored (subject, names and fingerprint in the answer, the key never) and, with the mode `custom`, presented by Caddy for its name (fingerprint equal) within seconds; after switching back the certificate of the local CA is presented and the stored one is gone.
+
+**E2E-OPS-41** · P0 · pw — The media address
+- Steps: save another IPv4 address; start a test and end it; start a test with an invalid address; start a test and save while a broadcast is live.
+- Expect: `livekit.yaml` holds the saved address and the key pair of the secrets volume; after a save LiveKit restarts and announces the new IP (`nodeIP` in its log), `GET /api/settings/status` says it runs the saved file, and the address devices open does not change; a test announces the candidate (two tokens for two throw-away participants) and ending it brings the saved address back; an invalid address is 400; both a test and a save are refused with 409 `broadcast_live` while a broadcast is live and change nothing.
+
+**E2E-OPS-42** · P0 · pw — The address the page was opened with (issue 44)
+- Steps: log in and fetch the LiveKit tokens of the Regie and of the output through `https://localhost`, `https://127.0.0.1` and the LAN address of the machine; read the CSP of `/`, `/join/` and `/o/…` under the same names; open the Regie by `https://127.0.0.1:<port>` in a browser and watch its WebSockets and CSP violations.
+- Expect: the `url` of every token is `wss://<the Host of the request>`; every page names that host in `connect-src` (`https://` and `wss://`); the Regie opens its LiveKit connection on `wss://127.0.0.1:<port>/rtc` and no Content-Security-Policy violation or console error occurs.
+
+**E2E-OPS-43** · P0 · pw — Every link starts with the saved address
+- Steps: `GET /api/system/info`; create a laptop invite link and an output link; read the invites of the snapshot.
+- Expect: all of them start with `https://<saved domain or media address>:<HTTPS port>` (no suffix for 443), never with a built-in default; the shipped `appsettings.json` holds no `StudioFlow:PublicBaseUrl`, `StudioFlow:FrameAncestors` or `LiveKit:PublicUrl` override (API unit test).
+
+**E2E-WIZ-01** · P0 · pw — The first-run wizard
+- Steps: on a fresh stack open the Regie by the IP address and walk through the four steps: the account with the setup code from the API log; the media address (the suggestion, an invalid value, a wrong address with “Test connection”, the right one); the address (local certificate, a domain; the warning for paired devices); the embedding origins (an invalid line, valid lines).
+- Expect: each step is saved when continued and refused with the reason when invalid; the media test runs a real WebRTC round trip through the media server and names the stage that failed (signalling, transport, data) for a wrong address; the last step shows “The server is ready” and opens the Regie; the wizard never opens again (`/setup/server` leads to `/`); the settings are what the steps saved and Caddy and LiveKit run them.
+
+**E2E-WIZ-02** · P0 · pw — Server settings
+- Steps: production menu › Server settings: the services, the sections, a provider's own credential fields, the warning for paired devices, an own certificate (a key with a password is refused with the reason, then a valid one is served), switching back, “Back up now”.
+- Expect: the three services show “runs the saved settings”; the sections show the saved values; a provider shows its fields and needs the domain; the uploaded certificate is presented by Caddy for its name and shown as “Current certificate”; after switching back it is not presented any more; a new manual backup appears in the list.
+
+API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when automatic backups are off or everything is recent, and Degraded (never an exception) for a missing, unreadable or empty status file, a failed last run, a last backup or off-site copy older than `Backup:WarnAfterHours`, a missing off-site target and no backup after the grace period; `/health/ready` prints `Healthy` alone or the status followed by one line per failing check. The other tests of the server settings are in `ServerSettingsServiceTests` (Core), `ServerSettingsApiTests` and `LiveKitTokenIssuerTests` (Web), the Studio tests in `apps/studio/src/app/server/` and the media round trip in `packages/media-client`.
 
 ### 2.12 SYNC – Realtime protocol and state model
 
@@ -2834,7 +2888,7 @@ Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 day
 
 **`pr-title.yml`** checks that the title of every pull request follows Conventional Commits (`feat: ...`, `fix(api): ...`; the job is named “Conventional Commits title”). **`release.yml`** runs after `ci.yml` succeeded on a push to `main`: it builds the three images once, pushes them as `sha-<7>`, runs the smoke set again against those pushed images, scans them with Trivy, moves `:main`, and maintains the release (release-please); the release job tags the same images with the version. Details: `docs/releasing.md`. Its smoke run uses the same harness as `e2e-smoke` (`E2E_NO_BUILD=1` with the pulled images tagged `sf-e2e-1-api` and `sf-e2e-1-caddy`).
 
-**Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on Windows with `setup.ps1`, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices or a dedicated runner (latency, real phones), which stay manual (section 4).
+**Not automated yet** (they need runners or tools that do not exist yet): the weekly stage (P2, `soak` 60 minutes, `@netns`, `@linux-netem` in full, OPS on a Windows runner, a11y sweep), the release stage (all of the above green and the manual checklist MAN-01…MAN-13 signed), the catalogue check (6.5), and the tests that need real devices or a dedicated runner (latency, real phones), which stay manual (section 4).
 
 ### 6.2 Smoke set (`@smoke`, P0)
 
@@ -2917,7 +2971,7 @@ Pin: invariants **I-CSP** (see `E2E-AUTH-09`); the exact policy is to be written
 **GAP-15 · No test hooks defined.** The spec defines no `data-testid`, no read-only state objects, no storage key for the sender credentials. Pinned names are in 1.7 (`regie-ready`, `connection-state`, `data-tally`, `data-state`, `data-slate`, `window.__sfStudio|__sfSender`); spec 12 adds: tests prefer roles, labels and visible (English) text; the two global state views exist only with the opt-in flag `localStorage['studioflow.testHooks'] = '1'`; there is no `window.__sfOutput` (only the output page's `?latency=1` aid). Storage keys as implemented: sender localStorage `studioflow.sender.v1` (credentials, before pairing the redeem client id), `studioflow.sender.settings`, sessionStorage `studioflow.pairing`; Regie localStorage `studioflow.studio`, `studioflow.layout`, `studioflow.transition`; the opt-in flag `studioflow.testHooks`.
 
 **GAP-16 · Compose, `.env.example` and scripts differ from spec 10.** Spec 10 names the TLS modes `dns | internal | public`; `.env.example`, `setup.sh` and `docker-compose.yml` implement `internal | acme | custom | dns-cloudflare | dns-infomaniak | dns-hetzner | dns-desec | dns-route53 | dns-gandi | dns-ovh`. Spec 10 lists ports 80/443; the compose file also publishes 443/udp (HTTP/3) and has no port variables. The compose file adds `STUDIOFLOW_PUBLIC_BASE_URL`, `STUDIOFLOW_SUBNET`, `STUDIOFLOW_TRUSTED_PROXIES`, `STUDIOFLOW_MAX_UPLOAD`, `STUDIOFLOW_MAX_BODY`, `STUDIOFLOW_HSTS_MAX_AGE` and the profiles `chaos` (netem) and `tools`.
-Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags.
+Pin: the implemented names are authoritative for the tests (`.env.example` is the contract, as its header says) and spec 10 is to be updated; services `caddy`, `api`, `livekit`, `postgres`; healthchecks as implemented (`pg_isready`, API `/health/live`, LiveKit `GET /` on 7880, Caddy loopback `:2020/healthz`); `setup.sh --non-interactive` with the documented flags. *Superseded by issue #27: the stack is zero-config, the TLS modes are `internal`, `custom` and `dns-<provider>` chosen in the wizard, and there is no script (section 2.11).*
 
 **GAP-17 · Client-supplied ids and source references.** Spec 4.1 defines id shapes, 4.3 lets `ReplaceSceneItems` carry client item ids and "may keep a source that was deleted later" – without saying how the server distinguishes "kept" from "newly introduced".
 Pin: client-supplied item ids must match `^itm_[a-z0-9]{4,40}$` (clients generate them; server-generated ids use 16 base32 characters); a source reference must parse as `parseSourceRef`; an unknown source is allowed only if that exact item (same id and source) already exists in the scene.
@@ -2962,7 +3016,7 @@ Pin: battery 0–100, loss 0–100, bitrate/fps/size ≥ 0 else `null`; ≤ 10 s
 Pin: trimmed 1–140 chars; always 202; delivered only to a connected device, never queued; the Regie shows a toast when the device is offline.
 
 **GAP-31 · Operations scripts rely on API commands the spec does not define.** Spec 5 names only `reset-admin` (before issue 4: `hash-password`); `update.sh`, `restore.sh` (and `infra/scripts/common.sh`) call `dotnet Opten.StudioFlow.Web.dll broadcast-status` and interpret exit 0 as "none live", 3 as "live", anything else as "unknown".
-Pin: the API image provides `broadcast-status` (exit codes 0/3, other = unknown) and spec 5 is extended; the scripts refuse while live or unknown unless `--force`; backup folders contain `database.dump`, `media.tar.gz`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt`, `SHA256SUMS` (suffix `-2` on a name clash); `restore.sh <dir>` verifies the checksums, writes a `…_vor-restore` safety backup, restores the database into a new database before swapping, and asks for confirmation unless `--yes`.
+Pin: the API image provides `broadcast-status` (exit codes 0/3, other = unknown) and spec 5 is extended; the scripts refuse while live or unknown unless `--force`; backup folders contain `database.dump`, `media.tar.gz`, `keys.tar.gz`, `caddy_data.tar.gz`, `backup-info.txt`, `SHA256SUMS` (suffix `-2` on a name clash); `restore.sh <dir>` verifies the checksums, writes a `…_vor-restore` safety backup, restores the database into a new database before swapping, and asks for confirmation unless `--yes`. *Superseded by issue #27: the same behaviour is `docker compose run --rm backup restore <folder>`, which refuses while the API holds database connections (E2E-OPS-08); the update has no script and does not check the broadcast (E2E-OPS-09).*
 
 **GAP-32 · Database outage behaviour.** Spec 5 defines `/health/live` and `/health/ready` but not behaviour of writes and hubs while PostgreSQL is down.
 Pin: writes/reads needing the DB → 503 ProblemDetails within 5 s (`T-DB-OUTAGE`: connect timeout 3 s, command timeout 5 s; once an outage is known every request fails at once instead of waiting for its own timeout and queueing behind device reports; options `Database:ConnectTimeout`, `Database:CommandTimeout`, `Database:ProbeInterval`, `Database:StartupWait`; BUG-21); in-memory hubs stay up; readiness recovers by itself (probe connection every second) without restarting the API.
