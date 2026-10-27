@@ -138,13 +138,18 @@ export async function adoptProduction(api: AdminApi, base: Production, dto: Pick
   };
 }
 
-/** Best-effort reset after a test: broadcast, devices, IP list, pending knocks. */
+/**
+ * Best-effort reset after a test: broadcast, devices, IP list, pending knocks and the name. The API cannot delete a
+ * production, so every one stays on the shared stack and is listed in the production menu of the Regie; a test that renamed
+ * its production must not leave a name that makes a locator of a later test ambiguous (“... renamed”).
+ */
 export async function cleanupProduction(production: Production): Promise<void> {
   const { api, id } = production;
   const config = stackConfig();
   try {
     await api.resetBroadcast(id);
     const snapshot = (await api.getSnapshot(id)).body;
+    if (snapshot.production.name !== production.name) await api.updateProduction(id, { name: production.name });
     for (const device of snapshot.devices ?? []) await api.deleteDevice(id, device.id);
     if ((await api.getOutputSettings(id)).body.allowedIps?.length) await api.updateOutputAccess(id, { allowedIps: [] });
     const publicApi = new PublicApi(config.apiDirect);
