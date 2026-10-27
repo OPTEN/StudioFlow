@@ -20,7 +20,7 @@ decision deliberately: update this file and the code together.
 3. Hard switch without migration: only test and demo stacks exist. New volume names, database and user `studioflow`,
    new `localStorage` keys `studioflow.*` (paired phones pair again).
 4. The GitHub repository rename `OPTEN/FlowStudio` → `OPTEN/StudioFlow` is a repository setting and is left to the
-   owner; GitHub redirects the old URLs afterwards.
+   owner; GitHub redirects the old URLs afterwards. Done by the owner on 2026-10-27.
 
 ## #5 Open source
 
@@ -188,7 +188,8 @@ Pinned details (implementation, spec 4.2.2):
 ## #15 CI
 
 1. E2E smoke runs in every PR and on `main`.
-2. The nightly full run runs on working days only while the repository is private.
+2. The nightly full run runs on working days only while the repository is private. Changed by the owner on 2026-10-27:
+   the full run is on demand only (`workflow_dispatch`); it runs before a release.
 3. No self-hosted runner; device and latency tests stay manual.
 
 ## #16 Backups and dependency updates

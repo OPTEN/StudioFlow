@@ -35,7 +35,7 @@ The README logo block, for the README rewrite:
 |---|---|---|
 | **README rewrite** (English, logo, features, quick start, architecture, configuration, roadmap, badges) | The quick start describes the zero-config install of #27. The current `README.md` is the status note of the planning phase and links private claude.ai artifacts | Write it after #27; use the logo block above; link `releases/latest/download/studioflow-prototype.html` and the files of section 1 |
 | `studioflow.opten.ch` in the installation material | `setup.sh`, `setup.ps1`, `.env.example` and `docs/runbook.md` (sections 2 to 4: lines about the example domain, the DNS record and the deSEC CNAME, including the zone `opten.ch`) are rewritten by #27 | After #27 replace the example by `studioflow.example.com` (the zone `opten.ch` by `example.com`): `grep -rn "opten\.ch" --exclude-dir=node_modules --exclude-dir=.git .` should then only find the history documents |
-| Defaults of `tools/github-repo-settings.sh` (`OPTEN/FlowStudio`) | The repository rename (#3) is an owner step | Change the default with the rename |
+| Defaults of `tools/github-repo-settings.sh` | Done: the default is `OPTEN/StudioFlow` since the rename (2026-10-27) | |
 
 ## 3. Review of the internal material
 
@@ -72,7 +72,7 @@ Reviewed on 2026-10-26. "Recommendation" is what we suggest; the owner decides.
   that research following the policy is not pursued legally are commitments of OPTEN AG.
 - **Confirm the copyright line** ("OPTEN AG and the StudioFlow contributors", year 2026) in `NOTICE` and decide whether
   contributions need more than the Apache-2.0 section 5 licence (a CLA or DCO sign-off is not required by the files).
-- **Repository rename** `OPTEN/FlowStudio` to `OPTEN/StudioFlow` (#3), `RELEASE_PLEASE_TOKEN`, branch protection and
+- **Repository rename** `OPTEN/FlowStudio` to `OPTEN/StudioFlow` (#3): done on 2026-10-27. `RELEASE_PLEASE_TOKEN`, branch protection and
   squash merging: `docs/releasing.md` section 8, `tools/github-repo-settings.sh`.
 - **Licence texts in the shipped frontends (done).** The Angular production build writes `3rdpartylicenses.txt` next to,
   not inside, `dist/<app>/browser`; the web image now copies it to `/3rdpartylicenses.txt` (Regie) and

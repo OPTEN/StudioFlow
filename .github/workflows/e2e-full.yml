@@ -3,8 +3,9 @@
 # (restarts, lockout, network impairment with the netem sidecar, which needs NET_ADMIN on the runner), the Pixel 7,
 # iPhone 15 and iPad descriptors, Firefox and WebKit.
 #
-# Nightly on working days only (the repository is private, so Actions minutes are limited), and on demand. A failed run
-# creates an issue labelled ci-failure, or adds a comment to the one that is still open.
+# On demand only (Actions > E2E full > Run workflow): the owner removed the nightly schedule on 2026-10-27. Run it before a
+# release and after larger changes. A failed run creates an issue labelled ci-failure, or adds a comment to the one that
+# is still open.
 
 name: E2E full
 
@@ -130,5 +131,5 @@ jobs:
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
           else
-            gh issue create --title 'Nightly E2E run failed' --label ci-failure --body "$body"
+            gh issue create --title 'Full E2E run failed' --label ci-failure --body "$body"
           fi

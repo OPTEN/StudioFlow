@@ -671,7 +671,7 @@ are third-party images with a fixed version in the Compose file.
 1. Sign in to the registry, as long as the repository is private (section 14.5): `docker login ghcr.io` with your
    GitHub user name and a personal access token (classic) with the scope `read:packages`.
 2. Download `studioflow-X.Y.Z.tar.gz` and `SHA256SUMS` from the GitHub release (the release page, or
-   `gh release download vX.Y.Z --repo OPTEN/FlowStudio`), check them and unpack the folder:
+   `gh release download vX.Y.Z --repo OPTEN/StudioFlow`), check them and unpack the folder:
 
    ```bash
    sha256sum -c SHA256SUMS --ignore-missing     # macOS: shasum -a 256 -c ...
@@ -831,7 +831,7 @@ merging. Test with real phones once (`docs/testing.md`, section 4).
 restore (section 7) and is its own issue. Take a backup before updating to a new 17.x as usual.
 
 **Reports.** Every pull request run has the job `audit` (`npm audit`, `dotnet list package --vulnerable`; warnings and a
-summary, never a failure). The nightly **E2E full** run scans the images with Trivy and puts the result in its summary.
+summary, never a failure). The **E2E full** run (on demand) scans the images with Trivy and puts the result in its summary.
 
 **Checking the configuration** (needs Node.js): `npx --yes --package renovate -- renovate-config-validator --strict`, and
 what Renovate finds in the repository: `npx --yes renovate --platform=local --dry-run=extract` (with the repository
