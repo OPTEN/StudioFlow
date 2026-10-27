@@ -174,7 +174,8 @@ public sealed class ServerConfigApplier(
             dnsArguments,
             certificate,
             settings?.FrameAncestorList ?? [],
-            install.HstsMaxAge);
+            install.HstsMaxAge ?? InstallOptions.PublicHstsMaxAge,
+            install.HstsMaxAge ?? InstallOptions.LocalHstsMaxAge);
     }
 
     /// <summary>The credentials in the order of the provider snippet; null when they are missing or cannot be decrypted.</summary>

@@ -46,8 +46,14 @@ public sealed class InstallOptions : IValidatedOptions
     /// <summary><c>Install:BackupConfigPath</c>: the volume with the backup settings and the "back up now" request. Empty: the backup service is not configured.</summary>
     public string BackupConfigPath { get; set; } = "";
 
-    /// <summary><c>Install:HstsMaxAge</c>: seconds of the HSTS header of sites with a public or uploaded certificate (default one year; sites with the local CA always use one hour).</summary>
-    public int HstsMaxAge { get; set; } = 31_536_000;
+    /// <summary>HSTS seconds of a site with a public or uploaded certificate when <see cref="HstsMaxAge"/> is not set: one year.</summary>
+    public const int PublicHstsMaxAge = 31_536_000;
+
+    /// <summary>HSTS seconds of a site with the local CA when <see cref="HstsMaxAge"/> is not set: one hour (a browser must not remember "https only" for a year for a certificate it can only trust by hand).</summary>
+    public const int LocalHstsMaxAge = 3_600;
+
+    /// <summary><c>Install:HstsMaxAge</c> (<c>STUDIOFLOW_HSTS_MAX_AGE</c>): seconds of the HSTS header of every site. Not set: <see cref="PublicHstsMaxAge"/> for a site with a public or uploaded certificate and <see cref="LocalHstsMaxAge"/> for one with the local CA.</summary>
+    public int? HstsMaxAge { get; set; }
 
     /// <inheritdoc />
     public IEnumerable<string> Validate() =>
@@ -56,7 +62,7 @@ public sealed class InstallOptions : IValidatedOptions
         .. OptionRules.Count("Install:LiveKitRtcTcpPort", LiveKitRtcTcpPort, 1, 65_535),
         .. OptionRules.Count("Install:LiveKitRtcUdpPort", LiveKitRtcUdpPort, 1, 65_535),
         .. OptionRules.Count("Install:LiveKitEmptyTimeout", LiveKitEmptyTimeout, 1, 86_400),
-        .. OptionRules.Count("Install:HstsMaxAge", HstsMaxAge, 0, 63_072_000),
+        .. (HstsMaxAge is { } hsts ? OptionRules.Count("Install:HstsMaxAge", hsts, 0, 63_072_000) : []),
         .. ValidUrl("Install:CaddyAdminUrl", CaddyAdminUrl),
     ];
 
