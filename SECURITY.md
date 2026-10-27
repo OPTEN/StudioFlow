@@ -10,8 +10,7 @@ Security Advisories:
 
 1. Open the **Security** tab of this repository.
 2. Choose **Report a vulnerability** (direct link:
-   <https://github.com/OPTEN/FlowStudio/security/advisories/new>; the address follows the repository when it is renamed
-   to `StudioFlow`).
+   <https://github.com/OPTEN/StudioFlow/security/advisories/new>).
 3. Fill in the form. Only the maintainers can read the report.
 
 If the form is not available to you, open a public issue that says only "I need a private channel for a security

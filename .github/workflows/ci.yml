@@ -5,7 +5,7 @@
 # the owner: pull request required, lint-typecheck, unit-web, api, contracts, the three build-images jobs and e2e-smoke
 # green; the audit job is a report and is not required). Timing budget and layout: docs/testing.md, section 6.1.
 # Runners are pinned to ubuntu-24.04: ubuntu-latest is moving to a newer image, and a CI run must not change with it.
-# The nightly full run is .github/workflows/e2e-full.yml.
+# The full run (on demand) is .github/workflows/e2e-full.yml.
 #
 # Every action is pinned by commit SHA (supply chain); the comment names the release.
 

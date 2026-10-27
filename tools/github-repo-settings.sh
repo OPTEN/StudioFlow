@@ -7,7 +7,7 @@
 # The repository rename (#3) is not done here.
 set -euo pipefail
 
-repo="${1:-OPTEN/FlowStudio}"
+repo="${1:-OPTEN/StudioFlow}"
 
 echo "1/4 Pull requests: squash merge only, the PR title becomes the commit message"
 gh api -X PATCH "repos/$repo" --silent \
