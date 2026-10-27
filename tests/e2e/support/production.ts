@@ -118,6 +118,26 @@ export async function createProduction(api: AdminApi, label: string): Promise<Pr
   return production;
 }
 
+/**
+ * A production that exists already (a duplicate, an import) as a {@link Production} of the test: its scenes and output
+ * link are read, so the pairing helpers, the output page and the cleanup work on it like on the fixture's own.
+ */
+export async function adoptProduction(api: AdminApi, base: Production, dto: Pick<ProductionDto, 'id' | 'slug' | 'name'>): Promise<Production> {
+  const snapshot = (await api.getSnapshot(dto.id)).body;
+  const settings = (await api.getOutputSettings(dto.id)).body;
+  return {
+    ...base,
+    id: dto.id,
+    slug: dto.slug,
+    name: dto.name,
+    outputUrl: settings.url,
+    outputKey: parseOutputUrl(settings.url).key,
+    sceneIds: snapshot.scenes.map((scene) => scene.id),
+    pendingRequests: [],
+    snapshot: async () => (await api.getSnapshot(dto.id)).body as never,
+  };
+}
+
 /** Best-effort reset after a test: broadcast, devices, IP list, pending knocks. */
 export async function cleanupProduction(production: Production): Promise<void> {
   const { api, id } = production;

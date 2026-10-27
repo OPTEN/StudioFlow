@@ -1,5 +1,6 @@
 import type {
   AddSceneItemRequest,
+  AuditPageDto,
   ChangeCanvasRequest,
   AllocateSlotRequest,
   AssetDto,
@@ -17,6 +18,7 @@ import type {
   DeviceSessionDto,
   DeviceSlotDto,
   DeviceTelemetryMessage,
+  ImportPreviewDto,
   InviteDto,
   LiveKitTokenDto,
   OutputLinkDto,
@@ -24,6 +26,7 @@ import type {
   OutputSettingsDto,
   OutputSnapshot,
   PairingRequestCreatedDto,
+  PlaceholderChangeDto,
   PairingRequestStatusDto,
   ProductionChangesDto,
   ProductionDto,
@@ -54,7 +57,9 @@ export type {
   AssetDto,
   DeviceCredentialsDto,
   DeviceDto,
+  ImportPreviewDto,
   InviteDto,
+  PlaceholderChangeDto,
   OutputSettingsDto,
   ProductionDto,
   ProductionSnapshot,
@@ -198,6 +203,29 @@ export class AdminApi extends HttpApi {
   acknowledgeIncident = (id: string, incidentId: string) => this.call<Problem>('POST', `/api/productions/${id}/incidents/${incidentId}/ack`);
   getStudioLiveKitToken = (id: string) => this.call<LiveKitTokenDto & Problem>('POST', `/api/productions/${id}/livekit-token`);
   getTelemetry = (id: string) => this.call<DeviceTelemetryMessage[] & Problem>('GET', `/api/productions/${id}/telemetry`);
+
+  // --- duplicate, export, import (issue #14) ----------------------------------------------------------------------
+  duplicateProduction = (id: string, body: { name: string | null }) => this.call<ProductionDto & Problem>('POST', `/api/productions/${id}/duplicate`, { json: body });
+  /** The ZIP file as `raw.body` (a streamed response; `timeoutMs` for big files). */
+  exportProduction = (id: string, options: CallOptions = {}) => this.call<unknown>('GET', `/api/productions/${id}/export`, { timeoutMs: 120_000, ...options });
+  /** `dryRun` answers with the preview (`ImportPreviewDto`), otherwise with the new production. */
+  importProduction = (file: { fileName: string; contentType?: string; data: Buffer }, options: CallOptions & { dryRun?: boolean } = {}) => {
+    const { dryRun, ...call } = options;
+    const { body, contentType } = multipart([{ name: 'file', fileName: file.fileName, contentType: file.contentType ?? 'application/zip', data: file.data }]);
+    return this.call<(ImportPreviewDto | (ProductionDto & { placeholders?: never })) & Problem>('POST', '/api/productions/import', {
+      timeoutMs: 120_000,
+      ...call,
+      query: dryRun ? { dryRun: 'true' } : undefined,
+      body,
+      headers: { 'Content-Type': contentType, ...call.headers },
+    });
+  };
+  assignPlaceholder = (id: string, placeholderId: string, sourceId: string) =>
+    this.call<PlaceholderChangeDto & Problem>('PUT', `/api/productions/${id}/placeholders/${placeholderId}/assignment`, { json: { sourceId } });
+  removePlaceholder = (id: string, placeholderId: string) => this.call<PlaceholderChangeDto & Problem>('DELETE', `/api/productions/${id}/placeholders/${placeholderId}`);
+
+  // --- audit ------------------------------------------------------------------------------------------------------
+  listAudit = (query: { production?: string; action?: string; limit?: number } = {}) => this.call<AuditPageDto & Problem>('GET', '/api/audit/', { query });
 
   // --- scenes -----------------------------------------------------------------------------------------------------
   createScene = (id: string, body: Loose<CreateSceneRequest>) => this.call<SceneDto & Problem>('POST', `/api/productions/${id}/scenes/`, { json: body });
