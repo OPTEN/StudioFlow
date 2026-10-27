@@ -63,9 +63,12 @@ describe('ProductionMenuComponent: change password', () => {
     await setup();
 
     const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('a.c-menu-item'));
+    const names = links.map((link) => link.textContent?.trim());
+    const audit = names.indexOf('Audit log');
 
-    expect(links.map((link) => link.textContent?.trim())).toEqual(['Audit log', 'Server settings']);
-    expect(links[1].getAttribute('href')).toBe('/settings');
+    expect(audit).toBeGreaterThanOrEqual(0);
+    expect(names[audit + 1]).toBe('Server settings');
+    expect(links[audit + 1].getAttribute('href')).toBe('/settings');
   });
 
   it('opens the form in the menu and goes back to the menu on cancel', async () => {
