@@ -49,7 +49,11 @@
   document.addEventListener(
     'playing',
     () => {
-      if (probe.activationAtFirstPlay === undefined) probe.activationAtFirstPlay = navigator.userActivation ? navigator.userActivation.hasBeenActive : null;
+      if (probe.activationAtFirstPlay === undefined) {
+        probe.activationAtFirstPlay = navigator.userActivation ? navigator.userActivation.hasBeenActive : null;
+        // Tells the test without a call into the page (a call would be a gesture): see FIRST_PLAY_MARKER in probe.ts.
+        console.log('__outProbe firstPlay ' + JSON.stringify({ activation: probe.activationAtFirstPlay }));
+      }
       if (probe.firstPlayAt === undefined) probe.firstPlayAt = epoch();
     },
     true,
