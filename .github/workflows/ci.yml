@@ -232,7 +232,8 @@ jobs:
   e2e-smoke:
     needs: build-images
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # About 10 minutes normally; the rest is room for a slow apt mirror (run 40495799429 spent 10 minutes in apt).
+    timeout-minutes: 30
     env:
       E2E_STACK: 1
       # Use the images from build-images instead of building them again.
@@ -288,14 +289,29 @@ jobs:
             fi
             docker tag "studioflow-$image" "sf-e2e-${E2E_STACK}-$image"
           done
-      # The harness generates its sample media (JPEG, WebP, MP4/H.264, WebM/VP8) with ffmpeg and stops when it cannot.
+      # The harness generates its sample media (JPEG, WebP, MP4/H.264, WebM/VP8) with ffmpeg once and keeps them in the
+      # output folder of the stack. They are cached by the hash of the generator, so ffmpeg (a slow apt install on a busy
+      # mirror) is only installed when the generator changed.
+      - name: Restore the sample media
+        id: samples-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/e2e/.output/sf-e2e-${{ env.E2E_STACK }}/assets
+          key: e2e-samples-${{ runner.os }}-${{ hashFiles('tests/e2e/support/media-samples.ts') }}
       - name: Install ffmpeg
+        if: steps.samples-cache.outputs.cache-hit != 'true'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       # E2E-NET-00 needs sch_netem, ifb and act_mirred in the kernel of the runner; without them the netem tests are skipped.
       - name: Load the network emulation modules
         run: tests/e2e/load-netem-modules.sh
       - name: Start the stack
         run: tests/e2e/stack.sh up "$E2E_STACK"
+      - name: Save the sample media
+        if: steps.samples-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/e2e/.output/sf-e2e-${{ env.E2E_STACK }}/assets
+          key: e2e-samples-${{ runner.os }}-${{ hashFiles('tests/e2e/support/media-samples.ts') }}
       - name: Run the smoke tests
         run: E2E_REUSE_STACK=1 tests/e2e/stack.sh test "$E2E_STACK" --project=smoke
       # The harness collects the container logs (docker compose logs) in .output/<project>/logs when the run ends.
