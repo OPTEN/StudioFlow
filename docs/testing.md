@@ -1916,7 +1916,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **UNIT-DOCK-05** · P2 · ng — Pairing dock placement
 - Steps: open the pairing dock with `src`/`insp` in different zones, hidden, in left/right/bottom.
-- Expect: it replaces the first visible of `src`/`insp` in zone order and hides both while open; if both are hidden it sits next to `st`; closing restores the stored layout unchanged.
+- Expect: it replaces the first visible of `src`/`insp` in zone order and hides both while open, and the Audio dock when that is in the same zone (wherever it stands in the zone; in another zone it stays); if both are hidden it sits next to `st`; closing restores the stored layout unchanged.
 
 **UNIT-DOCK-06** · P2 · ng — Narrow mode
 - Steps: viewport ≤ 1180 px with a custom layout, then widen.
@@ -1946,9 +1946,9 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 - Steps: `addInitScript` sets `studioflow.layout` to each value of UNIT-DOCK-02, then load.
 - Expect: default layout is shown, no console errors, subsequent changes overwrite the broken value with valid JSON; `studioflow.studio` invalid (`"yes"`, `"2"`) → Studio Mode off; `studioflow.transition` invalid → fade 0.3 s.
 
-**E2E-DOCK-07** · P1 · pw — Pairing dock takes the place of Sources and Properties
+**E2E-DOCK-07** · P1 · pw — Pairing dock takes the place of Sources, Properties and Audio
 - Steps: “Pair device” with default and custom layouts; close with the X button and with Escape.
-- Expect: dock “Pair device” appears in the slot of the first of Sources/Properties and those two are hidden meanwhile; closing restores them and returns focus to “Pair device”; knock cards show in Stations while the pairing dock is closed and in the pairing dock side column while it is open.
+- Expect: dock “Pair device” appears in the slot of the first of Sources/Properties and those two are hidden meanwhile, and so is the Audio dock of the same zone (the default layout shows Scenes, Pair device, Stations; with Audio in another zone it stays); closing restores them and returns focus to “Pair device”; knock cards show in Stations while the pairing dock is closed and in the pairing dock side column while it is open.
 
 **E2E-DOCK-08** · P1 · pw — Studio Mode persistence and layout stability
 - Steps: toggle Studio Mode with a custom layout; reload; second context.

@@ -254,7 +254,12 @@ export function pairSlot(layout: DockLayout): { zone: DockZone; index: number } 
   return { zone: stationsZone, index: list.includes('st') ? list.indexOf('st') : list.length };
 }
 
-/** Docks shown per zone, with the pairing dock in place of Sources and Properties while it is open. */
+/**
+ * Docks shown per zone, with the pairing dock in place of Sources and Properties while it is open. The Audio dock steps
+ * aside as well when it sits in the same zone: the pairing dock needs about the width it has next to Scenes and Stations
+ * (its texts and the check code wrap and the tabs scroll out of sight when it is narrower), and the zone has no room for
+ * five docks.
+ */
 export function visibleZones(
   layout: DockLayout,
   pairingOpen: boolean,
@@ -263,12 +268,19 @@ export function visibleZones(
   const result: Record<DockZone, DockSlotId[]> = { left: [], bottom: [], right: [] };
   const slot = pairingOpen ? pairSlot(layout) : null;
   for (const zone of DOCK_ZONES) {
-    let list: DockSlotId[] = layout.zones[zone].filter(shown);
-    if (slot) {
-      list = list.filter((id) => id !== 'src' && id !== 'insp');
-      if (slot.zone === zone) {
-        list.splice(Math.min(slot.index, list.length), 0, 'pair');
-      }
+    const docks: DockSlotId[] = layout.zones[zone].filter(shown);
+    if (!slot) {
+      result[zone] = docks;
+      continue;
+    }
+    const inSlotZone = slot.zone === zone;
+    const makesRoom = (id: DockSlotId): boolean =>
+      id === 'src' || id === 'insp' || (inSlotZone && id === 'audio');
+    const list = docks.filter((id) => !makesRoom(id));
+    if (inSlotZone) {
+      // The slot counts the docks before it, including the ones that make room now.
+      const index = docks.slice(0, slot.index).filter((id) => !makesRoom(id)).length;
+      list.splice(Math.min(index, list.length), 0, 'pair');
     }
     result[zone] = list;
   }

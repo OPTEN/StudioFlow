@@ -710,7 +710,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-07 [regie] the pairing dock takes the place of Sources and Properties; closing (X button, Escape) restores them and the focus; knock cards move with it',
+    'E2E-DOCK-07 [regie] the pairing dock takes the place of Sources and Properties (and of the Audio dock in the same zone); closing (X button, Escape) restores them and the focus; knock cards move with it',
     t.p1,
     async ({ regie, production }) => {
       const page = regie.page;
@@ -737,11 +737,12 @@ test.describe('REGIE docks', () => {
       await expectOrder(
         page,
         'bottom',
-        ['scenes', 'pair', 'st', 'audio'],
-        'Pair device sits where Sources was',
+        ['scenes', 'pair', 'st'],
+        'Pair device sits where Sources was, and Audio gives way so that it keeps its width',
       );
       await expect(dock(page, 'src')).toHaveCount(0);
       await expect(dock(page, 'insp')).toHaveCount(0);
+      await expect(dock(page, 'audio')).toHaveCount(0);
       await expect(
         card(regie.pairingDock()),
         'the knock card is in the pairing dock side column',
@@ -769,7 +770,7 @@ test.describe('REGIE docks', () => {
       await regie.pairButton().click();
       await expect(regie.pairingDock()).toBeVisible();
       await expectOrder(page, 'right', ['pair']);
-      await expectOrder(page, 'bottom', ['scenes', 'st', 'audio']);
+      await expectOrder(page, 'bottom', ['scenes', 'st', 'audio'], 'Audio stays: it is not in the zone of the pairing dock');
       await regie.closePairing();
       await expectOrder(page, 'right', ['insp', 'src']);
       expect(await stored(page)).toMatchObject({
