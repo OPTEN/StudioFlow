@@ -178,7 +178,11 @@ public sealed record UpdateAddressRequest(
 /// <summary>Uploads the certificate and the private key of the mode <c>custom</c> (PEM text).</summary>
 /// <param name="CertificatePem">The certificate chain, leaf first.</param>
 /// <param name="PrivateKeyPem">The unencrypted private key.</param>
-public sealed record UploadCertificateRequest(string CertificatePem, string PrivateKeyPem);
+/// <param name="Domain">
+/// The host name the certificate must cover, when the address is about to change to it (the certificate comes first, the
+/// address second); omitted: the saved domain, and no check of the name while there is none.
+/// </param>
+public sealed record UploadCertificateRequest(string CertificatePem, string PrivateKeyPem, string? Domain = null);
 
 /// <summary>Sets the origins that may embed the output.</summary>
 /// <param name="Origins">Origins such as <c>https://proxy.example.ch</c> or <c>https://*.example.com</c>.</param>

@@ -9448,6 +9448,13 @@
           "privateKeyPem": {
             "type": "string",
             "description": "The unencrypted private key."
+          },
+          "domain": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The host name the certificate must cover, when the address is about to change to it (the certificate comes first, the\naddress second); omitted: the saved domain, and no check of the name while there is none."
           }
         },
         "description": "Uploads the certificate and the private key of the mode `custom` (PEM text)."
