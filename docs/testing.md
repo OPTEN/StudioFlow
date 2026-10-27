@@ -1430,7 +1430,7 @@ log “K2 reconnecting”, “K2 is back, was gone for 9 s”, “S1 sharing sto
 
 **E2E-SRC-12** · P1 · pw — Telemetry in station details and `/monitoring`
 - Steps: three stations live; open `/monitoring`; apply `lk.netem({lossPct:5})` on LiveKit and a battery stub (level 0.15) on one phone.
-- Expect: table rows for every station with bitrate (Mbit/s), fps, resolution, packet loss (%), RTT (ms), battery (%), network type, tech check level; values update within 3 s; problem stations sorted first (same order as the Stations dock); low battery < 20 % shows “Battery 15%” in the amber state colour on the station line; battery column empty (not 0) where the API is missing (Firefox/WebKit).
+- Expect: table rows for every station with bitrate (Mbit/s), fps, resolution, encoding (codec, issue #12), packet loss (%), RTT (ms), battery (%), network type, tech check level; values update within 3 s; problem stations sorted first (same order as the Stations dock); low battery < 20 % shows “Battery 15%” in the amber state colour on the station line; battery column empty (not 0) where the API is missing (Firefox/WebKit).
 
 **E2E-SRC-13** · P1 · pw — Technical check
 - Steps: first start of a sender runs the check; repeat with `net.cdpThrottle` upload 2 Mbit/s and 4 Mbit/s; run again on demand ([GAP-27] button).

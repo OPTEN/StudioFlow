@@ -462,30 +462,35 @@ test.describe('REGIE monitoring page', () => {
       const rowOf = (name: string) => mon.locator('tbody tr').filter({ hasText: name });
       await expect(mon.locator('.c-mon__summary')).toContainText('3 stations');
 
-      // Columns after the station name: State, Sources, Resolution, fps, Mbit/s, Loss, RTT, Battery, Network, Tech check, Last seen.
+      // Columns after the station name (a th): State, Sources, Resolution, fps, Mbit/s, Encoding, Loss, RTT, Battery, Network, Tech check, Last seen.
+      // Addressed by name, and the headings are checked once, so a new column cannot silently shift the cells again.
+      const COL = { loss: 6, rtt: 7, battery: 8, network: 9, tech: 10, seen: 11 } as const;
+      await expect(mon.locator('thead th')).toHaveText([
+        'Station', 'State', 'Sources', 'Resolution', 'fps', 'Mbit/s', 'Encoding', 'Loss', 'RTT', 'Battery', 'Network', 'Tech check', 'Last seen',
+      ]);
       const one = rowOf('Phone One');
       await expect(cell(one, 0)).toContainText('sending');
       await expect(cell(one, 1)).toContainText('K1');
       await expect(cell(one, 2)).toHaveText('1280 × 720');
       await expect(cell(one, 3)).toHaveText('30');
       await expect(cell(one, 4)).toHaveText('2.5');
-      await expect(cell(one, 5)).toHaveText('0.5%');
-      await expect(cell(one, 6)).toHaveText('42 ms');
-      await expect(cell(one, 7)).toHaveText('15%');
-      await expect(cell(one, 7), 'a low battery is amber').toHaveClass(/c-state--warn/);
-      await expect(cell(one, 8)).toHaveText('Wi-Fi');
-      await expect(cell(one, 10)).toContainText(/\d+ s ago/);
+      await expect(cell(one, COL.loss)).toHaveText('0.5%');
+      await expect(cell(one, COL.rtt)).toHaveText('42 ms');
+      await expect(cell(one, COL.battery)).toHaveText('15%');
+      await expect(cell(one, COL.battery), 'a low battery is amber').toHaveClass(/c-state--warn/);
+      await expect(cell(one, COL.network)).toHaveText('Wi-Fi');
+      await expect(cell(one, COL.seen)).toContainText(/\d+ s ago/);
       const lap = rowOf('Laptop Lea');
       await expect(cell(lap, 1)).toContainText('S1');
       await expect(cell(lap, 2)).toHaveText('1920 × 1080');
       await expect(cell(lap, 4)).toHaveText('4.0');
-      await expect(cell(lap, 7), 'no battery value: a dash, not 0').toHaveText('–');
-      await expect(cell(lap, 8)).toHaveText('Ethernet');
+      await expect(cell(lap, COL.battery), 'no battery value: a dash, not 0').toHaveText('–');
+      await expect(cell(lap, COL.network)).toHaveText('Ethernet');
       const two = rowOf('Phone Two');
       await expect(cell(two, 0), 'the paused camera is a problem').toContainText('reconnecting');
-      await expect(cell(two, 7)).toHaveText('80% · charging');
-      await expect(cell(two, 7)).not.toHaveClass(/c-state--warn/);
-      await expect(cell(two, 8)).toHaveText('4G');
+      await expect(cell(two, COL.battery)).toHaveText('80% · charging');
+      await expect(cell(two, COL.battery)).not.toHaveClass(/c-state--warn/);
+      await expect(cell(two, COL.network)).toHaveText('4G');
 
       // The default order is the order of the Stations dock (problems first).
       const names = (locator: Locator) =>
@@ -545,9 +550,9 @@ test.describe('REGIE monitoring page', () => {
       await expect(cell(rowOf('Phone One'), 2)).toHaveText('1920 × 1080', { timeout: 6000 });
       await expect(cell(rowOf('Phone One'), 3)).toHaveText('24');
       await expect(cell(rowOf('Phone One'), 4)).toHaveText('3.5');
-      await expect(cell(rowOf('Phone One'), 5)).toHaveText('2.5%');
-      await expect(cell(rowOf('Phone One'), 6)).toHaveText('77 ms');
-      await expect(cell(rowOf('Phone One'), 7)).toHaveText('14%');
+      await expect(cell(rowOf('Phone One'), COL.loss)).toHaveText('2.5%');
+      await expect(cell(rowOf('Phone One'), COL.rtt)).toHaveText('77 ms');
+      await expect(cell(rowOf('Phone One'), COL.battery)).toHaveText('14%');
       // Phone Two comes back: the state word changes.
       await report(hubTwo, [{ slot: 'camera' }], {
         batteryPct: 80,
