@@ -470,6 +470,49 @@ describe('AuditPageComponent', () => {
       expect(control<HTMLSelectElement>('#audit-production').value).toBe('prd_a');
     });
 
+    it('waits for the list of productions when "Last broadcast" is chosen before it arrived (issue 32)', async () => {
+      fixture = TestBed.createComponent(AuditPageComponent);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await flushMicrotasks();
+      const productions = http.expectOne('/api/productions');
+      audit().flush(page([auditEntryFixture(1)]));
+      await render();
+
+      // The operator is quicker than the list: there is no active production to choose yet, and that is no answer.
+      choose(control('#audit-range'), 'lastBroadcast');
+      await flushMicrotasks();
+      fixture.detectChanges();
+      http.expectNone((request) => request.url === '/api/audit');
+      expect(element.querySelector('.c-hint[role=status]')).toBeNull();
+
+      productions.flush(PRODUCTIONS);
+      await flushMicrotasks();
+      fixture.detectChanges();
+      const lookup = audit();
+      expect(params(lookup)['production']).toEqual(['prd_a']);
+      expect(params(lookup)['action']).toEqual(['broadcast.started', 'broadcast.ended']);
+      lookup.flush(
+        page([
+          auditEntryFixture(9, {
+            action: 'broadcast.ended',
+            at: '2026-10-26T12:00:00.500000+00:00',
+          }),
+          auditEntryFixture(5, {
+            action: 'broadcast.started',
+            at: '2026-10-26T11:00:00.250000+00:00',
+          }),
+        ]),
+      );
+      await render();
+      audit().flush(page([auditEntryFixture(9), auditEntryFixture(5)]));
+      await render();
+
+      expect(rows()).toHaveLength(2);
+      expect(control<HTMLSelectElement>('#audit-production').value).toBe('prd_a');
+      expect(element.querySelector('.c-hint[role=status]')).toBeNull();
+    });
+
     it('says so when the production had no broadcast yet and shows no entries', async () => {
       await open([auditEntryFixture(1)]);
       choose(control('#audit-production'), 'prd_b');
