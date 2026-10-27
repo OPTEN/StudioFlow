@@ -44,9 +44,12 @@
   customManagers: [
     {
       customType: 'regex',
-      description: 'DNS modules of Caddy: --with <go module>@<version> in the xcaddy build (infra/caddy/Dockerfile).',
+      description: 'DNS modules of Caddy and the Go modules raised above Caddy: --with <go module>@<version> and --replace <go module>=<go module>@<version> in the xcaddy build (infra/caddy/Dockerfile).',
       managerFilePatterns: ['/^infra/caddy/Dockerfile$/'],
-      matchStrings: ['--with (?<depName>[^@\\s]+)@(?<currentValue>v[^\\s\\\\]+)'],
+      matchStrings: [
+        '--with (?<depName>[^@\\s]+)@(?<currentValue>v[^\\s\\\\]+)',
+        '--replace (?<depName>[^=\\s]+)=[^@\\s]+@(?<currentValue>v[^\\s\\\\]+)',
+      ],
       datasourceTemplate: 'go',
     },
     {

@@ -31,8 +31,12 @@ RUN STUDIOFLOW_REVISION="$STUDIOFLOW_REVISION" npm run build:output \
  && test -s dist/output/index.html
 
 # --- 2. Caddy with DNS provider modules (each pinned to an exact tag) --------------------------------------------
+# golang.org/x/net is raised above the version of Caddy 2.11.7 (v0.59.0, HTTP/2 SETTINGS flood CVE-2026-78669, fixed in
+# v0.60.0). It is no Caddy module, so --replace (a go.mod directive without the blank import that --with adds). Drop the
+# line once a Caddy release brings v0.60.0 or newer.
 FROM caddy:${CADDY_VERSION}-builder-alpine AS caddy
 RUN xcaddy build \
+    --replace golang.org/x/net=golang.org/x/net@v0.61.0 \
     --with github.com/caddy-dns/cloudflare@v0.2.4 \
     --with github.com/caddy-dns/infomaniak@v1.0.2 \
     --with github.com/caddy-dns/hetzner/v2@v2.0.1 \
@@ -43,6 +47,9 @@ RUN xcaddy build \
 
 # --- 3. Runtime ----------------------------------------------------------------------------------------------------
 FROM caddy:${CADDY_VERSION}-alpine
+
+# The upstream image is rebuilt rarely: take the fixes of the Alpine packages (brotli, curl ...) that were published since.
+RUN apk upgrade --no-cache
 
 # Unprivileged user: compose sets net.ipv4.ip_unprivileged_port_start=0 (Docker's default since 20.10), so the
 # container binds 80/443 without any capability and compose drops them all.
