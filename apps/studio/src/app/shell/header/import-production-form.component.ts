@@ -33,7 +33,7 @@ export const IMPORT_ACCEPT = '.zip,application/zip,application/x-zip-compressed'
  * (name, scenes, texts, media and size, the cameras and screens that become placeholders, warnings) and import it as a
  * new production. Nothing is created before the operator presses “Import”: the first upload is a dry run
  * (`?dryRun=true`) that only reads the file. The imported production does not become the active one. A refused file
- * (not a StudioFlow file, from a newer version, too large, limit of productions) is explained under the button, in the
+ * (not a StudioFlow file, from a newer version, too large, more scenes than a production may have) is explained under the button, in the
  * active language. Reports `done` with the new production and `cancelled` when the operator backs out.
  */
 @Component({

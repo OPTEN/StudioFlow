@@ -46,7 +46,6 @@ public sealed class ProductionService(
         {
             await using var unit = data.Create();
             var existing = await unit.Productions.ListAsync(cancellationToken);
-            RequireRoomForAnother(existing);
             var slugs = existing.Select(p => p.Slug).ToHashSet(StringComparer.Ordinal);
             var slug = Slugs.MakeUnique(Slugs.FromName(name), slugs.Contains);
             var now = clock.StorageNow();
@@ -84,20 +83,11 @@ public sealed class ProductionService(
                 existing = await unit.Productions.ListAsync(cancellationToken);
             }
 
-            RequireRoomForAnother(existing);
             return await create(existing);
         }
         finally
         {
             tenantGate.Release();
-        }
-    }
-
-    private static void RequireRoomForAnother(IReadOnlyList<Production> existing)
-    {
-        if (existing.Count >= Production.MaxPerTenant)
-        {
-            throw StudioFlowException.LimitReached($"An installation can have at most {Production.MaxPerTenant} productions.");
         }
     }
 
