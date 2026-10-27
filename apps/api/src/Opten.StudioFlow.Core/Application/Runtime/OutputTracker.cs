@@ -7,12 +7,19 @@ namespace Opten.StudioFlow.Core.Application.Runtime;
 /// and the last report of the link. A link is <c>connected</c> with at least one page and a rendering report within
 /// <c>Output:StaleAfter</c> (6 s), <c>stale</c> when connected without a fresh rendering report, <c>none</c> without a
 /// page. The summary over all links is connected when any link is, else stale when any link is. Latency, fps, dropped
-/// frames and decoder counts are published at most every <c>Output:MetricsInterval</c> (5 s) unless they change by more
-/// than 20 % (a changed decoder count: at once).
+/// frames and decoder counts are published at most every <c>Output:MetricsInterval</c> (5 s) unless latency or fps
+/// change by more than 20 %, the dropped share by 5 percentage points or more (the point from which the Regie warns), or
+/// a decoder count changes (at once).
 /// </summary>
 public sealed class OutputTracker(OutputMonitorOptions options)
 {
     private const double SignificantChange = 0.2;
+
+    /// <summary>
+    /// A dropped share is a percentage, so it is compared in points: relative to its own value 0 % to 1.7 % would be a
+    /// change of 170 % and every flicker would reach all Regie clients at once. Five points are what the Regie warns at.
+    /// </summary>
+    private const double SignificantDroppedPoints = 5;
 
     /// <summary>More streams than this are not a reading but a bug (a production has at most 32 items per scene).</summary>
     private const int MaxStreams = 1000;
@@ -166,10 +173,10 @@ public sealed class OutputTracker(OutputMonitorOptions options)
         }
 
         var significant = IsSignificant(previous.LatencyMs, current.LatencyMs) || IsSignificant(previous.Fps, current.Fps)
-            || IsSignificant(previous.DroppedFramesPct, current.DroppedFramesPct)
+            || IsSignificantDrop(previous.DroppedFramesPct, current.DroppedFramesPct)
             || previous.SoftwareDecodedStreams != current.SoftwareDecodedStreams || previous.DecodedStreams != current.DecodedStreams
             || current.Links.Zip(previous.Links).Any(pair => IsSignificant(pair.Second.LatencyMs, pair.First.LatencyMs) || IsSignificant(pair.Second.Fps, pair.First.Fps)
-                || IsSignificant(pair.Second.DroppedFramesPct, pair.First.DroppedFramesPct)
+                || IsSignificantDrop(pair.Second.DroppedFramesPct, pair.First.DroppedFramesPct)
                 || pair.Second.SoftwareDecodedStreams != pair.First.SoftwareDecodedStreams || pair.Second.DecodedStreams != pair.First.DecodedStreams);
         var intervalPassed = lastMetricsPublishedAt is not { } at || now - at >= options.MetricsInterval;
         if (!structural && !significant && !intervalPassed)
@@ -223,6 +230,16 @@ public sealed class OutputTracker(OutputMonitorOptions options)
     private static bool MetricsDiffer(int? latency, double? fps, double? dropped, int? decoded, int? software, int? previousLatency, double? previousFps, double? previousDropped, int? previousDecoded, int? previousSoftware) =>
         latency != previousLatency || !Nullable.Equals(fps, previousFps) || !Nullable.Equals(dropped, previousDropped)
         || decoded != previousDecoded || software != previousSoftware;
+
+    private static bool IsSignificantDrop(double? before, double? after)
+    {
+        if (before is null || after is null)
+        {
+            return before.HasValue != after.HasValue;
+        }
+
+        return Math.Abs(after.Value - before.Value) >= SignificantDroppedPoints;
+    }
 
     private static bool IsSignificant(double? before, double? after)
     {
