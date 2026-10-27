@@ -370,8 +370,8 @@ test.describe('Regie semantics', () => {
     // every button has an accessible name
     for (const button of await page.getByRole('button').all()) await expect(button).toHaveAccessibleName(/\S/);
     for (const control of await page.locator('input:visible, select:visible, textarea:visible').all()) await expect(control).toHaveAccessibleName(/\S/);
-    // toast: polite live region
-    await regie.clickScene('Break');
+    // toast: polite live region (in Studio Mode a click on a scene only loads the Preview; the toast comes with the program switch)
+    await regie.take().click();
     await expect(regie.toast().first()).toBeVisible();
     expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic') }))).toEqual({ role: 'status', live: 'polite', atomic: 'true' });
     expect(await page.evaluate(() => document.documentElement.lang), 'the toast text is announced in the language of the document').toBe('en');
