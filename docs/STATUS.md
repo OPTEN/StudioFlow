@@ -1,6 +1,6 @@
-# Status and handover (2026-10-26)
+# Status and handover (2026-10-27)
 
-Interim state of the work on issues #3–#27, written so a new session can continue without the previous conversation.
+Interim state of the work on issues #3–#58, written so a new session can continue without the previous conversation.
 Decisions for all open questions: `docs/decisions.md`. Binding i18n design: `docs/architecture/i18n-design.md`,
 rules in `docs/i18n.md`.
 
@@ -46,9 +46,9 @@ The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What 
 | Issue | State | Commits |
 |---|---|---|
 | #3 rename to StudioFlow | done, closed (GitHub repo rename is an owner step, #23) | afb7f85, 8207a0a |
-| #15 CI | implemented; green run pending (#20) | 8a67eb5 .. 0734128, b09d8bf |
-| #18 releases | implemented, three images (api, caddy, backup); unverified on GitHub (#23) | 9071db5 .. 2ddf143, 85945af |
-| #16 backups + Renovate | merged; backup image in the release pipeline | 7ae0be2 .. 796eb9a, 85945af |
+| #15 CI | done, closed | 8a67eb5 .. 0734128, b09d8bf |
+| #18 releases | implemented, four images; Release runs green on GitHub; closes with 0.1.0 | 9071db5 .. 2ddf143, 85945af |
+| #16 backups + Renovate | done, closed | 7ae0be2 .. 796eb9a, 85945af |
 | #6 English/i18n | P1-P4 merged; P7 (E2E texts) is #20 | 2790d08 .. 0a96f06 |
 | #21 flaky latency test | done, closed | 772f79b |
 | #22 CI runtime | parallel image matrix (about 25 s per image with cache), verified hand-over, netem loader, `ubuntu-24.04`; all non-E2E jobs green on GitHub | 001eb98, 3aa750d |
@@ -60,27 +60,40 @@ The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What 
 | #11 camera control | done, closed (tap-to-focus and pinch-zoom not built; real-phone test MAN-14 is manual) | up to bead7c6 |
 | #13 text and lower thirds | done, closed | d59adbd .. 65288d3 |
 | #17 audit log | done, closed | 401f95d .. 921e9e2 |
-| #27 zero-config install | done: `docker compose up -d` and the first-run wizard, no host scripts, port 8443, four images; the runbook, the spec section 10 and the catalogue are rewritten | see the merge of the branch |
+| #27 zero-config install | done: `docker compose up -d` and the first-run wizard, no host scripts, port 8443, four images; the runbook, the spec section 10 and the catalogue are rewritten | merge of the branch, a1f43cc |
+| #14 duplicate, export, import | done, closed | up to 6cb2d16, c55dcc0 |
+| #15 #16 #22 #30 #31 #32 | done, closed (CI green on GitHub) | see the issues |
+| #34–#47 (bugs of the first full E2E run) | done, closed | 5984f88 and parents, 0143f5d (#45) |
+| #44 #49 #51 #52 #58 | done, closed | a1f43cc, 6f57aab, 8987a8f, bd1da4a |
+| #33 API crash under 30 parallel connections | fix pushed (GSS encryption off, 4f4eb7a); stays open until CI runs prove it | 4f4eb7a |
+| #12 performance | done: measured, budget in `docs/testing.md` 5.1, H.264 screens, pausing, visibility, still thumbnails, hold-frame budget, load warnings, `perf` project and `perf.yml` | up to af40467 (also #39, #50) |
+| #7 audio | done: audio station, microphones, screen and video sound, mixer, Audio dock, Web Audio on the output page, "Audio blocked" | the 25 commits after af40467 |
 
-## In progress (2026-10-26, evening, cloud session)
+## Interim state (2026-10-27, work stopped on request)
 
-The work of the earlier Windows worktrees for #7 and #12 never reached `origin` and was started again. Sonnet agents in
-worktrees, each with its own numbered E2E stack: #7 audio (stack 2), #12 performance (stack 3), #27 zero-config install
-(stack 4), #14 duplicate/export/import (stack 5), the flaky E2E bugs #30-#33 (stack 1), and a package without a stack
-for the #18 version display plus the #5 groundwork (licence, notices, CONTRIBUTING/SECURITY/code of conduct, logo,
-standalone prototype, secret scan). The coordinator reviews and merges each branch into `main` (rebase, checks,
-fast-forward, push).
+The owner asked to finish the issues in progress (#7, #12), record the state and start nothing new. Not started:
+#5 README, #48 LiveKit 1.13.11, #53–#56, the final full-application test and the 0.1.0 release (release PR #29 stays
+open; #18 closes with that release).
 
-Release pipeline: the first green Release run is 40403463907 (13a0e00): images, signatures, scans, smoke on the pushed
-images, `:main`, and release PR #29, now "release 0.1.0" (`initial-version` in `release-please-config.json`). The backup
-image no longer ships `gosu` (critical CVE in its Go runtime).
+What was checked before the stop:
+
+- #12: unit tests of all packages, Angular tests, API tests, the E2E specs of the agent on stack 3. Not re-run after the
+  last fixes: E2E-OUT-20, E2E-SWITCH-02 `[output, fade]` and `[fade pixels]`, E2E-SWITCH-09 `[output, fade]`;
+  `.github/workflows/perf.yml` (manual) has never run on GitHub.
+- #7: rebased onto #12 (conflicts in the output report, screen capture options, output page, header chip, sender
+  station, spec, runbook and `docs/testing.md`; both sides kept, the audio section is now 2.20). After the rebase:
+  `npm run check`, `format:check`, all Vitest, Angular and API tests, contracts, `infra/release/check.mjs` green. The
+  audio E2E specs (`tests/e2e/specs/audio/`) were green on the agent's stack 2 before the rebase and were not run
+  again after it. `screenCaptureOptions(frameRate, withAudio)` now builds the capture options of both features.
+- The migration `AddAudioMixer` was regenerated after `AddServerSettings` (#27); a database from before both is covered
+  by `AudioMixerMigrationTests`.
 
 ## Remaining plan
 
-1. Finish and merge #20, #7, #9, #8, #12; close #6 with #20 and #15 once CI is green.
-2. #14 duplicate/export (needs the data of #7, #8, #9, #13), #27 zero-config install (changes the E2E harness and all
-   ops scripts, so after the agents above), then #5 README (describes the #27 install).
-3. Final full-application test and bug fixing as described in "Working mode".
+1. Watch CI and Release on `main` after the #7 merge; fix what is red.
+2. #48 LiveKit 1.13.11, #53–#56, #5 README (describes the #27 install).
+3. Run the full E2E workflow (`e2e-full.yml`, on demand) and `perf.yml`; fix and file what fails.
+4. Merge release PR #29 (0.1.0) once everything is green; check the release run (images, signatures, scan, smoke).
 
 ## Follow-ups for the final pass
 
@@ -98,10 +111,10 @@ image no longer ships `gosu` (critical CVE in its Go runtime).
 
 ## Known open bugs
 
-- #30-#33 E2E tests that fail or flake under load on GitHub runners (outage detection > 3 s, fade end not observed,
-  empty audit rows, socket hang-up in the concurrent redeem test)
-- #23 owner actions (the owner runs `tools/github-repo-settings.sh`; repo rename later)
-- Fixed and recorded: #21 #24 #25 #26
+- #33 (open until CI proves the fix), #48, #53, #54, #55, #56; #23 owner actions; #5 README; #18 closes with 0.1.0.
+- E2E-I18N-11: the settings popover covers the button the test clicks (test bug, no issue yet).
+- `AuditExportStreamingTests` times out in the cloud container now and then (green on GitHub).
+- `docs/testing.md` has two sections numbered 2.17 (I18N and FMT).
 
 ## Gotchas learned
 
