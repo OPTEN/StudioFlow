@@ -532,16 +532,34 @@ export interface RecordedAnimation {
    * without the jitter of the callbacks (`endedAt - startedAt` also contains the wait for the first frame and the promise).
    */
   elapsedMs: number | null;
+  /**
+   * Time between the frame in which the animation was reported finished and the frame before it (null without a finish).
+   * An end can only be seen in a frame, so `elapsedMs` exceeds the duration by less than this gap: one frame on a quiet
+   * machine, a stall of the page on a loaded one.
+   */
+  frameGapMs: number | null;
   cancelled: boolean;
 }
 
 /** Wraps `Element.prototype.animate` of the page (idempotent) so tests can see every Web Animation the app starts. */
 export async function installAnimationHook(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const w = window as unknown as { __sfAnims?: unknown[]; __sfAnimHook?: boolean };
+    const w = window as unknown as {
+      __sfAnims?: unknown[];
+      __sfAnimHook?: boolean;
+      __sfLastFrame?: number;
+      __sfPreviousFrame?: number;
+    };
     if (w.__sfAnimHook) return;
     w.__sfAnimHook = true;
     w.__sfAnims = [];
+    // Frame times of the document timeline (the last two), to tell the gap before the frame that reported an end.
+    const trackFrame = (time: number) => {
+      w.__sfPreviousFrame = w.__sfLastFrame;
+      w.__sfLastFrame = time;
+      requestAnimationFrame(trackFrame);
+    };
+    requestAnimationFrame(trackFrame);
     const original = Element.prototype.animate;
     Element.prototype.animate = function (
       this: Element,
@@ -569,6 +587,7 @@ export async function installAnimationHook(page: Page): Promise<void> {
         startedAt: Date.now(),
         endedAt: null as number | null,
         elapsedMs: null as number | null,
+        frameGapMs: null as number | null,
         timelineStart: null as number | null,
         cancelled: false,
       };
@@ -582,8 +601,11 @@ export async function installAnimationHook(page: Page): Promise<void> {
       animation.finished.then(
         () => {
           record.endedAt = Date.now();
-          if (record.timelineStart !== null)
-            record.elapsedMs = Number(document.timeline.currentTime) - record.timelineStart;
+          const frame = Number(document.timeline.currentTime);
+          if (record.timelineStart !== null) record.elapsedMs = frame - record.timelineStart;
+          // The promise may run before or after the frame's own callback: the frame before this one is the latest earlier time.
+          const before = (w.__sfLastFrame ?? Infinity) < frame - 0.5 ? w.__sfLastFrame : w.__sfPreviousFrame;
+          if (before !== undefined) record.frameGapMs = frame - before;
         },
         () => {
           record.cancelled = true;
@@ -609,6 +631,17 @@ export async function opacityFades(page: Page, sceneId?: string): Promise<Record
     (entry) =>
       entry.properties.includes('opacity') && (sceneId === undefined || entry.sceneId === sceneId),
   );
+}
+
+/**
+ * How far (ms) a finished fade ran from its `duration` (`T-FADE`), without the stall of the page: the end is reported in
+ * the first frame after it, so the part of that frame gap beyond one 60 Hz frame is not the fade's error. Call it for a
+ * fade that finished (`endedAt` is set).
+ */
+export function fadeDeviationMs(fade: RecordedAnimation): number {
+  const measured = fade.elapsedMs ?? fade.endedAt! - fade.startedAt;
+  const frameStall = Math.max(0, (fade.frameGapMs ?? 0) - 1000 / 60);
+  return Math.max(0, Math.abs(measured - fade.duration!) - frameStall);
 }
 
 /** The flash of the Program monitor (outline animation of `.c-monitor__screen`). */

@@ -9,6 +9,7 @@ import {
   COLOR,
   SCENES,
   animationsOf,
+  fadeDeviationMs,
   flashes,
   hex,
   installAnimationHook,
@@ -175,7 +176,7 @@ test.describe('REGIE switching', () => {
         type: 'measurement',
         description: `output fade 300 ms measured ${measured} ms`,
       });
-      expect(Math.abs(measured - 300), 'T-FADE hard limit ± 50 ms').toBeLessThanOrEqual(50);
+      expect(fadeDeviationMs(fade), 'T-FADE hard limit ± 50 ms').toBeLessThanOrEqual(50);
       await expect
         .poll(async () =>
           (await outputLayers(output.page)).map((layer) => `${layer.sceneId}:${layer.opacity}`),
@@ -324,10 +325,7 @@ test.describe('REGIE switching', () => {
       const fade = (await opacityFades(output.page, b))[0]!;
       expect(fade.duration).toBe(2000);
       expect(await opacityFades(output.page), 'only one fade ran').toHaveLength(1);
-      expect(
-        Math.abs((fade.elapsedMs ?? fade.endedAt! - fade.startedAt) - 2000),
-        'T-FADE',
-      ).toBeLessThanOrEqual(50);
+      expect(fadeDeviationMs(fade), 'T-FADE hard limit ± 50 ms').toBeLessThanOrEqual(50);
       await expect
         .poll(async () =>
           (await outputLayers(output.page)).map((layer) => `${layer.sceneId}:${layer.opacity}`),
