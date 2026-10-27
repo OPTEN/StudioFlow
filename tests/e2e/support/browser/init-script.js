@@ -9,21 +9,51 @@
   const sfNet = (window.__sfNet = {
     sockets: new Set(),
     peers: new Set(),
+    /** True from cut() to restore(): the page cannot open a socket or a peer connection (the Wi-Fi is off). */
+    blocked: false,
     counts() {
       return {
         sockets: [...this.sockets].filter((s) => s.readyState <= 1).length,
         peers: [...this.peers].filter((p) => p.connectionState !== 'closed').length,
       };
     },
-    /** Closes every tracked socket and peer connection: what "the Wi-Fi is gone" does to the page. */
+    /**
+     * Closes every tracked socket and peer connection: what "the Wi-Fi is gone" does to the page. The close handshake
+     * has to finish before the browser goes offline (the harness sets `setOffline` afterwards): a Close frame that the
+     * emulated offline mode swallows leaves the server with a silent loss (`T-DETECT-SILENT`) instead of the clean
+     * close that `T-DETECT-CLEAN` measures. New sockets and peers are refused from the first moment, so the apps
+     * cannot reconnect in the gap before the browser is offline. Resolves with `Date.now()` of the cut and whether
+     * every socket closed within a second.
+     */
     cut() {
-      for (const s of this.sockets) { try { s.close(); } catch (e) {} }
+      this.blocked = true;
+      const at = Date.now();
+      const closed = [...this.sockets].map(
+        (s) =>
+          new Promise((resolve) => {
+            if (s.readyState === 3) return resolve();
+            s.addEventListener('close', () => resolve());
+            try { s.close(); } catch (e) { resolve(); }
+          }),
+      );
       for (const p of this.peers) { try { p.close(); } catch (e) {} }
+      return new Promise((resolve) => {
+        const giveUp = setTimeout(() => resolve({ at, clean: false }), 1000);
+        Promise.all(closed).then(() => {
+          clearTimeout(giveUp);
+          resolve({ at, clean: true });
+        });
+      });
+    },
+    /** Lets the page open sockets and peer connections again. */
+    restore() {
+      this.blocked = false;
     },
   });
   const track = (Native, registry) =>
     new Proxy(Native, {
       construct(target, args, newTarget) {
+        if (sfNet.blocked) throw new DOMException('The network is gone (net.cut)', 'NetworkError');
         const instance = Reflect.construct(target, args, newTarget);
         registry.add(instance);
         if (instance.addEventListener && target.name === 'WebSocket') instance.addEventListener('close', () => registry.delete(instance));

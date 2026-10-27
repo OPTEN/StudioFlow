@@ -97,10 +97,12 @@ test.describe('SRC outage, phone', () => {
       await sleep(3000);
       expect((await readPlaces(regie.page)).header.text).toBe('All 3 stations ok');
 
-      const startedAt = Date.now();
-      await net.cut(k1.phone.context);
-      const outage = await waitForOutage(regie, 'K1', 'reconnecting', { inProgram: true, inPreview: true, startedAt, timeoutMs: 15_000 });
-      testInfo.annotations.push({ type: 'measurement', description: `T-DETECT-CLEAN (net.cut -> six places): ${outage.elapsedMs} ms` });
+      // The clock starts when the phone's connections were closed (inside its page) and stops at the DOM read of the Regie
+      // that shows all six places; the round trips of the harness (CDP, polling) are not part of the product's time.
+      const cut = await net.cut(k1.phone.context);
+      expect(cut.clean, 'the phone closed its WebSockets with a close handshake: a clean loss, not a silent one').toBe(true);
+      const outage = await waitForOutage(regie, 'K1', 'reconnecting', { inProgram: true, inPreview: true, startedAt: cut.at, timeoutMs: 15_000 });
+      testInfo.annotations.push({ type: 'measurement', description: `T-DETECT-CLEAN (connections closed -> six places): ${outage.elapsedMs} ms` });
       await testInfo.attach('detect-clean.json', { body: JSON.stringify({ elapsedMs: outage.elapsedMs, detail: outage.check.detail }, null, 2), contentType: 'application/json' });
       expect(outage.elapsedMs, 'T-DETECT-CLEAN hard limit 3 s').toBeLessThanOrEqual(THRESHOLD.detectCleanHardMs);
 
