@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 82.21 82.21" width="82.21" height="82.21" role="img" aria-label="OPTEN">
+  <title>OPTEN</title>
+  <!-- The OPTEN symbol, redrawn from the logo on https://www.opten.ch as one colour (currentColor). OPTEN AG trademark, not covered by the
+       licence of the code (see THIRD_PARTY_NOTICES.md, section "Trademarks"). The same shapes are inlined as sfIcon="opten". -->
+  <circle cx="49.03" cy="39" r="3" fill="currentColor"/>
+  <path fill="currentColor" d="M40.21,0V.05a41.09,41.09,0,1,0,42,42h0V0Zm-2.9,47.81H31.47v-13H28.4V30.16h8.91ZM49,48a9,9,0,1,1,9-9A9,9,0,0,1,49,48Z"/>
+</svg>

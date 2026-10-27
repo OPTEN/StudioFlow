@@ -65,6 +65,17 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('.c-header__clock')?.textContent).toMatch(/^\d\d:\d\d:\d\d$/);
   });
 
+  it('links "Sponsored by OPTEN" to opten.ch in a new tab', async () => {
+    await setup();
+    const link = element.querySelector<HTMLAnchorElement>('a.c-header__sponsor');
+    expect(link?.getAttribute('href')).toBe('https://www.opten.ch');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noopener');
+    expect(link?.getAttribute('aria-label')).toBe('Sponsored by OPTEN');
+    expect(link?.textContent).toContain('Sponsored by');
+    expect(link?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('starts the broadcast', async () => {
     await setup();
     button('Start broadcast').click();

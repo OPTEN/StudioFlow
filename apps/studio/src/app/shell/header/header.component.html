@@ -1,5 +1,19 @@
 <header class="c-header">
   <div class="c-header__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
+  <a
+    class="c-header__sponsor"
+    href="https://www.opten.ch"
+    target="_blank"
+    rel="noopener"
+    data-testid="sponsor"
+    [attr.aria-label]="t('regie.header.sponsor.label')"
+  >
+    <span class="c-header__sponsor-prefix" aria-hidden="true">{{
+      t('regie.header.sponsor.prefix')
+    }}</span>
+    <svg sfIcon="opten"></svg>
+    <span class="c-header__sponsor-name" aria-hidden="true">OPTEN</span>
+  </a>
   <sf-production-menu />
 
   <div class="c-header__right">

@@ -118,4 +118,7 @@ export const regieHeader = {
   'regie.header.production.textPick': '{colour}, colour picker',
   'regie.header.production.textSample': 'Sample of a lower third',
   'regie.header.production.title': 'Title',
+
+  'regie.header.sponsor.label': 'Sponsored by OPTEN',
+  'regie.header.sponsor.prefix': 'Sponsored by',
 } as const satisfies Namespace<'regie.header'>;

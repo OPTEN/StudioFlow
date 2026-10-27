@@ -46,7 +46,9 @@ export type IconName =
   | 'mic'
   | 'headphones'
   // The StudioFlow brand mark "Programm": program frame, two flow chevrons, tally dot (cropped 58 × 42)
-  | 'mark';
+  | 'mark'
+  // The OPTEN logo symbol (sponsor note in the header), one colour, filled
+  | 'opten';
 
 /**
  * Inline SVG icon: `<svg sfIcon="camera" [size]="14"></svg>`. The host element is the `<svg class="c-icon">`
@@ -229,6 +231,13 @@ export type IconName =
         <svg:path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" />
         <svg:path d="M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" />
       }
+      @case ('opten') {
+        <svg:circle class="c-icon__fill" cx="49.03" cy="39" r="3" />
+        <svg:path
+          class="c-icon__fill"
+          d="M40.21,0V.05a41.09,41.09,0,1,0,42,42h0V0Zm-2.9,47.81H31.47v-13H28.4V30.16h8.91ZM49,48a9,9,0,1,1,9-9A9,9,0,0,1,49,48Z"
+        />
+      }
       @case ('mark') {
         <svg:rect
           x="6"
@@ -253,6 +262,7 @@ export type IconName =
   host: {
     class: 'c-icon',
     '[class.c-icon--mark]': "sfIcon() === 'mark'",
+    '[class.c-icon--opten]': "sfIcon() === 'opten'",
     '[attr.viewBox]': 'viewBox()',
     'aria-hidden': 'true',
     focusable: 'false',
@@ -268,6 +278,10 @@ export class IconComponent {
   readonly size = input<number | null>(null);
 
   protected readonly viewBox = computed(() =>
-    this.sfIcon() === 'mark' ? '3 11 58 42' : '0 0 24 24',
+    this.sfIcon() === 'mark'
+      ? '3 11 58 42'
+      : this.sfIcon() === 'opten'
+        ? '0 0 82.21 82.21'
+        : '0 0 24 24',
   );
 }
