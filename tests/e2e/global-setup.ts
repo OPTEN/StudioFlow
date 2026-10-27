@@ -6,7 +6,7 @@ import { generateSamples } from './support/media-samples';
 import { detectLanIPv4 } from './support/network-info';
 import { assertFfmpeg, assertStackFree } from './support/preflight';
 import { exec } from './support/shell';
-import { allHealthy, compose, ensureHealthy, docker } from './support/stack';
+import { allHealthy, compose, ensureHealthy, docker, startEventLog } from './support/stack';
 
 export interface StackState {
   reusedStack: boolean;
@@ -78,6 +78,7 @@ async function recordFreshState(): Promise<StackState['fresh']> {
 export default async function globalSetup(): Promise<void> {
   process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  startEventLog(path.join(OUTPUT_DIR, 'logs', 'docker-events.jsonl'));
   const keepStack = process.env['E2E_KEEP_STACK'] === '1';
   const reuse = process.env['E2E_REUSE_STACK'] === '1';
 

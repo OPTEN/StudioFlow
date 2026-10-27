@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { StackState } from './global-setup';
 import { OUTPUT_DIR, PROJECT, STATE_FILE } from './support/env';
-import { compose, dumpLogs } from './support/stack';
+import { compose, dumpLogs, stopEventLog } from './support/stack';
 
 function log(message: string): void {
   process.stdout.write(`[e2e teardown] ${message}\n`);
@@ -14,6 +14,7 @@ function log(message: string): void {
  */
 export default async function globalTeardown(): Promise<void> {
   const state: StackState | undefined = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) : undefined;
+  stopEventLog();
   try {
     await dumpLogs(path.join(OUTPUT_DIR, 'logs'));
     log(`container logs written to ${path.join(OUTPUT_DIR, 'logs')}`);
