@@ -11,12 +11,13 @@ interface Stream {
   codec_name: string;
   width: number;
   height: number;
-  duration?: string;
 }
 
-async function streamsOf(name: string): Promise<Stream[]> {
-  const probe = await exec('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', path.join(ASSET_DIR, name)], { check: true });
-  return (JSON.parse(probe.stdout) as { streams: Stream[] }).streams;
+/** The streams of a sample and its duration in seconds (a WebM carries it in the container, not in the stream). */
+async function probe(name: string): Promise<{ streams: Stream[]; seconds: number }> {
+  const result = await exec('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', path.join(ASSET_DIR, name)], { check: true });
+  const parsed = JSON.parse(result.stdout) as { streams: Stream[]; format: { duration?: string } };
+  return { streams: parsed.streams, seconds: Number(parsed.format.duration) };
 }
 
 /**
@@ -25,16 +26,16 @@ async function streamsOf(name: string): Promise<Stream[]> {
  */
 test('H-MEDIA-01 the sample media are real pictures and clips made by ffmpeg, not byte-level stubs @smoke @harness', async () => {
   const samples = await generateSamples();
-  const [jpeg] = await streamsOf('photo.jpg');
+  const [jpeg] = (await probe('photo.jpg')).streams;
   expect([jpeg!.codec_name, jpeg!.width, jpeg!.height], 'photo.jpg').toEqual(['mjpeg', 640, 360]);
-  const [webp] = await streamsOf('photo.webp');
+  const [webp] = (await probe('photo.webp')).streams;
   expect([webp!.codec_name, webp!.width, webp!.height], 'photo.webp').toEqual(['webp', 640, 360]);
-  const [mp4] = await streamsOf('clip.mp4');
-  expect([mp4!.codec_name, mp4!.width, mp4!.height], 'clip.mp4 is H.264').toEqual(['h264', 320, 180]);
-  expect(Number(mp4!.duration), 'clip.mp4 runs about 3 s').toBeGreaterThan(2.5);
-  const [webm] = await streamsOf('clip.webm');
-  expect([webm!.codec_name, webm!.width, webm!.height], 'clip.webm is VP8').toEqual(['vp8', 320, 180]);
-  expect(Number(webm!.duration), 'clip.webm runs about 3 s').toBeGreaterThan(2.5);
+  const mp4 = await probe('clip.mp4');
+  expect([mp4.streams[0]!.codec_name, mp4.streams[0]!.width, mp4.streams[0]!.height], 'clip.mp4 is H.264').toEqual(['h264', 320, 180]);
+  expect(mp4.seconds, 'clip.mp4 runs about 3 s').toBeGreaterThan(2.5);
+  const webm = await probe('clip.webm');
+  expect([webm.streams[0]!.codec_name, webm.streams[0]!.width, webm.streams[0]!.height], 'clip.webm is VP8').toEqual(['vp8', 320, 180]);
+  expect(webm.seconds, 'clip.webm runs about 3 s').toBeGreaterThan(2.5);
   // The set the tests upload is what was probed.
   for (const [name, buffer] of [['photo.jpg', samples.photoJpg], ['photo.webp', samples.photoWebp], ['clip.mp4', samples.clipMp4], ['clip.webm', samples.clipWebm]] as const) {
     expect(fs.readFileSync(path.join(ASSET_DIR, name)).equals(buffer), `${name} is the sample the tests use`).toBe(true);
