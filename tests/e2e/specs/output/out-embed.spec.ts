@@ -207,7 +207,8 @@ test.describe('OUT embedding', () => {
       // ... the contain bars of the item stay opaque (#0a0d12) ...
       expect(colorsClose(at(960, 262), '#0a0d12', 8), `contain bar above the picture is opaque, got ${at(960, 262)}`).toBe(true);
       // ... and the picture itself is there.
-      expect(toneOf(at(960, 540)), 'the screen picture in the item').toBe('red');
+      // (off the centre: the label of the fake screen sits there and its glyphs depend on the font)
+      expect(toneOf(at(760, 540)), 'the screen picture in the item').toBe('red');
       // Opaque in the DOM, too: transparency is a property of the page, not of the video.
       const withoutParam = await openProbedOutput({ browser, onCleanup }, production, {}, { embed: { size: { width: 800, height: 600 }, hostBackground: '#ff0000' } });
       await withoutParam.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
