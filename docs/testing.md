@@ -1237,7 +1237,7 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 
 **E2E-SWITCH-04** · P0 · pw — A fade always completes; switches during a fade are ignored
 - Steps: duration 2 s; operator A clicks “Scene B”, 300 ms later clicks “Scene C” and presses key `3`; operator B (separate Regie) clicks “Scene C” 500 ms after A's switch; a REST client posts a switch at once. The three actors work at the same time, each at its moment: a click costs a loaded machine several hundred milliseconds of round trips, and one after the other they ran past the end of the 2 s fade (the REST client got 200 instead of 409 in 12 of 20 runs at a load of 25). The two clicks skip the actionability checks of Playwright (`force`): its “stable” check needs two animation frames of the page and took 1.5 s at a load of 25, so that the click of A reached the Regie 2.7 s after the switch, when the UI guard was gone (A sent two requests in 1 of 36 runs). The guard of the UI follows the event of the switch and not the response of the request (the store of the Regie is fed by events only), so each Regie waits until its Program monitor shows “Scene B” before it is tested with a click; earlier the request goes out and the server refuses it with 409, which is no error toast either. The same holds for Take: the test waits for the Program monitor to show the new scene before it presses Space (a second Take went out 57 ms after the first in 1 of 61 runs, the answer was 409).
-- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running`, is ignored silently (no error toast, no state change); the Take button is `disabled` during the fade; after 2 s program = “Scene B” in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works. The animation reports its own end (`finished`, not cancelled): the renderer's stall guard does not cut a fade short that is only late with its frames (issue 31); `T-FADE` is judged without the frame stall of the page.
+- Expect: A's second click and key send no request (UI guard) and show no error; B's request returns 409 `transition_running` (if a request goes out nevertheless, the Regie shows the notice “A fade is still running”; since issue 55 a Regie sends nothing between its own request and the hub event, and B knows the fade from the event, so B's click is not sent at all); the Take button is `disabled` during the fade; after 2 s program = “Scene B” in both Regies and the output; at no moment does the output show a half state after the fade ended (opacity of the new layer 1, old layer removed); a switch after the fade works. The animation reports its own end (`finished`, not cancelled): the renderer's stall guard does not cut a fade short that is only late with its frames (issue 31); `T-FADE` is judged without the frame stall of the page.
 
 **E2E-SWITCH-05** · P0 · pw — Studio Mode
 - Steps: toggle the `Studio Mode` switch on; click “Scene C”; toggle off; reload with it on.
@@ -1291,7 +1291,7 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 
 **E2E-SWITCH-17** · P1 · pw — Rapid clicking
 - Steps: 20 clicks on alternating scenes in 1 s with a 300 ms fade; both operators clicking.
-- Expect: no error toasts, no exception; successful switches ≤ 4; the final program is the scene of the last accepted click and identical in Regie A, B and the output; no stuck half-fade; Take/stepper re-enable.
+- Expect: no error toasts (the notice “A fade is still running” for a click that the other operator's fade refused with 409 is allowed), no exception; successful switches ≤ 4; the final program is the scene of the last accepted click and identical in Regie A, B and the output; no stuck half-fade; Take/stepper re-enable.
 
 **E2E-SWITCH-18** · P2 · pw — Empty, broken and missing scenes on air
 - Steps: switch to a scene with no items; to a scene containing a blocked source and a deleted source.
@@ -1304,6 +1304,10 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 **E2E-SWITCH-20** · P2 · pw — Keyboard focus rules around Take
 - Steps: Tab to “Take”, press Enter; click on the monitor then Space.
 - Expect: Enter on the focused button takes once (no double take from Space handler); `aria-keyshortcuts="Space"` present; hint “Space” visible.
+
+**E2E-SWITCH-21** · P1 · pw — A second click, key or Take during the request of a switch sends nothing (issue 55)
+- Steps: Cut; the POST of the switch is held back by the test for 1.5 s (route), so request, response and hub event all come late. Studio Mode off: click “Scene B” twice, click “Scene C”, press key `3`. Then (guard released) click “Scene C”. Studio Mode on: click Take, click the disabled Take again (`force`), press Space, with the POST of Take held back the same way. Requests are counted with `page.on('request')`.
+- Expect: exactly one `/program` request for the first group (the double click, the other scene and the key send nothing) and the program becomes “Scene B”; after the event the next switch goes out (two in total); Take is `disabled` while its request is in flight and exactly one `/take` request is sent; Take is enabled again after the event; no error toast, no page error. Unit tests (`switcher.service.spec.ts`): request → event releases, request → error releases and shows the notice, the safety timeout (`IN_FLIGHT_TIMEOUT_MS`, 5 s) releases a lost event, a double Take sends one request.
 
 ### 2.5 SRC – Sources, stations and incidents
 

@@ -1,13 +1,13 @@
-import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   FADE_DURATIONS_MS,
   formatSeconds,
   type FadeDurationMs,
+  type ProductionDto,
   type TransitionDto,
   type TransitionKind,
 } from '@studioflow/scene-model';
-import { ApiError } from '../core/api/api-error';
 import { StudioApiService } from '../core/api/studio-api.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { KeyboardService } from '../core/ui/keyboard.service';
@@ -22,6 +22,15 @@ export function offlineCommandMessage(): string {
 /** Longest time the fade guard blocks switching (longest fade 2 s plus a margin for clock skew). */
 const MAX_GUARD_MS = 2500;
 
+/**
+ * Safety net of the in-flight guard: a switch, preview or Take request blocks the next one until the hub event of its
+ * result arrives (or the request fails). If that event is lost, the guard lets go after this time, so the UI can never
+ * stay locked. The longest fade is 2 s, and the event normally follows the response within a few hundred
+ * milliseconds even under load, so 5 s (the longest fade plus 3 s of slack for a slow hub) is long enough not to
+ * release the guard early and short enough to be harmless when it has to.
+ */
+export const IN_FLIGHT_TIMEOUT_MS = 5000;
+
 /** Message keys of the hint below the control column (prototype `renderMode`). */
 export const SWITCH_HINT_KEYS = {
   studio: 'regie.stage.switch.hintStudio',
@@ -35,7 +44,10 @@ export const SWITCH_HINT_KEYS = {
  * - Studio Mode off: {@link chooseScene} switches the program directly. On: it loads the scene into the preview and
  *   {@link take} (Space) puts it on air.
  * - While a fade runs ({@link transitionRunning}, from the production's `lastSwitchAt` + duration in server time) or a
- *   switching request is in flight, new switches are ignored; a 409 `transition_running` is ignored silently.
+ *   switching request is in flight, new switches are ignored. "In flight" lasts from sending the request until the
+ *   hub event of its result arrives (the store is fed by events only, so the response alone is not enough), the
+ *   request fails, or {@link IN_FLIGHT_TIMEOUT_MS} passes. A 409 the server still sends (for example because of
+ *   another operator's fade) is shown as the usual notice.
  * - Every program switch event increments {@link programFlash} (monitor flash) and shows "‹Name› is live".
  *
  * Used by the stage (control column, monitors), the scenes dock and the keyboard (keys 1–9, Space; registered by
@@ -48,6 +60,7 @@ export class SwitcherService {
   private readonly preferences = inject(PreferencesService);
   private readonly toasts = inject(ToastService);
   private readonly keyboard = inject(KeyboardService);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly studioModeSignal = signal(this.preferences.readStudioMode());
   private readonly transitionKindSignal = signal<TransitionKind>(
@@ -58,6 +71,9 @@ export class SwitcherService {
   );
   private readonly transitionRunningSignal = signal(false);
   private readonly commandInFlightSignal = signal(false);
+  /** Identifies the request the in-flight guard belongs to (an answer of an older one must not release it). */
+  private inFlightToken = 0;
+  private inFlightTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly programFlashSignal = signal(0);
   /** Guards the automatic preview assignment against repeating a failed request. */
   private previewFixKey: string | null = null;
@@ -80,7 +96,7 @@ export class SwitcherService {
   readonly durationSteps = FADE_DURATIONS_MS;
   /** A fade of the last program switch is still running (server time). */
   readonly transitionRunning = this.transitionRunningSignal.asReadonly();
-  /** A switching request (program, preview, take) is in flight. */
+  /** A switching request (program, preview, take) is in flight: sent, and the hub event of its result not here yet. */
   readonly commandInFlight = this.commandInFlightSignal.asReadonly();
   /** Switching is blocked: a fade runs or a request is in flight. */
   readonly busy = computed(() => this.transitionRunningSignal() || this.commandInFlightSignal());
@@ -108,6 +124,7 @@ export class SwitcherService {
     this.watchTransitionGuard();
     this.watchProgramSwitches();
     this.watchPreviewInStudioMode();
+    this.releaseInFlightOnEvents();
   }
 
   /** Registers keys 1–9 and Space; returns the unregister function. Called by the Regie page. */
@@ -235,17 +252,66 @@ export class SwitcherService {
     return true;
   }
 
-  private async command(request: () => Promise<unknown>): Promise<void> {
-    this.commandInFlightSignal.set(true);
+  /**
+   * Sends one switching request under the in-flight guard. The guard is released by the hub event of the result
+   * (see {@link releaseInFlightOnEvents}), by an error (shown as a notice) or by the safety timeout.
+   */
+  private async command(request: () => Promise<ProductionDto>): Promise<void> {
+    const token = this.startInFlight();
     try {
-      await request();
-    } catch (error) {
-      if (!ApiError.from(error).is('transition_running')) {
-        this.toasts.error(error);
+      const result = await request();
+      // The event may have been applied before the response arrived: then there is nothing left to wait for.
+      if (
+        result.programSceneId === this.store.programSceneId() &&
+        result.previewSceneId === this.store.previewSceneId()
+      ) {
+        this.endInFlight(token);
       }
-    } finally {
-      this.commandInFlightSignal.set(false);
+    } catch (error) {
+      this.endInFlight(token);
+      this.toasts.error(error);
     }
+  }
+
+  private startInFlight(): number {
+    this.clearInFlightTimer();
+    this.inFlightToken += 1;
+    const token = this.inFlightToken;
+    this.commandInFlightSignal.set(true);
+    this.inFlightTimer = setTimeout(() => this.endInFlight(token), IN_FLIGHT_TIMEOUT_MS);
+    return token;
+  }
+
+  /** Releases the guard; with a token only when no newer request has taken it over. */
+  private endInFlight(token?: number): void {
+    if (token !== undefined && token !== this.inFlightToken) {
+      return;
+    }
+    this.clearInFlightTimer();
+    this.commandInFlightSignal.set(false);
+  }
+
+  private clearInFlightTimer(): void {
+    if (this.inFlightTimer !== null) {
+      clearTimeout(this.inFlightTimer);
+      this.inFlightTimer = null;
+    }
+  }
+
+  /** The hub event of a switch, preview or Take (or a fresh snapshot after a resync) ends the in-flight state. */
+  private releaseInFlightOnEvents(): void {
+    const off = this.store.onChange((_state, cause) => {
+      if (
+        cause.kind === 'snapshot' ||
+        (cause.kind === 'event' && cause.event.type === 'programSwitched')
+      ) {
+        this.endInFlight();
+      }
+    });
+    this.destroyRef.onDestroy(() => {
+      off();
+      this.clearInFlightTimer();
+    });
   }
 
   /** The scene after `sceneId` in list order (wrapping), like the prototype; null without scenes. */

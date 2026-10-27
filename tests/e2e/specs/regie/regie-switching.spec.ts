@@ -1109,13 +1109,18 @@ test.describe('REGIE two operators and rapid input', () => {
           { message: 'no stuck half-fade on the output' },
         )
         .toEqual([`${lastAccepted.sceneId}:1`]);
-      for (const log of [await toastLog(pageA), await toastLog(pageB)])
+      // The other operator's fade can refuse a click that went out before the Regie knew about it (409): since issue 55
+      // that is the short notice "A fade is still running" and nothing else.
+      const FADE_NOTICE = 'A fade is still running. Please wait a moment.';
+      const toasts = [await toastLog(pageA), await toastLog(pageB)].map((log) =>
+        log.filter((text) => text !== FADE_NOTICE),
+      );
+      for (const log of toasts)
         expect(
           log.filter((text) => !/is live$|not|Scene/.test(text) || /error|could not/.test(text)),
           'no error toast',
         ).toEqual([]);
-      for (const log of [await toastLog(pageA), await toastLog(pageB)])
-        expect(log.every((text) => /is live$/.test(text))).toBe(true);
+      for (const log of toasts) expect(log.every((text) => /is live$/.test(text))).toBe(true);
       // Nothing stays stuck: a click later works.
       const next = lastAccepted.sceneId === a ? 'Scene B' : 'Scene A';
       await regie.scene(next).click();
@@ -1129,7 +1134,7 @@ test.describe('REGIE two operators and rapid input', () => {
     'E2E-SWITCH-18 [regie] switching to an empty scene and to one with a blocked and a deleted source works: background colour only, placeholders, no exception',
     t.p2,
     async ({ regie, openOutput, api, production, pairContext }) => {
-      const [, b, c] = await seedColoured(api, production);
+      const [a, b, c] = await seedColoured(api, production);
       const page = regie.page;
       await api.updateScene(production.id, b, { background: { color: '#102030', assetId: null } });
       await replaceItems(api, production, b, []);
@@ -1202,6 +1207,83 @@ test.describe('REGIE two operators and rapid input', () => {
       await expect.poll(() => programId(api, production)).toBe(a);
       expect(takes).toHaveLength(2);
       await expect(page.locator('.c-take__hint')).toHaveText('Space');
+    },
+  );
+
+  test(
+    'E2E-SWITCH-21 [regie] a second click, key or Take while the request of a switch is still on its way sends nothing (in-flight guard, issue 55)',
+    t.p1,
+    async ({ regie, api, production }) => {
+      const [a, b, c] = await seedColoured(api, production);
+      const page = regie.page;
+      // The hub event of a switch reaches the Regie late (the gap of the issue: the request is answered, the event is
+      // not here yet). The frames of the hub are passed on one by one, those of a switch after HOLD_MS.
+      const HOLD_MS = 1500;
+      await page.routeWebSocket(/\/hubs\/studio/, (socket) => {
+        const server = socket.connectToServer();
+        socket.onMessage((message) => server.send(message));
+        server.onMessage((message) => {
+          if (typeof message === 'string' && message.includes('programSwitched')) {
+            setTimeout(() => socket.send(message), HOLD_MS);
+          } else {
+            socket.send(message);
+          }
+        });
+      });
+      await page.reload();
+      await regie.waitReady();
+      await trackToasts(page);
+      // A cut, so only the in-flight guard (and no fade guard) stands between the first and a second request.
+      await regie.transitionOption('Cut').click();
+      const programs = programPosts(page);
+      const takes = recordRequests(
+        page,
+        (path, method) => method === 'POST' && /\/take$/.test(path),
+      );
+
+      // Direct switching: a double click on the scene, a click on another scene and a number key.
+      await regie.scene('Scene B').click({ noWaitAfter: true });
+      // The server has answered and switched, the event has not arrived: this is the window of the issue.
+      await expect.poll(() => programId(api, production)).toBe(b);
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).not.toHaveText(
+        'Scene B',
+      );
+      await regie.scene('Scene B').click({ noWaitAfter: true });
+      await regie.scene('Scene C').click({ noWaitAfter: true });
+      await page.keyboard.press('3');
+      expect(programs, 'the first request went out').toHaveLength(1);
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene B');
+      await sleep(300);
+      expect(programs, 'one request for the double click, the other scene and the key').toHaveLength(1);
+
+      // The guard lets go with the event: the next switch goes out.
+      await regie.clickScene('Scene C');
+      await expect.poll(() => programId(api, production)).toBe(c);
+      expect(programs).toHaveLength(2);
+
+      // Studio Mode: Take, a second click on the disabled Take and Space send one request.
+      await regie.setStudioMode(true);
+      await expect.poll(() => previewId(api, production)).toBe(a);
+      await regie.take().click({ noWaitAfter: true });
+      await expect.poll(() => programId(api, production)).toBe(a);
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).not.toHaveText(
+        'Scene A',
+      );
+      await expect(regie.take(), 'Take is disabled until the event arrived').toBeDisabled();
+      await regie.take().click({ force: true, noWaitAfter: true });
+      await page.keyboard.press('Space');
+      await expect.poll(() => takes.length, 'the first Take went out').toBe(1);
+      await expect.poll(() => programId(api, production), { timeout: 10_000 }).toBe(a);
+      await expect(monitorOf(page, 'program').locator('.c-monitor__name')).toHaveText('Scene A');
+      await sleep(300);
+      expect(takes, 'one Take request').toHaveLength(1);
+      await expect(regie.take(), 'enabled again after the event').toBeEnabled();
+
+      expect(
+        (await toastLog(page)).filter((text) => !/is live$|Studio Mode/.test(text)),
+        'no error toast',
+      ).toEqual([]);
+      expect(regie.problems.pageErrors).toEqual([]);
     },
   );
 });

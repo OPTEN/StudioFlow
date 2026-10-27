@@ -37,7 +37,12 @@
       >
         <ng-template sfSortableItem let-id>
           @if (entryById().get(id); as entry) {
-            <sf-scene-row [scene]="entry.scene" [view]="entry.view" (choose)="choose($event)" />
+            <sf-scene-row
+              [scene]="entry.scene"
+              [view]="entry.view"
+              [blocked]="switcher.busy()"
+              (choose)="choose($event)"
+            />
           }
         </ng-template>
       </sf-sortable-list>

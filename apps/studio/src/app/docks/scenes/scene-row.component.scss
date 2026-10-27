@@ -31,6 +31,16 @@
     background: var(--raised);
   }
 
+  // Switching is blocked (fade or request in flight): not a click target for the moment.
+  &.is-blocked {
+    cursor: default;
+    opacity: 0.6;
+
+    &:hover {
+      background: transparent;
+    }
+  }
+
   @include short-laptop {
     gap: 8px;
     grid-template-columns: 48px minmax(0, 1fr);

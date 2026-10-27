@@ -44,7 +44,7 @@ export class ScenesDockComponent {
   protected readonly store = inject(ProductionStoreService);
   protected readonly commands = inject(SceneCommandsService);
   private readonly editor = inject(EditorService);
-  private readonly switcher = inject(SwitcherService);
+  protected readonly switcher = inject(SwitcherService);
 
   protected readonly t = t;
   protected readonly maxScenes = LIMITS.scenesPerProduction;
@@ -85,6 +85,9 @@ export class ScenesDockComponent {
    * scene clears the selection through the editor).
    */
   protected choose(sceneId: string): void {
+    if (this.switcher.busy()) {
+      return;
+    }
     if (sceneId === this.editor.editSceneId()) {
       this.editor.select(null);
     }
