@@ -16,7 +16,9 @@ public sealed class LiveKitOptions
     public string InternalUrl { get; set; } = "http://livekit:7880";
 
     /// <summary>
-    /// WebSocket URL handed to clients. Empty means the public origin (<c>wss://{host}</c>, Caddy proxies <c>/rtc</c>).
+    /// WebSocket URL handed to clients. Empty (the default) means the address the caller used for this request
+    /// (<c>wss://{Host}</c>, Caddy proxies <c>/rtc</c>), so a page opened by the IP address or a second name connects to that
+    /// same name, which its Content-Security-Policy allows; outside a request, the public base URL of the server settings.
     /// </summary>
     public string PublicUrl { get; set; } = string.Empty;
 
