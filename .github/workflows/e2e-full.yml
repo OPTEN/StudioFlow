@@ -103,7 +103,9 @@ jobs:
 
   report-failure:
     needs: e2e-full
-    if: needs.e2e-full.result == 'failure'
+    # failure() is needed: an `if` without a status function means `success() && ...`, which skips this job exactly when
+    # e2e-full failed.
+    if: failure() && needs.e2e-full.result == 'failure'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # The only job that writes to the repository.
