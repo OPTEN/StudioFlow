@@ -78,7 +78,10 @@ async function checkNetem(viewer: LiveKitPage): Promise<void> {
       newest = (totals.totalSeconds - previous.totalSeconds) / (totals.responses - previous.responses);
     }
     previous = totals;
-    return newest !== null && newest < NETEM_CLEARED_RTT_S ? newest : false;
+    if (newest !== null && newest < NETEM_CLEARED_RTT_S) return newest;
+    // A smoothed value that is already down is proof as well (and the way out when the statistics above are missing).
+    const smoothed = await viewer.iceRtt();
+    return smoothed !== null && smoothed < 0.05 ? smoothed : false;
   }, { timeoutMs: 40_000, intervalMs: 1000 }).catch(() => null);
   record('netem', slowRtt !== null && fastRtt !== null, `rtt under netem ${slowRtt}, after clear ${fastRtt} (newest average ${newest}, smoothed ${await viewer.iceRtt()})`);
   expect(slowRtt, 'netem 200 ms shaped both directions (RTT >= 0.3 s)').not.toBeNull();
