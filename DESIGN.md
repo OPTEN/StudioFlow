@@ -336,6 +336,8 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 
 **The Wash Rule.** A state tints a whole row or message entry with its wash (8–10% alpha) and colours its icon, lamp or label. It never fills an entire region with solid colour.
 
+**The Tally Exception.** The tally dot in the StudioFlow logo is the only allowed brand use of Tally Red (`red`: #ff6a63 dark, #b71c28 light), because it stands for "on air". Nothing else in the brand (wordmark, tile, favicon backgrounds, illustrations) uses a saturated hue.
+
 ### Themes
 
 The Regie has two appearances. **Dark** is the console described on this page and the default. **Light** is the same console for bright rooms and daylight. A setting in the settings popover chooses **Dark**, **Light** or **System** (follows the operating system live) and applies per browser (`localStorage['studioflow.theme']`, absent means Dark). The Regie, `/monitoring`, the login page and the first-run setup page follow it; the sender and the output page do not. Switching is a pure display setting and is allowed during a broadcast. "Reset layout" does not reset it.
@@ -355,6 +357,15 @@ The Regie has two appearances. **Dark** is the console described on this page an
 **Picture areas stay dark.** Monitors, scene thumbnails, station and source previews, layout-template previews and the well stay near black in the light theme as well. A video picture on a white background looks flat and too dark, and broadcast tools do the same. The picture tokens (`--well`, `--slot`, `--slot-strong`, and `--pic-ink`, `--pic-text`, `--pic-text-2`, `--pic-muted`, `--pic-blue`, `--pic-red`, `--pic-amber`, `--pic-scrim`) are one set for both themes. Everything drawn on a picture (the edit box and its handles, snapping guides, the live note, thumbnail keycaps, the "Preview off" note) uses these `--pic-*` tokens and never the themed ones, so selection blue and alert dashes keep their dark-theme brightness. The renderer's canvas colours (`packages/scene-renderer/src/palette.ts`) are unchanged. The tally outline around a picture sits on the console surface and uses the themed red or green.
 
 **The One-Appearance Rule.** A new colour is added as a token in both theme maps, or as a picture token. Never put a literal colour in a component stylesheet.
+
+## Logo
+
+The logo "Programm" shows the 16:9 program output as a rounded frame, two flow chevrons `››` inside it (switching and the signal path) and a small tally dot in the top-right corner (the "on air" lamp). The wordmark is "Studio" in Text and "Flow" in Muted, Sofia Sans Semi Condensed 700, +0.01em (Brand typography).
+
+- **Master files** are in `docs/brand/` and are built by `npm run brand` (`tools/build-brand.mjs`): `icon-dark.svg` and `icon-light.svg` (app icon on a Raised or Panel tile with a small stand), `mark.svg` (no tile, `currentColor`), `wordmark-dark.svg` and `wordmark-light.svg` (lockup with the name as outlines, no font needed). The PNG and ICO files of the Regie and the sender are rendered from them.
+- **Header mark** (`sfIcon="mark"`, `sf-brand-mark`): frame and chevrons use `currentColor` and follow the theme, the dot uses the `red` token. It is `aria-hidden` next to the "StudioFlow" text; a standalone icon has the accessible name "StudioFlow".
+- **Small sizes:** up to 32 px the tally dot is dropped and the strokes get thicker; at 16 px only one chevron is left. The favicon of the Regie and of the output page uses the 32 px cut.
+- **Colour:** see "The Tally Exception" under Colors. The tile is Raised (dark) or Panel (light); ink is Text, the stand is Muted.
 
 ## Typography
 
@@ -531,7 +542,7 @@ A copied production has no devices, so its pictures wait for new ones. The conso
 - **Don't** box regions as cards with gaps between them, and don't frame the app with an outer border.
 - **Don't** add a T-bar or any control that can leave a fade half-finished.
 - **Don't** use shadows on regions. Shadows are only for popovers, the toast and the drag ghost.
-- **Don't** use a saturated hue decoratively, including for branding, section accents or illustrations.
+- **Don't** use a saturated hue decoratively, including for branding, section accents or illustrations. The one exception is the tally dot in the logo (see "The Tally Exception" under Logo).
 - **Don't** use the uppercase label style as an eyebrow or kicker above a heading.
 - **Don't** load fonts or assets from an external CDN in the product.
 - **Don't** write a literal colour value in a component stylesheet or branch on the theme in a component.

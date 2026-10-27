@@ -4,18 +4,26 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 @Component({
   selector: 'sf-brand-mark',
   template: `
-    <svg class="c-brand__mark" viewBox="0 0 22 18" aria-hidden="true" focusable="false">
+    <svg class="c-brand__mark" viewBox="3 11 58 42" aria-hidden="true" focusable="false">
       <rect
-        x="1"
-        y="1"
-        width="14"
-        height="10"
-        rx="1.5"
+        x="6"
+        y="14"
+        width="52"
+        height="36"
+        rx="6"
         fill="none"
         stroke="currentColor"
-        stroke-width="1.6"
+        stroke-width="4.5"
       />
-      <rect x="7" y="7" width="14" height="10" rx="1.5" fill="currentColor" />
+      <path
+        d="M21 24l8 8-8 8M33 24l8 8-8 8"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="4.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <circle class="c-brand__tally" cx="49" cy="23" r="3.5" />
     </svg>
     <span class="c-brand__word">StudioFlow</span>
   `,
@@ -32,8 +40,12 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 
     .c-brand__mark {
       flex: none;
-      height: 18px;
-      width: 22px;
+      height: 20px;
+      width: 28px;
+    }
+
+    .c-brand__tally {
+      fill: var(--red);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

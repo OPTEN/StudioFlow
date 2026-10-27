@@ -45,7 +45,7 @@ export type IconName =
   | 'list'
   | 'mic'
   | 'headphones'
-  // The StudioFlow brand mark (22 × 18)
+  // The StudioFlow brand mark "Programm": program frame, two flow chevrons, tally dot (cropped 58 × 42)
   | 'mark';
 
 /**
@@ -231,16 +231,22 @@ export type IconName =
       }
       @case ('mark') {
         <svg:rect
-          x="1"
-          y="1"
-          width="14"
-          height="10"
-          rx="1.5"
+          x="6"
+          y="14"
+          width="52"
+          height="36"
+          rx="6"
           fill="none"
           stroke="currentColor"
-          stroke-width="1.6"
+          stroke-width="4.5"
         />
-        <svg:rect x="7" y="7" width="14" height="10" rx="1.5" fill="currentColor" stroke="none" />
+        <svg:path
+          d="M21 24l8 8-8 8M33 24l8 8-8 8"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="4.5"
+        />
+        <svg:circle cx="49" cy="23" r="3.5" class="c-icon__tally" stroke="none" />
       }
     }
   `,
@@ -262,6 +268,6 @@ export class IconComponent {
   readonly size = input<number | null>(null);
 
   protected readonly viewBox = computed(() =>
-    this.sfIcon() === 'mark' ? '0 0 22 18' : '0 0 24 24',
+    this.sfIcon() === 'mark' ? '3 11 58 42' : '0 0 24 24',
   );
 }

@@ -26,6 +26,7 @@
     "check:german": "node tools/check-german.mjs && node tools/check-german.mjs --comments",
     "check": "npm run check:i18n && npm run check:german && npm run typecheck",
     "notices": "node tools/third-party-notices.mjs",
+    "brand": "node tools/build-brand.mjs",
     "check:notices": "node tools/third-party-notices.mjs --check",
     "build:prototype": "node tools/build-prototype.mjs",
     "test:unit": "vitest run",
