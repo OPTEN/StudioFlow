@@ -24,6 +24,16 @@ export {
 } from './livekit-port';
 export { consoleLogger, silentLogger, type MediaLogger } from './logger';
 export {
+  connectFailureStage,
+  createMediaTestRoom,
+  runMediaRoundTrip,
+  type MediaTestInput,
+  type MediaTestResult,
+  type MediaTestRoom,
+  type MediaTestRoomFactory,
+  type MediaTestStage,
+} from './media-test';
+export {
   MediaSession,
   isTerminalState,
   toRtcState,
