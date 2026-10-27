@@ -12,6 +12,9 @@ import { t } from '../../support/tags';
  * and service worker of the sender), docs/testing.md 2.8.
  */
 
+/** The platform text of a browser with its own user agent names the machine the tests run on. */
+const HOST_OS = ({ win32: 'Windows', darwin: 'macOS', linux: 'Linux' } as Record<string, string | undefined>)[process.platform] ?? 'Linux';
+
 for (const browserName of ['chromium', 'edge'] as const) {
   test(
     `E2E-DEV-12 [ui, ${browserName}] the laptop sender: pair by check code, share a screen, a second screen, end and share again, the camera; the platform text, the battery value and a quiet console`,
@@ -49,8 +52,9 @@ for (const browserName of ['chromium', 'edge'] as const) {
       expect(snapshot.sources.filter((source) => source.deviceId === paired.stored.deviceId).map((source) => `${source.code} ${source.label}`).sort()).toEqual(['K1 Laptop Mia · Camera', 'S1 Laptop Mia · Screen 1', 'S2 Laptop Mia · Screen 2']);
       const device = snapshot.devices[0]!;
       testInfo.annotations.push({ type: 'device', description: `${browserName}: platform “${device.platform}”, battery ${device.telemetry?.batteryPct ?? 'none'}` });
-      expect(device.platform, 'platform text').toMatch(/^Windows · (Chrome|Edge)$/);
-      if (browserName === 'edge') expect(device.platform).toBe('Windows · Edge');
+      // Chromium runs with the user agent of the desktop profile (Windows); Edge keeps its own, which names the host.
+      const operatingSystem = browserName === 'edge' ? HOST_OS : 'Windows';
+      expect(device.platform, 'platform text').toBe(`${operatingSystem} · ${browserName === 'edge' ? 'Edge' : 'Chrome'}`);
       // Chromium and Edge have the Battery API: the Regie shows the “Battery” row once the first report has arrived.
       const row = regie.page.locator(`.c-st[data-device="${paired.stored.deviceId}"]`);
       await row.locator('.c-st__row').click();
