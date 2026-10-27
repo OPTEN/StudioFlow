@@ -10,6 +10,7 @@ import {
   COLOR,
   SCENES,
   animationsOf,
+  expectFadeTiming,
   fadeDeviationMs,
   flashes,
   hex,
@@ -171,11 +172,12 @@ test.describe('REGIE switching', () => {
         .not.toBeNull();
       const fade = (await opacityFades(output.page, c))[0]!;
       expect(fade.duration).toBe(300);
+      expectFadeTiming(fade, 300);
       expect(await opacityFades(output.page), 'one fade, none for the cut').toHaveLength(1);
       const measured = fade.elapsedMs ?? fade.endedAt! - fade.startedAt;
       test.info().annotations.push({
         type: 'measurement',
-        description: `output fade 300 ms measured ${measured} ms`,
+        description: `output fade 300 ms measured ${measured} ms, frame gap at the end ${fade.frameGapMs} ms`,
       });
       expect(fadeDeviationMs(fade), 'T-FADE hard limit ± 50 ms').toBeLessThanOrEqual(50);
       await expect
@@ -343,6 +345,7 @@ test.describe('REGIE switching', () => {
         .not.toBeNull();
       const fade = (await opacityFades(output.page, b))[0]!;
       expect(fade.duration).toBe(2000);
+      expectFadeTiming(fade, 2000);
       expect(await opacityFades(output.page), 'only one fade ran').toHaveLength(1);
       expect(fadeDeviationMs(fade), 'T-FADE hard limit ± 50 ms').toBeLessThanOrEqual(50);
       await expect
