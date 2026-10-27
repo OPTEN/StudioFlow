@@ -1,3 +1,4 @@
+import { watchForStall } from './stall-guard';
 import { now } from './timers';
 
 /** A running opacity fade of one element. */
@@ -9,12 +10,6 @@ export interface Fade {
   /** Freezes the current value and returns it (to reverse a fade from where it is). Idempotent. */
   stop(): number;
 }
-
-/**
- * Extra time after which a fade completes even when the browser never reports the end (background tab, element not
- * rendered): a fade must always run to completion.
- */
-const SAFETY_MARGIN_MS = 100;
 
 function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
@@ -38,7 +33,7 @@ export function fadeOpacity(
   const startedAt = now();
   let ended = false;
   let animation: Animation | null = null;
-  let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  let stopWatching: (() => void) | null = null;
 
   const onTransitionEnd = (event: TransitionEvent): void => {
     if (event.target === element && event.propertyName === 'opacity') {
@@ -51,9 +46,7 @@ export function fadeOpacity(
       return;
     }
     ended = true;
-    if (safetyTimer !== null) {
-      clearTimeout(safetyTimer);
-    }
+    stopWatching?.();
     element.removeEventListener('transitionend', onTransitionEnd);
     element.style.removeProperty('transition');
     element.style.opacity = String(opacity);
@@ -107,6 +100,8 @@ export function fadeOpacity(
     element.addEventListener('transitionend', onTransitionEnd);
     element.style.opacity = String(to);
   }
-  safetyTimer = setTimeout(() => end(to), durationMs + SAFETY_MARGIN_MS);
+  // A fade must always run to completion, also when the browser never reports the end (background tab, element not
+  // rendered); one that is merely late, as on a loaded machine, is left to finish by itself.
+  stopWatching = watchForStall(animation, durationMs, () => end(to));
   return fade;
 }
