@@ -7,7 +7,9 @@ import {
   clearFrame,
   fakeAnimate,
   fakeCanvas2d,
+  fakePictureProbe,
   giveFrame,
+  giveMetadataOnly,
   IMAGE,
   mount,
   PAUSE_IMAGE,
@@ -34,6 +36,7 @@ describe('scene renderer: hold frame', () => {
     mounted?.renderer.destroy();
     mounted?.container.remove();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -155,6 +158,87 @@ describe('scene renderer: hold frame', () => {
     expect(canvas2d.videoDraws()).toHaveLength(1);
   });
 
+  describe('nothing black on air (issue #50)', () => {
+    const running = { getVideoTracks: () => [{ readyState: 'live' }] } as unknown as MediaStream;
+
+    it('keeps the good rolling copy when the frame at the loss is already black though the track still runs', async () => {
+      const canvas2d = fakeCanvas2d();
+      const probe = fakePictureProbe('picture');
+      mounted = mount();
+      const video = showCamera();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+      expect(probe.probes).toBe(1);
+
+      // The browser paints the element black a moment before the track says that it ended.
+      Object.defineProperty(video, 'srcObject', { value: running, configurable: true });
+      probe.show = 'black';
+      mounted.provider.lose(CAMERA);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+      expect(snapshot()?.style.display).toBe('block');
+      expect(snapshot()?.width).toBe(654);
+      expect(mounted.errors).toEqual([]);
+    });
+
+    it('copies no video that was never painted, and no hold frame is shown for it', async () => {
+      const canvas2d = fakeCanvas2d();
+      const probe = fakePictureProbe('transparent');
+      mounted = mount();
+      showCamera();
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(canvas2d.videoDraws()).toHaveLength(0);
+      expect(snapshot()).toBeNull();
+
+      // Lost before there was ever a picture: the item shows no empty canvas, only the scrim of the held state.
+      mounted.provider.lose(CAMERA);
+      expect(snapshot()).toBeNull();
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(snapshot()).toBeNull();
+      expect(held()?.style.display).toBe('flex');
+
+      // The first real picture makes a copy as usual.
+      mounted.provider.live(CAMERA);
+      giveFrame(mounted.part('itm_a', 'video') as HTMLVideoElement);
+      probe.show = 'picture';
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+      expect(snapshot()).not.toBeNull();
+    });
+
+    it('does not take a video for a frame that only knows its size (metadata, no decoded frame yet)', async () => {
+      const canvas2d = fakeCanvas2d();
+      fakePictureProbe('picture');
+      mounted = mount();
+      const video = showCamera();
+      giveMetadataOnly(video);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(canvas2d.videoDraws()).toHaveLength(0);
+      mounted.provider.lose(CAMERA);
+      expect(snapshot()).toBeNull();
+
+      mounted.provider.live(CAMERA);
+      const returned = mounted.part('itm_a', 'video') as HTMLVideoElement;
+      giveFrame(returned);
+      returned.dispatchEvent(new Event('loadeddata'));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+    });
+
+    it('keeps showing the old copy when later frames turn out to be black', async () => {
+      const canvas2d = fakeCanvas2d();
+      const probe = fakePictureProbe('picture');
+      mounted = mount();
+      showCamera();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+      probe.show = 'black';
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(canvas2d.videoDraws()).toHaveLength(1);
+      mounted.provider.lose(CAMERA);
+      expect(snapshot()?.style.display).toBe('block');
+    });
+  });
+
   it('takes a fresh copy at the loss while the track still runs', async () => {
     const canvas2d = fakeCanvas2d();
     mounted = mount();
@@ -264,7 +348,9 @@ describe('scene renderer: hold frame', () => {
     showCamera({ w: 640, h: 360 });
     mounted.provider.lose(CAMERA);
     await vi.advanceTimersByTimeAsync(3000);
-    expect(canvas2d.clearRect).toHaveBeenCalledTimes(1);
+    // The enlarged picture replaces the sharp one in one step ("copy"): the canvas is never cleared first.
+    expect(canvas2d.clearRect).not.toHaveBeenCalled();
+    expect(canvas2d.compositeOperations).toEqual(['copy', 'source-over']);
     const fromCanvas = canvas2d.drawImage.mock.calls.filter(
       (call: unknown[]) => call[0] instanceof HTMLCanvasElement,
     );
@@ -272,10 +358,12 @@ describe('scene renderer: hold frame', () => {
     expect(box()?.style.filter).toBe('');
   });
 
-  it('falls back to the CSS blur when the copy cannot be blurred', async () => {
+  it('falls back to the CSS blur when the copy cannot be blurred, and the sharp copy is not touched', async () => {
     const canvas2d = fakeCanvas2d();
-    canvas2d.clearRect.mockImplementation(() => {
-      throw new DOMException('lost context', 'InvalidStateError');
+    canvas2d.drawImage.mockImplementation((source: unknown) => {
+      if (source instanceof HTMLCanvasElement) {
+        throw new DOMException('lost context', 'InvalidStateError');
+      }
     });
     mounted = mount();
     showCamera({ w: 640, h: 360 });
@@ -283,6 +371,33 @@ describe('scene renderer: hold frame', () => {
     await vi.advanceTimersByTimeAsync(3000);
     expect(held()?.style.display).toBe('flex');
     expect(box()?.style.filter).toBe('blur(16px)');
+    expect(snapshot()?.style.display).toBe('block');
+    expect(canvas2d.clearRect).not.toHaveBeenCalled();
+    expect(mounted.errors).toEqual([]);
+  });
+
+  it('puts the sharp picture back when the blur fails after the canvas was cleared (never an empty hold frame, issue #50)', async () => {
+    const canvas2d = fakeCanvas2d({ filter: true });
+    let fromCanvas = 0;
+    canvas2d.drawImage.mockImplementation((source: unknown) => {
+      if (source instanceof HTMLCanvasElement) {
+        fromCanvas += 1;
+        // 1: the sharp picture into the scratch canvas, 2: the blurred picture into the hold frame (refused), 3: put back.
+        if (fromCanvas === 2) {
+          throw new DOMException('lost context', 'InvalidStateError');
+        }
+      }
+    });
+    mounted = mount();
+    showCamera({ w: 640, h: 360 });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(fromCanvas).toBe(3);
+    expect(canvas2d.clearRect).toHaveBeenCalledTimes(2);
+    expect(canvas2d.filters.at(-1)).toBe('none');
+    expect(held()?.style.display).toBe('flex');
+    expect(box()?.style.filter).toBe('blur(16px)');
+    expect(box()?.hasAttribute('data-held-blur')).toBe(false);
     expect(mounted.errors).toEqual([]);
   });
 
