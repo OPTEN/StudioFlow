@@ -21,10 +21,12 @@ import {
   type SceneRendererOptions,
   type SourceMediaProvider,
 } from '@studioflow/scene-renderer';
+import { StudioAudioService } from '../core/audio/studio-audio.service';
 import { StudioMediaService } from '../core/media/studio-media.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ClockService } from '../core/ui/clock.service';
 import { ViewportService } from '../core/ui/viewport.service';
+import { withAssetAudio } from './asset-audio-provider';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { PlaceholderMediaProvider } from './placeholder-media-provider';
 
@@ -130,6 +132,11 @@ export class SceneViewComponent {
   readonly cue = input<SceneTransitionCue | null>(null);
   /** Fires when a cued transition has completed (also for cuts); the Program monitor flashes then. */
   readonly transitionEnd = output<TransitionDto>();
+  /**
+   * The view shows what is on air (the Program monitor): the videos it plays also feed the Regie's copy of the audio mix,
+   * so a video with sound has a meter. Thumbnails and the Preview must not: they would measure the same file again.
+   */
+  readonly audioSource = input(false);
 
   private readonly store = inject(ProductionStoreService);
   private readonly media = inject(StudioMediaService);
@@ -160,9 +167,11 @@ export class SceneViewComponent {
    */
   readonly rects = this.rectsSignal.asReadonly();
 
-  private readonly provider = computed<SourceMediaProvider>(
-    () => this.media.provider() ?? this.placeholder,
-  );
+  private readonly audio = inject(StudioAudioService);
+  private readonly provider = computed<SourceMediaProvider>(() => {
+    const provider = this.media.provider() ?? this.placeholder;
+    return this.audioSource() ? withAssetAudio(provider, this.audio) : provider;
+  });
 
   constructor() {
     effect((onCleanup) => {

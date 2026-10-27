@@ -12,6 +12,7 @@
   <sf-scene-view
     class="c-monitor__view"
     mode="monitor"
+    [audioSource]="kind() === 'program'"
     [scene]="scene()"
     [label]="viewLabel()"
     [cue]="cue()"

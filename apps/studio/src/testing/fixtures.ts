@@ -3,6 +3,7 @@
  */
 import {
   DEFAULT_TEXT_THEME,
+  type AudioChannelDto,
   type AuditEntryDto,
   canvasDto,
   type DeviceDto,
@@ -100,7 +101,7 @@ export function sourceFixture(
   code: string,
   overrides: Partial<SourceDto> = {},
 ): SourceDto {
-  const kind: SourceKind = slot === 'camera' ? 'camera' : 'screen';
+  const kind: SourceKind = slot === 'camera' ? 'camera' : slot === 'mic' ? 'audio' : 'screen';
   const status: SourceStatus = 'ok';
   return {
     id: `${deviceId}/${slot}`,
@@ -136,6 +137,14 @@ export function placeholderFixture(
     label,
     ...overrides,
   };
+}
+
+/** A channel of the audio mixer: unity gain, not muted, follows the picture, no delay. */
+export function audioChannelFixture(
+  sourceId: string,
+  overrides: Partial<AudioChannelDto> = {},
+): AudioChannelDto {
+  return { sourceId, gainDb: 0, muted: false, mode: 'follow', syncOffsetMs: 0, ...overrides };
 }
 
 /** A text source (lower third by default) as the API sends it: the content sits in `text`, the label is line 1. */
@@ -271,6 +280,7 @@ export function snapshotFixture(overrides: Partial<ProductionSnapshot> = {}): Pr
         platform: 'Windows · Edge',
       }),
     ],
+    audioChannels: [],
     assets: [],
     pairingRequests: [],
     invites: [],

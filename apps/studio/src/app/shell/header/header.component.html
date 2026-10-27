@@ -25,6 +25,11 @@
           }}</span>
         }
         <span class="u-mono">{{ outputLatency() }}</span>
+        @if (audioBlocked()) {
+          <span class="c-state--warn" data-testid="audio-blocked">{{
+            t('regie.audio.output.blocked')
+          }}</span>
+        }
         <svg sfIcon="chev" [size]="13"></svg>
       </button>
       @if (popovers.isOpen(outputPopover)) {

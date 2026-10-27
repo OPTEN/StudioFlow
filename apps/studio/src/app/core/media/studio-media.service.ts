@@ -41,7 +41,15 @@ export type StudioMediaState = MediaSessionState | 'loading' | 'failed';
  * `LiveKitSourceProvider` satisfies it.
  */
 export type StudioSourceProvider = SourceMediaProvider &
-  Pick<LiveKitSourceProvider, 'getStats' | 'estimateLatencyMs'>;
+  Pick<
+    LiveKitSourceProvider,
+    | 'getStats'
+    | 'estimateLatencyMs'
+    | 'audioStream'
+    | 'audioSourceIds'
+    | 'onAudioChange'
+    | 'getAudioStats'
+  >;
 
 /**
  * The Regie's LiveKit connection (spec 7, 8.4): loads `@studioflow/media-client` lazily as soon as the store is live,

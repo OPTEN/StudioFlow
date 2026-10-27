@@ -98,6 +98,17 @@
   text-align: right;
 }
 
+// The audio station has no picture: a microphone where the thumbnail would be.
+.c-st__audio {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--raised-2);
+  border-radius: var(--radius-screen);
+  color: var(--muted);
+  display: flex;
+  justify-content: center;
+}
+
 .c-st__chev {
   color: var(--muted);
   transition: transform var(--dur-reveal) var(--ease);

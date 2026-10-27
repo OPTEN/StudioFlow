@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { t } from '@studioflow/i18n';
+import { AudioDockComponent } from '../../docks/audio/audio-dock.component';
 import { PairingDockComponent } from '../../docks/pairing/pairing-dock.component';
 import { PropertiesDockComponent } from '../../docks/properties/properties-dock.component';
 import { ScenesDockComponent } from '../../docks/scenes/scenes-dock.component';
@@ -26,6 +27,7 @@ import { SplitterDirective } from './splitter.directive';
     SourcesDockComponent,
     PropertiesDockComponent,
     StationsDockComponent,
+    AudioDockComponent,
     PairingDockComponent,
   ],
   template: `
@@ -51,6 +53,9 @@ import { SplitterDirective } from './splitter.directive';
       }
       @case ('st') {
         <sf-stations-dock />
+      }
+      @case ('audio') {
+        <sf-audio-dock />
       }
       @case ('pair') {
         <sf-pairing-dock />

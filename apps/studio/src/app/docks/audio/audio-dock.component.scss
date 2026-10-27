@@ -1,0 +1,16 @@
+// Audio dock: the list of channels and the notes around it.
+.c-audio-dock__list {
+  align-content: start;
+  display: grid;
+}
+
+.c-audio-dock__note {
+  margin: 0;
+  padding: 8px 10px;
+}
+
+// The monitor button reads as on while the operator listens to something.
+.c-btn.is-active {
+  background: var(--raised-2);
+  box-shadow: var(--shadow-selected);
+}

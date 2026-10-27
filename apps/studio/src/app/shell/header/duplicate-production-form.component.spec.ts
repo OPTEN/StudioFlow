@@ -21,6 +21,7 @@ function asset(id: string, code: string, sizeBytes: number): AssetDto {
     sizeBytes,
     width: 1920,
     height: 1080,
+    hasAudio: false,
     createdAt: '2026-10-22T09:00:00.000Z',
     contentUrl: `/api/productions/${PRODUCTION_ID}/assets/${id}/content`,
   };

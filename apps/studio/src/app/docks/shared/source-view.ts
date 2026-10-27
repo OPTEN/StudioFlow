@@ -33,11 +33,12 @@ export const KIND_ICON: Readonly<Record<SourceKind, IconName>> = {
   image: 'image',
   video: 'video',
   text: 'text',
+  audio: 'mic',
 };
 
-/** True for camera and screen slots of a device; media and texts are always available and have no lamp. */
+/** True for the slots of a device (camera, screen, microphone); media and texts are always available and have no lamp. */
 export function isDeviceKind(kind: SourceKind | undefined): boolean {
-  return kind === 'camera' || kind === 'screen';
+  return kind === 'camera' || kind === 'screen' || kind === 'audio';
 }
 
 /** Lamp of a status: ok green, reconnecting amber, ended/lost/blocked red, connecting/offline idle. */

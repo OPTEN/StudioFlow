@@ -43,6 +43,8 @@ export type IconName =
   | 'download'
   | 'gear'
   | 'list'
+  | 'mic'
+  | 'headphones'
   // The StudioFlow brand mark (22 × 18)
   | 'mark';
 
@@ -170,6 +172,15 @@ export type IconName =
         <svg:path
           d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"
         />
+      }
+      @case ('mic') {
+        <svg:rect x="9" y="3.5" width="6" height="11" rx="3" />
+        <svg:path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" />
+      }
+      @case ('headphones') {
+        <svg:path d="M4 15v-3a8 8 0 0 1 16 0v3" />
+        <svg:rect x="3.5" y="14.5" width="4" height="6" rx="1.5" />
+        <svg:rect x="16.5" y="14.5" width="4" height="6" rx="1.5" />
       }
       @case ('list') {
         <svg:path d="M4 6.5h16M4 12h16M4 17.5h10" />
