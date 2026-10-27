@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
-import { LaptopSender, PhoneSender, type StoredDevice } from './sender';
-import { pairLaptopByLink, pairPhone, type PairContext, type PairedDevice } from '../production';
+import { AudioStationSender, LaptopSender, PhoneSender, type StoredDevice } from './sender';
+import { pairAudioStationByLink, pairLaptopByLink, pairPhone, type PairContext, type PairedDevice } from '../production';
 import type { RegiePage } from './regie';
 
 /**
@@ -67,13 +67,15 @@ export async function pairLaptopViaKnock(
  */
 export async function pairViaApi(
   context: PairContext,
-  sender: PhoneSender | LaptopSender,
+  sender: PhoneSender | LaptopSender | AudioStationSender,
   options: { name?: string } = {},
 ): Promise<PairedDevice> {
   const device =
     sender.kind === 'phone'
       ? await pairPhone(context, options)
-      : await pairLaptopByLink(context, options);
+      : sender.kind === 'audioStation'
+        ? await pairAudioStationByLink(context, options)
+        : await pairLaptopByLink(context, options);
   await sender.seedCredentials(device.credentials);
   await sender.gotoStart();
   await sender.waitConnected();

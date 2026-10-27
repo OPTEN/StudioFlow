@@ -25,6 +25,9 @@ export const EMBED_ORIGIN = 'https://embed.test';
 /** An origin the stack does NOT allow to frame the output. */
 export const FOREIGN_ORIGIN = 'https://foreign.test';
 
+const FAKE_AUDIO = fs.readFileSync(path.join(__dirname, '..', 'browser', 'fake-audio.js'), 'utf8');
+const AUDIO_PROBE = fs.readFileSync(path.join(__dirname, '..', 'browser', 'audio-probe.js'), 'utf8');
+
 /** The five colours the fake screens cycle through: S1 red, S2 green, S3 blue, S4 yellow, S5 violet. */
 export const SCREEN_COLORS = ['#e5484d', '#30a46c', '#3e63dd', '#f5d90a', '#8e4ec6'] as const;
 
@@ -39,6 +42,16 @@ export interface FakeSourceOptions {
 export interface FakeScreenOptions extends FakeSourceOptions {
   /** Flat colour per screen: the n-th getDisplayMedia() call uses colors[n % colors.length]. */
   colors?: readonly string[];
+}
+
+/** A sine tone of a fake microphone or a fake screen sound (support/browser/fake-audio.js). */
+export interface FakeToneOptions {
+  /** Hz (default 440). */
+  frequency?: number;
+  /** Peak amplitude, 0 to 1 (default 0.5, which is -6 dBFS). */
+  level?: number;
+  /** 1 or 2 (default 2). */
+  channels?: 1 | 2;
 }
 
 export interface UiInitOptions {
@@ -57,6 +70,26 @@ export interface UiInitOptions {
   camera?: 'native' | 'stamp' | FakeSourceOptions;
   /** Make every camera request fail with NotReadableError (`window.__sfMedia.failCamera`). */
   failCamera?: boolean;
+  /**
+   * getUserMedia({audio}) without video: `native` (default) is Chromium's fake device; a tone makes every microphone of
+   * this context deliver that sine tone (needs no user gesture, can be changed and unplugged: `window.__sfAudioFake`).
+   */
+  mic?: 'native' | FakeToneOptions;
+  /**
+   * The sound of getDisplayMedia({audio: true}): a tone, or null (default) for a browser that cannot share sound (the
+   * request is answered with a picture only).
+   */
+  screenAudio?: FakeToneOptions | null;
+  /**
+   * Install the audio probe (`window.__sfAudioProbe`, support/browser/audio-probe.js) that measures what the pages of
+   * this context send to their speakers. Off by default: it wraps `AudioNode.connect`.
+   */
+  audioProbe?: boolean;
+  /**
+   * With the probe: every audio context of the pages stays suspended until the first trusted click, key or touch (the
+   * autoplay rule of a browser window that a person opened; Playwright's own evaluations would unlock it otherwise).
+   */
+  audioGate?: boolean;
   /**
    * The client address the stack sees for the anonymous, rate-limited calls of this context (`POST /api/pairing/requests`
    * 10 per 10 min, `POST /api/pairing/invites/{token}/redeem` 20 per 10 min, failed `POST /api/auth/login` lockouts):
@@ -90,6 +123,10 @@ function resolve(options: UiInitOptions) {
         ? null
         : { width: 1280, height: 720, fps: 30, ...(camera === 'stamp' ? {} : camera) },
     failCamera: options.failCamera ?? false,
+    mic: options.mic === undefined || options.mic === 'native' ? null : { frequency: 440, level: 0.5, channels: 2, ...options.mic },
+    screenAudio: options.screenAudio ? { frequency: 880, level: 0.5, channels: 2, ...options.screenAudio } : null,
+    audioProbe: options.audioProbe ?? false,
+    audioGate: options.audioGate ?? false,
     clientIp:
       options.clientIp === 'real'
         ? null
@@ -111,6 +148,8 @@ export async function installUiInit(
   const resolved = resolve(options);
   await installInitScript(context);
   await context.addInitScript({ content: FAKE_SOURCES });
+  await context.addInitScript({ content: FAKE_AUDIO });
+  if (resolved.audioProbe) await context.addInitScript({ content: AUDIO_PROBE });
   await context.addInitScript((settings) => {
     try {
       if (settings.testHooks) window.localStorage.setItem('studioflow.testHooks', '1');
@@ -120,11 +159,18 @@ export async function installUiInit(
     }
     const w = window as unknown as {
       __sfFake?: { config: { screen: unknown; camera: unknown } };
+      __sfAudioFake?: { config: { mic: unknown; screen: unknown } };
+      __sfAudioProbe?: { gate: boolean };
       __sfMedia?: { failCamera: boolean };
     };
     if (w.__sfFake) {
       w.__sfFake.config.screen = settings.screen;
       w.__sfFake.config.camera = settings.camera;
+    }
+    if (w.__sfAudioProbe) w.__sfAudioProbe.gate = settings.audioGate;
+    if (w.__sfAudioFake) {
+      w.__sfAudioFake.config.mic = settings.mic;
+      w.__sfAudioFake.config.screen = settings.screenAudio;
     }
     if (w.__sfMedia) w.__sfMedia.failCamera = settings.failCamera;
   }, resolved);

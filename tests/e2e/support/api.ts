@@ -6,6 +6,7 @@ import type {
   ApplyStatusDto,
   AssetDto,
   BackupsDto,
+  AudioChannelDto,
   BandwidthTestResultDto,
   CreateInviteRequest,
   CreatePairingRequest,
@@ -43,6 +44,7 @@ import type {
   SceneItemDto,
   ServerSettingsDto,
   SessionDto,
+  SetAudioChannelsRequest,
   SetPreviewRequest,
   SwitchProgramRequest,
   SystemInfoDto,
@@ -255,6 +257,11 @@ export class AdminApi extends HttpApi {
 
   // --- audit ------------------------------------------------------------------------------------------------------
   listAudit = (query: { production?: string; action?: string; limit?: number } = {}) => this.call<AuditPageDto & Problem>('GET', '/api/audit/', { query });
+
+  // --- audio ------------------------------------------------------------------------------------------------------
+  /** `PUT …/audio/channels`: sets the listed channels (others stay), returns the stored channels. */
+  setAudioChannels = (id: string, body: Loose<SetAudioChannelsRequest> | Record<string, unknown>) =>
+    this.call<AudioChannelDto[] & Problem>('PUT', `/api/productions/${id}/audio/channels`, { json: body });
 
   // --- scenes -----------------------------------------------------------------------------------------------------
   createScene = (id: string, body: Loose<CreateSceneRequest>) => this.call<SceneDto & Problem>('POST', `/api/productions/${id}/scenes/`, { json: body });

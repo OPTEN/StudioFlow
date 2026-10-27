@@ -136,6 +136,28 @@ async function ffmpeg(args: string[]): Promise<void> {
 }
 
 /**
+ * A WebM video (VP8) with an Opus audio track that is a sine tone of `frequency` Hz at -6 dBFS (ffmpeg’s sine is 0.125, the filter lifts it to 0.5), for the audio specs (issue #7).
+ * Playwright's Chromium has no H.264 or AAC, so the clip is WebM. Needs ffmpeg; returns null when it is not there.
+ */
+export async function makeToneClip(frequency: number, seconds = 6, name = `tone-${frequency}.webm`): Promise<Buffer | null> {
+  fs.mkdirSync(ASSET_DIR, { recursive: true });
+  const target = path.join(ASSET_DIR, name);
+  if (!fs.existsSync(target) || fs.statSync(target).size === 0) {
+    try {
+      await ffmpeg([
+        '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15',
+        '-f', 'lavfi', '-i', `sine=frequency=${frequency}:sample_rate=48000`,
+        '-t', String(seconds), '-filter:a', 'volume=4',
+        '-c:v', 'libvpx', '-b:v', '200k', '-c:a', 'libopus', '-b:a', '64k', target,
+      ]);
+    } catch {
+      return null;
+    }
+  }
+  return fs.readFileSync(target);
+}
+
+/**
  * Generates (once) and returns the sample set. Files are also written to .output/assets for browser tests. The media are
  * made by ffmpeg (`assertFfmpeg` in preflight.ts checks for it before the stack starts); when one cannot be made this
  * throws, because a test on a stub (a 1x1 picture, a clip without frames) proves nothing about media.
