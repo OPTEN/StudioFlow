@@ -112,8 +112,8 @@ async function checkDesktop(regie: RegiePage, options: { name: string; studio: b
   const monitors = await checkMonitors(regie, options.studio, label);
   expect(monitors.program.y + monitors.program.h, `${label}: the monitors end above the docks`).toBeLessThanOrEqual(m.bottomZone!.y + 0.5);
 
-  // four docks side by side at the bottom
-  expect(m.docks.map((dock) => dock.name), `${label}: four docks`).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
+  // five docks side by side at the bottom
+  expect(m.docks.map((dock) => dock.name), `${label}: five docks`).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
   const tops = m.docks.map((dock) => Math.round(dock.box.y));
   expect(new Set(tops).size, `${label}: the docks share one top edge (${tops.join(', ')})`).toBe(1);
   for (let index = 1; index < m.docks.length; index++)
@@ -177,7 +177,7 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
 test.describe('Regie responsive layout', () => {
   for (const viewport of [VIEWPORTS.w1280, VIEWPORTS.w1366]) {
     const name = `${viewport.width}x${viewport.height}`;
-    test(`E2E-DEV-01 [regie-${name}] one screen without scroll: header 50 px, strip, 16:9 monitors, four docks at the bottom, compact scene rows, critical controls in the viewport`, tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
+    test(`E2E-DEV-01 [regie-${name}] one screen without scroll: header 50 px, strip, 16:9 monitors, five docks at the bottom, compact scene rows, critical controls in the viewport`, tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
       test.setTimeout(120_000);
       const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
       await expect(regie.page.getByRole('region', { name: 'Messages' }), 'the incident is visible in the message strip').toContainText('reconnecting');
@@ -264,7 +264,7 @@ test.describe('Regie responsive layout', () => {
       await checkMonitors(regie, studio, label);
       // two-column grid below the stage: Scenes | Sources over Properties | Stations, hairline separated
       const byName = Object.fromEntries(m.docks.map((dock) => [dock.name, dock.box]));
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
       const stageBottom = m.program!.y + m.program!.h;
       expect(byName['Scenes']!.y, `${label}: the docks start below the stage`).toBeGreaterThan(stageBottom);
       expect(Math.abs(byName['Scenes']!.y - byName['Sources of the scene']!.y), `${label}: Scenes and Sources share the first row`).toBeLessThan(2);
@@ -321,11 +321,11 @@ test.describe('Regie responsive layout', () => {
     test.setTimeout(120_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORTS.w1440, incident: null });
     const { page } = regie;
-    // move a dock to the right zone with the grip keys, remember the stored layout
-    const grip = page.getByRole('button', { name: 'Move dock Stations with the arrow keys' });
+    // move a dock to the right zone with the grip keys, remember the stored layout (Audio is the last dock of the bottom zone)
+    const grip = page.getByRole('button', { name: 'Move dock Audio with the arrow keys' });
     await grip.focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stations]')).toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Audio]')).toHaveCount(1);
     const stored = await page.evaluate(() => localStorage.getItem('studioflow.layout'));
     expect(stored, 'the layout is stored').not.toBeNull();
     await page.setViewportSize(VIEWPORTS.w1180);
@@ -334,7 +334,7 @@ test.describe('Regie responsive layout', () => {
     expect(await page.evaluate(() => localStorage.getItem('studioflow.layout')), 'the stacked view leaves the stored layout alone').toBe(stored);
     await page.setViewportSize(VIEWPORTS.w1440);
     await settle(page);
-    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stations]'), 'the dock is on the right again at the wide size').toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Audio]'), 'the dock is on the right again at the wide size').toHaveCount(1);
   });
 
   test('E2E-DEV-05 [regie-900x700] one column by priority: Program, controls (Take full width, >= 48 px), Preview, docks in one column; scenes as a 200 px card strip; strip shows only ok and incidents', tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -365,7 +365,7 @@ test.describe('Regie responsive layout', () => {
       // docks in one column
       expect(new Set(m.docks.map((dock) => Math.round(dock.box.x))).size, `${label}: docks share one column`).toBe(1);
       for (let index = 1; index < m.docks.length; index++) expect(m.docks[index]!.box.y, `${label}: ${m.docks[index]!.name} below ${m.docks[index - 1]!.name}`).toBeGreaterThanOrEqual(m.docks[index - 1]!.box.y + m.docks[index - 1]!.box.h - 1);
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
       // the controls are two columns: the segmented control and the stepper side by side
       const transition = (await boxOf(page.getByRole('group', { name: 'Transition type' })))!;
       const stepper = (await boxOf(page.getByRole('group', { name: 'Fade duration' })))!;

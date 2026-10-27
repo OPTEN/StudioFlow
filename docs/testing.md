@@ -1808,7 +1808,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 **E2E-DEV-01** · P0 · pw (`regie-1280x720`) — Regie at 1280×720
 - Pre: 7 scenes, 5 stations, one incident.
 - Steps: load, open Studio Mode on and off, open each popover.
-- Expect: no page scroll (vertical and horizontal), header 50 px and message strip ≥ 38 px, monitors 16:9 without overflow, four docks side by side at the bottom (height clamp(240 px, 42 dvh, 420 px) ≥ 150 px), scene rows collapse to one line with 48 px thumbnails and dock headers 36 px (height ≤ 820 px rule), all seven scenes visible without scrolling; `expectInViewport` for: `Studio Mode` switch, `Cut`/`Fade`, duration stepper, `Take` (Studio Mode on), `Pair device`, output chip, health chip, `Docks and layout`, `+ Source`, first and last scene.
+- Expect: no page scroll (vertical and horizontal), header 50 px and message strip ≥ 38 px, monitors 16:9 without overflow, five docks side by side at the bottom (height clamp(240 px, 42 dvh, 420 px) ≥ 150 px), scene rows collapse to one line with 48 px thumbnails and dock headers 36 px (height ≤ 820 px rule), all seven scenes visible without scrolling; `expectInViewport` for: `Studio Mode` switch, `Cut`/`Fade`, duration stepper, `Take` (Studio Mode on), `Pair device`, output chip, health chip, `Docks and layout`, `+ Source`, first and last scene.
 
 **E2E-DEV-02** · P1 · pw (`regie-1440x900`) — Regie at 1440×900
 - Expect: as -01 without the compact rules (two-line scene rows, 40 px dock headers), first-viewport composition of the prototype brief (header, strip, monitors + 172 px control column, docks), no overflow, critical controls in the viewport.
@@ -1924,7 +1924,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DOCK-01** · P0 · pw — Default arrangement
 - Steps: fresh context at 1440×900 and 1280×720.
-- Expect: Scenes | Sources | Properties | Stations left to right in the bottom zone, left/right zones hidden, bottom height = clamp(240 px, 42 dvh, 420 px) (≥ 150 px), seams of 1 px.
+- Expect: Scenes | Sources | Properties | Stations | Audio left to right in the bottom zone, left/right zones hidden, bottom height = clamp(240 px, 42 dvh, 420 px) (≥ 150 px), seams of 1 px.
 
 **E2E-DOCK-02** · P0 · pw — Drag docks to left, bottom, right
 - Steps: pointer-drag the “Stations” header to the right edge, then to the left edge, then back to the bottom between “Scenes” and “Sources”; drag with less than 5 px; Escape during a drag; `pointercancel`.

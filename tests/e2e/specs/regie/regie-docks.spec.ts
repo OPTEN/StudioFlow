@@ -305,7 +305,7 @@ test.describe('REGIE docks', () => {
       const page = regie.page;
       await seedLayout(regie, {
         ...DEFAULT_LAYOUT,
-        zones: { left: ['insp'], bottom: ['scenes', 'src'], right: ['st'] },
+        zones: { left: ['insp'], bottom: ['scenes', 'src'], right: ['st', 'audio'] },
       });
       const dragSeparator = async (name: string, dx: number, dy: number) => {
         const start = await center(sep(page, name));

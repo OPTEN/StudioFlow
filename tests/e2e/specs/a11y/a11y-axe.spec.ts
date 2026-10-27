@@ -341,7 +341,7 @@ test.describe('Regie semantics', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
     const { page } = regie;
     // landmarks and regions
-    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Messages']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
+    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio', 'Messages']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
     await expect(page.getByRole('banner'), 'the header is the banner landmark').toHaveCount(1);
     expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the message strip is a region').toBe('region');
     // switch and groups

@@ -24,8 +24,8 @@ function areaRank(info: FocusInfo): number {
   if (info.area === 'region:Messages') return 1;
   if (/^(group:Items of the scene|section:Monitors|group:Transition type|group:Fade duration)/.test(info.area)) return 2;
   if (info.role === 'separator' && info.name === 'Height of the docks at the bottom') return 3;
-  const dock = /^region:(Scenes|Sources of the scene|Properties|Pair device|Stations)$/.exec(info.area)?.[1];
-  if (dock) return { Scenes: 4, 'Sources of the scene': 5, Properties: 6, 'Pair device': 6, Stations: 7 }[dock]!;
+  const dock = /^region:(Scenes|Sources of the scene|Properties|Pair device|Stations|Audio)$/.exec(info.area)?.[1];
+  if (dock) return { Scenes: 4, 'Sources of the scene': 5, Properties: 6, 'Pair device': 6, Stations: 7, Audio: 8 }[dock]!;
   return 99;
 }
 
@@ -430,7 +430,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const bottomOrder = () => page.locator('[data-zone=bottom] sf-dock-slot').evaluateAll((docks) => docks.map((dock) => dock.getAttribute('aria-label')));
     await grip.focus();
     expect(await zoneOf(page, 'Scenes')).toBe('bottom');
-    expect(await bottomOrder(), 'default order').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
+    expect(await bottomOrder(), 'default order').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
 
     // ArrowLeft at the start of the bottom zone continues in the left zone
     await page.keyboard.press('ArrowLeft');
@@ -449,13 +449,13 @@ test.describe('Dock moves and splitters by keyboard', () => {
     await expect.poll(() => zoneOf(page, 'Scenes')).toBe('bottom');
     await expect(toast).toContainText('Scenes is docked at the bottom');
     await expect.poll(focusIsOnGrip).toBe(true);
-    for (let press = 1; press <= 3; press++) {
+    for (let press = 1; press <= 4; press++) {
       await page.keyboard.press('ArrowRight');
       await expect.poll(async () => (await bottomOrder()).indexOf('Scenes'), { message: `press ${press}: the dock moves one place inside the bottom zone` }).toBe(press);
       await expect.poll(focusIsOnGrip, { message: `the focus stays on the grip after press ${press}` }).toBe(true);
       expect(await zoneOf(page, 'Scenes')).toBe('bottom');
     }
-    // the fourth press leaves the bottom zone for the right zone
+    // the fifth press leaves the bottom zone for the right zone
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => zoneOf(page, 'Scenes'), { message: 'the dock reaches the right zone' }).toBe('right');
     await expect.poll(focusIsOnGrip).toBe(true);
@@ -490,7 +490,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     await reset.focus();
     await page.keyboard.press('Enter');
     await expect(regie.toast().first()).toContainText('Layout reset');
-    expect(await bottomOrder(), 'the default order is back').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations']);
+    expect(await bottomOrder(), 'the default order is back').toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
   });
 
   test('E2E-DEV-14 [splitters] separators are named and oriented; arrows move them 16 px (Shift 64 px) within their bounds, Enter resets, the change persists', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
@@ -499,7 +499,7 @@ test.describe('Dock moves and splitters by keyboard', () => {
     const { page } = regie;
     const splitters = await page.getByRole('separator').evaluateAll((elements) => elements.map((element) => ({ name: element.getAttribute('aria-label'), orientation: element.getAttribute('aria-orientation'), tabindex: element.getAttribute('tabindex') })));
     expect(splitters.map((entry) => entry.name).sort(), 'the separators of the default layout').toEqual(
-      ['Size of Properties and Stations', 'Size of Preview and Program', 'Size of Sources and Properties', 'Size of Scenes and Sources', 'Height of the docks at the bottom'].sort(),
+      ['Size of Stations and Audio', 'Size of Properties and Stations', 'Size of Preview and Program', 'Size of Sources and Properties', 'Size of Scenes and Sources', 'Height of the docks at the bottom'].sort(),
     );
     for (const entry of splitters) {
       expect(entry.orientation, `${entry.name}: aria-orientation`).toBe(entry.name === 'Height of the docks at the bottom' ? 'horizontal' : 'vertical');
@@ -561,11 +561,11 @@ test.describe('Dock moves and splitters by keyboard', () => {
 
   test('E2E-DEV-14 [splitters, edge docks] the seams next to the outer docks move by exactly 16 px (Shift 64 px) per arrow key', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
-    knownBug('A11Y-13', 'the seam between Scenes and Sources moves 20.3 px and the seam between Properties and Stations 11.6 px per ArrowRight instead of 16 px (the dock at the window edge carries a 16 px gutter inside its flex weight); same finding as REGIE-02 of the regie area');
+    knownBug('A11Y-13', 'the seam between Scenes and Sources moves 20.3 px and the seam between Stations and Audio (the outer docks) 11.6 px per ArrowRight instead of 16 px (the dock at the window edge carries a 16 px gutter inside its flex weight); same finding as REGIE-02 of the regie area');
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: null, studio: false, stations: 2 });
     const { page } = regie;
     const problems: string[] = [];
-    for (const name of ['Size of Scenes and Sources', 'Size of Properties and Stations']) {
+    for (const name of ['Size of Scenes and Sources', 'Size of Stations and Audio']) {
       const seam = page.getByRole('separator', { name });
       await seam.focus();
       const x = async () => (await boxOf(seam))!.x;
@@ -585,9 +585,9 @@ test.describe('Dock moves and splitters by keyboard', () => {
     test.setTimeout(120_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: null, studio: false, stations: 2 });
     const { page } = regie;
-    await page.getByRole('button', { name: 'Move dock Stations with the arrow keys' }).focus();
+    await page.getByRole('button', { name: 'Move dock Audio with the arrow keys' }).focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Stations]')).toHaveCount(1);
+    await expect(page.locator('[data-zone=right] sf-dock-slot[aria-label=Audio]')).toHaveCount(1);
     const splitter = page.getByRole('separator', { name: 'Width of the docks on the right' });
     await expect(splitter).toHaveAttribute('aria-orientation', 'vertical');
     const width = async () => Math.round((await boxOf(page.locator('[data-zone=right]')))!.w);
