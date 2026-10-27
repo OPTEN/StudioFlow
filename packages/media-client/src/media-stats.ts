@@ -20,6 +20,15 @@ export interface ReceiverSnapshot {
   readonly jitterBufferDelayMs?: number;
   readonly codec?: string;
   readonly rttMs?: number;
+  /** Frames the decoder produced / the receiver dropped / the receiver got, cumulative (decoding load, dropped frames). */
+  readonly framesDecoded?: number;
+  readonly framesDropped?: number;
+  readonly framesReceived?: number;
+  /** Cumulative decode time in seconds (`totalDecodeTime`): per frame it is the cost of the decoder. */
+  readonly totalDecodeTimeSeconds?: number;
+  /** The decoder, where the browser tells this page: `powerEfficientDecoder` and `decoderImplementation`. */
+  readonly powerEfficientDecoder?: boolean;
+  readonly decoderImplementation?: string;
 }
 
 /** What the sender side of one (simulcast) track reports. */
@@ -37,6 +46,11 @@ function isRecord(value: unknown): value is StatsRecord {
 function numberField(record: StatsRecord | undefined, key: string): number | undefined {
   const value = record?.[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function booleanField(record: StatsRecord | undefined, key: string): boolean | undefined {
+  const value = record?.[key];
+  return typeof value === 'boolean' ? value : undefined;
 }
 
 function stringField(record: StatsRecord | undefined, key: string): string | undefined {
@@ -174,6 +188,12 @@ export class ReceiverStatsReader {
         bufferSeconds === undefined ? undefined : Math.round(bufferSeconds * 1000),
       codec: codecOf(index, inbound),
       rttMs: rttMs === undefined ? undefined : Math.round(rttMs),
+      framesDecoded: numberField(inbound, 'framesDecoded'),
+      framesDropped: numberField(inbound, 'framesDropped'),
+      framesReceived: numberField(inbound, 'framesReceived'),
+      totalDecodeTimeSeconds: numberField(inbound, 'totalDecodeTime'),
+      powerEfficientDecoder: booleanField(inbound, 'powerEfficientDecoder'),
+      decoderImplementation: stringField(inbound, 'decoderImplementation'),
     };
   }
 }

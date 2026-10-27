@@ -53,10 +53,19 @@ export {
   type PublisherOptions,
   type SlotStateListener,
 } from './publisher';
-export { type CameraResolution, type CameraSettings, type FacingMode } from './publish-options';
+export {
+  SCREEN_FRAME_RATE_DEFAULT,
+  SCREEN_FRAME_RATE_VIDEO,
+  type CameraResolution,
+  type CameraSettings,
+  type FacingMode,
+  type ScreenFrameRate,
+} from './publish-options';
 export { EndlessReconnectPolicy, roomOptionsFor, type MediaRole } from './room-options';
 export {
   LiveKitSourceProvider,
+  type DecoderSummary,
   type LiveKitSourceProviderOptions,
   type SourceStats,
+  type StreamDecoder,
 } from './source-provider';
