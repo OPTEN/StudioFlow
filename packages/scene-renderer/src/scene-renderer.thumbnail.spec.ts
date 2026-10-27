@@ -50,7 +50,7 @@ describe('scene renderer: thumbnails show still pictures', () => {
     return video;
   }
 
-  const stillOf = (id: string): HTMLCanvasElement | null => mounted.part(id, 'canvas');
+  const stillOf = (id: string): HTMLImageElement | null => mounted.part(id, 'img');
 
   it('has no video of its own for a device source: a hidden video per source feeds a snapshot', () => {
     fakeCanvas2d();
@@ -75,12 +75,16 @@ describe('scene renderer: thumbnails show still pictures', () => {
     const still = stillOf('itm_a');
     expect(still).not.toBeNull();
     expect(still?.style.display).toBe('block');
-    // The snapshot is small: a thumbnail needs no more than 320 x 180.
-    expect([still?.width, still?.height]).toEqual([320, 180]);
+    // The snapshot is an image of at most 320 x 180: a canvas on screen would be a layer of its own that the browser
+    // keeps compositing (see StillPool).
+    expect(still?.tagName).toBe('IMG');
+    expect(still?.getAttribute('src')).toBe('data:image/jpeg;base64,still-320x180-1');
+    expect(mounted.container.querySelector('canvas')).toBeNull();
     expect(canvas2d.videoDraws()).toHaveLength(1);
 
     await vi.advanceTimersByTimeAsync(STILL_REFRESH_MS * 4);
     expect(canvas2d.videoDraws()).toHaveLength(5);
+    expect(stillOf('itm_a')?.getAttribute('src')).toBe('data:image/jpeg;base64,still-320x180-5');
   });
 
   it('copies one frame per source and refresh, however many thumbnails show the source', async () => {
@@ -105,7 +109,12 @@ describe('scene renderer: thumbnails show still pictures', () => {
     await vi.advanceTimersByTimeAsync(STILL_REFRESH_MS);
     expect(canvas2d.videoDraws()).toHaveLength(4);
     expect(stillOf('itm_a')).not.toBeNull();
-    expect(second.part('itm_c', 'canvas')).not.toBeNull();
+    expect(second.part('itm_c', 'img')).not.toBeNull();
+    // One snapshot per source, one image for every thumbnail that shows it.
+    expect(stillOf('itm_a')?.getAttribute('src')).toBe(
+      second.part('itm_c', 'img')?.getAttribute('src'),
+    );
+    expect(stillOf('itm_a')?.getAttribute('src')).not.toBe(stillOf('itm_b')?.getAttribute('src'));
   });
 
   it('waits with the next snapshots while copies are expensive on this computer', async () => {
