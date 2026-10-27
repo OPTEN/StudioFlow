@@ -44,8 +44,9 @@ test.describe('LK tokens', () => {
     expect(device.body.identity).toBe(phone.id);
     expect(deviceClaims['sub']).toBe(phone.id);
     expect(deviceClaims['video']).toMatchObject({ roomJoin: true, room: production.id, canPublish: true, canSubscribe: false, canPublishData: false });
-    expect(deviceClaims['video'].canPublishSources).toEqual(expect.arrayContaining(['camera', 'screen_share']));
-    expect(deviceClaims['video'].canPublishSources).toHaveLength(2);
+    // Picture and sound (issue #7): a sender may publish a camera, a screen, a microphone and the sound of a screen.
+    expect(deviceClaims['video'].canPublishSources).toEqual(expect.arrayContaining(['camera', 'screen_share', 'microphone', 'screen_share_audio']));
+    expect(deviceClaims['video'].canPublishSources).toHaveLength(4);
     expect(deviceClaims['video'].hidden ?? false).toBe(false);
     // studio: hidden subscriber
     expect(studio.body.identity).toMatch(/^studio_[a-z2-7]{16}$/);
@@ -102,13 +103,13 @@ test.describe('LK grants and publisher', () => {
       await studio.connect({ url: studioToken.url, token: studioToken.token });
       await output.connect({ url: outputToken.url, token: outputToken.token });
 
-      // A sender cannot subscribe to anything, cannot publish data or a microphone.
+      // A sender cannot subscribe to anything and cannot publish data; it may publish a microphone (issue #7).
       await expect.poll(async () => (await a.roomState()).remote, { timeout: 8000, message: 'sender A sees sender B in the participant list' }).toContain(phoneB.id);
       await sleep(2500);
       const probe = await a.probeGrants();
       expect(probe.canSubscribeFlag, 'canSubscribe in the permissions the server sent').toBe(false);
       expect(probe.subscribedTracks, 'a sender subscribes to no track').toBe(0);
-      expect(probe.microphone, 'a sender cannot publish a microphone').toMatch(/refused/);
+      expect(probe.microphone, 'a sender may publish a microphone').toMatch(/accepted/);
       expect(probe.canPublishFlag).toBe(true);
       const sources = await a.tryPublish('camera', 'camera');
       expect(sources.ok, `a sender may publish a camera: ${sources.error}`).toBe(true);
@@ -119,6 +120,7 @@ test.describe('LK grants and publisher', () => {
         const attempt = await viewer.tryPublish('camera', 'camera');
         expect(attempt.ok, `${viewer.label} must not publish`).toBe(false);
         expect(attempt.error ?? '').toMatch(/permission|not allowed|denied|forbidden|publish/i);
+        expect((await viewer.probeGrants()).microphone, `${viewer.label} must not publish a microphone`).toMatch(/refused/);
       }
       // ...but they can subscribe: frames of sender B arrive in the studio.
       const measured = await studio.measure({ identity: phoneB.id, trackName: 'camera', durationMs: 2500 });
