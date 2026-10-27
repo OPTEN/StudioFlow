@@ -62,6 +62,15 @@ function policyOf(operation: Operation): Policy {
   return POLICY[operation.operationId] ?? 'admin';
 }
 
+/**
+ * Routes that take a file in the form field "file". The declared body type matters: a request of another type is refused
+ * with 415 by the endpoint selection, before authentication is looked at, so these get a small multipart body.
+ */
+const UPLOADS: Record<string, { fileName: string; contentType: string }> = {
+  uploadAsset: { fileName: 'a.png', contentType: 'image/png' },
+  importProduction: { fileName: 'a.studioflow.zip', contentType: 'application/zip' },
+};
+
 const CRLF = String.fromCharCode(13, 10);
 
 test.describe('AUTH routes', () => {
@@ -98,12 +107,11 @@ test.describe('AUTH routes', () => {
       for (const [placeholder, value] of Object.entries(substitutions)) route = route.replaceAll(placeholder, value);
       const policy = policyOf(operation);
       const hasBody = ['POST', 'PUT', 'PATCH'].includes(operation.method);
-      // The declared body type matters: a wrong one is refused with 415 before authentication is looked at.
-      const isUpload = operation.operationId === 'uploadAsset';
+      const upload = UPLOADS[operation.operationId];
       const isBandwidth = operation.operationId === 'bandwidthTest';
       // An anonymous client: no cookie, no bearer, no key. Public pairing routes get their own client IP.
       const headers: Record<string, string> = policy === 'anonymous' && stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {};
-      const form = isUpload ? multipart([{ name: 'file', fileName: 'a.png', contentType: 'image/png', data: Buffer.from('x') }]) : undefined;
+      const form = upload ? multipart([{ name: 'file', ...upload, data: Buffer.from('x') }]) : undefined;
       const response = await send({
         method: operation.method,
         url: `${policy === 'anonymous' && stack.forwardedForWorks ? stack.direct : base}${route}${operation.operationId === 'getChanges' || operation.operationId === 'getOutputChanges' ? '?since=1' : ''}`,
