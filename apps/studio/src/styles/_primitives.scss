@@ -18,9 +18,15 @@
   width: 16px;
 }
 
+// The brand mark "Programm" (cropped 58 × 42): frame and chevrons are drawn with their own stroke width, the tally dot
+// is the one place where Tally Red is used for branding (DESIGN.md, "The Tally Exception").
 .c-icon--mark {
-  height: 18px;
-  width: 22px;
+  height: 20px;
+  width: 28px;
+}
+
+.c-icon__tally {
+  fill: var(--red);
 }
 
 // Buttons

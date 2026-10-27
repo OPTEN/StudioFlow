@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="StudioFlow">
   <title>StudioFlow</title>
-  <!-- Square mark (app icon): the two overlapping frames on the dark ground of the Regie. Works on any background. -->
-  <rect width="64" height="64" rx="12" fill="#0d1117"/>
-  <g transform="translate(10 14) scale(2)"><rect x="1" y="1" width="14" height="10" rx="1.5" fill="none" stroke="#e6edf3" stroke-width="1.6"/><rect x="7" y="7" width="14" height="10" rx="1.5" fill="#e6edf3"/></g>
+  <rect width="64" height="64" rx="14" fill="#1b212b"/>
+  <rect x="8" y="14" width="48" height="32" rx="5" fill="none" stroke="#e6edf3" stroke-width="3.5"/>
+  <path d="M22 23l7 7-7 7M32 23l7 7-7 7" fill="none" stroke="#e6edf3" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="48" cy="22" r="3" fill="#ff6a63"/>
+  <rect x="24" y="51" width="16" height="3.5" rx="1.75" fill="#8b949e"/>
 </svg>
