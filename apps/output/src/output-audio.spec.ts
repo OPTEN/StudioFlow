@@ -177,6 +177,83 @@ describe('OutputAudio', () => {
     });
   });
 
+  describe('starting later', () => {
+    function deferred(mix = new FakeMix()) {
+      const create = vi.fn(() => mix);
+      const audio = new OutputAudio({ enabled: true, createMix: create, deferStart: true });
+      return { audio, mix, create };
+    }
+
+    it('creates nothing before start, reports nothing and takes note of what comes', () => {
+      const { audio, create } = deferred();
+      audio.update(live());
+      audio.bindInputs(new FakeInputs());
+      audio.assetVideo(CLIP, document.createElement('video'), true);
+      audio.tryResume();
+
+      expect(create).not.toHaveBeenCalled();
+      expect(audio.state).toBe('off');
+      expect(audio.report()).toBeNull();
+      expect(audio.expected).toBe(true);
+      expect(audio.debug()).toEqual({ programDb: null, channels: [] });
+      expect(vi.getTimerCount()).toBe(0);
+      audio.dispose();
+    });
+
+    it('applies the state, the sounds and the videos it noted when it starts', () => {
+      const { audio, mix, create } = deferred();
+      const inputs = new FakeInputs();
+      inputs.give(MIC, sound());
+      const video = document.createElement('video');
+      const stream = sound();
+      const captured: HTMLVideoElement[] = [];
+      Object.assign(video, { captureStream: () => (captured.push(video), stream) });
+      audio.update(live());
+      audio.bindInputs(inputs);
+      audio.assetVideo(CLIP, video, true);
+
+      audio.start();
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(mix.applied).toHaveLength(1);
+      expect(mix.applied[0].targets.get(MIC)?.gain).toBe(1);
+      expect(mix.applied[0].options).toEqual({ rampMs: AUDIO_RAMP_MS });
+      expect(mix.inputs.get(MIC)).toBe(inputs.sounds.get(MIC));
+      expect(inputs.listenerCount).toBe(1);
+      expect(audio.state).toBe('running');
+      expect(audio.report()).toEqual({ state: 'running', levelDb: null });
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+      audio.dispose();
+    });
+
+    it('follows the media and the state after the start, and starts only once', () => {
+      const { audio, mix, create } = deferred();
+      audio.start();
+      audio.start();
+      const inputs = new FakeInputs();
+      audio.bindInputs(inputs);
+      inputs.give(SCREEN, sound());
+      audio.update(live());
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(mix.inputs.get(SCREEN)).not.toBeNull();
+      expect(mix.applied).toHaveLength(1);
+      audio.dispose();
+    });
+
+    it('stays off with ?audio=off and after dispose', () => {
+      const off = new OutputAudio({ enabled: false, deferStart: true });
+      off.start();
+      expect(off.report()).toEqual({ state: 'off', levelDb: null });
+      off.dispose();
+
+      const { audio, create } = deferred();
+      audio.dispose();
+      audio.start();
+      expect(create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('following the production', () => {
     it('gives the mix the targets of the state', () => {
       const { audio, mix } = setup();

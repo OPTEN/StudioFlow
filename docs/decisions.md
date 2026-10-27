@@ -82,7 +82,8 @@ Pinned details of the implementation (spec 4.10, runbook chapter 20):
   microphone any source of its device). The preview is never audible; there is no preview mix, the operator uses PFL.
 - Ramps: 20 ms for a cut, a mute or a fader move, 300 ms when the broadcast goes live or ends, the duration of a fade (constant power,
   at most 10 s) for a faded program switch. The same function (`audioRampMs`) is used by the output page and the Regie.
-- Output page: Web Audio only, remote tracks as streams (a muted `<audio>` element keeps them alive), videos through
+- Output page: Web Audio only, created after the first frame with the other lazy work (the first AudioContext of a browser costs
+  about 100 ms on the critical path of the slate, measured in E2E-OUT-01), remote tracks as streams (a muted `<audio>` element keeps them alive), videos through
   `captureStream()`; `?audio=off` for a silent page; the page reports `audio { state, levelDb }`; "Sound on" only while blocked and
   something could be heard. The proxy is assumed to be an OBS browser source with "Control audio via OBS"; an embedding frame needs
   `allow="autoplay"`.
