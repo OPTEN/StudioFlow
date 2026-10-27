@@ -4,7 +4,7 @@
 #
 # The server version is pinned to an exact tag: livekit-client of the frontends and the server move together
 # (.github/renovate.json5, group LiveKit).
-ARG LIVEKIT_VERSION=v1.13.10
+ARG LIVEKIT_VERSION=v1.13.11
 FROM livekit/livekit-server:${LIVEKIT_VERSION}
 
 # The commit this image was built from. CI and the release workflow pass it to every image (the images are built from the

@@ -783,7 +783,7 @@ once more right after a camera command.
 - Room service (Twirp, `POST http://livekit:7880/twirp/livekit.RoomService/{Method}`, `Authorization: Bearer
   {admin JWT}`, JSON; requests camelCase or snake_case, **responses snake_case**, int64 as strings):
   RemoveParticipant (block, regenerating or revoking an output link; 404 if absent is fine), ListParticipants (seed + reconcile).
-- Server: `livekit/livekit-server:v1.13.10` in the wrapper image `infra/livekit` (section 10), config in `livekit.yaml`
+- Server: `livekit/livekit-server:v1.13.11` in the wrapper image `infra/livekit` (section 10), config in `livekit.yaml`
   written by the API into the volume `livekit_config` (the supervisor restarts the server when it changes) – `port 7880`,
   `rtc.tcp_port 7881`, `rtc.udp_port 7882`, `rtc.use_external_ip false`, `rtc.node_ip` = the saved media address,
   `room.empty_timeout 300`, `room.departure_timeout 20`, `webhook.api_key` (must equal the key) + `webhook.urls`, `keys`
@@ -1259,7 +1259,7 @@ nowhere else; none is required (`${VAR:-default}`). No container has the Docker 
   `wget -q -O /dev/null http://127.0.0.1:8080/health/live`. The environment names the wiring (`INSTALL__*`, section "Server
   settings" below), not the choices of the operator. The key pair of LiveKit and the database password are read from
   `/secrets` (`SecretFiles`), the connection string carries no password.
-- `livekit`: build `infra/livekit/Dockerfile` (`FROM livekit/livekit-server:v1.13.10`, the version pinned in the Dockerfile and
+- `livekit`: build `infra/livekit/Dockerfile` (`FROM livekit/livekit-server:v1.13.11`, the version pinned in the Dockerfile and
   moved by Renovate with `livekit-client`) with the supervisor `infra/livekit/supervisor.sh` as `ENTRYPOINT` (POSIX `sh`,
   busybox). `cap_drop: ALL`. Ports `${STUDIOFLOW_RTC_TCP_PORT:-7881}/tcp` and `${STUDIOFLOW_RTC_UDP_PORT:-7882}/udp` only,
   host and container port the same number (LiveKit announces the container-side port). Volume `livekit_config:/lk`: the

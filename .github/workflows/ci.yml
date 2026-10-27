@@ -49,8 +49,11 @@ jobs:
       code: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' }}
       e2e: ${{ steps.filter.outputs.code == 'true' || steps.filter.outputs.workflows == 'true' || contains(github.event.pull_request.labels.*.name, 'e2e') }}
     steps:
+      # Full history: on a push the filter diffs against event.before, which a shallow clone does not have and cannot fetch
+      # without the credentials that persist-credentials: false removes.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
