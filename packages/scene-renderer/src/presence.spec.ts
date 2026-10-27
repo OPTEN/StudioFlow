@@ -136,7 +136,10 @@ describe('animatePresence', () => {
     animation.currentTime = 290;
     await vi.advanceTimersByTimeAsync(100);
     expect(onEnd).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(100);
+    // The clock moved last at 500 ms: a second of standing still ends the animation.
+    await vi.advanceTimersByTimeAsync(1000 - 1);
+    expect(onEnd).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
 
     expect(onEnd).toHaveBeenCalledTimes(1);
   });

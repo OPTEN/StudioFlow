@@ -848,9 +848,10 @@ filled label tab like the prototype. Desired sizes: each renderer reports the on
 source it shows (×devicePixelRatio, rounded to 16 px) via `provider.setDesiredSize`. Auto grid as in 4.3.
 Fades use the Web Animations API on opacity (new scene layer over old), `reducedMotion` turns fades into cuts. A fade
 always completes (also for the slide-and-fade of texts): the animation reports its end itself. Only when the browser never
-does (background tab, element not rendered) the renderer completes it, 100 ms after the end of the duration and only when the
-clock of the animation stands still for 100 ms (`stall-guard.ts`). An animation that is merely late, because a loaded
-machine delivers the first or the last frames late, is left to finish by itself and is never cut short at the wall-clock end.
+does (background tab, element not rendered) the renderer completes it, but only after the end of the duration plus 100 ms and
+only when the clock of the animation has stood still for a second (`stall-guard.ts`). An animation that is merely late, because a
+loaded machine delivers the first or the last frames late (stalls of up to 380 ms were measured), is left to finish by itself and
+is never cut short at the wall-clock end.
 
 Texts (issue #13): an item whose source is `txt_…` is drawn as HTML by `text-block.ts`, never as a picture: sharp at every
 output resolution and scaled with the stage. The options `textOf(sourceId)` and `textTheme()` supply the content and the

@@ -136,7 +136,8 @@ describe('fadeOpacity', () => {
       done = true;
     });
 
-    await vi.advanceTimersByTimeAsync(500 + 100 + 99);
+    // The first look (100 ms after the end) sees the clock; a second of standing still counts from there.
+    await vi.advanceTimersByTimeAsync(500 + 100 + 1000 - 1);
     expect(done).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
 

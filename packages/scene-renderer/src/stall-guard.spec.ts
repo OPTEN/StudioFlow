@@ -1,4 +1,4 @@
-import { STALL_MARGIN_MS, watchForStall } from './stall-guard';
+import { STALL_AFTER_MS, STALL_MARGIN_MS, watchForStall } from './stall-guard';
 
 /** An animation whose time the test moves by hand. */
 function timedAnimation(currentTime: number | null): {
@@ -51,12 +51,25 @@ describe('watchForStall', () => {
     expect(onStalled).not.toHaveBeenCalled();
   });
 
-  it('reports an animation whose time stands still for a margin', async () => {
+  it('leaves an animation alone whose frames stall for a few hundred milliseconds', async () => {
+    const { animation, set } = timedAnimation(1983);
+    const onStalled = vi.fn();
+
+    watchForStall(animation, 2000, onStalled);
+    await vi.advanceTimersByTimeAsync(2000 + STALL_MARGIN_MS + 500);
+    expect(onStalled).not.toHaveBeenCalled();
+    set(2000);
+    await vi.advanceTimersByTimeAsync(STALL_MARGIN_MS);
+    expect(onStalled).not.toHaveBeenCalled();
+  });
+
+  it('reports an animation whose time stands still for a second', async () => {
     const { animation } = timedAnimation(300);
     const onStalled = vi.fn();
 
     watchForStall(animation, 2000, onStalled);
-    await vi.advanceTimersByTimeAsync(2000 + STALL_MARGIN_MS);
+    // The first look sees the clock for the first time; the second of standing still counts from there.
+    await vi.advanceTimersByTimeAsync(2000 + STALL_AFTER_MS);
     expect(onStalled).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(STALL_MARGIN_MS);
 
