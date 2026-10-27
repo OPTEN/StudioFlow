@@ -1,6 +1,11 @@
 import type { LiveKitTokenDto } from '@studioflow/scene-model';
 import type { SourceMediaProvider } from '@studioflow/scene-renderer';
-import type { MediaLogger, MediaSessionState, SourceStats } from '@studioflow/media-client';
+import type {
+  DecoderSummary,
+  MediaLogger,
+  MediaSessionState,
+  SourceStats,
+} from '@studioflow/media-client';
 
 /** The part of `MediaSession` the page uses. */
 export interface OutputMediaSession {
@@ -15,6 +20,8 @@ export interface OutputMediaSession {
 export interface OutputMediaProvider extends SourceMediaProvider {
   getStats(sourceId: string): Promise<SourceStats | null>;
   estimateLatencyMs(): Promise<number | null>;
+  /** What the decoders did since the previous call (streams, software decoding, dropped frames). */
+  decoderSummary(): Promise<DecoderSummary>;
   dispose(): void;
 }
 

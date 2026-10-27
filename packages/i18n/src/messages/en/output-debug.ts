@@ -19,6 +19,9 @@ export const outputDebug = {
   'output.debug.canvasUnknown': 'Canvas unknown',
   'output.debug.connections': 'Hub {hub} · Sync {sync}',
 
+  'output.debug.decoder.hardware': 'hardware decoding',
+  'output.debug.decoder.software': 'software decoding',
+
   'output.debug.hub.connected': 'connected',
   'output.debug.hub.connecting': 'connecting…',
   'output.debug.hub.idle': 'ready',

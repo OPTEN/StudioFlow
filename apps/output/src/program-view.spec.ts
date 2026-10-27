@@ -42,24 +42,39 @@ describe('slateFor', () => {
 });
 
 describe('preloadScenesFor', () => {
-  it('lists every scene except the program', () => {
-    expect(preloadScenesFor(state()).map((s) => s.id)).toEqual(['scn_b', 'scn_c']);
-  });
-
-  it('puts the preview scene first', () => {
-    const current = state({}, { previewSceneId: 'scn_c' });
-    expect(preloadScenesFor(current).map((s) => s.id)).toEqual(['scn_c', 'scn_b']);
-  });
-
-  it('ignores a preview that equals the program or does not exist', () => {
-    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_a' })).map((s) => s.id)).toEqual([
-      'scn_b',
+  it('prepares the preview scene and no other scene (decision #12: the others come on demand)', () => {
+    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_c' })).map((s) => s.id)).toEqual([
       'scn_c',
     ]);
-    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_x' })).map((s) => s.id)).toEqual([
+    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_b' })).map((s) => s.id)).toEqual([
       'scn_b',
-      'scn_c',
     ]);
+  });
+
+  it('prepares nothing without a preview (Studio Mode off)', () => {
+    expect(preloadScenesFor(state())).toEqual([]);
+  });
+
+  it('prepares nothing when the preview is the program or does not exist', () => {
+    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_a' }))).toEqual([]);
+    expect(preloadScenesFor(state({}, { previewSceneId: 'scn_x' }))).toEqual([]);
+  });
+
+  it('returns the scene object of the state (the view compares by identity)', () => {
+    const current = state({}, { previewSceneId: 'scn_b' });
+    expect(preloadScenesFor(current)[0]).toBe(current.scenes[1]);
+  });
+
+  it('prepares one scene however many scenes the production has', () => {
+    const base = state({}, { previewSceneId: 'scn_f' });
+    const many = {
+      ...base,
+      scenes: [
+        ...base.scenes,
+        ...['d', 'e', 'f', 'g', 'h'].map((id, i) => scene(`scn_${id}`, 3 + i, [])),
+      ],
+    };
+    expect(preloadScenesFor(many).map((s) => s.id)).toEqual(['scn_f']);
   });
 });
 
@@ -111,11 +126,7 @@ describe('ProgramView', () => {
   it('shows the program scene under the standby slate on the first sync', () => {
     const { renderer, view } = setup();
     view.apply(state());
-    expect(renderer.summary()).toEqual([
-      'show scn_a',
-      'slate Starting soon',
-      'preload scn_b,scn_c',
-    ]);
+    expect(renderer.summary()).toEqual(['show scn_a', 'slate Starting soon']);
     expect(view.rendering).toBe(true);
     expect(view.shownSceneId).toBeNull();
   });
@@ -123,8 +134,14 @@ describe('ProgramView', () => {
   it('shows the program without slate when the first sync is live (reload during a broadcast)', () => {
     const { renderer, view } = setup();
     view.apply(state({}, { broadcast: 'live' }));
-    expect(renderer.summary()).toEqual(['show scn_a', 'slate null', 'preload scn_b,scn_c']);
+    expect(renderer.summary()).toEqual(['show scn_a', 'slate null']);
     expect(view.shownSceneId).toBe('scn_a');
+  });
+
+  it('prepares the preview scene on the first sync', () => {
+    const { renderer, view } = setup();
+    view.apply(state({}, { broadcast: 'live', previewSceneId: 'scn_c' }));
+    expect(renderer.summary()).toEqual(['show scn_a', 'slate null', 'preload scn_c']);
   });
 
   it('only fades the slate out when the broadcast starts', () => {
@@ -153,7 +170,7 @@ describe('ProgramView', () => {
     renderer.reset();
     const switched = next(live, programSwitched(101, 'scn_b', FADE));
     view.apply(switched, FADE);
-    expect(renderer.summary()).toEqual(['transition scn_b fade 500', 'preload scn_a,scn_c']);
+    expect(renderer.summary()).toEqual(['transition scn_b fade 500']);
     expect(view.shownSceneId).toBe('scn_b');
   });
 
@@ -163,7 +180,7 @@ describe('ProgramView', () => {
     view.apply(live);
     renderer.reset();
     view.apply(next(live, programSwitched(101, 'scn_c', FADE)));
-    expect(renderer.summary()).toEqual(['show scn_c', 'preload scn_a,scn_b']);
+    expect(renderer.summary()).toEqual(['show scn_c']);
   });
 
   it('updates the shown scene in place', () => {
@@ -177,18 +194,21 @@ describe('ProgramView', () => {
     expect(renderer.calls[0]).toMatchObject({ scene: { version: 2 } });
   });
 
-  it('refreshes only the preload list when another scene changes', () => {
+  it('refreshes the preloaded scene when the preview scene changes and ignores changes of other scenes', () => {
     const { renderer, view } = setup();
-    const live = state({}, { broadcast: 'live' });
+    const live = state({}, { broadcast: 'live', previewSceneId: 'scn_b' });
     view.apply(live);
     renderer.reset();
-    view.apply(next(live, sceneUpserted(101, scene('scn_b', 1, [], { version: 2 }))));
-    expect(renderer.summary()).toEqual(['preload scn_b,scn_c']);
+    const other = next(live, sceneUpserted(101, scene('scn_c', 2, [], { version: 2 })));
+    view.apply(other);
+    expect(renderer.summary()).toEqual([]);
+    view.apply(next(other, sceneUpserted(102, scene('scn_b', 1, [], { version: 2 }))));
+    expect(renderer.summary()).toEqual(['preload scn_b']);
   });
 
-  it('reorders the preload list when the preview changes and makes no other call', () => {
+  it('prepares the new preview scene when the preview changes and makes no other call', () => {
     const { renderer, view } = setup();
-    const live = state({}, { broadcast: 'live' });
+    const live = state({}, { broadcast: 'live', previewSceneId: 'scn_b' });
     view.apply(live);
     renderer.reset();
     const previewOnly: ProductionEvent = {
@@ -201,7 +221,38 @@ describe('ProgramView', () => {
       revision: 101,
     };
     view.apply(next(live, previewOnly), { kind: 'cut', durationMs: 0 });
-    expect(renderer.summary()).toEqual(['preload scn_c,scn_b']);
+    expect(renderer.summary()).toEqual(['preload scn_c']);
+  });
+
+  it('stops preparing a scene when the preview is cleared (Studio Mode off) or becomes the program', () => {
+    const { renderer, view } = setup();
+    const live = state({}, { broadcast: 'live', previewSceneId: 'scn_b' });
+    view.apply(live);
+    renderer.reset();
+    const cleared: ProductionEvent = {
+      type: 'programSwitched',
+      programSceneId: 'scn_a',
+      previewSceneId: null,
+      previousProgramSceneId: 'scn_a',
+      transition: { kind: 'cut', durationMs: 0 },
+      at: '2026-10-22T10:00:00.000Z',
+      revision: 101,
+    };
+    const without = next(live, cleared);
+    view.apply(without, { kind: 'cut', durationMs: 0 });
+    expect(renderer.summary()).toEqual(['preload ']);
+
+    // A Take: the preview scene goes on air and the old program becomes the preview.
+    renderer.reset();
+    const taken: ProductionEvent = {
+      ...cleared,
+      programSceneId: 'scn_b',
+      previewSceneId: 'scn_a',
+      previousProgramSceneId: 'scn_a',
+      revision: 102,
+    };
+    view.apply(next(without, taken), FADE);
+    expect(renderer.summary()).toEqual(['transition scn_b fade 500', 'preload scn_a']);
   });
 
   it('makes no call for changes that do not affect the picture', () => {
@@ -257,7 +308,7 @@ describe('ProgramView', () => {
     expect(view.latest).toBe(switched);
 
     view.setDenied(false);
-    expect(renderer.summary()).toEqual(['show scn_b', 'slate null', 'preload scn_a,scn_c']);
+    expect(renderer.summary()).toEqual(['show scn_b', 'slate null']);
     expect(view.rendering).toBe(true);
   });
 

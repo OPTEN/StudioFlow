@@ -47,6 +47,28 @@ describe('formatDebugLines in German', () => {
     ]);
   });
 
+  it('names the decoder', () => {
+    const [software, hardware] = formatDebugLines({
+      ...INFO,
+      sources: [
+        {
+          code: 'K1',
+          label: null,
+          availability: 'live',
+          stats: { width: 1280, height: 720, decoder: 'software' },
+        },
+        {
+          code: 'S1',
+          label: null,
+          availability: 'live',
+          stats: { width: 1280, height: 720, decoder: 'hardware' },
+        },
+      ],
+    }).slice(6);
+    expect(software).toContain('Software-Decodierung');
+    expect(hardware).toContain('Hardware-Decodierung');
+  });
+
   it('names a missing scene and production', () => {
     const lines = formatDebugLines({ ...INFO, productionName: null, sceneName: null, sources: [] });
     expect(lines[0]).toBe('Produktion unbekannt · keine Szene');

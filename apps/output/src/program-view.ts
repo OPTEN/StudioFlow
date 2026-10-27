@@ -29,15 +29,18 @@ export function slateFor(state: ProductionState): SlateDto | null {
 }
 
 /**
- * Scenes whose sources the output keeps subscribed at a small layer (spec 7, plan 2 “Preload for switching”):
- * every scene except the program, the preview scene first (Studio-Modus: the next take), then the others in order.
+ * Scenes whose sources the output keeps ready besides the program (spec 7, decision #12): the preview scene, the next
+ * Take in Studio Mode, so it comes on air with its picture there and sharp. Every other scene is not prepared: its
+ * sources are subscribed when it goes on air, and their pictures arrive with the next keyframe (about half a second).
+ * That is what keeps the output page from decoding every source of every scene all the time.
  */
 export function preloadScenesFor(state: ProductionState): SceneDto[] {
-  const programId = state.production.programSceneId;
   const previewId = state.production.previewSceneId;
-  const others = state.scenes.filter((scene) => scene.id !== programId);
-  const preview = others.find((scene) => scene.id === previewId);
-  return preview ? [preview, ...others.filter((scene) => scene !== preview)] : others;
+  if (previewId === null || previewId === state.production.programSceneId) {
+    return [];
+  }
+  const preview = state.scenes.find((scene) => scene.id === previewId);
+  return preview ? [preview] : [];
 }
 
 function sameScenes(a: readonly SceneDto[], b: readonly SceneDto[]): boolean {
@@ -55,7 +58,7 @@ const NOTHING = Symbol('nothing');
  *   picture is already there); the first state and every catch-up after a reconnect are shown without transition,
  *   a live `programSwitched` plays its transition, changes of the shown scene are diffed in place (`update`);
  * - standby → standby slate, live → no slate, ended → end slate;
- * - every other scene is preloaded, the preview first;
+ * - the preview scene is preloaded, no other scene (see {@link preloadScenesFor});
  * - a change of the sources (text content) or of the text colours re-renders the texts on stage (`refresh`).
  * While access is denied the stage is cleared (no picture of a production this link may no longer see stays in the
  * DOM) and “No access” is shown; the latest state is kept and rendered again when access returns.

@@ -76,6 +76,7 @@ function sourceLine(source: DebugSource): string {
     `${formatKbpsAsMbit(stats.bitrateKbps)} Mbit/s`,
     t('output.debug.loss', { value: formatPercent(stats.packetLossPct, 1) }),
     t('output.debug.buffer', { value: ms(stats.jitterBufferDelayMs) }),
+    ...(stats.decoder === undefined ? [] : [t(`output.debug.decoder.${stats.decoder}`)]),
     ...(source.availability === 'live' ? [] : [availability]),
   ].join(' · ');
 }
