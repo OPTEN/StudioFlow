@@ -17,6 +17,7 @@ namespace Opten.StudioFlow.Core.Application;
 /// <param name="Certificate">The uploaded certificate files; null when they are not available.</param>
 /// <param name="FrameAncestors">Origins that may frame the output (without <c>'self'</c>).</param>
 /// <param name="HstsMaxAge">HSTS seconds of sites with a certificate that is not from the local CA.</param>
+/// <param name="LocalHstsMaxAge">HSTS seconds of sites with the local CA: a browser must not remember "https only" for a year for a certificate it can only trust by hand, so this is one hour unless the operator set a duration.</param>
 public sealed record CaddyModel(
     int HttpsPort,
     string TlsMode,
@@ -26,7 +27,8 @@ public sealed record CaddyModel(
     IReadOnlyList<string>? DnsArguments,
     CertificateFiles? Certificate,
     IReadOnlyList<string> FrameAncestors,
-    int HstsMaxAge);
+    int HstsMaxAge,
+    int LocalHstsMaxAge);
 
 /// <summary>A rendered Caddyfile and the name of its server (<c>sf-</c> and 12 hex characters of the content), by which the API recognises it in Caddy.</summary>
 /// <param name="ServerName">Name of the HTTP server in the loaded configuration.</param>
@@ -43,9 +45,6 @@ public sealed record CaddyConfig(string ServerName, string Text, string? Warning
 public static class CaddyfileRenderer
 {
     private const string NamePlaceholder = "@@NAME@@";
-
-    /// <summary>HSTS of the sites with the local CA: a browser must not remember "https only" for a year for a certificate it can only trust by hand.</summary>
-    private const int InternalHstsMaxAge = 3_600;
 
     /// <summary>Renders the Caddyfile of <paramref name="model"/>.</summary>
     public static CaddyConfig Render(CaddyModel model)
@@ -82,7 +81,7 @@ public static class CaddyfileRenderer
         text.AppendLine("\t\ton_demand");
         text.AppendLine("\t}");
         text.AppendLine("\timport sf_ca_download");
-        text.AppendLine(CultureInfo.InvariantCulture, $"\timport studioflow_site {InternalHstsMaxAge} {ancestors}");
+        text.AppendLine(CultureInfo.InvariantCulture, $"\timport studioflow_site {model.LocalHstsMaxAge} {ancestors}");
         text.AppendLine("}");
 
         var body = text.ToString().ReplaceLineEndings("\n");
@@ -106,7 +105,7 @@ public static class CaddyfileRenderer
             site.AppendLine(CultureInfo.InvariantCulture, $"{address} {{");
             site.AppendLine("\ttls internal");
             site.AppendLine("\timport sf_ca_download");
-            site.AppendLine(CultureInfo.InvariantCulture, $"\timport studioflow_site {InternalHstsMaxAge} {ancestors}");
+            site.AppendLine(CultureInfo.InvariantCulture, $"\timport studioflow_site {model.LocalHstsMaxAge} {ancestors}");
             site.AppendLine("}");
             return (site.ToString(), null);
         }

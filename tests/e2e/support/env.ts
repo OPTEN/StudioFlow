@@ -281,6 +281,9 @@ export function renderEnvFile(nodeIp: string, overrides: Record<string, string> 
     // Small limits so oversize uploads are cheap (INT-MEDIA-04 / E2E-MEDIA-02): 1 MiB images, 2 MiB videos.
     MEDIA__MAXIMAGEBYTES: '1048576',
     MEDIA__MAXVIDEOBYTES: '2097152',
+    // E2E-AUTH-09 asserts the one-year HSTS of a production installation; the test stack uses the local certificate, whose
+    // default would be one hour, so the duration is set the way an operator would.
+    STUDIOFLOW_HSTS_MAX_AGE: '31536000',
     E2E_NODE_IP: nodeIp,
     E2E_HTTPS_PORT: String(settings.httpsPort),
     E2E_API_PORT: String(settings.apiPort),

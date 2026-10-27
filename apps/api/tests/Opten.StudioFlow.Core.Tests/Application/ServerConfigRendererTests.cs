@@ -15,8 +15,10 @@ public sealed class ServerConfigRendererTests
         string? challenge = null,
         IReadOnlyList<string>? dns = null,
         CertificateFiles? certificate = null,
-        IReadOnlyList<string>? ancestors = null) =>
-        new(port, mode, domain, email, challenge, dns, certificate, ancestors ?? [], 31_536_000);
+        IReadOnlyList<string>? ancestors = null,
+        int hsts = 31_536_000,
+        int localHsts = 3_600) =>
+        new(port, mode, domain, email, challenge, dns, certificate, ancestors ?? [], hsts, localHsts);
 
     [Fact]
     public void Caddyfile_WithoutADomain_HasOnlyTheSiteForAnyNameWithTheLocalCa()
@@ -101,6 +103,16 @@ public sealed class ServerConfigRendererTests
         Assert.Contains("\t\tresolvers {$STUDIOFLOW_DNS_RESOLVERS}\n", text, StringComparison.Ordinal);
         Assert.Contains("\t\tdns_challenge_override_domain _acme-challenge.studioflow.dedyn.io\n", text, StringComparison.Ordinal);
         Assert.Contains("\timport studioflow_site 31536000 \"'self'\"\n", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Caddyfile_HstsSetByTheOperator_AppliesToTheLocalCaSitesToo()
+    {
+        var text = CaddyfileRenderer.Render(Model(TlsModes.Internal, "studio.example.ch", hsts: 600, localHsts: 600)).Text;
+
+        Assert.Contains(":8443 {\n\ttls internal {\n\t\ton_demand\n\t}\n\timport sf_ca_download\n\timport studioflow_site 600 \"'self'\"\n}", text, StringComparison.Ordinal);
+        Assert.Contains("https://studio.example.ch:8443 {\n\ttls internal\n\timport sf_ca_download\n\timport studioflow_site 600 \"'self'\"\n}", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("3600", text, StringComparison.Ordinal);
     }
 
     [Fact]
