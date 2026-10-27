@@ -184,4 +184,32 @@ test.describe('SRC laptop screens', () => {
       await expect(row.locator('.c-st__codes .c-code')).toHaveCount(10); // nine screens and the camera
     },
   );
+
+  test(
+    'E2E-SRC-14 [ui, quick clicks] two clicks on “+ Another screen” while the first answer of the server is slow: both screens stay live under the slots S2 and S3',
+    t.p1,
+    async ({ regie, openLaptop, pairContext, production }) => {
+      test.setTimeout(180_000);
+      const s1 = await liveLaptop({ openLaptop }, pairContext, regie, 'Laptop Ida');
+      const laptop = s1.laptop;
+      // The server answers every request with the lowest free slot. With the first answer held back, a second request that
+      // overlapped it would be answered first (screen-2 for the click that predicted screen-3) and the sender would drop both.
+      let allocations = 0;
+      await laptop.page.route('**/api/device/slots', async (route) => {
+        if (route.request().method() === 'POST' && allocations++ === 0) await sleep(1500);
+        await route.continue();
+      });
+      await laptop.addScreen();
+      await laptop.addScreen();
+      await laptop.waitForSlot('screen-2', 'live', 30_000);
+      await laptop.waitForSlot('screen-3', 'live', 30_000);
+      expect(allocations, 'one allocation per click').toBe(2);
+      await expect(laptop.page.getByRole('alert'), 'no “Please click Share screen again”').toHaveCount(0);
+      await expect(laptop.slot('screen-2').getByText('S2')).toBeVisible();
+      await expect(laptop.slot('screen-3').getByText('S3')).toBeVisible();
+      expect((await laptop.mediaCalls()).display, 'three shares, none repeated').toBe(3);
+      const sources = (await production.snapshot()).sources.filter((source) => source.deviceId === s1.device.id);
+      expect(sources.map((source) => `${source.code} ${source.slot} ${source.status}`).sort()).toEqual(['S1 screen-1 ok', 'S2 screen-2 ok', 'S3 screen-3 ok']);
+    },
+  );
 });
