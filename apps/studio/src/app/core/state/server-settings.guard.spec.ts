@@ -31,6 +31,11 @@ describe('server settings guards', () => {
 
   afterEach(() => http.verify());
 
+  /** Lets the guard promise chain run up to its next request. */
+  function settle(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve));
+  }
+
   function run(guard: typeof configuredGuard): Promise<boolean | UrlTree> {
     return TestBed.runInInjectionContext(() =>
       guard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
@@ -41,7 +46,9 @@ describe('server settings guards', () => {
     result: Promise<boolean | UrlTree>,
     body: object | null,
   ): Promise<boolean | UrlTree> {
-    await Promise.resolve();
+    await settle();
+    http.expectOne('/api/auth/me').flush({ username: 'regie' });
+    await settle();
     const request = http.expectOne('/api/settings');
     if (body) {
       request.flush(body);
@@ -63,6 +70,22 @@ describe('server settings guards', () => {
   it('does not lock the operator out while the server cannot be reached', async () => {
     expect(await answer(run(configuredGuard), null)).toBe(true);
   });
+
+  it.each([
+    ['configuredGuard', configuredGuard],
+    ['wizardGuard', wizardGuard],
+  ])(
+    '%s asks for no settings while nobody is signed in (authGuard redirects)',
+    async (_name, guard) => {
+      const result = run(guard);
+      await Promise.resolve();
+      http
+        .expectOne('/api/auth/me')
+        .flush({ code: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(result).resolves.toBe(true);
+      http.expectNone('/api/settings');
+    },
+  );
 
   it('shows the wizard until the installation is configured', async () => {
     expect(await answer(run(wizardGuard), serverSettingsFixture())).toBe(true);
