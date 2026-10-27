@@ -562,6 +562,8 @@ state, `git pull --ff-only` aborts without restarting anything.
 | A call or another app takes the camera | The sender requests the camera again and republishes (3 attempts) | freeze frame, then live again | End/decline the call and bring the sender page back to the foreground. If the station shows "no picture": restart the camera in the sender page or reload the page. Prevent it with Do Not Disturb. |
 | The sender page is reloaded | same device ID, same slot, auto start with the last settings | brief freeze frame | Nothing – unless the browser asks for camera permission again (iOS): "Allow". |
 | Someone stops their screen sharing | the Regie warns (“S1 sharing stopped”), the sender shows "Share again" | the tile's fallback | In the Regie, ask for a new share ("Ask to share again") or ask the person to click "Share again" and choose the screen; otherwise change scene. The screen returns to the same place. |
+| A station says "CPU at limit" | the sender lowers the picture quality by itself and keeps sending | slightly less sharp or fewer frames | See section 11, "The computer cannot keep up". Ask the person to close other programs, share one window, or switch to 720p. |
+| The output chip says "drops frames" | the output page shows what it can and keeps running | stutter | See section 11, "The computer cannot keep up". Lower the resolution of the production or use a faster computer for the output page. |
 | The Wi-Fi is overloaded | Simulcast lowers the layers; the Regie shows packet loss and bitrate per station | slightly less sharp, no stutter | Take foreign devices off the Wi-Fi, set phones to 720p, stop sources that are not needed, have laptops share one window instead of the whole screen, change the Wi-Fi channel. |
 | The Regie browser crashes | the output keeps running, it does not depend on the Regie browser | nothing | Reopen the browser and sign in (the login stays valid for 12 h); layout and Studio Mode come back from the browser. If necessary use the second Regie device. |
 | API restart or update | on shutdown the API disconnects all hub connections immediately (restart within a few seconds, without "reconnecting"); SignalR reconnects, the state is reconciled by version; media keeps running. If a device with a source in Program or Preview does not return within 15 s, the Regie reports it ("reconnecting") | nothing | Nothing. (Still never update during a broadcast.) |
@@ -604,6 +606,29 @@ state, `git pull --ff-only` aborts without restarting anything.
 - Laptop: was a minimised window shared? Restore the window or share the whole screen.
 - Output at the proxy: `/o/<slug>?k=…&debug=1` shows connection state, resolution, frame rate and bitrate per source.
   "No access" → the key was regenerated (send the new link) or the IP restriction does not match.
+
+### The computer cannot keep up (CPU at limit, drops frames)
+
+Every picture costs a computer something: the sender encodes it, the Regie and the output page decode it. StudioFlow tells you
+when one of them is at its limit, in amber, while the picture is still there:
+
+- **"CPU at limit"** in a station line, in the monitoring table and in the station details: that device cannot encode fast
+  enough and lowers the picture quality (the browser reports `qualityLimitation = cpu`). Close other programs on it; on a
+  laptop share one window or a smaller area instead of the whole screen, and leave "Video in screen" off unless a video
+  plays in the shared screen; on a phone choose 720p. "Bandwidth" as a reason is not shown here: that is the Wi-Fi (section 10).
+- **"software encoding"** / **"software decoding"** in the station details ("Encoding", "Decoding here") and the output
+  popover ("Decoding"): the graphics hardware is not used for that stream, so the CPU does the work. Laptops send screens as
+  H.264 for that reason (hardware on practically every computer); VP9 is only chosen where the browser reports a hardware
+  encoder. Where every stream is in software, use fewer or smaller sources in the scenes.
+- **"drops frames"** in the output chip (from 5 % dropped frames of a connected output page; the popover shows "Dropped
+  frames"): the computer that shows the output page, usually the proxy, cannot decode what it is given. Lower the resolution of
+  the production (Format and resolution, section 19), take sources out of the program and the preview scene, close other
+  programs on that computer, or use a faster one. The output page decodes only the program and the preview scene.
+- A switch to a scene that is neither in the program nor in the preview takes about half a second until its pictures arrive
+  (the output does not keep them ready). In Studio Mode, put the next scene in the preview and it comes on air with its picture.
+
+How much hardware the audience's computer uses cannot be measured in the container the automated tests run in; the manual
+measurement on real devices is MAN-16 (`docs/testing.md`).
 
 ### High latency
 

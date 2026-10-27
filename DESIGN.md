@@ -291,7 +291,7 @@ components:
 
 The Regie (control room) is one continuous graphite console. There are no boxed panels, no gaps between regions and no outer frame. Header, message strip, stage and docks butt against each other and are separated only by 1px hairlines that run all the way to the window edge. The hairlines are also the handles: dragging one resizes the regions it divides. Only the content keeps a 16px gutter from the window edge. The density matches a broadcast tool on a 14–16 inch laptop: 14px body text, 30px controls and 40px dock headers.
 
-Colour belongs to state. The neutral graphite steps carry the structure, and every saturated hue has a fixed meaning: red is Program and live, green is Preview and ok, amber is a station reconnecting, blue is selection, the primary action and the active hairline, and violet is an editable number. An outage therefore reads as colour that was not there a moment ago. Risky actions sit apart from everything else, behind a dashed red outline.
+Colour belongs to state. The neutral graphite steps carry the structure, and every saturated hue has a fixed meaning: red is Program and live, green is Preview and ok, amber is a station reconnecting or a computer at its limit (attention, the picture is still there), blue is selection, the primary action and the active hairline, and violet is an editable number. An outage therefore reads as colour that was not there a moment ago. Risky actions sit apart from everything else, behind a dashed red outline.
 
 The system explicitly rejects two things. One is OBS's clutter of equal-ranking grey dock windows, in which an outage gets lost. The other is framed cards with gaps between them. The docks keep OBS's freedom: they can be moved, resized and hidden. They keep it without OBS's chrome.
 
@@ -316,7 +316,7 @@ A dark graphite neutral ladder with five syntax-palette state hues. No colour is
 - **Tally Green** (green): Preview, ok lamps, the "No open messages" check (German: "Keine offenen Meldungen") and the recovered state. Its wash (green-wash) marks a recovered station until someone confirms it with "Seen" (German: "Gesehen").
 
 ### Tertiary
-- **Reconnect Amber** (amber): "reconnecting" (German: "verbindet neu"). A source that is reconnecting gets an amber lamp, an amber dashed outline on its element and an amber-wash row.
+- **Reconnect Amber** (amber): "reconnecting" (German: "verbindet neu"). A source that is reconnecting gets an amber lamp, an amber dashed outline on its element and an amber-wash row. The same hue marks a computer at its limit: "CPU at limit" in a station line and tag in the monitoring table (German: "CPU am Limit"), "drops frames" in the output chip (German: "verwirft Bilder") and software decoding in the output popover. Those say "attention, the picture is still there"; they get no wash, no dashed outline and no pulse.
 - **Value Violet** (violet): editable numeric values only, such as the fade duration and the X/Y/size fields in Properties. It turns muted when the value is inactive (Cut).
 
 ### Neutral
@@ -484,6 +484,7 @@ Texts are part of the picture, not of the console, so the **production** chooses
   - The header summarises station health ("All 5 stations ok" or "2 incidents"; German: "Alle 5 Stationen ok", "2 Störungen").
 - **Hold frame:** after the configured hold time (3s, 10s or hold), the audience sees the last frame of the lost source heavily blurred and darkened, with "Picture returns shortly" centred (German: "Bild kommt gleich zurück").
 - **Recovered:** a returning station keeps a green-wash entry and a "Seen" button until someone confirms it.
+- **Load (issue #12):** a computer that cannot keep up is told in text and amber, never in red. The station line adds "CPU at limit" (with the slot codes on a laptop with several) in the warning hue next to the rate, with the advice as its tooltip; the open details list "Encoding" and "Decoding here" in mono ("H.264 · hardware", "VP9 · software encoding · CPU at limit", "H.264 · hardware decoding"). The monitoring table has the sortable column "Encoding" with a small amber tag (`c-tag--warn`: amber on the amber wash, same shape as the PGM and PVW tags) after the text where a sender is at its limit. The output chip shows "drops frames" in amber between the lamp and the latency from 5 % dropped frames (the lamp turns amber too, the tooltip gives the cause and the advice); the output popover has the rows "Decoding" ("3 streams · 1 in software", amber when something decodes in software) and "Dropped frames".
 
 ### Popovers, menus and toast
 - **Popovers:** Float (Raised in the dark theme), strong-seam border, 6px radius and Pop shadow, opening 6px below their trigger. They use 34px menu items, uppercase Label headings and strong-seam separators.
@@ -513,7 +514,7 @@ A copied production has no devices, so its pictures wait for new ones. The conso
 ### Do:
 - **Do** separate regions with 1px seam hairlines (#262c36) that run to the window edge, and keep content 16px from that edge.
 - **Do** make every region divider a resize handle: blue on hover or focus, double-click or Enter to reset, arrow keys for 16px steps (Shift for 64px).
-- **Do** give each saturated hue exactly one meaning: red Program and down, green Preview and ok, amber reconnecting, blue selection and primary action, violet editable number.
+- **Do** give each saturated hue exactly one meaning: red Program and down, green Preview and ok, amber reconnecting or at its limit (attention, still working), blue selection and primary action, violet editable number.
 - **Do** show an outage everywhere at once (header, message strip, monitor element, scene list, source row, station row) with lamps and washes, and keep a recovered station marked until "Seen".
 - **Do** keep the control column and the docks fixed when Studio Mode toggles. Only the Preview monitor appears or disappears.
 - **Do** put risky actions behind a dashed red outline, away from other actions, with a dashed confirmation box.

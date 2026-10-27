@@ -19,7 +19,7 @@ import {
 } from '../../support/perf/reference';
 
 /**
- * E2E-PERF-01 (docs/testing.md 2.18, issue #12): the reference scenario with fake media, measured per role, then compared
+ * E2E-PERF-01 (docs/testing.md 2.19, issue #12): the reference scenario with fake media, measured per role, then compared
  * with the performance budget. This container has no GPU (Chromium renders with SwiftShader and every codec runs in
  * software), so the numbers are the worst case of "no hardware acceleration" and a way to compare two builds on the same
  * machine. They do not replace the manual series of measurements on real devices (MAN-16).

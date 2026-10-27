@@ -11,7 +11,7 @@ wizard, driven over REST, SignalR, WebRTC, the real frontends and the operator c
 npm run test:e2e                                   # everything, in the order smoke > main > short-ttl > disruptive
 npx playwright test -c tests/e2e/playwright.config.ts --project=smoke
 npx playwright test -c tests/e2e/playwright.config.ts --project=disruptive specs/net
-npx playwright test -c tests/e2e/playwright.config.ts --project=perf              # every test tagged @perf: latency, many sources, switching times, the performance budget (docs/testing.md 2.18, 5.1, 6.8)
+npx playwright test -c tests/e2e/playwright.config.ts --project=perf              # every test tagged @perf: latency, many sources, switching times, the performance budget (docs/testing.md 2.19, 5.1, 6.8)
 npx playwright test -c tests/e2e/playwright.config.ts --grep "@p0"
 npx playwright test -c tests/e2e/playwright.config.ts --project=desktop-chromium --grep @ui-fixture   # the UI fixture smokes
 ```
