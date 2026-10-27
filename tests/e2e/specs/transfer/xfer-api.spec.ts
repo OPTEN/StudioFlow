@@ -224,9 +224,11 @@ test.describe('XFER api', () => {
         scenes: unknown[];
         assets: Array<{ sha256: string; file: string }>;
         placeholders: Array<{ code: string; label: string | null }>;
+        audioChannels: unknown[];
       };
       expect(manifest.format).toBe('studioflow-production');
-      expect(manifest.formatVersion).toBe(1);
+      expect(manifest.formatVersion).toBe(2);
+      expect(manifest.audioChannels).toEqual([]);
       expect(manifest.app.version).toBeTruthy();
       expect(manifest.production.name).toBe(production.name);
       expect(manifest.scenes).toHaveLength(3);
