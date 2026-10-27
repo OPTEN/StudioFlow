@@ -24,6 +24,8 @@ export interface SenderSettings {
   readonly cameraOn: boolean;
   /** Screen slots that were shared when the page was left (they need a new click, see “Share again”). */
   readonly sharedScreens: readonly string[];
+  /** Screen slots with the option “Video in screen” (30 instead of 15 frames per second), kept across reloads. */
+  readonly videoScreens: readonly string[];
   /** Last technical check of this device, reported after reloads too. */
   readonly techCheck: { readonly deviceId: string; readonly result: TechCheckResult } | null;
   /** Lens chosen by the control room (browser device id), null for the default camera of {@link facing}. */
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: SenderSettings = {
   dark: false,
   cameraOn: true,
   sharedScreens: [],
+  videoScreens: [],
   techCheck: null,
   lens: null,
   image: {},
@@ -70,6 +73,17 @@ export function parseImage(value: unknown): CameraImageSettings {
 }
 
 const SCREEN_SLOT = /^screen-[1-9]$/;
+
+/** Valid, distinct screen slots of a stored list. */
+function parseScreenSlots(value: unknown): string[] {
+  const slots = Array.isArray(value)
+    ? (value as unknown[]).filter(
+        (slot): slot is string => typeof slot === 'string' && SCREEN_SLOT.test(slot),
+      )
+    : [];
+  return [...new Set(slots)];
+}
+
 const LEVELS = new Set(['unknown', 'ok', 'warn', 'bad']);
 
 /** Prefix of the messages a tech check stores (`media.techcheck.*`). */
@@ -132,17 +146,13 @@ export function parseSettings(value: unknown): SenderSettings {
   const raw = value as Record<string, unknown>;
   const facing = raw['facing'] === 'user' || raw['facing'] === 'environment' ? raw['facing'] : null;
   const resolution = raw['resolution'] === 1080 ? 1080 : 720;
-  const sharedScreens = Array.isArray(raw['sharedScreens'])
-    ? raw['sharedScreens'].filter(
-        (slot): slot is string => typeof slot === 'string' && SCREEN_SLOT.test(slot),
-      )
-    : [];
   return {
     facing,
     resolution,
     dark: raw['dark'] === true,
     cameraOn: raw['cameraOn'] !== false,
-    sharedScreens: [...new Set(sharedScreens)],
+    sharedScreens: parseScreenSlots(raw['sharedScreens']),
+    videoScreens: parseScreenSlots(raw['videoScreens']),
     techCheck: parseTechCheck(raw['techCheck']),
     lens:
       typeof raw['lens'] === 'string' &&

@@ -488,6 +488,53 @@ describe('DeviceSessionService', () => {
     ]);
   });
 
+  it('“Video in screen” switches a screen to 30 fps, remembers it per slot and applies it to the running share', async () => {
+    const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+    await online(service);
+    media.publisher.emitSlot('screen-1', 'live');
+    expect(service.videoScreen('screen-1')).toBe(false);
+
+    service.setVideoScreen('screen-1', true);
+
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:30');
+    expect(service.videoScreen('screen-1')).toBe(true);
+    expect(storage.readJson(STORAGE_KEYS.settings)).toMatchObject({ videoScreens: ['screen-1'] });
+
+    service.setVideoScreen('screen-1', false);
+
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:15');
+    expect(storage.readJson(STORAGE_KEYS.settings)).toMatchObject({ videoScreens: [] });
+  });
+
+  it('“Video in screen” ignores unchanged values and the camera', async () => {
+    const service = setup({ self: laptopSelf(), settings: { cameraOn: false } });
+    await online(service);
+
+    service.setVideoScreen('screen-1', false);
+    service.setVideoScreen('camera', true);
+
+    expect(media.publisher.calls.filter((call) => call.startsWith('setScreenFrameRate'))).toEqual(
+      [],
+    );
+    expect(service.videoScreen('camera')).toBe(false);
+  });
+
+  it('a reloaded laptop shares a “Video in screen” slot at 30 fps again, and “Remove” forgets it', async () => {
+    const service = setup({
+      self: laptopSelf(),
+      settings: { cameraOn: false, videoScreens: ['screen-1'] },
+    });
+    await online(service);
+
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:30');
+    expect(service.videoScreen('screen-1')).toBe(true);
+
+    await service.removeSlot('screen-1');
+
+    expect(service.videoScreen('screen-1')).toBe(false);
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:15');
+  });
+
   it('screens shared before a reload come back as ended (they need a click) and are reported so', async () => {
     const service = setup({
       self: laptopSelf(),

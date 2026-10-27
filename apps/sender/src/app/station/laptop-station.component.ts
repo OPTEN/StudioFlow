@@ -104,6 +104,15 @@ export class LaptopStationComponent {
       : null;
   }
 
+  protected videoScreen(slot: StationSlot): boolean {
+    return this.session.videoScreen(slot.slot);
+  }
+
+  /** “Video in screen”: 30 instead of 15 frames per second for this screen. */
+  protected toggleVideoScreen(slot: StationSlot): void {
+    this.session.setVideoScreen(slot.slot, !this.session.videoScreen(slot.slot));
+  }
+
   /** Must stay synchronous: the browser's share dialog needs the click (user gesture). */
   protected share(slot: StationSlot): void {
     this.session.shareScreen(slot.slot);

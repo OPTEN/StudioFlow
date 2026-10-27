@@ -52,6 +52,9 @@ export const senderStation: Translation<typeof en> = {
   'sender.station.laptop.stopCamera': 'Kamera beenden',
   'sender.station.laptop.stopSharing': 'Teilen beenden',
   'sender.station.laptop.tryAgain': 'Erneut versuchen',
+  'sender.station.laptop.video': 'Video im Bildschirm',
+  'sender.station.laptop.videoHint':
+    '30 Bilder pro Sekunde für ein Video in diesem Bildschirm. Das braucht mehr Rechenleistung.',
 
   'sender.station.message.title': 'Nachricht der Regie',
 

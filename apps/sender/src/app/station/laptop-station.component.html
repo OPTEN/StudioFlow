@@ -102,6 +102,11 @@
             @if (slot.messageKey && slot.state !== 'live' && slot.state !== 'ended') {
               <p class="c-slot__message">{{ t(slot.messageKey) }}</p>
             }
+            @if (videoScreen(slot)) {
+              <p class="c-slot__message" data-testid="video-screen-hint">
+                {{ t('sender.station.laptop.videoHint') }}
+              </p>
+            }
           </div>
           <div class="c-slot__actions">
             @switch (slot.state) {
@@ -150,6 +155,15 @@
               }
             }
             @if (slot.code !== null) {
+              <button
+                class="c-button"
+                type="button"
+                data-testid="video-screen"
+                [attr.aria-pressed]="videoScreen(slot)"
+                (click)="toggleVideoScreen(slot)"
+              >
+                {{ t('sender.station.laptop.video') }}
+              </button>
               <button
                 class="c-button c-button--danger c-slot__remove"
                 type="button"

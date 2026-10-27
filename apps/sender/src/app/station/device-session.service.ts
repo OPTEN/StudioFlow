@@ -1,6 +1,8 @@
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
+  SCREEN_FRAME_RATE_DEFAULT,
+  SCREEN_FRAME_RATE_VIDEO,
   isTerminalState,
   toRtcState,
   type LocalSlotState,
@@ -343,6 +345,7 @@ export class DeviceSessionService {
       this.network.onOnlineChange(() => this.refreshConnection()),
     );
     this.restoreSettings();
+    this.restoreScreenFrameRates(media);
     this.phase.set('connecting');
     this.refreshConnection();
     hub.start();
@@ -501,6 +504,32 @@ export class DeviceSessionService {
     this.queueScreenAllocation(slot);
   }
 
+  /** The screen slot has the option “Video in screen” (30 instead of 15 frames per second). */
+  videoScreen(slot: string): boolean {
+    return this.settingsService.settings().videoScreens.includes(slot);
+  }
+
+  /**
+   * “Video in screen” on or off for a screen slot: 30 frames per second for a video that plays in the shared screen,
+   * else 15 (enough for slides, and far cheaper for the computer). Remembered per slot; applied to a running share
+   * without a new picker.
+   */
+  setVideoScreen(slot: string, enabled: boolean): void {
+    if (slotKind(slot) !== 'screen' || enabled === this.videoScreen(slot)) {
+      return;
+    }
+    const videoScreens = this.settingsService.settings().videoScreens;
+    this.settingsService.update({
+      videoScreens: enabled
+        ? [...videoScreens, slot]
+        : videoScreens.filter((entry) => entry !== slot),
+    });
+    void this.media?.publisher.setScreenFrameRate(
+      slot,
+      enabled ? SCREEN_FRAME_RATE_VIDEO : SCREEN_FRAME_RATE_DEFAULT,
+    );
+  }
+
   /** “Stop sharing”: stops the share; the slot stays (the Regie sees “sharing stopped” and can ask again). */
   endShare(slot: string): void {
     this.setEnded(slot, true);
@@ -513,6 +542,7 @@ export class DeviceSessionService {
     this.setEnded(slot, false);
     this.setReshare(slot, false);
     this.forgetSharedScreen(slot);
+    this.setVideoScreen(slot, false);
     if (slot === 'camera') {
       this.settingsService.update({ cameraOn: false });
     }
@@ -1164,6 +1194,13 @@ export class DeviceSessionService {
     const stopped = cameraOn ? sharedScreens : [...sharedScreens, 'camera'];
     if (stopped.length > 0) {
       this.endedSlots.update((ended) => new Set([...ended, ...stopped]));
+    }
+  }
+
+  /** The publisher starts the next share of a slot with the frame rate it had before the reload. */
+  private restoreScreenFrameRates(media: SenderMedia): void {
+    for (const slot of this.settingsService.settings().videoScreens) {
+      void media.publisher.setScreenFrameRate(slot, SCREEN_FRAME_RATE_VIDEO);
     }
   }
 
