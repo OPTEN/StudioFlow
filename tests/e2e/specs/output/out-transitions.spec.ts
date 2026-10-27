@@ -66,8 +66,10 @@ test.describe('OUT transitions', () => {
         expect(firstWithNew.layers.map((layer) => layer.id), 'the first frame with the new scene has no trace of the old one').toEqual([to]);
         expect(added.t - sw.sentAt, 'request -> new scene in the DOM').toBeLessThan(300);
       }
+      // A flat area of the picture: the label (“S2”) sits at the exact centre, where glyph and ground depend on the font, and the stamp bar at the top.
       const stage = await output.stagePixels();
-      expect(colorsClose(stage.at(960, 540), SCREEN_COLORS[1], 50), 'the stage shows S2 (green)').toBe(true);
+      const flat = stage.mean({ x: 200, y: 200, width: 100, height: 100 });
+      expect(colorsClose(flat, SCREEN_COLORS[1], 50), `the stage shows S2 (green), got ${flat}`).toBe(true);
     },
   );
 
