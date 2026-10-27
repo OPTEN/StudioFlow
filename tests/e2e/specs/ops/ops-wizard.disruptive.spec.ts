@@ -5,7 +5,7 @@ import { TEST_DOMAIN, TEST_FRAME_ANCESTORS, stackConfig } from '../../support/en
 import { send } from '../../support/http';
 import { selfSigned } from '../../support/selfsigned';
 import { waitUntil } from '../../support/shell';
-import { apiReady, compose, containerName, docker, ensureHealthy, serviceLogs, setupRequired, tryFetch, waitForSetupCode } from '../../support/stack';
+import { apiReady, compose, containerName, docker, ensureHealthy, serviceLogs, setupRequired, tryFetch, waitForSetupCode, writeStackSecrets } from '../../support/stack';
 import { t } from '../../support/tags';
 import { uniqueIp } from '../../support/fixtures';
 import { expect, test } from '../../support/ui/fixtures';
@@ -58,6 +58,8 @@ test.describe('OPS fresh machine', () => {
     const started = Date.now();
     await compose(['up', '-d', '--wait', '--wait-timeout', '300'], { check: true, timeoutMs: 420_000 });
     await waitUntil('/health/ready 200', apiReady, { timeoutMs: 120_000, intervalMs: 500 });
+    // New volumes, new secrets: the tests that follow read the key pair and the database password from this file.
+    await writeStackSecrets();
     test.info().annotations.push({ type: 'measurement', description: `fresh start: healthy after ${Date.now() - started} ms` });
 
     initLog = (await compose(['logs', '--no-color', 'init'])).output;

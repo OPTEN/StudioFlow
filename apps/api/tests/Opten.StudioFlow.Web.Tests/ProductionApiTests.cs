@@ -206,7 +206,7 @@ public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<Studio
 
         Assert.StartsWith("studio_", token.Identity, StringComparison.Ordinal);
         Assert.Equal(admin.ProductionId, token.Room);
-        Assert.Equal("ws://localhost", token.Url);
+        Assert.Equal("wss://localhost", token.Url);
         Assert.Equal(StudioFlowApp.LiveKitKey, jwt.Issuer);
         Assert.Contains("\"hidden\":true", jwt.GetPayloadValue<JsonElement>("video").GetRawText(), StringComparison.Ordinal);
         Assert.True(token.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(9));
@@ -218,10 +218,9 @@ public sealed class ProductionApiTests(StudioFlowApp app) : IClassFixture<Studio
         // Issue 44: the Regie opened by the IP address (or a second name) must get a LiveKit URL on that very address, not on
         // the domain of the server settings (sf.test here), or its Content-Security-Policy (wss://{host}) blocks the connection.
         var admin = await app.AdminAsync();
-        var behindCaddy = app.Anonymous("10.99.0.2");
+        var behindCaddy = app.Anonymous();
         behindCaddy.DefaultRequestHeaders.Add("Cookie", admin.Cookie);
         behindCaddy.DefaultRequestHeaders.Add("X-StudioFlow", "1");
-        behindCaddy.DefaultRequestHeaders.Add("X-Forwarded-Proto", "https");
         behindCaddy.DefaultRequestHeaders.Host = "127.0.0.1:8491";
 
         var token = await behindCaddy.PostAsync($"/api/productions/{admin.ProductionId}/livekit-token", null, TestContext.Current.CancellationToken).ExpectAsync<LiveKitTokenDto>();

@@ -126,6 +126,9 @@ test.describe('OPS compose files (zero-config)', () => {
       expect(missing, `variables read by ${file} but not documented in .env.example`).toEqual([]);
     }
     for (const [name, value] of documented) {
+      // A commented-out line is an example of an override the Compose files do not pass on (the API time limits, the import
+      // limits); a line that is not commented must stay empty: every value is an optional override.
+      if (value.startsWith('#')) continue;
       expect(value, `${name} has no value in .env.example (every value is an optional override)`).toBe('');
     }
     expect(read('.env.example'), 'no placeholder secret').not.toMatch(/changeme|devkey|password123/i);
