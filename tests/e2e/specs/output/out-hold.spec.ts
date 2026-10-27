@@ -63,11 +63,12 @@ test.describe('OUT hold frame', () => {
       const items4 = items.map((item) => item.id);
       const k1 = items4[0]!;
       const k1Area = { x: 60, y: 60, width: 1100, height: 600 };
-      // Frozen: while K1 is in hold its area does not change between two screenshots 1.2 s apart (a live camera moves).
+      // Frozen: while K1 is in hold its area does not change between two screenshots 0.6 s apart (a live camera moves every frame). A screenshot of the
+      // stage takes a second on a busy computer and K1 turns held 3 s after the loss, so the wait between them is short.
       await probe.waitForItemState(k1, 'hold', 40_000);
       const noticeMs = Date.now() - closedAt;
       const hold1 = await output.stagePixels();
-      await sleep(1200);
+      await sleep(600);
       const hold2 = await output.stagePixels();
       expect((await probe.snapshot()).items.find((item) => item.id === k1)!.state, 'still in hold when the second screenshot was taken').toBe('hold');
       const a1 = hold1.mean(k1Area);

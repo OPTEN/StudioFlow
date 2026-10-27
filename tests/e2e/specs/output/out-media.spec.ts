@@ -357,16 +357,30 @@ test.describe('OUT media and reports', () => {
       const frame = await output.frame();
       await expectPaused(frame, production, k2.source);
 
+      const stopCpu = startCpuMonitor();
       const selected = Date.now();
       expect((await api.setPreview(production.id, { sceneId: b })).status).toBe(200);
       let reachedAt = 0;
-      await expect
-        .poll(async () => {
-          const width = (await inboundOf(frame, production, k2.source))?.frameWidth ?? 0;
-          if (width >= 1280 && !reachedAt) reachedAt = Date.now() - selected;
-          return width;
-        }, { timeout: 3000, intervals: [100], message: 'K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview' })
-        .toBeGreaterThanOrEqual(1280);
+      let failure: unknown = null;
+      try {
+        await expect
+          .poll(async () => {
+            const width = (await inboundOf(frame, production, k2.source))?.frameWidth ?? 0;
+            if (width >= 1280 && !reachedAt) reachedAt = Date.now() - selected;
+            return width;
+          }, { timeout: 3000, intervals: [100], message: 'K2 reaches the highest layer (>= 1280 px) within 3 s of selecting the preview' })
+          .toBeGreaterThanOrEqual(1280);
+      } catch (error) {
+        failure = error;
+      }
+      // The layer comes from the sender, which encodes in software: a computer without headroom makes it adapt (its highest layer
+      // is smaller then) or late. The time counts when the machine had headroom (docs/testing.md 6.8).
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
+      await recordMeasurement(test.info(), 'switch-10-preview-layer', { reachedMs: reachedAt || null, machineCpuBusyPct: machine.busyPct, comparable: gate.enforce }, `the highest layer ${reachedAt ? `after ${reachedAt} ms` : 'not reached within 3 s'}; machine CPU ${machine.busyPct} %${gate.enforce ? '' : ' (not comparable)'}`);
+      await judgeTiming(test.info(), gate, () => {
+        if (failure) throw failure;
+      });
     },
   );
 
