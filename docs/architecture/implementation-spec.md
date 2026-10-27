@@ -138,6 +138,110 @@ Rules:
 - Transition durations: cut → durationMs 0; fade → one of 200, 300, 500, 800, 1000, 1500, 2000 (default 300).
 - Deleting the program scene → 409 `scene_is_live`. Deleting the preview scene clears the preview.
 - Max 99 scenes per production (`limit_reached`).
+- Duplicate, export and import of a whole production: 4.2.2.
+
+#### 4.2.2 Duplicate, export and import (issue #14)
+
+A proven production starts the next one: a copy inside the installation, or a file that carries it to another server
+(runbook: "Move a production to another server"). There is **no template library**: "Duplicate" is the template. A copy and
+a file hold the same thing, because all three routes go through one description, the **manifest** (`ProductionExport.Capture`);
+a duplicate is a capture that is planned and stored again without the ZIP file in between.
+
+**API** (all `Admin`, CSRF header; operation names in `ApiSurface.cs`)
+- `POST /api/productions/{id}/duplicate` (`duplicateProduction`, `DuplicateProductionRequest { name? }`): 201 `ProductionDto`.
+  The name is "{name} (copy)" when missing; a name that is taken gets " (2)", " (3)" … appended (also for an import); names
+  are cut to 80 characters. 400 for an invalid name, 404 for an unknown production.
+- `GET /api/productions/{id}/export` (`exportProduction`): 200 `application/zip`, streamed while it is written (no temporary
+  file, memory is a few buffers), `Content-Disposition: attachment; filename="{slug}-{yyyy-MM-dd}.studioflow.zip"`.
+- `POST /api/productions/import` (`importProduction`, `multipart/form-data`, field `file`): 201 `ProductionDto`.
+  `?dryRun=true` answers 200 `ImportPreviewDto { name, appVersion, scenes, texts, media, mediaBytes, placeholders[], warnings[] }`
+  after checking the file completely, down to every medium, and keeps nothing. Warnings are codes (`nameChanged` with
+  `name`, `placeholders` with `count`); the Regie writes its own texts.
+- Errors: 400 `invalid_archive` (not a ZIP file, a name that is not allowed, a broken manifest or checksum, a ratio or size that
+  lies), 400 `unsupported_format` (`formatVersion` newer than this installation reads), 413 `archive_too_large` (the file
+  or what it unpacks to is over a limit; also when Kestrel stops a streamed body), 415 `unsupported_media` (a medium that is
+  not an allowed image or video, exactly the checks of an upload), 409 `limit_reached` (more than 99 scenes, 32 items per
+  scene, 64 texts or 100 device sources than a production may have).
+- Neither a duplicate nor an import ever becomes the active production (`isActive` false, broadcast standby); the operator
+  switches to it when ready. There is no limit on the number of productions.
+- A running production can be duplicated and exported: the original is only read (no event, no revision change). Only the
+  audit log notes it.
+
+**What a production hands on, field by field**
+
+| Part | Taken over | Why |
+|---|---|---|
+| Name, canvas (format and resolution, #8), both slates with their background medium, text colours (#13) | yes | the production itself |
+| Texts and lower thirds (#13) with code, content, style, alignment | yes | content, not a device |
+| Media (images, videos) | yes, file by file, with a new id, the same code (M1 …) and name | "export always includes the media" |
+| Scenes in order: name, layout mode, background (colour, medium), all items in list order with every field (rectangle, fit, crop, radius, mirror, rotation, hidden, locked, border, "on failure" hold and fallback) | yes, with new scene and item ids | the work |
+| Devices (cameras, screens) | **as placeholders**: code, name, slot kind, only those a scene uses | a device belongs to one production and one physical station |
+| Program and preview scene, last transition, broadcast state (`liveSince`, `endedAt`) | no: standby, first scene on program, no preview | a copy starts fresh |
+| Pairings, pairing requests, invites, device secrets, telemetry, incidents | no | secrets and live state |
+| Output links, their keys and IP restrictions (#9) | no: the copy gets a fresh default link ("Proxy") with a new key and no restriction | a key must not travel |
+| Log (`recentLog`), audit entries, `isActive`, `createdAt` | no | history belongs to the original |
+| Scene `version`, revision counter, undo steps | no | new objects |
+
+**Format** (`manifest.json`, `ManifestFormat`): `{ format: "studioflow-production", formatVersion: 1, app: { version, exportedAt },
+production, texts[], assets[], placeholders[], scenes[] }`. Nothing refers to an id: parts refer to each other by **keys**
+local to the file (`asset:a1`, `text:t1`, `placeholder:p1`), so importing assigns every id anew. Assets carry `file`
+(`media/a1.png`, the extension from the file) and `sha256`; the ZIP holds `manifest.json` and `media/*` only. Strict reading:
+an unknown property, a missing required one or a wrong type is `invalid_archive`. `formatVersion` starts at 1. An older
+file is migrated step by step in memory (`ManifestMigrator`, one function per version, run on `JsonNode` before the typed
+read); a newer one is `unsupported_format`. A change of the format bumps the version and adds a migration: the mixer of
+issue #7 adds `audioChannels` that way.
+
+**Placeholders.** `ProductionSnapshot.placeholders: SourcePlaceholderDto[] { id (plh_…), sourceId, code, kind, label? }`. A placeholder
+is a device source of the original that no device of this production fills: its `sourceId` is a normal device reference
+`{deviceId}/{slot}` with a **made-up device id** that no device has, so the scene items keep a valid reference and render
+"Source missing" (the Regie writes code and name on the item). Rules:
+- **A placeholder reserves its code** (K1, S1): a device paired later gets the next free number (K2 …) until it takes a
+  place.
+- `PUT /api/productions/{id}/placeholders/{placeholderId}/assignment` (`assignPlaceholder`, `{ sourceId }`) answers 200
+  `PlaceholderChangeDto { scenes, items }`: every item (and every "on failure" fallback) that shows the placeholder shows
+  the source from now on, the placeholder is deleted. Allowed targets: any camera, screen or medium that exists (not a text,
+  not a blocked source, any kind). A **device source that no scene uses yet and has the kind of the placeholder takes over
+  the code** of the placeholder ("Use as K1": the new phone becomes K1, as in the original); a source that is in use keeps
+  its code. The changed scenes arrive as `sceneUpserted`, then `placeholderRemoved { placeholderId }` (one mutation).
+- `DELETE …/placeholders/{placeholderId}` (`removePlaceholder`) answers 200 `PlaceholderChangeDto`: removes the placeholder with
+  every item that shows it and clears every fallback that names it.
+- Audit/log: `placeholder.assigned` ("K1 assigned to New phone"), `placeholder.removed` ("K1 removed from the scenes").
+- Persistence: column `placeholders` (`jsonb`, default `[]`, migration `AddPlaceholders`) of `productions`.
+- The output page never sees placeholders (`OutputSnapshot` has none; a revision-only event stands in for
+  `placeholderRemoved`).
+
+**Import security.** The file is untrusted, from the first byte:
+1. Body limit: Caddy `STUDIOFLOW_MAX_IMPORT` (default 4100 MiB), the API `Transfer:MaxImportBytes` (4 GiB) + 1 MiB multipart
+   overhead (413 `archive_too_large`, before the body is read when `Content-Length` is known).
+2. Before the ZIP library reads the central directory, the end-of-directory record is probed: the claimed number of entries
+   (`Transfer:MaxEntries`, 1000) and ZIP64 claims are checked, so a directory that claims millions of entries is never read.
+3. Names: a name with a `.` or `..` segment, an empty segment, a leading `/`, a backslash, a colon (drive), a control
+   character, longer than 255 or present twice is `invalid_archive`; only `manifest.json` and `media/<name>` are allowed, and
+   the manifest names every file it uses. Files are never extracted by name: each medium is read from the archive and written to
+   `/data/media/{newProductionId}/{newAssetId}{ext}` by the media store.
+4. Sizes: the unpacked size of all files (`Transfer:MaxUnpackedBytes`, 8 GiB), of the manifest (`Transfer:MaxManifestBytes`,
+   8 MiB) and the compression ratio (`Transfer:MaxCompressionRatio`, 100, checked from 1 MiB on): first by the directory, then
+   again **while reading** (a directory that lies about the size is stopped at the declared length; the ratio and the budget
+   count what is really read), so a ZIP bomb is refused before it is unpacked.
+5. Every medium goes through the checks of an upload (`MediaInspector`: magic bytes decide the type, size limits of images
+   and videos, dimensions, **no SVG**, GIF or anything else), plus its SHA-256 against the manifest.
+6. The manifest is checked as input: strict types, the limits of the domain (99 scenes, 32 items per scene, 64 texts, 100
+   device sources), the rules of every item (`SceneItemRules`), key references that exist, codes that are valid and unique.
+   All ids are assigned anew; the tenant id is the installation's own.
+7. **All or nothing.** The media are copied into a folder of the new production id (nothing refers to it yet: no database row),
+   then one transaction writes production, assets, texts, scenes, placeholders and the output link; any failure deletes the
+   folder. A failed import leaves no production and no file. A crash between the two steps can leave an unreferenced folder
+   under `/data/media`; it is harmless, can be deleted by hand (runbook) and is not reachable through the API.
+
+Export reads the originals only; the ZIP is written media first, then the manifest (it needs the checksums).
+
+**Regie.** Production menu: "Duplicate production…" (name of the copy, what is copied, the number and size of the media),
+"Export" (a plain download link), "Import…" in the production switcher (choose a file, dry run with upload progress, then the
+preview: name, scenes, texts, media and size, the cameras and screens that become placeholders, warnings, version, and
+"Import"). The Sources dock gets the section "Missing sources" (code, name, in how many scenes, "Assign…" with the list of
+cameras, screens and media, "Remove from all scenes…" behind a dashed red confirmation); the items show code and name with
+"Source missing". A new camera or screen that no scene uses gets "Use as K1 · Stage phone" in its station row (up to four, the
+rest under "Missing sources"). DESIGN.md "Duplicate, import and missing sources".
 
 ### 4.3 Scene and items
 
@@ -194,6 +298,10 @@ The slot name is also the LiveKit track name; the device id is the LiveKit ident
 Slot codes: K = camera, S = screen, M = media; the lowest free number per letter in the production at creation time
 (K1, K2 …). Codes never change while the source exists. Labels: phones “{device name}”, laptop screens
 “{device name} · Screen {n}”, laptop camera “{device name} · Camera”, media = asset name.
+
+Placeholders (issue #14, 4.2.2) are a fifth thing a scene item can point to: the device source of a production this one was copied
+from. They reserve their code, show "Source missing" and are replaced by a real source with one command; a device source
+that takes the place of a placeholder and is not used yet takes over its code (the one case in which a code changes).
 
 Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `screen-1`. A laptop allocates more
 screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`).
@@ -405,7 +513,7 @@ de-CH).
 
 | Category | Actions |
 |---|---|
-| `production` | production.created, production.renamed, production.activated, broadcast.started, broadcast.ended, broadcast.reset, slate.changed, scene.live (`via`: `take` or `click`), scene.created, scene.deleted |
+| `production` | production.created, production.duplicated (`from`, `name`), production.exported, production.imported, placeholder.assigned (`code`, `target`), placeholder.removed (`code`), production.renamed, production.activated, broadcast.started, broadcast.ended, broadcast.reset, slate.changed, scene.live (`via`: `take` or `click`), scene.created, scene.deleted |
 | `devices` | device.paired, device.renamed, device.blocked, device.unblocked, device.removed, device.camera.lens, pairing.denied, invite.created, invite.revoked (invite links only), incident.acknowledged, source.reconnecting, source.ended, source.lost, source.recovered |
 | `security` | login.succeeded, login.failed, login.locked, logout, account.setup, account.password.changed, account.reset, audit.exported |
 | `media` | asset.uploaded, asset.deleted |
@@ -495,6 +603,10 @@ Authentication and authorization:
 - Hubs reject WebSocket/negotiate requests whose `Origin` host differs from the request host (403).
 - Policies: `Admin` (cookie), `Device` (device bearer), `Output` (key + IP check, per slug).
 - Production-scoped routes return 404 for unknown production ids.
+
+Duplicate, export and import of productions and the placeholders of a copy: 4.2.2. The import is the one route besides the asset
+upload that takes a large body (`Transfer:MaxImportBytes`, default 4 GiB; Caddy `STUDIOFLOW_MAX_IMPORT`) with the same slow-upload
+tolerance (minimum rate 100 bytes/s after 30 s); the answer comes after the file has been read, checked and stored.
 
 Validation: built-in .NET 10 minimal API validation where it fits, plus domain validation in Core returning
 `validation_failed` with field errors. A body that cannot be bound (unknown enum text, wrong JSON type, broken JSON)
@@ -784,7 +896,7 @@ name, password, repeat password, with a message next to each field once it was l
 on submit; the new account is signed in and the Regie opens; the guards lead everyone to `/setup` while no account
 exists and `/setup` to `/login` once it does), `/login`, `/` (Regie), `/monitoring`
 (full-page station metrics: bitrate, fps, resolution, packet loss, RTT, battery, network, tech check; live).
-Header: brand, production name (menu: rename, switch/create production, slates, change password, sign out), “Start broadcast” / “End broadcast”
+Header: brand, production name (menu: rename, slates, text colours, format, duplicate, export, switch/create/import production, audit log, change password, sign out), “Start broadcast” / “End broadcast”
 (start/end/reset broadcast, confirmation for ending), LIVE runtime (while live; else “READY” / “ENDED”),
 output chip (“Output”, lamp, latency and the names of the connected links, e.g. “Proxy + Teams camera”; its tooltip
 lists every link with its state) with popover (summary: state, consumers, IPs, format, latency; the list of output links,
@@ -971,7 +1083,8 @@ Caddy (`infra/caddy/Caddyfile`, shared parts in `infra/caddy/snippets/`, TLS mod
   `_acme-challenge` is delegated (providers without a module, e.g. Hostpoint or cyon → deSEC or Cloudflare).
   Provider secrets are read at runtime (`{env.…}`); certificates renew automatically.
 - Routes: `POST /api/productions/{id}/assets[/]` → api with body ≤ `STUDIOFLOW_MAX_UPLOAD` and response header timeout
-  15 min; all other `/api/*` → api with body ≤ `STUDIOFLOW_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
+  15 min; `POST /api/productions/import[/]` → api with body ≤ `STUDIOFLOW_MAX_IMPORT` and 15 min (the export is a plain `GET`
+  that streams, so it takes the default route); all other `/api/*` → api with body ≤ `STUDIOFLOW_MAX_BODY` and 60 s; `/hubs/*` → api (no response header
   timeout: long polling); `/rtc`, `/rtc/*` → livekit:7880; `/twirp`, `/twirp/*` and `/api/livekit/*` (webhooks arrive
   inside the network) → 404;
   `/j/{token}` → 302 `/join/i/{token}`; `/join` → 308 `/join/`, `/o` → 308 `/o/` (query kept); `/join/*` sender SPA
@@ -1028,12 +1141,14 @@ reads ASP.NET Core configuration (double underscore = section separator, names c
 | `STUDIOFLOW_FRAME_ANCESTORS` | caddy, api → `STUDIOFLOW__FRAMEANCESTORS` | Additional origins allowed to embed `/o/*`, space-separated (`'self'` is always allowed and not part of the value); default empty. The API gets the effective list (`'self' …`) and shows it read-only |
 | `STUDIOFLOW_TRUSTED_PROXIES` | caddy | CIDRs of proxies in front of Caddy whose `X-Forwarded-For` is trusted; default `127.0.0.1/32` (nobody) |
 | `STUDIOFLOW_MAX_UPLOAD` | caddy | Body limit of the asset upload route; default `1100MiB` (1 GiB video + multipart overhead; `MB` = 10^6, `MiB` = 2^20) |
+| `STUDIOFLOW_MAX_IMPORT` | caddy | Body limit of the import route; default `4100MiB` (the 4 GiB the API accepts + multipart overhead) |
 | `STUDIOFLOW_MAX_BODY` | caddy | Body limit of all other `/api/*` requests; default `10MB` |
 | `STUDIOFLOW_SUBNET` | compose, api → `FORWARDEDHEADERS__KNOWNNETWORKS__0` | Subnet of the network `studioflow`; default `172.30.0.0/24` (only Caddy can reach the API) |
 | – | api | No account setting: the Regie account is created in the first-run setup and lives in the database. `ADMIN__USERNAME`, `ADMIN__PASSWORD` and `ADMIN__PASSWORDHASH` of older versions are ignored (the API warns when it sees them; setup leaves them out of a new `.env`). `ADMIN__SESSIONLIFETIME` and `ADMIN__LOCKOUT__*` stay |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | livekit, api → `LIVEKIT__APIKEY`, `LIVEKIT__APISECRET` | **Required.** Key `studioflow`, secret `sk` + 40 hex (starts with a letter, ≥ 32 chars). Also `LIVEKIT__INTERNALURL=http://livekit:7880` (fixed) |
 | `POSTGRES_PASSWORD` | postgres, api → `CONNECTIONSTRINGS__STUDIOFLOW` | **Required.** 32 alphanumeric characters; only applied when `pgdata` is initialised. The API gets `Host=postgres;Database=studioflow;Username=studioflow;Password=…` |
 | `MEDIA__MAXIMAGEBYTES`, `MEDIA__MAXVIDEOBYTES` | api | Default `26214400`, `1073741824` |
+| `TRANSFER__MAXIMPORTBYTES`, `TRANSFER__MAXENTRIES`, `TRANSFER__MAXUNPACKEDBYTES`, `TRANSFER__MAXMANIFESTBYTES`, `TRANSFER__MAXCOMPRESSIONRATIO` | api (optional, not passed by compose: `docker-compose.override.yml`) | Limits of an import (4.2.2): file 4 GiB (1 MiB to 1 TiB), files in it 1000, unpacked 8 GiB (not below the file limit), manifest 8 MiB, ratio 100; validated at startup |
 | – | api | Fixed: `MEDIA__PATH=/data/media`, `DATAPROTECTION__KEYSPATH=/data/keys` |
 
 Nothing but Caddy (80/tcp, 443/tcp+udp) and LiveKit media (7881/tcp, 7882/udp) is published.

@@ -238,7 +238,7 @@ The interface language follows the browser by default and can be changed in the 
 
 A backup is only worth something if it is taken regularly, kept somewhere else than the server and has been restored at
 least once. This section covers all three: backups by hand (7.1), automatic backups (7.2), the copy to a second place
-(7.3), restoring and the restore drill (7.4).
+(7.3), restoring and the restore drill (7.4); 7.5 is the other kind of copy: one production as a file.
 
 ### 7.1 Backup by hand
 
@@ -397,6 +397,51 @@ year. A backup that was never restored is not a backup.
 
 Moving to a new server: clone the repo, put the `.env` back from the vault (or run `setup` again),
 `docker compose up -d --build`, then `./restore.sh <backup>`.
+
+### 7.5 Move a production to another server
+
+A backup moves the whole installation. To move **one production** (the next webinar, the proven set of scenes, a template for
+a colleague's installation) export it as a file and import it where you need it. No shell access is needed; both steps are in the
+Regie. The file has the extension `.studioflow.zip`; unpack it only to look inside (it holds `manifest.json` and the media).
+
+**Export** (any time, also during the broadcast; nothing changes in the production):
+1. Header → production name → "Export". The browser saves `{name}-{date}.studioflow.zip`.
+2. The file holds the name, format and resolution, slates, text colours, texts, all scenes with their elements, and **all media**
+   (a production with videos is as large as its videos; the Regie shows the size on import).
+
+**Import** on the other server (first start of the stack and the first-run setup done, section 5):
+1. Header → production name → "Import…" → "Choose file…".
+2. The Regie reads the file and shows what it contains before anything is created: the name, the number of scenes and texts,
+   the media with their size, the cameras and screens that become placeholders and the warnings. A file from a newer StudioFlow
+   is refused ("exported by a newer version … update this installation first"); a file that is not an export or is damaged is
+   refused with "Nothing was imported".
+3. "Import" creates a **new production** (a name that exists gets " (2)"). It is not the active production and the broadcast
+   state is standby: switch to it in the production menu when you are ready.
+4. **Pair the devices again.** Devices, pairings, invites, output links and their keys, IP restrictions, the log and the audit
+   log are never part of a file. The cameras and screens of the original are placeholders in the scenes ("Source missing",
+   with their code and name, listed under "Missing sources" in the Sources dock). Pair a phone or laptop; its station row offers
+   "Use as K1 · Stage phone", which puts the new device in every scene where K1 was, and makes it K1. Or assign the placeholder
+   to any existing camera, screen or medium with "Assign…" in the Sources dock; "Remove from all scenes…" drops a placeholder.
+5. **Fresh output links.** The new production has its own link with a new key: give the new URL to the proxy or the OBS
+   scene collection ("Use as camera…") again.
+
+**Duplicate** ("Duplicate production…" in the same menu) does the same inside one installation, without a file: the next webinar
+starts as a copy of the last one. It works while the production is live, the original is only read.
+
+Good to know:
+- **Limits.** The file may be up to 4 GiB (`STUDIOFLOW_MAX_IMPORT`, default 4100 MiB at the edge, `TRANSFER__MAXIMPORTBYTES` 4 GiB
+  in the API; raise both for larger files, `.env.example`); at most 1000 files, 8 GiB unpacked, a compression ratio of 100. A file
+  above a limit is refused as a whole.
+- **Free disk space.** An import needs about twice the size of the file on the server for the time it runs (the upload is
+  buffered, the media are written once more under `/data/media`); a failed import removes what it wrote. After a crash of the API
+  in the middle of an import an unreferenced folder `/data/media/prd_…` can stay behind; it does no harm and can be deleted when no
+  production has that id (`docker compose exec api ls /data/media` and compare with the productions).
+- **Time.** A few seconds for a production with pictures, minutes for gigabytes of video; the progress is shown while the file
+  uploads, the import ends with a toast. The preview uploads the file once, "Import" a second time.
+- **Safe.** The file is checked like any upload from the internet: file names, sizes, compression ratio and every picture and
+  video (no SVG, no unknown types) before anything is stored. Nothing is imported partially.
+- **Between versions.** An older file is converted when it is read; a newer one is refused. Update the target server first.
+- The audit log has `production.duplicated`, `production.exported` and `production.imported` (section 17).
 
 ## 8. Update
 
@@ -853,7 +898,7 @@ client are allowed. Every export is an entry itself ("Audit log exported as csv,
 `studioflow-audit-YYYY-MM-DD.csv`.
 
 **What is recorded.** Sign-ins (success, failure, lockout) and sign-outs, the account (set up, password changed, reset),
-productions (created, renamed, activated), the broadcast (start, end, reset), scenes (live, created, deleted), the slates,
+productions (created, duplicated, exported, imported, renamed, activated), missing sources assigned or removed, the broadcast (start, end, reset), scenes (live, created, deleted), the slates,
 devices (paired, renamed, blocked, unblocked, removed, camera lens switched), invite links, knocks that were denied,
 "Seen" on a message, media (uploaded, deleted), the output link and its access rules, and the exports and the retention
 themselves. Not recorded: the preview, zoom and focus of a phone camera, the phone QR code that renews itself.
