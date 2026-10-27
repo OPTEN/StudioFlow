@@ -282,6 +282,9 @@ jobs:
             fi
             docker tag "studioflow-$image" "sf-e2e-${E2E_STACK}-$image"
           done
+      # The harness generates its sample media (JPEG, WebP, MP4/H.264, WebM/VP8) with ffmpeg and stops when it cannot.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       # E2E-NET-00 needs sch_netem, ifb and act_mirred in the kernel of the runner; without them the netem tests are skipped.
       - name: Load the network emulation modules
         run: tests/e2e/load-netem-modules.sh
