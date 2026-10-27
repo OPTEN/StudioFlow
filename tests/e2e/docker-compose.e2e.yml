@@ -4,17 +4,12 @@
 #   - 127.0.0.1-only published ports for the API (header-trust tests), LiveKit signalling/Twirp (the `lk` helper) and
 #     PostgreSQL (audit and DB assertions);
 #   - fixed addresses on the compose network, so `docker network connect --ip` restores the same address after a
-#     disconnect;
-#   - Caddy's host ports can be moved with E2E_HTTP_PORT / E2E_HTTPS_PORT (the generated env file then also sets
-#     STUDIOFLOW_PUBLIC_BASE_URL); the LiveKit media ports with STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT
-#     (docker-compose.yml: host and container port are the same number).
+#     disconnect.
+# Caddy's HTTPS port and LiveKit's media ports are not overridden here: they are the overrides a real installation has
+# (STUDIOFLOW_HTTPS_PORT, STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT), set in the generated env file.
 # Values come from tests/e2e/.env.e2e (default stack) or tests/e2e/.env.e2e.<project> (generated, git-ignored).
 services:
   caddy:
-    ports: !override
-      - "${E2E_HTTP_PORT:-80}:80"
-      - "${E2E_HTTPS_PORT:-443}:443"
-      - "${E2E_HTTPS_PORT:-443}:443/udp"
     networks:
       studioflow:
         ipv4_address: ${E2E_IP_CADDY:-172.31.250.13}

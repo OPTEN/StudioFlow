@@ -1,7 +1,7 @@
 import { AdminApi, PublicApi } from './api';
 import { COMPOSE_FILES, stackConfig } from './env';
 import { uniqueIp } from './production';
-import { containerName, docker, recreateApi, recreateLiveKit } from './stack';
+import { containerName, docker, recreateApi } from './stack';
 
 /**
  * The short-TTL profile of docs/testing.md 1.2.6 [GAP-01]: the api container is recreated with the Pairing:* and
@@ -66,11 +66,15 @@ export async function probeTtlSupport(): Promise<TtlSupport> {
   };
 }
 
-/** LiveKit with room.empty_timeout 10 s (the short profile of docs/testing.md 1.2.6); the API keeps its settings. */
+/**
+ * LiveKit with room.empty_timeout 10 s (the short profile of docs/testing.md 1.2.6). LiveKit's configuration belongs to
+ * the API (it writes livekit.yaml, the supervisor restarts the server), so the value is an API option: the api container
+ * is recreated with it on top of the short-TTL keys, and `recreateApi` waits until LiveKit runs the new file.
+ */
 export async function useShortTtlLiveKit(): Promise<void> {
-  await recreateLiveKit([COMPOSE_FILES.shortTtl]);
+  await recreateApi([COMPOSE_FILES.shortTtl, COMPOSE_FILES.shortLivekit]);
 }
 
 export async function useDefaultTtlLiveKit(): Promise<void> {
-  await recreateLiveKit([]);
+  await recreateApi([]);
 }

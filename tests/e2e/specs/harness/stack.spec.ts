@@ -1,13 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { PROJECT, imageNameOf, stackConfig, volumeNameOf } from '../../support/env';
-import { SERVICES, containerName, docker, inspectService } from '../../support/stack';
+import { AdminApi } from '../../support/api';
+import { HEALTH_SERVICES, SERVICES, containerName, docker, inspectService } from '../../support/stack';
 
-test('H-STACK-01 all four containers of the stack are healthy @smoke @harness', async () => {
-  for (const service of SERVICES) {
+test('H-STACK-01 all five containers of the stack are healthy and the init service has made the secrets @smoke @harness', async () => {
+  for (const service of HEALTH_SERVICES) {
     const state = await inspectService(service);
     expect(state?.running, `${service} running`).toBe(true);
     expect(state?.health, `${service} health`).toBe('healthy');
   }
+  const init = await inspectService('init');
+  expect(init?.status, 'init has run and exited').toBe('exited');
+  expect(init?.exitCode, 'init exit code').toBe(0);
 });
 
 interface Inspected {
@@ -72,9 +76,12 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
 
   // Caddy: the https and http ports; the media ports of LiveKit with equal host and container port; the test-only
   // ports of API, LiveKit and PostgreSQL on 127.0.0.1.
-  expect(hostPorts('caddy', '443/tcp'), 'Caddy https port').toEqual([String(config.httpsPort)]);
-  expect(hostPorts('caddy', '443/udp'), 'Caddy https UDP port').toEqual([String(config.httpsPort)]);
-  expect(hostPorts('caddy', '80/tcp'), 'Caddy http port').toEqual([String(config.httpPort)]);
+  expect(hostPorts('caddy', `${config.httpsPort}/tcp`), 'Caddy https port').toEqual([String(config.httpsPort)]);
+  expect(hostPorts('caddy', `${config.httpsPort}/udp`), 'Caddy https UDP port').toEqual([String(config.httpsPort)]);
+  expect(
+    Object.entries(inspected.get('caddy')!.NetworkSettings.Ports).filter(([, bindings]) => (bindings ?? []).length > 0).map(([port]) => port).sort(),
+    'Caddy publishes the one https port (tcp and udp) and nothing else: no port 80, no admin API',
+  ).toEqual([`${config.httpsPort}/tcp`, `${config.httpsPort}/udp`].sort());
   expect(hostPorts('livekit', `${config.rtcTcpPort}/tcp`), 'LiveKit media TCP port').toEqual([
     String(config.rtcTcpPort),
   ]);
@@ -91,11 +98,9 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
     `127.0.0.1:${config.postgresPort}`,
   ]);
 
-  // The API builds absolute links from the public URL, which carries the https port.
-  const apiEnv = inspected.get('api')!.Config.Env;
-  expect(apiEnv, 'public base URL of the API').toContain(
-    `STUDIOFLOW__PUBLICBASEURL=${config.baseURL}`,
-  );
+  // The API builds absolute links from the address of the server settings, which carries the https port.
+  const admin = await AdminApi.login();
+  expect((await admin.getSystemInfo()).body.publicBaseUrl, 'public base URL of the API').toBe(config.baseURL);
   expect(new URL(config.baseURL).port, 'public URL port').toBe(
     config.httpsPort === 443 ? '' : String(config.httpsPort),
   );
@@ -116,6 +121,6 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
   ).stdout
     .split(/\r?\n/)
     .filter(Boolean);
-  for (const name of ['pgdata', 'media', 'keys', 'caddy_data'])
+  for (const name of ['pgdata', 'media', 'keys', 'caddy_data', 'secrets', 'caddy_certs', 'livekit_config', 'backup_config', 'backups'])
     expect(volumes, `volume ${name}`).toContain(volumeNameOf(name));
 });
