@@ -67,7 +67,15 @@ class Audit {
   ) {}
 
   async state(label: string, page: Page = this.page): Promise<void> {
-    const items = this.german ? await inGerman(page, () => collectTexts(page)) : await collectTexts(page);
+    await this.record(label, this.german ? await inGerman(page, () => collectTexts(page)) : await collectTexts(page));
+  }
+
+  /** The state of a page that is already German (inside `inGerman`): for a toast, which is a finished text and does not follow a language switch. */
+  async stateInGerman(label: string, page: Page = this.page): Promise<void> {
+    await this.record(label, await collectTexts(page));
+  }
+
+  private async record(label: string, items: Awaited<ReturnType<typeof collectTexts>>): Promise<void> {
     this.total += items.length;
     this.states.push(`${label} (${items.length})`);
     for (const violation of auditTexts(items)) this.violations.push({ ...violation, state: label });
@@ -103,12 +111,15 @@ test.describe('German text audit', () => {
     await regie.setStudioMode(true);
     await expect(regie.take()).toBeVisible();
     await audit.state('Studio Mode');
-    await page.getByRole('button', { name: 'Move dock Stations with the arrow keys' }).focus();
-    await page.keyboard.press('ArrowLeft');
-    await expect(regie.toast().first()).toContainText('Stations is');
-    await audit.state('toast: dock moved (with the “Reset layout” button)');
-    await page.getByRole('button', { name: 'Reset layout' }).click();
-    await expect(regie.toast().first()).toContainText('Layout reset');
+    // A toast is a finished text: it does not follow the language switch of `audit.state`. This one is provoked in German.
+    await inGerman(page, async () => {
+      await page.getByRole('button', { name: TEXT_DE.stationsDock.grip }).focus();
+      await page.keyboard.press('ArrowLeft');
+      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.docked);
+      await audit.stateInGerman('toast: dock moved (with the “Reset layout” button)');
+      await page.getByRole('button', { name: TEXT_DE.stationsDock.resetLayout }).click();
+      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.layoutReset);
+    });
     await regie.setStudioMode(false);
 
     // popovers and menus
