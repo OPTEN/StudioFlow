@@ -6,6 +6,7 @@ import type {
   CameraSettings,
   LocalSlotState,
   MediaSessionState,
+  ScreenFrameRate,
   SlotFailure,
   SlotMessageKey,
   TechCheckResult,
@@ -239,6 +240,11 @@ export class FakePublisher implements SenderPublisher {
 
   setCameraResolution(resolution: 720 | 1080): Promise<void> {
     this.calls.push(`setCameraResolution:${resolution}`);
+    return Promise.resolve();
+  }
+
+  setScreenFrameRate(slot: string, frameRate: ScreenFrameRate): Promise<void> {
+    this.calls.push(`setScreenFrameRate:${slot}:${frameRate}`);
     return Promise.resolve();
   }
 

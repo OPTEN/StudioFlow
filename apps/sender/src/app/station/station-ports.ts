@@ -46,6 +46,7 @@ export type SenderPublisher = Pick<
   | 'switchCamera'
   | 'setCameraResolution'
   | 'publishScreen'
+  | 'setScreenFrameRate'
   | 'unpublish'
   | 'stopAll'
   | 'onSlotState'

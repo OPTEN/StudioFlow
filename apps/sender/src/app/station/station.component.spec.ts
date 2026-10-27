@@ -266,6 +266,28 @@ describe('StationComponent', () => {
     expect(media.publisher.calls).toContain('publishScreen:screen-1');
   });
 
+  it('laptop: “Video in screen” is a toggle per screen that switches to 30 fps and says what it costs', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    const toggle = query(element, '[data-testid=slot-screen-1] [data-testid=video-screen]');
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    expect(query(element, '[data-testid=video-screen-hint]')).toBeNull();
+
+    button(element, 'Video in screen').click();
+    fixture.detectChanges();
+
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:30');
+    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+    expect(query(element, '[data-testid=video-screen-hint]')?.textContent).toContain(
+      '30 frames per second',
+    );
+
+    button(element, 'Video in screen').click();
+    fixture.detectChanges();
+
+    expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:15');
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('laptop: greets with “Paired” right after pairing', async () => {
     const notices = new NoticeService();
     notices.justPaired.set(true);

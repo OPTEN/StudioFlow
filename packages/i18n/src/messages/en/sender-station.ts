@@ -54,6 +54,9 @@ export const senderStation = {
   'sender.station.laptop.stopCamera': 'Stop camera',
   'sender.station.laptop.stopSharing': 'Stop sharing',
   'sender.station.laptop.tryAgain': 'Try again',
+  'sender.station.laptop.video': 'Video in screen',
+  'sender.station.laptop.videoHint':
+    '30 frames per second for a video in this screen. This needs more computing power.',
 
   'sender.station.message.title': 'Message from the control room',
 

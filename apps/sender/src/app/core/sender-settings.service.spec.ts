@@ -51,6 +51,15 @@ describe('SenderSettingsService', () => {
     expect(create().settings()).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('keeps the screens with “Video in screen”, dropping invalid and repeated slots', () => {
+    expect(
+      parseSettings({ videoScreens: ['screen-1', 'camera', 'screen-1', 7, 'screen-3'] })
+        .videoScreens,
+    ).toEqual(['screen-1', 'screen-3']);
+    expect(parseSettings({ videoScreens: 'screen-1' }).videoScreens).toEqual([]);
+    expect(DEFAULT_SETTINGS.videoScreens).toEqual([]);
+  });
+
   it('keeps the lens and image settings of the control room, dropping corrupt fields one by one', () => {
     expect(
       parseSettings({
