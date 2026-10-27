@@ -8581,7 +8581,7 @@
           },
           "baseUrl": {
             "type": "string",
-            "description": "The address devices open, e.g. `https://studioflow.opten.ch:8443`."
+            "description": "The address devices open, e.g. `https://studioflow.example.com:8443`."
           },
           "httpsPort": {
             "type": "integer",

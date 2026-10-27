@@ -142,6 +142,11 @@ export class HttpApi {
     const headers: Record<string, string | undefined> = options.anonymous ? {} : { ...this.defaultHeaders() };
     if (options.noCsrf) delete headers['X-StudioFlow'];
     Object.assign(headers, options.headers);
+    // The direct API port stands in for Caddy where a test needs its own X-Forwarded-For. Caddy hands the API the Host the
+    // browser used, and the API builds the LiveKit URL of a token from it (issue 44): send the Host of the public address.
+    if (this.base === stackConfig().apiDirect && !Object.keys(headers).some((name) => name.toLowerCase() === 'host')) {
+      headers['Host'] = new URL(stackConfig().baseURL).host;
+    }
     let url = `${this.base}${route}`;
     if (options.query) {
       const query = new URLSearchParams();

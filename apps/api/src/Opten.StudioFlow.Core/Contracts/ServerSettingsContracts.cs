@@ -141,7 +141,7 @@ public sealed record BackupSettingsDto(
 
 /// <summary>Everything the wizard and the "Server settings" page show.</summary>
 /// <param name="Configured">True once the media address was saved; before that the wizard continues after the account step.</param>
-/// <param name="BaseUrl">The address devices open, e.g. <c>https://studioflow.opten.ch:8443</c>.</param>
+/// <param name="BaseUrl">The address devices open, e.g. <c>https://studioflow.example.com:8443</c>.</param>
 /// <param name="HttpsPort">The published HTTPS port (<c>STUDIOFLOW_HTTPS_PORT</c>, default 8443).</param>
 /// <param name="Media">The media address.</param>
 /// <param name="Address">The address and the certificate.</param>
