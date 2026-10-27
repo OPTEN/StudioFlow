@@ -5,9 +5,16 @@ import {
   hasRunningTrack,
   hasVideoFrame,
   releaseCanvas,
+  showsPicture,
   waitForVideoFrame,
 } from './hold-frame';
-import { clearFrame, fakeCanvas2d, giveFrame } from './testing/fixtures';
+import {
+  clearFrame,
+  fakeCanvas2d,
+  fakePictureProbe,
+  giveFrame,
+  giveMetadataOnly,
+} from './testing/fixtures';
 
 function streamWith(...states: MediaStreamTrackState[]): MediaStream {
   return {
@@ -18,6 +25,7 @@ function streamWith(...states: MediaStreamTrackState[]): MediaStream {
 describe('hold frame helpers', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -40,6 +48,10 @@ describe('hold frame helpers', () => {
     giveFrame(video);
     expect(hasVideoFrame(video)).toBe(true);
     clearFrame(video);
+    expect(hasVideoFrame(video)).toBe(false);
+    // The size is known from the metadata on, the frame is not there before it is decoded.
+    giveMetadataOnly(video);
+    expect(video.videoWidth).toBe(1280);
     expect(hasVideoFrame(video)).toBe(false);
 
     expect(hasRunningTrack(video)).toBe(true);
@@ -68,6 +80,80 @@ describe('hold frame helpers', () => {
     Object.defineProperty(video, 'srcObject', { value: streamWith('ended'), configurable: true });
     expect(copyVideoFrame(video, canvas, limit)).toBe(false);
     expect(drawImage).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells a picture from nothing painted and from black (issue #50)', () => {
+    const video = document.createElement('video');
+    const probe = fakePictureProbe('picture');
+    expect(showsPicture(video)).toBe(true);
+    probe.show = 'black';
+    expect(showsPicture(video)).toBe(false);
+    probe.show = 'transparent';
+    expect(showsPicture(video)).toBe(false);
+    probe.show = 'picture';
+    expect(showsPicture(video)).toBe(true);
+    expect(probe.probes).toBe(4);
+  });
+
+  it('counts a frame as a picture where the browser cannot tell', () => {
+    const video = document.createElement('video');
+    vi.stubGlobal('OffscreenCanvas', undefined);
+    expect(showsPicture(video)).toBe(true);
+    class Refusing {
+      getContext(): unknown {
+        return {
+          clearRect: () => undefined,
+          drawImage: () => undefined,
+          getImageData: () => {
+            throw new DOMException('refused', 'SecurityError');
+          },
+        };
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', Refusing);
+    expect(showsPicture(video)).toBe(true);
+    class NoContext {
+      getContext(): unknown {
+        return null;
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', NoContext);
+    expect(showsPicture(video)).toBe(true);
+  });
+
+  it('does not copy a frame that shows nothing and leaves the canvas as it was', () => {
+    const { drawImage } = fakeCanvas2d();
+    const probe = fakePictureProbe('picture');
+    const video = document.createElement('video');
+    giveFrame(video);
+    const canvas = document.createElement('canvas');
+    const limit = { width: 640, height: 368 };
+    expect(copyVideoFrame(video, canvas, limit)).toBe(true);
+    expect([canvas.width, canvas.height]).toEqual([654, 368]);
+    expect(drawImage).toHaveBeenCalledTimes(1);
+
+    // Never painted, then black: the good copy is not overwritten and not resized (which would clear it).
+    giveFrame(video, 640, 360);
+    for (const show of ['transparent', 'black'] as const) {
+      probe.show = show;
+      expect(copyVideoFrame(video, canvas, limit)).toBe(false);
+      expect([canvas.width, canvas.height]).toEqual([654, 368]);
+      expect(drawImage).toHaveBeenCalledTimes(1);
+    }
+    probe.show = 'picture';
+    expect(copyVideoFrame(video, canvas, limit)).toBe(true);
+    expect(drawImage).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not copy a video that only knows its size', () => {
+    const { drawImage } = fakeCanvas2d();
+    fakePictureProbe('picture');
+    const video = document.createElement('video');
+    giveMetadataOnly(video);
+    expect(
+      copyVideoFrame(video, document.createElement('canvas'), { width: 640, height: 368 }),
+    ).toBe(false);
+    expect(drawImage).not.toHaveBeenCalled();
   });
 
   it('reports refused copies instead of throwing', () => {

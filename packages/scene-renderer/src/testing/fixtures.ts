@@ -117,15 +117,74 @@ export function mount(
   return { container, provider, renderer, errors, setSize, item, part };
 }
 
-/** Pretends the video element has a decoded frame of the given size. */
+/** Pretends the video element has a decoded frame of the given size (`readyState` 4, HAVE_ENOUGH_DATA). */
 export function giveFrame(video: HTMLVideoElement, width = 1280, height = 720): void {
   Object.defineProperty(video, 'videoWidth', { value: width, configurable: true });
   Object.defineProperty(video, 'videoHeight', { value: height, configurable: true });
+  Object.defineProperty(video, 'readyState', { value: 4, configurable: true });
 }
 
 /** Pretends the video element lost its frame (new srcObject without data yet). */
 export function clearFrame(video: HTMLVideoElement): void {
   giveFrame(video, 0, 0);
+  Object.defineProperty(video, 'readyState', { value: 0, configurable: true });
+}
+
+/**
+ * Pretends the video element knows its size from the metadata but has not decoded a frame yet (`readyState` 1,
+ * HAVE_METADATA): what a video looks like for a moment after it starts, longer on a computer that is busy.
+ */
+export function giveMetadataOnly(video: HTMLVideoElement, width = 1280, height = 720): void {
+  giveFrame(video, width, height);
+  Object.defineProperty(video, 'readyState', { value: 1, configurable: true });
+}
+
+/** What the fake picture probe reads from the next video it is given. */
+export type ProbedPicture = 'picture' | 'black' | 'transparent';
+
+export interface FakePictureProbe {
+  /** What the probe sees from now on: a picture, black pixels, or nothing painted (transparent). */
+  show: ProbedPicture;
+  /** How many frames were probed. */
+  readonly probes: number;
+}
+
+/**
+ * happy-dom has an `OffscreenCanvas` without pixels, so the renderer cannot tell a black frame from a picture. This puts a
+ * probe in its place whose eight by eight pixels the test chooses (`show`). Remove it with `vi.unstubAllGlobals()`.
+ */
+export function fakePictureProbe(show: ProbedPicture = 'picture'): FakePictureProbe {
+  const state = { show, probes: 0 };
+  class FakeOffscreenCanvas {
+    constructor(
+      readonly width: number,
+      readonly height: number,
+    ) {}
+
+    getContext(): unknown {
+      return {
+        clearRect: () => undefined,
+        drawImage: () => {
+          state.probes += 1;
+        },
+        getImageData: (_x: number, _y: number, width: number, height: number) => {
+          const data = new Uint8ClampedArray(width * height * 4);
+          if (state.show !== 'transparent') {
+            for (let i = 0; i < data.length; i += 4) {
+              const level = state.show === 'picture' ? 120 : 0;
+              data[i] = level;
+              data[i + 1] = level;
+              data[i + 2] = level;
+              data[i + 3] = 255;
+            }
+          }
+          return { data };
+        },
+      };
+    }
+  }
+  vi.stubGlobal('OffscreenCanvas', FakeOffscreenCanvas);
+  return state;
 }
 
 /** What {@link fakeCanvas2d} records. */
@@ -134,6 +193,8 @@ export interface FakeCanvas2d {
   readonly clearRect: ReturnType<typeof vi.fn>;
   /** Values assigned to `context.filter` (only with the `filter` option). */
   readonly filters: string[];
+  /** Values assigned to `context.globalCompositeOperation`. */
+  readonly compositeOperations: string[];
   /** The draw calls whose source is a video: the copies of live pictures (the others are canvas to canvas). */
   videoDraws(): unknown[][];
 }
@@ -147,7 +208,16 @@ export function fakeCanvas2d(options: { readonly filter?: boolean } = {}): FakeC
   const drawImage = vi.fn();
   const clearRect = vi.fn();
   const filters: string[] = [];
+  const compositeOperations: string[] = [];
   const context: Record<string, unknown> = { drawImage, clearRect, imageSmoothingEnabled: true };
+  let composite = 'source-over';
+  Object.defineProperty(context, 'globalCompositeOperation', {
+    get: () => composite,
+    set: (value: string) => {
+      composite = value;
+      compositeOperations.push(value);
+    },
+  });
   if (options.filter) {
     let filter = 'none';
     Object.defineProperty(context, 'filter', {
@@ -173,6 +243,7 @@ export function fakeCanvas2d(options: { readonly filter?: boolean } = {}): FakeC
     drawImage,
     clearRect,
     filters,
+    compositeOperations,
     videoDraws: () =>
       drawImage.mock.calls.filter((call: unknown[]) => call[0] instanceof HTMLVideoElement),
   };
