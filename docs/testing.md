@@ -1821,7 +1821,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-DEV-12** · P1 · pw (`chromium-desktop`, `edge-desktop`, `firefox-desktop`) — Laptop sender in desktop browsers
 - Steps: pair by code, share (canvas mode on Firefox), add a second screen, end/reshare, camera.
-- Expect: same behaviour in all three; Firefox has no battery value; Edge reports platform “Windows · Edge” pattern; no console errors.
+- Expect: same behaviour in all three; Firefox has no battery value; the platform text names the operating system and the browser of the user agent: “Windows · Chrome” for Chromium (the user agent of the desktop profile), “<OS of the machine> · Edge” for Edge (Windows, macOS or Linux, as the test runs); no console errors.
 
 **E2E-DEV-13** · P0 · pw — Keyboard-only Regie
 - Steps: starting at the page top press `Tab` through the whole UI; activate with `Enter`/`Space`; open each popover (output, Docks and layout, + Source) and close with `Escape`; use keys 1–9, Space, arrows on a selected item, Escape order (dock drag → popover → pairing dock → selection).
