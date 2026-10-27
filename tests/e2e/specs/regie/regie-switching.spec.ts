@@ -13,6 +13,7 @@ import {
   animationsOf,
   expectFadeTiming,
   fadeDeviationMs,
+  fadeStartEpochMs,
   flashes,
   hex,
   installAnimationHook,
@@ -1035,15 +1036,18 @@ test.describe('REGIE two operators and rapid input', () => {
       expect(outputFade.duration).toBe(1000);
       const regieMs = regieFade.elapsedMs ?? regieFade.endedAt! - regieFade.startedAt;
       const outputMs = outputFade.elapsedMs ?? outputFade.endedAt! - outputFade.startedAt;
-      const offset = Math.abs(regieFade.startedAt - outputFade.startedAt);
+      // Both starts on one clock: each page's performance.now() stamp plus its own timeOrigin (absolute epoch ms).
+      const offset = Math.abs(fadeStartEpochMs(regieFade) - fadeStartEpochMs(outputFade));
       test.info().annotations.push({
         type: 'measurement',
         description: `fade 1000 ms: Regie ${regieMs} ms, output ${outputMs} ms, start offset ${offset} ms, machine CPU ${machine.busyPct} %${gate.enforce ? '' : ' (not comparable)'}`,
       });
       // The animations are timed by the compositor: on a machine without headroom they start and end late (docs/testing.md 6.8).
       await judgeTiming(test.info(), gate, () => {
-        expect(Math.abs(regieMs - 1000)).toBeLessThanOrEqual(50);
-        expect(Math.abs(outputMs - 1000)).toBeLessThanOrEqual(50);
+        expectFadeTiming(regieFade, 1000);
+        expectFadeTiming(outputFade, 1000);
+        expect(fadeDeviationMs(regieFade), 'Regie fade, T-FADE ± 50 ms').toBeLessThanOrEqual(50);
+        expect(fadeDeviationMs(outputFade), 'output fade, T-FADE ± 50 ms').toBeLessThanOrEqual(50);
         expect(offset, 'T-FADE start offset hard limit').toBeLessThanOrEqual(100);
       });
     },

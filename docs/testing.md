@@ -1283,7 +1283,7 @@ header “READY” / “LIVE” + `hh:mm:ss` / “ENDED”, buttons “Start bro
 
 **E2E-SWITCH-15** · P1 · pw — Fade synchronisation Regie vs output
 - Steps: fade 1 s with Regie Program monitor and output open; record animation start times via WAAPI hook.
-- Expect: both animate 1000 ± 50 ms, starts within 100 ms of each other (`T-FADE`).
+- Expect: both animate 1000 ± 50 ms, starts within 100 ms of each other (`T-FADE`). The length is judged with `expectFadeTiming()` / `fadeDeviationMs()` (frame stalls excluded); the two start times are taken on one clock: each page's `performance.now()` hook stamp plus that page's `performance.timeOrigin` (absolute epoch ms), not two `Date.now()` readings. Threshold unchanged (100 ms).
 
 **E2E-SWITCH-16** · P1 · pw — Reduced motion in the Regie [GAP-28]
 - Steps: Regie context with `reducedMotion: 'reduce'`; switch with a 1 s fade; open the output in a separate default context.

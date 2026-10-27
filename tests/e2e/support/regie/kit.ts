@@ -525,6 +525,10 @@ export interface RecordedAnimation {
   /** Properties named in the keyframes, e.g. `opacity` or `outlineWidth`. */
   properties: string[];
   startedAt: number;
+  /** `performance.now()` of the page at the call; with `timeOrigin` it gives a start on the epoch clock, see {@link fadeStartEpochMs}. */
+  startedAtPerf: number;
+  /** `performance.timeOrigin` of the page (epoch ms at which its `performance.now()` was 0). */
+  timeOrigin: number;
   /** `Date.now()` when the animation finished (null while it runs or after a cancel). */
   endedAt: number | null;
   /**
@@ -587,6 +591,8 @@ export async function installAnimationHook(page: Page): Promise<void> {
               : null,
         properties,
         startedAt: Date.now(),
+        startedAtPerf: performance.now(),
+        timeOrigin: performance.timeOrigin,
         endedAt: null as number | null,
         elapsedMs: null as number | null,
         frameGapMs: null as number | null,
@@ -636,6 +642,15 @@ export async function opacityFades(page: Page, sceneId?: string): Promise<Record
     (entry) =>
       entry.properties.includes('opacity') && (sceneId === undefined || entry.sceneId === sceneId),
   );
+}
+
+/**
+ * Start of a recorded animation in absolute epoch ms: the page's monotonic `performance.now()` stamp plus its
+ * `performance.timeOrigin`. The starts of two pages (Regie, output) are comparable on this one clock, which two
+ * `Date.now()` readings (taken at the wall clock's whim, one per page) are not.
+ */
+export function fadeStartEpochMs(fade: RecordedAnimation): number {
+  return fade.timeOrigin + fade.startedAtPerf;
 }
 
 /**
