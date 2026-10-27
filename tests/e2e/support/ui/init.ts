@@ -20,7 +20,7 @@ const FAKE_SOURCES = fs.readFileSync(
 /** localStorage key that switches the read-only state views `window.__sfStudio` / `window.__sfSender` on (the output page has none, spec 12). */
 export const TEST_HOOKS_KEY = 'studioflow.testHooks';
 
-/** Fake origin of a page that embeds the output in an iframe (STUDIOFLOW_FRAME_ANCESTORS of the test env allows it). */
+/** Fake origin of a page that embeds the output in an iframe (the embedding origins the harness saves in the wizard allow it). */
 export const EMBED_ORIGIN = 'https://embed.test';
 /** An origin the stack does NOT allow to frame the output. */
 export const FOREIGN_ORIGIN = 'https://foreign.test';

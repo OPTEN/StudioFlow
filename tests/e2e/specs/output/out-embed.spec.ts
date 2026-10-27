@@ -15,7 +15,7 @@ import { t } from '../../support/tags';
 /**
  * The output page in the places it is used: inside an iframe of the proxy product, in frames of every shape, on a
  * transparent background for overlays, with a light page weight and silent (docs/testing.md E2E-OUT-03, -04, -16, -18,
- * -24). The iframes sit on the fake origin https://embed.test, which STUDIOFLOW_FRAME_ANCESTORS of the test stack lists.
+ * -24). The iframes sit on the fake origin https://embed.test, which the embedding origins of the test stack list.
  */
 
 const SIZES: Array<{ name: string; width: number; height: number }> = [
@@ -143,7 +143,7 @@ test.describe('OUT embedding', () => {
         expect(await retina.output.page.evaluate(() => window.devicePixelRatio)).toBe(2);
       }
 
-      // Not allowed: an origin that STUDIOFLOW_FRAME_ANCESTORS does not list gets no output.
+      // Not allowed: an origin that the embedding origins do not list gets no output.
       const context = await newUiContext(browser);
       onCleanup(() => context.close());
       const foreign = await OutputPage.embed(context, production, { origin: FOREIGN_ORIGIN, waitForFrame: false, size: { width: 640, height: 360 } });

@@ -9,7 +9,7 @@ import { expectVideoPlaying, type VideoMeasurement } from './video';
 /**
  * Page object of the output page (`apps/output`, `/o/{slug}?k=…`, docs/testing.md 1.5 and E2E-OUT-*): opened directly or
  * inside an iframe on a fake origin (`https://embed.test`, served with `page.route`; the test stack lists it in
- * STUDIOFLOW_FRAME_ANCESTORS), plus the checks the output tests share: a playing video, pixels of the stage and the
+ * the embedding origins), plus the checks the output tests share: a playing video, pixels of the stage and the
  * latency samples of the `?latency=1` test aid (`window.__studioflowLatency`).
  */
 

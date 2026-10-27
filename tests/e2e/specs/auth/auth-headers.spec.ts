@@ -77,7 +77,7 @@ test.describe('AUTH headers', () => {
         }
       }
 
-      // Framing: only the output may be embedded, and only by self + STUDIOFLOW_FRAME_ANCESTORS.
+      // Framing: only the output may be embedded, and only by self + the embedding origins of the server settings.
       if (target.area === 'output') {
         expect(csp['frame-ancestors'], label).toEqual(["'self'", ...config.frameAncestors.split(/\s+/)]);
         expect(response.headers['x-frame-options'], `${label} /o/* sends no X-Frame-Options`).toBeUndefined();
