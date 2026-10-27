@@ -60,8 +60,10 @@ export interface ProbeItem {
   h: number;
   video: { ready: number; w: number; h: number; paused: boolean; time: number } | null;
   blur: string;
-  /** Mean luminance 0..255 of the picture (only with `luma: true`). */
+  /** Mean luminance 0..255 of the picture (only with `luma: true`); null where it could not be measured. */
   luma?: number | null;
+  /** The copy of the last picture of a lost source (hold frame), null while the item has none. */
+  holdFrame: { w: number; h: number } | null;
 }
 
 export interface ProbeFrame {

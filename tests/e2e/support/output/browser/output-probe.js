@@ -160,12 +160,16 @@
       video: video
         ? { ready: video.readyState, w: video.videoWidth, h: video.videoHeight, paused: video.paused, time: video.currentTime }
         : null,
-      blur: box ? getComputedStyle(box).filter : 'none',
+      // The held state blurs the copy of the picture once (data-held-blur, canvas pixels); a copy that could not be blurred gets a CSS filter.
+      blur: box ? (box.getAttribute('data-held-blur') ? 'blur(' + box.getAttribute('data-held-blur') + 'px)' : getComputedStyle(box).filter) : 'none',
     };
+    // The copy of the last picture that the item shows while the source is lost (null: the item has none).
+    out.holdFrame = hold && hold.width > 0 ? { w: hold.width, h: hold.height } : null;
     if (withLuma) {
       if (video && video.videoWidth > 0 && video.readyState >= 2 && out.state === 'live') out.luma = lumaOf(video);
       else if (hold && hold.width > 0) out.luma = lumaOf(hold);
-      else out.luma = video ? 0 : null;
+      // A lost item without a copy has no luminance to measure: null, not 0 (a missing measurement is not a black picture).
+      else out.luma = out.state === 'hold' || out.state === 'held' ? null : video ? 0 : null;
     }
     return out;
   }

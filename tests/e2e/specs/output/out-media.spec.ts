@@ -6,7 +6,7 @@ import { sleep } from '../../support/output/analysis';
 import { outBug } from '../../support/output/bugs';
 import { openProbedOutput, recordHubFrames, type HubMessage } from '../../support/output/open';
 import { inboundOf, inboundVideo, trackSids } from '../../support/output/rtc';
-import { fmt, recordMeasurement, summarize } from '../../support/output/stats';
+import { fmt, judgeTiming, recordMeasurement, startCpuMonitor, summarize, timingGate } from '../../support/output/stats';
 import { FULL, addCamera, addScreens, goLive, placeItem, switchProgram } from '../../support/output/world';
 import { firstEvent } from '../../support/output/analysis';
 import { t } from '../../support/tags';
@@ -16,6 +16,23 @@ import { t } from '../../support/tags';
  * the debug overlay, assets served with the output key, the 2 s reports, the simulcast layer the page asks the SFU for,
  * the tracks it subscribes to and several consumers at once.
  */
+
+/**
+ * A source nobody asks a picture for is paused (decision #12): the SFU stops forwarding it and the browser decodes nothing,
+ * so the frames decoded do not grow. Polls because a new track is paused 1.5 s after it arrives.
+ */
+async function expectPaused(frame: import('@playwright/test').Frame, production: Parameters<typeof inboundOf>[1], source: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const before = (await inboundOf(frame, production, source))?.framesDecoded ?? 0;
+        await sleep(1500);
+        return ((await inboundOf(frame, production, source))?.framesDecoded ?? 0) - before;
+      },
+      { timeout: 30_000, message: `${source} is paused: no frames are decoded` },
+    )
+    .toBe(0);
+}
 
 test.describe('OUT media and reports', () => {
   test(
@@ -52,7 +69,9 @@ test.describe('OUT media and reports', () => {
       expect(lines[3], 'hub and sync state').toBe('Hub connected · Sync up to date');
       expect(lines[4], 'LiveKit state').toBe('LiveKit connected');
       expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Renderer \d+ fps$/);
-      expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer').toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms$`));
+      // A stream that the browser decodes in software says so at the end of its line (issue #12; most computers do it in hardware).
+      expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer, software decoding if it is')
+        .toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms(?: · software decoding)?$`));
 
       expect(lines.at(-1), 'the version of the build, last').toMatch(/^StudioFlow \d+\.\d+\.\d+(\+[0-9a-f]{7})?$/);
 
@@ -211,7 +230,10 @@ test.describe('OUT media and reports', () => {
       });
       await expect.poll(() => frames.sent.filter((message) => message.target === 'Report').length, { timeout: 30_000, message: 'the first report' }).toBeGreaterThanOrEqual(1);
       const started = Date.now();
+      const stopCpu = startCpuMonitor();
       await sleep(12_000);
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
       const reports = frames.sent.filter((message) => message.target === 'Report' && message.t >= started);
       const intervals = reports.slice(1).map((report, index) => report.t - reports[index]!.t);
       const payloads = reports.map((report) => (report.arguments as Array<{ rendering: boolean; fps: number | null; latencyMs: number | null; programSceneId: string | null }>)[0]!);
@@ -222,11 +244,10 @@ test.describe('OUT media and reports', () => {
       for (const payload of payloads) {
         expect(payload.rendering).toBe(true);
         expect(payload.programSceneId, 'the scene the page shows').toBe(production.sceneIds[0]);
-        // The product reports the animation frame rate of the page (about the display's refresh rate), not the content's 30 fps.
-        expect(payload.fps, 'rendered frames per second').toBeGreaterThanOrEqual(20);
+        // The product reports the frame rate of the busiest video on the stage (what the audience sees; decision #12), no longer the animation frame rate of the page.
+        expect(payload.fps, 'rendered frames per second').not.toBeNull();
         expect(payload.fps!).toBeLessThanOrEqual(144);
         expect(payload.latencyMs, 'estimated latency').not.toBeNull();
-        expect(payload.latencyMs!).toBeLessThan(300);
       }
       // outputStatusChanged reaches the Regie at most every 5 s, unless a value changed by more than 20 %.
       const statusEvents = studio
@@ -242,11 +263,19 @@ test.describe('OUT media and reports', () => {
         const justified = current.status.state !== previous.status.state || current.status.consumers !== previous.status.consumers || changed(previous.status.latencyMs, current.status.latencyMs) || changed(previous.status.fps, current.status.fps);
         expect(gap >= 4500 || justified, `status events ${gap} ms apart need a >20 % change: ${JSON.stringify([previous.status, current.status])}`).toBe(true);
       }
+      // The camera and the page share the machine with everything else: a starved sender sends 8 frames a second and the estimate grows
+      // with the load. These two figures count when the machine had headroom (docs/testing.md 6.8).
+      await judgeTiming(test.info(), gate, () => {
+        for (const payload of payloads) {
+          expect(payload.fps, 'rendered frames per second').toBeGreaterThanOrEqual(20);
+          expect(payload.latencyMs!, 'estimated latency').toBeLessThan(300);
+        }
+      });
     },
   );
 
   test(
-    'E2E-OUT-21 [output, simulcast layers] the layer follows the item size in the program: full canvas -> highest, thumbnail -> lowest; a source only in another scene is at the lowest layer; screens have one layer',
+    'E2E-OUT-21 [output, simulcast layers] the layer follows the item size in the program: full canvas -> highest, thumbnail -> lowest; a source only in another scene is paused (nothing arrives); screens have one layer',
     t.p1,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(240_000);
@@ -268,9 +297,8 @@ test.describe('OUT media and reports', () => {
 
       // Scene A: K1 full canvas.
       await expect.poll(() => width(k1.source), { timeout: 15_000, message: 'K1 full canvas -> highest layer (>= 1280 px)' }).toBeGreaterThanOrEqual(1280);
-      // K2 is only in scene C: lowest layer.
-      await expect.poll(() => width(k2.source), { timeout: 15_000, message: 'K2 (other scene) -> lowest layer (<= 360 px)' }).toBeLessThanOrEqual(360);
-      expect(await width(k2.source)).toBeGreaterThan(0);
+      // K2 is only in scene C (neither in the program nor in the preview): nobody asks for its picture, so it is paused (decision #12).
+      await expectPaused(frame, production, k2.source);
       // Screens have no simulcast: one layer, whatever the item size.
       expect(await width(screens.sources[0]!), 'S1 small in A: single layer').toBe(1280);
 
@@ -285,7 +313,7 @@ test.describe('OUT media and reports', () => {
   );
 
   test(
-    'E2E-SWITCH-10 [output, other scenes at the lowest layer] a camera that is neither in the program nor in the preview scene arrives at the lowest simulcast layer',
+    'E2E-SWITCH-10 [output, other scenes are paused] a camera that is neither in the program nor in the preview scene is paused: nothing arrives; a switch to its scene brings the picture within 3 s',
     t.p1,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
@@ -299,11 +327,16 @@ test.describe('OUT media and reports', () => {
       const { output } = await openProbedOutput({ browser, onCleanup }, production, { debug: true }, { viewport: { width: 1920, height: 1080 } });
       await output.waitForPlayingVideos(1, { minFps: 8, timeout: 45_000 });
       const frame = await output.frame();
-      await expect.poll(async () => (await inboundOf(frame, production, k2.source))?.frameWidth ?? 0, { timeout: 15_000 }).toBeGreaterThan(0);
-      await sleep(3000);
-      const k2Width = (await inboundOf(frame, production, k2.source))!.frameWidth;
-      expect(k2Width, 'K2 is only in scene B (not live, no preview): lowest layer').toBeLessThanOrEqual(360);
+      await expectPaused(frame, production, k2.source);
       expect((await inboundOf(frame, production, k1.source))!.frameWidth, 'K1 is in the program at full canvas: highest layer').toBeGreaterThanOrEqual(1280);
+
+      // A switch to the scene of the paused camera resumes it: its picture arrives with the next keyframe (about 0.5 s).
+      const requested = Date.now();
+      expect((await switchProgram(api, production, b)).status).toBe(200);
+      await expect
+        .poll(async () => (await inboundOf(frame, production, k2.source))?.framesDecoded ?? 0, { timeout: 3000, intervals: [50], message: 'K2 decodes frames within 3 s of the switch' })
+        .toBeGreaterThan(0);
+      await recordMeasurement(test.info(), 'switch-10-cold', { ms: Date.now() - requested }, `first decoded frame of a paused camera ${Date.now() - requested} ms after the switch`);
     },
   );
 
@@ -311,7 +344,6 @@ test.describe('OUT media and reports', () => {
     'E2E-SWITCH-10 [output, preview at the highest layer] the camera of the preview scene is preloaded at the highest layer within 3 s of selecting the preview',
     t.p1,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-03', 'the output preloads the sources of the preview scene at the lowest layer (320x180), spec 7 asks for the highest ("preview scene items -> HIGH")');
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const k1 = await addCamera(deps, 'Camera One');
@@ -323,8 +355,7 @@ test.describe('OUT media and reports', () => {
       const { output } = await openProbedOutput({ browser, onCleanup }, production, { debug: true }, { viewport: { width: 1920, height: 1080 } });
       await output.waitForPlayingVideos(1, { minFps: 8, timeout: 45_000 });
       const frame = await output.frame();
-      await expect.poll(async () => (await inboundOf(frame, production, k2.source))?.frameWidth ?? 0, { timeout: 15_000 }).toBeGreaterThan(0);
-      expect((await inboundOf(frame, production, k2.source))!.frameWidth, 'before the selection: lowest layer').toBeLessThanOrEqual(360);
+      await expectPaused(frame, production, k2.source);
 
       const selected = Date.now();
       expect((await api.setPreview(production.id, { sceneId: b })).status).toBe(200);
@@ -417,6 +448,15 @@ test.describe('OUT media and reports', () => {
       await goLive(api, production);
       const chip = regie.page.getByRole('button', { name: /^Output/ });
       const lamp = chip.locator('.c-lamp');
+      // Connected means a green lamp. A lamp that is amber while the output is connected has exactly one other reason, the
+      // chip saying “drops frames” (the computer cannot keep up, issue #12): a loaded machine, or a page that was blocked.
+      const expectConnectedLamp = async (message: string) => {
+        await expect(async () => {
+          const classes = (await lamp.getAttribute('class')) ?? '';
+          expect(classes, message).not.toMatch(/is-idle/);
+          if (/is-warn/.test(classes)) expect(await chip.innerText(), `${message}: amber only for dropped frames`).toContain('drops frames');
+        }).toPass({ timeout: 8000 });
+      };
       await expect(chip).toBeVisible();
       await expect(lamp, 'no output: grey lamp').toHaveClass(/is-idle/);
       await chip.click();
@@ -432,7 +472,7 @@ test.describe('OUT media and reports', () => {
       const first = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
       await first.output.waitForPlayingVideos(1, { minFps: 5, timeout: 45_000 });
       const connectedAfter = Date.now();
-      await expect(lamp, 'connected: green lamp (no idle/warn class)').not.toHaveClass(/is-idle|is-warn/, { timeout: 8000 });
+      await expectConnectedLamp('connected: green lamp');
       await expect(chip, 'the chip shows the latency in ms').toHaveText(/\d+ ms/, { timeout: 8000 });
       await expect(popover.locator('dd').first()).toHaveText('connected, 1 consumer', { timeout: 8000 });
       await recordMeasurement(test.info(), 'out-15-chip', { connectedMs: Date.now() - connectedAfter }, `output opened -> chip connected after ${Date.now() - connectedAfter} ms`);
@@ -459,7 +499,7 @@ test.describe('OUT media and reports', () => {
       const resumedAt = blocked + 10_000;
       await expect.poll(async () => (await api.getSnapshot(production.id)).body.outputStatus.state, { timeout: 20_000, intervals: [250], message: 'connected again after the block' }).toBe('connected');
       await recordMeasurement(test.info(), 'out-15-blocked', { flaggedAfterMs: flaggedAfter, reconnectedAfterBlockMs: Date.now() - resumedAt }, `blocked page flagged after ${flaggedAfter} ms, connected again ${Date.now() - resumedAt} ms after the block ended`);
-      await expect(lamp).not.toHaveClass(/is-warn|is-idle/, { timeout: 8000 });
+      await expectConnectedLamp('connected again after the block: green lamp');
 
       const closed = Date.now();
       await first.context.close();

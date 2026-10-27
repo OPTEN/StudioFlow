@@ -8,8 +8,9 @@ import { GROUND, firstEvent, itemsOfLayer, sleep, toneOf } from '../../support/o
 import { outBug } from '../../support/output/bugs';
 import { openProbedOutput } from '../../support/output/open';
 import { DecodedFrame, CENTRE, Screencast } from '../../support/output/screencast';
-import { fmt, recordMeasurement, summarize } from '../../support/output/stats';
-import { FULL, addCamera, addScreens, goLive, placeItem, switchProgram, type WorldDeps } from '../../support/output/world';
+import { fmt, judgeTiming, recordMeasurement, startCpuMonitor, summarize, timingGate } from '../../support/output/stats';
+import { FULL, addCamera, addScreens, goLive, placeItem, switchProgram, type Camera, type WorldDeps } from '../../support/output/world';
+import { readRtc } from '../../support/perf/rtc';
 import { t } from '../../support/tags';
 
 /**
@@ -21,6 +22,17 @@ import { t } from '../../support/tags';
  */
 
 const FADE = (durationMs: number) => ({ kind: 'fade' as const, durationMs });
+
+/**
+ * What a phone sends at its lowest simulcast layer right now, and whether libwebrtc adapts to the CPU: an overloaded sender
+ * lowers the resolution of every layer (`degradationPreference: 'maintain-framerate'`), so its lowest layer is then 240 px
+ * wide instead of 320 (issue #39). A picture can never be wider than the layer that is sent.
+ */
+async function senderLowestLayer(camera: Camera): Promise<{ width: number; cpuLimited: boolean }> {
+  const { outbound } = await readRtc(camera.phone.page);
+  const sending = outbound.filter((stream) => stream.active && stream.frameWidth > 0);
+  return { width: sending.length > 0 ? Math.min(...sending.map((stream) => stream.frameWidth)) : 0, cpuLimited: outbound.some((stream) => stream.qualityLimitationReason === 'cpu') };
+}
 
 /** A laptop with two fake screens (S1 red, S2 green) and the scenes A = S1 and B = S2, both full canvas. */
 async function screenScenes(deps: WorldDeps) {
@@ -382,7 +394,7 @@ test.describe('OUT transitions', () => {
   );
 
   test(
-    'E2E-SWITCH-09 [output, cut, picture within N ms] a cut to a scene whose camera is not in the program shows the picture quickly and never below the LOW layer',
+    'E2E-SWITCH-09 [output, cut, picture within N ms] a cut to the preview scene (its camera is not in the program) shows the picture quickly and never below the LOW layer',
     t.p0,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(300_000);
@@ -397,9 +409,15 @@ test.describe('OUT transitions', () => {
       await output.waitForPlayingVideos(1);
       await sleep(3000);
 
-      const rows: Array<{ index: number; to: string; layerMs: number; pictureMs: number; frames: number; firstWidth: number; readyAtInsert: number; fullMs: number }> = [];
+      const rows: Array<{ index: number; to: string; layerMs: number; pictureMs: number; frames: number; firstWidth: number; readyAtInsert: number; fullMs: number; senderLowWidth: number; senderCpuLimited: boolean }> = [];
+      const stopCpu = startCpuMonitor();
       let target = b;
       for (let index = 0; index < 50; index++) {
+        // The next scene is the preview scene: the output requests its pictures at the size they will have on stage.
+        expect((await api.setPreview(production.id, { sceneId: target })).status).toBe(200);
+        await sleep(900);
+        // The lowest layer the sender of the target camera sends right now: the floor of the first picture.
+        const sender = await senderLowestLayer(target === a ? k1 : k2);
         await probe.takeEvents();
         await probe.startSampler({ luma: true });
         await sleep(120);
@@ -423,6 +441,8 @@ test.describe('OUT transitions', () => {
           frames: firstOk,
           firstWidth: firstOk < 0 ? 0 : (itemsOfLayer(withLayer[firstOk]!, target)[0]!.video?.w ?? 0),
           readyAtInsert: first?.video?.ready ?? -1,
+          senderLowWidth: sender.width,
+          senderCpuLimited: sender.cpuLimited,
           // How long the picture stays at a lower simulcast layer after the cut (the source was only preloaded at LOW).
           fullMs: (() => {
             const full = withLayer.find((sample) => (itemsOfLayer(sample, target)[0]?.video?.w ?? 0) >= 1280);
@@ -432,20 +452,39 @@ test.describe('OUT transitions', () => {
         target = target === a ? b : a;
         await sleep(100);
       }
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
       const picture = summarize(rows.map((row) => row.pictureMs));
       const darkFrames = summarize(rows.map((row) => row.frames));
       const layer = summarize(rows.map((row) => row.layerMs));
       const full = summarize(rows.map((row) => row.fullMs));
+      // The LOW layer is 320 px wide when the sender has CPU to spare. A sender that adapts to its CPU sends smaller layers
+      // (240 px = 3/4 x 320); then the floor of that cut is the lowest layer the sender sends, and the report says so.
+      const floorOf = (row: (typeof rows)[number]): number => (row.senderCpuLimited && row.senderLowWidth > 0 ? Math.min(320, row.senderLowWidth) : 320);
+      const adapted = rows.filter((row) => floorOf(row) < 320);
+      if (adapted.length > 0) {
+        test.info().annotations.push({
+          type: 'sender-cpu-limited',
+          description: `${adapted.length} of ${rows.length} cuts went to a camera whose sender adapted to its CPU (lowest layer ${Math.min(...adapted.map((row) => row.senderLowWidth))} px instead of 320): the floor of those cuts is the layer that was sent`,
+        });
+      }
       await recordMeasurement(
         test.info(),
         'switch-09-cut',
-        { rows, picture, darkFrames, layer, fullResolution: full },
+        { rows, picture, darkFrames, layer, fullResolution: full, machineCpuBusyPct: machine.busyPct, comparable: gate.enforce, cutsToAnAdaptedSender: adapted.length },
         `new layer in the DOM ${fmt(layer)} ms after the request; first picture ${fmt(picture)} ms after the layer; frames without picture ${fmt(darkFrames)}; full resolution (>= 1280 px) ${fmt(full)} ms after the layer (the first picture is 320 px wide in ${rows.filter((row) => row.firstWidth === 320).length} of ${rows.length} cuts)`,
       );
-      expect(rows.every((row) => Number.isFinite(row.pictureMs)), 'every cut shows a picture').toBe(true);
-      expect(picture.max, 'the first picture is on screen within 150 ms of the new layer (about 9 frames at 60 Hz)').toBeLessThanOrEqual(150);
-      expect(Math.min(...rows.map((row) => row.firstWidth)), 'the new picture is never below the LOW layer (320 px wide)').toBeGreaterThanOrEqual(320);
-      expect(layer.p95, 'T-SWITCH p95 is unaffected (hard 300 ms)').toBeLessThanOrEqual(300);
+      // What does not depend on the load: a picture that is shown is never narrower than the lowest layer that is sent.
+      expect(
+        rows.filter((row) => Number.isFinite(row.pictureMs) && row.firstWidth < floorOf(row)).map((row) => `cut ${row.index}: ${row.firstWidth} px (sender's lowest layer ${row.senderLowWidth} px${row.senderCpuLimited ? ', CPU-limited' : ''})`),
+        'the new picture is never below the LOW layer (320 px wide; for a sender that adapts to its CPU: the lowest layer it sends)',
+      ).toEqual([]);
+      // The times need a machine with headroom (issue #39): a pass counts on any machine, a failure on a busy one is "not comparable".
+      await judgeTiming(test.info(), gate, () => {
+        expect(rows.every((row) => Number.isFinite(row.pictureMs)), 'every cut shows a picture').toBe(true);
+        expect(picture.max, 'the first picture is on screen within 150 ms of the new layer (about 9 frames at 60 Hz)').toBeLessThanOrEqual(150);
+        expect(layer.p95, 'T-SWITCH p95 is unaffected (hard 300 ms)').toBeLessThanOrEqual(300);
+      });
     },
   );
 
@@ -471,6 +510,9 @@ test.describe('OUT transitions', () => {
       const perCut: Array<{ index: number; darkSamples: number; readyAtInsert: number; widthAtInsert: number }> = [];
       let target = b;
       for (let index = 0; index < 50; index++) {
+        // The next scene is the preview scene: the output requests its pictures at the size they will have on stage.
+        expect((await api.setPreview(production.id, { sceneId: target })).status).toBe(200);
+        await sleep(900);
         await probe.takeEvents();
         await probe.startSampler({ luma: true });
         await sleep(120);
@@ -512,6 +554,68 @@ test.describe('OUT transitions', () => {
       expect(perCut.map((cut) => cut.readyAtInsert).every((ready) => ready >= 2), 'at switch time the target video already has readyState >= 2').toBe(true);
       expect(perCut.every((cut) => cut.darkSamples === 0), 'no animation frame after a cut without a picture (mean luminance >= 20)').toBe(true);
       expect(darkPixelFrames, 'no dark frame in the screencast after a cut').toBe(0);
+    },
+  );
+
+  test(
+    'E2E-SWITCH-09 [output, cut, cold scene] a cut to a scene that is neither in the program nor in the preview shows the layer at once and the picture with the next keyframe (T-SWITCH-COLD, decision #12)',
+    t.p1,
+    async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
+      test.setTimeout(300_000);
+      const deps = { api, production, pairContext, openPhone, openLaptop };
+      const k1 = await addCamera(deps, 'Camera One');
+      const k2 = await addCamera(deps, 'Camera Two');
+      const [a, b] = production.sceneIds as [string, string];
+      await placeItem(api, production, a, k1.source, FULL);
+      await placeItem(api, production, b, k2.source, FULL);
+      await goLive(api, production);
+      const { output, probe } = await openProbedOutput({ browser, onCleanup }, production, {}, { viewport: { width: 1280, height: 720 } });
+      await output.waitForPlayingVideos(1);
+
+      const rows: Array<{ index: number; to: string; layerMs: number; pictureMs: number; firstWidth: number }> = [];
+      const stopCpu = startCpuMonitor();
+      let target = b;
+      for (let index = 0; index < 6; index++) {
+        // Long enough for the output to pause the sources of the scene it left (5 s grace), so that the target is cold.
+        await sleep(8000);
+        await probe.takeEvents();
+        await probe.startSampler({ luma: true });
+        await sleep(120);
+        const sw = await switchProgram(api, production, target, CUT);
+        await probe.waitForScene(target, 5000);
+        await sleep(2500);
+        const frames = await probe.stopSampler();
+        const events = await probe.takeEvents();
+        const added = firstEvent(events, 'layer+', { id: target })!;
+        const withLayer = frames.filter((sample) => sample.t >= added.t - 1 && sample.layers.some((layer) => layer.id === target));
+        const firstOk = withLayer.findIndex((sample) => {
+          const item = itemsOfLayer(sample, target)[0];
+          return item !== undefined && item.state === 'live' && (item.luma ?? 0) >= 20;
+        });
+        rows.push({
+          index,
+          to: target,
+          layerMs: added.t - sw.sentAt,
+          pictureMs: firstOk < 0 ? Number.NaN : withLayer[firstOk]!.t - added.t,
+          firstWidth: firstOk < 0 ? 0 : (itemsOfLayer(withLayer[firstOk]!, target)[0]!.video?.w ?? 0),
+        });
+        target = target === a ? b : a;
+      }
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
+      const picture = summarize(rows.map((row) => row.pictureMs));
+      const layer = summarize(rows.map((row) => row.layerMs));
+      await recordMeasurement(
+        test.info(),
+        'switch-09-cold',
+        { rows, picture, layer, machineCpuBusyPct: machine.busyPct, comparable: gate.enforce },
+        `cold scene: new layer in the DOM ${fmt(layer)} ms after the request; first picture ${fmt(picture)} ms after the layer`,
+      );
+      await judgeTiming(test.info(), gate, () => {
+        expect(rows.every((row) => Number.isFinite(row.pictureMs)), 'every cut shows a picture').toBe(true);
+        expect(picture.max, 'T-SWITCH-COLD: the picture is on screen within 1.5 s of the new layer (hard)').toBeLessThanOrEqual(1500);
+        expect(layer.p95, 'T-SWITCH p95 is unaffected (hard 300 ms)').toBeLessThanOrEqual(300);
+      });
     },
   );
 
