@@ -1,6 +1,10 @@
 import {
+  AUDIO_BROADCAST_RAMP_MS,
   AUDIO_LIMITS,
+  AUDIO_MAX_FADE_MS,
+  AUDIO_RAMP_MS,
   allowedAudioModes,
+  audioRampMs,
   canCarrySound,
   clampGainDb,
   clampSyncOffsetMs,
@@ -430,5 +434,27 @@ describe('the audio mixer in the production state', () => {
     expect([...first.audioChannels]).toEqual([...second.audioChannels]);
     expect(first.audioChannels.get(STATION_MIC)).toMatchObject({ mode: 'off', gainDb: -4 });
     expect(first.audioChannels.get(SCREEN)?.muted).toBe(true);
+  });
+});
+
+describe('audioRampMs', () => {
+  it('lets a cut, a mute and a fader move take 20 ms', () => {
+    expect(audioRampMs(false, null)).toBe(AUDIO_RAMP_MS);
+    expect(audioRampMs(false, { kind: 'cut', durationMs: 0 })).toBe(AUDIO_RAMP_MS);
+  });
+
+  it('lets a faded program switch take as long as its fade', () => {
+    expect(audioRampMs(false, { kind: 'fade', durationMs: 500 })).toBe(500);
+    expect(audioRampMs(false, { kind: 'fade', durationMs: 2000 })).toBe(2000);
+  });
+
+  it('treats a fade that is not longer than a cut ramp as a cut and caps absurd fades', () => {
+    expect(audioRampMs(false, { kind: 'fade', durationMs: 10 })).toBe(AUDIO_RAMP_MS);
+    expect(audioRampMs(false, { kind: 'fade', durationMs: 600_000 })).toBe(AUDIO_MAX_FADE_MS);
+  });
+
+  it('is gentle when the broadcast goes live or ends, whatever else changed', () => {
+    expect(audioRampMs(true, null)).toBe(AUDIO_BROADCAST_RAMP_MS);
+    expect(audioRampMs(true, { kind: 'fade', durationMs: 2000 })).toBe(AUDIO_BROADCAST_RAMP_MS);
   });
 });

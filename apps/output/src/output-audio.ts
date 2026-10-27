@@ -9,12 +9,13 @@
  * page) starts it. In OBS with “Control audio via OBS” and in an embedding frame with `allow="autoplay"` it runs at once.
  */
 import {
+  AUDIO_BROADCAST_RAMP_MS,
   AUDIO_RAMP_MS,
   audioExpected,
+  audioRampMs,
   audioTargets,
   type OutputAudioDto,
   type ProductionState,
-  type TransitionDto,
 } from '@studioflow/scene-model';
 import {
   AssetAudioTap,
@@ -58,10 +59,8 @@ export interface OutputAudioOptions {
   readonly sampleMs?: number;
 }
 
-/** Ramp of a change of the broadcast state (going live or ending): gentle, nobody asked for it to be exact. */
-export const BROADCAST_RAMP_MS = 300;
-/** A fade longer than this is capped: a gain that creeps for minutes is a mistake, not a transition. */
-const MAX_FADE_MS = 10_000;
+/** Ramp of a change of the broadcast state (going live or ending), kept for the specs. */
+export const BROADCAST_RAMP_MS = AUDIO_BROADCAST_RAMP_MS;
 /** Program levels below this are reported as no signal. */
 const REPORT_FLOOR_DB = -90;
 const DEFAULT_SAMPLE_MS = 100;
@@ -72,19 +71,13 @@ export function rampFor(
   state: ProductionState,
   cause: SyncCause | null,
 ): ApplyOptions {
-  if (previousBroadcast !== null && previousBroadcast !== state.production.broadcast) {
-    return { rampMs: BROADCAST_RAMP_MS };
-  }
-  if (cause?.kind === 'event' && cause.event.type === 'programSwitched') {
-    return fadeRamp(cause.event.transition);
-  }
-  return { rampMs: AUDIO_RAMP_MS };
-}
-
-function fadeRamp(transition: TransitionDto): ApplyOptions {
-  return transition.kind === 'fade' && transition.durationMs > AUDIO_RAMP_MS
-    ? { rampMs: Math.min(transition.durationMs, MAX_FADE_MS) }
-    : { rampMs: AUDIO_RAMP_MS };
+  const broadcastChanged =
+    previousBroadcast !== null && previousBroadcast !== state.production.broadcast;
+  const transition =
+    cause?.kind === 'event' && cause.event.type === 'programSwitched'
+      ? cause.event.transition
+      : null;
+  return { rampMs: audioRampMs(broadcastChanged, transition) };
 }
 
 /** One channel for the `?debug=1` panel. */
