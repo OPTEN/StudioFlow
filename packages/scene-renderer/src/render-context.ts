@@ -2,6 +2,7 @@ import type { CanvasSize, TextSourceDto, TextThemeDto } from '@studioflow/scene-
 
 import { guarded, type ErrorSink } from './guard';
 import type { MediaHost } from './media-view';
+import type { StillPool } from './still-pool';
 import { resolveSource, type ResolvedSource } from './source-resolver';
 import type {
   MonitorSourceStatus,
@@ -20,6 +21,10 @@ export interface RenderContext extends MediaHost {
   readonly transparent: boolean;
   /** The current size of the canvas. */
   canvas(): CanvasSize;
+  /** The renderer can be seen (monitors and thumbnails on screen, a page in the foreground); the output is always visible. */
+  visible(): boolean;
+  /** The shared snapshots of the thumbnails; null for every other mode. */
+  stills(): StillPool | null;
   /** Resolves a source reference (device, image, video or missing). */
   resolve(ref: string): ResolvedSource;
   /** Availability of a device source (pending when the provider fails). */
@@ -57,7 +62,7 @@ export interface RenderFrame {
 /** Renderer services the context forwards to. */
 export type RenderContextHooks = Pick<
   RenderContext,
-  'canvas' | 'statusSince' | 'requestRender' | 'holdFrameDonor'
+  'canvas' | 'statusSince' | 'requestRender' | 'holdFrameDonor' | 'visible' | 'stills'
 >;
 
 const PENDING: SourceAvailability = { state: 'pending' };
@@ -76,6 +81,7 @@ export function createRenderContext(
     doc,
     provider,
     mode: options.mode,
+    stillPictures: options.mode === 'thumbnail',
     transparent: options.background === 'transparent',
     guard: (run) => guarded(sink, run, undefined),
     resolve: (ref) =>
@@ -101,6 +107,8 @@ export function createRenderContext(
     textTheme: () => guarded(sink, () => textTheme?.(), undefined),
     reducedMotion: options.reducedMotion === true,
     canvas: () => hooks.canvas(),
+    visible: () => hooks.visible(),
+    stills: () => hooks.stills(),
     statusSince: (sourceId, status, now) => hooks.statusSince(sourceId, status, now),
     requestRender: () => hooks.requestRender(),
     holdFrameDonor: (sourceId, requester) => hooks.holdFrameDonor(sourceId, requester),

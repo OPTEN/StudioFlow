@@ -162,8 +162,10 @@ describe('scene renderer: randomised stress', () => {
             await flushMicrotasks();
         }
 
+        // Thumbnails play no video of their own: one hidden video per source feeds their snapshots.
         const deviceVideos = container.querySelectorAll('video.sf-r-media--device').length;
-        expect(provider.registrationCount).toBe(deviceVideos);
+        const feeders = document.querySelectorAll('.sf-r-stills video').length;
+        expect(provider.registrationCount).toBe(deviceVideos + feeders);
         expect(container.querySelectorAll('.sf-r-layer').length).toBeLessThanOrEqual(2);
         expect(container.querySelectorAll('.sf-r-slate').length).toBeLessThanOrEqual(1);
         expect(vi.getTimerCount()).toBeLessThan(80);
@@ -177,6 +179,7 @@ describe('scene renderer: randomised stress', () => {
       expect(provider.listenerCount).toBe(0);
       expect(vi.getTimerCount()).toBe(0);
       expect(container.childElementCount).toBe(0);
+      expect(document.querySelectorAll('.sf-r-stills').length).toBe(0);
     },
     SEED_TIMEOUT_MS,
   );

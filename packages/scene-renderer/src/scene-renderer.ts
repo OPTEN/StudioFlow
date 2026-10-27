@@ -9,13 +9,15 @@ import { FpsMeter } from './fps-meter';
 import { clampNumber } from './geometry';
 import { consoleErrorSink, guarded, type ErrorSink } from './guard';
 import { PALETTE } from './palette';
-import { devicePixelRatioNow, watchDevicePixelRatio } from './pixel-ratio';
+import { requestPixelRatio, watchDevicePixelRatio } from './pixel-ratio';
 import { createRenderContext, type RenderContext, type RenderFrame } from './render-context';
 import { MediaPool, SceneLayer } from './scene-layer';
 import { SlateView } from './slate-view';
+import { stillPoolFor, type StillPool } from './still-pool';
 import { fitStage } from './stage-fit';
 import { StatusClock } from './status-clock';
 import { DeadlineTimer, now, Ticker } from './timers';
+import { watchVisibility, type VisibilityWatch } from './visibility';
 import type { CanvasRect, RendererStats, SceneRenderer, SceneRendererOptions } from './types';
 
 /** Longest fade the renderer plays (the API allows up to 2 s; anything longer is clamped). */
@@ -87,6 +89,9 @@ class DomSceneRenderer implements SceneRenderer {
   private readonly preloadSizes: DesiredSizeReporter;
   private readonly statusClock = new StatusClock();
   private readonly fps = new FpsMeter();
+  /** Watches whether the renderer can be seen; null for the output, which never pauses. */
+  private readonly visibility: VisibilityWatch | null;
+  private readonly stillPictures: boolean;
   private readonly expiryTimer = new DeadlineTimer(() => this.requestRender());
   private readonly alertTicker = new Ticker(ALERT_TICK_MS, () => this.requestRender());
   private readonly holdFrameTicker = new Ticker(HOLD_FRAME_REFRESH_MS, () =>
@@ -108,6 +113,8 @@ class DomSceneRenderer implements SceneRenderer {
   private busy = 0;
   private renderRequested = false;
   private destroyed = false;
+  /** False while the container is not on screen or the page is in the background (see `pauseWhenHidden`). */
+  private shown = true;
 
   constructor(container: HTMLElement, options: SceneRendererOptions) {
     const doc = container.ownerDocument;
@@ -120,7 +127,10 @@ class DomSceneRenderer implements SceneRenderer {
       statusSince: (sourceId, status, at) => this.statusClock.observe(sourceId, status, at),
       requestRender: () => this.requestRender(),
       holdFrameDonor: (sourceId, requester) => this.holdFrameDonor(sourceId, requester),
+      visible: () => this.shown,
+      stills: () => this.stills(),
     });
+    this.stillPictures = options.mode === 'thumbnail';
 
     const background = this.ctx.transparent ? 'transparent' : PALETTE.stage;
     this.viewport = createElement(doc, 'div', 'sf-r-viewport', {
@@ -163,6 +173,11 @@ class DomSceneRenderer implements SceneRenderer {
       () => undefined,
     );
     this.stopObservingSize = this.observeSize();
+    this.visibility =
+      (options.pauseWhenHidden ?? options.mode !== 'output')
+        ? watchVisibility(this.viewport, (visible) => this.setShown(visible))
+        : null;
+    this.shown = this.visibility?.visible() ?? true;
     // The texts of the monitor are looked up in every render pass; a language switch only has to ask for one.
     this.stopObservingLocale = onLocaleChange(() => this.requestRender());
     this.resize();
@@ -229,10 +244,18 @@ class DomSceneRenderer implements SceneRenderer {
 
   stats(): RendererStats {
     if (this.destroyed) {
-      return { fps: 0, items: 0, videos: 0 };
+      return { fps: 0, items: 0, videos: 0, presentedFrames: 0, droppedFrames: 0 };
     }
     const items = this.layers().reduce((sum, layer) => sum + layer.effectiveRects.size, 0);
-    return { fps: this.fps.read(), items, videos: this.element.querySelectorAll('video').length };
+    const videos = [...this.element.querySelectorAll('video')];
+    const rate = this.fps.read(videos);
+    return {
+      fps: rate.fps,
+      items,
+      videos: videos.length,
+      presentedFrames: rate.presented,
+      droppedFrames: rate.dropped,
+    };
   }
 
   resize(): void {
@@ -270,10 +293,10 @@ class DomSceneRenderer implements SceneRenderer {
     this.ctx.guard(this.unsubscribeProvider);
     this.stopObservingSize();
     this.stopObservingLocale();
+    this.visibility?.dispose();
     this.expiryTimer.clear();
     this.alertTicker.setActive(false);
     this.holdFrameTicker.setActive(false);
-    this.fps.dispose();
     this.current?.dispose();
     this.current = null;
     this.slate.dispose();
@@ -328,7 +351,7 @@ class DomSceneRenderer implements SceneRenderer {
   }
 
   private frame(): RenderFrame {
-    return { now: now(), scale: this.scale, devicePixelRatio: devicePixelRatioNow() };
+    return { now: now(), scale: this.scale, devicePixelRatio: requestPixelRatio() };
   }
 
   private renderAll(): void {
@@ -347,8 +370,9 @@ class DomSceneRenderer implements SceneRenderer {
       .map((layer) => layer.holdExpiry)
       .filter((expiry): expiry is number => expiry !== null);
     this.expiryTimer.set(expiries.length > 0 ? Math.min(...expiries) : null);
-    this.alertTicker.setActive(layers.some((layer) => layer.hasTimedAlert));
-    this.holdFrameTicker.setActive(layers.some((layer) => layer.keepsHoldFrames));
+    // Nobody sees an alert timer or needs a fresher hold frame while the picture is hidden.
+    this.alertTicker.setActive(this.shown && layers.some((layer) => layer.hasTimedAlert));
+    this.holdFrameTicker.setActive(this.shown && layers.some((layer) => layer.keepsHoldFrames));
   }
 
   /**
@@ -364,7 +388,7 @@ class DomSceneRenderer implements SceneRenderer {
 
   /** Keeps the hold frames fresh; skipped while the page is hidden (nothing is painted then anyway). */
   private refreshHoldFrames(): void {
-    if (this.destroyed || this.ctx.doc.visibilityState === 'hidden') {
+    if (this.destroyed || !this.shown || this.ctx.doc.visibilityState === 'hidden') {
       return;
     }
     const frame = this.frame();
@@ -374,12 +398,38 @@ class DomSceneRenderer implements SceneRenderer {
   }
 
   private syncDesiredSizes(layers: readonly SceneLayer[], frame: RenderFrame): void {
+    if (!this.shown) {
+      // Nobody can see the picture: no source is asked for it (the provider pauses what nobody needs).
+      this.stageSizes.clear();
+      this.preloadSizes.clear();
+      return;
+    }
     const stage = new DesiredSizeCollector();
     for (const layer of layers) {
       layer.collectDesiredSizes(stage, frame);
     }
     this.stageSizes.sync(stage.result());
-    this.preloadSizes.sync(preloadRequests(this.preloadScenes, stage.result()));
+    this.preloadSizes.sync(
+      preloadRequests(this.preloadScenes, stage.result(), {
+        canvas: this.canvas,
+        scale: this.scale,
+        devicePixelRatio: frame.devicePixelRatio,
+      }),
+    );
+  }
+
+  private setShown(visible: boolean): void {
+    if (visible !== this.shown) {
+      this.shown = visible;
+      this.requestRender();
+    }
+  }
+
+  /** The shared snapshots of the thumbnails (a thumbnail renderer only). */
+  private stills(): StillPool | null {
+    return this.stillPictures
+      ? stillPoolFor(this.ctx.doc, this.ctx.provider, this.ctx.guard)
+      : null;
   }
 
   /** URL of a slate's background image asset from the provider (when the caller did not pass one). */

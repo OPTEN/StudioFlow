@@ -57,7 +57,6 @@ describe('scene renderer: lifecycle and robustness', () => {
       durationMs: 2000,
     });
     mounted.renderer.showSlate({ title: 'Pause', subtitle: null, backgroundAssetId: null });
-    mounted.renderer.stats(); // starts the fps loop
     expect(vi.getTimerCount()).toBeGreaterThan(0);
     expect(mounted.provider.registrationCount).toBeGreaterThan(0);
 
@@ -79,7 +78,13 @@ describe('scene renderer: lifecycle and robustness', () => {
     mounted.renderer.refresh();
     mounted.renderer.resize();
     mounted.provider.lose(CAMERA);
-    expect(mounted.renderer.stats()).toEqual({ fps: 0, items: 0, videos: 0 });
+    expect(mounted.renderer.stats()).toEqual({
+      fps: 0,
+      items: 0,
+      videos: 0,
+      presentedFrames: 0,
+      droppedFrames: 0,
+    });
     expect(mounted.provider.registrationCount).toBe(0);
     expect(mounted.container.childElementCount).toBe(0);
   });
@@ -123,7 +128,17 @@ describe('scene renderer: lifecycle and robustness', () => {
     );
   });
 
-  it('reports items, videos and the measured frame rate', async () => {
+  /** Gives a video the playback counters of a browser. */
+  function playback(video: HTMLVideoElement): { total: number; dropped: number } {
+    const counters = { total: 0, dropped: 0 };
+    Object.defineProperty(video, 'getVideoPlaybackQuality', {
+      value: () => ({ totalVideoFrames: counters.total, droppedVideoFrames: counters.dropped }),
+      configurable: true,
+    });
+    return counters;
+  }
+
+  it('reports items, videos and the frame rate the videos presented', async () => {
     mounted = mount();
     mounted.renderer.show(
       scene('scn_a', [
@@ -132,22 +147,44 @@ describe('scene renderer: lifecycle and robustness', () => {
         sceneItem('itm_c', 'ast_none0001'),
       ]),
     );
-    const first = mounted.renderer.stats();
-    expect(first).toEqual({ fps: 0, items: 2, videos: 2 });
-    await vi.advanceTimersByTimeAsync(1000);
-    const fps = mounted.renderer.stats().fps;
-    expect(fps).toBeGreaterThanOrEqual(55);
-    expect(fps).toBeLessThanOrEqual(65);
+    const videos = [...mounted.container.querySelectorAll('video')];
+    const counters = videos.map(playback);
+    expect(mounted.renderer.stats()).toEqual({
+      fps: 0,
+      items: 2,
+      videos: 2,
+      presentedFrames: 0,
+      droppedFrames: 0,
+    });
+    await vi.advanceTimersByTimeAsync(2000);
+    counters[0].total = 60;
+    counters[0].dropped = 3;
+    counters[1].total = 30;
+    // The busiest video sets the rate; every video adds to the frames, which are counted from the first call on.
+    const second = mounted.renderer.stats();
+    expect(second).toEqual({
+      fps: 30,
+      items: 2,
+      videos: 2,
+      presentedFrames: 90,
+      droppedFrames: 3,
+    });
+    // A second reader (the debug panel) gets the same numbers; the counts only grow.
+    expect(mounted.renderer.stats()).toEqual(second);
   });
 
-  it('stops measuring frames when nobody asks', async () => {
+  it('measures the frame rate without a timer or an animation frame loop', async () => {
+    const raf = vi.spyOn(globalThis, 'requestAnimationFrame');
     mounted = mount();
+    mounted.renderer.show(scene('scn_a', [sceneItem('itm_a', CAMERA)]));
+    const counters = playback(mounted.container.querySelector('video')!);
+    const timers = vi.getTimerCount();
     mounted.renderer.stats();
     await vi.advanceTimersByTimeAsync(11_000);
-    expect(vi.getTimerCount()).toBe(0);
-    expect(mounted.renderer.stats().fps).toBe(0);
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mounted.renderer.stats().fps).toBeGreaterThan(50);
+    counters.total = 330;
+    expect(mounted.renderer.stats().fps).toBe(30);
+    expect(vi.getTimerCount()).toBe(timers);
+    expect(raf).not.toHaveBeenCalled();
   });
 
   it('keeps rendering when the provider throws everywhere', () => {

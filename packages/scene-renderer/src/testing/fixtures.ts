@@ -128,13 +128,104 @@ export function clearFrame(video: HTMLVideoElement): void {
   giveFrame(video, 0, 0);
 }
 
-/** happy-dom has no 2D canvas: installs a fake context whose drawImage calls are recorded. */
-export function fakeCanvas2d(): { readonly drawImage: ReturnType<typeof vi.fn> } {
+/** What {@link fakeCanvas2d} records. */
+export interface FakeCanvas2d {
+  readonly drawImage: ReturnType<typeof vi.fn>;
+  readonly clearRect: ReturnType<typeof vi.fn>;
+  /** Values assigned to `context.filter` (only with the `filter` option). */
+  readonly filters: string[];
+  /** The draw calls whose source is a video: the copies of live pictures (the others are canvas to canvas). */
+  videoDraws(): unknown[][];
+}
+
+/**
+ * happy-dom has no 2D canvas: installs a fake context whose calls are recorded. With `filter: true` the context has a
+ * `filter` property like Chromium and Firefox (and records what is assigned to it); without it the context is like
+ * Safari's, which cannot filter.
+ */
+export function fakeCanvas2d(options: { readonly filter?: boolean } = {}): FakeCanvas2d {
   const drawImage = vi.fn();
+  const clearRect = vi.fn();
+  const filters: string[] = [];
+  const context: Record<string, unknown> = { drawImage, clearRect, imageSmoothingEnabled: true };
+  if (options.filter) {
+    let filter = 'none';
+    Object.defineProperty(context, 'filter', {
+      get: () => filter,
+      set: (value: string) => {
+        filter = value;
+        filters.push(value);
+      },
+    });
+  }
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
-    () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
+    () => context as unknown as CanvasRenderingContext2D,
   );
-  return { drawImage };
+  return {
+    drawImage,
+    clearRect,
+    filters,
+    videoDraws: () =>
+      drawImage.mock.calls.filter((call: unknown[]) => call[0] instanceof HTMLVideoElement),
+  };
+}
+
+/** An IntersectionObserver whose reports a test drives; see {@link stubIntersectionObserver}. */
+class FakeIntersectionObserver {
+  static readonly instances: FakeIntersectionObserver[] = [];
+  readonly targets = new Set<Element>();
+  disconnected = false;
+
+  constructor(private readonly callback: IntersectionObserverCallback) {
+    FakeIntersectionObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.targets.add(target);
+  }
+
+  unobserve(target: Element): void {
+    this.targets.delete(target);
+  }
+
+  disconnect(): void {
+    this.disconnected = true;
+    this.targets.clear();
+  }
+
+  report(isIntersecting: boolean): void {
+    for (const target of this.targets) {
+      this.callback(
+        [{ isIntersecting, target } as unknown as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver,
+      );
+    }
+  }
+}
+
+/** Replaces `IntersectionObserver` (happy-dom's never reports); the controller reports to every observer that is not disconnected. */
+export function stubIntersectionObserver(): {
+  /** Observers created so far, newest last. */
+  readonly observers: readonly FakeIntersectionObserver[];
+  /** Tells every connected observer that its target does (not) intersect the viewport. */
+  report(isIntersecting: boolean): void;
+} {
+  FakeIntersectionObserver.instances.length = 0;
+  vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+  return {
+    observers: FakeIntersectionObserver.instances,
+    report: (isIntersecting) => {
+      for (const observer of FakeIntersectionObserver.instances) {
+        observer.report(isIntersecting);
+      }
+    },
+  };
+}
+
+/** Moves the page to the foreground or the background (`visibilitychange`). */
+export function setPageVisibility(state: 'visible' | 'hidden'): void {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
 }
 
 /** A Web Animations stand-in driven by (fake) timers. */

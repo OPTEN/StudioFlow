@@ -1,5 +1,6 @@
 import { DEFAULT_CANVAS, autoGridSlots } from '@studioflow/scene-model';
 
+import { snapshotBudget } from './snapshot-budget';
 import {
   CAMERA,
   CAMERA_2,
@@ -26,6 +27,7 @@ describe('scene renderer: hold frame', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    snapshotBudget.reset();
   });
 
   afterEach(() => {
@@ -83,15 +85,15 @@ describe('scene renderer: hold frame', () => {
     expect(snapshot()?.style.objectFit).toBe('contain');
   });
 
-  it('copies small items at their on-screen size (stage scale × device pixel ratio)', () => {
+  it('copies small items at their on-screen size (stage scale × device pixel ratio, at most 1.5)', () => {
     fakeCanvas2d();
     vi.stubGlobal('devicePixelRatio', 2);
     try {
       mounted = mount({}, { width: 960, height: 540 });
       showCamera({ w: 640, h: 360 });
       mounted.provider.lose(CAMERA);
-      // 640 × 0.5 × 2 = 640 px on screen; the 1280 × 720 frame is halved.
-      expect([snapshot()?.width, snapshot()?.height]).toEqual([654, 368]);
+      // 640 × 0.5 × 1.5 = 480 px on screen (the ratio 2 counts as 1.5); the 1280 × 720 frame is scaled to that.
+      expect([snapshot()?.width, snapshot()?.height]).toEqual([484, 272]);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -108,6 +110,35 @@ describe('scene renderer: hold frame', () => {
     expect(snapshot()?.style.display).toBe('none');
   });
 
+  it('copies less often while a copy is expensive on this computer, but always takes the first one', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    // A slow computer: the budget is in debt before the first copy, which is taken anyway (the item has none yet).
+    snapshotBudget.charge(60);
+    showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    // The next copy waits until 60 ms of copying are paid for at 4 % of the time (1.5 s after the charge).
+    snapshotBudget.charge(60);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes the copy at the loss however much the budget is in debt', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    const video = showCamera();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    snapshotBudget.charge(10_000);
+    const running = { getVideoTracks: () => [{ readyState: 'live' }] } as unknown as MediaStream;
+    Object.defineProperty(video, 'srcObject', { value: running, configurable: true });
+    mounted.provider.lose(CAMERA);
+    expect(canvas2d.drawImage).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the rolling copy when the track already ended at the loss (Chromium paints it black)', async () => {
     const canvas2d = fakeCanvas2d();
     mounted = mount();
@@ -119,9 +150,9 @@ describe('scene renderer: hold frame', () => {
     mounted.provider.lose(CAMERA);
     expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
     expect(snapshot()?.style.display).toBe('block');
-    // No refreshes while lost.
+    // No refreshes while lost (the blur of the held state draws canvas to canvas, never from the video).
     await vi.advanceTimersByTimeAsync(5000);
-    expect(canvas2d.drawImage).toHaveBeenCalledTimes(1);
+    expect(canvas2d.videoDraws()).toHaveLength(1);
   });
 
   it('takes a fresh copy at the loss while the track still runs', async () => {
@@ -179,20 +210,80 @@ describe('scene renderer: hold frame', () => {
   });
 
   it('darkens after holdMs: blur, scrim and “Picture returns shortly”', async () => {
-    fakeCanvas2d();
+    const canvas2d = fakeCanvas2d({ filter: true });
     mounted = mount();
     showCamera({ w: 640, h: 360 });
     mounted.provider.lose(CAMERA);
 
     await vi.advanceTimersByTimeAsync(2999);
     expect(held()?.style.display).toBe('none');
+    expect(canvas2d.filters).toEqual([]);
     await vi.advanceTimersByTimeAsync(1);
     expect(held()?.style.display).toBe('flex');
     expect(held()?.textContent).toBe('Picture returns shortly');
     expect(held()?.style.background).toBe('rgba(13, 17, 23, 0.72)');
     expect(mounted.part('itm_a', '.sf-r-held-text')?.style.display).toBe('inline');
-    expect(box()?.style.filter).toBe('blur(16px)');
+    // The blur is baked into the copy (16 px on the stage, 654 px copy of a 640 px item), not a live CSS filter.
+    expect(canvas2d.filters).toEqual(['blur(16.4px)', 'none']);
+    expect(box()?.style.filter).toBe('');
+    // The radius is exposed for tools and E2E tests (canvas pixels: 2.5 % of the 640 px item).
+    expect(box()?.getAttribute('data-held-blur')).toBe('16');
     expect(snapshot()).not.toBeNull();
+  });
+
+  it('blurs the copy only once, however often the item renders, and starts sharp again with a new copy', async () => {
+    const canvas2d = fakeCanvas2d({ filter: true });
+    mounted = mount();
+    showCamera({ w: 640, h: 360 });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(canvas2d.filters).toEqual(['blur(16.4px)', 'none']);
+    for (let i = 0; i < 5; i += 1) {
+      mounted.renderer.refresh();
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    expect(canvas2d.filters).toEqual(['blur(16.4px)', 'none']);
+
+    // The source returns: the picture is shown again and the rolling copy is renewed sharp.
+    mounted.provider.live(CAMERA);
+    const video = mounted.part('itm_a', 'video') as HTMLVideoElement;
+    giveFrame(video);
+    video.dispatchEvent(new Event('loadeddata'));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(held()?.style.display).toBe('none');
+    expect(box()?.hasAttribute('data-held-blur')).toBe(false);
+    expect(canvas2d.videoDraws().length).toBeGreaterThan(1);
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(canvas2d.filters).toEqual(['blur(16.4px)', 'none', 'blur(16.4px)', 'none']);
+  });
+
+  it('blurs by shrinking and enlarging where the canvas has no filter (Safari)', async () => {
+    const canvas2d = fakeCanvas2d();
+    mounted = mount();
+    showCamera({ w: 640, h: 360 });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(canvas2d.clearRect).toHaveBeenCalledTimes(1);
+    const fromCanvas = canvas2d.drawImage.mock.calls.filter(
+      (call: unknown[]) => call[0] instanceof HTMLCanvasElement,
+    );
+    expect(fromCanvas).toHaveLength(2);
+    expect(box()?.style.filter).toBe('');
+  });
+
+  it('falls back to the CSS blur when the copy cannot be blurred', async () => {
+    const canvas2d = fakeCanvas2d();
+    canvas2d.clearRect.mockImplementation(() => {
+      throw new DOMException('lost context', 'InvalidStateError');
+    });
+    mounted = mount();
+    showCamera({ w: 640, h: 360 });
+    mounted.provider.lose(CAMERA);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(held()?.style.display).toBe('flex');
+    expect(box()?.style.filter).toBe('blur(16px)');
+    expect(mounted.errors).toEqual([]);
   });
 
   it('omits the hold message on items narrower than 320 canvas pixels', async () => {

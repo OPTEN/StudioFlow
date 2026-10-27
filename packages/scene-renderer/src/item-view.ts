@@ -18,6 +18,7 @@ import {
   type ItemLook,
 } from './geometry';
 import {
+  blurCanvas,
   copyHoldFrame,
   copyVideoFrame,
   hasRunningTrack,
@@ -31,8 +32,10 @@ import { MonitorOverlay } from './monitor-overlay';
 import { PALETTE, UI_FONT } from './palette';
 import { animatePresence, type PresenceAnimation } from './presence';
 import type { RenderContext, RenderFrame } from './render-context';
+import { snapshotBudget } from './snapshot-budget';
 import { isSameSource, type ResolvedSource } from './source-resolver';
 import { isLostState, normalizeHoldMs, sourceState, type SourceState } from './source-state';
+import type { StillHolder } from './still-pool';
 import { TextBlock } from './text-block';
 import type { CanvasRect } from './types';
 
@@ -54,9 +57,10 @@ export type MediaFactory = (source: ResolvedSource) => MediaView;
  * ```
  * div.sf-r-item            position, size, radius, clipping, bars/placeholder colour, z-index
  *   div.sf-r-crop          uncropped picture box (crop math)
- *     div.sf-r-box         rotation, held blur; hidden while the fallback shows
+ *     div.sf-r-box         rotation; hidden while the fallback shows
  *       video|img          object-fit, mirror
- *       canvas             hold frame: rolling copy of the live picture, shown while lost
+ *       canvas             hold frame: rolling copy of the live picture, shown while lost, blurred once when held;
+ *                          in a thumbnail the snapshot of the picture, always shown (no video)
  *   div.sf-r-fallback      fallback source after the hold time
  *   div.sf-r-held          dark scrim + “Picture returns shortly”
  *   div.sf-r-border        inset box-shadow border
@@ -83,6 +87,11 @@ export class ItemView {
   private holdFrame: HTMLCanvasElement | null = null;
   /** Source whose picture the hold frame shows (kept when the media view is handed over). */
   private holdFrameSource: string | null = null;
+  /** The hold frame was blurred for the held state (tried once per copy, see {@link blurHoldFrame}). */
+  private holdBlur: 'sharp' | 'blurred' | 'failed' = 'sharp';
+  /** Thumbnail: the device source whose snapshot this item shows, and the registration with the pool. */
+  private stillSource: string | null = null;
+  private stillHolder: StillHolder | null = null;
   private cancelReveal: (() => void) | null = null;
   private lostVisual: LostVisual = 'none';
   private lastState: SourceState['kind'] | null = null;
@@ -170,6 +179,7 @@ export class ItemView {
     const source = this.ctx.resolve(item.source);
     if (!this.media || !isSameSource(this.media.source, source)) {
       this.resetLostState();
+      this.releaseStill();
       this.releaseHoldFrame();
       this.releaseText();
       this.media?.dispose();
@@ -229,7 +239,7 @@ export class ItemView {
     this.renderOverlays(rect, state, frame);
   }
 
-  /** True while the item shows a live device picture whose hold frame should be kept fresh. */
+  /** True while the item shows a live device picture whose hold frame should be kept fresh (not a thumbnail: its snapshot is renewed by the pool). */
   get keepsHoldFrame(): boolean {
     return (
       this.lastState === 'live' &&
@@ -239,10 +249,14 @@ export class ItemView {
     );
   }
 
-  /** Refreshes the rolling hold frame (called about once per second while {@link keepsHoldFrame}). */
+  /**
+   * Refreshes the rolling hold frame (called about once per second while {@link keepsHoldFrame}). A copy that is
+   * expensive on this computer makes the next ones wait (see {@link snapshotBudget}); the first copy and the one at the
+   * moment of a loss never wait.
+   */
   refreshHoldFrame(frame: RenderFrame): void {
     if (this.keepsHoldFrame) {
-      this.copyHoldFrame(frame);
+      this.copyHoldFrame(frame, false);
     }
   }
 
@@ -260,13 +274,17 @@ export class ItemView {
       }
       return;
     }
+    const canvas = this.ctx.canvas();
     if (source.kind === 'device') {
-      collector.add(source.sourceId, desiredPixelSize(this.pictureBox, scale, devicePixelRatio));
+      collector.add(
+        source.sourceId,
+        desiredPixelSize(this.pictureBox, scale, devicePixelRatio, canvas),
+      );
     }
     const fallback = this.fallbackMedia?.source;
     if (fallback?.kind === 'device') {
       const box = { left: 0, top: 0, width: this.rect.w, height: this.rect.h };
-      collector.add(fallback.sourceId, desiredPixelSize(box, scale, devicePixelRatio));
+      collector.add(fallback.sourceId, desiredPixelSize(box, scale, devicePixelRatio, canvas));
     }
   }
 
@@ -286,6 +304,7 @@ export class ItemView {
   /** Removes the DOM and releases media, hold frame and listeners. */
   dispose(): void {
     this.resetLostState();
+    this.releaseStill();
     this.releaseHoldFrame();
     this.releaseText();
     this.media?.dispose();
@@ -372,7 +391,45 @@ export class ItemView {
     if (media.element) {
       this.boxEl.prepend(media.element);
     }
+    if (source.kind === 'device' && this.ctx.stillPictures) {
+      this.acquireStill(source.sourceId);
+    }
     return media;
+  }
+
+  /** Thumbnail: shows the shared snapshot of the source; a new one is copied into the item's own canvas. */
+  private acquireStill(sourceId: string): void {
+    const holder: StillHolder = {
+      onUpdate: () => this.takeStill(),
+      wanted: () => this.ctx.visible() && this.rect !== null,
+    };
+    this.stillSource = sourceId;
+    this.stillHolder = holder;
+    this.ctx.stills()?.acquire(sourceId, holder);
+    this.takeStill();
+  }
+
+  private releaseStill(): void {
+    if (this.stillSource !== null && this.stillHolder !== null) {
+      this.ctx.stills()?.release(this.stillSource, this.stillHolder);
+    }
+    this.stillSource = null;
+    this.stillHolder = null;
+  }
+
+  /** Copies the snapshot of the pool into the hold frame canvas, which a thumbnail always shows. */
+  private takeStill(): void {
+    const sourceId = this.stillSource;
+    const snapshot = sourceId === null ? null : (this.ctx.stills()?.canvasOf(sourceId) ?? null);
+    if (sourceId === null || snapshot === null || this.lostVisual !== 'none') {
+      return;
+    }
+    const first = this.holdFrame === null;
+    this.storeHoldFrame(sourceId, (canvas) => copyHoldFrame(snapshot, canvas));
+    if (first && this.holdFrame !== null) {
+      // The first picture: the next render pass shows the canvas and gives it the fit and the mirror of the item.
+      this.ctx.requestRender();
+    }
   }
 
   private resolveFallback(item: SceneItemDto): ResolvedSource | null {
@@ -409,7 +466,11 @@ export class ItemView {
    * Copies the current frame into the hold frame canvas at on-screen resolution. When the video has no usable frame
    * and this item has no hold frame yet (it appeared while the source was lost), another item's copy is taken.
    */
-  private copyHoldFrame(frame: RenderFrame): void {
+  private copyHoldFrame(frame: RenderFrame, urgent = true): void {
+    if (this.stillSource !== null) {
+      this.takeStill();
+      return;
+    }
     const media = this.media;
     const video = media?.deviceVideo;
     if (!media || !video || !this.pictureBox) {
@@ -418,8 +479,13 @@ export class ItemView {
     const sourceId = media.source.sourceId;
     // Checked before a canvas is allocated: until the first frame arrives this runs every second.
     if (hasVideoFrame(video) && hasRunningTrack(video)) {
+      if (!urgent && this.holdFrame !== null && !snapshotBudget.allows()) {
+        return;
+      }
       const limit = desiredPixelSize(this.pictureBox, frame.scale, frame.devicePixelRatio);
-      this.storeHoldFrame(sourceId, (canvas) => copyVideoFrame(video, canvas, limit));
+      this.storeHoldFrame(sourceId, (canvas) =>
+        snapshotBudget.measure(() => copyVideoFrame(video, canvas, limit)),
+      );
     } else if (!this.holdFrame) {
       const donor = this.ctx.holdFrameDonor(sourceId, this);
       if (donor) {
@@ -437,6 +503,7 @@ export class ItemView {
       return;
     }
     this.holdFrameSource = sourceId;
+    this.holdBlur = 'sharp';
     if (!this.holdFrame) {
       canvas.setAttribute('aria-hidden', 'true');
       this.boxEl.append(canvas);
@@ -450,6 +517,21 @@ export class ItemView {
       this.holdFrame = null;
     }
     this.holdFrameSource = null;
+    this.holdBlur = 'sharp';
+  }
+
+  /**
+   * The held state shows the last picture blurred. The blur is computed once into the copy (a CSS `filter` on the live
+   * element would be re-run by the browser for every frame it paints); a new copy starts sharp again.
+   */
+  private blurHoldFrame(rect: CanvasRect): void {
+    const canvas = this.holdFrame;
+    if (!canvas || this.holdBlur !== 'sharp' || canvas.width === 0) {
+      return;
+    }
+    const across = this.pictureBox?.width ?? rect.w;
+    const radius = Math.round(heldBlurPx(rect.w) * (canvas.width / Math.max(1, across)) * 10) / 10;
+    this.holdBlur = blurCanvas(canvas, radius) ? 'blurred' : 'failed';
   }
 
   private revealWhenReady(): void {
@@ -526,14 +608,28 @@ export class ItemView {
     if (this.media?.element) {
       setStyles(this.media.element, pictureStyles);
     }
-    if (this.holdFrame) {
-      setStyles(this.holdFrame, pictureStyles);
-      setVisible(this.holdFrame, this.lostVisual !== 'none');
-    }
     const showFallback = this.lostVisual === 'held' && this.fallbackSource !== null;
     const darken = this.lostVisual === 'held' && !showFallback;
+    if (darken) {
+      this.blurHoldFrame(rect);
+    }
+    if (this.holdFrame) {
+      setStyles(this.holdFrame, pictureStyles);
+      setVisible(this.holdFrame, this.lostVisual !== 'none' || this.stillSource !== null);
+    }
     setStyle(this.root, 'background-color', this.backgroundOf(state));
-    setStyle(this.boxEl, 'filter', darken ? `blur(${px(heldBlurPx(rect.w))})` : '');
+    // The blur sits in the copy; only a picture that could not be blurred there gets the (costly) CSS filter.
+    setStyle(
+      this.boxEl,
+      'filter',
+      darken && this.holdBlur !== 'blurred' ? `blur(${px(heldBlurPx(rect.w))})` : '',
+    );
+    // The radius of the blur in canvas pixels, for tests and tools: the pixels themselves are blurred in the copy.
+    if (darken && this.holdBlur === 'blurred') {
+      this.boxEl.setAttribute('data-held-blur', String(Math.round(heldBlurPx(rect.w) * 10) / 10));
+    } else {
+      this.boxEl.removeAttribute('data-held-blur');
+    }
     setStyle(this.boxEl, 'opacity', showFallback ? '0' : '');
     setVisible(this.heldEl, darken, 'flex');
     if (darken) {
