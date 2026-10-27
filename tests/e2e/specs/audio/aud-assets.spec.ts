@@ -75,4 +75,36 @@ test.describe('AUD assets', () => {
       expect(output.problems.pageErrors).toEqual([]);
     },
   );
+
+  test(
+    'E2E-AUD-17 [assets + export] a copy and an import of a production keep the sound of its videos with their mixer settings; a file as version 1 wrote it gives the defaults',
+    t.p2,
+    async ({ api, production }) => {
+      test.setTimeout(180_000);
+      const clip = await makeToneClip(CLIP_HZ);
+      test.skip(clip === null, 'ffmpeg is needed to make a clip with sound');
+      const loud = await api.uploadAsset(production.id, { fileName: 'Tone.webm', contentType: 'video/webm', data: clip! });
+      expect(loud.status, loud.raw.text().slice(0, 300)).toBe(201);
+      const settings = { sourceId: loud.body.id, gainDb: -9.5, muted: true, mode: 'off', syncOffsetMs: 80 };
+      expect((await api.setAudioChannels(production.id, { channels: [settings] })).status).toBe(200);
+
+      // A duplicate: the copy has the clip under a new id, with sound and the same channel.
+      const duplicated = await api.duplicateProduction(production.id, { name: null });
+      expect(duplicated.status, duplicated.raw.text()).toBe(201);
+      const copy = (await api.getSnapshot(duplicated.body.id)).body;
+      expect(copy.assets.map((asset) => [asset.name, asset.hasAudio])).toEqual([['Tone', true]]);
+      expect(copy.assets[0]!.id).not.toBe(loud.body.id);
+      expect(copy.audioChannels).toEqual([{ ...settings, sourceId: copy.assets[0]!.id }]);
+
+      // An export imported again: the same.
+      const exported = await api.exportProduction(production.id);
+      expect(exported.status).toBe(200);
+      const imported = await api.importProduction({ fileName: 'tone.studioflow.zip', data: exported.raw.body });
+      expect(imported.status, imported.raw.text().slice(0, 300)).toBe(201);
+      const again = (await api.getSnapshot((imported.body as { id: string }).id)).body;
+      expect(again.assets.map((asset) => asset.hasAudio)).toEqual([true]);
+      expect(again.audioChannels).toEqual([{ ...settings, sourceId: again.assets[0]!.id }]);
+      expect((await api.getSnapshot(production.id)).body.audioChannels, 'the original keeps its channel').toEqual([settings]);
+    },
+  );
 });
