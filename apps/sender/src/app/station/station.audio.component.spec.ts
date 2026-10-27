@@ -122,7 +122,7 @@ describe('StationComponent: sound', () => {
 
       expect(query(element, 'h1')?.textContent?.trim()).toBe('Mixing desk');
       expect(query(element, '#mic-title')?.textContent?.trim()).toBe('Sound from the mixing desk');
-      expect(query(element, '[data-testid=mic-panel] .c-code')?.textContent?.trim()).toBe('A1');
+      expect(query(element, '[data-testid=slot-mic] .c-code')?.textContent?.trim()).toBe('A1');
       expect(media.audio.calls).toEqual(['publishMic:station:default']);
       expect(query(element, '[data-testid=mic-state]')?.textContent?.trim()).toBe('Starting …');
       expect(element.textContent).toContain('Stereo, sent as it comes');
@@ -216,7 +216,7 @@ describe('StationComponent: sound', () => {
   describe('laptop', () => {
     it('offers to add a microphone, allocates it and shows the panel', async () => {
       const element = await render(laptopSelf(), {}, true);
-      expect(query(element, '[data-testid=mic-panel]')).toBeNull();
+      expect(query(element, '[data-testid=slot-mic]')).toBeNull();
       api.allocateSlot.mockResolvedValue({ slot: 'mic', code: 'A1', kind: 'audio' });
 
       (query(element, '[data-testid=mic-add]') as HTMLButtonElement).click();
@@ -282,7 +282,7 @@ describe('StationComponent: sound', () => {
   describe('phone', () => {
     it('has a microphone button that is off until pressed', async () => {
       const element = await render(phoneSelf(), { cameraOn: true });
-      const toggle = query(element, '[data-testid=mic-toggle]') as HTMLButtonElement;
+      const toggle = query(element, '[data-testid=slot-mic]') as HTMLButtonElement;
       expect(toggle.textContent?.trim()).toBe('Microphone off');
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
       api.allocateSlot.mockResolvedValue({ slot: 'mic', code: 'A1', kind: 'audio' });
