@@ -127,7 +127,8 @@ describe('dock layout model', () => {
   });
 
   it('puts the pairing dock in place of Sources and Properties', () => {
-    expect(visibleZones(defaultLayout(), true).bottom).toEqual(['scenes', 'pair', 'st', 'audio']);
+    // The Audio dock of the same zone steps aside too: the pairing dock keeps the width it has always had.
+    expect(visibleZones(defaultLayout(), true).bottom).toEqual(['scenes', 'pair', 'st']);
     const sides = layoutWith({
       zones: { left: ['insp'], bottom: ['scenes', 'src', 'audio'], right: ['st'] },
     });
@@ -142,6 +143,32 @@ describe('dock layout model', () => {
       zones: { left: [], bottom: ['scenes', 'src', 'insp', 'audio'], right: ['st'] },
     });
     expect(pairSlot(hidden)).toEqual({ zone: 'right', index: 0 });
+  });
+
+  it('lets the Audio dock step aside only in the zone of the pairing dock, wherever it stands', () => {
+    // Audio before Sources: the pairing dock still takes the place of Sources, after Scenes.
+    const first = layoutWith({
+      zones: { left: [], bottom: ['scenes', 'audio', 'src', 'insp', 'st'], right: [] },
+    });
+    expect(pairSlot(first)).toEqual({ zone: 'bottom', index: 2 });
+    expect(visibleZones(first, true).bottom).toEqual(['scenes', 'pair', 'st']);
+    // Audio in another zone stays where it is.
+    const apart = layoutWith({
+      zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st'], right: ['audio'] },
+    });
+    expect(visibleZones(apart, true)).toEqual({
+      left: [],
+      bottom: ['scenes', 'pair', 'st'],
+      right: ['audio'],
+    });
+    // Sources and Properties hidden: the pairing dock goes before Stations, and Audio gives way as well.
+    const none = layoutWith({
+      hidden: ['src', 'insp'],
+      zones: { left: [], bottom: ['scenes', 'src', 'insp', 'audio', 'st'], right: [] },
+    });
+    expect(visibleZones(none, true).bottom).toEqual(['scenes', 'pair', 'st']);
+    // Closed, nothing steps aside.
+    expect(visibleZones(first, false).bottom).toEqual(['scenes', 'audio', 'src', 'insp', 'st']);
   });
 
   it('leaves hidden docks out', () => {
@@ -264,7 +291,7 @@ describe('DockLayoutService', () => {
     layout.togglePairing();
     expect(layout.pairingOpen()).toBe(true);
     expect(layout.pairingTab()).toBe('laptop');
-    expect(layout.zones().bottom).toEqual(['scenes', 'pair', 'st', 'audio']);
+    expect(layout.zones().bottom).toEqual(['scenes', 'pair', 'st']);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(layout.pairingOpen()).toBe(false);
   });

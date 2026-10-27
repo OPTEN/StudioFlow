@@ -86,7 +86,7 @@ Pinned details of the implementation (spec 4.10, runbook chapter 20):
   `captureStream()`; `?audio=off` for a silent page; the page reports `audio { state, levelDb }`; "Sound on" only while blocked and
   something could be heard. The proxy is assumed to be an OBS browser source with "Control audio via OBS"; an embedding frame needs
   `allow="autoplay"`.
-- Regie: fifth dock "Audio" (default weight 1.4, stored layouts get it appended to the bottom zone), its own copy of the mix for the
+- Regie: fifth dock "Audio" (default weight 1.4, stored layouts get it appended to the bottom zone; the pairing dock takes its place while it is open when both are in the same zone, because five docks leave it too narrow at 1280 px), its own copy of the mix for the
   meters, monitoring off by default and after every reload (Program or PFL of one channel, headphones in Chromium), the key M, its own
   undo history of 60 steps, silence warning after 10 s under −60 dBFS (a warning in the row and the status line, never an incident),
   "Audio blocked" in the output chip.
