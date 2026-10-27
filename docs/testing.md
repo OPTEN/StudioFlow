@@ -33,7 +33,7 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
 `OUT` output page · `NET` resilience and network · `DEV` devices, viewports, accessibility · `DOCK` dock layout and persistence · `MEDIA` assets · `OPS` operations ·
-`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log · `XFER` duplicate, export and import · `I18N` language and formats.
+`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log · `LINK` output links · `FMT` format and resolution · `XFER` duplicate, export and import · `AUD` audio · `I18N` language and formats.
 
 Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1** must pass before a release (full run, on demand); **P2** robustness and polish
 (weekly or on demand, a failure is a defect but not a blocker).
@@ -235,6 +235,25 @@ of its 5 bytes, encoded as 48 black/white blocks (16 columns × 3 rows, each 80�
 
 **Init script (all projects, `helpers/init-script.ts`, `context.addInitScript`).** Wraps `WebSocket` and `RTCPeerConnection` to keep registries `window.__sfNet.sockets/peers` and `window.__sfNet.counts()`; records every `getUserMedia` constraint object in `window.__sfMedia.userMediaCalls` and counts `getDisplayMedia` calls in `window.__sfMedia.displayCalls`; optionally replaces `getUserMedia({video})`/`getDisplayMedia` with the timecode canvas streams (`timecodeCamera`, `E2E_SCREEN_MODE=canvas`); can make `getUserMedia` reject (`window.__sfMedia.failCamera = true`); stubs `navigator.getBattery` and `navigator.wakeLock` when a test asks for it; installs the `window.__xss` canary check. None of this ships in the product.
 
+**Fake sound and the audio probe (issue #7, `support/browser/fake-audio.js`, `audio-probe.js`, options `mic`, `screenAudio`, `audioProbe`,
+`audioGate` of `newUiContext`).** Chromium's fake microphone beeps at an unknown pitch, so the audio specs replace it: `getUserMedia({audio})` without
+video returns a **sine tone of a known frequency and level** (`mic: { frequency, level, channels }`), `getDisplayMedia({audio: true})` adds a second tone when
+`screenAudio` is set (a context without it models a browser that shares no sound: the request is answered with a picture only). The tone is written
+into a `MediaStreamTrackGenerator` (an audio track made of `AudioData`), not into an `AudioContext`, because the audio station starts its microphone
+at load, before anybody touched the page, and an audio context made then stays suspended. `window.__sfAudioFake` changes the live tones (`setTone('mic',
+{ level: 0 })` is silence, another frequency tells sources apart), pulls the microphone out and puts it back (`unplugMic()` ends the tracks, makes the next
+request fail with `NotFoundError` and fires `devicechange`; `replugMic()`). Every source records `stats.maxGapMs`, the longest pause between two chunks: a
+starved machine drops a few hundred milliseconds of a tone now and then, which is a fact of the test machine, not of the product.
+`window.__sfAudioProbe` (installed with `audioProbe: true`) is connected to **everything that a page sends to its speakers** (every node connected to the
+destination of an `AudioContext` also feeds an analyser): `measure()` returns the peak and RMS of the last 1024 samples (21 ms), the dominant frequency
+and the spectral peaks of the last 8192 samples (170 ms, 5.9 Hz per bin; the peaks are interpolated); `waitFor(test)`, `series(n, ms)`,
+`toneDb(f)` and `toneSeries([f…], n, ms)` measure over time. A frequency in the output page proves that a source went through LiveKit, the output page
+and the mixer, and silence that it did not; the level checks use unity gain at -6 dBFS (a tone of amplitude 0.5). **Autoplay:** Playwright's own
+evaluations and navigations count as user activation in Chromium and the output page asks the browser again every two seconds, so a page that was
+touched by the test is never "blocked"; `audioGate: true` makes every audio context of the context wait for the first **trusted** click, key press or
+touch (`resume()` stays pending, `state` is `suspended`), which is what a browser window that a person opened does. Specs that need a started output
+page click it once (`unlockSound`, `page.mouse.click`); the one that tests the block does not touch it.
+
 **Firefox** (`firefoxUserPrefs`): `media.navigator.streams.fake=true`, `media.navigator.permission.disabled=true`, `media.peerconnection.ice.loopback=true`,
 `media.peerconnection.ice.obfuscate_host_addresses=false`, `media.getusermedia.screensharing.enabled=true`. Camera works; screen share only in `canvas` mode. H.264 may be unavailable
 (OpenH264), VP8 fallback is acceptable there.
@@ -391,11 +410,12 @@ fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) an
 | `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
 | `XFER` Duplicate, export and import | 6 | 6 | 8 | 20 | 12 | 8 | 0 |
 | `PERF` Performance | 6 | 1 | 1 | 8 | 3 | 5 | 0 |
+| `AUD` Audio | 7 | 3 | 16 | 26 | 14 | 11 | 1 |
 | `I18N` Language and formats | 0 | 0 | 13 | 13 | 0 | 13 | 0 |
-| **Total** | **123** | **118** | **286** | **527** | **229** | **236** | **62** |
+| **Total** | **130** | **121** | **302** | **553** | **243** | **247** | **63** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import) · [2.19 PERF](#219-perf--performance-issue-12)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import) · [2.19 PERF](#219-perf--performance-issue-12) · [2.20 AUD](#220-aud--audio)
 
 
 ### 2.1 AUTH – Auth and security
@@ -1622,7 +1642,7 @@ Strings: “Starting soon”, “Thanks for watching”, “No access”, “Pic
 
 **E2E-OUT-24** · P2 · pw — Audio-ready but silent
 - Steps: output with a camera source; inspect media elements and console.
-- Expect: videos `muted`; no `<audio>` playing; no microphone/`getUserMedia` call; no autoplay-policy console warnings; no “Sound on” button (audio is not delivered yet).
+- Expect: videos `muted`; no `<audio>` playing; no microphone/`getUserMedia` call; no autoplay-policy console warnings; no “Sound on” button (the production has no channel that could be heard; with audio sources see AUD-05).
 
 **E2E-OUT-25** · P2 · pw — IP restriction (see E2E-AUTH-23) and key rotation (see E2E-AUTH-24) from the output's perspective
 - Steps: during both flows record the output page's visible state with screenshots.
@@ -2022,7 +2042,7 @@ Helpers: `expectNoOverflow(page)` asserts `document.documentElement.scrollWidth 
 
 **E2E-MEDIA-04** · P1 · pw — Video on air
 - Steps: 3 s video in a program scene; observe 8 s.
-- Expect: `<video>` muted, `loop`, playing in Regie and output; `currentTime` wraps; requests use Range (206); no audio.
+- Expect: `<video>` muted, `loop`, playing in Regie and output; `currentTime` wraps; requests use Range (206); no audio (a clip without sound; one with sound: AUD-15).
 
 **E2E-MEDIA-05** · P1 · pw — Used asset cannot be deleted
 - Steps: delete an asset used in a scene (control in the source/asset list [GAP-37]), then remove the item and delete again.
@@ -2292,7 +2312,7 @@ API unit tests (xUnit, `BackupHealthTests`): the readiness check is healthy when
 
 **E2E-LK-02** · P1 · pw — Codecs, simulcast, content hints, dynacast
 - Steps: Chromium phone publishes the camera; laptop publishes a screen; read `RTCRtpSender.getParameters()` and `getStats()`.
-- Expect: camera H.264 with three simulcast layers (`rid` q/h/f, 1080p/540p/270p or 720p/360p/180p) and `contentHint = 'motion'`; screen VP9 (backup codec H.264 present), one layer, `contentHint = 'detail'`, max 1440p and 15–30 fps; dynacast: layers nobody subscribes to stop sending (`bytesSent` stalls); no audio track ever published.
+- Expect: camera H.264 with three simulcast layers (`rid` q/h/f, 1080p/540p/270p or 720p/360p/180p) and `contentHint = 'motion'`; screen VP9 (backup codec H.264 present), one layer, `contentHint = 'detail'`, max 1440p and 15–30 fps; dynacast: layers nobody subscribes to stop sending (`bytesSent` stalls); no audio track unless the sender switched a microphone on or ticked “Share audio” (AUD-06, AUD-12, AUD-13).
 
 **E2E-LK-03** · P2 · pw (`@short-ttl`) — Room lifecycle
 - Steps: all participants leave; wait beyond `empty_timeout` (10 s in the profile); a sender rejoins; restart the API with participants present.
@@ -2721,6 +2741,121 @@ Issue #12, decisions «#12», spec 7, 8.3, 8.4, 9.1–9.3, runbook 11, DESIGN.md
 - Steps: 4 phones (camera 1080p, fake media), 2 laptops (screen 1440p), 6 scenes (Host, Panel = program, Four, Slides = preview, Two screens, Everything), Studio Mode on, Regie at 1280 × 800 with a device pixel ratio of 1.5, output page at 1920 × 1080, one Chromium instance per role. After 20 s of settling: 45 s idle (CPU time per browser through `SystemInfo.getProcessInfo`, main thread through `Performance.getMetrics`, WebRTC `getStats` of every page with `decoderImplementation`/`powerEfficientDecoder`/`encoderImplementation`/`powerEfficient`/`qualityLimitationReason` or, where Chromium hides them, `MediaCapabilities`), a sampled profile of the main thread of the Regie and the output, 15 s with the picture-in-picture camera dragged in the preview monitor, then a switch to the preview scene and to a scene whose sources nobody asked for. The numbers go to `tests/e2e/.output/<stack>/results/out-perf-reference.json` and to the log (`[perf] key = value`).
 - Expect: the output decodes only the sources of the program and the preview scene; no count exceeds the budget in 5.1 (exactly, on any machine) and no load by more than 20 % (when no sender was at its CPU limit and the machine was at 90 % CPU or less: otherwise the run is skipped as `not-comparable`, 6.8); screens go out as H.264 at no more than 15 fps; no sender reports a CPU limit. Run it before and after a change on the same machine and compare the table: `E2E_REUSE_STACK=1 tests/e2e/stack.sh test <N> --project=perf tests/e2e/specs/perf/perf-reference.perf.spec.ts` (`PERF_SECONDS` scales the windows, `PERF_BUDGET_SCALE` the loads).
 
+### 2.20 AUD – Audio
+
+Issue #7, decisions «#7», spec 4.10 and 7–9, runbook 20. One global mixer per production (fader −∞ … +10 dB, mute, mode, sync offset), sources: the audio
+station, the sound of shared screens and videos, microphones of devices (muted by default); the output page mixes with Web Audio, the Regie shows the
+Audio dock. The E2E specs are in `tests/e2e/specs/audio/` and run in English (`en-US`) on Chromium; the sources are the sine tones of 1.3 and the output page
+(or the Regie page) is measured with the audio probe. Times are measured on a loaded 4-core machine (load average 25) and are limits with room.
+
+**UNIT-AUD-01** · P0 · vitest (`audio.spec.ts`, `audio-silence.spec.ts`, `selectors.spec.ts`, `source-ref.spec.ts`, `log-entries.spec.ts`) — Mixer rules of the scene model
+- Steps: limits, `dbToGain` / `gainToDb`, the fader scale both ways, clamps, `defaultAudioChannel` for station / device microphone / screen / video, `allowedAudioModes`,
+  `followsPicture` for a screen, a video and a microphone (the whole device counts), `isChannelAudible` over broadcast × muted × gain × mode, `audioTargets`, `audioExpected`,
+  `audioChannelRows`, `audioRampMs` (broadcast change, fade, cut, 10 s cap), `SilenceTracker` (10 s under −60 dBFS, reset by sound, not audible, no sound, channel removed); the reducer
+  (`audioChannelsChanged` upserts only the listed channels, an empty list changes nothing, `sourceRemoved` drops the channel); the slot `mic`, the code A, the log texts.
+- Expect: −100 is silence and the only number below −60 that is not a value; the useful fader range −60 … +10 dB takes 96 % of the travel; a device microphone starts muted, a station always audible, a video allows follow and off only; nothing is audible outside a live broadcast; the preview never counts; the ramp is 20 ms, 300 ms or the fade (≤ 10 s).
+
+**UNIT-AUD-02** · P0 · vitest (`ramp.spec.ts`, `audio-graph.spec.ts`, `level.spec.ts`, `asset-audio.spec.ts`) — The Web Audio graph
+- Steps: a graph with fake nodes: channels added, ramped, removed and returning (they ramp, they do not click), fader and sync offset applied, equal-power curve from 100 ms, program and PFL monitor,
+  meters, state `blocked` / `running` / `unavailable`, resume on a gesture, `setSinkId` where it exists, keep-alive of remote streams, disposal; level reading; the tap of a video element (`captureStream`, once on attach, again on a new stream, detach).
+- Expect: every parameter change is a sample-accurate ramp, a channel that leaves and comes back ramps from silence; the monitor bus never carries more than the chosen channel or the program; a stream of a video needs no keep-alive; nothing throws without Web Audio.
+
+**UNIT-AUD-03** · P0 · vitest (`audio-publisher.spec.ts`, `publisher-screen-audio.spec.ts`, `source-provider.spec.ts`, `media-stats.spec.ts`) — Publishing and receiving sound
+- Steps: `publishMic` with both profiles (constraints, publish options: Opus with RED, DTX off, stereo only for the station), a chosen input, switching the input, an ended track (grace, search on `devicechange` and by timer, recovery), permission denied / device missing / in use, `unpublish`, rejoin republish, telemetry; `publishScreen(slot, { audio })` with and without sound, the sound ending with the picture; the provider's audio streams per `{identity}/{track}` and `screen-n-audio`, `onAudioChange`; audio stats (bitrate, loss, jitter, buffer, codec).
+- Expect: a station sends stereo with processing off, a voice microphone mono with processing on; a lost microphone is `ended` and found again by itself; a screen without sound publishes no audio track and says so; the audio of a source is reachable by its source id.
+
+**UNIT-AUD-04** · P0 · vitest (`output-audio.spec.ts`, `output-app.audio.spec.ts`, `debug-overlay.audio.spec.ts`, `debug-overlay.audio.de.spec.ts`, `config.spec.ts`, `deferred-provider.asset.spec.ts`, `scene-renderer.asset-audio.spec.ts`) — Output page sound
+- Steps: the state of the production applied to a fake mix (targets, ramps for a cut, a mute, a fade, a broadcast change), `?audio=off`, `blocked` → running after a gesture, the report (`off | running | blocked | unavailable`, peak, null below −90 dBFS), the "Sound on" button only while blocked **and** something could be heard, "No access" cuts the sound, the debug lines (English and German), the asset tap through the deferred provider and the renderer's `attachAsset`.
+- Expect: the same targets and ramp rule as the Regie; no button without expectation; no audio context at all with `audio=off`; the report follows the state.
+
+**UNIT-AUD-05** · P1 · ng (`studio-audio.service.spec.ts`, `audio-commands.service.spec.ts`, `audio-dock.component.spec.ts`, `audio-rows.spec.ts`, `control-column.audio.spec.ts`, `header.audio.spec.ts`, `asset-audio-provider.spec.ts`, `keyboard.service.spec.ts`, `dock-layout.service.spec.ts`, `station-view.spec.ts`) — Regie
+- Steps: the Regie's copy of the mix and its meters (fall-back, pre-fader peaks, silence warning after 10 s), monitoring (off, program, PFL of one channel), commands (mute, fader drag as one step with `adjusting`, mode, sync offset, undo and redo of 60 steps, the M key, Ctrl+Z in the dock), rows (microphones always, screens while they share sound, videos with sound, state words), the program level above Take, "Audio blocked" in the output chip, the audio station's row without a picture, the fifth dock and the migration of a stored layout.
+- Expect: a drag is one request chain and one undo step; undo sends the previous state of the channels it touched; stored layouts get `audio` at the end of the bottom zone; nothing is played unless monitored.
+
+**UNIT-AUD-06** · P1 · ng (`device-session.service.spec.ts`, `input-level.component.spec.ts`, `station.audio.component.spec.ts`, `start.component.spec.ts`, `redeem.component.spec.ts`, `knock.service.spec.ts`, `sender-settings.service.spec.ts`, `device-report.spec.ts`) — Sender
+- Steps: starting and stopping the microphone (allocation, `limit_reached`, auto-start of the audio station, off on purpose stays off after a reload, input choice, report and telemetry, removal), "Share audio" (the option reaches `publishScreen`), the microphone panel and the audio station page, the phone button, the level meter (bar, red close to clipping, silence hint after 10 s, suspended context starts with the first touch), pairing as an audio station (form, knock restored after a reload, `?station=audio`), settings parse.
+- Expect: nothing is asked of the browser until the person switches the microphone on (phone, laptop); the audio station starts by itself; a live microphone counts as on air for updates.
+
+**UNIT-AUD-07** · P0 · xunit (`AudioMixerTests`, `AudioMixerServiceTests`, `BasicsTests`, `SourceStatusTests`) — Domain
+- Steps: pairing an audio station, allocating and releasing the microphone (once per device; an audio station allows nothing else and cannot remove it), codes A1…, default names, `CarriesSound`, default channels, validation (gain −100 … +10 finite, sync 0 … 500, unknown source, camera, missing channel, duplicates, video with `always`), `IsAudible` over every input, `FollowsPicture`, applying channels (only the listed ones, unchanged = no change, one invalid = nothing applied, sync and drop of stale channels), the tally of a microphone slot and `AudibleSources`.
+- Expect: as in spec 4.10 and the rule table of `IsAudible`.
+
+**INT-AUD-01** · P0 · xunit (`AudioApiTests`) — Mixer REST, events, audit
+- Steps: pairing and slot use cases against the real hubs and PostgreSQL; `PUT …/audio/channels` (round trip through the database, the wire format with camelCase names and enum strings, invalid values with field paths and nothing changed, unknown mode and wrong JSON type, no session, no CSRF header, unknown production, two seats with different faders); events (one revisioned event to the Regie and the output with the same revision, replay to a client that is behind), audit (one entry per change, none while adjusting, the last request of a drag writes the gain), tally of the microphone slot, incidents of a failed or stopped microphone, snapshots with `audioChannels`, many channels, the report of the output (`audio` state reaches the Regie's status, nonsense is dropped or refused).
+- Expect: 200 with the stored channels, 400 `validation_failed` naming `channels[n].field`, 401, 403, 404; exactly one event and one revision per changing request; the output sees the event; audit text “A1 muted”, “A1 gain -6.0 dB”.
+
+**INT-AUD-02** · P0 · xunit (`AudioMixerMigrationTests`, `InfrastructureTests` container cases) — Migration and the sound of videos
+- Steps: a database from before `AddAudioMixer` with productions, devices and videos migrated up (and `SyncAll` giving the channels, idempotent); MP4 (moov first or last, audio and video tracks, only video, empty moov) and WebM (track types) files, broken and truncated files, images; upload of a video with and without sound; deletion.
+- Expect: existing productions get an empty mixer and no sound (`hasAudio` false); the detection reads headers only and never throws; a video with sound has a channel that goes with the asset.
+
+**INT-AUD-03** · P1 · xunit (`DeviceAndPairingApiTests`, `InfrastructureTests`) — Pairing, reports and LiveKit grants
+- Steps: an invite link redeemed as `audioStation` (laptop link only; a phone QR code ignores it), a knock as an audio station, the report of a device with the slot `mic`, LiveKit tokens (a sender may publish camera, screen, microphone and screen audio; the Regie and the output may not publish).
+- Expect: the kind is honoured only where specified; the token's `canPublishSources` has the four sources for senders and the Regie and the output cannot publish.
+
+**E2E-AUD-01** · P0 · pw (`aud-chain.spec.ts`) — Audio station to the output page
+- Steps: pair an audio station through the API (a laptop link redeemed as `audioStation`); its page starts the microphone (a 440 Hz tone) by itself; before the broadcast the output page (clicked once) is silent; start the broadcast; end it.
+- Expect: the station is `kind audioStation`, slot `mic` code A1, one source A1 and one channel `{ 0 dB, unmuted, always }`; the page asked for stereo with echo cancellation, noise suppression and automatic gain off; the station shows a moving level and "Mic live" and its tally frame is `program` only while on air; the output plays a tone near 440 Hz at about −6 dBFS (±2.5) only while live and is silent within 800 ms of the end; `@smoke`.
+
+**E2E-AUD-02** · P0 · pw (`aud-mixer.spec.ts`) — Mute, fader, mode and sync offset on the output
+- Steps: five rounds of mute and unmute through the API; fader at −6, −20 (`adjusting`), +10, −100, 0 dB; modes off, always, follow (a microphone without a picture of its device is not audible); sync offset 250; a second output page opened later.
+- Expect: mute is silent within 300 ms of the answer (measured 6–60 ms), unmute brings the tone back as fast; the peak follows the fader in dB (−12, −26, +4 dBFS), −100 is silence; `off` and `follow` without a picture are silent, `always` is audible; the offset is stored and returned without a change of level; a page opened later has the same mix.
+
+**E2E-AUD-03** · P0 · pw (`aud-mixer.spec.ts`) — Invalid values and grants
+- Steps: gain 10.5 / −100.5 / text, sync 501 / −1 / 12.5, unknown mode, wrong types, empty and missing source id, unknown source, empty and missing list, duplicates, one wrong channel next to a right one; the extremes −100, +10, 0 dB and 500, 0 ms; unknown production; no session, no CSRF header, the output key, a device bearer and the output API.
+- Expect: 400 `validation_failed` and no change at all (the right channel of a mixed request is not applied, the revision does not move for refused requests); the extremes are valid; 404 `not_found`; 401 `unauthorized`; 403 without the header; neither the output key, a device nor the output API can move a fader.
+
+**E2E-AUD-04** · P0 · pw (`aud-regie.spec.ts`) — The Audio dock
+- Steps: Regie with an audio station on air: the dock in the default arrangement and its row (code, name, "PGM"), the first click and the meters, mute by mouse (second Regie seat open), undo and redo buttons, the M key on the selected row, the fader by keyboard (Home = −∞, End = +10 dB, double click resets), mode off and always, sync offset 120, the audit log.
+- Expect: the dock is there with A1 "Mixing desk" and 0.0 dB; the meter and the program level above Take move after the first click; mute silences the output and sets `aria-pressed` on both seats without a reload, the row loses "PGM"; undo and redo move the output and both seats; M toggles; the dB text follows the keys (−∞ dB, +10.0 dB, 0.0 dB) and the output follows (peak 4 dBFS at +10 dB); the audit log has `audio.changed` “A1 muted”, “A1 unmuted”, “A1 mode off”, “A1 mode always audible”, “A1 sync offset 120 ms”.
+
+**E2E-AUD-05** · P0 · pw (`aud-regie.spec.ts`) — "Audio blocked" and "Sound on"
+- Steps: no output page: no warning; an output page whose audio contexts wait for a gesture (`audioGate`) with the broadcast live; one click on it; then `?audio=off`.
+- Expect: the output chip says "Audio blocked" within 20 s (its tooltip names the click), the page shows the "Sound on" button; after one click the tone plays, the button and the warning go; a page with `audio=off` is not blocked, has no button and no audio context.
+
+**E2E-AUD-06** · P0 · pw (`aud-sources.spec.ts`) — Screen sound follows its picture
+- Steps: a laptop with "Share audio" ticked shares a screen whose sound is a 880 Hz tone; the screen is put in the live scene; cut to a scene without it and back; hide the item and show it again; modes always and off; end the share.
+- Expect: the page explains what a browser can share before sharing and says "with sound" afterwards; the source gets the channel `{ 0 dB, unmuted, follow }` and a row in the Regie; the tone is heard while the picture is shown (cut away: silent within 900 ms), a hidden item is silent, `always` plays without the picture, `off` never; no tone source is left on the laptop after "Stop sharing".
+
+**E2E-AUD-07** · P1 · pw (`aud-sources.spec.ts`) — A browser that shares no sound
+- Steps: a laptop shares with "Share audio" ticked but the browser returns a picture only; stop, untick, share again.
+- Expect: "No sound is shared with this screen." next to the screen and no row for it in the Regie; the mixer still has the channel; the second share (box off) says nothing and asks for no audio.
+
+**E2E-AUD-08** · P1 · pw (`aud-sources.spec.ts`) — A fade fades the sound with the picture
+- Steps: an audio station (440 Hz, always) and a screen with sound (880 Hz, follow); a 2 s fade to a scene without the screen and back, the strength of both tones sampled every 40 ms (170 ms window; medians over windows).
+- Expect: the first third of the fade is still at the level (a fade, not a cut), the last fifth is clearly lower, and 0.8 s after the fade the tone is more than 20 dB down and gone about when the fade ends (±0.9 s); the fade in starts from silence and is back at its level 0.6 s after the end; the station is not touched.
+
+**E2E-AUD-09** · P0 · pw (`aud-sources.spec.ts`) — Unplugged and plugged-in microphone
+- Steps: the microphone of the audio station on air is pulled out (tracks end, `devicechange`) and plugged in again.
+- Expect: the output is silent within 30 s of the pull (measured about one second), the page says "The microphone was disconnected.", the source is `ended` and an incident "A1" is in the status line and the snapshot; after the plug the page finds the device by itself (`live`), the tone returns, the incident heals and the log has “A1 is back, was gone for …”.
+
+**E2E-AUD-10** · P1 · pw (`aud-regie.spec.ts`) — Silence is a warning
+- Steps: the desk's tone goes to level 0 (the track stays) while on air; the signal returns; the channel is muted while the desk is quiet.
+- Expect: "no signal for 10 s" in the row after 9–25 s, the row marked silent, the status line names A1; no incident, "1 station ok"; the warning goes with the signal; a muted channel is not watched (it only says "muted").
+
+**E2E-AUD-11** · P1 · pw (`aud-sources.spec.ts`) — Four channels at once
+- Steps: an audio station and three laptops with screen sound (440, 660, 880, 1100 Hz) all on air; mute one, put the station off and the third screen at −20 dB in one request, delete a device.
+- Expect: the Regie lists four rows and the output spectrum has the four tones; a mute removes exactly its tone; one request moves two channels; the −20 dB tone is clearly weaker (> 8 dB); a deleted device's channel and tone disappear and the dock has three rows; no page error.
+
+**E2E-AUD-12** · P1 · pw (`aud-sender.spec.ts`) — The audio station is paired through the form
+- Steps: the pairing form with "Audio station (mixing desk)", the check code, "Allow" in the Regie; the page; the input list and a chosen input; "Switch microphone off", reload, "Switch microphone on", reload.
+- Expect: the check codes match; the page has the name, the panel "Sound from the mixing desk", code A1, the note about unprocessed stereo, no screen or camera buttons, a moving level; the Regie shows the station (A1) and one `audio` source; choosing an input requests it exactly (`deviceId.exact`); off stays off after a reload (the browser is not asked), on again keeps the input, and a reload with the microphone on starts it by itself.
+
+**E2E-AUD-13** · P1 · pw (`aud-sender.spec.ts`) — The microphone of a phone
+- Steps: a paired phone: "Microphone off" is shown, the browser was not asked; switch it on; the camera is in the live scene; the Regie unmutes; a scene without the camera; switch it off, reload.
+- Expect: the first press allocates `mic` and the source A…; its channel is `{ 0 dB, muted, follow }`; the output is silent although the phone is on air; after the unmute the tone (550 Hz) plays and the phone shows "Mic live"; a scene without the phone's camera silences it and the tag goes; off stays off after a reload.
+
+**E2E-AUD-14** · P1 · pw (`aud-monitor.spec.ts`) — PFL and monitoring
+- Steps: the Regie page measured with the probe: nothing played by default; PFL on the channel off air, with the channel muted and the fader at −30 dB; PFL off; Monitor → Program with the broadcast off and live; a mute on air; Monitor → Off, PFL, reload.
+- Expect: the Regie is silent until the operator listens; PFL plays the channel at its own level (−6 dBFS) before fader and mute and the Monitor button is active; Program is silent until the channel is audible and then equals the output page (±3 dB); after a reload nothing is played and no PFL is on.
+
+**E2E-AUD-15** · P1 · pw (`aud-assets.spec.ts`) — Sound of a video
+- Steps: a WebM (VP8 + Opus, 1000 Hz) and a WebM without sound uploaded; both in the live scene; broadcast; cut away and back; fader −12; mute; delete the clip.
+- Expect: `hasAudio` true / false; one channel `{ 0 dB, unmuted, follow }` for the clip only and a row in the Regie; silent before the broadcast, 1000 Hz at about −6 dBFS while the clip is in the program, silent in a scene without it; −12 dB gives about −18 dBFS; mute is silent; deleting the asset removes the channel.
+
+**E2E-AUD-16** · P2 · pw (`aud-chain.spec.ts`) — Delay of the sound
+- Steps: a tone that starts after silence at the audio station, five times; the time to the first audible tone at the output page.
+- Expect: the median is under one second (the measurement includes about 60 ms of write-ahead of the fake source and a 21 ms probe window); the values are recorded in the report as `measurement` annotations (**T-AUDIO-DELAY**, section 5).
+
 ---
 
 ## 3. Browser and device matrix
@@ -2747,6 +2882,7 @@ Legend: **●** runs and is required (priority of the test applies) · **○** r
 | SRC-10, 11 (block, duplicate tab) | ● | – | ○ | – | ● | ◐ | – | – | – |
 | OUT-01…25 | ● | ○ (01, 02, 03) | ○ (17) | ○ (17) | – | – | – | – | – |
 | OUT-13/14 (latency) | ● (`perf` project; a short camera run in the nightly) | – | – | – | – | – | – | – | – |
+| AUD-01…16 (audio: audio station, laptop, phone senders on Chromium; the output and the Regie measured with the audio probe) | ● (`@smoke`: 01) | – | – | – | ● (13, phone) | – | – | – | – |
 | NET-00…26 | ● | – | – | – | ● (phones) | – | – | – | – |
 | NET-03…06 (`@linux-netem`), NET-04b and NET-25 (`@netns`) | Linux CI only | – | – | – | – | – | – | – | – |
 | DEV-01 | – | – | – | – | – | – | – | `regie-1280x720` ● | – |
@@ -2859,6 +2995,9 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 | `T-BLOCK` | “Block now” → sender “Blocked” and LiveKit participant gone | ≤ 1 s | ≤ 2 s | spec 4.6 |
 | | “Unblock” → sender back (15 s retry cadence + connect) | ≤ 17 s | ≤ 20 s | spec 4.6 |
 | `T-KEY` | Key regeneration → connected outputs kicked; old key REST 403 | ≤ 1 s; immediate | ≤ 2 s; immediate | spec 4.8 |
+| `T-AUDIO-DELAY` | Tone at the audio station's microphone → first audible tone in the output page, median of 5 (E2E-AUD-16), localhost, loaded machine | ≤ 500 ms | ≤ 1000 ms | spec 4.10 |
+| | Mute or fader change request answered → output silent / changed (E2E-AUD-02), median of 5 | ≤ 100 ms | ≤ 300 ms | decisions «#7» |
+| | End of the broadcast → silent output (E2E-AUD-01) | ≤ 450 ms | ≤ 800 ms | spec 4.10 (300 ms ramp) |
 | `T-LATENCY` | Canvas-to-canvas (timecode source → output `<video>`), 720p30, localhost: p50 / p95 / max | ≤ 150 ms / ≤ 250 ms / ≤ 600 ms | < 200 ms / < 300 ms / — | plan §2, §9 phase 0 |
 | | Same for the Regie Program monitor | ≤ 150 ms | < 200 ms (p50) | spec 7 |
 | | With `netem` delay 200 ms (both directions) | baseline + 400 ms | baseline + 400 ± 100 ms | — |
@@ -2969,7 +3108,7 @@ Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 day
 
 `E2E-NET-00`, `E2E-AUTH-01`, `E2E-AUTH-06`, `E2E-AUTH-07`, `E2E-AUTH-09`, `E2E-PAIR-01`, `E2E-PAIR-02`, `E2E-PAIR-03`, `E2E-PAIR-10`, `E2E-PAIR-13`, `E2E-SCENE-04`, `E2E-SCENE-05` (templates `full`, `two`, `pip` only), `E2E-SCENE-07`, `E2E-SCENE-12`,
 `E2E-SWITCH-01`, `E2E-SWITCH-02`, `E2E-SWITCH-04`, `E2E-SWITCH-06`, `E2E-SWITCH-11`, `E2E-SWITCH-12`, `E2E-SRC-01`, `E2E-SRC-02`, `E2E-SRC-03`, `E2E-SRC-06`, `E2E-SRC-07`, `E2E-SRC-10`, `E2E-OUT-01`, `E2E-OUT-02`, `E2E-OUT-06`, `E2E-OUT-08`,
-`E2E-DEV-01`, `E2E-DOCK-02`, `E2E-MEDIA-03`, `E2E-XFER-01`, `E2E-XFER-03`, `E2E-XFER-10`.
+`E2E-DEV-01`, `E2E-DOCK-02`, `E2E-MEDIA-03`, `E2E-XFER-01`, `E2E-XFER-03`, `E2E-XFER-10`, `E2E-AUD-01`.
 
 ### 6.3 Tags and selection
 
