@@ -7,6 +7,7 @@ export * from './canvas';
 export * from './source-ref';
 export * from './audio';
 export * from './audio-selectors';
+export * from './audio-silence';
 export * from './layout-templates';
 export * from './geometry';
 export * from './production-state';

@@ -32,6 +32,35 @@ export const AUDIO_MODES: readonly AudioMode[] = ['always', 'follow', 'off'];
  */
 export const AUDIO_RAMP_MS = 20;
 
+/** Ramp of the mix when the broadcast goes live or ends: gentle, nobody listens for an exact moment. */
+export const AUDIO_BROADCAST_RAMP_MS = 300;
+
+/** The longest crossfade of a program switch the mix follows; a gain that creeps for longer is a mistake. */
+export const AUDIO_MAX_FADE_MS = 10_000;
+
+/**
+ * How long the gains of the mix take to reach their new targets after a change of the production state (the output page
+ * and the Regie's copy of the mix use the same rule): `broadcastChanged` – the broadcast went live or ended – takes 300 ms,
+ * a faded program switch takes as long as its fade (constant power crossfade, at most 10 s), everything else – a cut, a
+ * mute, a fader move – 20 ms.
+ */
+export function audioRampMs(
+  broadcastChanged: boolean,
+  switchTransition: { readonly kind: string; readonly durationMs: number } | null,
+): number {
+  if (broadcastChanged) {
+    return AUDIO_BROADCAST_RAMP_MS;
+  }
+  if (
+    switchTransition !== null &&
+    switchTransition.kind === 'fade' &&
+    switchTransition.durationMs > AUDIO_RAMP_MS
+  ) {
+    return Math.min(switchTransition.durationMs, AUDIO_MAX_FADE_MS);
+  }
+  return AUDIO_RAMP_MS;
+}
+
 /** An audible channel that has been silent for this long is reported by the Regie as a warning (not an incident). */
 export const AUDIO_SILENCE_WARNING_MS = 10_000;
 
