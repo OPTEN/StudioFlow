@@ -871,7 +871,7 @@ test.describe('REGIE broadcast and slates', () => {
       const output = await openOutput(production);
       await output.stage();
       await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-      await page.getByRole('button', { name: 'Edit slates' }).click();
+      await page.getByRole('button', { name: 'Edit slates', exact: true }).click();
       const form = page.locator('.c-prod__form');
       await expect(form).toContainText('Before the broadcast');
       await form.getByLabel('Title', { exact: true }).first().fill('Starting soon, hello');

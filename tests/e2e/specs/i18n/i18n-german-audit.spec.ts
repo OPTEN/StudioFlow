@@ -130,7 +130,8 @@ test.describe('German text audit', () => {
     await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
     for (const [item, label, heading] of [['Rename', 'production: rename', 'Rename production'], ['Edit slates', 'production: slates', 'Before the broadcast'], ['New production…', 'production: new', 'New production']] as const) {
       const menu = page.getByRole('dialog', { name: 'Production' });
-      await menu.getByRole('button', { name: item }).click();
+      // exact: the dialog also lists one button per production of the stack (“... renamed”)
+      await menu.getByRole('button', { name: item, exact: true }).click();
       await expect(menu.locator('.c-pop-h', { hasText: heading })).toBeVisible();
       await audit.state(label);
       await menu.getByRole('button', { name: 'Cancel' }).click();

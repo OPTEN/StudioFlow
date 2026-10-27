@@ -150,7 +150,7 @@ used outside tests; the production checks (E2E-OPS-02) assert that `setup.sh` ne
   (`production.seed({ scenes: ['Scene A','Scene B','Scene C'] })` renames the three default scenes “Welcome”, “Presentation”, “Break” that every created production gets, and adds more on request [GAP-02]). `production.id`, `production.slug`, `production.outputKey`
   (from `GET …/output`) are available.
 - **After each test** (auto fixture): `POST …/broadcast/reset`; delete every device the test created (`DELETE …/devices/{id}` kicks the sender); close all contexts;
-  restore `allowedIps` to `[]`; if the test was `@disruptive`, `stack.ensureHealthy()` (waits until all four containers are healthy, `/health/ready` is 200 and the admin login works).
+  restore `allowedIps` to `[]`; restore the name of the production when the test renamed it (a name like “… renamed” would make `getByRole('button', { name: 'Rename' })` ambiguous in the production menu, which lists every production: its locators use `exact: true`); if the test was `@disruptive`, `stack.ensureHealthy()` (waits until all four containers are healthy, `/health/ready` is 200 and the admin login works).
 - There is no production delete endpoint; productions accumulate within a run and are removed by `down -v` in global teardown.
 - **Project order**: `smoke` (P0 non-disruptive) → `main` (all non-disruptive) → `short-ttl` → `disruptive` (restarts, kills, lockout, rate limits; runs last) → `soak` (manual or nightly only).
 - **Lockout and rate-limit tests** change process-wide counters keyed by client IP (all E2E traffic shares one IP behind Caddy). They are tagged `@disruptive`
