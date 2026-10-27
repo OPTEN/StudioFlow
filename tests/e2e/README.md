@@ -85,7 +85,9 @@ fixed addresses, published ports, public URL and volumes.
 
 The sample media (JPEG, WebP, MP4/H.264, WebM/VP8) are made by `ffmpeg` in the global setup. It must be installed with
 the encoders libx264, libvpx and libwebp: the setup checks that first (`assertFfmpeg` in `support/preflight.ts`) and
-stops with the install hint, and `generateSamples` throws when a file cannot be made, so no test runs on a stub.
+stops with the install hint, and `generateSamples` throws when a file cannot be made, so no test runs on a stub. Media
+already in `.output/<project>/assets` are kept, and the check runs only when one is missing: CI restores them from its
+cache and installs ffmpeg only when the generator (`support/media-samples.ts`) changed.
 `H-MEDIA-01` (smoke) probes the samples, `H-MEDIA-02` the message of the preflight.
 
 ## CI

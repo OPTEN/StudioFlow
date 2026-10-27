@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ENV_FILE, OUTPUT_DIR, PROJECT, REPO_ROOT, SETTINGS, STATE_FILE, containerNameOf, renderEnvFile, stackConfig } from './support/env';
-import { generateSamples } from './support/media-samples';
+import { generateSamples, missingMediaSamples } from './support/media-samples';
 import { detectLanIPv4 } from './support/network-info';
 import { assertFfmpeg, assertStackFree } from './support/preflight';
 import { exec } from './support/shell';
@@ -82,7 +82,8 @@ export default async function globalSetup(): Promise<void> {
   const keepStack = process.env['E2E_KEEP_STACK'] === '1';
   const reuse = process.env['E2E_REUSE_STACK'] === '1';
 
-  await assertFfmpeg();
+  // ffmpeg is needed only for media that are not generated yet (CI restores them from its cache).
+  if (missingMediaSamples().length > 0) await assertFfmpeg();
   await generateSamples();
 
   if (reuse && fs.existsSync(ENV_FILE) && (await allHealthy())) {

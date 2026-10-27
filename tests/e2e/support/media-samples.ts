@@ -118,6 +118,17 @@ const MEDIA_SAMPLES: ReadonlyArray<{ name: string; args: string[] }> = [
   { name: 'clip.webm', args: ['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=15', '-t', '3', '-an', '-c:v', 'libvpx', '-b:v', '200k'] },
 ];
 
+/**
+ * The media of the sample set that are not on disk yet. Only these need ffmpeg: CI restores the generated files from its
+ * cache and installs ffmpeg only when one is missing.
+ */
+export function missingMediaSamples(): string[] {
+  return MEDIA_SAMPLES.map((sample) => sample.name).filter((name) => {
+    const file = path.join(ASSET_DIR, name);
+    return !(fs.existsSync(file) && fs.statSync(file).size > 0);
+  });
+}
+
 /** Runs ffmpeg and throws with the end of its output when it cannot run or fails. */
 async function ffmpeg(args: string[]): Promise<void> {
   const result = await exec('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { timeoutMs: 60_000 });

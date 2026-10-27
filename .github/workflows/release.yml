@@ -184,7 +184,8 @@ jobs:
   smoke:
     needs: [plan, images]
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # About 10 minutes normally; the rest is room for a slow apt mirror.
+    timeout-minutes: 35
     permissions:
       contents: read
       packages: read
@@ -223,8 +224,15 @@ jobs:
       - name: Install the system libraries of Chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      # The harness generates its sample media (JPEG, WebP, MP4/H.264, WebM/VP8) with ffmpeg and stops when it cannot.
+      # The sample media of the harness, as in ci.yml: restored from the cache, ffmpeg only installed when they are missing.
+      - name: Restore the sample media
+        id: samples-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/e2e/.output/sf-e2e-${{ env.E2E_STACK }}/assets
+          key: e2e-samples-${{ runner.os }}-${{ hashFiles('tests/e2e/support/media-samples.ts') }}
       - name: Install ffmpeg
+        if: steps.samples-cache.outputs.cache-hit != 'true'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       # E2E-NET-00 needs sch_netem, ifb and act_mirred in the kernel of the runner; without them the netem tests are skipped.
       - name: Load the network emulation modules
