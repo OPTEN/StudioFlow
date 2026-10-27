@@ -5,7 +5,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD video assets (issue #7, docs/testing.md 2.18): a video with an audio track gets a channel of the mixer (follows its
+ * AUD video assets (issue #7, docs/testing.md 2.19): a video with an audio track gets a channel of the mixer (follows its
  * picture), the output page plays the sound of the clip while the clip is in the program and the mixer moves it like any
  * other channel; a video without sound, and an image, have none. The clip is a WebM (VP8 + Opus) with a 1000 Hz tone.
  */

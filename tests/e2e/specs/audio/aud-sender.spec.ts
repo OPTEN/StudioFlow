@@ -11,7 +11,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD on the senders (issue #7, docs/testing.md 2.18): the audio station is paired through the pairing form like any
+ * AUD on the senders (issue #7, docs/testing.md 2.19): the audio station is paired through the pairing form like any
  * laptop and starts the sound of the mixing desk by itself; a phone has a microphone that is off until its person
  * switches it on, and the mixer keeps it muted until the Regie lets it through (decision #7).
  */
@@ -123,7 +123,7 @@ test.describe('AUD senders', () => {
         .toEqual({ sourceId: mic, gainDb: 0, muted: true, mode: 'follow', syncOffsetMs: 0 });
       const source = (await production.snapshot()).sources.find((entry) => entry.id === mic)!;
       expect(source.kind).toBe('audio');
-      expect(source.code).toMatch(/^A\\d+$/);
+      expect(source.code).toMatch(/^A\d+$/);
 
       // The phone's picture is on air: its microphone is still muted, so the output stays silent.
       await putInScene(api, production, 0, camera, FULL);
