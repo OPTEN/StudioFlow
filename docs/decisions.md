@@ -69,6 +69,40 @@ everything else of the issue is done (`docs/open-source-checklist.md` lists what
 4. No separate preview mix in studio mode, only PFL per channel.
 5. Silence detection: a warning (not an incident) when an audible channel has been silent for more than 10 s.
 
+Pinned details of the implementation (spec 4.10, runbook chapter 20):
+- Sources: one audio station per production is the intended use (the API does not limit it), screen sound, video sound and device
+  microphones (slot `mic`, code A1, A2 …, one per device; an audio station has nothing else). A device microphone starts muted
+  and follows the picture of its device; the station is always audible; screens and videos follow their picture. A video allows
+  the modes follow and off only.
+- The mixer is global (`Production.AudioChannels`), set with `PUT …/audio/channels` (the listed channels are replaced, others stay,
+  all or nothing, `adjusting` while a fader moves). Gain −100 … +10 dB where −100 is silence (shown as −∞; no infinity on the wire),
+  sync offset 0 … 500 ms (a delay of the sound), modes always | follow | off. Levels per scene are not built; the channel list
+  is the only state, so the export of #14 can take it as a clean list (`audioChannels` of the snapshot).
+- Audible = broadcast live ∧ not muted ∧ gain > −100 ∧ mode (always; follow: a visible item of its picture is in the program scene, for a
+  microphone any source of its device). The preview is never audible; there is no preview mix, the operator uses PFL.
+- Ramps: 20 ms for a cut, a mute or a fader move, 300 ms when the broadcast goes live or ends, the duration of a fade (constant power,
+  at most 10 s) for a faded program switch. The same function (`audioRampMs`) is used by the output page and the Regie.
+- Output page: Web Audio only, remote tracks as streams (a muted `<audio>` element keeps them alive), videos through
+  `captureStream()`; `?audio=off` for a silent page; the page reports `audio { state, levelDb }`; "Sound on" only while blocked and
+  something could be heard. The proxy is assumed to be an OBS browser source with "Control audio via OBS"; an embedding frame needs
+  `allow="autoplay"`.
+- Regie: fifth dock "Audio" (default weight 1.4, stored layouts get it appended to the bottom zone), its own copy of the mix for the
+  meters, monitoring off by default and after every reload (Program or PFL of one channel, headphones in Chromium), the key M, its own
+  undo history of 60 steps, silence warning after 10 s under −60 dBFS (a warning in the row and the status line, never an incident),
+  "Audio blocked" in the output chip.
+- Sender: audio station = device kind `audioStation` (pairing form or `?station=audio` on a laptop link); microphones of phones and
+  laptops are off until switched on; "Share audio" for screens with the honest note (system sound only in Chrome/Edge on Windows with
+  the entire screen, otherwise tab sound, none in Firefox and Safari). Station profile: stereo, echo cancellation, noise suppression and
+  automatic gain off, Opus about 128 kbit/s, RED on, DTX off; voice profile: browser processing on, mono.
+- Security: the output page and the Regie subscribe to every audio track, so an output link also gives access to the microphones that are
+  muted in the mixer. This is accepted for the proxy case (links are secret, per link IP restriction) and is a reason for the Air mode
+  to use its own room and tokens (later).
+- Measurements (E2E on a loaded machine, tones of 440–1100 Hz): mute or fader change heard 6–60 ms after the answer of the request,
+  end of the broadcast silent within about 450 ms, the sound of the station reaches the output unchanged in level (±2 dB); the delay
+  from the microphone to the output page is recorded by E2E-AUD-16. Lip sync: the sound and the picture of a source travel in separate
+  streams and the output page plays the sound through Web Audio, so the browser does not align them for the output; the sync offset
+  (0–500 ms) is the tool of the operator; an automatic alignment is not built.
+
 ## #8 Format and resolution
 
 1. Formats from a fixed list (16:9, 9:16, 1:1, 4:3) with fixed target resolutions per format.
