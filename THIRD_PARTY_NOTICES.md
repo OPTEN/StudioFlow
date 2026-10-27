@@ -1,6 +1,6 @@
 # Third-party notices
 
-StudioFlow itself is licensed under the [Apache License 2.0](LICENSE) (see also [NOTICE](NOTICE)). It is built on the
+StudioFlow itself is licensed under the [MIT License](LICENSE) (see also [NOTICE](NOTICE)). It is built on the
 open-source software named below. Each component stays under its own licence; the notices here are for the
 components that are shipped inside the StudioFlow releases (the Docker images, the release files and the prototype) or
 that run next to it in the Compose stack.

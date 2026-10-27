@@ -70,7 +70,7 @@ export function headerComment() {
   StudioFlow clickable prototype (one file, works offline; fonts are embedded).
   Built by tools/build-prototype.mjs from prototype/regie.html and prototype/fonts/.
   All names, pictures and values in it are synthetic; it talks to no server.
-  Licence: Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0). The fonts Sofia Sans Semi Condensed and JetBrains
+  Licence: MIT (https://opensource.org/license/mit). The fonts Sofia Sans Semi Condensed and JetBrains
   Mono are licensed under the SIL Open Font License 1.1; their texts are in the element #${LICENSES_ID} at the end of
   the page.
 -->`;

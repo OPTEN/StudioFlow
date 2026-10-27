@@ -8,7 +8,7 @@
 <h3 align="center">A browser-based live production studio for webinars: phones and laptops as sources, OBS-like switching, a 16:9 output page.</h3>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://github.com/OPTEN/StudioFlow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/OPTEN/StudioFlow/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/OPTEN/StudioFlow/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/OPTEN/StudioFlow"></a>
 </p>
@@ -208,5 +208,5 @@ Planned (see [PRODUCT.md](PRODUCT.md) and [docs/decisions.md](docs/decisions.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md) explains how to get started, test and open a pull request, and
   [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies to everyone taking part.
 - Report vulnerabilities privately, not in a public issue: [SECURITY.md](SECURITY.md).
-- StudioFlow is licensed under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE) and
+- StudioFlow is licensed under the [MIT License](LICENSE); see [NOTICE](NOTICE) and
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the third-party components.
