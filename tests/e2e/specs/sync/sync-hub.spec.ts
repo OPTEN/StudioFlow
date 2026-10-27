@@ -162,7 +162,15 @@ test.describe('SYNC studio hub', () => {
     const hubs = [busy, idle, foreignPhone].map((device) => DeviceHub.connect(stack.anonymousBase, device.credentials, { headers: stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {} }));
     for (const device of hubs) onCleanup(() => device.stop());
     for (const device of hubs) await device.open();
+    const beforeActivation = hub.received.length;
     await api.activateProduction(production.id);
+    // The REST answer comes before the hub has delivered what the activation causes (productionChanged, the status events of
+    // the devices that connected meanwhile). The Regie receives the events in revision order, so the echo of a write of our
+    // own is the end of everything queued before it: only then the baseline is settled.
+    await hub.waitForEvent('productionChanged', (event) => event.production.id === production.id && event.production.isActive, { from: beforeActivation });
+    const barrier = `Barrier ${Date.now()}`;
+    await api.updateScene(production.id, production.sceneIds[0]!, { name: barrier });
+    await hub.waitForEvent('sceneUpserted', (event) => event.scene.name === barrier, { from: beforeActivation });
     const from = hub.received.length;
     const events = hub.events().length;
     // 10 reports per second for 10 s from one device, the foreign device reports as well, the idle one never does.
