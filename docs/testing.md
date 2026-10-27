@@ -33,7 +33,7 @@ Contents: 1 Test levels, tools and the E2E harness · 2 Test catalogue · 3 Brow
 
 Areas: `AUTH` auth and security · `PAIR` pairing · `SCENE` scenes and editing · `SWITCH` switching, broadcast, tally · `SRC` sources, stations, incidents ·
 `OUT` output page · `NET` resilience and network · `DEV` devices, viewports, accessibility · `DOCK` dock layout and persistence · `MEDIA` assets · `OPS` operations ·
-`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log · `I18N` language and formats.
+`SYNC` realtime protocol and state model · `LK` LiveKit integration · `TXT` texts and lower thirds · `AUDIT` audit log · `XFER` duplicate, export and import · `I18N` language and formats.
 
 Priority: **P0** blocks every merge and every release (smoke set, see 6.2); **P1** must pass before a release (nightly full run); **P2** robustness and polish
 (weekly or on demand, a failure is a defect but not a blocker).
@@ -385,11 +385,12 @@ fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) an
 | `AUDIT` Audit log | 6 | 7 | 4 | 17 | 10 | 7 | 0 |
 | `LINK` Output links and the camera | 5 | 4 | 3 | 12 | 9 | 2 | 1 |
 | `FMT` Format and resolution | 5 | 3 | 3 | 11 | 6 | 4 | 1 |
+| `XFER` Duplicate, export and import | 6 | 6 | 8 | 20 | 12 | 8 | 0 |
 | `I18N` Language and formats | 0 | 0 | 13 | 13 | 0 | 13 | 0 |
-| **Total** | **111** | **111** | **277** | **499** | **214** | **223** | **62** |
+| **Total** | **117** | **117** | **285** | **519** | **226** | **231** | **62** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.18 I18N](#218-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import)
 
 
 ### 2.1 AUTH – Auth and security
@@ -2536,6 +2537,93 @@ Issue #8, decisions «#8», spec 4.2 ("Canvas"), 4.3, 8.1, 8.3, 9.3, runbook 19.
 - Steps: "Format and resolution…" on the default production; 720p; then 9:16 on a production without elements.
 - Expect: four formats and two resolutions, Save off until something changes; 720p is saved without a question and the monitor reads "1280 × 720 · 30 fps"; 9:16 is saved without a question when no scene has elements, the scene thumbnails are 36 px high and about 20 px wide.
 
+### 2.18 XFER – Duplicate, export and import
+
+Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can be duplicated inside the installation and exported as a file (`.studioflow.zip`: `manifest.json` with `formatVersion` 1 and the media under `media/`, each with its SHA-256) that another installation imports as a new production. Devices are never copied: the cameras and screens that scenes use become placeholders (code and name, "Source missing") that a source takes over with one click. E2E specs run in English (`en-US`) against the stack (Docker); the files they build are made by `support/zip.ts`.
+
+**UNIT-XFER-01** · P0 · xunit (`ManifestTests`) — The manifest
+- Steps: write and read a manifest; unknown property, missing required one, wrong type, unknown enum text, `null` for a required field; `formatVersion` 0, 1, 2, 99, missing; the migration chain with a test step; the keys of references (`asset:`, `text:`, `placeholder:`).
+- Expect: the round trip gives an equal manifest; every strictness violation is `invalid_archive` and names the path (`scenes[1].items[0].fit`); an older version is migrated step by step in memory, the current one is untouched, a newer one is `unsupported_format` without reading further; a reference without a key or with another prefix is refused.
+
+**UNIT-XFER-02** · P0 · xunit (`ProductionTransferTests`) — Capture and plan
+- Steps: capture a production with texts, media, a slate and background medium, scenes with every item field, devices (one in two scenes, one as fallback only, one removed from the production) and an existing placeholder; plan the manifest; names (`CopyOf`, `Unique`); limits (99 scenes, 32 items, 64 texts, 100 device sources); duplicate keys, unknown references, invalid codes, geometry errors.
+- Expect: everything listed in spec 4.2.2 is in the manifest and nothing else (no device id, secret, output link, log, broadcast state); a device source becomes one placeholder with its code, name and kind, a source whose device is gone gets the next free code and no name; the export of a copy equals the export of the original apart from the time; the plan assigns new ids to everything and resolves every reference; each error carries its path; "Name (copy)", " (2)", " (3)" and the cut to 80 characters; limits are `limit_reached`.
+
+**UNIT-XFER-03** · P0 · xunit (`PlaceholderTests`) — Placeholders
+- Steps: create (valid and invalid codes, kinds, slots), reserved codes in the source catalogue, assign to a camera, screen, medium, text and unknown source, assign a device source that no scene uses and one that is used, remove, fallbacks, log texts.
+- Expect: the code of a placeholder is reserved (the next device gets K2); every item and fallback that points to the placeholder points to the target afterwards and the placeholder is gone; a text or an unknown source is `validation_failed`; an unused device source of the same kind takes the code (and its health follows), a used one keeps it; removing drops the items and clears fallbacks that name it; the texts "K1 assigned to …" and "K1 removed from the scenes".
+
+**UNIT-XFER-04** · P0 · xunit (`ImportArchiveTests`) — The ZIP checks
+- Steps: `IsSafeName` for `..`, `.`, empty segments, absolute, backslash, drive, control characters, 256 characters; a name outside `manifest.json` and `media/`; a name twice; the end-of-directory probe (claims of millions of entries, ZIP64); ratio, entry count, unpacked size; a directory that understates the size of a stored entry and of a deflated one; the budget over several reads; a missing and an oversized manifest; a medium with a wrong checksum.
+- Expect: every violation is `invalid_archive` or `archive_too_large` before anything is unpacked, and a lying directory is stopped while reading (never more than the declared length is read); a checksum or size that differs from the manifest is `invalid_archive`.
+
+**UNIT-XFER-05** · P1 · ng, vitest (`placeholder-view.spec.ts`, `source-rows.spec.ts`, `placeholder-commands.service.spec.ts`, `production-store.service.spec.ts`, `studio-api.service.spec.ts`, `api-error.spec.ts`, `production-state.spec.ts`, `placeholder.de.spec.ts`) — Placeholders in the client
+- Steps: names, usage and rows of placeholders; assignable groups; offers for a new station; the rows of the Sources dock for an item that points to a placeholder; the store (`placeholderOf`, `codeOf`, `sourceLabel`, `isSourceUsed`); the state reducer (`placeholders` in the snapshot, `placeholderRemoved`, none for the output); the commands (one request at a time, offline, errors, toasts); the API client (duplicate, export URL, dry run and import with progress, assign, remove); `archive_too_large` with status 413; the German texts.
+- Expect: "K1 · Stage phone" (and "K1" without a name); sorted by code; texts, blocked sources and the wrong kind are never offered, a used source is not offered; the item keeps code and name and says "Source missing" (muted, idle lamp); the multipart upload is shared with the asset upload (CSRF header, progress, abort); a 413 `archive_too_large` is explained as "larger than this installation accepts", not with the media limits; German plural forms ("in 2 Szenen", "in keiner Szene").
+
+**UNIT-XFER-06** · P1 · ng (`duplicate-production-form`, `import-production-form`, `production-menu.transfer`, `placeholder-list`, `placeholder-offer` specs) — Regie forms
+- Steps: the duplicate form (default name cut to 80, hint with the number and size of the media, empty name, a refusal, a double submit, Cancel); the import form (choose, dry run with progress, preview with placeholders and warnings, import, a refused file, a newer version, too large, cancel while checking, choose another file); the production menu (entries, export link, back to the menu and a fresh list after a copy, live, offline); "Missing sources" (list, assign with one click, nothing to assign, remove after the confirmation, Cancel, the row disappears on `placeholderRemoved`); the offer in the station row (assign, sorted, at most four and a count, gone when the station is used).
+- Expect: nothing is sent twice and nothing before "Duplicate" / "Import"; the name is trimmed; the preview counts, the size ("2 media files · 3 MB") and the placeholders ("K1 Stage phone", "S1 removed source") are shown before anything is created; errors are the texts of the codes under the buttons and the form stays; the menu lists the new production without switching to it; "Use as K1 · Stage phone" assigns with one request and the toast names the new source; the removal says how many elements go and sends nothing before the red confirmation.
+
+**INT-XFER-01** · P0 · xunit (`ProductionTransferApiTests`) — Duplicate
+- Steps: a rich production (scenes, items, texts, media, slates, canvas, a paired phone and laptop, an output link with an IP restriction, a log); `POST …/duplicate` with and without a name, with a taken name, an invalid name, an unknown production, without session and without CSRF header; while the broadcast is live.
+- Expect: 201, not active, standby, first scene on program; scenes, media and settings equal the original without ids (media with new ids and the same bytes); no device, invite, secret, output key, IP restriction or log of the original; the devices are placeholders with code and name; "Name (copy)" / " (2)"; 400, 404, 401, 403; a live production is copied without a change of its revision and keeps its broadcast.
+
+**INT-XFER-02** · P0 · xunit (`ProductionTransferApiTests`) — Export and import
+- Steps: export a production; read the ZIP; dry run and import; the same file twice; export of the copy; audit entries.
+- Expect: `application/zip` with the file name `{slug}-{date}.studioflow.zip`, `manifest.json` and `media/*` only, checksums match, no id and no secret in it; the preview counts match and nothing is created; the import gives the same scenes, items and media without ids as the original, a name with " (2)", not active; the second import " (3)"; `production.duplicated`, `.exported`, `.imported` with the names, and nothing of a file in the audit details.
+
+**INT-XFER-03** · P0 · xunit (`ProductionImportSecurityTests`) — Refused files
+- Steps: zip slip in an entry name and in the manifest (`../`, absolute, backslash); a ZIP bomb (high ratio) and a directory that lies about the size; too many entries, an end-of-directory that claims 60 000; an SVG, a GIF, a text and an HTML file as medium (and an SVG as the second medium); a wrong checksum or size; a broken manifest (not JSON, wrong types, a manifest of another program, nested too deeply, a reference to a part that is not in the file, duplicate keys and codes); `formatVersion` 2, 3, 99, 0, "1", missing; a file that is not a ZIP; more than 99 scenes, 32 items, 64 texts; each as preview and as import.
+- Expect: 400 `invalid_archive`, 400 `unsupported_format`, 413 `archive_too_large`, 415 `unsupported_media`, 409 `limit_reached` as listed in spec 4.2.2; after each: no new production, no row in any table, no file under the media folder (not even `evil.png` next to it), the existing productions unchanged; a failing second medium leaves the first one's file out as well.
+
+**INT-XFER-04** · P1 · xunit (`ProductionImportLimitsTests`) — Limits
+- Steps: an app with a 1 MiB import limit, 4 MiB unpacked and 20 entries; a file above, an unpacked size above, more entries.
+- Expect: 413 `archive_too_large` before the body is read (for the announced size) and while reading (for the unpacked size); the options are validated at startup (`Transfer:*`).
+
+**INT-XFER-05** · P0 · xunit (`PlaceholderApiTests`) — Placeholders
+- Steps: assign to a camera, a medium, a text, an unknown source, a placeholder of another production; a fallback that names the source of its own item; assign a phone that no scene uses and one that is used; remove; the hub events and the output hub; audit.
+- Expect: 200 `{ scenes, items }`; the scenes arrive as `sceneUpserted`, then `placeholderRemoved`; the output hub sees scenes and a revision-only event, never the placeholder; the new phone becomes K1 (the device sees its new code); 400, 404; `placeholder.assigned` ("K1 assigned to …") and `.removed`.
+
+**INT-XFER-06** · P1 · xunit (`PlaceholdersMigrationTests`, `ImportBodyLimitErrorTests`) — Migration and the streamed limit
+- Steps: migrate a database from before the column; a production with placeholders round trip; Kestrel's 413 on the import endpoint, on the upload and without an endpoint.
+- Expect: existing productions have `[]`; the placeholders survive the database; a streamed body over the limit is `archive_too_large` on the import and `unsupported_media` elsewhere.
+
+**E2E-XFER-01** · P0 · pw (`xfer-api.spec.ts`) — A duplicate keeps the work and leaves the devices
+- Pre: a production with three scenes, a phone (K1) and a laptop (S1) in them, a picture (M1) as item, scene background and slate, an IP restriction and a log.
+- Steps: `POST …/duplicate` through Caddy; read both snapshots, the media, the output settings, the audit log.
+- Expect: 201, not active (the original stays the active one); the same scenes without ids, the same slate, canvas and text colours; the picture with a new id and the same bytes; no device, source of a device, invite, pairing request, incident or secret of the devices in the snapshot; the placeholders `K1 · Stage phone` and `S1 · Lea laptop · Screen 1`; a new output link and no IP restriction; none of the original's log entries; the original unchanged (same revision); `production.duplicated` in the audit log.
+
+**E2E-XFER-02** · P1 · pw (`xfer-api.spec.ts`) — Duplicate and export while live
+- Steps: start the broadcast; duplicate with no name; export; read the original.
+- Expect: "{name} (copy)" in standby, not active; the export answers 200; the original is live with the same revision as before.
+
+**E2E-XFER-03** · P0 · pw (`xfer-api.spec.ts`) — Export, preview and import through Caddy
+- Steps: `GET …/export`; read the ZIP; dry run; import; import again; audit.
+- Expect: `application/zip`, a `.studioflow.zip` file name; `manifest.json` (`studioflow-production`, version 1) and one medium whose SHA-256 is in the manifest; no `prd_`, `scn_`, `itm_`, `dev_` id, device secret, output key or slug in the manifest; the preview says `{name} (2)`, 3 scenes, 1 medium, the placeholders and the warnings `nameChanged` and `placeholders`, and creates nothing; the import is 201, not active, with the same scenes without ids and the same picture bytes, a new output link; the second import is " (3)"; `production.exported` and `production.imported` in the audit log.
+
+**E2E-XFER-04** · P0 · pw (`xfer-api.spec.ts`) — Refused files and what is left
+- Steps: import and dry run of a text file, a ZIP without manifest, `formatVersion` 99, an entry `../evil.txt`, `/etc/evil.txt`, `other/evil.png`, a deflated ZIP bomb (40 MiB of zeros), a changed medium (wrong checksum), an SVG; then the list of productions and `find /data/media` in the api container.
+- Expect: 400 `invalid_archive` (also for the first six and the checksum), 400 `unsupported_format`, 415 `unsupported_media` for the SVG, each as preview and as import; the same productions as before and the same files under `/data/media`.
+
+**E2E-XFER-05** · P1 · pw (`xfer-api.spec.ts`) — The import route in Caddy
+- Steps: raw TLS requests (headers only) to `POST /api/productions/import` with `Content-Length` 4100 MiB + 1 and 4097 MiB + 1, with the session; the import and the export without session.
+- Expect: 413 from Caddy before a body is sent for the first, 413 `archive_too_large` from the API for the second; 401 for both calls without session.
+
+**E2E-XFER-10** · P0 · pw (`xfer-ui.spec.ts`, K1) — Duplicate, pair, "Use as K1": the picture is back in every K1 scene
+- Pre: a production with a real phone (stamp camera) live as K1 in two of three scenes.
+- Steps: production menu → "Duplicate production…" (the name reads "… (copy)", the hint says cameras and screens become placeholders) → "Duplicate"; the copy is listed and not current; click it to switch; look at the Sources dock; pair a second real phone with the QR code of the copy; "Use as K1 · Stage phone" in its station row; start the broadcast; open the output; switch to the second scene.
+- Expect: the toast "Production “… (copy)” created. It is not active …"; the active production stays the original until the click; the first item reads K1 "Source missing" and "Missing sources" lists "K1 · Stage phone in 2 scenes"; the new phone is offered "Use as K1 · Stage phone" (and is K2 until then); after the click the toast says the scenes show it in place of "K1 · Stage phone", the offer and the section are gone, the phone is K1 in the station row, in the Sources dock and in both scenes (API); the output plays one video in the first scene and one in the second.
+
+**E2E-XFER-11** · P1 · pw (`xfer-ui.spec.ts`) — Export and import in the Regie
+- Steps: "Export" in the production menu (download); "Import…" → choose the file; read the preview; "Import"; choose a text file.
+- Expect: a download named `….studioflow.zip` that holds `manifest.json`, and the toast "Export of “…” started"; the preview shows the name with " (2)", "3 scenes", the placeholder "K1 Stage phone" and the warning that the name exists, and the list of productions is unchanged; after "Import" the toast "Production “… (2)” imported. It is not active …", the production is listed and not current, the original stays active, its scenes are the same and K1 is a placeholder; the text file is explained as "not a valid StudioFlow export" and creates nothing.
+
+**E2E-XFER-12** · P1 · pw (`xfer-ui.spec.ts`) — Assign and remove in the Sources dock
+- Pre: a copy (K1 in two scenes, S1 in one) as the active production with a second phone paired that no scene uses.
+- Steps: "Assign K1 · Stage phone" → the phone; "Assign S1 …" → "Remove from all scenes…" → Cancel → "Remove from all scenes…" → "Remove S1 · Lea laptop · Screen 1".
+- Expect: the toast "The scenes now show Spare phone in place of K1 · Stage phone."; K1 is gone from "Missing sources", the first two scenes show the phone, the placeholder list has S1 only; the confirmation says "The 1 element that shows S1 … is removed from its scene." and Cancel changes nothing; after the removal there are no placeholders and the scene has lost the screen item.
+
 ---
 
 ## 3. Browser and device matrix
@@ -2747,7 +2835,7 @@ Failure artifacts: when `e2e-smoke` fails it uploads `tests/e2e/.output` (14 day
 
 `E2E-NET-00`, `E2E-AUTH-01`, `E2E-AUTH-06`, `E2E-AUTH-07`, `E2E-AUTH-09`, `E2E-PAIR-01`, `E2E-PAIR-02`, `E2E-PAIR-03`, `E2E-PAIR-10`, `E2E-PAIR-13`, `E2E-SCENE-04`, `E2E-SCENE-05` (templates `full`, `two`, `pip` only), `E2E-SCENE-07`, `E2E-SCENE-12`,
 `E2E-SWITCH-01`, `E2E-SWITCH-02`, `E2E-SWITCH-04`, `E2E-SWITCH-06`, `E2E-SWITCH-11`, `E2E-SWITCH-12`, `E2E-SRC-01`, `E2E-SRC-02`, `E2E-SRC-03`, `E2E-SRC-06`, `E2E-SRC-07`, `E2E-SRC-10`, `E2E-OUT-01`, `E2E-OUT-02`, `E2E-OUT-06`, `E2E-OUT-08`,
-`E2E-DEV-01`, `E2E-DOCK-02`, `E2E-MEDIA-03`.
+`E2E-DEV-01`, `E2E-DOCK-02`, `E2E-MEDIA-03`, `E2E-XFER-01`, `E2E-XFER-03`, `E2E-XFER-10`.
 
 ### 6.3 Tags and selection
 

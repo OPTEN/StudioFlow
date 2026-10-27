@@ -144,6 +144,47 @@ Implementation details fixed with the work on #13 (spec 4.4, 8.3, 9.1):
 2. "Duplicate" only; a template is a production named "Template …".
 3. Export always includes media.
 
+Pinned details (implementation, spec 4.2.2):
+
+4. **One description.** Duplicate, export and import all go through the manifest (`ProductionExport.Capture` and
+   `TransferPlan`): a copy contains exactly what a file carries, and a field that is not in the manifest is not handed on.
+   What is not: devices and their secrets, pairings, invites, incidents, output links with their keys and IP restrictions
+   (the copy gets a fresh default link), broadcast state, program and preview scene, last transition, log, audit, `isActive`.
+5. **Placeholders** are stored per production (`placeholders`, `jsonb`) and appear in the snapshot, not in the output. A
+   placeholder is made for every device source a scene uses (as item or as fallback), also when the device is gone; a device
+   that no scene uses is not copied at all. Its source reference has a made-up device id, so the items stay valid and say
+   "Source missing"; the Regie shows the code and name from the placeholder.
+6. **Codes.** A placeholder reserves its code. A device source that no scene uses yet and has the kind of the placeholder takes
+   over the code when it is assigned ("Use as K1" makes the new phone K1); a source that is in use keeps its code. This is
+   the only way a code of an existing source changes.
+7. **Assignment** goes to any camera, screen or medium that exists (any kind, not texts), so a camera placeholder can become
+   a picture; one request changes every scene and emits `sceneUpserted` per scene, then `placeholderRemoved`. "Remove" deletes the
+   items and fallbacks that name the placeholder. Both are audited (`placeholder.assigned`, `placeholder.removed`).
+8. **Never active.** A duplicate and an import are created in standby, the first scene on program, and never become the
+   active production; the operator switches in the menu. A running production can be duplicated and exported, because only
+   reading happens.
+9. **Names.** The copy is "{name} (copy)"; a name that exists gets " (2)", " (3)" (also for an import, the preview shows the
+   final name and a warning). There is no limit on the number of productions.
+10. **Format.** `formatVersion` starts at 1; the manifest has no ids, parts refer to each other by keys of the file. Older
+   versions are migrated in memory (`ManifestMigrator`), newer ones are `unsupported_format`. A part that comes later (the audio
+   mixer of #7) is a new version with a migration that adds an empty part. The file extension is `.studioflow.zip`, the media
+   keep their extension under `media/`, each with its SHA-256.
+11. **Limits** (`Transfer:*`, validated at startup): file 4 GiB (Caddy 4100 MiB), 1000 files, 8 GiB unpacked, manifest 8 MiB,
+    compression ratio 100 from 1 MiB, plus the domain limits (99 scenes, 32 items, 64 texts, 100 device sources). The ZIP is
+    checked twice: by its directory before anything is read, and again while reading (a lying directory is stopped).
+12. **All or nothing.** Media are written under the new production id before the transaction and removed on any failure; a crash
+    in between can leave an unreferenced folder, documented in the runbook (7.5), not cleaned automatically.
+13. **Errors.** New codes `invalid_archive` (400), `unsupported_format` (400), `archive_too_large` (413); media that fail the
+    upload checks keep `unsupported_media` (415) and a file with more than the domain allows is `limit_reached` (409). A body
+    that crosses the limit while it streams is `archive_too_large` on the import route and stays `unsupported_media` elsewhere.
+14. **Audit.** `production.duplicated` (on the copy, with `from`), `production.exported` (on the exported production) and
+    `production.imported` (on the new one); a file or a manifest is never recorded in the details.
+15. **Regie.** "Duplicate production…", "Export" and "Import…" are in the production menu; the import shows a preview (dry run
+    with `?dryRun=true`, the file is uploaded twice) before it creates anything. Assignment is offered in the station row of a
+    new device ("Use as K1 · Stage phone") and in "Missing sources" of the Sources dock; no popover, the list opens inline.
+16. **Caddy.** One local route for `POST /api/productions/import` (`STUDIOFLOW_MAX_IMPORT`, 15 min response header timeout like
+    the asset upload); the export is a plain streamed `GET`.
+
 ## #15 CI
 
 1. E2E smoke runs in every PR and on `main`.
