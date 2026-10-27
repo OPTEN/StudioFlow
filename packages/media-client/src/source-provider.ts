@@ -1,7 +1,7 @@
 /**
  * Supplies device pictures from LiveKit to the scene renderer (spec 7 and 8.4): maps `{identity}/{trackName}` to remote
  * video tracks, keeps video elements on their last frame across track loss, chooses the simulcast layer from the
- * renderers' desired sizes and sets the playout delay per role.
+ * renderers' desired sizes, pauses what nobody needs and sets the playout delay per role.
  */
 import { deviceSourceRef, slotKind } from '@studioflow/scene-model';
 import type {
@@ -9,8 +9,9 @@ import type {
   SourceAvailability,
   SourceMediaProvider,
 } from '@studioflow/scene-renderer';
-import { RoomEvent, VideoQuality } from 'livekit-client';
+import { RoomEvent } from 'livekit-client';
 import { systemClock, type Clock, type TimerHandle } from './clock';
+import { DecoderCapability, kindFromStats, type DecoderKind } from './decoder-info';
 import { DesiredSizes } from './desired-size';
 import { Listeners } from './listeners';
 import type {
@@ -25,10 +26,26 @@ import { consoleLogger, errorContext, type MediaLogger } from './logger';
 import type { RoomSource } from './media-session';
 import { ReceiverStatsReader, type ReceiverSnapshot } from './media-stats';
 
+/** Hardware or software decoding of the stream: the stats where the browser tells this page, else its capabilities. */
+export type StreamDecoder = DecoderKind;
+
 /** Receive statistics of one source (output debug overlay, Regie monitoring). */
 export interface SourceStats extends ReceiverSnapshot {
   /** Receive bitrate over the last ~2 s (all layers the SFU forwards; one at a time). */
   readonly bitrateKbps?: number;
+  /** Whether this stream is decoded in hardware or software; absent when the browser cannot tell. */
+  readonly decoder?: StreamDecoder;
+}
+
+/** What the decoders of all received streams did since the previous {@link LiveKitSourceProvider.decoderSummary} call. */
+export interface DecoderSummary {
+  /** Streams that decoded frames (a paused stream decodes none). */
+  readonly decoding: number;
+  /** Of those, the streams decoded in software. */
+  readonly software: number;
+  /** Frames the receivers dropped and received (the decoder cannot keep up when the share is high). */
+  readonly framesDropped: number;
+  readonly framesReceived: number;
 }
 
 /** Construction options of {@link LiveKitSourceProvider}. */
@@ -39,8 +56,14 @@ export interface LiveKitSourceProviderOptions {
   readonly clock?: Clock;
   /** Wraps a track for `srcObject`; injectable because test DOMs lack a working `MediaStream`. */
   readonly createStream?: (track: MediaStreamTrack) => MediaStream;
-  /** Regie only: an unused source is paused (`setEnabled(false)`) after this time (default 10 s). */
+  /**
+   * A source that nobody asks a picture for any more is paused (`setEnabled(false)`: the SFU stops forwarding it and the
+   * browser stops decoding it) after this time. Default 10 s in the Regie and 5 s on the output; it is resumed at once
+   * when somebody needs it again. A source nobody asked for when its track arrives is paused after 1.5 s.
+   */
   readonly disableUnusedAfterMs?: number;
+  /** Answers `MediaCapabilities` questions about decoders (injectable in tests). */
+  readonly decoderCapability?: DecoderCapability;
 }
 
 type SubscriberRole = 'studio' | 'output';
@@ -55,7 +78,16 @@ const PLAYOUT: Readonly<
 
 const PENDING: SourceAvailability = { state: 'pending' };
 const LIVE: SourceAvailability = { state: 'live' };
-const DEFAULT_DISABLE_UNUSED_AFTER_MS = 10_000;
+/**
+ * A track that nobody asks a picture for when it arrives is paused after this time, not at once: a page that is loading
+ * registers its consumers a moment after the tracks arrive, and pausing and resuming would cost it a round trip to the SFU
+ * and a wait for a keyframe before the first picture.
+ */
+const FRESH_TRACK_GRACE_MS = 1_500;
+const DEFAULT_DISABLE_UNUSED_AFTER_MS: Readonly<Record<SubscriberRole, number>> = {
+  studio: 10_000,
+  output: 5_000,
+};
 
 interface Subscription {
   readonly track: MediaRemoteTrack;
@@ -69,6 +101,15 @@ interface SourceEntry {
   subscription: Subscription | null;
   availability: SourceAvailability;
   disableTimer: TimerHandle | null;
+  /** The track is paused by us (nobody needs a picture): no frames arrive, the elements show nothing. */
+  paused: boolean;
+}
+
+/** Counters of one inbound stream at the previous summary. */
+interface DecoderMark {
+  readonly framesDecoded: number;
+  readonly framesDropped: number;
+  readonly framesReceived: number;
 }
 
 /** Source id of a remote publication, or null for track names that are not StudioFlow slots (e.g. audio, future). */
@@ -111,6 +152,8 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #clock: Clock;
   readonly #createStream: (track: MediaStreamTrack) => MediaStream;
   readonly #disableUnusedAfterMs: number;
+  readonly #decoders: DecoderCapability;
+  readonly #decoderMarks = new WeakMap<MediaRemoteTrack, DecoderMark>();
   readonly #entries = new Map<string, SourceEntry>();
   readonly #changes: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
@@ -125,7 +168,9 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     this.#logger = options.logger ?? consoleLogger;
     this.#clock = options.clock ?? systemClock;
     this.#createStream = options.createStream ?? defaultCreateStream;
-    this.#disableUnusedAfterMs = options.disableUnusedAfterMs ?? DEFAULT_DISABLE_UNUSED_AFTER_MS;
+    this.#disableUnusedAfterMs =
+      options.disableUnusedAfterMs ?? DEFAULT_DISABLE_UNUSED_AFTER_MS[this.#role];
+    this.#decoders = options.decoderCapability ?? new DecoderCapability();
     this.#changes = new Listeners((error) =>
       this.#logger.warn('source change listener failed', errorContext(error)),
     );
@@ -141,8 +186,9 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     const entry = this.#entry(sourceId);
     entry.elements.add(video);
     prepareVideo(video);
+    // A paused source shows nothing until somebody needs it again (then it is resumed and every element gets the stream).
     const stream = entry.subscription?.stream;
-    if (stream !== undefined) {
+    if (stream !== undefined && !entry.paused) {
       this.#show(video, stream);
     }
   }
@@ -168,8 +214,10 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
 
   /**
    * {@inheritDoc SourceMediaProvider.setDesiredSize}
-   * Output: no consumer → LOW layer (kept subscribed, so a take switches instantly), else the matching layer via
-   * `setVideoDimensions`. Regie: no consumer for longer than `disableUnusedAfterMs` → paused, re-enabled immediately.
+   * The matching layer via `setVideoDimensions`. No consumer for longer than `disableUnusedAfterMs` → the source is
+   * paused (no frames are forwarded, none decoded); the next request resumes it at once and the picture is back with the
+   * next keyframe. The output keeps the program and the preview scene asked for, so a Take shows its picture immediately
+   * and every other scene needs that keyframe (about half a second).
    */
   setDesiredSize(sourceId: string, consumerId: string, size: DesiredSize | null): void {
     if (this.#disposed) {
@@ -198,7 +246,51 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       return null;
     }
     const snapshot = await this.#readReceiver(track);
-    return { ...snapshot, bitrateKbps: Math.round(track.currentBitrate / 1000) };
+    const decoder = await this.#decoderOf(snapshot);
+    return {
+      ...snapshot,
+      bitrateKbps: Math.round(track.currentBitrate / 1000),
+      ...(decoder === null ? {} : { decoder }),
+    };
+  }
+
+  /**
+   * What the decoders did since the previous call: how many streams decode, how many of them in software, and the
+   * frames dropped against the frames received (the output reports this; a share above a few percent means the machine
+   * cannot keep up). Paused streams decode nothing and do not count. The first call counts since the stream started.
+   */
+  async decoderSummary(): Promise<DecoderSummary> {
+    const tracks = [...this.#entries.values()]
+      .filter((entry) => !entry.paused)
+      .map((entry) => entry.subscription?.track)
+      .filter((track): track is MediaRemoteTrack => track !== undefined);
+    const reads = await Promise.all(
+      tracks.map(async (track) => ({ track, snapshot: await this.#readReceiver(track) })),
+    );
+    let decoding = 0;
+    let software = 0;
+    let framesDropped = 0;
+    let framesReceived = 0;
+    for (const { track, snapshot } of reads) {
+      const mark: DecoderMark = {
+        framesDecoded: snapshot.framesDecoded ?? 0,
+        framesDropped: snapshot.framesDropped ?? 0,
+        framesReceived: snapshot.framesReceived ?? 0,
+      };
+      const before = this.#decoderMarks.get(track);
+      this.#decoderMarks.set(track, mark);
+      const decoded = mark.framesDecoded - (before?.framesDecoded ?? 0);
+      if (decoded <= 0) {
+        continue;
+      }
+      decoding += 1;
+      framesDropped += Math.max(0, mark.framesDropped - (before?.framesDropped ?? 0));
+      framesReceived += Math.max(0, mark.framesReceived - (before?.framesReceived ?? 0));
+      if ((await this.#decoderOf(snapshot)) === 'software') {
+        software += 1;
+      }
+    }
+    return { decoding, software, framesDropped, framesReceived };
   }
 
   /**
@@ -209,7 +301,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
    */
   async estimateLatencyMs(): Promise<number | null> {
     const tracks = [...this.#entries.values()]
-      .filter((entry) => entry.availability.state === 'live')
+      .filter((entry) => entry.availability.state === 'live' && !entry.paused)
       .map((entry) => entry.subscription?.track)
       .filter((track): track is MediaRemoteTrack => track !== undefined);
     const estimates = (await Promise.all(tracks.map((track) => this.#readReceiver(track))))
@@ -303,19 +395,23 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
     const entry = this.#entry(sourceId);
     let changed = false;
+    let fresh = false;
     if (entry.subscription?.track === track) {
       entry.subscription.publication = publication;
     } else {
       this.#clearDisableTimer(entry);
       const stream = this.#createStream(track.mediaStreamTrack);
       entry.subscription = { track, publication, stream };
+      // A new subscription is enabled; whether it stays so depends on the consumers.
+      entry.paused = false;
       for (const video of entry.elements) {
         this.#show(video, stream);
       }
       changed = true;
+      fresh = true;
     }
     this.#applyPlayout(track);
-    this.#applyQuality(entry);
+    this.#applyQuality(entry, fresh);
     changed = (publication.isMuted ? this.#markLost(entry) : this.#markLive(entry)) || changed;
     if (changed) {
       this.#changes.emit(sourceId);
@@ -360,6 +456,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       return;
     }
     entry.subscription = null;
+    entry.paused = false;
     this.#clearDisableTimer(entry);
     if (this.#markLost(entry)) {
       this.#changes.emit(sourceId);
@@ -399,36 +496,75 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
   }
 
-  /** Applies the aggregated desired size to the current publication (re-run after every new subscription). */
-  #applyQuality(entry: SourceEntry): void {
+  /**
+   * Applies the aggregated desired size to the current publication (re-run after every new subscription): the matching
+   * layer, or a pause when nobody needs the source. `fresh` is a subscription that just arrived: if nobody asked for it, it
+   * is paused after the short {@link FRESH_TRACK_GRACE_MS} instead of the grace time.
+   */
+  #applyQuality(entry: SourceEntry, fresh = false): void {
     const publication = entry.subscription?.publication;
     if (publication === undefined) {
       return;
     }
     const size = entry.sizes.effective();
-    if (this.#role === 'output') {
-      this.#guard('video quality', () =>
-        size === null
-          ? publication.setVideoQuality(VideoQuality.LOW)
-          : publication.setVideoDimensions(size),
-      );
-      return;
-    }
     if (size !== null) {
       this.#clearDisableTimer(entry);
       this.#guard('video dimensions', () => {
         publication.setEnabled(true);
         publication.setVideoDimensions(size);
       });
-    } else if (entry.disableTimer === null) {
+      this.#resume(entry);
+    } else if (entry.disableTimer === null && !entry.paused) {
+      const grace = fresh
+        ? Math.min(FRESH_TRACK_GRACE_MS, this.#disableUnusedAfterMs)
+        : this.#disableUnusedAfterMs;
       entry.disableTimer = this.#clock.setTimeout(() => {
         entry.disableTimer = null;
-        const current = entry.subscription?.publication;
-        if (current !== undefined && entry.sizes.isEmpty) {
-          this.#guard('disable unused source', () => current.setEnabled(false));
+        if (entry.sizes.isEmpty) {
+          this.#pause(entry);
         }
-      }, this.#disableUnusedAfterMs);
+      }, grace);
     }
+  }
+
+  /**
+   * Stops the SFU forwarding the track and empties the elements: a frame from before the pause must never be shown when
+   * the source is needed again (the speaker may have moved on), so the element is blank until the first new frame.
+   */
+  #pause(entry: SourceEntry): void {
+    const publication = entry.subscription?.publication;
+    if (publication === undefined || entry.paused) {
+      return;
+    }
+    entry.paused = true;
+    this.#guard('disable unused source', () => publication.setEnabled(false));
+    for (const video of entry.elements) {
+      this.#guard('clear paused element', () => {
+        video.srcObject = null;
+      });
+    }
+  }
+
+  /** Gives the elements their stream again after a pause. */
+  #resume(entry: SourceEntry): void {
+    const stream = entry.subscription?.stream;
+    if (!entry.paused || stream === undefined) {
+      return;
+    }
+    entry.paused = false;
+    for (const video of entry.elements) {
+      this.#show(video, stream);
+    }
+  }
+
+  /** Hardware or software decoding of a stream: from the stats if the browser tells, else from its capabilities. */
+  async #decoderOf(snapshot: ReceiverSnapshot): Promise<DecoderKind | null> {
+    return (
+      kindFromStats({
+        implementation: snapshot.decoderImplementation,
+        powerEfficient: snapshot.powerEfficientDecoder,
+      }) ?? (await this.#decoders.kindOf(snapshot.codec, snapshot.width ?? 0, snapshot.height ?? 0))
+    );
   }
 
   #clearDisableTimer(entry: SourceEntry): void {
@@ -457,6 +593,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
         subscription: null,
         availability: PENDING,
         disableTimer: null,
+        paused: false,
       };
       this.#entries.set(sourceId, entry);
     }

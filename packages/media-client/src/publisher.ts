@@ -40,21 +40,33 @@ import {
   type Clock,
   type TimerHandle,
 } from './clock';
+import { EncoderCapability } from './encoder-info';
 import { Listeners } from './listeners';
 import { listenTo, type MediaRoom, type RoomListenerGroup } from './livekit-port';
 import { consoleLogger, errorContext, type MediaLogger } from './logger';
 import { isTerminalState, type MediaSessionState, type SessionStateSource } from './media-session';
 import { DeltaRatio } from './media-stats';
 import {
-  SCREEN_CAPTURE_OPTIONS,
+  SCREEN_FRAME_RATE_DEFAULT,
   cameraCaptureOptions,
   cameraPublishOptions,
+  contentHintOf,
   isCameraSettings,
+  isScreenFrameRate,
+  screenCaptureOptions,
   screenPublishOptions,
+  screenShareEncoding,
   type CameraResolution,
   type CameraSettings,
   type FacingMode,
+  type ScreenFrameRate,
 } from './publish-options';
+import {
+  browserCapabilities,
+  chooseScreenCodec,
+  probeScreenCodecs,
+  type ScreenCodec,
+} from './screen-codec';
 import {
   SLOT_PROBLEMS,
   describeCameraFailure,
@@ -96,6 +108,13 @@ export interface PublisherOptions {
   readonly cameraRestartGraceMs?: number;
   /** Lists the media devices for the lens picker (default `navigator.mediaDevices.enumerateDevices`). */
   readonly listDevices?: () => Promise<readonly MediaDeviceInfo[]>;
+  /**
+   * Codec of screen shares (default: VP9 only when the browser reports a power-efficient VP9 encoder, else H.264, see
+   * `screen-codec.ts`). Asked once, when the first screen is shared.
+   */
+  readonly screenCodec?: () => Promise<ScreenCodec>;
+  /** Answers `MediaCapabilities` questions about encoders for the telemetry (injectable in tests). */
+  readonly encoderCapability?: EncoderCapability;
 }
 
 /** Local track events the publisher reacts to. */
@@ -180,6 +199,18 @@ function withoutZoom(image: CameraImageSettings | undefined): CameraImageSetting
   return rest;
 }
 
+/** The codec of screens from what the browser reports (never rejects: unknown means H.264). */
+async function defaultScreenCodec(): Promise<ScreenCodec> {
+  const capture = screenCaptureOptions().resolution;
+  const probe = await probeScreenCodecs(browserCapabilities(), {
+    width: capture?.width ?? 2560,
+    height: capture?.height ?? 1440,
+    framerate: SCREEN_FRAME_RATE_DEFAULT,
+    bitrate: screenShareEncoding(SCREEN_FRAME_RATE_DEFAULT).maxBitrate ?? 3_000_000,
+  });
+  return chooseScreenCodec(probe);
+}
+
 /** Camera first, then screens by number. */
 function slotOrder(slot: string): number {
   return slot === 'camera' ? 0 : Number(slot.slice('screen-'.length));
@@ -214,6 +245,11 @@ export class Publisher {
   readonly #random: () => number;
   readonly #graceMs: number;
   readonly #listDevices: () => Promise<readonly MediaDeviceInfo[]>;
+  readonly #chooseScreenCodec: () => Promise<ScreenCodec>;
+  readonly #encoders: EncoderCapability;
+  /** Frame rate per screen slot (the option "Video in screen"); lives on after the share ended. */
+  readonly #screenRates = new Map<string, ScreenFrameRate>();
+  #screenCodec: Promise<ScreenCodec> | null = null;
   readonly #records = new Map<string, SlotRecord>();
   readonly #cameraListeners: Listeners<[CameraSettings]>;
   readonly #slotListeners: Listeners<
@@ -235,6 +271,8 @@ export class Publisher {
     this.#random = options.random ?? Math.random;
     this.#graceMs = options.cameraRestartGraceMs ?? DEFAULT_CAMERA_RESTART_GRACE_MS;
     this.#listDevices = options.listDevices ?? defaultListDevices;
+    this.#chooseScreenCodec = options.screenCodec ?? defaultScreenCodec;
+    this.#encoders = options.encoderCapability ?? new EncoderCapability();
     this.#slotListeners = new Listeners((error) =>
       this.#logger.warn('slot state listener failed', errorContext(error)),
     );
@@ -379,14 +417,39 @@ export class Publisher {
     if (existing !== undefined && wantsLive(existing)) {
       return existing.queue;
     }
-    const capture = invokeAsync(() => this.#createScreen(SCREEN_CAPTURE_OPTIONS));
+    const frameRate = this.screenFrameRate(slot);
+    const capture = invokeAsync(() => this.#createScreen(screenCaptureOptions(frameRate)));
     capture.catch(() => undefined);
+    void this.#codecOfScreens();
     const record = existing ?? this.#createRecord(slot, 'screen');
     const previous = record.state;
     record.epoch += 1;
     const epoch = record.epoch;
     this.#setState(record, 'starting');
     return this.#enqueue(record, () => this.#startScreen(record, epoch, capture, previous));
+  }
+
+  /** Frame rate of a screen slot: 15 fps unless the slot has the option "Video in screen" (30 fps). */
+  screenFrameRate(slot: string): ScreenFrameRate {
+    return this.#screenRates.get(slot) ?? SCREEN_FRAME_RATE_DEFAULT;
+  }
+
+  /**
+   * Sets the frame rate of a screen slot. It is used by the next share of the slot and, when the slot is sharing now,
+   * applied to the running share (capture constraint, content hint and encoder limits), without a new picker.
+   */
+  setScreenFrameRate(slot: string, frameRate: ScreenFrameRate): Promise<void> {
+    if (slotKind(slot) !== 'screen' || !isScreenFrameRate(frameRate)) {
+      return Promise.reject(
+        new RangeError(`invalid screen frame rate: ${slot} ${String(frameRate)}`),
+      );
+    }
+    this.#screenRates.set(slot, frameRate);
+    const record = this.#records.get(slot);
+    if (record === undefined || record.track === null || this.#disposed) {
+      return Promise.resolve();
+    }
+    return this.#enqueue(record, () => this.#applyScreenFrameRate(record));
   }
 
   /** Stops and unpublishes a slot; its state becomes `idle`. */
@@ -423,7 +486,9 @@ export class Publisher {
             },
           ],
     );
-    return Promise.all(inputs.map((input) => slotTelemetry(input, this.#loss, this.#logger)));
+    return Promise.all(
+      inputs.map((input) => slotTelemetry(input, this.#loss, this.#logger, this.#encoders)),
+    );
   }
 
   /** Stream of the slot's local track for the sender's own preview `<video>` (same object while the track is). */
@@ -579,9 +644,48 @@ export class Publisher {
       track.stop();
       return;
     }
-    setContentHint(track.mediaStreamTrack, 'detail');
+    setContentHint(track.mediaStreamTrack, contentHintOf(this.screenFrameRate(record.slot)));
     this.#adoptTrack(record, track);
     await this.#publish(record);
+  }
+
+  /** The codec of screen shares, asked once. */
+  #codecOfScreens(): Promise<ScreenCodec> {
+    this.#screenCodec ??= this.#chooseScreenCodec().catch((error: unknown) => {
+      this.#logger.warn('screen codec probe failed', errorContext(error));
+      return 'h264';
+    });
+    return this.#screenCodec;
+  }
+
+  /** Applies the frame rate of the slot to the running share (best effort: what a browser refuses stays as it was). */
+  async #applyScreenFrameRate(record: SlotRecord): Promise<void> {
+    const { track, epoch } = record;
+    if (track === null || this.#isStale(record, epoch)) {
+      return;
+    }
+    const frameRate = this.screenFrameRate(record.slot);
+    setContentHint(track.mediaStreamTrack, contentHintOf(frameRate));
+    try {
+      await track.mediaStreamTrack.applyConstraints({ frameRate: { ideal: frameRate } });
+    } catch (error) {
+      this.#logger.warn('screen frame rate constraint refused', errorContext(error));
+    }
+    const sender = track.sender;
+    if (sender === undefined) {
+      return;
+    }
+    try {
+      const parameters = sender.getParameters();
+      const encoding = screenShareEncoding(frameRate);
+      for (const layer of parameters.encodings ?? []) {
+        layer.maxFramerate = encoding.maxFramerate;
+        layer.maxBitrate = encoding.maxBitrate;
+      }
+      await sender.setParameters(parameters);
+    } catch (error) {
+      this.#logger.warn('screen encoder limits refused', errorContext(error));
+    }
   }
 
   /** A cancelled picker returns to where the slot was (`ended` stays `ended`, else `idle`); other errors fail. */
@@ -702,7 +806,11 @@ export class Publisher {
       return;
     }
     try {
-      await room.localParticipant.publishTrack(track, this.#publishOptions(record));
+      const options = await this.#publishOptions(record);
+      if (this.#isStale(record, epoch) || record.track !== track) {
+        return;
+      }
+      await room.localParticipant.publishTrack(track, options);
     } catch (error) {
       await this.#onPublishFailed(record, epoch, track, room, error);
       return;
@@ -754,13 +862,17 @@ export class Publisher {
     }
   }
 
-  #publishOptions(record: SlotRecord): TrackPublishOptions {
+  async #publishOptions(record: SlotRecord): Promise<TrackPublishOptions> {
     return record.kind === 'camera'
       ? cameraPublishOptions(
           record.slot,
           (record.appliedCamera ?? record.camera)?.resolution ?? 720,
         )
-      : screenPublishOptions(record.slot);
+      : screenPublishOptions(
+          record.slot,
+          await this.#codecOfScreens(),
+          this.screenFrameRate(record.slot),
+        );
   }
 
   /** After a rejoin: republish a live slot; re-acquire a camera stopped meanwhile; a dead screen share is `ended`. */

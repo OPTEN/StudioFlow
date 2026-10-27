@@ -9,6 +9,7 @@ import {
 import type { LocalVideoTrack } from 'livekit-client';
 import type { Mock } from 'vitest';
 import type { MediaRoom } from './livekit-port';
+import { EncoderCapability } from './encoder-info';
 import { silentLogger } from './logger';
 import type { MediaSessionState, SessionStateSource } from './media-session';
 import { Publisher, type LocalSlotState, type PublisherOptions } from './publisher';
@@ -436,11 +437,134 @@ describe('Publisher', () => {
         expect.objectContaining({
           name: 'screen-1',
           source: Track.Source.ScreenShare,
-          videoCodec: 'vp9',
+          videoCodec: 'h264',
           simulcast: false,
+          screenShareEncoding: { maxBitrate: 3_000_000, maxFramerate: 15 },
         }),
       );
       expect(publisher.slotState('screen-1')).toBe('live');
+    });
+
+    it('captures a screen at 15 fps by default', async () => {
+      const { session, publisher, createScreenTrack } = setup();
+      session.connect();
+      await publisher.publishScreen('screen-1');
+      expect(createScreenTrack).toHaveBeenCalledWith(
+        expect.objectContaining({ resolution: expect.objectContaining({ frameRate: 15 }) }),
+      );
+      expect(publisher.screenFrameRate('screen-1')).toBe(15);
+    });
+
+    it('publishes VP9 with a VP8 backup when the encoder for it is power efficient', async () => {
+      const screenCodec = vi.fn(async () => 'vp9' as const);
+      const { session, publisher } = setup({ screenCodec });
+      const room = session.connect();
+      await publisher.publishScreen('screen-1');
+      expect(room.localParticipant.publishTrack).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ videoCodec: 'vp9', backupCodec: { codec: 'vp8' } }),
+      );
+      // Asked once, for the first share only.
+      await publisher.publishScreen('screen-2');
+      expect(screenCodec).toHaveBeenCalledTimes(1);
+    });
+
+    it('publishes H.264 when the capability question fails', async () => {
+      const { session, publisher } = setup({
+        screenCodec: () => Promise.reject(new Error('mediaCapabilities unavailable')),
+      });
+      const room = session.connect();
+      await publisher.publishScreen('screen-1');
+      expect(room.localParticipant.publishTrack).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ videoCodec: 'h264', backupCodec: false }),
+      );
+    });
+
+    it('republishes a screen into a new room with the same codec and frame rate', async () => {
+      const { session, publisher } = setup({ screenCodec: async () => 'vp9' });
+      session.connect();
+      await publisher.setScreenFrameRate('screen-1', 30);
+      await publisher.publishScreen('screen-1');
+      session.lose();
+      const next = session.connect();
+      await flushMicrotasks();
+      expect(next.localParticipant.publishTrack).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          videoCodec: 'vp9',
+          screenShareEncoding: { maxBitrate: 4_500_000, maxFramerate: 30 },
+        }),
+      );
+    });
+
+    describe('Video in screen (30 fps per slot)', () => {
+      it('is used by the next share of the slot: capture, content hint and encoder limits', async () => {
+        const { session, publisher, screens, createScreenTrack } = setup();
+        const room = session.connect();
+        await publisher.setScreenFrameRate('screen-1', 30);
+        expect(publisher.screenFrameRate('screen-1')).toBe(30);
+        expect(publisher.screenFrameRate('screen-2')).toBe(15);
+        await publisher.publishScreen('screen-1');
+        expect(createScreenTrack).toHaveBeenCalledWith(
+          expect.objectContaining({
+            contentHint: 'motion',
+            resolution: expect.objectContaining({ frameRate: 30 }),
+          }),
+        );
+        expect(screens[0].mediaStreamTrack.contentHint).toBe('motion');
+        expect(room.localParticipant.publishTrack).toHaveBeenCalledWith(
+          screens[0],
+          expect.objectContaining({
+            degradationPreference: 'balanced',
+            screenShareEncoding: { maxBitrate: 4_500_000, maxFramerate: 30 },
+          }),
+        );
+      });
+
+      it('is applied to a running share without a new picker', async () => {
+        const { session, publisher, screens, createScreenTrack } = setup();
+        session.connect();
+        await publisher.publishScreen('screen-1');
+        await publisher.setScreenFrameRate('screen-1', 30);
+        expect(createScreenTrack).toHaveBeenCalledTimes(1);
+        const track = screens[0];
+        expect(track.mediaStreamTrack.contentHint).toBe('motion');
+        expect(track.fakeMediaTrack.applyConstraints).toHaveBeenCalledWith({
+          frameRate: { ideal: 30 },
+        });
+        expect(track.sender.setParameters).toHaveBeenCalledWith({
+          encodings: [{ maxFramerate: 30, maxBitrate: 4_500_000 }],
+        });
+        await publisher.setScreenFrameRate('screen-1', 15);
+        expect(track.mediaStreamTrack.contentHint).toBe('detail');
+        expect(track.sender.setParameters).toHaveBeenLastCalledWith({
+          encodings: [{ maxFramerate: 15, maxBitrate: 3_000_000 }],
+        });
+      });
+
+      it('survives a browser that refuses the constraint or the encoder limits', async () => {
+        const { session, publisher, screens } = setup();
+        session.connect();
+        await publisher.publishScreen('screen-1');
+        screens[0].fakeMediaTrack.constraintError = new DOMException('no', 'OverconstrainedError');
+        screens[0].sender.setParameters.mockRejectedValueOnce(
+          new DOMException('no', 'InvalidModificationError'),
+        );
+        await expect(publisher.setScreenFrameRate('screen-1', 30)).resolves.toBeUndefined();
+        expect(publisher.screenFrameRate('screen-1')).toBe(30);
+        expect(publisher.slotState('screen-1')).toBe('live');
+      });
+
+      it('rejects frame rates and slots that do not exist', async () => {
+        const { publisher } = setup();
+        await expect(publisher.setScreenFrameRate('screen-1', 24 as 15)).rejects.toThrow(
+          RangeError,
+        );
+        await expect(publisher.setScreenFrameRate('camera', 30)).rejects.toThrow(RangeError);
+        await expect(publisher.setScreenFrameRate('screen-10', 30)).rejects.toThrow(RangeError);
+        expect(publisher.screenFrameRate('screen-1')).toBe(15);
+      });
     });
 
     it('starts several screens independently and ignores a second click on a running one', async () => {
@@ -696,6 +820,9 @@ describe('Publisher', () => {
           bitrateKbps: 1235,
           packetLossPct: 1,
           codec: 'h264',
+          encoder: null,
+          hardwareEncoder: null,
+          qualityLimitation: null,
         },
         {
           slot: 'screen-2',
@@ -706,8 +833,127 @@ describe('Publisher', () => {
           bitrateKbps: 0,
           packetLossPct: null,
           codec: 'vp9',
+          encoder: null,
+          hardwareEncoder: null,
+          qualityLimitation: null,
         },
       ]);
+    });
+
+    /** Sender statistics of two simulcast layers with the encoder the browser names. */
+    function encoderStats(options: {
+      readonly implementation?: string;
+      readonly powerEfficient?: boolean;
+      readonly reasons: readonly [string, string];
+    }): Map<string, unknown> {
+      const layer = (rid: string, width: number, height: number, reason: string) => ({
+        type: 'outbound-rtp',
+        kind: 'video',
+        rid,
+        frameWidth: width,
+        frameHeight: height,
+        qualityLimitationReason: reason,
+        ...(options.implementation === undefined
+          ? {}
+          : { encoderImplementation: options.implementation }),
+        ...(options.powerEfficient === undefined
+          ? {}
+          : { powerEfficientEncoder: options.powerEfficient }),
+      });
+      return new Map<string, unknown>([
+        ['q', layer('q', 320, 180, options.reasons[0])],
+        ['f', layer('f', 1280, 720, options.reasons[1])],
+      ]);
+    }
+
+    it('reports the encoder and the reason for a quality limit (a computer at its CPU limit)', async () => {
+      const { session, publisher, cameras } = setup();
+      session.connect();
+      await publisher.publishCamera('camera', PHONE);
+      cameras[0].stats = encoderStats({
+        implementation: 'OpenH264',
+        powerEfficient: false,
+        reasons: ['none', 'cpu'],
+      });
+      const [camera] = await publisher.getSlotTelemetry();
+      expect(camera).toMatchObject({
+        encoder: 'OpenH264',
+        hardwareEncoder: false,
+        qualityLimitation: 'cpu',
+      });
+      cameras[0].stats = encoderStats({
+        implementation: 'VideoToolbox',
+        powerEfficient: true,
+        reasons: ['none', 'none'],
+      });
+      expect((await publisher.getSlotTelemetry())[0]).toMatchObject({
+        encoder: 'VideoToolbox',
+        hardwareEncoder: true,
+        qualityLimitation: null,
+      });
+    });
+
+    it('asks the capabilities for the encoder when the browser hides it from the page, once per codec and size', async () => {
+      const encodingInfo = vi.fn(async () => ({ supported: true, powerEfficient: false }));
+      const { session, publisher, cameras } = setup({
+        encoderCapability: new EncoderCapability({ encodingInfo }),
+      });
+      session.connect();
+      await publisher.publishCamera('camera', PHONE);
+      cameras[0].senderStats = [
+        {
+          type: 'video',
+          rid: 'f',
+          frameWidth: 1280,
+          frameHeight: 720,
+          framesPerSecond: 30,
+          framesSent: 1,
+          firCount: 0,
+          pliCount: 0,
+          nackCount: 0,
+          targetBitrate: 0,
+          timestamp: 0,
+        },
+      ];
+      cameras[0].stats = encoderStats({ reasons: ['none', 'bandwidth'] });
+      const [first] = await publisher.getSlotTelemetry();
+      expect(first).toMatchObject({
+        encoder: null,
+        hardwareEncoder: false,
+        qualityLimitation: 'bandwidth',
+      });
+      await publisher.getSlotTelemetry();
+      expect(encodingInfo).toHaveBeenCalledTimes(1);
+      expect(encodingInfo).toHaveBeenCalledWith({
+        type: 'webrtc',
+        video: expect.objectContaining({
+          contentType: expect.stringContaining('video/H264'),
+          width: 1280,
+          height: 720,
+        }),
+      });
+    });
+
+    it('does not ask about the encoder of a track that is not published yet', async () => {
+      const encodingInfo = vi.fn(async () => ({ supported: true, powerEfficient: true }));
+      const { publisher } = setup({ encoderCapability: new EncoderCapability({ encodingInfo }) });
+      await publisher.publishCamera('camera', PHONE);
+      const [camera] = await publisher.getSlotTelemetry();
+      expect(camera).toMatchObject({
+        encoder: null,
+        hardwareEncoder: null,
+        qualityLimitation: null,
+      });
+      expect(encodingInfo).not.toHaveBeenCalled();
+    });
+
+    it('keeps reporting when the encoder statistics fail', async () => {
+      const { session, publisher, cameras } = setup();
+      session.connect();
+      await publisher.publishCamera('camera', PHONE);
+      cameras[0].getRTCStatsReport.mockRejectedValue(new Error('closed'));
+      const [camera] = await publisher.getSlotTelemetry();
+      expect(camera).toMatchObject({ state: 'live', encoder: null, qualityLimitation: null });
     });
 
     it('reports failed and ended slots without numbers', async () => {
@@ -724,6 +970,9 @@ describe('Publisher', () => {
           bitrateKbps: null,
           packetLossPct: null,
           codec: null,
+          encoder: null,
+          hardwareEncoder: null,
+          qualityLimitation: null,
         },
       ]);
     });

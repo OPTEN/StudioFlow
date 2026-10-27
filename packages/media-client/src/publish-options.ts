@@ -12,6 +12,7 @@ import {
   type VideoEncoding,
 } from 'livekit-client';
 import type { CameraImageSettings } from './camera-control';
+import type { ScreenCodec } from './screen-codec';
 
 /** Camera picture height the sender can choose. */
 export type CameraResolution = 720 | 1080;
@@ -75,30 +76,73 @@ export function cameraPublishOptions(
   };
 }
 
-/** Encoding cap of a screen share (3 Mbit/s, 30 fps). */
-export const SCREEN_SHARE_ENCODING: VideoEncoding = { maxBitrate: 3_000_000, maxFramerate: 30 };
+/** Frame rate of a screen share: 15 fps is enough for slides, 30 fps is the option "Video in screen". */
+export type ScreenFrameRate = 15 | 30;
+
+/** Slides do not need 30 fps: half the frames halve the encoding on the laptop and the decoding in the Regie and the output. */
+export const SCREEN_FRAME_RATE_DEFAULT: ScreenFrameRate = 15;
+
+/** The option "Video in screen" of a slot. */
+export const SCREEN_FRAME_RATE_VIDEO: ScreenFrameRate = 30;
+
+/** True for a frame rate a screen slot can have. */
+export function isScreenFrameRate(value: unknown): value is ScreenFrameRate {
+  return value === SCREEN_FRAME_RATE_DEFAULT || value === SCREEN_FRAME_RATE_VIDEO;
+}
+
+/** Encoding cap of a screen share: 3 Mbit/s at 15 fps, 4.5 Mbit/s at 30 fps (video needs more bits per second). */
+export function screenShareEncoding(frameRate: ScreenFrameRate): VideoEncoding {
+  return {
+    maxBitrate: frameRate === SCREEN_FRAME_RATE_VIDEO ? 4_500_000 : 3_000_000,
+    maxFramerate: frameRate,
+  };
+}
+
+/** Encoding cap of a screen share at the default frame rate (also the room default for SDK-internal publishes). */
+export const SCREEN_SHARE_ENCODING: VideoEncoding = screenShareEncoding(SCREEN_FRAME_RATE_DEFAULT);
 
 /**
- * getDisplayMedia options of a screen share: no audio, at most 1440p (ideal constraint, smaller screens stay native),
- * hide the sender tab itself, allow switching the shared surface.
+ * getDisplayMedia options of a screen share: no audio, at most 1440p (ideal constraint, smaller screens stay native) at
+ * the frame rate of the slot, hide the sender tab itself, allow switching the shared surface.
  */
-export const SCREEN_CAPTURE_OPTIONS: ScreenShareCaptureOptions = {
-  audio: false,
-  contentHint: 'detail',
-  selfBrowserSurface: 'exclude',
-  surfaceSwitching: 'include',
-  resolution: { width: 2560, height: 1440, frameRate: 30 },
-};
+export function screenCaptureOptions(
+  frameRate: ScreenFrameRate = SCREEN_FRAME_RATE_DEFAULT,
+): ScreenShareCaptureOptions {
+  return {
+    audio: false,
+    contentHint: contentHintOf(frameRate),
+    selfBrowserSurface: 'exclude',
+    surfaceSwitching: 'include',
+    resolution: { width: 2560, height: 1440, frameRate },
+  };
+}
 
-/** Publish options of a screen share: VP9 (VP8 backup), no simulcast, resolution before frame rate. */
-export function screenPublishOptions(slot: string): TrackPublishOptions {
+/** Screen share options at the default frame rate. */
+export const SCREEN_CAPTURE_OPTIONS: ScreenShareCaptureOptions = screenCaptureOptions();
+
+/** Slides are sharp text (`detail`: resolution before frame rate), "Video in screen" is motion. */
+export function contentHintOf(frameRate: ScreenFrameRate): 'detail' | 'motion' {
+  return frameRate === SCREEN_FRAME_RATE_VIDEO ? 'motion' : 'detail';
+}
+
+/**
+ * Publish options of a screen share, no simulcast. VP9 (with a VP8 backup for subscribers that cannot decode it) only when
+ * the sender's encoder for it is power efficient, else H.264 (see `screen-codec.ts`); resolution before frame rate for
+ * slides, a balance of both for video.
+ */
+export function screenPublishOptions(
+  slot: string,
+  codec: ScreenCodec = 'h264',
+  frameRate: ScreenFrameRate = SCREEN_FRAME_RATE_DEFAULT,
+): TrackPublishOptions {
   return {
     name: slot,
     source: Track.Source.ScreenShare,
-    videoCodec: 'vp9',
-    backupCodec: { codec: 'vp8' },
+    videoCodec: codec,
+    backupCodec: codec === 'vp9' ? { codec: 'vp8' } : false,
     simulcast: false,
-    degradationPreference: 'maintain-resolution',
-    screenShareEncoding: SCREEN_SHARE_ENCODING,
+    degradationPreference:
+      frameRate === SCREEN_FRAME_RATE_VIDEO ? 'balanced' : 'maintain-resolution',
+    screenShareEncoding: screenShareEncoding(frameRate),
   };
 }

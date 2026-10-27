@@ -1,4 +1,5 @@
-import { DisconnectReason, RoomEvent, VideoQuality } from 'livekit-client';
+import { DisconnectReason, RoomEvent } from 'livekit-client';
+import { DecoderCapability } from './decoder-info';
 import type { Clock } from './clock';
 import type { MediaRoom } from './livekit-port';
 import { silentLogger } from './logger';
@@ -68,6 +69,13 @@ function setup(role: MediaRole = 'output', options: Partial<LiveKitSourceProvide
   return { room, source, provider, changes };
 }
 
+/** Somebody needs a picture of the sources (a source nobody asks for is paused, see "desired sizes"). */
+function need(provider: LiveKitSourceProvider, ...sources: string[]): void {
+  for (const source of sources) {
+    provider.setDesiredSize(source, 'test', { width: 640, height: 360 });
+  }
+}
+
 function video(): HTMLVideoElement {
   const element = document.createElement('video');
   vi.spyOn(element, 'play').mockResolvedValue(undefined);
@@ -98,6 +106,7 @@ describe('LiveKitSourceProvider', () => {
       const { room, provider, changes } = setup();
       const element = video();
       provider.attach(CAMERA, element);
+      need(provider, CAMERA);
       expect(element.srcObject).toBeNull();
       expect(element.muted).toBe(true);
       expect(element.playsInline).toBe(true);
@@ -111,6 +120,7 @@ describe('LiveKitSourceProvider', () => {
 
     it('attaches an element registered after the track arrived, sharing one stream', () => {
       const { room, provider } = setup();
+      need(provider, SCREEN);
       const { track } = room.subscribe(DEVICE, 'screen-1');
       const first = video();
       const second = video();
@@ -219,6 +229,7 @@ describe('LiveKitSourceProvider', () => {
       const { room, provider } = setup();
       const element = video();
       provider.attach(CAMERA, element);
+      need(provider, CAMERA);
       room.subscribe(DEVICE, 'camera');
       room.unsubscribe(DEVICE, 'camera');
       const { track } = room.subscribe(DEVICE, 'camera');
@@ -250,20 +261,106 @@ describe('LiveKitSourceProvider', () => {
   });
 
   describe('desired sizes (output)', () => {
-    it('requests LOW without consumers and the largest consumer size otherwise', () => {
+    it('requests the largest consumer size and pauses the source 5 s after the last consumer left', () => {
       const { room, provider } = setup('output');
-      const { publication } = room.subscribe(DEVICE, 'camera');
-      expect(publication.setVideoQuality).toHaveBeenLastCalledWith(VideoQuality.LOW);
-
       provider.setDesiredSize(CAMERA, 'program', { width: 960, height: 540 });
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(true);
+      expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 960, height: 540 });
+
       provider.setDesiredSize(CAMERA, 'debug', { width: 1920, height: 400 });
       expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 1920, height: 540 });
 
       provider.setDesiredSize(CAMERA, 'debug', null);
       expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 960, height: 540 });
       provider.setDesiredSize(CAMERA, 'program', null);
-      expect(publication.setVideoQuality).toHaveBeenLastCalledWith(VideoQuality.LOW);
+      expect(publication.setVideoQuality).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(4_999);
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+      vi.advanceTimersByTime(1);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+    });
+
+    it('pauses a track nobody asked for 1.5 s after it arrives (the output decodes only what it shows or prepares)', () => {
+      const { room, provider } = setup('output');
+      const { publication } = room.subscribe(DEVICE, 'camera');
       expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1_499);
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(publication.setEnabled).toHaveBeenCalledTimes(1);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+      expect(publication.setVideoDimensions).not.toHaveBeenCalled();
+      // The source is still known and live: switching to a scene that shows it needs only a picture, not a subscription.
+      expect(provider.availability(CAMERA)).toEqual({ state: 'live' });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not pause a new track whose consumer registers right after it arrives (a page that is loading)', () => {
+      const { room, provider } = setup('output');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      vi.advanceTimersByTime(400);
+      provider.setDesiredSize(CAMERA, 'program', { width: 1280, height: 720 });
+      vi.advanceTimersByTime(60_000);
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+      expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 1280, height: 720 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('resumes a paused source when a consumer asks, with the size it asks for', () => {
+      const { room, provider } = setup('output');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      vi.advanceTimersByTime(1_500);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+      provider.setDesiredSize(CAMERA, 'program', { width: 1280, height: 720 });
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(true);
+      expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 1280, height: 720 });
+    });
+
+    it('keeps a source whose consumer comes back within the grace time (a scene cycle must not stop and start it)', () => {
+      const { room, provider } = setup('output');
+      provider.setDesiredSize(CAMERA, 'program', { width: 640, height: 360 });
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      provider.setDesiredSize(CAMERA, 'program', null);
+      vi.advanceTimersByTime(3_000);
+      provider.setDesiredSize(CAMERA, 'preview', { width: 640, height: 360 });
+      vi.advanceTimersByTime(60_000);
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('shows no picture of a paused source: elements are emptied, stay empty on attach and get the stream on resume', () => {
+      const { room, provider } = setup('output');
+      const shown = video();
+      provider.attach(CAMERA, shown);
+      provider.setDesiredSize(CAMERA, 'program', { width: 640, height: 360 });
+      const { track } = room.subscribe(DEVICE, 'camera');
+      expect(streamTrack(shown)).toBe(track.mediaStreamTrack);
+
+      provider.setDesiredSize(CAMERA, 'program', null);
+      vi.advanceTimersByTime(5_000);
+      // The frame from before the pause is gone: it may be minutes old.
+      expect(shown.srcObject).toBeNull();
+      const late = video();
+      provider.attach(CAMERA, late);
+      expect(late.srcObject).toBeNull();
+
+      provider.setDesiredSize(CAMERA, 'program', { width: 640, height: 360 });
+      expect(streamTrack(shown)).toBe(track.mediaStreamTrack);
+      expect(streamTrack(late)).toBe(track.mediaStreamTrack);
+      expect(shown.srcObject).toBe(late.srcObject);
+    });
+
+    it('is not paused any more after a resubscription (a new publication is enabled)', () => {
+      const { room, provider } = setup('output');
+      room.subscribe(DEVICE, 'camera');
+      room.unsubscribe(DEVICE, 'camera');
+      provider.setDesiredSize(CAMERA, 'program', { width: 640, height: 360 });
+      const element = video();
+      provider.attach(CAMERA, element);
+      const { track, publication } = room.subscribe(DEVICE, 'camera');
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(true);
+      expect(streamTrack(element)).toBe(track.mediaStreamTrack);
     });
 
     it('applies sizes requested before the track and re-applies them after a resubscription', () => {
@@ -299,10 +396,12 @@ describe('LiveKitSourceProvider', () => {
   describe('desired sizes (studio)', () => {
     it('enables and sizes needed sources, pauses unused ones after 10 s and resumes at once', () => {
       const { room, provider } = setup('studio');
+      provider.setDesiredSize(CAMERA, 'monitor', { width: 480, height: 270 });
       const { publication } = room.subscribe(DEVICE, 'camera');
-      expect(publication.setEnabled).not.toHaveBeenCalled();
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+      provider.setDesiredSize(CAMERA, 'monitor', null);
       vi.advanceTimersByTime(9_999);
-      expect(publication.setEnabled).not.toHaveBeenCalled();
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
       vi.advanceTimersByTime(1);
       expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
 
@@ -310,6 +409,25 @@ describe('LiveKitSourceProvider', () => {
       expect(publication.setEnabled).toHaveBeenLastCalledWith(true);
       expect(publication.setVideoDimensions).toHaveBeenLastCalledWith({ width: 480, height: 270 });
       expect(publication.setVideoQuality).not.toHaveBeenCalled();
+    });
+
+    it('pauses a track nobody asked for 1.5 s after it arrives', () => {
+      const { room } = setup('studio');
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      expect(publication.setEnabled).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1_500);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
+    });
+
+    it('honours disableUnusedAfterMs', () => {
+      const { room, provider } = setup('studio', { disableUnusedAfterMs: 1_000 });
+      provider.setDesiredSize(CAMERA, 'monitor', { width: 480, height: 270 });
+      const { publication } = room.subscribe(DEVICE, 'camera');
+      provider.setDesiredSize(CAMERA, 'monitor', null);
+      vi.advanceTimersByTime(999);
+      expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+      vi.advanceTimersByTime(1);
+      expect(publication.setEnabled).toHaveBeenLastCalledWith(false);
     });
 
     it('does not pause a source whose consumer comes back within 10 s', () => {
@@ -325,8 +443,11 @@ describe('LiveKitSourceProvider', () => {
     });
 
     it('cancels the pause timer when the track goes away', () => {
-      const { room } = setup('studio');
+      const { room, provider } = setup('studio');
+      provider.setDesiredSize(CAMERA, 'monitor', { width: 480, height: 270 });
       room.subscribe(DEVICE, 'camera');
+      provider.setDesiredSize(CAMERA, 'monitor', null);
+      expect(vi.getTimerCount()).toBe(1);
       room.unsubscribe(DEVICE, 'camera');
       expect(vi.getTimerCount()).toBe(0);
     });
@@ -379,6 +500,7 @@ describe('LiveKitSourceProvider', () => {
 
       const next = new FakeRoom();
       source.switchTo(next);
+      need(provider, CAMERA);
       const { track } = next.subscribe(DEVICE, 'camera');
       expect(provider.availability(CAMERA)).toEqual({ state: 'live' });
       expect(streamTrack(element)).toBe(track.mediaStreamTrack);
@@ -434,6 +556,7 @@ describe('LiveKitSourceProvider', () => {
       });
       const element = video();
       provider.attach(CAMERA, element);
+      need(provider, CAMERA);
       session.start();
       await flushMicrotasks();
       rooms[0].subscribe(DEVICE, 'camera');
@@ -509,6 +632,137 @@ describe('LiveKitSourceProvider', () => {
       await expect(provider.getStats(CAMERA)).resolves.toEqual({ bitrateKbps: 1 });
     });
 
+    /** Receiver statistics of a stream with the decoder counters. */
+    function decodedStats(options: {
+      readonly decoded: number;
+      readonly dropped?: number;
+      readonly received?: number;
+      readonly powerEfficient?: boolean;
+      readonly codec?: string;
+      readonly width?: number;
+    }): Map<string, unknown> {
+      return new Map<string, unknown>([
+        [
+          'IT',
+          {
+            type: 'inbound-rtp',
+            kind: 'video',
+            frameWidth: options.width ?? 1280,
+            frameHeight: 720,
+            framesDecoded: options.decoded,
+            framesDropped: options.dropped ?? 0,
+            framesReceived: options.received ?? options.decoded,
+            codecId: 'C',
+            ...(options.powerEfficient === undefined
+              ? {}
+              : { powerEfficientDecoder: options.powerEfficient }),
+          },
+        ],
+        ['C', { type: 'codec', mimeType: `video/${options.codec ?? 'H264'}` }],
+      ]);
+    }
+
+    it('tells hardware or software decoding from the stats, else from the capabilities', async () => {
+      const decodingInfo = vi.fn(async () => ({ supported: true, powerEfficient: false }));
+      const { room, provider } = setup('output', {
+        decoderCapability: new DecoderCapability({ decodingInfo }),
+      });
+      const hidden = new FakeRemoteTrack();
+      hidden.stats = decodedStats({ decoded: 10 });
+      room.subscribe(DEVICE, 'camera', { track: hidden });
+      // The browser hides the decoder from this page: it says what it would decode with.
+      await expect(provider.getStats(CAMERA)).resolves.toMatchObject({ decoder: 'software' });
+      expect(decodingInfo).toHaveBeenCalledWith({
+        type: 'webrtc',
+        video: expect.objectContaining({
+          contentType: expect.stringContaining('video/H264'),
+          width: 1280,
+          height: 720,
+        }),
+      });
+
+      const told = new FakeRemoteTrack();
+      told.stats = decodedStats({ decoded: 10, powerEfficient: true, codec: 'VP9' });
+      room.subscribe(DEVICE, 'screen-1', { track: told });
+      await expect(provider.getStats(SCREEN)).resolves.toMatchObject({
+        decoder: 'hardware',
+        powerEfficientDecoder: true,
+      });
+    });
+
+    it('reports no decoder when nothing tells', async () => {
+      const { room, provider } = setup('output', {
+        decoderCapability: new DecoderCapability(undefined),
+      });
+      const track = new FakeRemoteTrack();
+      track.stats = decodedStats({ decoded: 10 });
+      room.subscribe(DEVICE, 'camera', { track });
+      const stats = await provider.getStats(CAMERA);
+      expect(stats).not.toBeNull();
+      expect(stats).not.toHaveProperty('decoder');
+    });
+
+    it('sums up the decoders: streams that decode, those in software, dropped and received frames per interval', async () => {
+      const { room, provider } = setup('output', {
+        decoderCapability: new DecoderCapability({
+          decodingInfo: async ({ video }) => ({
+            supported: true,
+            powerEfficient: video.contentType.startsWith('video/H264'),
+          }),
+        }),
+      });
+      need(provider, CAMERA, SCREEN, 'dev_dddddddddddddddd/camera');
+      const camera = new FakeRemoteTrack();
+      const screen = new FakeRemoteTrack();
+      const idle = new FakeRemoteTrack();
+      camera.stats = decodedStats({ decoded: 300, dropped: 3, received: 310 });
+      screen.stats = decodedStats({ decoded: 90, dropped: 0, received: 90, codec: 'VP9' });
+      idle.stats = decodedStats({ decoded: 0 });
+      room.subscribe(DEVICE, 'camera', { track: camera });
+      room.subscribe(DEVICE, 'screen-1', { track: screen });
+      room.subscribe('dev_dddddddddddddddd', 'camera', { track: idle });
+      // A source nobody needs is paused and decodes nothing, whatever its counters say.
+      room.subscribe('dev_eeeeeeeeeeeeeeee', 'camera', { track: decodedTrack(5000) });
+      vi.advanceTimersByTime(1_500);
+
+      await expect(provider.decoderSummary()).resolves.toEqual({
+        decoding: 2,
+        software: 1,
+        framesDropped: 3,
+        framesReceived: 400,
+      });
+
+      // The next interval counts only what was added; the screen decodes nothing more.
+      camera.stats = decodedStats({ decoded: 330, dropped: 5, received: 345 });
+      await expect(provider.decoderSummary()).resolves.toEqual({
+        decoding: 1,
+        software: 0,
+        framesDropped: 2,
+        framesReceived: 35,
+      });
+    });
+
+    function decodedTrack(decoded: number): FakeRemoteTrack {
+      const track = new FakeRemoteTrack();
+      track.stats = decodedStats({ decoded });
+      return track;
+    }
+
+    it('counts nothing without sources and survives failing stats', async () => {
+      const { room, provider } = setup('output');
+      await expect(provider.decoderSummary()).resolves.toEqual({
+        decoding: 0,
+        software: 0,
+        framesDropped: 0,
+        framesReceived: 0,
+      });
+      need(provider, CAMERA);
+      const track = new FakeRemoteTrack();
+      track.getRTCStatsReport.mockRejectedValue(new Error('closed'));
+      room.subscribe(DEVICE, 'camera', { track });
+      await expect(provider.decoderSummary()).resolves.toMatchObject({ decoding: 0 });
+    });
+
     it('estimates latency as the average of RTT/2 + jitter buffer over live sources', async () => {
       const { room, provider } = setup();
       await expect(provider.estimateLatencyMs()).resolves.toBeNull();
@@ -528,11 +782,15 @@ describe('LiveKitSourceProvider', () => {
         ]);
         return track;
       };
+      need(provider, CAMERA, SCREEN, 'dev_dddddddddddddddd/camera', 'dev_eeeeeeeeeeeeeeee/camera');
       room.subscribe(DEVICE, 'camera', { track: withStats(0.02, 0.05) });
       room.subscribe(DEVICE, 'screen-1', { track: withStats(0.04, 0.03) });
       room.subscribe('dev_dddddddddddddddd', 'camera', { track: new FakeRemoteTrack() });
       room.subscribe('dev_eeeeeeeeeeeeeeee', 'camera', { track: withStats(1, 1) });
       room.unsubscribe('dev_eeeeeeeeeeeeeeee', 'camera');
+      // A paused source is not part of the average either.
+      room.subscribe('dev_ffffffffffffffff', 'camera', { track: withStats(2, 2) });
+      vi.advanceTimersByTime(1_500);
       // camera: 10 + 50 = 60, screen: 20 + 30 = 50, the track without stats and the lost one are ignored.
       await expect(provider.estimateLatencyMs()).resolves.toBe(55);
     });

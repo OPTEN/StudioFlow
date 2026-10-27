@@ -330,6 +330,19 @@ export class FakeLocalVideoTrack extends FakeEmitter {
     (this.mediaStreamTrack as unknown as FakeMediaStreamTrack).readyState = 'ended';
   });
   readonly getSenderStats = vi.fn(async (): Promise<VideoSenderStats[]> => this.senderStats);
+  /** What `getRTCStatsReport` returns (the sender statistics with the encoder). */
+  stats: Map<string, unknown> | undefined = new Map();
+  readonly getRTCStatsReport = vi.fn(
+    async (): Promise<RTCStatsReport | undefined> => this.stats as RTCStatsReport | undefined,
+  );
+  /** The RTP sender with its encoding parameters (frame rate and bit rate limits of a screen share). */
+  readonly sender = {
+    parameters: { encodings: [{ maxFramerate: 15, maxBitrate: 3_000_000 }] },
+    getParameters() {
+      return this.parameters;
+    },
+    setParameters: vi.fn(async (): Promise<void> => undefined),
+  };
 
   get fakeMediaTrack(): FakeMediaStreamTrack {
     return this.mediaStreamTrack as unknown as FakeMediaStreamTrack;
