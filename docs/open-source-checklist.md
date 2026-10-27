@@ -73,8 +73,8 @@ Reviewed on 2026-10-26. "Recommendation" is what we suggest; the owner decides.
 - **Confirm the copyright line** ("OPTEN AG and the StudioFlow contributors", year 2026) in `NOTICE` and decide whether
   contributions need more than the "inbound = outbound" paragraph of `CONTRIBUTING.md` (a CLA or DCO sign-off is not
   required by the files).
-- **Repository rename** `OPTEN/FlowStudio` to `OPTEN/StudioFlow` (#3): done on 2026-10-27. `RELEASE_PLEASE_TOKEN`, branch protection and
-  squash merging: `docs/releasing.md` section 8, `tools/github-repo-settings.sh`.
+- **Repository rename** `OPTEN/FlowStudio` to `OPTEN/StudioFlow` (#3): done on 2026-10-27. Branch protection, squash merging and the
+  optional `RELEASE_PLEASE_TOKEN`: `docs/releasing.md` section 8, `tools/github-repo-settings.sh`.
 - **Licence texts in the shipped frontends (done).** The Angular production build writes `3rdpartylicenses.txt` next to,
   not inside, `dist/<app>/browser`; the web image now copies it to `/3rdpartylicenses.txt` (Regie) and
   `/join/3rdpartylicenses.txt` (sender) and serves `LICENSE`, `NOTICE` and `THIRD_PARTY_NOTICES.md` under `/licenses/`. The
