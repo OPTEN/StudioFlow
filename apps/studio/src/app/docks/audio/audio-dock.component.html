@@ -52,18 +52,18 @@
     } @else if (audio.state() === 'unavailable') {
       <p class="c-hint c-audio-dock__note">{{ t('regie.audio.dock.unavailable') }}</p>
     }
-    <div class="c-audio-dock__list" role="list">
-      @for (row of rows(); track row.sourceId) {
-        <sf-audio-row role="listitem" [row]="row" [silent]="audio.silent().has(row.sourceId)" />
-      } @empty {
-        <div class="c-empty">
-          <strong>{{ t('regie.audio.dock.emptyTitle') }}</strong
-          >{{ t('regie.audio.dock.emptyText') }}
-        </div>
-      }
-    </div>
     @if (rows().length > 0) {
+      <div class="c-audio-dock__list" role="list">
+        @for (row of rows(); track row.sourceId) {
+          <sf-audio-row role="listitem" [row]="row" [silent]="audio.silent().has(row.sourceId)" />
+        }
+      </div>
       <p class="c-hint c-audio-dock__note">{{ t('regie.audio.dock.shortcut') }}</p>
+    } @else {
+      <div class="c-empty">
+        <strong>{{ t('regie.audio.dock.emptyTitle') }}</strong
+        >{{ t('regie.audio.dock.emptyText') }}
+      </div>
     }
   }
 </sf-dock-frame>

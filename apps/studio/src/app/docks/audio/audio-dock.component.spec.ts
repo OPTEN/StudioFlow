@@ -229,6 +229,8 @@ describe('AudioDockComponent', () => {
   it('says what to do when there is no channel yet', async () => {
     await setup(false);
     expect(text(element.querySelector('.c-empty'))).toContain('No sound sources yet.');
+    // An empty list would break the ARIA rules (a list needs list items), so there is none.
+    expect(element.querySelector('[role="list"]')).toBeNull();
   });
 
   it('draws the level of a channel in its meter', async () => {
