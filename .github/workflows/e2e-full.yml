@@ -1,7 +1,11 @@
 # Full E2E run: every Playwright project of tests/e2e/playwright.config.ts except soak (60 minutes, weekly, see
-# docs/testing.md 6.1), against the stack built from the working tree: smoke, desktop-chromium, short-ttl, disruptive
-# (restarts, lockout, network impairment with the netem sidecar, which needs NET_ADMIN on the runner), the Pixel 7,
-# iPhone 15 and iPad descriptors, Firefox and WebKit.
+# docs/testing.md 6.1) and perf (manual, perf.yml), against the stack built from the working tree: smoke, desktop-chromium,
+# short-ttl, disruptive (restarts, lockout, network impairment with the netem sidecar, which needs NET_ADMIN on the runner),
+# the Pixel 7, iPhone 15 and iPad descriptors, Firefox and WebKit.
+#
+# Tests tagged @perf (latency, many sources, switching times, the performance budget) are not part of this run: they hold
+# measurements against absolute thresholds and need at least 4 cores with nothing else running, and this runner has 2 vCPU
+# (issue 39, docs/testing.md 6.8). The project desktop-chromium leaves them out; the workflow perf.yml runs them.
 #
 # On demand only (Actions > E2E full > Run workflow): the owner removed the nightly schedule on 2026-10-27. Run it before a
 # release and after larger changes. A failed run creates an issue labelled ci-failure, or adds a comment to the one that

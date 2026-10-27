@@ -1,5 +1,6 @@
 import { TEXT } from '../../support/text';
 import { percentile } from '../../support/helpers';
+import { judgeTiming, startCpuMonitor, timingGate } from '../../support/output/stats';
 import { uniqueIp } from '../../support/fixtures';
 import { DeviceHub } from '../../support/hubs';
 import { pairLaptopByLink, pairPhone, type PairedDevice } from '../../support/production';
@@ -603,6 +604,7 @@ test.describe('REGIE switching', () => {
       await installPointerProbe(page);
       await regie.transitionOption('Cut').click();
       const samples: number[] = [];
+      const stopCpu = startCpuMonitor();
       for (let index = 0; index < 30; index++) {
         const target = index % 2 === 0 ? b : a;
         await watchScene(output.page, target);
@@ -611,18 +613,23 @@ test.describe('REGIE switching', () => {
         samples.push((await sceneHit(output.page))! - (await lastPointerDown(page))!);
         await page.waitForTimeout(1500);
       }
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
       const p50 = percentile(samples, 50);
       const p95 = percentile(samples, 95);
       await test.info().attach('switch-latency.json', {
-        body: JSON.stringify({ samples, p50, p95, max: Math.max(...samples) }, null, 2),
+        body: JSON.stringify({ samples, p50, p95, max: Math.max(...samples), machineCpuBusyPct: machine.busyPct, comparable: gate.enforce }, null, 2),
         contentType: 'application/json',
       });
       test.info().annotations.push({
         type: 'measurement',
-        description: `click -> output: p50 ${p50} ms, p95 ${p95} ms, max ${Math.max(...samples)} ms (${samples.length} cuts)`,
+        description: `click -> output: p50 ${p50} ms, p95 ${p95} ms, max ${Math.max(...samples)} ms (${samples.length} cuts), machine CPU ${machine.busyPct} %${gate.enforce ? '' : ' (not comparable)'}`,
       });
-      expect(p95, 'T-SWITCH hard limit p95').toBeLessThanOrEqual(300);
-      expect(p50, 'T-SWITCH target p50').toBeLessThanOrEqual(150);
+      // Thresholds on time count when the machine had headroom (docs/testing.md 6.8).
+      await judgeTiming(test.info(), gate, () => {
+        expect(p95, 'T-SWITCH hard limit p95').toBeLessThanOrEqual(300);
+        expect(p50, 'T-SWITCH target p50').toBeLessThanOrEqual(150);
+      });
     },
   );
 });
@@ -1008,6 +1015,7 @@ test.describe('REGIE two operators and rapid input', () => {
       await expect(duration(page)).toHaveText('1.5 s');
       await page.getByRole('button', { name: 'Shorter fade' }).click();
       await expect(duration(page)).toHaveText('1 s');
+      const stopCpu = startCpuMonitor();
       await regie.clickScene('Scene B');
       await expect
         .poll(
@@ -1019,6 +1027,8 @@ test.describe('REGIE two operators and rapid input', () => {
           { timeout: 8000 },
         )
         .toBe(true);
+      const machine = stopCpu();
+      const gate = timingGate(machine.busyPct);
       const regieFade = (await opacityFades(page, b))[0]!;
       const outputFade = (await opacityFades(output.page, b))[0]!;
       expect(regieFade.duration).toBe(1000);
@@ -1028,11 +1038,14 @@ test.describe('REGIE two operators and rapid input', () => {
       const offset = Math.abs(regieFade.startedAt - outputFade.startedAt);
       test.info().annotations.push({
         type: 'measurement',
-        description: `fade 1000 ms: Regie ${regieMs} ms, output ${outputMs} ms, start offset ${offset} ms`,
+        description: `fade 1000 ms: Regie ${regieMs} ms, output ${outputMs} ms, start offset ${offset} ms, machine CPU ${machine.busyPct} %${gate.enforce ? '' : ' (not comparable)'}`,
       });
-      expect(Math.abs(regieMs - 1000)).toBeLessThanOrEqual(50);
-      expect(Math.abs(outputMs - 1000)).toBeLessThanOrEqual(50);
-      expect(offset, 'T-FADE start offset hard limit').toBeLessThanOrEqual(100);
+      // The animations are timed by the compositor: on a machine without headroom they start and end late (docs/testing.md 6.8).
+      await judgeTiming(test.info(), gate, () => {
+        expect(Math.abs(regieMs - 1000)).toBeLessThanOrEqual(50);
+        expect(Math.abs(outputMs - 1000)).toBeLessThanOrEqual(50);
+        expect(offset, 'T-FADE start offset hard limit').toBeLessThanOrEqual(100);
+      });
     },
   );
 
