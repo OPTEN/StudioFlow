@@ -18,7 +18,7 @@ import type {
   SceneRenderer,
   SourceAvailability,
 } from '@studioflow/scene-renderer';
-import type { MediaSessionState, SourceStats } from '@studioflow/media-client';
+import type { DecoderSummary, MediaSessionState, SourceStats } from '@studioflow/media-client';
 import type { OutputApi } from '../api';
 import type { OutputHub } from '../output-app';
 import type { OutputMedia, OutputMediaProvider, OutputMediaSession } from '../media';
@@ -44,6 +44,8 @@ export class FakeRenderer implements SceneRenderer {
   readonly element: HTMLElement;
   readonly calls: RendererCall[] = [];
   fps = 0;
+  dropped = 0;
+  presented = 0;
   destroyed = false;
 
   constructor(
@@ -88,7 +90,13 @@ export class FakeRenderer implements SceneRenderer {
     return new Map<string, CanvasRect>();
   }
   stats(): RendererStats {
-    return { fps: this.fps, items: 0, videos: 0 };
+    return {
+      fps: this.fps,
+      items: 0,
+      videos: 0,
+      presentedFrames: this.presented,
+      droppedFrames: this.dropped,
+    };
   }
   resize(): void {}
   destroy(): void {
@@ -271,6 +279,8 @@ export class FakeMediaProvider implements OutputMediaProvider {
   readonly available = new Map<string, SourceAvailability>();
   readonly stats = new Map<string, SourceStats>();
   latency: number | null = 62;
+  /** Answer of {@link decoderSummary}. */
+  decoders: DecoderSummary = { decoding: 0, software: 0, framesDropped: 0, framesReceived: 0 };
   disposed = false;
   readonly #listeners = new Set<(sourceId: string) => void>();
 
@@ -301,6 +311,9 @@ export class FakeMediaProvider implements OutputMediaProvider {
   }
   estimateLatencyMs(): Promise<number | null> {
     return Promise.resolve(this.latency);
+  }
+  decoderSummary(): Promise<DecoderSummary> {
+    return Promise.resolve(this.decoders);
   }
   dispose(): void {
     this.disposed = true;

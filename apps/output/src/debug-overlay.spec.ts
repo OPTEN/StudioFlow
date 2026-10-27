@@ -87,6 +87,30 @@ describe('formatDebugLines', () => {
     expect(formatDebugLines({ ...INFO, version: '0.0.0' }).at(-1)).toBe('StudioFlow 0.0.0');
   });
 
+  it('says whether a stream is decoded in software or in hardware, when that is known', () => {
+    const lines = formatDebugLines({
+      ...INFO,
+      sources: [
+        {
+          code: 'K1',
+          label: null,
+          availability: 'live',
+          stats: { width: 1280, height: 720, decoder: 'software' },
+        },
+        {
+          code: 'S1',
+          label: null,
+          availability: 'live',
+          stats: { width: 1280, height: 720, decoder: 'hardware' },
+        },
+        { code: 'K2', label: null, availability: 'live', stats: { width: 1280, height: 720 } },
+      ],
+    });
+    expect(lines[6]).toContain('software decoding');
+    expect(lines[7]).toContain('hardware decoding');
+    expect(lines[8]).not.toContain('decoding');
+  });
+
   it('marks partial stats and sources without picture', () => {
     const [line] = formatDebugLines({
       ...INFO,

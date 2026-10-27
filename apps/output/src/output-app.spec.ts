@@ -156,13 +156,9 @@ describe('output app: boot', () => {
     expect(hub.invoked).toEqual([{ method: HUB.subscribeOutput, args: [null] }]);
   });
 
-  it('renders standby slate, program and preloads from the first snapshot', async () => {
+  it('renders standby slate and program from the first snapshot, and prepares no other scene', async () => {
     const { renderer, app } = await boot();
-    expect(renderer.summary()).toEqual([
-      'show scn_a',
-      'slate Starting soon',
-      'preload scn_b,scn_c',
-    ]);
+    expect(renderer.summary()).toEqual(['show scn_a', 'slate Starting soon']);
     expect(app.view.rendering).toBe(true);
   });
 
@@ -252,14 +248,10 @@ describe('output app: state → picture', () => {
     renderer.reset();
     hub.emit(HUB.event, productionChanged(101, { broadcast: 'live' }));
     hub.emit(HUB.event, programSwitched(102, 'scn_b', FADE));
-    expect(renderer.summary()).toEqual([
-      'slate null',
-      'transition scn_b fade 500',
-      'preload scn_a,scn_c',
-    ]);
+    expect(renderer.summary()).toEqual(['slate null', 'transition scn_b fade 500']);
   });
 
-  it('updates the program scene in place and only preloads for other scenes', async () => {
+  it('updates the program scene in place and only prepares the preview scene', async () => {
     const { hub, renderer } = await boot();
     renderer.reset();
     hub.emit(
@@ -267,7 +259,7 @@ describe('output app: state → picture', () => {
       sceneUpserted(101, scene('scn_a', 0, [item('itm_a1', CAMERA, { x: 40 })], { version: 2 })),
     );
     hub.emit(HUB.event, sceneUpserted(102, scene('scn_c', 2, [], { version: 2 })));
-    expect(renderer.summary()).toEqual(['update scn_a', 'preload scn_b,scn_c']);
+    expect(renderer.summary()).toEqual(['update scn_a']);
   });
 
   it('shows the end slate when the broadcast ends', async () => {
@@ -297,7 +289,7 @@ describe('output app: state → picture', () => {
     ctx.hub.connect();
     await flush();
     expect(ctx.hub.invoked.at(-1)).toEqual({ method: HUB.subscribeOutput, args: [100] });
-    expect(ctx.renderer.summary()).toEqual(['show scn_c', 'preload scn_a,scn_b']);
+    expect(ctx.renderer.summary()).toEqual(['show scn_c']);
   });
 });
 
@@ -354,11 +346,7 @@ describe('output app: “No access”', () => {
     renderer.reset();
     hub.connect();
     await flush();
-    expect(renderer.summary()).toEqual([
-      'show scn_a',
-      'slate Starting soon',
-      'preload scn_b,scn_c',
-    ]);
+    expect(renderer.summary()).toEqual(['show scn_a', 'slate Starting soon']);
     expect(media.session.restarts).toBe(1);
   });
 
@@ -430,7 +418,15 @@ describe('output app: status reports', () => {
     hub.sent.length = 0;
     await flush(REPORT_INTERVAL_MS);
     expect(reports(hub)).toEqual([
-      { rendering: true, latencyMs: 62, fps: 59.9, programSceneId: null },
+      {
+        rendering: true,
+        latencyMs: 62,
+        fps: 59.9,
+        programSceneId: null,
+        droppedFramesPct: null,
+        decodedStreams: 0,
+        softwareDecodedStreams: 0,
+      },
     ]);
     hub.emit(HUB.event, productionChanged(101, { broadcast: 'live' }));
     media.provider.latency = null;
@@ -440,9 +436,46 @@ describe('output app: status reports', () => {
       latencyMs: null,
       fps: 59.9,
       programSceneId: 'scn_a',
+      droppedFramesPct: null,
+      decodedStreams: 0,
+      softwareDecodedStreams: 0,
     });
     await flush(REPORT_INTERVAL_MS * 3);
     expect(reports(hub)).toHaveLength(5);
+  });
+
+  it('reports the dropped frames, the decoded streams and the software decoding', async () => {
+    const { hub, media, renderer } = await boot();
+    hub.sent.length = 0;
+    await flush(REPORT_INTERVAL_MS);
+    // 20 of the 200 frames the receivers got were dropped, three streams decode, two of them in software.
+    renderer.presented = 180;
+    renderer.dropped = 3;
+    media.provider.decoders = { decoding: 3, software: 2, framesDropped: 20, framesReceived: 200 };
+    await flush(REPORT_INTERVAL_MS);
+    expect(reports(hub).at(-1)).toMatchObject({
+      droppedFramesPct: 10,
+      decodedStreams: 3,
+      softwareDecodedStreams: 2,
+    });
+    // The next interval is measured on its own: nothing was dropped.
+    renderer.presented = 360;
+    media.provider.decoders = { decoding: 3, software: 2, framesDropped: 0, framesReceived: 180 };
+    await flush(REPORT_INTERVAL_MS);
+    expect(reports(hub).at(-1)).toMatchObject({ droppedFramesPct: 0, decodedStreams: 3 });
+  });
+
+  it('reports without the decoder numbers when the decoder statistics fail', async () => {
+    const { hub, media } = await boot();
+    vi.spyOn(media.provider, 'decoderSummary').mockRejectedValue(new Error('closed'));
+    hub.sent.length = 0;
+    await flush(REPORT_INTERVAL_MS);
+    expect(reports(hub).at(-1)).toMatchObject({
+      rendering: true,
+      droppedFramesPct: null,
+      decodedStreams: null,
+      softwareDecodedStreams: null,
+    });
   });
 
   it('reports rendering false while connecting', async () => {

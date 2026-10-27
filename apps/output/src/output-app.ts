@@ -19,7 +19,7 @@ import {
   type SceneRenderer,
   type SceneRendererOptions,
 } from '@studioflow/scene-renderer';
-import type { MediaSessionState } from '@studioflow/media-client';
+import type { DecoderSummary, MediaSessionState } from '@studioflow/media-client';
 import { ACCESS_RETRY_MS, AccessGuard } from './access-guard';
 import {
   createOutputApi,
@@ -43,6 +43,7 @@ import {
   type LoadOutputMedia,
   type OutputMedia,
 } from './media';
+import { PlaybackLoad } from './playback-load';
 import { ProgramView } from './program-view';
 import { noAccessSlate } from './slates';
 import { StatusReporter } from './status-reporter';
@@ -450,14 +451,20 @@ export function startOutputApp(
     }),
   );
 
-  // Status reports every 2 s (REST every 10 s while the hub is down); the tick also resumes paused videos.
+  // Status reports every 2 s (REST every 10 s while the hub is down); the tick also resumes paused videos. They carry
+  // what this machine manages: the frame rate, the share of dropped frames and the streams it decodes (in software).
+  const playbackLoad = new PlaybackLoad();
   const reporter = new StatusReporter({
-    collect: async (): Promise<OutputReport> => ({
-      rendering: view.rendering,
-      latencyMs: roundOrNull(await estimateLatency()),
-      fps: roundOrNull(renderer.stats().fps || null, 1),
-      programSceneId: view.shownSceneId,
-    }),
+    collect: async (): Promise<OutputReport> => {
+      const stats = renderer.stats();
+      return {
+        rendering: view.rendering,
+        latencyMs: roundOrNull(await estimateLatency()),
+        fps: roundOrNull(stats.fps || null, 1),
+        programSceneId: view.shownSceneId,
+        ...playbackLoad.measure(stats, await decoderSummary()),
+      };
+    },
     transport: {
       hubConnected: () => hub.state === 'connected',
       sendViaHub: (report) => hub.send(HUB.report, report),
@@ -474,6 +481,18 @@ export function startOutputApp(
     }
     try {
       return await current.provider.estimateLatencyMs();
+    } catch {
+      return null;
+    }
+  };
+
+  const decoderSummary = async (): Promise<DecoderSummary | null> => {
+    const current: OutputMedia | null = media;
+    if (!current) {
+      return null;
+    }
+    try {
+      return await current.provider.decoderSummary();
     } catch {
       return null;
     }

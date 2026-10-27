@@ -15,6 +15,9 @@ export const outputDebug: Translation<typeof en> = {
   'output.debug.canvasUnknown': 'Leinwand unbekannt',
   'output.debug.connections': 'Hub {hub} · Sync {sync}',
 
+  'output.debug.decoder.hardware': 'Hardware-Decodierung',
+  'output.debug.decoder.software': 'Software-Decodierung',
+
   'output.debug.hub.connected': 'verbunden',
   'output.debug.hub.connecting': 'verbindet …',
   'output.debug.hub.idle': 'bereit',
