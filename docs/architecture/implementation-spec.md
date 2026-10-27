@@ -26,9 +26,12 @@ Implemented now (plan phases 0–2, everything that is software):
   secret link.
 - Phase 2: backup/restore/update scripts, slates and per-item fallbacks, monitoring view (bitrate, packet loss,
   battery), security review and runbook, Regie chat (short messages to devices).
+- Audio (issue #7, 4.10): one global mixer per production; sources are the audio station (the feed of the mixing
+  desk), the sound of shared screens, the sound of videos and device microphones (muted until the Regie lets them
+  through); the output page mixes with Web Audio and the Regie shows meters, faders and a monitor of its own.
 
-Prepared but not built (plan phases 3–4, confirmed as “later”): audio in StudioFlow (contracts and output page are
-audio-ready, no audio track is published), restream/recording (egress), Air mode (renderer + air room), global
+Prepared but not built (plan phases 3–4, confirmed as “later”): levels per scene and a separate preview mix (audio,
+4.10), restream/recording (egress), Air mode (renderer + air room; it must not hand every microphone to the output, 7), global
 overlays (texts and lower thirds exist, but live in scenes, 4.4), multiview, Stream Deck, multi-tenancy UI (tenantId exists in the data model), auto-director,
 greenscreen. Do not build them.
 
@@ -292,24 +295,28 @@ item order is the cell order and the layout mode stays. The scene order uses `PU
 
 ### 4.4 Sources and slot codes
 
-A source is a device slot (`{deviceId}/{slot}`) or an asset (`{assetId}`). Slots: `camera`, `screen-1` … `screen-9`.
+A source is a device slot (`{deviceId}/{slot}`) or an asset (`{assetId}`). Slots: `camera`, `screen-1` … `screen-9`, `mic`.
 The slot name is also the LiveKit track name; the device id is the LiveKit identity.
 
-Slot codes: K = camera, S = screen, M = media; the lowest free number per letter in the production at creation time
-(K1, K2 …). Codes never change while the source exists. Labels: phones “{device name}”, laptop screens
-“{device name} · Screen {n}”, laptop camera “{device name} · Camera”, media = asset name.
+Slot codes: K = camera, S = screen, M = media, A = audio only (the microphone slot `mic`); the lowest free number per letter
+in the production at creation time (K1, K2 …, A1, A2 …). Codes never change while the source exists. Labels: phones
+“{device name}”, laptop screens “{device name} · Screen {n}”, laptop camera “{device name} · Camera”, a microphone
+“{device name} · Microphone” (the audio station: “{device name}”), media = asset name.
 
 Placeholders (issue #14, 4.2.2) are a fifth thing a scene item can point to: the device source of a production this one was copied
 from. They reserve their code, show "Source missing" and are replaced by a real source with one command; a device source
 that takes the place of a placeholder and is not used yet takes over its code (the one case in which a code changes).
 
-Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `screen-1`. A laptop allocates more
-screens or its camera with `POST /api/device/slots` (max 9 screens + 1 camera per device, `limit_reached`). The server
+Creation: pairing a phone creates its `camera` slot; pairing a laptop creates `screen-1`; pairing an audio station (device kind
+`audioStation`, 4.10) creates `mic`. A laptop allocates more screens, its camera or its microphone with
+`POST /api/device/slots` (max 9 screens + 1 camera + 1 microphone per device, `limit_reached`; a phone also may allocate its
+microphone; an audio station only has the microphone: `validation_failed` for anything else). The server
 answers each request with the lowest free slot, so the sender sends the requests for further screens one after the other:
 it opens the share dialog of each click at once (user gesture) under the slot it predicts, and a second click waits with
 its request for the answer to the first, so the answers cannot arrive in the opposite order of the clicks.
-`DELETE /api/device/slots/{slot}` removes the source (the sender's “Remove”); a screen share that merely ended
-keeps its slot (state ended) so the Regie can ask for a reshare and the picture returns to the same place.
+`DELETE /api/device/slots/{slot}` removes the source (the sender's “Remove”; the camera of a phone and the microphone of an audio station cannot be removed,
+`conflict`); a screen share that merely ended keeps its slot (state ended) so the Regie can ask for a reshare and the picture
+returns to the same place.
 
 **Texts and lower thirds** (issue #13, decisions «#13») are the fourth kind of source: kind `text`, code `T1`, `T2` …,
 source reference `txt_…` (16 base32 characters like the other ids). A text is `TextSourceDto { id, code, line1,
@@ -470,7 +477,9 @@ read from the header. Stored at `/data/media/{productionId}/{assetId}{ext}`; nam
 ≤ 80 chars). Content endpoint supports HTTP range requests, `HEAD` (the headers of `GET` without the body; not part
 of the OpenAPI contract) and `Cache-Control: private, max-age=3600`; access with
 the admin cookie or `?k={outputKey}` of the asset's production. Deleting an asset used by a scene item, a scene
-background, a slate or a fallback → 409 `asset_in_use`.
+background, a slate or a fallback → 409 `asset_in_use`. A video's `AssetDto.hasAudio` says whether the file has an audio
+track (read from the container header: the tracks of an MP4 `moov` or a WebM `Tracks` element, nothing is decoded); such a video
+is a channel of the audio mixer (4.10).
 
 ### 4.8 Output access
 
@@ -519,7 +528,7 @@ de-CH).
 
 | Category | Actions |
 |---|---|
-| `production` | production.created, production.duplicated (`from`, `name`), production.exported, production.imported, placeholder.assigned (`code`, `target`), placeholder.removed (`code`), production.renamed, production.activated, broadcast.started, broadcast.ended, broadcast.reset, slate.changed, scene.live (`via`: `take` or `click`), scene.created, scene.deleted |
+| `production` | production.created, production.duplicated (`from`, `name`), production.exported, production.imported, placeholder.assigned (`code`, `target`), placeholder.removed (`code`), production.renamed, production.activated, broadcast.started, broadcast.ended, broadcast.reset, slate.changed, scene.live (`via`: `take` or `click`), scene.created, scene.deleted, audio.changed (a channel of the mixer: muted, unmuted, gain, mode or sync offset, one entry per change, none while a fader is dragged; log “A1 muted”, “A1 gain -6.0 dB”, “A1 mode follows the picture”, “A1 sync offset 120 ms”) |
 | `devices` | device.paired, device.renamed, device.blocked, device.unblocked, device.removed, device.camera.lens, pairing.denied, invite.created, invite.revoked (invite links only), incident.acknowledged, source.reconnecting, source.ended, source.lost, source.recovered |
 | `security` | login.succeeded, login.failed, login.locked, logout, account.setup, account.password.changed, account.reset, audit.exported |
 | `media` | asset.uploaded, asset.deleted |
@@ -530,7 +539,7 @@ Not audited: the preview (too frequent), the phone QR invite (renewed every half
 are hidden from the view), zoom, focus, brightness and light of a phone camera (only a lens switch is). Account entries
 and sign-ins have no production; the snapshot of every production shows the account entries in its log. `RecentLog` in the
 snapshot holds the latest 20 entries of the production that are in `LogTexts.RecentActions` (a subset: no sign-ins, no
-exports).
+exports, no mixer changes).
 
 **Reading.** `GET /api/audit` (admin) returns `AuditPageDto`: entries newest first, ordered by `(at, id)`, and
 `nextCursor`. The cursor is a keyset (the time and id of the last entry, opaque to clients), so a page continues exactly
@@ -564,6 +573,61 @@ addresses removed) and an information line to the log. Values are validated at s
 the raw details of an entry on demand; filters for the time range (any time, today, last broadcast, custom), production,
 category and text (debounced); paging with a button and automatically at the end of the list; the export of the filtered
 entries; new entries at the top while the page is open (the page asks every 15 s).
+
+### 4.10 Audio (issue #7, decisions «#7»)
+
+**Sources.** The MVP carries four kinds of sound: the **audio station** (a laptop at the mixing desk; device kind
+`audioStation`, one slot `mic`, code A1; it sends the finished mix as one stereo track), the sound of a **shared screen**
+(track `screen-n-audio`, system sound or tab sound, depending on browser and system), the sound of a **video asset**
+(`hasAudio`, read from the container: MP4 `moov` and WebM tracks, no decoding) and the **microphone of a phone or laptop**
+(slot `mic`, off until its person switches it on). Cameras, images and texts have no sound.
+
+**The mixer** is one state per production (`Production.AudioChannels`, stored as `jsonb`, migration `AddAudioMixer`; no
+levels per scene yet). There is one channel `AudioChannelDto { sourceId, gainDb, muted, mode, syncOffsetMs }` for every source that
+can carry sound; it is created with the source and removed with it (`AudioMixerSync`; the start of the API gives every
+production the channels it lacks). Screens get their channel when they are created, whether they share sound or not; the
+Regie only lists a screen while it shares sound.
+- `gainDb` −100 … +10 (−100 is silence and shown as −∞; every other value is a finite number, so JSON never carries an infinity);
+  `muted`; `mode` `always` (audible whenever the broadcast is live), `follow` (“follows the picture”: audible while its picture
+  is shown, see below) or `off`; `syncOffsetMs` 0 … 500 (a delay of the sound, to line it up with the picture).
+- Start values: audio station `{0 dB, unmuted, always}`; device microphone `{0 dB, muted, follow}` (no open microphone goes on air by
+  accident); screen and video `{0 dB, unmuted, follow}`. A video allows the modes `follow` and `off` only: its sound belongs to its picture.
+- **Audible** (the same function in C# `AudioMixerRules.IsAudible` and TypeScript `isChannelAudible`): the broadcast is `live`, the
+  channel is not muted, `gainDb` > −100 and the mode lets it through: `always` yes, `off` no, `follow` while a visible (not `hidden`)
+  item of the **program** scene shows the source – for a microphone: any source of its own device (the camera of the phone it sits
+  in, a screen of the laptop). The Studio Mode preview is never audible (there is no preview mix; the operator checks a source with PFL in
+  the Regie, 9.1). Nothing is audible in standby and after the end.
+- **Ramps** (`audioRampMs`, the same rule on the output page and in the Regie): a cut, a mute or a fader move 20 ms; going live or
+  ending the broadcast 300 ms; a faded program switch takes the duration of the fade (constant-power curve, at most 10 s), so
+  the sound of a leaving picture fades out while the sound of the arriving one fades in.
+- On air: the tally of a `mic` slot is `program` while its channel is audible (never `preview`); it does not count for the overall
+  tally of the device, which is about the picture (an audio station's frame on the sender follows its microphone).
+- Incidents and log: a microphone is a source with a status like a camera (`reconnecting`, `ended`, `lost`, `ok`) and the same
+  recovery rules (4.5). The log says “A1 reconnecting”, “A1 microphone stopped” (the sender reports the slot `ended`: switched off,
+  unplugged, permission taken back; `source.ended`), “A1 no sound” (`source.lost`: the device stopped reporting) and “A1 is back, was gone
+  for 9 s”. A microphone that is not audible raises the same incident; what it adds is the place: “on Program” while the channel is
+  audible. **Silence** is a warning, not an incident: the Regie measures the level of every audible channel before its fader and shows
+  “no signal for 10 s” in the row and the status line when it stays under −60 dBFS for 10 s (`SilenceTracker`); a channel that is not
+  audible or has no sound is not watched.
+
+**Pinned details.**
+- `PUT /api/productions/{id}/audio/channels` (`Admin`, CSRF) takes `SetAudioChannelsRequest { channels, adjusting }` and returns the
+  channels of the production. Every listed channel replaces the stored one; channels not listed stay, so two seats that move different
+  faders never overwrite each other (and undo sends the previous state of the channels it touched). It is applied completely or
+  not at all: `validation_failed` with the field path (`channels[1].gainDb`) for a missing, empty or duplicate list, an unknown source,
+  a source that cannot carry sound, a value outside the limits, a mode a video does not allow; `not_found` for an unknown production.
+  A request that changes nothing creates no revision. `adjusting: true` is a fader drag: applied and sent at once, not audited;
+  the last request of a drag is sent with `false`.
+- Snapshots (`ProductionSnapshot`, `OutputSnapshot`) carry `audioChannels`; the event `audioChannelsChanged { revision, channels }` carries
+  **only the changed channels** (the reducer upserts them; an empty list changes nothing), a removed source's channel disappears
+  with `sourceRemoved`. The output page gets the event like the Regie (it must not see devices, but it needs the mixer).
+- The output reports its sound in `OutputReport.audio { state: off | running | blocked | unavailable, levelDb }` (peak of the program mix
+  over the report interval, null below −90 dBFS); `OutputStatusDto` carries it per link. The Regie says “Audio blocked” in the output
+  chip while a connected page is `blocked` and some channel could be heard (a browser keeps an audio context suspended until the page was
+  clicked; OBS with “Control audio via OBS” and a frame with `allow="autoplay"` do not need that).
+- Measured on a loaded 4-core machine with the fake sources of the E2E harness: mute or fader change to a silent output 6–60 ms after the
+  answer of the request, going off air to a silent output 90–450 ms, the tone arrives at its own level (±2 dB), the audio station's
+  tone starts at the output within about one second of the broadcast start.
 
 ## 5. API
 
@@ -608,6 +672,9 @@ Authentication and authorization:
   interceptor sets it); otherwise 403. No CORS is enabled.
 - Hubs reject WebSocket/negotiate requests whose `Origin` host differs from the request host (403).
 - Policies: `Admin` (cookie), `Device` (device bearer), `Output` (key + IP check, per slug).
+- Audio (4.10): `PUT /api/productions/{id}/audio/channels` (`Admin`) sets mixer channels; `POST /api/device/slots` accepts
+  `{ "kind": "audio" }` (the microphone, once per device); the redeem request of an invite link may ask for `kind: "audioStation"`
+  (honoured for a laptop link only; the pairing form's “Audio station (mixing desk)” does the same with the check code).
 - Production-scoped routes return 404 for unknown production ids.
 
 Duplicate, export and import of productions and the placeholders of a copy: 4.2.2. The import is the one route besides the asset
@@ -670,12 +737,14 @@ changed).
 
 Output: `SubscribeOutput(sinceRevision?) → OutputChangesDto` (production derived from the key), then `event`.
 Events the output must not see (devices, pairing, invites, incidents, log, output status) are delivered as
-`revisionOnly` with the same revision. `Report(OutputReport)` every 2 s.
+`revisionOnly` with the same revision; `audioChannelsChanged` (the mixer) is one it needs. `Report(OutputReport)` every 2 s,
+with the state and level of its sound (`audio`, 4.10).
 
 Device: `Hello(DeviceHelloDto) → DeviceSessionDto`, then `tally`, `command`, `self`, `sessionReplaced`.
 `Report(DeviceReportDto)` every 2 s (the server relays it as telemetry to the Regie and updates source status; per slot the
 report carries `codec`, `encoder`, `hardwareEncoder` and `qualityLimitation` `cpu | bandwidth | other`, any of them may be
-null and unknown values are dropped by the server). The
+null and unknown values are dropped by the server; the slot `mic` reports like a camera, with codec `opus` and its
+bitrate, and `ended` when the person switched it off). The
 `command` message also carries `cameraControl` (section 4.6); the report carries the camera state of a phone and is sent
 once more right after a camera command.
 
@@ -683,7 +752,7 @@ once more right after a camera command.
 
 - One room per production: `prd_{id}` («backstage»). `auto_create` on, `empty_timeout` 300 s.
 - Identities: device id for senders; `studio_{random}` for Regie sessions; `output_{slug}_{linkId}_{random}` for output pages.
-- Grants: sender – roomJoin, canPublish, canPublishSources [camera, screen_share], canSubscribe false,
+- Grants: sender – roomJoin, canPublish, canPublishSources [camera, screen_share, microphone, screen_share_audio], canSubscribe false,
   canPublishData false; studio and output – roomJoin, canSubscribe, canPublish false, canPublishData false,
   hidden true. TTL 10 min: the server refreshes tokens of connected participants every 5 min (validity
   max(10 min, remaining)), and clients fetch a fresh token from the API for every rejoin. Tokens: HS256 JWT,
@@ -717,7 +786,17 @@ once more right after a camera command.
 - Publishing (sender): camera H.264, simulcast layers 1080p/540p/270p (or 720p/360p/180p), `contentHint = 'motion'`;
   screens H.264 (VP9 with a VP8 backup codec only where `MediaCapabilities.encodingInfo` reports a power-efficient VP9
   encoder, see 8.4), `contentHint = 'detail'`, simulcast off, max 1440p at **15 fps** and 3 Mbit/s; a slot with the sender's
-  option "Video in screen" sends 30 fps at 4.5 Mbit/s with `contentHint = 'motion'`; dynacast on; no audio.
+  option "Video in screen" sends 30 fps at 4.5 Mbit/s with `contentHint = 'motion'`; dynacast on.
+  Audio (issue #7): the microphone is the track `mic` (source Microphone), the sound of a screen is the track
+  `screen-n-audio` (source ScreenShareAudio, published only when the sender asked for it and the browser delivered it);
+  Opus with RED and **DTX off** (a soft voice or a quiet passage must not cut out). Profile `voice` (phone, laptop):
+  `getUserMedia` with the browser's echo cancellation, noise suppression and automatic gain on, mono, preset
+  `music`; profile `station` (the audio station): all three **off**, `channelCount` 2, `forceStereo`, preset
+  `musicHighQualityStereo` (about 128 kbit/s). The output page and the Regie subscribe to the audio tracks too, so they hold
+  **every microphone** of the production: this is the reason that Air mode (later) needs its own room and token rules.
+- Playing audio: remote audio tracks are not attached with `track.attach()`. Each one is taken as a `MediaStream` into the Web Audio
+  graph of the page (`MediaStreamAudioSourceNode`); Chromium only delivers a remote stream to Web Audio while some media element
+  holds it, so a muted `<audio>` element keeps it alive (`setInput(…, { keepAlive: true })`).
 - Subscribing: both roles with `adaptiveStream: false` and an explicit layer per source from the desired sizes of their
   renderers (`setVideoDimensions`), a minimal jitter buffer in the Regie (`playoutDelayHint`/`jitterBufferTarget` ≈ 0
   where supported) and ≈ 50 ms on the output. The output asks for the **program scene** (the size of each item on the
@@ -799,6 +878,11 @@ Verified livekit-client 2.23.0 behaviour (research 2026-10-22, server v1.13.10) 
   `tallyOf(state, sourceId)`, `incidentPlace(state, sourceId)` (`'program' | 'preview' | 'off'`, worded “in Program” | “in Preview” | “not live” by
   `incidentPlaceWord(place)`),
   `stationOrder` (prototype ordering), `isDown(status)`.
+- `audio.ts` / `audio-selectors.ts` / `audio-silence.ts` (issue #7): `AUDIO_LIMITS`, `AUDIO_RAMP_MS`, `AUDIO_BROADCAST_RAMP_MS`,
+  `audioRampMs`, `dbToGain` / `gainToDb`, `faderPosition` / `faderValue` (the useful range −60 … +10 dB is linear and takes 96 % of
+  the travel, the last 4 % are the drop to silence), `defaultAudioChannel`, `canCarrySound`, `allowedAudioModes`, `followsPicture`,
+  `isChannelAudible`, `audioTargets(state)` (what the output sets on its graph), `audioExpected(state)` (some channel could be heard),
+  `audioChannelRows(state)` (the rows of the Audio dock), `SilenceTracker`. `ProductionState.audioChannels` is a map by source id.
 - `format.ts` (locale-aware through `@studioflow/i18n`): `formatDuration(ms)` mm:ss, `formatRuntime(ms)` hh:mm:ss, `formatClock(date)`,
   `formatHm(date)`, `formatSeconds(ms)` (“0.3 s”, German “0,3 s”), `formatRate(mbit)` (“2.8”, German “2,8”),
   `formatCheckCode('4712')` (“47 12”),
@@ -892,6 +976,10 @@ which would clear it), and a blur that fails after the canvas was cleared puts t
 shows an empty canvas (issue #50, "nothing black on air"). *Preloading*:
 `setPreloadScenes` takes the preview scene only (the output page passes nothing else).
 
+Sound (issue #7): the renderer never makes a sound itself; its videos are muted. `SourceMediaProvider.attachAsset(…)` tells the
+provider which element plays a video asset, so the audio side can tap it (`HTMLMediaElement.captureStream()`; Chromium delivers the
+sound of a muted element to a capture); `audioStream(sourceId)` of the media provider is the stream of a remote audio track.
+
 Texts (issue #13): an item whose source is `txt_…` is drawn as HTML by `text-block.ts`, never as a picture: sharp at every
 output resolution and scaled with the stage. The options `textOf(sourceId)` and `textTheme()` supply the content and the
 production colours; `refresh()` reads them again. The three lines of DOM are `.sf-r-text` (panel, background colour, padding),
@@ -938,6 +1026,14 @@ Texts keep their own rectangle in an Auto grid scene.
   `enumerateDevices()`), `controlCamera(command)` (latest command wins, lens switch with `restartTrack` and no
   republish), `onCameraSettings(fn)` for persisting; the settings are restored after every restart. The pure rules
   (mapping, clamping, merging) are in `camera-control.ts` and shared with the Regie through `@studioflow/media-client/device`.
+- Audio (`@studioflow/media-client`, `…/device`): `AudioGraph` (Web Audio mix: per channel input gain → meter, delay for the sync
+  offset, fader gain, master; `apply(targets, { rampMs })` with sample-accurate ramps (`rampParam`, 20 ms linear or a constant-power value
+  curve from 100 ms), `levels()` for the meters, a monitor bus for PFL and the program (`setMonitor`), `setSinkId` for headphones in
+  Chromium), `AssetAudioTap` (sound of a video element), `StreamLevelMeter` (level of a stream, used by the sender), and the sender's
+  `AudioPublisher`: `publishMic({ profile: 'voice' | 'station', deviceId? })` (state machine like the camera; `ended` track → a grace
+  period, then looking for the device on every `devicechange` and every few seconds until it is back), `unpublish()`, `listInputs()`,
+  `localStream()`, `getSlotTelemetry()`; `Publisher.publishScreen(slot, { audio })` asks the browser for sound and publishes
+  `screen-n-audio` when it came. The graph is a class of its own so that the Regie's copy and the output page's mix are the same code.
 - `runTechCheck(…)`: camera (resolution/fps achieved), network (RTT to the API over 5 pings), bandwidth (upload of
   1 MB to `/api/device/bandwidth-test`, ≥ 6 Mbit/s ok, ≥ 3 warn, else bad) → `TechCheckDto`.
 
@@ -980,6 +1076,18 @@ Properties offers “Bring to front” and “Send to back” next to “Bring f
 the monitor (dragging there moves the element). Editing: drag, corner resize (aspect ratio locked, Shift frees),
 Alt+drag on an edge/corner crops (like OBS), snapping to canvas edges, safe margin, centre and other items with blue
 guides (Alt disables snapping during move), dot raster while dragging, live edits throttled to the API as specified.
+
+Audio in the Regie (issue #7): a fifth dock **Audio** (after Stations; default weight 1.4; stored layouts get it at the end of the bottom
+zone) lists the channels: microphones always, screens while they share sound, videos that have sound. A row: code, name, role, “PGM”
+while the channel is audible, **PFL**, **M** (mute), the fader (`faderPosition`, a double click resets to 0 dB, arrow keys, Home = −∞,
+End = +10 dB), the level in dB, a meter (neutral; red from −3 dBFS), and under the chevron the mode (Always | Follows the picture | Off)
+and the sync offset (0 … 500 ms). The Regie mixes its own copy of the sound (same graph, same rules) for the meters, which start with
+the first click on the page (a note says so); the level of the program is above Take. Nothing is played in the Regie unless the operator
+asks: **Monitor** (popover) chooses Off (every reload), Program or, with PFL on a row, one channel before its fader and mute; in
+Chromium the output goes to a chosen device (headphones). A fader drag is one undo step and one audit entry (`adjusting` while it moves);
+Ctrl+Z / Ctrl+Shift+Z while the focus is in the dock undo and redo the mixer (60 steps, its own history), the key **M** mutes the
+selected channel. The audio station's row in Stations shows a microphone instead of a picture. The output chip shows “Audio blocked”
+(4.10), the status line the silence warning. Keys: `studioflow.layout` is v1 with the new dock; the audio dock is not a new version.
 
 Texts in the Regie (issue #13): “+ Source” lists the texts that are not in the scene (group “Texts”) and “New text” with the
 three styles; a new text is created with placeholder content (“Name” / “Role”, “Title”, “Note”) and added to the scene
@@ -1026,6 +1134,19 @@ without a new picker; it costs the laptop more power, the line under the state s
 share ended or the Regie asks (“The control room asks you to share your screen again”), optional camera. German:
 «Bildschirm teilen», «+ weiteren Bildschirm», «Teilen beenden», «Entfernen», «Erneut teilen», «Die Regie bittet dich,
 den Bildschirm erneut zu teilen».
+Audio (issue #7): a phone has a microphone button in its controls (“Microphone off” / “Microphone on”), a laptop “Add microphone” and
+a microphone panel: audio input (the browser's list; the choice is remembered), switch on / off, input level (red close to clipping) and
+a hint after 10 s without signal, and the tag “Mic live” while the Regie lets the sound through (the tally of the slot `mic`).
+A microphone starts only when its person switches it on; the settings remember it after a reload (`micOn`, `micInput`). **Audio
+station:** the pairing form offers “Audio station (mixing desk)” (an invite link of a laptop with `?station=audio` pairs it as one too);
+its page has the device name, the panel “Sound from the mixing desk”, the note that nothing is processed (stereo, echo cancellation,
+noise suppression and automatic gain off) and no picture; it **starts the sound by itself** after every reload unless it was switched off
+on purpose, and its tally frame follows its microphone. A laptop's “Share audio” box asks the browser for the sound of the next screen
+share and says honestly what is possible: Chrome and Edge on Windows can share the sound of the whole computer when the entire screen is
+shared, otherwise only the sound of a shared browser tab (“Also share tab audio” in the dialog), Firefox and Safari no sound; a share
+that came without sound says so (“No sound is shared with this screen”), one with sound says “with sound”. A live microphone counts as
+on air for the update logic (no reload in the middle of the sound).
+
 Messages from the Regie appear as a prominent banner; a camera change by the Regie shows a short, unobtrusive note
 («Die Regie hat gezoomt: 2,0×») under the header. Technical check runs on first start and on demand; result is
 reported. Reports every 2 s. PWA: manifest (name “StudioFlow Sender”, `lang` `en`, scope/start_url `/join/`, display standalone,
@@ -1056,8 +1177,17 @@ the output asks the sources for follows the size of an element on screen, not th
 resolution (720p/1080p, simulcast layers) does not depend on the format.
 Bundle target: < 350 KB gzip incl. livekit-client.
 
+Sound (issue #7, `?audio=off` switches it off): the page mixes the sound of the program with Web Audio (`AudioGraph`, the same code as
+the Regie's copy) from the `audioChannels` of the synced state: remote audio tracks as streams (4.10 / 7), videos through
+`AssetAudioTap`; it applies `audioTargets(state)` with the ramp of `audioRampMs` at every change, reports `audio` every 2 s and shows a
+“Sound on” button only while the browser keeps the context suspended **and** some channel could be heard (any click, key or touch on the
+page starts the sound too). `?debug=1` adds “Audio running · Program −5.0 dBFS” and a line per channel (level, audible, loss, jitter,
+buffer, codec). The sound of a page that shows “No access” is cut.
+
 As an OBS browser source (9.4) the page needs nothing special, and this is what makes it work there: every video is
-muted and inline, so Chromium (CEF) plays it without a user gesture; nothing on the page asks for a click; a source that
+muted and inline, so Chromium (CEF) plays it without a user gesture; **sound is played by Web Audio, which OBS captures when the source
+has “Control audio via OBS” switched on (the generated scene collection does)**, and a frame that embeds the page needs
+`allow="autoplay"`; nothing on the page asks for a click; a source that
 goes away keeps its last picture (hold frame, 8.3); `?bg=transparent` makes the page, the stage and the letterbox
 transparent; the page keeps running while the source is hidden (`visibilitychange` resumes paused videos).
 
@@ -1073,7 +1203,7 @@ background effects off) and the download of a **ready-made OBS scene collection*
 The file is generated in the browser (`obs-scene-collection.ts`) from the link URL the Regie already holds, so there is no
 new endpoint and the key goes nowhere new; the unit tests cover its structure, the escaping of names and URLs and the
 file name. It holds one scene “StudioFlow” with one browser source “StudioFlow output” (`id: "browser_source"`) with
-`url` = the link, `width` × `height` = the canvas of the production (1920 × 1080 by default, 1080 × 1920 for 9:16, …), `fps` 30 (`fps_custom`), `reroute_audio` true (“Control audio via OBS”, for #7), `shutdown` false
+`url` = the link, `width` × `height` = the canvas of the production (1920 × 1080 by default, 1080 × 1920 for 9:16, …), `fps` 30 (`fps_custom`), `reroute_audio` true (“Control audio via OBS”: the sound of the page comes into the OBS mixer, issue #7), `shutdown` false
 (keeps running while hidden) and `restart_when_active` false (no refresh when the scene becomes active). The layout of
 the file is the one OBS Studio 31 and 32 write (keys of a scene and of `obs-browser`; `prev_ver` is OBS 31.0.0); a
 scene collection does not carry the canvas size, so the instructions tell the operator to set Base and Output
