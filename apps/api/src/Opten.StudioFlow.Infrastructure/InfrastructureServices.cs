@@ -87,6 +87,8 @@ public static class InfrastructureServices
             var keys = sp.GetRequiredService<IOptions<LiveKitOptions>>().Value;
             return new LiveKitKeys(keys.ApiKey, keys.ApiSecret);
         });
+        // The token issuer hands out the address the caller used (the LiveKit URL of the client).
+        services.AddHttpContextAccessor();
         services.AddSingleton<LiveKitTokenIssuer>();
         services.AddSingleton<ILiveKitTokenIssuer>(sp => sp.GetRequiredService<LiveKitTokenIssuer>());
         services.AddSingleton<LiveKitWebhookReceiver>();
