@@ -1,7 +1,13 @@
 import { resetLocaleForTests } from '@studioflow/i18n';
 import type { DeviceTelemetryDto } from '@studioflow/scene-model';
 import { deviceFixture, sourceFixture } from '../../../testing/fixtures';
-import { pairedText, stationDetails, stationView, techLamps } from './station-view';
+import {
+  decodingEntries,
+  pairedText,
+  stationDetails,
+  stationView,
+  techLamps,
+} from './station-view';
 
 const DEVICE = 'dev_aaaaaaaaaaaaaaaa';
 
@@ -71,14 +77,16 @@ describe('station view in German', () => {
     expect(details.map((entry) => entry.label)).toEqual([
       'Gerät',
       'Auflösung',
+      'Codierung',
       'Gekoppelt',
       'Verlust',
       'Akku',
       'Netz',
     ]);
-    expect(details[3].value).toBe('0,0 %');
-    expect(details[4].value).toBe('78 % · lädt');
-    expect(details[5].value).toBe('WLAN');
+    expect(details[2].value).toBe('H.264');
+    expect(details[4].value).toBe('0,0 %');
+    expect(details[5].value).toBe('78 % · lädt');
+    expect(details[6].value).toBe('WLAN');
     expect(techLamps(device.techCheck)?.map((lamp) => `${lamp.label} ${lamp.word}`)).toEqual([
       'Kamera ok',
       'Netz ok',
@@ -86,5 +94,30 @@ describe('station view in German', () => {
     ]);
     const yesterday = new Date(2026, 9, 21, 9, 5).toISOString();
     expect(pairedText(yesterday, new Date(2026, 9, 22, 12, 0).getTime())).toBe('21.10. 09:05');
+  });
+
+  it('words encoding, decoding and the CPU limit like the German UI', () => {
+    const slots = telemetry().slots.map((slot) => ({
+      ...slot,
+      codec: 'vp9',
+      hardwareEncoder: false,
+      qualityLimitation: 'cpu',
+    }));
+    const device = deviceFixture(DEVICE, 'Handy', { telemetry: { ...telemetry(), slots } });
+    const view = stationView(device, {
+      sources: [camera],
+      incidents: [],
+      tallyOf: () => 'off',
+      studioMode: false,
+    });
+    expect(view.line).toMatchObject({ cpuLimit: 'CPU am Limit' });
+    const encoding = stationDetails(device, [camera], 'ok', Date.now())[2];
+    expect(encoding).toMatchObject({
+      label: 'Codierung',
+      value: 'VP9 · Software-Codierung · CPU am Limit',
+    });
+    expect(
+      decodingEntries([camera], new Map([[camera.id, { codec: 'vp9', decoder: 'software' }]])),
+    ).toEqual([{ label: 'Decodierung hier', value: 'VP9 · Software-Decodierung', mono: true }]);
   });
 });

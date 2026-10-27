@@ -8,6 +8,7 @@ export const regieMonitoring = {
 
   'regie.monitoring.column.battery': 'Battery',
   'regie.monitoring.column.codes': 'Sources',
+  'regie.monitoring.column.encoding': 'Encoding',
   'regie.monitoring.column.loss': 'Loss',
   'regie.monitoring.column.network': 'Network',
   'regie.monitoring.column.resolution': 'Resolution',

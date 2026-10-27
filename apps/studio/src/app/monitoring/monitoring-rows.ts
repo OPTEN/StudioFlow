@@ -12,6 +12,7 @@ import {
   type TechCheckLevel,
 } from '@studioflow/scene-model';
 import { statusLamp, statusTone, type LampTone, type StateTone } from '../docks/shared/source-view';
+import { encodingView } from '../docks/shared/stream-load';
 import { networkLabel, totalBitrateKbps, worstSource } from '../docks/stations/station-view';
 
 /**
@@ -30,6 +31,7 @@ export type MonitoringColumn =
   | 'resolution'
   | 'fps'
   | 'bitrate'
+  | 'encoding'
   | 'loss'
   | 'rtt'
   | 'battery'
@@ -54,6 +56,10 @@ export interface MonitoringSlot {
   readonly resolution: string;
   readonly fps: string;
   readonly bitrate: string;
+  /** How the sender encodes the slot: "H.264 · hardware", "VP9 · software encoding", or "–" when it does not tell. */
+  readonly encoding: string;
+  /** The sender is at its CPU limit and lowers the picture (shown as a tag, issue #12). */
+  readonly cpuLimited: boolean;
   readonly loss: string;
 }
 
@@ -74,6 +80,8 @@ export interface MonitoringRow {
   readonly heightValue: number | null;
   readonly fpsValue: number | null;
   readonly bitrateKbps: number | null;
+  /** Load of the senders: 2 = a sender is at its CPU limit, 1 = software encoding, 0 = fine; null = nothing reported. */
+  readonly encodingLoad: number | null;
   readonly lossValue: number | null;
   readonly rttMs: number | null;
   readonly batteryPct: number | null;
@@ -159,6 +167,8 @@ export function monitoringRows(
         fps: slot && finite(slot.fps) ? String(Math.round(slot.fps)) : MISSING_VALUE,
         bitrate:
           slot && finite(slot.bitrateKbps) ? formatKbpsAsMbit(slot.bitrateKbps) : MISSING_VALUE,
+        encoding: encodingView(slot).text,
+        cpuLimited: slot?.qualityLimitation === 'cpu',
         loss:
           slot && finite(slot.packetLossPct) ? formatPercent(slot.packetLossPct, 1) : MISSING_VALUE,
       };
@@ -167,6 +177,7 @@ export function monitoringRows(
     const heights = live.map((slot) => slot.height).filter(finite);
     const fps = live.map((slot) => slot.fps).filter(finite);
     const losses = live.map((slot) => slot.packetLossPct).filter(finite);
+    const encodings = live.filter((slot) => slot.codec).map((slot) => encodingView(slot));
     const tech = device.techCheck?.overall ?? null;
     const tone = statusTone(status);
     return {
@@ -185,6 +196,14 @@ export function monitoringRows(
       heightValue: heights.length > 0 ? Math.max(...heights) : null,
       fpsValue: fps.length > 0 ? Math.min(...fps) : null,
       bitrateKbps: totalBitrateKbps(telemetry),
+      encodingLoad:
+        encodings.length === 0
+          ? null
+          : encodings.some((view) => view.cpuLimited)
+            ? 2
+            : encodings.some((view) => view.software)
+              ? 1
+              : 0,
       lossValue: losses.length > 0 ? Math.max(...losses) : null,
       rttMs: finite(telemetry?.rttMs) ? telemetry.rttMs : null,
       batteryPct: finite(telemetry?.batteryPct) ? telemetry.batteryPct : null,
@@ -214,6 +233,8 @@ function sortKey(row: MonitoringRow, column: MonitoringColumn): number | string 
       return row.fpsValue;
     case 'bitrate':
       return row.bitrateKbps;
+    case 'encoding':
+      return row.encodingLoad;
     case 'loss':
       return row.lossValue;
     case 'rtt':

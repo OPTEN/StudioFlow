@@ -252,6 +252,12 @@
   color: var(--green);
 }
 
+// "CPU at limit": a computer lowers the picture (amber = attention, not a failure)
+.c-tag--warn {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
 // State words ("reconnecting", "sharing stopped", "back")
 .c-state--warn {
   color: var(--amber);

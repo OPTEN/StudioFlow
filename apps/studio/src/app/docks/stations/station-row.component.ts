@@ -19,6 +19,7 @@ import {
   type DeviceDto,
   type SourceDto,
 } from '@studioflow/scene-model';
+import { StudioMediaService } from '../../core/media/studio-media.service';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ElapsedComponent } from '../shared/elapsed.component';
@@ -30,7 +31,16 @@ import { MessageComposerComponent } from './message-composer.component';
 import { PlaceholderOfferComponent } from './placeholder-offer.component';
 import { StationCommandsService } from './station-commands.service';
 import { StationThumbComponent } from './station-thumb.component';
-import { stationDetails, techLamps, type StationView } from './station-view';
+import {
+  decodingEntries,
+  stationDetails,
+  techLamps,
+  type DetailEntry,
+  type StationView,
+} from './station-view';
+
+/** How often the open details ask the media provider how this Regie decodes the station's pictures. */
+const DECODING_POLL_MS = 3000;
 
 /** Which confirmation box is open. */
 type Confirmation = 'block' | 'remove' | null;
@@ -76,6 +86,7 @@ export class StationRowComponent {
   readonly toggle = output<void>();
 
   protected readonly commands = inject(StationCommandsService);
+  private readonly media = inject(StudioMediaService);
   private readonly station = viewChild.required<ElementRef<HTMLElement>>('station');
 
   protected readonly t = t;
@@ -84,6 +95,8 @@ export class StationRowComponent {
   protected readonly composing = signal(false);
   protected readonly renaming = signal(false);
   protected readonly cameraOpen = signal(false);
+  /** How this Regie decodes the station's pictures (hardware or software), read while the details are open. */
+  protected readonly decoding = signal<readonly DetailEntry[]>([]);
 
   protected readonly detailId = computed(() => `sf-station-${this.view().id}`);
   protected readonly cameraPanelId = computed(() => `sf-camera-${this.view().id}`);
@@ -110,6 +123,34 @@ export class StationRowComponent {
           this.cameraOpen.set(false);
         });
       }
+    });
+    effect((onCleanup) => {
+      const provider = this.media.provider();
+      const sources = this.sources();
+      if (!this.open() || !provider || sources.length === 0) {
+        untracked(() => this.decoding.set([]));
+        return;
+      }
+      let stopped = false;
+      const read = async (): Promise<void> => {
+        const stats = new Map(
+          await Promise.all(
+            sources.map(async (source) => {
+              const entry = await provider.getStats(source.id).catch(() => null);
+              return [source.id, entry] as const;
+            }),
+          ),
+        );
+        if (!stopped) {
+          this.decoding.set(decodingEntries(sources, stats));
+        }
+      };
+      void read();
+      const timer = setInterval(() => void read(), DECODING_POLL_MS);
+      onCleanup(() => {
+        stopped = true;
+        clearInterval(timer);
+      });
     });
     effect(() => {
       if (this.flash() > 0) {
