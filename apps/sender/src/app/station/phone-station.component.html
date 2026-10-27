@@ -161,7 +161,8 @@
     <button
       class="c-button c-button--overlay c-phone__mic"
       type="button"
-      data-testid="mic-toggle"
+      data-testid="slot-mic"
+      [attr.data-state]="session.mic()?.state ?? 'idle'"
       [attr.aria-pressed]="micRunning()"
       (click)="toggleMic(); $event.stopPropagation()"
     >

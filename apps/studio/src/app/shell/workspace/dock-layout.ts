@@ -72,7 +72,7 @@ export function defaultLayout(): DockLayout {
   return {
     v: 1,
     zones: { left: [], bottom: ['scenes', 'src', 'insp', 'st', 'audio'], right: [] },
-    weights: { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, audio: 1, pair: 2.2 },
+    weights: { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, audio: 1.4, pair: 2.2 },
     hidden: [],
     bottomH: null,
     leftW: 320,
