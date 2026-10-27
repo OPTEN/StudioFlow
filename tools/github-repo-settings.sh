@@ -39,14 +39,12 @@ gh api -X PUT "repos/$repo/branches/main/protection" --silent --input - <<'JSON'
 }
 JSON
 
-echo "4/4 Secret RELEASE_PLEASE_TOKEN"
+echo "4/4 Secret RELEASE_PLEASE_TOKEN (optional, not set by decision: docs/releasing.md section 8)"
 if gh secret list --repo "$repo" | grep -q '^RELEASE_PLEASE_TOKEN'; then
-  echo "    already set, left unchanged (gh secret set RELEASE_PLEASE_TOKEN --repo $repo replaces it)"
+  echo "    set: CI starts on the release pull request by itself"
 else
-  echo "    Create a fine-grained token first: https://github.com/settings/personal-access-tokens/new"
-  echo "    Resource owner ${repo%%/*}, only this repository, permissions Contents and Pull requests: Read and write."
-  echo "    Paste the token now (input is hidden):"
-  gh secret set RELEASE_PLEASE_TOKEN --repo "$repo"
+  echo "    not set: click \"Approve workflows to run\" on the release pull request"
+  echo "    (to set it later: gh secret set RELEASE_PLEASE_TOKEN --repo $repo)"
 fi
 
 echo "Done. Check: https://github.com/$repo/settings/branches"

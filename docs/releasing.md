@@ -207,16 +207,16 @@ transparency log (Rekor); the images themselves stay private.
 
 ## 8. Set-up by the owner (repository settings, one time)
 
-`bash tools/github-repo-settings.sh` applies the first four rows and asks for the token (it needs `gh` signed in as an
-administrator). Administrators may still push directly to `main` (`enforce_admins` is off); everybody else goes through
-a pull request.
+`bash tools/github-repo-settings.sh` applies the first three rows and reports whether the optional token is set (it
+needs `gh` signed in as an administrator). Administrators may still push directly to `main` (`enforce_admins` is off);
+everybody else goes through a pull request.
 
 | Setting | Why |
 |---|---|
 | Settings > General > Pull Requests: allow **squash merging**, set "Default commit message" to **Pull request title**; switch off merge commits and rebase merging | The title becomes the commit message |
 | Settings > Branches > rule for `main`: the checks **`ci-ok`** and **Conventional Commits title** | `ci-ok` aggregates the CI jobs: a red job blocks the merge, a job skipped by the path filters does not |
 | Settings > Actions > General > Workflow permissions: **Allow GitHub Actions to create and approve pull requests** | release-please opens the release pull request |
-| Secret `RELEASE_PLEASE_TOKEN`: fine-grained personal access token (or GitHub App token) with *Contents* and *Pull requests* write access to this repository | A pull request created with the default token starts no workflow, so CI would never run on the release pull request and the required checks could not turn green. Without the secret the workflow uses the default token and the release pull request needs an administrator's merge |
+| Secret `RELEASE_PLEASE_TOKEN` (optional, **not set by decision**): fine-grained personal access token (or GitHub App token) with *Contents* and *Pull requests* write access to this repository | Without it release-please opens the release pull request with the default token, and GitHub holds its workflows: a maintainer clicks **Approve workflows to run** on the release pull request (again after every force push of release-please) and merges once CI is green. With the secret CI starts by itself, the price is a personal token that has to be renewed |
 | Packages: after the first Release run, open the packages `studioflow-api`, `studioflow-web`, `studioflow-livekit` and `studioflow-backup` and check that the repository has access ("Manage Actions access") | The smoke test and the scan pull the images with the workflow token |
 | Packages: make them **public** when the repository becomes public (#5) | Then servers need no `docker login` |
 | Organisation: packages may be created with the visibility "private" | |
