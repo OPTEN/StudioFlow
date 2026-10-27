@@ -9,7 +9,7 @@
   "packages": {
     ".": {
       "package-name": "studioflow",
-      "extra-files": ["apps/api/Directory.Build.props", "docker-compose.release.yml"]
+      "extra-files": ["apps/api/Directory.Build.props"]
     }
   }
 }

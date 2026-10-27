@@ -8,7 +8,7 @@ operators who install a release: `docs/runbook.md`, section 14.
 | When | What happens | Result |
 |---|---|---|
 | A pull request is opened or edited | The check **Conventional Commits title** (`.github/workflows/pr-title.yml`) | The title must follow the rules in section 2, or the check is red |
-| A pull request is merged (squash) into `main` | **CI** (`ci.yml`) runs on the new commit. When it is green, the workflow **Release** (`release.yml`) runs for exactly that commit | Images `studioflow-api`, `studioflow-web` and `studioflow-backup` with the tags `:sha-1a2b3c4` and `:main`; the release pull request is opened or updated |
+| A pull request is merged (squash) into `main` | **CI** (`ci.yml`) runs on the new commit. When it is green, the workflow **Release** (`release.yml`) runs for exactly that commit | Images `studioflow-api`, `studioflow-web`, `studioflow-livekit` and `studioflow-backup` with the tags `:sha-1a2b3c4` and `:main`; the release pull request is opened or updated |
 | The release pull request is merged | CI and Release run for the merge commit | Git tag `vX.Y.Z`, GitHub release with notes and files, the same images also tagged `:X.Y.Z`, `:X.Y` and `:latest` |
 
 Every commit on `main` therefore has images; a version only exists when somebody clicks "merge" on the release pull
@@ -16,7 +16,7 @@ request. Nothing is built on the servers: they pull the images (`docker compose 
 
 ## 2. Versions and Conventional Commits
 
-There is **one version for everything** (lockstep): the API, the frontends and all three images are built from one
+There is **one version for everything** (lockstep): the API, the frontends and all four images are built from one
 commit, and a sender in version X must meet an API in version X when a contract changes. Semantic Versioning, `0.x.y`
 until the first production use, then `1.0.0`.
 
@@ -28,14 +28,16 @@ The version is written in these files, all changed by the release pull request a
 | `.release-please-manifest.json` | The version release-please starts from (the last release) |
 | `package.json`, `package-lock.json` | The version of the repository |
 | `apps/api/Directory.Build.props` (`<Version>`) | The API: `GET /api/system/info` reports it as `0.1.0+1a2b3c4` (version and commit; the Docker build passes the commit) |
-| `docker-compose.release.yml` (default of `STUDIOFLOW_IMAGE_TAG`) | The images a release installation starts |
+
+`docker-compose.release.yml` carries no version: the image tag defaults to `latest` (`STUDIOFLOW_IMAGE_TAG`), so it is the same
+file in every release, and `check.mjs` fails when a version marker appears in it. A server pins a version in its `.env`.
 
 The frontends have no file of their own. The Regie shows the version the **API** reports, in the last row of the
 settings (gear) popover. The output page is served without a session, so it cannot ask the API: its build writes the
 `version` of `package.json` plus the commit (the Docker build argument `STUDIOFLOW_REVISION`, the same one the API
 image gets) into the bundle, and the `?debug=1` overlay prints `StudioFlow 0.1.0+1a2b3c4` as its last line (just
 `0.1.0` where the build does not know the commit, like the plain `docker compose build` of development). CI and the
-Release workflow pass the commit to the `api` and `web` images alike.
+Release workflow pass the commit to every image alike.
 
 Before the first release every file says `0.0.0`. `release-please-config.json` holds the rules (`node` release type,
 tags `vX.Y.Z`, before 1.0 a breaking change raises the minor version only, and `initial-version` `0.1.0`: without a
@@ -78,10 +80,11 @@ docs: describe the update procedure
 |---|---|
 | `ghcr.io/opten/studioflow-web` | Caddy with the DNS modules, the Caddyfile and the three built frontends (Regie, sender, output), plus the licence files (`/licenses/LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, `/3rdpartylicenses.txt`). Built from `infra/caddy/Dockerfile` with the repository as context |
 | `ghcr.io/opten/studioflow-api` | The ASP.NET Core API including its commands (`reset-admin`, `broadcast-status`). Built from `apps/api/Dockerfile` |
-| `ghcr.io/opten/studioflow-backup` | The backup service of the Compose profile `backup` (scheduled `pg_dump` and volume copies, runbook section 7). Built from `infra/backup/Dockerfile` on the PostgreSQL image pinned in `docker-compose.yml` (the `plan` job reads the pin), so `pg_dump` matches the server |
+| `ghcr.io/opten/studioflow-livekit` | The LiveKit server (exact version pinned in `infra/livekit/Dockerfile`, moved by Renovate together with `livekit-client`) and a small supervisor that restarts it when the API writes a new `livekit.yaml` (the media address). Built from `infra/livekit/Dockerfile` |
+| `ghcr.io/opten/studioflow-backup` | The backup service (scheduled backups, `backup-now`, `list`, `restore`; runbook section 7). Built from `infra/backup/Dockerfile` on the PostgreSQL image pinned in `docker-compose.yml` (the `plan` job reads the pin), so `pg_dump` matches the server |
 
-`livekit` and `postgres` are third-party images with fixed versions in the Compose files; `netem` (tests) has no
-published image. The backup image is released like the other two: same tags, SBOM, provenance, signature and scan.
+`postgres` is a third-party image with a fixed version in the Compose files; `netem` (tests) has no published image. The
+LiveKit and backup images are released like the other two: same tags, SBOM, provenance, signature and scan.
 
 | Tag | Moves | For |
 |---|---|---|
@@ -89,7 +92,7 @@ published image. The backup image is released like the other two: same tags, SBO
 | `main` | with every verified commit on `main` | trying out the newest state |
 | `0.4.2` | never | servers (recommended) |
 | `0.4` | with every patch release of 0.4 | |
-| `latest` | with every release | `./update.sh` without `--version` |
+| `latest` | with every release | the default of `docker-compose.yml` of a release: `docker compose pull && docker compose up -d` |
 
 There is no `:0` tag: before 1.0 a minor version may break things. Only `linux/amd64` is built (decision 5); `arm64`
 is one line in the `platforms` list of the `images` job plus a runner or QEMU.
@@ -106,14 +109,14 @@ because the gate "CI is green on this commit" is stated exactly, `ci.yml` keeps 
 and the tests do not run a second time. Consequences: the workflow only takes effect on `main`, and it checks out
 `head_sha` explicitly.
 
-CI (`ci.yml`) builds the same three images from the same Dockerfiles and writes the Docker layer cache (GitHub Actions
-cache, scopes `api`, `caddy`, `backup`); `release.yml` only reads those scopes, so the build of a release normally takes
+CI (`ci.yml`) builds the same four images from the same Dockerfiles and writes the Docker layer cache (GitHub Actions
+cache, scopes `api`, `caddy`, `livekit`, `backup`); `release.yml` only reads those scopes, so the build of a release normally takes
 the time of the push and the upload. Every workflow runs on `ubuntu-24.04` instead of `ubuntu-latest`, so that a new
 default image of GitHub cannot change a release; the pin is moved on purpose. The timing budget of CI and the layout of
 its jobs are in `docs/testing.md`, section 6.1.
 
 ```text
-plan -> images (api, web, backup) -> smoke ------> main-tag
+plan -> images (api, web, livekit, backup) -> smoke ------> main-tag
                           -> scan   \---> release-please -> release (only for a release commit)
                               smoke --/
 ```
@@ -123,7 +126,7 @@ plan -> images (api, web, backup) -> smoke ------> main-tag
 | `plan` | Names: registry path (owner in lower case), tag `sha-xxxxxxx`, version | none |
 | `images` | Builds each image once, pushes `:sha-xxxxxxx` with SBOM and provenance, signs the digest. Skips the build when the tag exists (re-runs never change a sha image) | `packages: write`, `id-token: write` |
 | `smoke` | The E2E smoke set (`tests/e2e`, project `smoke`) against the pushed sha images, not against locally built ones | `packages: read` |
-| `scan` | Trivy: a fixable CRITICAL vulnerability in any of the three images fails the job | `packages: read` |
+| `scan` | Trivy: a fixable CRITICAL vulnerability in any of the four images fails the job | `packages: read` |
 | `main-tag` | After `smoke`: points `:main` at the sha images, but only while the commit is still the tip of `main` | `packages: write` |
 | `release-please` | After `smoke`: tags and publishes a release when a release pull request was merged, otherwise opens or updates the release pull request. Then looks for a tag on this commit | `contents`, `issues`, `pull-requests: write` |
 | `release` | Only when this commit carries a release tag, after `smoke` **and** `scan`: tags the same manifests `:X.Y.Z`, `:X.Y` (while it is the newest patch of its minor) and `:latest` (while it is the newest release), compares the digests with the sha image, verifies the signature, builds the release files, attaches them | `contents: write`, `packages: write` |
@@ -143,7 +146,7 @@ never cancelled by a later push.
    **Squash and merge**.
 3. CI and then Release run for the merge commit. When they finish, the GitHub release `vX.Y.Z` has notes and files, and
    the images carry the version tags.
-4. Servers update with `./update.sh --backup` (runbook, section 14).
+4. Servers update with `docker compose pull && docker compose up -d` (runbook, section 14).
 
 To skip a release, do not merge the pull request: it grows with the next commits.
 
@@ -151,7 +154,7 @@ To skip a release, do not merge the pull request: it grows with the next commits
 
 | File | Content |
 |---|---|
-| `studioflow-X.Y.Z.tar.gz` | The install folder: `docker-compose.yml` (the release file, pinned to X.Y.Z), `.env.example`, `setup`, `update`, `backup` and `restore` scripts (`.sh` and `.ps1`), `docs/runbook.md`, `docker-compose.override.example.yml`, `QUICKSTART.md`, `VERSION`, `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` |
+| `studioflow-X.Y.Z.tar.gz` | The install folder: `docker-compose.yml` (the release file; its image tag is `latest`, the same file in every release), `.env.example` (optional overrides), `docs/runbook.md`, `docker-compose.override.example.yml`, `QUICKSTART.md`, `VERSION`, `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`. **No script**: `docker compose` installs, updates, backs up and restores (the Compose file is all a server needs) |
 | `docker-compose.yml`, `env.example` | The same two files on their own (GitHub drops the leading dot of `.env.example`) |
 | `QUICKSTART.md` | One page: install, update, roll back |
 | `studioflow-prototype.html` | The clickable Regie prototype as **one file**: `prototype/regie.html` with the fonts inlined as base64 (`tools/build-prototype.mjs`), works offline, shows a note that all data is synthetic. The name has no version, so the README links `https://github.com/OPTEN/StudioFlow/releases/latest/download/studioflow-prototype.html` |
@@ -189,7 +192,7 @@ transparency log (Rekor); the images themselves stay private.
 - On GitHub, **before** the first merge nothing of `release.yml` can run: `workflow_run` only exists for the file on
   `main`. The first checks after merging: the Release run of that merge commit pushes both sha images and `:main`; the
   first `feat:` creates the release pull request; merging it produces `v0.1.0` (the trial release of the issue:
-  install on a clean machine with only the release files, `./update.sh --version` forward and back).
+  install on a clean machine with only the release files and `docker compose up -d`, then `STUDIOFLOW_IMAGE_TAG` forward and back).
 
 ## 8. Set-up by the owner (repository settings, one time)
 
@@ -200,10 +203,10 @@ a pull request.
 | Setting | Why |
 |---|---|
 | Settings > General > Pull Requests: allow **squash merging**, set "Default commit message" to **Pull request title**; switch off merge commits and rebase merging | The title becomes the commit message |
-| Settings > Branches > rule for `main`: the checks `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (backup)`, `e2e-smoke` and **Conventional Commits title** | CI and the title rule block the merge |
+| Settings > Branches > rule for `main`: the checks `lint-typecheck`, `unit-web`, `api`, `contracts`, `build-images (api)`, `build-images (caddy)`, `build-images (livekit)`, `build-images (backup)`, `e2e-smoke` and **Conventional Commits title** | CI and the title rule block the merge |
 | Settings > Actions > General > Workflow permissions: **Allow GitHub Actions to create and approve pull requests** | release-please opens the release pull request |
 | Secret `RELEASE_PLEASE_TOKEN`: fine-grained personal access token (or GitHub App token) with *Contents* and *Pull requests* write access to this repository | A pull request created with the default token starts no workflow, so CI would never run on the release pull request and the required checks could not turn green. Without the secret the workflow uses the default token and the release pull request needs an administrator's merge |
-| Packages: after the first Release run, open the packages `studioflow-api`, `studioflow-web` and `studioflow-backup` and check that the repository has access ("Manage Actions access") | The smoke test and the scan pull the images with the workflow token |
+| Packages: after the first Release run, open the packages `studioflow-api`, `studioflow-web`, `studioflow-livekit` and `studioflow-backup` and check that the repository has access ("Manage Actions access") | The smoke test and the scan pull the images with the workflow token |
 | Packages: make them **public** when the repository becomes public (#5) | Then servers need no `docker login` |
 | Organisation: packages may be created with the visibility "private" | |
 
@@ -219,8 +222,8 @@ section 6 covers both names. Signatures made after the rename carry the new repo
 | `scan` failed on a commit | Update the base image or dependency (Renovate), or add the CVE with a reason to `.trivyignore`. Nothing is blocked except releases |
 | `scan` failed on a **release commit** | The tag and the GitHub release already exist, but the images are not tagged and no files are attached. Do not re-run: the sha image is immutable. Fix it on `main` and ship the next version (`fix:`); delete the empty GitHub release and its tag if it confuses |
 | The release pull request was merged but the Release run was cancelled | **Re-run all jobs** of that run. `release-please` finds the merged pull request and the release job promotes the images |
-| A released version is bad | Do not delete tags or images. Merge a `fix:` and release it; servers go back with `./update.sh --version <good one>` meanwhile |
-| A new image is added (like the backup image) | Add an entry to the matrix of `images`, add the name to the list in `scan`, to the loops in `main-tag` and `release`, to `IMAGES` in `infra/release/check.mjs`, and `image:` lines with the marker `x-release-please-version` to `docker-compose.release.yml` |
+| A released version is bad | Do not delete tags or images. Merge a `fix:` and release it; servers go back with `STUDIOFLOW_IMAGE_TAG=<good one>` in their `.env` and `docker compose pull && docker compose up -d` meanwhile |
+| A new image is added (like the LiveKit and backup images) | Add an entry to the matrix of `images` (and of `build-images` in `ci.yml`), add the name to the list in `scan`, to the pulls of the smoke job and to the loops in `main-tag` and `release`, to `IMAGES` in `infra/release/check.mjs`, and an `image:` line `${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-<name>:${STUDIOFLOW_IMAGE_TAG:-latest}` (no version marker) to `docker-compose.release.yml` |
 | The two Compose files drift | `node infra/release/check.mjs` names the difference; change `docker-compose.release.yml` like `docker-compose.yml` |
 
 ### Housekeeping

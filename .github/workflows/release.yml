@@ -2,7 +2,7 @@
 #
 # Runs after the workflow CI succeeded on a push to main, for exactly the commit CI tested:
 #
-#   plan -> images (api, web, backup)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web,backup}:sha-<7 characters>
+#   plan -> images (api, web, livekit, backup)  builds the images ONCE, pushes ghcr.io/<owner>/studioflow-{api,web,livekit,backup}:sha-<7 characters>
 #                              with SBOM and provenance attestations, signs them (cosign, keyless)
 #        -> smoke              the E2E smoke set against the pushed sha images (the images that would ship)
 #        -> scan               Trivy: fixable CRITICAL vulnerabilities fail the run
@@ -103,7 +103,14 @@ jobs:
             file: infra/caddy/Dockerfile
             cache: caddy
             build-args: STUDIOFLOW_REVISION=${{ github.event.workflow_run.head_sha }}
-          # Scheduled backups (profile "backup", runbook section 7) on the PostgreSQL image of the stack.
+          # LiveKit with a supervisor that restarts the server when the API writes a new livekit.yaml (media address).
+          - image: livekit
+            description: StudioFlow media server (LiveKit with a supervisor that follows the server settings)
+            context: .
+            file: infra/livekit/Dockerfile
+            cache: livekit
+            build-args: STUDIOFLOW_REVISION=${{ github.event.workflow_run.head_sha }}
+          # The backup service and its commands (backup-now, list, restore; runbook sections 7 and 8) on the PostgreSQL image of the stack.
           - image: backup
             description: StudioFlow backup service (scheduled pg_dump and volume copies)
             context: .
@@ -232,8 +239,12 @@ jobs:
         run: |
           docker pull "$REGISTRY/studioflow-api:$TAG"
           docker pull "$REGISTRY/studioflow-web:$TAG"
+          docker pull "$REGISTRY/studioflow-livekit:$TAG"
+          docker pull "$REGISTRY/studioflow-backup:$TAG"
           docker tag "$REGISTRY/studioflow-api:$TAG" "sf-e2e-${E2E_STACK}-api"
           docker tag "$REGISTRY/studioflow-web:$TAG" "sf-e2e-${E2E_STACK}-caddy"
+          docker tag "$REGISTRY/studioflow-livekit:$TAG" "sf-e2e-${E2E_STACK}-livekit"
+          docker tag "$REGISTRY/studioflow-backup:$TAG" "sf-e2e-${E2E_STACK}-backup"
       - name: Start the stack
         run: tests/e2e/stack.sh up "$E2E_STACK"
       - name: Run the smoke tests
@@ -259,7 +270,7 @@ jobs:
       # Every image reports its own findings; one red image does not cancel the scans of the others.
       fail-fast: false
       matrix:
-        image: [api, web, backup]
+        image: [api, web, livekit, backup]
     steps:
       # .trivyignore (if the repository has one) is read from the checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -304,7 +315,7 @@ jobs:
             echo "::notice::Main has moved on to ${tip:0:7}; :main stays with the run of that commit."
             exit 0
           fi
-          for image in api web backup; do
+          for image in api web livekit backup; do
             docker buildx imagetools create --tag "$REGISTRY/studioflow-$image:main" "$REGISTRY/studioflow-$image:$TAG"
           done
 
@@ -385,7 +396,7 @@ jobs:
           fi
           echo "Tags: ${tags[*]}"
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
-          for image in api web backup; do
+          for image in api web livekit backup; do
             source="$REGISTRY/studioflow-$image"
             args=()
             for tag in "${tags[@]}"; do args+=(--tag "$source:$tag"); done
@@ -401,18 +412,20 @@ jobs:
           done
       - name: Build the release files
         run: bash infra/release/build-bundle.sh "$VERSION" "$RUNNER_TEMP/release"
-      # A look into the bundle as an operator gets it: unpack it and let Compose read the file with a throw-away env.
+      # A look into the bundle as an operator gets it: unpack it and let Compose read the file with no .env and no variable
+      # at all (the stack is zero-config). The images default to :latest; there is no script in the bundle.
       - name: Check the bundle
         run: |
           tar -xzf "$RUNNER_TEMP/release/assets/studioflow-$VERSION.tar.gz" -C "$RUNNER_TEMP"
           cd "$RUNNER_TEMP/studioflow-$VERSION"
-          printf '%s\n' STUDIOFLOW_DOMAIN=localhost STUDIOFLOW_NODE_IP=127.0.0.1 STUDIOFLOW_TLS_MODE=internal \
-            LIVEKIT_API_KEY=studioflow LIVEKIT_API_SECRET=sk0123456789abcdef0123456789abcdef POSTGRES_PASSWORD=0123456789abcdef > check.env
-          images="$(docker compose --env-file check.env config --images)"
+          test ! -e .env
+          docker compose config --quiet
+          images="$(docker compose config --images)"
           echo "$images"
-          echo "$images" | grep -qx "$REGISTRY/studioflow-api:$VERSION"
-          echo "$images" | grep -qx "$REGISTRY/studioflow-web:$VERSION"
-          echo "$images" | grep -qx "$REGISTRY/studioflow-backup:$VERSION"
-          bash -n setup.sh && bash -n update.sh && bash -n backup.sh && bash -n restore.sh
+          echo "$images" | grep -qx "$REGISTRY/studioflow-api:latest"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-web:latest"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-livekit:latest"
+          echo "$images" | grep -qx "$REGISTRY/studioflow-backup:latest"
+          if ls ./*.sh ./*.ps1 > /dev/null 2>&1; then echo "::error::the bundle must not contain a script"; exit 1; fi
       - name: Attach the files to the release
         run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/release/assets/* --clobber --repo "$GITHUB_REPOSITORY"

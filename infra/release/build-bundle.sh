@@ -5,9 +5,10 @@
 # Usage: infra/release/build-bundle.sh X.Y.Z OUTPUT_DIR
 #
 # Writes OUTPUT_DIR/assets/ - exactly the files that are attached to the release:
-#   studioflow-X.Y.Z.tar.gz            the install folder: docker-compose.yml (the release file, pinned to X.Y.Z),
-#                                      .env.example, setup/update/backup/restore scripts, runbook, QUICKSTART.md, VERSION,
-#                                      LICENSE, NOTICE, THIRD_PARTY_NOTICES.md
+#   studioflow-X.Y.Z.tar.gz            the install folder: docker-compose.yml (the release file; its image tag is "latest",
+#                                      the same file in every release), .env.example (optional overrides), runbook,
+#                                      QUICKSTART.md, VERSION, LICENSE, NOTICE, THIRD_PARTY_NOTICES.md. No script:
+#                                      docker compose is the only tool that installs, updates, backs up and restores.
 #   docker-compose.yml, env.example    the same two files on their own (GitHub drops the leading dot of .env.example)
 #   QUICKSTART.md                      one page: install, update, roll back
 #   studioflow-prototype.html          the clickable Regie prototype as one self-contained file (fonts embedded, works
@@ -37,8 +38,8 @@ declared="$(sed -n 's/^  "version": "\([^"]*\)",$/\1/p' package.json | head -n 1
 	echo "Error: package.json says version '$declared', not '$version'. Build the bundle from the release commit." >&2
 	exit 1
 }
-grep -q "STUDIOFLOW_IMAGE_TAG:-$version}" docker-compose.release.yml || {
-	echo "Error: docker-compose.release.yml does not default to the images of version $version." >&2
+grep -q 'STUDIOFLOW_IMAGE_TAG:-latest}' docker-compose.release.yml || {
+	echo "Error: docker-compose.release.yml must default to the image tag latest." >&2
 	exit 1
 }
 
@@ -46,15 +47,11 @@ name="studioflow-$version"
 stage="$out/stage/$name"
 assets="$out/assets"
 rm -rf "$out"
-mkdir -p "$stage/infra/scripts" "$stage/docs" "$assets"
+mkdir -p "$stage/docs" "$assets"
 
 # Docker Compose reads docker-compose.yml by default, so the release file is called that in the bundle.
 install -m 0644 docker-compose.release.yml "$stage/docker-compose.yml"
 install -m 0644 docker-compose.override.example.yml .env.example "$stage/"
-install -m 0755 setup.sh update.sh backup.sh restore.sh "$stage/"
-install -m 0644 setup.ps1 update.ps1 backup.ps1 restore.ps1 "$stage/"
-install -m 0755 infra/scripts/common.sh "$stage/infra/scripts/"
-install -m 0644 infra/scripts/StudioFlow.psm1 "$stage/infra/scripts/"
 install -m 0644 docs/runbook.md "$stage/docs/"
 install -m 0644 LICENSE NOTICE THIRD_PARTY_NOTICES.md "$stage/"
 sed "s/@VERSION@/$version/g" infra/release/QUICKSTART.md >"$stage/QUICKSTART.md"

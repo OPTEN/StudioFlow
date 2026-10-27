@@ -2,7 +2,7 @@
 #
 # All jobs run in parallel (the three image builds are one job each); e2e-smoke starts from the images that
 # build-images built. A red job blocks the merge once branch protection for main requires them (repository setting of
-# the owner: pull request required, lint-typecheck, unit-web, api, contracts, the three build-images jobs and e2e-smoke
+# the owner: pull request required, lint-typecheck, unit-web, api, contracts, the four build-images jobs and e2e-smoke
 # green; the audit job is a report and is not required). Timing budget and layout: docs/testing.md, section 6.1.
 # Runners are pinned to ubuntu-24.04: ubuntu-latest is moving to a newer image, and a CI run must not change with it.
 # The full run (on demand) is .github/workflows/e2e-full.yml.
@@ -161,12 +161,13 @@ jobs:
           fi
           { echo '### dotnet list package --vulnerable'; echo '```'; cat "$RUNNER_TEMP/nuget-audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-  # Builds the three images of docker-compose.yml that have a build section, one job each and in parallel (the slowest
-  # one, not the sum, decides). The Caddy build fails on a broken Caddyfile (it runs `caddy validate` for every TLS
-  # mode) and builds the three frontends; the backup build fails on a broken Dockerfile or a package that has left the
-  # Alpine repository. Docker layers come from the GitHub Actions cache (one scope per image, shared with release.yml).
-  # The api and caddy images go to e2e-smoke as artifacts, so the stack under test is the image that was validated here;
-  # the backup image is not part of the smoke stack and is only built.
+  # Builds the four images of docker-compose.yml that have a build section, one job each and in parallel (the slowest
+  # one, not the sum, decides). The Caddy build fails on a broken Caddy configuration (it runs `caddy validate` on the
+  # bootstrap config and on the shape of the config the API pushes, for every provider) and builds the three frontends;
+  # the backup build fails on a broken Dockerfile or a package that has left the Alpine repository; the livekit build
+  # fails on a broken wrapper around the LiveKit server. Docker layers come from the GitHub Actions cache (one scope per
+  # image, shared with release.yml). All four images go to e2e-smoke as artifacts, so the stack under test is the images
+  # that were validated here.
   build-images:
     name: build-images (${{ matrix.image }})
     runs-on: ubuntu-24.04
@@ -183,10 +184,14 @@ jobs:
             context: .
             file: infra/caddy/Dockerfile
             handover: true
+          - image: livekit
+            context: .
+            file: infra/livekit/Dockerfile
+            handover: true
           - image: backup
             context: .
             file: infra/backup/Dockerfile
-            handover: false
+            handover: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -221,8 +226,9 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # The smoke set (project smoke, docs/testing.md 6.2) against the real stack: Caddy in TLS mode internal (the harness
-  # writes the env file), API, LiveKit and PostgreSQL, started with tests/e2e/stack.sh as numbered stack 1.
+  # The smoke set (project smoke, docs/testing.md 6.2) against the real stack: Caddy, API, LiveKit, PostgreSQL and the
+  # backup service, started with tests/e2e/stack.sh as numbered stack 1 without any .env: the harness drives the
+  # first-run wizard (account, media address, address with the local certificate, embedding).
   e2e-smoke:
     needs: build-images
     runs-on: ubuntu-24.04
@@ -273,7 +279,7 @@ jobs:
       # only if it was built from the commit of this run (revision label set by build-images).
       - name: Load and verify the images
         run: |
-          for image in api caddy; do
+          for image in api caddy livekit backup; do
             docker load --input "$RUNNER_TEMP/images/$image.tar"
             revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "studioflow-$image")"
             if [ "$revision" != "$GITHUB_SHA" ]; then

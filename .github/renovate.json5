@@ -54,8 +54,8 @@
     },
     {
       customType: 'regex',
-      description: 'The PostgreSQL image of docker-compose.yml: a YAML anchor shared by postgres, toolbox and the build of backup.',
-      managerFilePatterns: ['/^docker-compose\\.yml$/'],
+      description: 'The PostgreSQL image of docker-compose.yml and docker-compose.release.yml: a YAML anchor shared by postgres, init and the build of backup.',
+      managerFilePatterns: ['/^docker-compose(\\.release)?\\.yml$/'],
       matchStrings: [
         'x-postgres-image: &postgres-image (?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]{64}))?',
       ],
