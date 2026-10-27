@@ -194,8 +194,10 @@ export function startOutputApp(
   };
   const provider = new DeferredSourceProvider(assetUrl);
   // The sound: a Web Audio mix of the program (microphones and screens from LiveKit, videos from the stage).
+  // It starts with the lazy work, after the first frame: the first audio context of a browser takes about 100 ms.
   const audio = new OutputAudio({
     enabled: config.flags.audio,
+    deferStart: true,
     ...(deps.createAudioMix ? { createMix: deps.createAudioMix } : {}),
     ...(deps.captureVideo ? { captureVideo: deps.captureVideo } : {}),
   });
@@ -405,13 +407,14 @@ export function startOutputApp(
     }),
   );
 
-  // Lazy work after the first frame: LiveKit, debug overlay, latency probe.
+  // Lazy work after the first frame: the audio mix, LiveKit, debug overlay, latency probe.
   const startLazyWork = (): void => {
     if (lazyStarted || disposed) {
       return;
     }
     lazyStarted = true;
     clearTimeout(lazyFallback);
+    audio.start();
     if (!guard.denied) {
       void startMedia();
     }

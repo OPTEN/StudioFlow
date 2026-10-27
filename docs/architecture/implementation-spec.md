@@ -631,7 +631,9 @@ Regie only lists a screen while it shares sound.
 - The output reports its sound in `OutputReport.audio { state: off | running | blocked | unavailable, levelDb }` (peak of the program mix
   over the report interval, null below −90 dBFS); `OutputStatusDto` carries it per link. The Regie says “Audio blocked” in the output
   chip while a connected page is `blocked` and some channel could be heard (a browser keeps an audio context suspended until the page was
-  clicked; OBS with “Control audio via OBS” and a frame with `allow="autoplay"` do not need that).
+  clicked; OBS with “Control audio via OBS” and a frame with `allow="autoplay"` do not need that). The page creates its audio context
+  with the lazy work after the first frame (the first context of a browser takes about 100 ms, which would delay the slate beyond
+  T-LOAD); until then the report has no `audio` (null, like a page that predates audio).
 - Measured on a loaded 4-core machine with the fake sources of the E2E harness: mute or fader change to a silent output 6–60 ms after the
   answer of the request, going off air to a silent output 90–450 ms, the tone arrives at its own level (±2 dB), the audio station's
   tone starts at the output within about one second of the broadcast start.

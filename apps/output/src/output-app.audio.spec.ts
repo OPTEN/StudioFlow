@@ -133,7 +133,12 @@ async function flush(ms = 0): Promise<void> {
 
 async function boot(
   flags: Partial<OutputFlags> = {},
-  options: { mix?: FakeMix; captureVideo?: (video: HTMLVideoElement) => MediaStream | null } = {},
+  options: {
+    mix?: FakeMix;
+    captureVideo?: (video: HTMLVideoElement) => MediaStream | null;
+    /** How long the test lets the page run before it looks at it (default 300 ms: the first frame and the lazy work). */
+    settleMs?: number;
+  } = {},
 ): Promise<Harness> {
   const root = document.createElement('main');
   document.body.append(root);
@@ -165,7 +170,7 @@ async function boot(
     ...(options.captureVideo ? { captureVideo: options.captureVideo } : {}),
   });
   hub.connect();
-  await flush(300);
+  await flush(options.settleMs ?? 300);
   current = {
     app,
     hub,
@@ -198,7 +203,18 @@ afterEach(() => {
 });
 
 describe('output app: audio', () => {
-  it('starts the mix at once and moves it to the audible channels of the first snapshot', async () => {
+  it('starts the mix after the first frame, not before it: the first audio context costs about 100 ms', async () => {
+    const { app, createAudioMix, sent } = await boot({}, { settleMs: 0 });
+    expect(createAudioMix).not.toHaveBeenCalled();
+    expect(app.audio.state).toBe('off');
+    await flush(300);
+    expect(createAudioMix).toHaveBeenCalledTimes(1);
+    expect(app.audio.state).toBe('running');
+    await flush(REPORT_INTERVAL_MS);
+    expect(sent().at(-1)?.audio).toEqual({ state: 'running', levelDb: null });
+  });
+
+  it('moves the mix to the audible channels of the first snapshot', async () => {
     const { mix, createAudioMix } = await boot();
     expect(createAudioMix).toHaveBeenCalledTimes(1);
     expect(mix.applied.length).toBeGreaterThan(0);

@@ -4,7 +4,9 @@
  * delivers: microphones and screens from LiveKit, video assets from the stage's own `<video>` elements. The page only
  * reports what it hears (state, program level); everything else is decided in the Regie and by the rules of scene-model.
  *
- * The AudioContext is created at start. A browser that allows no sound without a gesture keeps it suspended: the state
+ * The AudioContext is created by {@link OutputAudio.start}, which the page calls after the first frame (the first context of
+ * a browser costs about 100 ms for the audio service, which must not delay the slate). A browser that allows no sound
+ * without a gesture keeps it suspended: the state
  * is then `blocked`, the Regie shows “Audio blocked” and a small “Sound on” button (and any click, key or touch on the
  * page) starts it. In OBS with “Control audio via OBS” and in an embedding frame with `allow="autoplay"` it runs at once.
  */
@@ -57,6 +59,11 @@ export interface OutputAudioOptions {
   readonly captureVideo?: (video: HTMLVideoElement) => MediaStream | null;
   /** How often the program level is measured for the report (default 100 ms). */
   readonly sampleMs?: number;
+  /**
+   * True: the mix is created by {@link OutputAudio.start} and not by the constructor. Until then the page takes note of the
+   * state, of the media and of the videos, and the report has no audio (the page does not know yet what it can hear).
+   */
+  readonly deferStart?: boolean;
 }
 
 /** Ramp of a change of the broadcast state (going live or ending), kept for the specs. */
@@ -90,11 +97,15 @@ export interface AudioDebugChannel {
 
 /** The audio mix of the page. */
 export class OutputAudio {
-  readonly #mix: OutputMix | null;
-  readonly #tap: AssetAudioTap | null;
+  readonly #options: OutputAudioOptions;
+  #mix: OutputMix | null = null;
+  #tap: AssetAudioTap | null = null;
+  #started = false;
+  /** The video elements that show a video asset, per asset: the tap takes them over when the mix starts. */
+  readonly #videos = new Map<string, Set<HTMLVideoElement>>();
   readonly #listeners = new Set<(state: OutputAudioDto['state']) => void>();
   readonly #gestureListeners = new Set<(needed: boolean) => void>();
-  readonly #sampleTimer: ReturnType<typeof setInterval> | null;
+  #sampleTimer: ReturnType<typeof setInterval> | null = null;
   readonly #unsubscribe: (() => void)[] = [];
   #state: ProductionState | null = null;
   #broadcast: ProductionState['production']['broadcast'] | null = null;
@@ -108,18 +119,31 @@ export class OutputAudio {
   #disposed = false;
 
   constructor(options: OutputAudioOptions) {
-    const mix = options.enabled ? this.#createMix(options.createMix) : null;
-    this.#mix = mix;
+    this.#options = options;
     this.#reported = this.state;
-    if (mix === null) {
-      this.#tap = null;
-      this.#sampleTimer = null;
+    if (!options.deferStart) {
+      this.start();
+    }
+  }
+
+  /**
+   * Creates the mix and takes over what the page noted so far (the state, the sounds of the media side, the videos).
+   * Idempotent; nothing happens for `?audio=off` or after {@link dispose}.
+   */
+  start(): void {
+    if (this.#started || this.#disposed || !this.#options.enabled) {
       return;
     }
-    this.#tap = new AssetAudioTap({
+    this.#started = true;
+    const options = this.#options;
+    const mix = this.#createMix(options.createMix);
+    this.#mix = mix;
+    const tap = new AssetAudioTap({
       capture: options.captureVideo,
       onChange: (sourceId, stream) => mix.setInput(sourceId, stream, { keepAlive: false }),
     });
+    this.#tap = tap;
+    this.#reported = this.state;
     this.#unsubscribe.push(
       mix.onStateChange(() => {
         const state = this.state;
@@ -133,6 +157,18 @@ export class OutputAudio {
       }),
     );
     this.#sampleTimer = setInterval(() => this.#sample(), options.sampleMs ?? DEFAULT_SAMPLE_MS);
+    for (const [sourceId, videos] of this.#videos) {
+      for (const video of videos) {
+        tap.attach(sourceId, video);
+      }
+    }
+    if (this.#inputs !== null) {
+      this.#connectInputs(this.#inputs);
+    }
+    if (this.#state !== null) {
+      this.#applyTargets({ rampMs: AUDIO_RAMP_MS });
+    }
+    this.#refreshGesture();
   }
 
   /** `off` (on purpose), `running`, `blocked` (the browser waits for a click) or `unavailable` (no Web Audio). */
@@ -193,25 +229,28 @@ export class OutputAudio {
 
   /** Takes the sounds of the media side (LiveKit) into the mix and follows their changes. */
   bindInputs(inputs: AudioInputs): void {
-    const mix = this.#mix;
-    if (mix === null || this.#disposed) {
+    if (!this.#options.enabled || this.#disposed) {
       return;
     }
-    this.#unbindInputs?.();
     this.#inputs = inputs;
-    for (const sourceId of inputs.audioSourceIds()) {
-      mix.setInput(sourceId, inputs.audioStream(sourceId));
+    if (this.#mix !== null) {
+      this.#connectInputs(inputs);
     }
-    this.#unbindInputs = inputs.onAudioChange((sourceId) =>
-      mix.setInput(sourceId, inputs.audioStream(sourceId)),
-    );
   }
 
   /** An element started or stopped showing a video asset: its sound is the sound of the asset's channel. */
   assetVideo(sourceId: string, video: HTMLVideoElement, attached: boolean): void {
     if (attached) {
+      const videos = this.#videos.get(sourceId) ?? new Set<HTMLVideoElement>();
+      videos.add(video);
+      this.#videos.set(sourceId, videos);
       this.#tap?.attach(sourceId, video);
     } else {
+      const videos = this.#videos.get(sourceId);
+      videos?.delete(video);
+      if (videos?.size === 0) {
+        this.#videos.delete(sourceId);
+      }
       this.#tap?.detach(sourceId, video);
     }
   }
@@ -229,8 +268,14 @@ export class OutputAudio {
     }
   }
 
-  /** What the output report carries: the state and the peak of the program mix since the last report. */
-  report(): OutputAudioDto {
+  /**
+   * What the output report carries: the state and the peak of the program mix since the last report. Null while the mix has
+   * not been started: the page cannot say yet what it will be able to hear.
+   */
+  report(): OutputAudioDto | null {
+    if (this.#options.enabled && !this.#started) {
+      return null;
+    }
     const peak = this.#peakDb;
     this.#peakDb = SILENCE_DB;
     const state = this.state;
@@ -278,8 +323,23 @@ export class OutputAudio {
     }
     this.#tap?.dispose();
     this.#mix?.dispose();
+    this.#videos.clear();
     this.#listeners.clear();
     this.#gestureListeners.clear();
+  }
+
+  #connectInputs(inputs: AudioInputs): void {
+    const mix = this.#mix;
+    if (mix === null) {
+      return;
+    }
+    this.#unbindInputs?.();
+    for (const sourceId of inputs.audioSourceIds()) {
+      mix.setInput(sourceId, inputs.audioStream(sourceId));
+    }
+    this.#unbindInputs = inputs.onAudioChange((sourceId) =>
+      mix.setInput(sourceId, inputs.audioStream(sourceId)),
+    );
   }
 
   #refreshGesture(): void {
