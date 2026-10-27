@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Infrastructure.Persistence;
 using Opten.StudioFlow.Web.Hosting;
@@ -24,6 +25,19 @@ public sealed class HostingTests(StudioFlowApp app) : IClassFixture<StudioFlowAp
         Assert.Equal((0, "idle"), (idleCode, idle));
         Assert.Equal((CliCommands.LiveExitCode, "live"), (liveCode, live));
         Assert.Equal(0, endedCode);
+    }
+
+    [Fact]
+    public void Appsettings_DoNotOverrideTheAddressAndTheEmbeddingOfTheServerSettings()
+    {
+        // The address of every link (invites, QR codes, output URLs) and the embedding origins come from the server settings
+        // (the wizard); a value in appsettings.json would win over them and send devices to the wrong address.
+        var file = Path.Combine(Path.GetDirectoryName(typeof(CliCommands).Assembly.Location)!, "appsettings.json");
+        var configuration = new ConfigurationBuilder().AddJsonFile(file).Build();
+
+        Assert.True(string.IsNullOrEmpty(configuration["StudioFlow:PublicBaseUrl"]), "StudioFlow:PublicBaseUrl in appsettings.json");
+        Assert.True(string.IsNullOrEmpty(configuration["StudioFlow:FrameAncestors"]), "StudioFlow:FrameAncestors in appsettings.json");
+        Assert.True(string.IsNullOrEmpty(configuration["LiveKit:PublicUrl"]), "LiveKit:PublicUrl in appsettings.json");
     }
 
     [Fact]

@@ -2906,7 +2906,7 @@ export interface components {
         ServerSettingsDto: {
             /** @description True once the media address was saved; before that the wizard continues after the account step. */
             configured: boolean;
-            /** @description The address devices open, e.g. `https://studioflow.opten.ch:8443`. */
+            /** @description The address devices open, e.g. `https://studioflow.example.com:8443`. */
             baseUrl: string;
             /**
              * Format: int32

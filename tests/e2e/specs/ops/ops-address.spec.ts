@@ -30,6 +30,18 @@ test.describe('OPS the address of the page', () => {
     }
   });
 
+  test('E2E-OPS-43 [api] every link the server builds starts with the saved address and port: system info, invite links, QR invites and output links', t.p0, async ({ config, api, production }) => {
+    expect((await api.getSystemInfo()).body.publicBaseUrl, 'GET /api/system/info').toBe(config.baseURL);
+    const invite = await api.createInvite(production.id, { kind: 'laptopLink' });
+    expect(invite.status, invite.raw.text()).toBeLessThan(300);
+    expect(invite.body.url.startsWith(`${config.baseURL}/`), `invite link ${invite.body.url}`).toBe(true);
+    const link = await api.createOutputLink(production.id, 'Address check');
+    expect(link.status, link.raw.text()).toBeLessThan(300);
+    expect(link.body.url.startsWith(`${config.baseURL}/o/`), `output link ${link.body.url}`).toBe(true);
+    const snapshot = (await api.getSnapshot(production.id)).body;
+    for (const entry of snapshot.invites) expect(entry.url, 'invite in the snapshot').toContain(config.baseURL);
+  });
+
   test('E2E-OPS-42 [csp] every page names the address it was opened with in connect-src, so the LiveKit URL is allowed', t.p0, async ({ config }) => {
     for (const origin of [config.baseURL, `https://127.0.0.1:${config.httpsPort}`, `https://${config.nodeIp}:${config.httpsPort}`]) {
       const host = new URL(origin).host;
