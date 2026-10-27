@@ -402,6 +402,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 | `POST /api/auth/login` | anonymous, lockout-protected | – |
 | `POST /api/auth/logout`, `GET /api/auth/me`, `GET /api/system/info` | Admin cookie (+ CSRF on POST) | 401 ProblemDetails |
 | `/api/productions/**` (all verbs, snapshot, changes, telemetry, incident ack, livekit-token) and `/api/productions/{id}/(scenes\|devices\|pairing\|assets\|output)/**` except asset content | Admin cookie (+ CSRF on POST/PUT/PATCH/DELETE) | 401 |
+| `GET /api/audit`, `GET /api/audit/export.csv`, `GET /api/audit/export.json` | Admin cookie (exports are rate-limited) | 401 |
 | `GET /api/productions/{id}/assets/{assetId}/content` | Admin cookie **or** `?k={key}` of any output link of that production | none: 401; wrong/other key: 403 |
 | `POST /api/pairing/requests`, `GET\|DELETE /api/pairing/requests/{id}` (header `X-Pairing-Token`), `POST /api/pairing/invites/{token}/redeem` | anonymous, rate-limited | – |
 | `/api/device/**` | Device bearer | 401; blocked → 403 `device_blocked` |
