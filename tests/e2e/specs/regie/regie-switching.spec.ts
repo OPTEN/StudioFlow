@@ -298,19 +298,29 @@ test.describe('REGIE switching', () => {
       // milliseconds of round trips: the three actors work at the same time instead of one after the other, each at the
       // moment the catalogue names (A at +300 ms, B at +500 ms after A's switch, the REST client at once).
       const untilAfterSwitch = (ms: number) => sleep(Math.max(0, ms - (Date.now() - startedAt)));
+      // No actionability checks for these two clicks: "stable" needs two animation frames of the page and cost 1.5 s on a
+      // loaded machine (trace of a run at a load of 25), which let the click arrive after the fade. The click is the same
+      // input events at the centre of the button.
+      const force = true;
+      // The guard of the UI follows the event of the switch, not the response of the request: a click that comes before the
+      // event arrived is sent and refused by the server with 409. The test waits for the event where it tests the guard.
+      const regieKnowsTheFade = (page: import('@playwright/test').Page, programName: string) =>
+        expect(monitorOf(page, 'program').locator('.c-monitor__name'), 'the Regie got the event of the switch').toHaveText(programName);
       const [refused] = await Promise.all([
         // A client that has no UI guard (REST) is refused by the server.
         api.switchProgram(production.id, { sceneId: c, transition: { kind: 'cut', durationMs: 0 } }),
         // A clicks Scene C and presses 3 during the fade.
         (async () => {
           await untilAfterSwitch(300);
-          await regie.scene('Scene C').click();
+          await regieKnowsTheFade(pageA, 'Scene B');
+          await regie.scene('Scene C').click({ force });
           await pageA.keyboard.press('3');
         })(),
         // B clicks Scene C 500 ms after A's switch.
         (async () => {
           await untilAfterSwitch(500);
-          await operatorB.scene('Scene C').click();
+          await regieKnowsTheFade(pageB, 'Scene B');
+          await operatorB.scene('Scene C').click({ force });
         })(),
       ]);
       expect(refused.status).toBe(409);
@@ -361,6 +371,7 @@ test.describe('REGIE switching', () => {
         (path, method) => method === 'POST' && /\/take$/.test(path),
       );
       await regie.take().click();
+      await expect(monitorOf(pageA, 'program').locator('.c-monitor__name'), 'the Regie got the event of the switch').toHaveText('Scene A');
       await expect(regie.take()).toBeDisabled();
       await pageA.keyboard.press('Space');
       await expect.poll(() => programId(api, production)).toBe(a);
