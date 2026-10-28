@@ -5,10 +5,12 @@ import { pairViaApi } from '../../support/ui/pairing';
 import {
   outputTarget,
   fakeTones,
+  isDropout,
   measureAudio,
   plugMic,
   silenceAt,
   toneAt,
+  toneDb,
   toneSeries,
   unlockSound,
   waitForPeak,
@@ -28,6 +30,10 @@ import { t } from '../../support/tags';
 const STATION_HZ = 440;
 const SCREEN_HZ = 880;
 const OUTPUT = { audioProbe: true } as const;
+/** A tone is gone when it reads this far above the noise floor of its own bin at the most (the floor is leakage of the other tones). */
+const GONE_MARGIN_DB = 6;
+/** A frequency that none of the sources plays and that is no harmonic of one: its bin holds the noise floor of a mix. */
+const FLOOR_HZ = 1500;
 const SCREEN_ITEM = { ...FULL, fit: 'cover' } as const;
 
 test.use({ locale: 'en-US', viewport: { width: 1440, height: 900 } });
@@ -184,51 +190,79 @@ test.describe('AUD sources', () => {
         const startedAt = Date.now();
         const response = await api.switchProgram(production.id, { sceneId: toScene, transition: { kind: 'fade', durationMs: FADE_MS } });
         expect(response.status, response.raw.text()).toBe(200);
-        // A starved machine stalls the measurement now and then (the analyser reads silence for a moment): those samples are left out.
+        // The whole output page stalls now and then (every channel reads digital silence for 300-800 ms, the microphone too):
+        // those samples measure nothing and are left out.
         return (await series)
           .map((sample) => ({ at: sample.at - startedAt, screen: sample.db[0]!, station: sample.db[1]! }))
-          .filter((sample) => sample.screen > -110 || sample.station > -110);
+          .filter((sample) => !isDropout([sample.screen, sample.station]));
       };
-      /** Median strength in dB of the samples between two moments after the switch (a dropout of the machine does not count). */
+      /**
+       * Median (or strongest) strength in dB of the samples between two moments after the switch. A fake source also pauses its
+       * tone for up to a second on its own, which only lowers readings: a level that must be there is read as the strongest.
+       */
       const mean = (samples: Sample[], key: 'screen' | 'station', from: number, to: number, statistic: 'median' | 'strongest' = 'median'): number => {
         const part = samples.filter((sample) => sample.at >= from && sample.at < to).map((sample) => sample[key]);
         expect(part.length, `samples between ${from} and ${to} ms`).toBeGreaterThanOrEqual(1);
         return percentile(part, statistic === 'median' ? 50 : 100);
       };
 
+      // The noise floor of the bin of the screen tone, measured with the picture out of the scene (a cut) and the microphone
+      // playing: what is left there is leakage of the microphone tone, not a tone that has not faded. "Gone" is judged against it.
+      const cutTo = async (sceneId: string) =>
+        expect((await api.switchProgram(production.id, { sceneId, transition: { kind: 'cut', durationMs: 0 } })).status).toBe(200);
+      await cutTo(sceneB);
+      await sleep(1_500);
+      const quiet = (await toneSeries(target, [SCREEN_HZ, STATION_HZ], 10, 100)).filter((sample) => !isDropout(sample.db));
+      expect(quiet.length, 'measurements of the floor outside of dropouts').toBeGreaterThanOrEqual(3);
+      const floorDb = Math.max(...quiet.map((sample) => sample.db[0]!));
+      const goneDb = floorDb + GONE_MARGIN_DB;
+      await cutTo(sceneA);
+      // (Not waitForTone: the second harmonic of the microphone sits at 880 Hz and passes for the tone of the screen.)
+      await expect.poll(() => toneDb(target, SCREEN_HZ), { timeout: 15_000, message: 'the screen tone is back at its level' }).toBeGreaterThan(floorDb + 15);
+      await sleep(500);
+
       // Fade out: the picture with sound leaves. The strength of the tone in the 170 ms window falls from its level to the floor
       // of the measurement in about the duration of the fade, and it does not fall at once (that would be a cut).
       const out = await run(sceneB);
       await testInfo.attach('fade-out.json', { body: JSON.stringify(out, null, 1), contentType: 'application/json' });
-      const level = mean(out, 'screen', -LEAD_MS, -100);
-      // (The strongest sample of the window: a dropout of the machine only lowers a reading, a cut would silence every one.)
-      const start = mean(out, 'screen', 0, 0.3 * FADE_MS, 'strongest');
+      const level = mean(out, 'screen', -LEAD_MS, -100, 'strongest');
+      // (The strongest sample of the window: a dropout of the machine only lowers a reading, a cut would silence every one. The
+      // window starts after the 170 ms of the measurement that still look back at the sound before the switch, and a fade is
+      // still within 6 dB of its level at its half.)
+      const start = mean(out, 'screen', 0.15 * FADE_MS, 0.5 * FADE_MS, 'strongest');
       const end = mean(out, 'screen', 0.75 * FADE_MS, 0.95 * FADE_MS);
       const after = mean(out, 'screen', FADE_MS + 800, FADE_MS + 1600);
-      testInfo.annotations.push({ type: 'measurement', description: `fade out ${FADE_MS} ms (dB of the tone): before ${level.toFixed(1)}, first third ${start.toFixed(1)}, last fifth ${end.toFixed(1)}, after ${after.toFixed(1)}` });
-      expect(start, 'the first third is still (nearly) at the level: a fade, not a cut').toBeGreaterThan(level - 7);
+      testInfo.annotations.push({ type: 'measurement', description: `fade out ${FADE_MS} ms (dB of the tone): before ${level.toFixed(1)}, first half ${start.toFixed(1)}, last fifth ${end.toFixed(1)}, after ${after.toFixed(1)}` });
+      expect(start, 'the first half is still (nearly) at the level: a fade, not a cut').toBeGreaterThan(level - 7);
       expect(end, 'the end of the fade is well down').toBeLessThan(start - 4);
-      expect(after, 'after the fade the sound of the picture is gone').toBeLessThan(level - 20);
-      // Gone at the first sample after which no sample is louder again (one reading below the line can be a dropout).
-      const goneAt = out.find((sample, index) => sample.at > 0 && out.slice(index).every((later) => later.screen < level - 20))!.at;
-      expect(goneAt, 'it is over about when the fade is over (the measurement looks back 170 ms)').toBeGreaterThanOrEqual(FADE_MS - 500);
+      expect(level - floorDb, 'the tone is well above the noise floor, so that "gone" means something').toBeGreaterThan(15);
+      expect(after, `after the fade the sound of the picture is gone (floor ${floorDb.toFixed(1)} dB + ${GONE_MARGIN_DB})`).toBeLessThan(goneDb);
+      // Gone at the first sample after which no sample is louder than the floor again (dropouts are already out of the series).
+      const goneSample = out.find((sample, index) => sample.at > 0 && out.slice(index).every((later) => later.screen < goneDb));
+      expect(goneSample, `the tone reaches the floor (${goneDb.toFixed(1)} dB) and stays there; series ${JSON.stringify(out.map((sample) => [sample.at, Math.round(sample.screen)]))}`).toBeDefined();
+      const goneAt = goneSample!.at;
+      // A linear ramp reaches floor + 6 dB at about 86 % of the fade, minus the 170 ms look-back: about 1550 ms. The lower bound
+      // leaves room for a short stall of one source on a loaded machine (#81); a cut is caught by the first-half check above.
+      expect(goneAt, 'it is over about when the fade is over (the measurement looks back 170 ms)').toBeGreaterThanOrEqual(FADE_MS - 700);
       expect(goneAt).toBeLessThanOrEqual(FADE_MS + 900);
       // The microphone ("always") stays: its strength does not move with the fade.
-      const stationBefore = mean(out, 'station', -LEAD_MS, -100);
-      // (The median over the whole fade: this machine drops a few hundred milliseconds of any tone now and then.)
-      expect(Math.abs(mean(out, 'station', 0, FADE_MS + 800) - stationBefore), 'the microphone is not faded').toBeLessThan(6);
+      const stationBefore = mean(out, 'station', -LEAD_MS, -100, 'strongest');
+      // (The strongest reading after the fade: a microphone that fades with the picture is gone then, while the fake source
+      // drops its tone for up to a second now and then, which only lowers the readings of the window.)
+      expect(Math.abs(mean(out, 'station', FADE_MS, FADE_MS + 1600, 'strongest') - stationBefore), 'the microphone is not faded').toBeLessThan(6);
 
       // Fade in: the same way back.
       const back = await run(sceneA);
       await testInfo.attach('fade-in.json', { body: JSON.stringify(back, null, 1), contentType: 'application/json' });
-      const floor = mean(back, 'screen', -LEAD_MS, -100);
+      const silentBefore = mean(back, 'screen', -LEAD_MS, -100);
       const first = mean(back, 'screen', 0, 0.3 * FADE_MS);
       const last = mean(back, 'screen', FADE_MS + 600, FADE_MS + 1400, 'strongest');
-      testInfo.annotations.push({ type: 'measurement', description: `fade in ${FADE_MS} ms (dB of the tone): before ${floor.toFixed(1)}, first third ${first.toFixed(1)}, after ${last.toFixed(1)} (level was ${level.toFixed(1)})` });
-      expect(floor, 'silent before').toBeLessThan(level - 20);
+      testInfo.annotations.push({ type: 'measurement', description: `fade in ${FADE_MS} ms (dB of the tone): before ${silentBefore.toFixed(1)}, first third ${first.toFixed(1)}, after ${last.toFixed(1)} (level was ${level.toFixed(1)})` });
+      expect(silentBefore, 'silent before').toBeLessThan(goneDb);
       expect(first, 'it rises, it does not jump').toBeLessThan(level - 8);
-      expect(last, 'back at its level').toBeGreaterThan(level - 5);
-      expect(mean(back, 'station', FADE_MS + 600, FADE_MS + 1400) - stationBefore, 'the microphone stayed').toBeGreaterThan(-5);
+      // (6 dB like the microphone check above: both are the strongest of a few noisy readings; a fade-in that stops short ends far lower.)
+      expect(last, 'back at its level').toBeGreaterThan(level - 6);
+      expect(mean(back, 'station', FADE_MS + 600, FADE_MS + 2200, 'strongest') - stationBefore, 'the microphone stayed').toBeGreaterThan(-5);
       await waitForPeak(target, -3, { toleranceDb: 4 });
       testInfo.annotations.push({ type: 'measurement', description: `station page fed the track with a longest pause of ${JSON.stringify((await fakeTones(station.page)).map((tone) => tone.maxGapMs))} ms` });
     },
@@ -325,19 +359,26 @@ test.describe('AUD sources', () => {
 
       const channel = (sourceId: string, patch: Record<string, unknown>) => ({ sourceId, gainDb: 0, muted: false, mode: 'always', syncOffsetMs: 0, ...patch });
       const heardNow = async (frequency: number) => (await measureAudio(target))!.peaks.some((peak) => Math.abs(peak.frequency - frequency) <= 15);
-      // Gone means absent in three windows in a row (one window without the tone can be a dropout of the machine, and the
-      // second harmonic of the station sits at 880 Hz); a tone that stays is heard again within 3 s (a dropout lasts a few
-      // hundred milliseconds, a muted channel never comes back).
-      const absentFor = async (frequency: number, ms: number) => {
-        const until = Date.now() + ms;
-        while (Date.now() < until) {
-          if (await heardNow(frequency)) return false;
-          await sleep(50);
-        }
-        return true;
-      };
+      // The noise floor of the mix: a frequency nobody plays, read while all four tones are in (leakage of the tones and the
+      // harmonics of the station land on bins near them). A tone is gone when its bin is within a margin of this floor; the
+      // windows in which the whole output page stalls (every channel reads digital silence) measure nothing and do not count.
+      const readings = async (frequencies: number[], count: number) =>
+        (await toneSeries(target, [...frequencies, FLOOR_HZ], count, 50)).filter((sample) => !isDropout(sample.db));
+      const floorDb = Math.max(...(await readings([], 10)).map((sample) => sample.db[0]!));
+      testInfo.annotations.push({ type: 'measurement', description: `noise floor of the mix at ${FLOOR_HZ} Hz: ${floorDb.toFixed(1)} dB` });
+      // Gone means below the floor plus a margin in four windows outside of dropouts in a row (the second harmonic of the
+      // station sits at 880 Hz, which the floor of another bin does not know: the tone must leave the bin, not only the peak list);
+      // a tone that stays is heard again within 3 s (a dropout lasts a few hundred milliseconds, a muted channel never comes back).
       const waitGone = async (frequency: number, others: number[]) => {
-        await expect.poll(async () => absentFor(frequency, 120), { timeout: 10_000, message: `${frequency} Hz leaves the mix` }).toBe(true);
+        await expect
+          .poll(
+            async () => {
+              const window = await readings([frequency], 4);
+              return window.length >= 3 && window.every((sample) => sample.db[0]! < floorDb + GONE_MARGIN_DB);
+            },
+            { timeout: 10_000, message: `${frequency} Hz leaves the mix (floor ${floorDb.toFixed(1)} dB + ${GONE_MARGIN_DB})` },
+          )
+          .toBe(true);
         for (const other of others) await expect.poll(async () => heardNow(other), { timeout: 3_000, intervals: [50], message: `${other} Hz stays` }).toBe(true);
       };
 
@@ -350,9 +391,11 @@ test.describe('AUD sources', () => {
       // One request moves two channels: the station off, the third screen at -20 dB (the tone stays but is much weaker).
       expect((await api.setAudioChannels(production.id, { channels: [channel(desk.sourceId('mic'), { mode: 'off' }), channel(laptops[2]!.sourceId, { gainDb: -20, mode: 'follow' })] })).status).toBe(200);
       await waitGone(STATION_HZ, [TONES.s1, TONES.s2]);
-      const quiet = (await measureAudio(target))!.peaks.find((peak) => Math.abs(peak.frequency - TONES.s3) <= 15);
-      const loud = (await measureAudio(target))!.peaks.find((peak) => Math.abs(peak.frequency - TONES.s1) <= 15);
-      expect(quiet === undefined || loud === undefined || loud.db - quiet.db > 8, `the third screen is quieter (${JSON.stringify({ quiet, loud })})`).toBe(true);
+      // The strongest of ten readings of each (a tone of the fake source or the output can pause for a moment, which only lowers a reading).
+      const third = await readings([TONES.s3, TONES.s1], 10);
+      const quiet = Math.max(...third.map((sample) => sample.db[0]!));
+      const loud = Math.max(...third.map((sample) => sample.db[1]!));
+      expect(loud - quiet, `the third screen is quieter (${TONES.s3} Hz ${quiet.toFixed(1)} dB, ${TONES.s1} Hz ${loud.toFixed(1)} dB)`).toBeGreaterThan(8);
 
       // A device that is removed takes its channel with it.
       const removed = await api.deleteDevice(production.id, laptops[0]!.device.id);
