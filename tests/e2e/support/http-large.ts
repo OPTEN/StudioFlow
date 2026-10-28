@@ -18,7 +18,10 @@ export function sendLarge(options: HttpRequestOptions, headers: Record<string, s
     let received = Buffer.alloc(0);
     let bodyStarted = false;
     let finished = false;
-    const lines = [`${options.method ?? 'POST'} ${url.pathname}${url.search} HTTP/1.1`, `Host: ${url.host}`, 'Connection: close', 'Expect: 100-continue'];
+    // A Host header of the caller (the direct API port is called with the Host of the public address) replaces the one of the
+    // URL: two Host headers are a malformed request, which Kestrel answers with an empty 400.
+    const ownHost = Object.keys(headers).some((name) => name.toLowerCase() === 'host') ? [] : [`Host: ${url.host}`];
+    const lines = [`${options.method ?? 'POST'} ${url.pathname}${url.search} HTTP/1.1`, ...ownHost, 'Connection: close', 'Expect: 100-continue'];
     for (const [name, value] of Object.entries(headers)) {
       for (const item of Array.isArray(value) ? value : [value]) lines.push(`${name}: ${item}`);
     }

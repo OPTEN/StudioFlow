@@ -27,6 +27,20 @@ async function decodesH264(context: BrowserContext): Promise<boolean> {
   }
 }
 
+/**
+ * Makes a Chromium sender say that its VP9 encoder is power efficient. A laptop sends its screen as VP9 only then and as
+ * H.264 otherwise (packages/media-client/src/screen-codec.ts); the headless Chromium of the harness has no hardware
+ * encoder, so its screens are H.264, which a Firefox without OpenH264 cannot show.
+ */
+async function preferVp9Screens(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    const capabilities = navigator.mediaCapabilities;
+    const encodingInfo = capabilities.encodingInfo.bind(capabilities);
+    capabilities.encodingInfo = async (configuration) =>
+      /vp9/i.test(configuration.video?.contentType ?? '') ? { supported: true, smooth: true, powerEfficient: true, configuration } : encodingInfo(configuration);
+  });
+}
+
 test.describe('OUT other engines (Firefox)', () => {
   test(
     'E2E-OUT-17 [firefox] the output renders and plays a camera and a screen, keeps the last frame when the source goes away, shows the slates and letterboxes a 4:3 frame',
@@ -35,6 +49,7 @@ test.describe('OUT other engines (Firefox)', () => {
       test.setTimeout(240_000);
       expect(browserName).toBe('firefox');
       const senders = await chromium.launch({ args: CHROMIUM_ARGS });
+      let vp9Screens = false;
       onCleanup(() => senders.close());
       const deps = {
         api,
@@ -47,6 +62,7 @@ test.describe('OUT other engines (Firefox)', () => {
         },
         openLaptop: async (options = {}) => {
           const laptop = await LaptopSender.open(senders, options);
+          if (vp9Screens) await preferVp9Screens(laptop.context);
           onCleanup(() => laptop.close());
           return laptop;
         },
@@ -58,12 +74,14 @@ test.describe('OUT other engines (Firefox)', () => {
       await installProbe(context);
       await installUiInit(context, { testHooks: false });
 
-      // Phones publish H.264 only. A Firefox without the OpenH264 plugin (the Playwright build on Linux; a desktop Firefox
-      // downloads the plugin itself) cannot decode it, so there the moving item is a second laptop screen (VP9) instead.
+      // Phones publish H.264 only, and so do laptops unless their VP9 encoder is a hardware one (the harness has none). A Firefox
+      // without the OpenH264 plugin (the Playwright build on Linux; a desktop Firefox downloads the plugin itself) cannot
+      // decode H.264: there both screens are published as VP9 and the moving item is a second laptop screen instead of a phone.
       const h264 = await decodesH264(context);
+      vp9Screens = !h264;
       test.info().annotations.push({
         type: 'environment',
-        description: h264 ? 'Firefox decodes H.264: the moving item is a phone camera.' : 'Firefox without an H.264 decoder (no OpenH264): the moving item is a laptop screen (VP9).',
+        description: h264 ? 'Firefox decodes H.264: the moving item is a phone camera.' : 'Firefox without an H.264 decoder (no OpenH264): both screens are published as VP9 and the moving item is a laptop screen.',
       });
       const moving = h264 ? await addCamera(deps, 'Camera Fox') : await addScreens(deps, 'Laptop Fox 2', 1);
       const movingSource = 'phone' in moving ? moving.source : moving.sources[0]!;
