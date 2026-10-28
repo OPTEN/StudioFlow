@@ -8,7 +8,6 @@
 *.md
 /docs/history/
 /prototype/
-/.impeccable/
 /tools/
 
 # Compose files keep their hand-written style (the E2E OPS specs read some of their lines).

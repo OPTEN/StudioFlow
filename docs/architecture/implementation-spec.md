@@ -68,7 +68,7 @@ Commands: `npm run gen:contracts` (build API → OpenAPI → `packages/scene-mod
 
 ## 3. Conventions
 
-- OPTEN standards apply (read the instruction files listed in your CLAUDE.md for the languages you touch).
+- The conventions of this repository apply (`CONTRIBUTING.md`, `.editorconfig`; the rules below are the summary).
   C#: namespaces `Opten.StudioFlow.*`, primary constructors, file-scoped namespaces, newline before braces,
   `is null`, `ArgumentNullException.ThrowIfNull`, `Async` suffix, structured logging with templates, XML docs for
   public APIs, xUnit tests named `MethodName_Condition_ExpectedResult`, no Arrange/Act/Assert comments.
@@ -1055,7 +1055,7 @@ Texts keep their own rectangle in an Auto grid scene.
 
 ### 9.1 Regie (`apps/studio`, Angular)
 
-Implements `prototype/regie.html` faithfully with real data. `DESIGN.md` + `.impeccable/design.json` are the design
+Implements `prototype/regie.html` faithfully with real data. `DESIGN.md` + `docs/history/design/design.json` are the design
 system (tokens, typography, components, responsive rules). Routes: `/setup` (first-run setup: setup code, user
 name, password, repeat password, with a message next to each field once it was left and the focus on the first problem
 on submit; the new account is signed in and the Regie opens; the guards lead everyone to `/setup` while no account

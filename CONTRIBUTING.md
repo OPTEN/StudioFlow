@@ -87,6 +87,7 @@ Every change comes with tests, and every test carries the ID of its entry in the
 |---|---|
 | `npm run check` | i18n checks, the German-text check and the TypeScript type check of packages, output page and E2E harness |
 | `npm run format:check` | Prettier (run `npx prettier --write <file>` to fix) |
+| `npm run check:links` | Relative links and heading anchors of all Markdown files (no network) |
 | `npm run test:unit` | Vitest: the shared packages, the output page, the tools |
 | `npm run test:studio` / `npm run test:sender` | Angular unit tests of the Regie / the sender |
 | `npm run build:web` | production build of the three frontends |

@@ -1,5 +1,9 @@
 # Status and handover (2026-10-28)
 
+> **Internal working log.** This file is the hand-over of the maintainer's working sessions until the first release. It
+> is not user documentation and may be removed afterwards; the lasting content is in `docs/decisions.md`,
+> `docs/testing.md` and `CONTRIBUTING.md`.
+
 Interim state of the work on issues #3–#58, written so a new session can continue without the previous conversation.
 Decisions for all open questions: `docs/decisions.md`. Binding i18n design: `docs/architecture/i18n-design.md`,
 rules in `docs/i18n.md`.
