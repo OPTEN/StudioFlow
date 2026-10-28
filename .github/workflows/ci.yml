@@ -37,7 +37,7 @@ permissions:
 
 jobs:
   # Which parts changed. The filters use predicate-quantifier every: a path counts for a filter when it matches the
-  # positive pattern and none of the negated ones. On a push the base is the previous tip of main (event.before), on a
+  # positive pattern and none of the negated ones. On a push the base is the last green commit (step base), on a
   # pull request the merge base with its target branch.
   changes:
     runs-on: ubuntu-24.04
@@ -45,6 +45,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      actions: read # the last green CI run of main (base of the diff)
     outputs:
       api: ${{ steps.filter.outputs.api == 'true' || steps.filter.outputs.dotnet == 'true' || steps.filter.outputs.workflows == 'true' }}
       web: ${{ steps.filter.outputs.web == 'true' || steps.filter.outputs.workflows == 'true' }}
@@ -59,9 +60,24 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # On main the diff starts at the last commit whose CI run was green, not at the previous push: GitHub keeps one pending
+      # run per concurrency group and cancels the others, so a docs-only push after a cancelled code push would otherwise
+      # skip the tests of that code. Every green run then covers everything since the green run before it.
+      - name: Base of the diff
+        id: base
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          green="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=${GITHUB_REF_NAME}&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')"
+          if [ -n "$green" ] && git merge-base --is-ancestor "$green" HEAD; then base="$green"; else base="$BEFORE"; fi
+          echo "Changes since ${base}."
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          base: ${{ steps.base.outputs.sha }}
           predicate-quantifier: every
           # code: everything that is built, tested or shipped. Docs, Markdown, the licence files, the static prototype,
           # the product site and video (pages.yml builds the site) and the Renovate configuration are not.
