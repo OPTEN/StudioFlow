@@ -8,6 +8,7 @@
 // Needs Node, ffmpeg and a Python with video/audio/requirements.txt and earshot (video/audio/earshot.txt); set PYTHON to
 // that interpreter when it is not the `python` on PATH. Output: video/out/ (render.mjs lists the files).
 import { spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,6 +49,8 @@ if (args.includes('--capture')) {
 }
 
 run('node', ['video/extract.mjs']);
+// music.py writes into this folder; a fresh checkout (CI) does not have it yet.
+mkdirSync(audio, { recursive: true });
 run(python, ['video/audio/music.py', join(audio, 'music.wav')]);
 run(python, [
   '-m',
