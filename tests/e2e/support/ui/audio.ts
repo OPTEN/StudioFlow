@@ -27,6 +27,10 @@ export interface AudioMeasure {
 export const SILENT_DB = -60;
 /** The tone of a source at the fader's default is 0.5 (-6 dBFS); anything above this level is sound. */
 export const AUDIBLE_DB = -35;
+/** Readings (toneDb) below this on every channel at once are not a quiet mix but a stall of the whole output page. */
+export const DROPOUT_DB = -75;
+/** True for a measurement window in which every channel reads digital silence: the page stalled, nothing was measured. */
+export const isDropout = (readingsDb: readonly number[]): boolean => readingsDb.every((db) => db < DROPOUT_DB);
 /** How far a measured frequency may be from the one that was played (the spectrum has 5.9 Hz bins). */
 export const TONE_TOLERANCE_HZ = 12;
 
