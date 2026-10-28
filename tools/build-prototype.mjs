@@ -9,13 +9,12 @@
  * Plain Node without dependencies, so the release workflow runs it on the GitHub runner as it is. The output is
  * deterministic: the same sources give the same bytes.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPrototype } from './lib/prototype.mjs';
+import { buildPrototypeFile } from './lib/prototype-files.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const source = join(root, 'prototype');
 
 const args = process.argv.slice(2);
 let out = join(root, 'dist', 'studioflow-prototype.html');
@@ -26,20 +25,7 @@ if (args.length === 2 && args[0] === '--out') {
   process.exit(2);
 }
 
-const readFont = (path) => {
-  const file = join(source, path);
-  return existsSync(file) ? readFileSync(file) : null;
-};
-const licenses = [
-  { name: 'Sofia Sans Semi Condensed', file: 'fonts/OFL-SofiaSansSemiCondensed.txt' },
-  { name: 'JetBrains Mono', file: 'fonts/OFL-JetBrainsMono.txt' },
-].map(({ name, file }) => ({ name, text: readFileSync(join(source, file), 'utf8') }));
-
-const html = buildPrototype({
-  html: readFileSync(join(source, 'regie.html'), 'utf8'),
-  readFont,
-  licenses,
-});
+const html = buildPrototypeFile(root);
 
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);

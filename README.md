@@ -7,6 +7,8 @@
 
 <h3 align="center">A browser-based live production studio for webinars: phones and laptops as sources, OBS-like switching, a 16:9 output page.</h3>
 
+<p align="center"><a href="https://opten.github.io/StudioFlow/"><b>opten.github.io/StudioFlow</b></a>: the product site, with a demo and the quick start</p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://github.com/OPTEN/StudioFlow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/OPTEN/StudioFlow/actions/workflows/ci.yml/badge.svg"></a>
@@ -55,7 +57,8 @@ _All screenshots show synthetic demo content (drawn stand-ins for cameras and a 
 
 The clickable Regie prototype is one HTML file with the fonts inlined. It works offline and needs no installation:
 
-**[Download studioflow-prototype.html](https://github.com/OPTEN/StudioFlow/releases/latest/download/studioflow-prototype.html)**
+**[Open it on the product site](https://opten.github.io/StudioFlow/studioflow-prototype.html)**, or
+**[download studioflow-prototype.html](https://github.com/OPTEN/StudioFlow/releases/latest/download/studioflow-prototype.html)**
 and open it in a browser.
 
 It is the design prototype the product started from, not the running system, and all data in it is synthetic. You can
@@ -170,6 +173,8 @@ Project structure:
 | `tests/e2e` | the Playwright end-to-end suite |
 | `docs` | specification, decisions, operations guide, test plan, release process |
 | `prototype` | the clickable Regie prototype |
+| `site` | the product site on GitHub Pages (`npm run start:site`, `npm run build:site`, deployed by `pages.yml`) |
+| `video` | the product video: composition, render and audio scripts (`video/README.md`) |
 
 ## Configuration
 

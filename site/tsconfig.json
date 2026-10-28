@@ -1,0 +1,17 @@
+/* The product site (site/). Checked by `npm run typecheck:site`. */
+{
+  "compilerOptions": {
+    "strict": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"]
+}
