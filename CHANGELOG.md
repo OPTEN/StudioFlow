@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1](https://github.com/OPTEN/StudioFlow/compare/v0.1.0...v0.1.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **api:** refuse an embedding update without the origins list ([#84](https://github.com/OPTEN/StudioFlow/issues/84)) ([ddb150d](https://github.com/OPTEN/StudioFlow/commit/ddb150df9c1c7340eebccec018ea1f05599e359d))
+* **backup:** never expire the running job's folder ([#88](https://github.com/OPTEN/StudioFlow/issues/88)) ([711ffba](https://github.com/OPTEN/StudioFlow/commit/711ffba7e1a219dfac29a6027f30886bb790656e))
+* **caddy:** keep the API group on the admin socket folder after a recreate ([#86](https://github.com/OPTEN/StudioFlow/issues/86)) ([0f9a61a](https://github.com/OPTEN/StudioFlow/commit/0f9a61af9fc9231265eb43123b733a517058030a))
+
 ## 0.1.0 (2026-10-28)
 
 
