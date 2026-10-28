@@ -15,7 +15,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD in the Regie (issue #7, docs/testing.md 2.19): the Audio dock with a row per channel (meter, fader, mute, mode, sync
+ * AUD in the Regie (issue #7, docs/testing.md 2.21): the Audio dock with a row per channel (meter, fader, mute, mode, sync
  * offset, PFL), the program level above Take, undo and redo of the mixer, the M key, two Regie seats that converge and the
  * silence warning. The output page and the Regie are measured/read; the station is a sine tone (fake-audio.js).
  */

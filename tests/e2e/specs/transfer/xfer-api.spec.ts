@@ -12,7 +12,7 @@ import { t } from '../../support/tags';
 import { makeZip, readZip } from '../../support/zip';
 
 /**
- * XFER in the API (docs/testing.md 2.18: E2E-XFER-01 ... 05): duplicate a production, export it as a file and import the
+ * XFER in the API (docs/testing.md 2.19: E2E-XFER-01 ... 05): duplicate a production, export it as a file and import the
  * file again, through Caddy as a user's browser or script reaches the API. A phone (K1) and a laptop (S1) are in the
  * scenes with a picture (M1): the copy keeps the scenes and the media, the devices become placeholders, and nothing that
  * belongs to a device, an output link or the log leaves the production.

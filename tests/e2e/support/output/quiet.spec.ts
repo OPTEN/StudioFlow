@@ -1,6 +1,6 @@
 import { QUIET_BUSY_PCT, elapsedInTest, judgeTiming, markTestStart, measureWhenQuiet, planAttempt, timingGate, waitForQuietMachine, type AttemptPlanInput, type Clock } from './quiet';
 
-/** UNIT-PERF-06 (docs/testing.md 2.19): the budget of the tests that wait for a quiet machine and the gate of their thresholds (issue #39). */
+/** UNIT-PERF-06 (docs/testing.md 2.20): the budget of the tests that wait for a quiet machine and the gate of their thresholds (issue #39). */
 
 const SECOND = 1000;
 

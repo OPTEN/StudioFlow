@@ -11,7 +11,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD on the senders (issue #7, docs/testing.md 2.19): the audio station is paired through the pairing form like any
+ * AUD on the senders (issue #7, docs/testing.md 2.21): the audio station is paired through the pairing form like any
  * laptop and starts the sound of the mixing desk by itself; a phone has a microphone that is off until its person
  * switches it on, and the mixer keeps it muted until the Regie lets it through (decision #7).
  */

@@ -276,7 +276,7 @@ projects run the **UI-only subset** (pairing forms, redeem, layout, tally render
 | `small-320` | 320×568, touch, Chromium | sender at the narrowest width |
 | `i18n` | Chromium with `locale: 'de-CH'` | `specs/i18n` (2.17: the tests set the browser language they need), the German rules audit of `E2E-DEV-17`, files `*.de.spec.ts` |
 | `short-ttl`, `disruptive`, `soak` | Chromium | see 1.2.4 |
-| `perf` | Chromium, three instances per test (senders, Regie, output) | every test tagged `@perf`, in any spec: `*.perf.spec.ts` (2.19, CPU, decoders and encoders per role against the performance budget, 5.1), the latency, many-sources, CPU-throttling and switching-time tests (6.8); on a machine with at least 4 cores and nothing else running; never in `smoke` or `main` (so not in the nightly run), never retried; run by hand or with the workflow `perf.yml` |
+| `perf` | Chromium, three instances per test (senders, Regie, output) | every test tagged `@perf`, in any spec: `*.perf.spec.ts` (2.20, CPU, decoders and encoders per role against the performance budget, 5.1), the latency, many-sources, CPU-throttling and switching-time tests (6.8); on a machine with at least 4 cores and nothing else running; never in `smoke` or `main` (so not in the nightly run), never retried; run by hand or with the workflow `perf.yml` |
 
 ```ts
 // tests/e2e/playwright.config.ts (skeleton)
@@ -415,7 +415,7 @@ fixture (fresh active production with scenes `Scene A`, `Scene B`, `Scene C`) an
 | **Total** | **130** | **121** | **303** | **554** | **243** | **248** | **63** |
 <!--/SUMMARY-->
 
-Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.17 FMT](#217-fmt--format-and-resolution) · [2.17 I18N](#217-i18n--language-and-formats) · [2.18 XFER](#218-xfer--duplicate-export-and-import) · [2.19 PERF](#219-perf--performance-issue-12) · [2.20 AUD](#220-aud--audio)
+Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) · [2.3 SCENE](#23-scene--scenes-and-editing) · [2.4 SWITCH](#24-switch--switching-broadcast-tally) · [2.5 SRC](#25-src--sources-stations-and-incidents) · [2.6 OUT](#26-out--output-page) · [2.7 NET](#27-net--resilience-and-network) · [2.8 DEV](#28-dev--devices-viewports-accessibility) · [2.9 DOCK](#29-dock--dock-layout-and-persistence) · [2.10 MEDIA](#210-media--assets) · [2.11 OPS](#211-ops--operations) · [2.12 SYNC](#212-sync--realtime-protocol-and-state-model) · [2.13 LK](#213-lk--livekit-integration) · [2.14 TXT](#214-txt--texts-and-lower-thirds) · [2.15 AUDIT](#215-audit--audit-log) · [2.16 LINK](#216-link--output-links-and-the-camera) · [2.18 FMT](#218-fmt--format-and-resolution) · [2.17 I18N](#217-i18n--language-and-formats) · [2.19 XFER](#219-xfer--duplicate-export-and-import) · [2.20 PERF](#220-perf--performance-issue-12) · [2.21 AUD](#221-aud--audio)
 
 
 ### 2.1 AUTH – Auth and security
@@ -2587,7 +2587,7 @@ The language of the product is the setting `localStorage['studioflow.locale']` (
 <!-- i18n-ignore: the German text of the i18n project, asserted from tests/e2e/support/text.de.ts -->
 - Expect: “Recent events” shows “K1 Phone 1 paired” in English and “K1 Phone 1 gekoppelt” after the switch, with no English text left in the entry (the Regie renders `LogEntryDto` from `code` and `params`; `text` of the API is only the fallback).
 
-### 2.17 FMT – Format and resolution
+### 2.18 FMT – Format and resolution
 
 Issue #8, decisions «#8», spec 4.2 ("Canvas"), 4.3, 8.1, 8.3, 9.3, runbook 19. A production has one format (16:9, 9:16, 1:1, 4:3) and one resolution (720p, 1080p: the short side); 16:9 at 1080p is the default and what every earlier production is. E2E specs run in English (`en-US`); the E2E stacks need Docker.
 
@@ -2635,7 +2635,7 @@ Issue #8, decisions «#8», spec 4.2 ("Canvas"), 4.3, 8.1, 8.3, 9.3, runbook 19.
 - Steps: "Format and resolution…" on the default production; 720p; then 9:16 on a production without elements.
 - Expect: four formats and two resolutions, Save off until something changes; 720p is saved without a question and the monitor reads "1280 × 720 · 30 fps"; 9:16 is saved without a question when no scene has elements, the scene thumbnails are 36 px high and about 20 px wide.
 
-### 2.18 XFER – Duplicate, export and import
+### 2.19 XFER – Duplicate, export and import
 
 Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can be duplicated inside the installation and exported as a file (`.studioflow.zip`: `manifest.json` with `formatVersion` 2 and the media under `media/`, each with its SHA-256) that another installation imports as a new production. Devices are never copied: the cameras and screens that scenes use become placeholders (code and name, "Source missing") that a source takes over with one click. E2E specs run in English (`en-US`) against the stack (Docker); the files they build are made by `support/zip.ts`.
 
@@ -2722,7 +2722,7 @@ Issue #14, decisions «#14», spec 4.2.2 and 4.4, runbook 7.5. A production can 
 - Steps: "Assign K1 · Stage phone" → the phone; "Assign S1 …" → "Remove from all scenes…" → Cancel → "Remove from all scenes…" → "Remove S1 · Lea laptop · Screen 1".
 - Expect: the toast "The scenes now show Spare phone in place of K1 · Stage phone."; K1 is gone from "Missing sources", the first two scenes show the phone, the placeholder list has S1 only; the confirmation says "The 1 element that shows S1 … is removed from its scene." and Cancel changes nothing; after the removal there are no placeholders and the scene has lost the screen item.
 
-### 2.19 PERF – Performance (issue #12)
+### 2.20 PERF – Performance (issue #12)
 
 Issue #12, decisions «#12», spec 7, 8.3, 8.4, 9.1–9.3, runbook 11, DESIGN.md "Load". The work was measured first and optimised by the measurement: the budget in 5.1 holds the numbers before and after. The container the automated tests run in has no GPU (Chromium renders with SwiftShader and every codec runs in software, `power efficient` is false everywhere), so the numbers are the worst case of "no hardware acceleration" and compare two builds on one machine; what the hardware of real laptops, phones and the proxy computer does stays a manual measurement (MAN-16).
 
@@ -2758,7 +2758,7 @@ Issue #12, decisions «#12», spec 7, 8.3, 8.4, 9.1–9.3, runbook 11, DESIGN.md
 - Steps: 4 phones (camera 1080p, fake media), 2 laptops (screen 1440p), 6 scenes (Host, Panel = program, Four, Slides = preview, Two screens, Everything), Studio Mode on, Regie at 1280 × 800 with a device pixel ratio of 1.5, output page at 1920 × 1080, one Chromium instance per role. After 20 s of settling: 45 s idle (CPU time per browser through `SystemInfo.getProcessInfo`, main thread through `Performance.getMetrics`, WebRTC `getStats` of every page with `decoderImplementation`/`powerEfficientDecoder`/`encoderImplementation`/`powerEfficient`/`qualityLimitationReason` or, where Chromium hides them, `MediaCapabilities`), a sampled profile of the main thread of the Regie and the output, 15 s with the picture-in-picture camera dragged in the preview monitor, then a switch to the preview scene and to a scene whose sources nobody asked for. The numbers go to `tests/e2e/.output/<stack>/results/out-perf-reference.json` and to the log (`[perf] key = value`).
 - Expect: the output decodes only the sources of the program and the preview scene; no count exceeds the budget in 5.1 (exactly, on any machine) and no load by more than 20 % (when no sender was at its CPU limit and the machine was at 90 % CPU or less: otherwise the run is skipped as `not-comparable`, 6.8); screens go out as H.264 at no more than 15 fps; no sender reports a CPU limit. Run it before and after a change on the same machine and compare the table: `E2E_REUSE_STACK=1 tests/e2e/stack.sh test <N> --project=perf tests/e2e/specs/perf/perf-reference.perf.spec.ts` (`PERF_SECONDS` scales the windows, `PERF_BUDGET_SCALE` the loads).
 
-### 2.20 AUD – Audio
+### 2.21 AUD – Audio
 
 Issue #7, decisions «#7», spec 4.10 and 7–9, runbook 20. One global mixer per production (fader −∞ … +10 dB, mute, mode, sync offset), sources: the audio
 station, the sound of shared screens and videos, microphones of devices (muted by default); the output page mixes with Web Audio, the Regie shows the
@@ -3045,7 +3045,7 @@ Procedure: run `testssl.sh` against the HTTPS endpoint, an OWASP ZAP baseline sc
 
 ### 5.1 Performance budget (issue #12)
 
-Measured with E2E-PERF-01 (2.19) in the reference scenario: 4 phones (camera 1080p), 2 laptop screens (1440p), 6 scenes, Studio Mode, fake media; Chromium without a GPU, so every codec is in software; the whole machine was busy (the harness records it: `machineBusy` ≈ 1.0, with other work on it), which makes CPU and time figures swing by a factor of two between runs. Counts (decoded streams, videos in the DOM, frame rate cap, screen codec) are exact and do not depend on the machine: any rise fails the test. Loads (CPU cores = CPU seconds per second of all processes of one browser, the share of the time the main thread is busy, dropped frames, switching time) may exceed their budget by 20 %; `PERF_BUDGET_SCALE` multiplies them for a slower or faster machine. The budget lies above the values seen after the optimisations (the time lines leave room for a busy machine, and a run in which a sender was at its CPU limit is invalid: its loads are not held against the budget and the test is skipped as not comparable, 6.8); the lines are in `tests/e2e/support/perf/budget.ts` and are checked by E2E-PERF-01 and, as arithmetic, by UNIT-PERF-05.
+Measured with E2E-PERF-01 (2.20) in the reference scenario: 4 phones (camera 1080p), 2 laptop screens (1440p), 6 scenes, Studio Mode, fake media; Chromium without a GPU, so every codec is in software; the whole machine was busy (the harness records it: `machineBusy` ≈ 1.0, with other work on it), which makes CPU and time figures swing by a factor of two between runs. Counts (decoded streams, videos in the DOM, frame rate cap, screen codec) are exact and do not depend on the machine: any rise fails the test. Loads (CPU cores = CPU seconds per second of all processes of one browser, the share of the time the main thread is busy, dropped frames, switching time) may exceed their budget by 20 %; `PERF_BUDGET_SCALE` multiplies them for a slower or faster machine. The budget lies above the values seen after the optimisations (the time lines leave room for a busy machine, and a run in which a sender was at its CPU limit is invalid: its loads are not held against the budget and the test is skipped as not comparable, 6.8); the lines are in `tests/e2e/support/perf/budget.ts` and are checked by E2E-PERF-01 and, as arithmetic, by UNIT-PERF-05.
 
 | Metric (reference scenario) | Before (3 runs) | After (2 runs) | Budget |
 |---|---:|---:|---:|

@@ -2,7 +2,7 @@ import { expect, type Frame, type Page } from '@playwright/test';
 import type { OutputPage } from './output';
 
 /**
- * Helpers of the audio specs (issue #7, docs/testing.md 2.19 AUD). The pages are measured with the audio probe of
+ * Helpers of the audio specs (issue #7, docs/testing.md 2.21 AUD). The pages are measured with the audio probe of
  * `support/browser/audio-probe.js` (install it with `audioProbe: true`): it reads what a page sends to its speakers, so a
  * frequency in the spectrum means that a source really got through the whole chain (microphone, LiveKit, output page,
  * mixer), and silence means that it did not.

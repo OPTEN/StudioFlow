@@ -143,6 +143,9 @@ jobs:
         run: npm run format:check
       - name: i18n catalogues (index, prefixes, banned formatting)
         run: npm run check:i18n
+      # Relative links and heading anchors of every tracked Markdown file (no network).
+      - name: Markdown links
+        run: npm run check:links
       - name: dotnet format
         if: needs.changes.outputs.api == 'true'
         run: dotnet format apps/api/StudioFlow.slnx --verify-no-changes

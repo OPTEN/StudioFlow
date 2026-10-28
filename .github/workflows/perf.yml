@@ -1,7 +1,7 @@
 # Performance tests: every Playwright test tagged @perf, in the project `perf` of tests/e2e/playwright.config.ts: the
 # glass-to-glass latency (E2E-OUT-13, E2E-OUT-14), the many-sources test (E2E-NET-19), the output under a four times slower
 # CPU (E2E-NET-20), the switching times of the Regie (E2E-SWITCH-08 and -15 [regie]) and the reference scenario against the
-# performance budget (E2E-PERF-01). See docs/testing.md 2.19, 5.1 and 6.8.
+# performance budget (E2E-PERF-01). See docs/testing.md 2.20, 5.1 and 6.8.
 #
 # Manual only, and not part of the nightly run (e2e-full.yml leaves the tag out): these tests hold measurements against
 # absolute thresholds and need a machine with at least 4 cores and nothing else running. The standard ubuntu-24.04 runner has

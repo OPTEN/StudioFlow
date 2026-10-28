@@ -13,7 +13,7 @@ import { pairPhoneViaQr } from '../../support/ui/pairing';
 import { readZip } from '../../support/zip';
 
 /**
- * XFER in the Regie (docs/testing.md 2.18: E2E-XFER-10 ... 12): the production menu offers "Duplicate production…",
+ * XFER in the Regie (docs/testing.md 2.19: E2E-XFER-10 ... 12): the production menu offers "Duplicate production…",
  * "Export" and "Import…"; the devices of a copy are placeholders until a phone is paired and takes the place with one
  * click ("Use as K1 · Stage phone"), after which its picture shows in every scene that showed K1.
  */

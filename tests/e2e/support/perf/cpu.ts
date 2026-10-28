@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, CDPSession, Page } from '@playwright/test';
 
 /**
- * CPU accounting of the performance harness (issue #12, docs/testing.md 2.19). Two views that complement each other:
+ * CPU accounting of the performance harness (issue #12, docs/testing.md 2.20). Two views that complement each other:
  *
  *  - {@link BrowserCpu}: the CPU time of every process of one browser (`SystemInfo.getProcessInfo` of the browser target:
  *    browser, renderers, GPU, utility). The harness launches one browser per role (senders, Regie, output), so the
