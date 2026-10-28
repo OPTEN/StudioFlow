@@ -145,6 +145,14 @@ Generated from `apps/api` (`dotnet restore`; packages with assemblies, direct an
 
 <!-- END generated:nuget -->
 
-## 6. Trademarks
+## 6. Product video
+
+The product video on the site (`site/public/media/`, source in `video/`) uses only material made for StudioFlow or listed
+here: the fonts of section 1, the StudioFlow and OPTEN logos (section 7), screen recordings of StudioFlow itself with
+synthetic demo content, music made in code (`video/audio/music.py`) and sound effects rendered with
+[earshot](https://github.com/Leonxlnx/earshot) 0.4.0 (MIT, © Leon Lin) from its code-made bank. One of the effects
+(`fit/click/floss_lid`) is fitted as code to a CC0 recording (earshot's `docs/CREDITS_FIT.md`).
+
+## 7. Trademarks
 
 The OPTEN logo (symbol) in the header note "Sponsored by OPTEN" (`sfIcon="opten"`, `docs/brand/opten-symbol.svg`) is a trademark of OPTEN AG. It is not covered by the licence of the code and may only be used to refer to OPTEN AG. The same applies to the name and the logo "StudioFlow" in `docs/brand/`.

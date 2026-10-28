@@ -11,11 +11,10 @@ npm run typecheck:site
 node site/og/render.mjs # site/public/og.png from site/og/og.html
 ```
 
-`.github/workflows/pages.yml` builds and deploys it on pushes to `main` that touch `site/`, the prototype, the
-dependencies or the product video (issue 69, `video/`). The video is not in Git: job `video` of the workflow builds it
-from `video/` (`npm run build:video`, cached by its inputs) and copies `studioflow.mp4`, `studioflow-vertical.mp4` and
-`studioflow.vtt` into `site/public/media` (git-ignored); `site/vite.config.ts` swaps the hero's film screenshot for the
-video when they are there. When the video job fails, the site goes out with the screenshot.
+`.github/workflows/pages.yml` builds and deploys it on pushes to `main` that touch `site/`, the prototype or the
+dependencies. The product video (issue 69) is committed in `public/media/` (`studioflow.mp4`, `studioflow-vertical.mp4`,
+`studioflow.vtt`); it is rendered locally from `video/` with `npm run build:video`, which copies the files there.
+`site/vite.config.ts` swaps the hero's film screenshot for the video when they are there.
 
 ## Look and motion
 
