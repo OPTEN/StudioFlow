@@ -118,9 +118,26 @@ public sealed class ServerSettingsApiTests(PostgresFixture postgres)
         Assert.Contains("node_ip: 192.168.1.50", yaml, StringComparison.Ordinal);
         Assert.Contains($"\"{StudioFlowApp.LiveKitKey}\": \"{StudioFlowApp.LiveKitSecret}\"", yaml, StringComparison.Ordinal);
         Assert.Contains("tcp_port: 7881", yaml, StringComparison.Ordinal);
-        var status = await admin.Client.GetAsync("/api/settings/status", Ct).ExpectAsync<ApplyStatusDto>();
+        // LiveKit counts as applied once its supervisor (a background loop in the test) wrote applied.json, and a Caddy load can
+        // be held back for a moment: poll like the Regie does instead of judging the first answer (issue #74).
+        var status = await WaitForAppliedAsync(admin);
         Assert.True(status.LiveKit.Applied);
         Assert.True(status.Caddy.Applied);
+    }
+
+    private static async Task<ApplyStatusDto> WaitForAppliedAsync(AdminSession admin)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (true)
+        {
+            var status = await admin.Client.GetAsync("/api/settings/status", Ct).ExpectAsync<ApplyStatusDto>();
+            if ((status.LiveKit.Applied && status.Caddy.Applied) || DateTime.UtcNow >= deadline)
+            {
+                return status;
+            }
+
+            await Task.Delay(100, Ct);
+        }
     }
 
     [Fact]
