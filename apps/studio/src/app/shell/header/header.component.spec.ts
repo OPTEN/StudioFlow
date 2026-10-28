@@ -71,8 +71,10 @@ describe('HeaderComponent', () => {
     expect(link?.getAttribute('href')).toBe('https://www.opten.ch');
     expect(link?.getAttribute('target')).toBe('_blank');
     expect(link?.getAttribute('rel')).toBe('noopener');
-    expect(link?.getAttribute('aria-label')).toBe('Sponsored by OPTEN');
-    expect(link?.textContent).toContain('Sponsored by');
+    // The visible text is the accessible name, with a space between the words (axe label-content-name-mismatch, #79).
+    expect(link?.hasAttribute('aria-label')).toBe(false);
+    expect(link?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sponsored by OPTEN');
+    expect(link?.querySelectorAll('[aria-hidden="true"]:not(svg)').length).toBe(0);
     expect(link?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
