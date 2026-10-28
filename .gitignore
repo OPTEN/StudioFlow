@@ -58,9 +58,10 @@ docker-compose.override.yml
 
 # Screen recordings of the real UI for the product video (tests/e2e/specs/ui/ui-product-video.spec.ts)
 /video/captures/
-# Frames cut from the captures and the rendered films (video/README.md); the MP4s go to a release asset
+# Frames cut from the captures, the rendered films (built by pages.yml, video/README.md) and the local audio venv
 /video/work/
 /video/out/
+/.venv-video/
 
-# Product video for the site: downloaded from the release asset by pages.yml, never committed (issue 69)
+# Product video for the site: copied in from job video of pages.yml, never committed (issue 69)
 /site/public/media/

@@ -6,8 +6,12 @@ with synthetic demo content (drawn stand-ins for people and a slide). Around tho
 captions, zoom and pan, a cursor drawn from the recorded pointer log, transitions and the end card. The burned-in
 captions carry the story, so the video works muted; `out/studioflow.vtt` has the same lines as a captions file.
 
-The rendered files are not in Git (`/video/out/`, `/video/work/` and `/video/captures/` are ignored). They go into a
-release asset; the product site's Pages workflow downloads them into `site/public/media/`.
+The rendered files are not in Git (`/video/out/`, `/video/work/` and `/video/captures/` are ignored). The Pages workflow
+(`.github/workflows/pages.yml`) builds them from this folder: a push to `main` that changes `video/` (or the capture
+spec) renders the video again and the site goes out with it. The screen recordings are cached by the hash of the capture
+spec, so a change to the storyboard, the composition or the audio only renders; after a UI change, run the workflow by
+hand (Actions > Pages > Run workflow) with "Record the UI again" ticked. Each run also keeps the three formats, the
+poster and the captions as the artifact `product-video` (90 days), for posting.
 
 ## Storyboard (120 BPM, every cut on a beat; the table is `scenes.mjs`)
 
@@ -28,7 +32,23 @@ lays a QR for https://opten.github.io/StudioFlow/ over it (same tile, same place
 output popover is framed on its "Use as camera" steps only, so the test stack's addresses (172.31.x, localhost:8495)
 and its headless-browser frame statistics never show.
 
-## Rebuild
+## Build
+
+One command does what the Pages workflow does, from the repository root with Node and ffmpeg:
+
+```bash
+python -m venv .venv-video
+.venv-video/Scripts/pip install -r video/audio/requirements.txt          # bin/pip on Linux and macOS
+.venv-video/Scripts/pip install --no-deps -r video/audio/earshot.txt
+PYTHON=.venv-video/Scripts/python npm run build:video                    # from video/captures, about 7 minutes
+PYTHON=.venv-video/Scripts/python npm run build:video -- --capture       # record the UI first (Docker, E2E stack 5)
+```
+
+earshot is installed without its dependencies on purpose: the kit renderer needs only numpy and scipy, and the torch /
+CLAP stack of its listening tools (`timeline`, `critique`) would add gigabytes to every run. For the earshot check
+below, use a full install as in earshot's README (CPU torch, then `pip install earshot`).
+
+## The steps one by one
 
 From the repository root, with Docker, Node and ffmpeg:
 
@@ -60,6 +80,7 @@ matters on a beat (the comment at the top lists them), and the `rects` frame the
 
 ## Files
 
+- `build.mjs`: the whole build (`npm run build:video`), the steps below in order.
 - `scenes.mjs`: the storyboard, the framing rects and the caption lines, shared by everything below.
 - `extract.mjs`: frames per scene from `captures/*.mp4`.
 - `composition/`: the HTML composition. `window.renderFrame(t)` draws film time t; no clocks or transitions, so the
@@ -68,6 +89,7 @@ matters on a beat (the comment at the top lists them), and the `rects` frame the
   `+faststart`. Frame 0 is the poster frame (the settled "Just phones." at 2.6 s) so every platform's thumbnail shows it.
 - `audio/music.py`: the music bed, synthesized in code (120 BPM, A minor, Am F C G).
 - `audio/kit.json`: earshot's `launch` preset (effects and their levels against the music).
+- `audio/requirements.txt`, `audio/earshot.txt`: the pinned Python packages of the audio.
 - `audio/mix.py`: places 18 effects on the cuts and UI moments with earshot's mix model and masters to -14 LUFS.
 - `share-copy.md`: post texts for LinkedIn, X, Instagram / Reels and YouTube Shorts (draft, to be approved).
 
