@@ -54,6 +54,9 @@ public static class SettingsFieldErrors
     /// <summary>The certificate does not cover the domain.</summary>
     public const string CertificateNameMismatch = "certificate_name_mismatch";
 
+    /// <summary>The origins are missing from the request (an empty list is valid and clears them; a missing one must not).</summary>
+    public const string OriginsRequired = "origins_required";
+
     /// <summary>An origin is no valid CSP source (<c>https://host</c>, <c>https://*.host</c>, optional port).</summary>
     public const string OriginInvalid = "origin_invalid";
 

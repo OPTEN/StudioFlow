@@ -327,6 +327,20 @@ public sealed class ServerSettingsApiTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Embedding_ABodyWithoutOrigins_IsRefused_AndKeepsTheSavedOnes()
+    {
+        await using var app = await StartAsync(postgres);
+        var admin = await app.AdminAsync();
+        await admin.Client.PutJsonAsync("/api/settings/embedding", new UpdateEmbeddingRequest(["https://proxy.example.ch"])).ExpectAsync<ServerSettingsDto>();
+
+        using var json = await ErrorsOfAsync(admin.Client.PutAsync("/api/settings/embedding", new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), Ct));
+
+        Assert.Equal(SettingsFieldErrors.OriginsRequired, json.RootElement.GetProperty("errors").GetProperty("origins")[0].GetString());
+        var output = await admin.Client.GetAsync($"/api/productions/{admin.ProductionId}/output", Ct).ExpectAsync<OutputSettingsDto>();
+        Assert.Equal(["'self'", "https://proxy.example.ch"], output.FrameAncestors);
+    }
+
+    [Fact]
     public async Task Embedding_AnInvalidOrigin_IsRefused()
     {
         await using var app = await StartAsync(postgres);
