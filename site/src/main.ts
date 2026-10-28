@@ -93,24 +93,78 @@ const progressOf = (element: HTMLElement): number => {
   const rect = element.getBoundingClientRect();
   const view = window.innerHeight;
   // Pinned sections run from their top reaching the top of the viewport to their end; the others from entering to leaving.
-  if (element.matches('[data-incident], [data-statement]'))
+  if (element.matches('[data-incident], [data-statement], [data-net]'))
     return clamp(-rect.top / (rect.height - view));
   return clamp((view - rect.top) / (view + rect.height));
 };
 
+// ---------- Signal path in 3D ----------
+
+const net = document.querySelector<HTMLElement>('[data-net]');
+const netStage = net?.querySelector<HTMLElement>('[data-net-stage]');
+const board = net?.querySelector<HTMLElement>('[data-board]');
+const ease = (t: number): number => t * t * (3 - 2 * t);
+const deg = Math.PI / 180;
+
+// Scale the plate so its finished isometric view fits the stage; the camera angles come from the CSS.
+const measureNet = (): void => {
+  if (!netStage || !board) return;
+  const style = getComputedStyle(netStage);
+  const camX = parseFloat(style.getPropertyValue('--cam-x')) * deg;
+  const camZ = Math.abs(parseFloat(style.getPropertyValue('--cam-z'))) * deg;
+  const w = board.offsetWidth;
+  const h = board.offsetHeight;
+  const wide = w * Math.cos(camZ) + h * Math.sin(camZ);
+  const tall = (w * Math.sin(camZ) + h * Math.cos(camZ)) * Math.cos(camX) + 320 * Math.sin(camX);
+  const k = Math.min(
+    1.1,
+    (netStage.clientWidth * 0.96) / wide,
+    (netStage.clientHeight * 0.96) / tall,
+  );
+  netStage.style.setProperty('--k', k.toFixed(4));
+};
+
+const paintNet = (p: number): void => {
+  if (!net || !netStage) return;
+  const set = (name: string, value: number): void =>
+    netStage.style.setProperty(name, value.toFixed(4));
+  set('--tilt', ease(clamp(p / 0.26)));
+  set('--rise', clamp((p - 0.06) / 0.3));
+  set('--draw', clamp((p - 0.3) / 0.24));
+  set('--explode', ease(clamp((p - 0.56) / 0.22)));
+  netStage.style.setProperty('--orbit', `${((p - 0.5) * 16).toFixed(2)}deg`);
+  net.dataset['stage'] = String(p < 0.3 ? 0 : p < 0.56 ? 1 : p < 0.8 ? 2 : 3);
+};
+measureNet();
+
+const film = document.querySelector<HTMLElement>('[data-film]');
+const filmFrame = film?.querySelector<HTMLElement>('.film__frame');
+
+// How much the film frame has to scale to fill the viewport width; only changes on resize.
+const measureFilm = (): void => {
+  if (!film || !filmFrame) return;
+  film.style.setProperty(
+    '--grow',
+    (document.documentElement.clientWidth / film.clientWidth).toFixed(4),
+  );
+};
+measureFilm();
+
 const onScroll = (): void => {
   nav?.classList.toggle('is-scrolled', window.scrollY > 24);
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  nav?.style.setProperty('--sp', clamp(window.scrollY / Math.max(1, scrollable)).toFixed(4));
   if (reduced) {
     // Without motion the pinned sections are plain blocks, shown in their final state.
     for (const element of progressed) element.style.setProperty('--p', '1');
     if (incident) incident.dataset['stage'] = '4';
+    paintNet(1);
     return;
   }
   for (const element of progressed) {
     const p = progressOf(element);
     element.style.setProperty('--p', p.toFixed(4));
-    const path = element.querySelector<HTMLElement>('.path');
-    path?.style.setProperty('--p', p.toFixed(4));
+    if (element === net) paintNet(p);
   }
   if (incident)
     incident.dataset['stage'] = String(Math.min(4, Math.floor(progressOf(incident) * 5)));
@@ -128,12 +182,31 @@ const schedule = (): void => {
   });
 };
 addEventListener('scroll', schedule, { passive: true });
-addEventListener('resize', schedule);
+addEventListener('resize', () => {
+  measureFilm();
+  measureNet();
+  schedule();
+});
+// The pointer turns the camera a little around the model.
+if (!reduced && netStage && matchMedia('(hover: hover)').matches) {
+  netStage.addEventListener('pointermove', (event) => {
+    const rect = netStage.getBoundingClientRect();
+    netStage.style.setProperty('--ox', ((event.clientX - rect.left) / rect.width - 0.5).toFixed(3));
+    netStage.style.setProperty('--oy', ((event.clientY - rect.top) / rect.height - 0.5).toFixed(3));
+  });
+  netStage.addEventListener('pointerleave', () => {
+    netStage.style.setProperty('--ox', '0');
+    netStage.style.setProperty('--oy', '0');
+  });
+}
 onScroll();
 
-// ---------- Hero parallax on the pointer ----------
+// ---------- Hero parallax and spotlight on the pointer ----------
 
-if (!reduced && stage && matchMedia('(hover: hover)').matches) {
+const aurora = document.querySelector<HTMLElement>('[data-aurora]');
+const fine = matchMedia('(hover: hover)').matches;
+
+if (!reduced && stage && fine) {
   hero?.addEventListener('pointermove', (event) => {
     const rect = hero.getBoundingClientRect();
     stage.style.setProperty('--mx', ((event.clientX - rect.left) / rect.width - 0.5).toFixed(3));
@@ -143,6 +216,93 @@ if (!reduced && stage && matchMedia('(hover: hover)').matches) {
     stage.style.setProperty('--mx', '0');
     stage.style.setProperty('--my', '0');
   });
+}
+if (!reduced && aurora && fine) {
+  addEventListener(
+    'pointermove',
+    (event) => {
+      const rect = aurora.getBoundingClientRect();
+      if (event.clientY > rect.bottom) return;
+      aurora.style.setProperty('--sx', `${event.clientX - rect.left}px`);
+      aurora.style.setProperty('--sy', `${event.clientY - rect.top}px`);
+    },
+    { passive: true },
+  );
+}
+
+// ---------- Ticker: drifts by itself, the scroll pushes it and leans the words ----------
+
+const ticker = document.querySelector<HTMLElement>('[data-ticker]');
+if (ticker && !reduced) {
+  const tracks = Array.from(ticker.querySelectorAll<HTMLElement>('.ticker__track'));
+  const speeds = [70, -55]; // px per second; the second band runs the other way
+  let visible = false;
+  let last = performance.now();
+  let lastScroll = window.scrollY;
+  let lean = 0;
+  const offsets = tracks.map(() => 0);
+  const tick = (now: number): void => {
+    if (!visible) return;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    const delta = window.scrollY - lastScroll;
+    lastScroll = window.scrollY;
+    lean += (clamp(delta * -0.35, -14, 14) - lean) * 0.12;
+    tracks.forEach((track, index) => {
+      const half = track.scrollWidth / 2;
+      const direction = Math.sign(speeds[index]!);
+      offsets[index] = (offsets[index]! + speeds[index]! * dt + delta * 1.4 * direction) % half;
+      if (offsets[index]! < 0) offsets[index]! += half;
+      track.style.setProperty('--x', offsets[index]!.toFixed(1));
+    });
+    ticker.style.setProperty('--skew', lean.toFixed(2));
+    requestAnimationFrame(tick);
+  };
+  new IntersectionObserver(([entry]) => {
+    const was = visible;
+    visible = !!entry?.isIntersecting;
+    if (visible && !was) {
+      last = performance.now();
+      lastScroll = window.scrollY;
+      requestAnimationFrame(tick);
+    }
+  }).observe(ticker);
+}
+
+// ---------- Feature cards: tilt and a light that follows the pointer ----------
+
+if (!reduced && fine) {
+  for (const card of document.querySelectorAll<HTMLElement>('.feature')) {
+    card.addEventListener('pointermove', (event) => {
+      const rect = card.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      card.style.setProperty('--px', `${(x * 100).toFixed(1)}%`);
+      card.style.setProperty('--py', `${(y * 100).toFixed(1)}%`);
+      card.style.setProperty('--tx', (x - 0.5).toFixed(3));
+      card.style.setProperty('--ty', (y - 0.5).toFixed(3));
+    });
+    card.addEventListener('pointerleave', () => {
+      card.style.setProperty('--tx', '0');
+      card.style.setProperty('--ty', '0');
+    });
+  }
+}
+
+// ---------- Magnetic primary buttons ----------
+
+if (!reduced && fine) {
+  for (const pill of document.querySelectorAll<HTMLElement>('.pill--fill, .take')) {
+    pill.addEventListener('pointermove', (event) => {
+      const rect = pill.getBoundingClientRect();
+      const x = (event.clientX - rect.left - rect.width / 2) * 0.22;
+      const y = (event.clientY - rect.top - rect.height / 2) * 0.32;
+      pill.style.translate = `${x.toFixed(1)}px ${y.toFixed(1)}px`;
+    });
+    pill.addEventListener('pointerleave', () => {
+      pill.style.translate = '';
+    });
+  }
 }
 
 // ---------- Take demo ----------
@@ -210,8 +370,10 @@ if (switcher) {
       return;
     }
     pgmScreen.classList.remove('is-cut');
+    switcher.classList.remove('is-taking');
     void pgmScreen.offsetWidth;
     pgmScreen.classList.add('is-fading', 'is-cut');
+    switcher.classList.add('is-taking');
     setTimeout(finish, 620);
   };
 

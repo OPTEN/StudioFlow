@@ -36,6 +36,8 @@
   --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --wrap: min(1240px, 100% - 2 * clamp(16px, 4vw, 56px));
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --glow: 0.55;
+  --grain: 0.07;
   color-scheme: dark;
 }
 
@@ -54,6 +56,8 @@
   --amber: #a16207;
   --violet: #7a3fd0;
   --shadow: 0 30px 60px -24px rgba(31, 41, 55, 0.35), 0 12px 24px -14px rgba(31, 41, 55, 0.25);
+  --glow: 0.22;
+  --grain: 0.045;
   color-scheme: light;
 }
 
@@ -78,6 +82,19 @@ body {
   font: 400 18px/1.55 var(--font);
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
+}
+/* Film grain over the whole page, so the light pools read as light and not as flat gradients */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+main {
+  position: relative;
 }
 
 ::selection {
@@ -148,6 +165,15 @@ code {
 .hl {
   font-style: normal;
   color: var(--c);
+  transition: text-shadow 1400ms var(--ease) 600ms;
+}
+/* The coloured phrase lights up like a tally lamp once its words have risen */
+.is-in .hl,
+.is-in.hl,
+.statement .hl {
+  text-shadow:
+    0 0 0.45em color-mix(in srgb, var(--c) calc(var(--glow) * 100%), transparent),
+    0 0 1.4em color-mix(in srgb, var(--c) calc(var(--glow) * 50%), transparent);
 }
 .hl--red {
   --c: var(--red);
@@ -275,6 +301,19 @@ code {
   border-color: var(--line);
   backdrop-filter: saturate(1.4) blur(14px);
 }
+/* Scroll progress as a tally-red line under the bar */
+.nav::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--red);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--red) 70%, transparent);
+  transform: scaleX(var(--sp, 0));
+  transform-origin: 0 50%;
+}
 .nav__brand {
   display: inline-flex;
   align-items: center;
@@ -377,10 +416,101 @@ code {
   transform: none;
 }
 
+/* ---------- Studio light ---------- */
+
+.aurora {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(1400px, 150svh);
+  overflow: hidden;
+  pointer-events: none;
+  --sx: 70%;
+  --sy: 40%;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+.aurora__pool {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: calc(var(--glow) * 1.1);
+}
+.aurora__pool--red {
+  left: 38%;
+  top: 6%;
+  width: 52vw;
+  height: 46vw;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--red) 75%, transparent),
+    transparent
+  );
+  animation: drift-a 18s ease-in-out infinite alternate;
+}
+.aurora__pool--blue {
+  left: -14%;
+  top: 30%;
+  width: 54vw;
+  height: 40vw;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--blue-fill) 80%, transparent),
+    transparent
+  );
+  animation: drift-b 22s ease-in-out infinite alternate;
+}
+.aurora__pool--violet {
+  right: -18%;
+  top: 46%;
+  width: 40vw;
+  height: 36vw;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--violet) 60%, transparent),
+    transparent
+  );
+  animation: drift-a 26s ease-in-out -8s infinite alternate-reverse;
+}
+@keyframes drift-a {
+  to {
+    translate: -9vw 7vw;
+    scale: 1.15;
+  }
+}
+@keyframes drift-b {
+  to {
+    translate: 12vw -5vw;
+    scale: 0.9;
+  }
+}
+.aurora__spot {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    560px circle at var(--sx) var(--sy),
+    color-mix(in srgb, var(--text) calc(var(--glow) * 14%), transparent),
+    transparent 70%
+  );
+  transition: opacity 600ms var(--ease);
+}
+/* A fine floor grid under the light, like a studio floor marking */
+.aurora::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(70% 60% at var(--sx) var(--sy), #000, transparent 75%);
+  mask-image: radial-gradient(70% 60% at var(--sx) var(--sy), #000, transparent 75%);
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   align-items: center;
@@ -448,9 +578,13 @@ code {
   border-radius: 14px;
   overflow: hidden;
   box-shadow: var(--shadow);
-  translate: calc(var(--mx) * var(--depth) * 18px)
-    calc(var(--my) * var(--depth) * 18px + var(--sy) * var(--depth) * -90px);
-  transition: translate 600ms var(--ease);
+  translate: calc(var(--mx) * var(--depth) * 28px)
+    calc(var(--my) * var(--depth) * 28px + var(--sy) * var(--depth) * -110px);
+  transform: perspective(1200px) rotateY(calc(var(--mx) * var(--depth) * 16deg))
+    rotateX(calc(var(--my) * var(--depth) * -12deg));
+  transition:
+    translate 700ms var(--ease),
+    transform 700ms var(--ease);
 }
 .js .float {
   animation: float-in 1200ms var(--ease) var(--enter) both;
@@ -471,6 +605,24 @@ code {
   width: 66%;
   border: 3px solid var(--red);
   rotate: -2deg;
+  box-shadow:
+    var(--shadow),
+    0 0 80px -10px color-mix(in srgb, var(--red) calc(var(--glow) * 100%), transparent);
+}
+.js .float--program {
+  animation-name: float-in, on-air;
+  animation-duration: 1200ms, 2.4s;
+  animation-timing-function: var(--ease), ease-in-out;
+  animation-delay: var(--enter), 1.4s;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+}
+@keyframes on-air {
+  50% {
+    box-shadow:
+      var(--shadow),
+      0 0 130px 0 color-mix(in srgb, var(--red) calc(var(--glow) * 110%), transparent);
+  }
 }
 .float--phone {
   left: 0;
@@ -555,23 +707,100 @@ code {
   rotate: -90deg;
 }
 
+/* ---------- Ticker ---------- */
+
+.ticker {
+  position: relative;
+  z-index: 2;
+  height: clamp(220px, 26vw, 380px);
+  margin-top: clamp(40px, 6vw, 90px);
+  --shift: 0;
+  --skew: 0;
+}
+.ticker__band {
+  position: absolute;
+  left: -10vw;
+  right: -10vw;
+  top: 50%;
+  overflow: hidden;
+  padding: clamp(10px, 1.2vw, 18px) 0;
+  font-weight: 900;
+  font-size: clamp(44px, 7vw, 116px);
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.ticker__band--red {
+  rotate: -4deg;
+  translate: 0 -112%;
+  background: var(--red);
+  color: #0b0e13;
+  box-shadow: 0 24px 60px -20px color-mix(in srgb, var(--red) 70%, transparent);
+  z-index: 1;
+}
+.ticker__band--ink {
+  rotate: 3deg;
+  translate: 0 8%;
+  background: var(--bg-2);
+  color: var(--text);
+  border-block: 1px solid var(--line-2);
+}
+/* main.ts moves each track by --x (time plus scroll, wrapped at half its width) and leans the words by the scroll speed */
+.ticker__track {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  width: max-content;
+  padding-right: 0.4em;
+  transform: translate3d(calc(var(--x, 0) * -1px), 0, 0);
+  will-change: transform;
+}
+.ticker__band span,
+.ticker__band b {
+  display: inline-block;
+  transform: skewX(calc(var(--skew) * 1deg));
+}
+.ticker__band b {
+  font-weight: 900;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--text);
+}
+.ticker__band i {
+  flex: none;
+  width: 0.28em;
+  height: 0.28em;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ticker__band--ink i {
+  background: var(--red);
+  box-shadow: 0 0 18px var(--red);
+}
+
 /* ---------- Film panel ---------- */
 
 .film {
   --p: 0;
+  --grow: 1;
+  --e: clamp(0, calc((var(--p) - 0.12) * 3.2), 1);
   width: var(--wrap);
   margin: 40px auto 0;
+  /* room for the frame once it has grown to the full width */
+  padding-bottom: calc((1 - 1 / var(--grow)) * 56.25vw);
 }
 .film__frame {
   perspective: 1600px;
-  scale: calc(0.88 + min(var(--p) * 2.4, 1) * 0.12);
+  scale: calc(1 + (var(--grow) - 1) * var(--e));
   transform-origin: 50% 0;
 }
 .film__screen {
   overflow: hidden;
-  border-radius: 16px;
-  outline: 3px solid var(--red);
-  box-shadow: var(--shadow);
+  border-radius: calc(16px * (1 - var(--e)));
+  outline: calc(3px * (1 - var(--e))) solid var(--red);
+  box-shadow:
+    var(--shadow),
+    0 40px 160px -40px color-mix(in srgb, var(--red) calc(var(--glow) * 90%), transparent);
   rotate: x calc((1 - min(var(--p) * 2.4, 1)) * 18deg);
   transform-origin: 50% 100%;
 }
@@ -608,6 +837,8 @@ code {
   list-style: none;
 }
 .feature {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -616,6 +847,49 @@ code {
   background: var(--bg-2);
   border: 1px solid var(--line);
   overflow: hidden;
+  --px: 50%;
+  --py: 30%;
+  --tx: 0;
+  --ty: 0;
+  transform: perspective(1400px) rotateX(calc(var(--ty) * -5deg)) rotateY(calc(var(--tx) * 5deg));
+  transition:
+    transform 600ms var(--ease),
+    border-color 300ms var(--ease);
+}
+/* A light that follows the pointer inside the card, and lights the edge it is near in the card's colour */
+.feature::before,
+.feature::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms var(--ease);
+}
+.feature::before {
+  background: radial-gradient(
+    420px circle at var(--px) var(--py),
+    color-mix(in srgb, var(--c) calc(var(--glow) * 30%), transparent),
+    transparent 70%
+  );
+}
+.feature::after {
+  z-index: 1;
+  padding: 1.5px;
+  background: radial-gradient(260px circle at var(--px) var(--py), var(--c), transparent 70%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.feature:hover::before,
+.feature:hover::after {
+  opacity: 1;
 }
 .feature--wide {
   grid-column: span 2;
@@ -766,11 +1040,42 @@ code {
   transition: opacity 600ms ease-in-out;
 }
 .switcher__screen--pgm.is-cut {
-  animation: cut 600ms var(--ease);
+  animation: cut 900ms var(--ease);
 }
 @keyframes cut {
   from {
-    outline-width: 9px;
+    outline-width: 10px;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 80%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 40px transparent;
+  }
+}
+.switcher {
+  position: relative;
+  isolation: isolate;
+}
+/* On Take the whole switcher catches a red flash, like the studio when the tally lamps change */
+.switcher::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    70% 90% at 75% 40%,
+    color-mix(in srgb, var(--red) 34%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+.switcher.is-taking::after {
+  animation: flash 1100ms var(--ease);
+}
+@keyframes flash {
+  12% {
+    opacity: 1;
   }
 }
 .switcher__bar {
@@ -833,9 +1138,17 @@ code {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue-fill) 60%, transparent);
   transition:
     transform 150ms var(--ease),
     background 200ms;
+  animation: ready 2.2s ease-out infinite;
+}
+@keyframes ready {
+  70%,
+  100% {
+    box-shadow: 0 0 0 18px transparent;
+  }
 }
 .take:hover {
   background: #1a5fd0;
@@ -982,71 +1295,412 @@ code {
   translate: 0 0;
 }
 
-/* ---------- Signal path ---------- */
+/* ---------- Signal path in 3D (pinned) ----------
+   A model of the network on a floor plate. main.ts drives the phases from the scroll: --tilt (camera from top view to
+   isometric), --rise (devices grow out of the floor), --draw (cables), --explode (the stack opens into its five services),
+   --orbit, and --ox/--oy from the pointer. Units on the board are pixels of a 1200 x 700 plate (640 x 1040 on phones). */
 
-.path {
+.net {
   --p: 0;
-  margin-top: 64px;
-  overflow-x: auto;
+  height: 360vh;
+  margin-top: clamp(24px, 4vw, 56px);
 }
-.path__svg--v {
-  display: none !important;
+.net__sticky {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100svh;
+  padding: 76px 0 clamp(20px, 4vh, 44px);
+  overflow: hidden;
 }
-.path__svg {
-  display: block;
+.net__stage {
+  --tilt: 0;
+  --rise: 0;
+  --draw: 0;
+  --explode: 0;
+  --orbit: 0deg;
+  --ox: 0;
+  --oy: 0;
+  --k: 0.8;
+  --cam-x: 56;
+  --cam-z: -36;
+  position: relative;
+  perspective: 2200px;
+  perspective-origin: 50% 30%;
+}
+.board {
+  --bw: 1200;
+  --bh: 700;
+  --rx: calc(var(--tilt) * var(--cam-x) * 1deg + var(--oy) * -7deg);
+  --rz: calc(var(--tilt) * var(--cam-z) * 1deg + var(--orbit) + var(--ox) * 10deg);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--bw) * 1px);
+  height: calc(var(--bh) * 1px);
+  margin: calc(var(--bh) * -0.5px) 0 0 calc(var(--bw) * -0.5px);
+  transform-style: preserve-3d;
+  transform: scale(var(--k)) rotateX(var(--rx)) rotateZ(var(--rz));
+}
+
+/* The floor: the boundary of your network, a grid, the cables and their comets */
+.floor {
+  position: absolute;
+  inset: 0;
+  border-radius: 36px;
+  border: 2px dashed color-mix(in srgb, var(--blue) 70%, transparent);
+  background:
+    radial-gradient(
+      60% 70% at 48% 50%,
+      color-mix(in srgb, var(--blue-fill) 22%, transparent),
+      transparent 75%
+    ),
+    linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px) 0 0 / 50px
+      50px,
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px) 0
+      0 / 50px 50px,
+    color-mix(in srgb, var(--bg-2) 85%, transparent);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--blue) 6%, transparent),
+    0 0 120px -10px color-mix(in srgb, var(--blue-fill) calc(var(--glow) * 70%), transparent),
+    inset 0 0 80px color-mix(in srgb, var(--blue-fill) 12%, transparent);
+}
+.floor__label {
+  position: absolute;
+  left: 44px;
+  bottom: 22px;
+  font: 900 76px/1 var(--font);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--blue) 60%, transparent);
+  opacity: calc(0.3 + var(--tilt) * 0.5);
+}
+.floor__wires {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-width: 760px;
-  height: auto;
-  font-family: var(--font);
+  height: 100%;
+  overflow: visible;
 }
-.path__wires path {
+.floor__wires--m {
+  display: none;
+}
+.wires path {
   fill: none;
   stroke: var(--blue);
-  stroke-width: 2.5;
+  stroke-width: 3;
+  stroke-linecap: round;
   stroke-dasharray: 1;
-  stroke-dashoffset: clamp(0, calc(1.3 - var(--p) * 2.6), 1);
+  stroke-dashoffset: clamp(0, calc(1 - (var(--draw) * 1.75 - var(--i) * 0.13)), 1);
+  opacity: 0.55;
 }
-.path__wires .red {
+.wires .red,
+.comet.red {
   stroke: var(--red);
 }
-.path__pulses circle {
-  fill: var(--blue);
-  opacity: clamp(0, calc(var(--p) * 4 - 1.6), 1);
-}
-.path__pulses .red {
-  fill: var(--red);
-}
-.node {
-  opacity: clamp(0.08, calc(var(--p) * 12 - var(--n) * 0.9), 1);
-}
-.node rect {
-  fill: var(--surface);
-  stroke: var(--line-2);
-  stroke-width: 1.5;
-}
-.node text {
-  fill: var(--text);
-  font-size: 20px;
-  font-weight: 800;
-}
-.node .sub {
-  fill: var(--muted);
-  font-size: 14px;
-  font-weight: 500;
-}
-.node .mono {
-  fill: var(--text-2);
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 500;
-}
-.node--core rect {
+.comet {
+  fill: none;
   stroke: var(--blue);
-  stroke-width: 2;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.07 0.93;
+  stroke-dashoffset: 1;
+  opacity: clamp(0, calc(var(--draw) * 6 - 5), 1);
+  filter: drop-shadow(0 0 6px var(--blue));
+  animation: comet 1.8s linear infinite;
+  animation-delay: calc(var(--i) * -0.35s);
 }
-.node--red rect {
-  stroke: var(--red);
-  stroke-width: 2;
+.comet.red {
+  filter: drop-shadow(0 0 6px var(--red));
+}
+@keyframes comet {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Blocks: four sides and a top, grown to --z * --r pixels */
+.blk {
+  --r: clamp(0, calc(var(--rise) * 4 - var(--n) * 0.45), 1);
+  --zz: calc(var(--z) * var(--r) * 1px);
+  --lift: 0px;
+  --top: var(--surface);
+  --side: color-mix(in srgb, var(--surface) 72%, #000);
+  --side-2: color-mix(in srgb, var(--surface) 55%, #000);
+  --edge: var(--line-2);
+  position: absolute;
+  left: calc(var(--x) * 1px);
+  top: calc(var(--y) * 1px);
+  width: calc(var(--w) * 1px);
+  height: calc(var(--h) * 1px);
+  transform-style: preserve-3d;
+  transform: translateZ(var(--lift));
+}
+.blk > i {
+  position: absolute;
+  display: block;
+  backface-visibility: hidden;
+}
+.blk__shadow {
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  filter: blur(calc(6px + var(--r) * 14px));
+  transform: translate(calc(var(--r) * 14px), calc(var(--r) * 18px));
+  opacity: var(--r);
+}
+.blk__top {
+  inset: 0;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #fff 7%, transparent), transparent 55%), var(--top);
+  border: 1.5px solid var(--edge);
+  transform: translateZ(var(--zz));
+}
+.blk__s,
+.blk__n {
+  left: 0;
+  width: 100%;
+  height: var(--zz);
+  background: var(--side);
+}
+.blk__s {
+  bottom: 0;
+  transform-origin: 50% 100%;
+  transform: rotateX(-90deg);
+}
+.blk__n {
+  top: 0;
+  transform-origin: 50% 0;
+  transform: rotateX(90deg);
+  background: var(--side-2);
+}
+.blk__e,
+.blk__w {
+  top: 0;
+  width: var(--zz);
+  height: 100%;
+  background: var(--side-2);
+}
+.blk__e {
+  right: 0;
+  transform-origin: 100% 50%;
+  transform: rotateY(90deg);
+}
+.blk__w {
+  left: 0;
+  transform-origin: 0 50%;
+  transform: rotateY(-90deg);
+}
+.blk--red {
+  --edge: var(--red);
+}
+.blk--red .blk__top {
+  box-shadow: 0 0 40px -6px color-mix(in srgb, var(--red) calc(var(--glow) * 120%), transparent);
+}
+.n-phones .blk__top,
+.n-laptops .blk__top,
+.n-audio .blk__top {
+  --edge: color-mix(in srgb, var(--blue) 55%, var(--line-2));
+}
+
+/* The stack: five slabs that part while the camera looks in */
+.blk--slab {
+  --z: 26;
+  --lift: calc(var(--s) * (26px + var(--explode) * 44px) * var(--r));
+  --edge: color-mix(in srgb, var(--blue) 80%, transparent);
+  --top: color-mix(in srgb, var(--surface) 88%, var(--blue-fill));
+}
+.blk--slab .blk__top {
+  box-shadow: 0 0 calc(10px + var(--explode) * 40px)
+    color-mix(in srgb, var(--blue-fill) calc(var(--glow) * 90%), transparent);
+}
+/* Front of each slab: a rack face with a status lamp */
+.blk--slab .blk__s {
+  background:
+    radial-gradient(circle at 18px 50%, var(--green) 0 3.5px, transparent 4.5px),
+    repeating-linear-gradient(
+        90deg,
+        transparent 0 34px,
+        color-mix(in srgb, #fff 7%, transparent) 34px 36px
+      )
+      40px 0 / calc(100% - 80px) 100% no-repeat,
+    var(--side);
+  border-top: 1px solid color-mix(in srgb, var(--blue) 50%, transparent);
+}
+.blk--slab .blk__e {
+  border-left: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
+}
+.blk--slab:not([style*='--s: 0']) .blk__shadow {
+  display: none;
+}
+.blk--label {
+  --z: 0;
+  --lift: calc((5 * 26px + 4 * var(--explode) * 44px) * var(--r) + 26px);
+}
+
+/* Labels stand above their block and always face the camera */
+.tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  transform-origin: 0 0;
+  transform: translateZ(calc(var(--zz) + 14px)) rotateZ(calc(var(--rz) * -1))
+    rotateX(calc(var(--rx) * -1))
+    translate(-50%, calc(-100% * var(--tilt) - 50% * (1 - var(--tilt))));
+  opacity: clamp(0, calc(var(--r) * 2 - 0.6), 1);
+}
+.tag b {
+  color: var(--text);
+  font: 800 24px/1.05 var(--font);
+}
+.tag small {
+  color: var(--muted);
+  font: 500 15px/1.2 var(--font);
+}
+.blk--red .tag {
+  border-color: color-mix(in srgb, var(--red) 60%, transparent);
+}
+.tag--slab {
+  left: calc(100% + 30px);
+  top: 100%;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border-color: color-mix(in srgb, var(--blue) 50%, transparent);
+  color: var(--blue);
+  font: 600 19px/1 var(--mono);
+  transform: translateZ(calc(var(--zz) * 0.5)) rotateZ(calc(var(--rz) * -1))
+    rotateX(calc(var(--rx) * -1)) translate(0, -50%);
+  opacity: var(--explode);
+}
+.tag--core {
+  border-color: var(--blue);
+  box-shadow: 0 0 40px -8px
+    color-mix(in srgb, var(--blue-fill) calc(var(--glow) * 140%), transparent);
+}
+.tag--core b {
+  font-size: 30px;
+}
+
+/* Positions on the plate */
+.n-phones {
+  --x: 60;
+  --y: 80;
+  --w: 200;
+  --h: 90;
+  --z: 46;
+}
+.n-laptops {
+  --x: 60;
+  --y: 305;
+  --w: 200;
+  --h: 90;
+  --z: 46;
+}
+.n-audio {
+  --x: 60;
+  --y: 530;
+  --w: 200;
+  --h: 90;
+  --z: 46;
+}
+.n-core {
+  --x: 420;
+  --y: 230;
+  --w: 280;
+  --h: 240;
+}
+.n-regie {
+  --x: 820;
+  --y: 120;
+  --w: 190;
+  --h: 90;
+  --z: 60;
+}
+.n-output {
+  --x: 820;
+  --y: 420;
+  --w: 190;
+  --h: 90;
+  --z: 60;
+}
+.n-obs {
+  --x: 1050;
+  --y: 420;
+  --w: 110;
+  --h: 90;
+  --z: 80;
+}
+
+/* Captions under the model, one per phase */
+.net__steps {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: clamp(12px, 3vw, 40px);
+  width: var(--wrap);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  counter-reset: net;
+}
+.net__steps li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  max-width: 30ch;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0.45;
+  transition:
+    opacity 400ms var(--ease),
+    color 400ms var(--ease);
+}
+.net__steps li::before {
+  counter-increment: net;
+  content: counter(net);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-2);
+  font: 600 13px/1 var(--mono);
+}
+[data-stage='1'] .net__steps li:nth-child(1),
+[data-stage='2'] .net__steps li:nth-child(2),
+[data-stage='3'] .net__steps li:nth-child(3) {
+  color: var(--text);
+  opacity: 1;
+}
+[data-stage='1'] .net__steps li:nth-child(1)::before,
+[data-stage='2'] .net__steps li:nth-child(2)::before,
+[data-stage='3'] .net__steps li:nth-child(3)::before {
+  border-color: var(--blue);
+  background: var(--blue-fill);
+  color: var(--on-fill);
+}
+:root[data-theme='light'] .blk {
+  --side: color-mix(in srgb, var(--surface) 82%, #5b6573);
+  --side-2: color-mix(in srgb, var(--surface) 70%, #5b6573);
+}
+:root[data-theme='light'] .blk__shadow {
+  background: rgba(31, 41, 55, 0.3);
 }
 
 /* ---------- Statement (pinned, lights up line by line) ---------- */
@@ -1066,12 +1720,19 @@ code {
   margin: 0 auto;
 }
 .statement__line {
+  --lit: clamp(0, calc(var(--p) * 6 - var(--i) * 1.1), 1);
   font-weight: 900;
   font-size: clamp(44px, 7.4vw, 120px);
   line-height: 0.98;
   letter-spacing: -0.02em;
-  opacity: clamp(0.4, calc(var(--p) * 6 - var(--i) * 1.1), 1);
-  translate: 0 calc(clamp(0, calc(1 - (var(--p) * 6 - var(--i) * 1.1)), 1) * 24px);
+  opacity: calc(0.14 + var(--lit) * 0.86);
+  translate: calc((1 - var(--lit)) * -40px) 0;
+  filter: blur(calc((1 - var(--lit)) * 3px));
+}
+.statement__line .hl {
+  text-shadow:
+    0 0 0.4em color-mix(in srgb, var(--c) calc(var(--glow) * var(--lit) * 100%), transparent),
+    0 0 1.6em color-mix(in srgb, var(--c) calc(var(--glow) * var(--lit) * 60%), transparent);
 }
 .statement__line:nth-child(1) {
   --i: 0;
@@ -1340,12 +2001,41 @@ code {
 /* ---------- Close and footer ---------- */
 
 .close {
+  position: relative;
+  isolation: isolate;
   display: grid;
   justify-items: center;
   width: var(--wrap);
   margin: 0 auto;
   padding: clamp(140px, 18vw, 260px) 0 clamp(100px, 12vw, 180px);
   text-align: center;
+}
+.close .display {
+  font-size: clamp(64px, 11vw, 190px);
+}
+/* A red studio light behind the last line, breathing like a tally lamp */
+.close__light {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  z-index: -1;
+  width: min(1100px, 120vw);
+  aspect-ratio: 2 / 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--red) calc(var(--glow) * 70%), transparent),
+    transparent
+  );
+  filter: blur(40px);
+  animation: breathe 3.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.55;
+    scale: 0.92;
+  }
 }
 .close .cta {
   justify-content: center;
@@ -1478,17 +2168,85 @@ code {
   .feature__shot--phone img {
     max-height: 420px;
   }
-  .path {
-    overflow: visible;
+  /* On phones the plate stands upright: sources on top, the stack in the middle, outputs below */
+  .net__stage {
+    --cam-x: 50;
+    --cam-z: -10;
   }
-  .path__svg {
+  .board {
+    --bw: 640;
+    --bh: 1040;
+  }
+  .floor__wires--d {
     display: none;
   }
-  .path__svg--v {
-    display: block !important;
-    min-width: 0;
-    max-width: 380px;
-    margin: 0 auto;
+  .floor__wires--m {
+    display: block;
+  }
+  .floor__label {
+    left: 30px;
+    bottom: 26px;
+    font-size: 52px;
+  }
+  .n-phones {
+    --x: 20;
+    --y: 20;
+    --w: 180;
+  }
+  .n-laptops {
+    --x: 230;
+    --y: 20;
+    --w: 180;
+  }
+  .n-audio {
+    --x: 440;
+    --y: 20;
+    --w: 180;
+  }
+  .n-core {
+    --x: 180;
+    --y: 250;
+  }
+  .n-regie {
+    --x: 40;
+    --y: 700;
+    --w: 240;
+  }
+  .n-output {
+    --x: 360;
+    --y: 700;
+    --w: 240;
+  }
+  .n-obs {
+    --x: 360;
+    --y: 880;
+    --w: 240;
+    --z: 60;
+  }
+  .tag b {
+    font-size: 36px;
+  }
+  .tag small {
+    display: none;
+  }
+  .tag--core b {
+    font-size: 42px;
+  }
+  .tag--slab {
+    font-size: 26px;
+  }
+  .net__steps {
+    display: grid;
+    min-height: 3.2em;
+  }
+  .net__steps li {
+    grid-area: 1 / 1;
+    max-width: none;
+    font-size: 16px;
+    opacity: 0;
+  }
+  .net[data-stage='0'] .net__steps li:nth-child(1) {
+    opacity: 0.6;
   }
   .float--take,
   .float--stations {
@@ -1532,6 +2290,24 @@ code {
   .foot__note {
     margin-left: 0;
   }
+  .ticker {
+    height: 190px;
+  }
+  .ticker__band b {
+    -webkit-text-stroke-width: 1.5px;
+  }
+  .aurora__pool {
+    filter: blur(60px);
+  }
+  .aurora__pool--red {
+    left: 20%;
+    width: 90vw;
+    height: 90vw;
+  }
+  .aurora__pool--blue {
+    width: 90vw;
+    height: 80vw;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1550,20 +2326,33 @@ code {
     transform: none;
     filter: none;
   }
-  .float {
+  .float,
+  .feature {
+    translate: none;
+    transform: none;
+  }
+  .aurora__spot {
+    display: none;
+  }
+  .statement__line {
+    filter: none;
     translate: none;
   }
   .pulse,
-  .path__pulses {
+  .comets {
     display: none;
   }
-  .path,
   .film {
     --p: 1 !important;
   }
   .incident,
-  .statement {
+  .statement,
+  .net {
     height: auto;
+  }
+  .net__sticky {
+    position: static;
+    height: min(100svh, 860px);
   }
   .incident__sticky,
   .statement__sticky {
