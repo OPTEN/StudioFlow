@@ -13,8 +13,8 @@ node site/og/render.mjs # site/public/og.png from site/og/og.html
 
 `.github/workflows/pages.yml` builds and deploys it on pushes to `main` that touch `site/`, the prototype or the
 dependencies. The product video (issue 69) is committed in `public/media/` (`studioflow.mp4`, `studioflow-vertical.mp4`,
-`studioflow.vtt`); it is rendered locally from `video/` with `npm run build:video`, which copies the files there.
-`site/vite.config.ts` swaps the hero's film screenshot for the video when they are there.
+`studioflow.vtt`) and plays in the hero; it is rendered locally from `video/` with `npm run build:video`, which copies
+the files there.
 
 ## Look and motion
 
@@ -31,7 +31,7 @@ five state colours carry over.
   `assets/ui/pairing.webp` is replaced by one that points to the site, so no test token is shown.
 - **Motion** (all of it off under `prefers-reduced-motion`, where every section shows its final state):
   headlines rise word by word, blocks fade in from a blur, the hero's UI fragments float with pointer and scroll
-  parallax, the Regie screenshot tilts up while scrolling, the Take demo switches by itself until someone touches it,
+  parallax, the product video tilts up while scrolling, the Take demo switches by itself until someone touches it,
   "Wi-Fi drops" is a pinned sequence of four stages, the network diagram draws itself, the statement lights up line by
   line, and the terminal types the setup.
 
@@ -39,7 +39,7 @@ five state colours carry over.
 
 | File | Source |
 |---|---|
-| `assets/regie.webp`, `regie-960.webp`, `public/hero-poster.webp` | `video/captures/still-regie-studio-dark.png` |
+| `assets/regie-960.webp` (demo poster), `public/hero-poster.webp` (video poster) | `video/captures/still-regie-studio-dark.png` |
 | `assets/ui/preview.webp`, `program.webp`, `welcome.webp`, `control.webp`, `stations.webp`, `templates.webp` | crops of the same still |
 | `assets/ui/pairing.webp` | crop of `still-regie-pairing-qr.png`, QR code replaced (see above) |
 | `assets/ui/obs.webp` | crop of `still-regie-output-obs.png` (the steps only, no addresses) |

@@ -96,7 +96,7 @@ Open:
   a usage limit; its triage files issues for every product or test defect.
 - #60 repository clean-up (last before the public release), #64 closes with the first release (or the copy of the
   prototype on Pages from #67), #18 closes with 0.1.0, #23 owner actions (branch protection to `ci-ok`, GHCR package
-  access, Pages source), #69 product video (separate session, PR #75).
+  access; the Pages source is set), #69 product video (rendered locally and committed in `site/public/media`, PR #76).
 
 ## Remaining plan
 
