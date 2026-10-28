@@ -664,6 +664,26 @@ namespace Opten.StudioFlow.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Opten.StudioFlow.Infrastructure.Persistence.RevokedSession", b =>
+                {
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_id");
+
+                    b.Property<DateTimeOffset>("RevokedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_until");
+
+                    b.HasKey("SessionId")
+                        .HasName("pk_admin_revoked_session");
+
+                    b.HasIndex("RevokedUntil")
+                        .HasDatabaseName("ix_admin_revoked_session_revoked_until");
+
+                    b.ToTable("admin_revoked_session", (string)null);
+                });
+
             modelBuilder.Entity("Opten.StudioFlow.Infrastructure.Persistence.SourceActivity", b =>
                 {
                     b.Property<string>("SourceId")

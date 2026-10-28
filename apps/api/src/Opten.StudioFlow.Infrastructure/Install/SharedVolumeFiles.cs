@@ -6,27 +6,40 @@ using Opten.StudioFlow.Core.Application.Ports;
 
 namespace Opten.StudioFlow.Infrastructure.Install;
 
+/// <summary>Who may read a file the API wrote into a shared volume.</summary>
+internal enum FileAudience
+{
+    /// <summary>Only the API (and the backup service, which reads with <c>DAC_READ_SEARCH</c>): mode 600.</summary>
+    Owner,
+
+    /// <summary>The API and the group it shares with the service on the other side of the volume (Caddy: group 10002): mode 640.</summary>
+    OwnerAndGroup,
+
+    /// <summary>Everybody in the container of the other service: mode 644. Only for files that are no secret.</summary>
+    Everyone,
+}
+
 /// <summary>Writes files into the shared volumes through which the API configures LiveKit, Caddy and the backup service.</summary>
 internal static class SharedVolumeFiles
 {
     /// <summary>
     /// Writes <paramref name="content"/> to <paramref name="path"/> when the file differs (a temporary file next to it, then
-    /// a rename, so a reader never sees half a file). Returns true when it wrote. <paramref name="worldReadable"/> files
-    /// are readable by the service on the other side of the volume (it runs as another user); the others are for the owner
-    /// and the backup service, which reads with <c>DAC_READ_SEARCH</c>.
+    /// a rename, so a reader never sees half a file). Returns true when it wrote. The mode of the file follows
+    /// <paramref name="audience"/> and is also corrected on a file that stays as it is (an earlier version wrote it more openly).
     /// </summary>
-    public static async Task<bool> WriteIfChangedAsync(string path, string content, bool worldReadable, string what, CancellationToken cancellationToken)
+    public static async Task<bool> WriteIfChangedAsync(string path, string content, FileAudience audience, string what, CancellationToken cancellationToken)
     {
         try
         {
             if (File.Exists(path) && string.Equals(await File.ReadAllTextAsync(path, cancellationToken), content, StringComparison.Ordinal))
             {
+                Protect(path, audience);
                 return false;
             }
 
             var temporary = Path.Combine(Path.GetDirectoryName(path)!, "." + Path.GetFileName(path) + ".tmp");
             await File.WriteAllTextAsync(temporary, content, new UTF8Encoding(false), cancellationToken);
-            Protect(temporary, worldReadable);
+            Protect(temporary, audience);
             File.Move(temporary, path, overwrite: true);
             return true;
         }
@@ -36,12 +49,18 @@ internal static class SharedVolumeFiles
         }
     }
 
-    /// <summary>Sets the mode of a file the API wrote (owner read and write; others read only when <paramref name="worldReadable"/>).</summary>
-    public static void Protect(string path, bool worldReadable)
+    /// <summary>Sets the mode of a file the API wrote: the owner reads and writes, the others as far as <paramref name="audience"/> says.</summary>
+    public static void Protect(string path, FileAudience audience)
     {
         if (!OperatingSystem.IsWindows())
         {
-            File.SetUnixFileMode(path, worldReadable ? UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead : UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            var owner = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            File.SetUnixFileMode(path, audience switch
+            {
+                FileAudience.Everyone => owner | UnixFileMode.GroupRead | UnixFileMode.OtherRead,
+                FileAudience.OwnerAndGroup => owner | UnixFileMode.GroupRead,
+                _ => owner,
+            });
         }
     }
 
@@ -64,7 +83,7 @@ internal sealed class LiveKitConfigFiles(InstallOptions install) : ILiveKitConfi
     public bool IsConfigured => !string.IsNullOrEmpty(install.LiveKitConfigPath);
 
     public Task<bool> WriteAsync(string yaml, CancellationToken cancellationToken) =>
-        SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(install.LiveKitConfigPath, ConfigName), yaml, worldReadable: true, "LiveKit configuration", cancellationToken);
+        SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(install.LiveKitConfigPath, ConfigName), yaml, FileAudience.Everyone, "LiveKit configuration", cancellationToken);
 
     public async Task<string?> ReadAppliedHashAsync(CancellationToken cancellationToken)
     {
@@ -101,9 +120,10 @@ internal sealed class CaddyCertificateFiles(InstallOptions install) : ICertifica
         var certificate = $"cert-{suffix}.pem";
         var key = $"key-{suffix}.pem";
 
-        // The key is readable by Caddy, which runs as another user; the volume is mounted into the API and Caddy only.
-        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, certificate), certificatePem, worldReadable: true, "certificate", cancellationToken);
-        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, key), privateKeyPem, worldReadable: true, "certificate", cancellationToken);
+        // The key is readable by Caddy, which runs as another user, through the group both share (mode 640, never everybody); the
+        // volume is mounted into the API, Caddy and the init service only. The certificate is public.
+        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, certificate), certificatePem, FileAudience.Everyone, "certificate", cancellationToken);
+        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, key), privateKeyPem, FileAudience.OwnerAndGroup, "certificate", cancellationToken);
         Remove(directory, keep: [certificate, key]);
         var mount = install.CaddyCertsMount.TrimEnd('/');
         return new CertificateFiles($"{mount}/{certificate}", $"{mount}/{key}");
@@ -150,10 +170,10 @@ internal sealed class BackupFiles(InstallOptions install, BackupOptions backup) 
         else
         {
             // Secret: the owner and the backup service (DAC_READ_SEARCH) read it.
-            await SharedVolumeFiles.WriteIfChangedAsync(rclonePath, rcloneConfig, worldReadable: false, "backup settings", cancellationToken);
+            await SharedVolumeFiles.WriteIfChangedAsync(rclonePath, rcloneConfig, FileAudience.Owner, "backup settings", cancellationToken);
         }
 
-        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, SettingsName), settingsJson, worldReadable: true, "backup settings", cancellationToken);
+        await SharedVolumeFiles.WriteIfChangedAsync(Path.Combine(directory, SettingsName), settingsJson, FileAudience.Everyone, "backup settings", cancellationToken);
         return SharedVolumeFiles.Hash(settingsJson);
     }
 

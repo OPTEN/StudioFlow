@@ -40,6 +40,7 @@ export const LOG_MESSAGE_KEYS = {
   textHidden: 'regie.log.textHidden',
   loginSucceeded: 'regie.log.loginSucceeded',
   loginFailed: 'regie.log.loginFailed',
+  loginFailedUnknownUser: 'regie.log.loginFailedUnknownUser',
   loginLocked: 'regie.log.loginLocked',
   loggedOut: 'regie.log.loggedOut',
   productionCreated: 'regie.log.productionCreated',

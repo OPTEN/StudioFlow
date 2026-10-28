@@ -62,6 +62,7 @@ public static class InfrastructureServices
         services.AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>();
         services.AddSingleton<IAuditLog, AuditLog>();
         services.AddSingleton<IAdminAccountStore, AdminAccountStore>();
+        services.AddSingleton<IRevokedSessionStore, RevokedSessionStore>();
         services.AddSingleton<IServerSettingsStore, ServerSettingsStore>();
         return services;
     }
@@ -112,7 +113,8 @@ public static class InfrastructureServices
         services.AddSingleton<IMediaStore, FileMediaStore>();
 
         services.AddOptions<AdminOptions>().Bind(configuration.GetSection(AdminOptions.Section))
-            .Validate(o => o.SessionLifetime >= TimeSpan.FromSeconds(1) && o.SessionLifetime <= TimeSpan.FromDays(30), "Admin:SessionLifetime must be between 00:00:01 and 30.00:00:00.");
+            .Validate(o => o.SessionLifetime >= TimeSpan.FromSeconds(1) && o.SessionLifetime <= TimeSpan.FromDays(30), "Admin:SessionLifetime must be between 00:00:01 and 30.00:00:00.")
+            .Validate(o => o.AbsoluteSessionLifetime >= TimeSpan.FromSeconds(1) && o.AbsoluteSessionLifetime <= TimeSpan.FromDays(90), "Admin:AbsoluteSessionLifetime must be between 00:00:01 and 90.00:00:00.");
         services.AddSingleton<IAdminPasswordHasher, AdminPasswordHasher>();
         return services;
     }

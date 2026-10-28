@@ -472,6 +472,9 @@ public enum LogCode
     /// <summary>A sign-in failed. Params: <c>username</c>.</summary>
     LoginFailed,
 
+    /// <summary>A sign-in failed and the typed user name was not the account's (it is not recorded: it may be a password put into the wrong field).</summary>
+    LoginFailedUnknownUser,
+
     /// <summary>Too many failed sign-ins locked the address or the account for a while.</summary>
     LoginLocked,
 

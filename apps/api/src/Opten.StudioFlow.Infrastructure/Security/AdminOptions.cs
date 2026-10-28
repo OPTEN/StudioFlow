@@ -14,4 +14,11 @@ public sealed class AdminOptions
     /// studio hub connection is closed when its session expires.
     /// </summary>
     public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromHours(12);
+
+    /// <summary>
+    /// <c>Admin:AbsoluteSessionLifetime</c>: the longest a session lives after the sign-in, however active it was (default 7
+    /// days). <see cref="SessionLifetime"/> slides with every request; this limit does not, so a stolen cookie that is kept
+    /// alive cannot be used forever. Whoever uses the Regie for longer signs in again.
+    /// </summary>
+    public TimeSpan AbsoluteSessionLifetime { get; set; } = TimeSpan.FromDays(7);
 }

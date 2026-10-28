@@ -503,7 +503,7 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 
 **INT-AUTH-05** · P1 · xunit — Login audit entries
 - Steps: one success, one failure, one lock.
-- Expect: `audit_entries` rows `login.succeeded` (actor `admin`), `login.failed`, `login.locked`; `details` jsonb contains remote IP and username, never a password or hash.
+- Expect: `audit_entries` rows `login.succeeded` (actor `admin`), `login.failed`, `login.locked`; `details` jsonb contains remote IP and, only when the typed name is the account's, that username, never a typed text that is not the account's (it may be a password: `LoginAuditAndRehashTests`, also in both exports), a password or a hash; the entry of an unknown name reads "Sign-in failed for an unknown user name"; the migration `AddRevokedAdminSessions` removes the typed name from older entries (`RevokedSessionsMigrationTests`).
 
 **INT-AUTH-06** · P0 · xunit — Session endpoints and logout
 - Steps: `GET /api/auth/me` with/without cookie; `POST /api/auth/logout` with and without `X-StudioFlow: 1`; reuse the old cookie value after logout.
@@ -512,6 +512,18 @@ Areas: [2.1 AUTH](#21-auth--auth-and-security) · [2.2 PAIR](#22-pair--pairing) 
 **INT-AUTH-07** · P1 · xunit — Sliding 12 h expiration
 - Steps: login at t = 0; call `me` at t = 6 h; call `me` again at t = 17 h (11 h after the last use); then advance 12 h 1 min without any call.
 - Expect: both calls succeed (the expiration slides with use); after 12 h of inactivity the cookie is rejected (401).
+
+**INT-AUTH-07a** · P0 · xunit — Absolute session lifetime and a logout that survives a restart [issue 71]
+- Steps: `Admin:AbsoluteSessionLifetime` of 3 s: use the session every 0.7 s, then wait; a cookie without the time of issue (an older version's); a password change; two sessions, one signed out, the API restarted on the same database and Data Protection keys; the table of revocations unreachable at the logout; the cleanup (`AdminSessionLifetimeTests`).
+- Expect: activity does not extend the absolute limit (401 after it, a new sign-in works); the cookie without the time is 401; the renewed cookie of a password change keeps the time of the sign-in; after the restart the signed-out cookie is 401 and the other one 200; the logout does not fail while the database is down, the revocation holds in memory and is stored later; only expired revocations are removed.
+
+**INT-AUTH-07b** · P0 · xunit — Password hash iterations and renewal [issue 71]
+- Steps: hash a password; verify hashes made with 100 000 and with more than the current iterations; log in with an account whose stored hash has 100 000 iterations (right and wrong password); change the password (`AdminPasswordHasherTests`, `LoginAuditAndRehashTests`, `AdminAccountStateTests`).
+- Expect: new hashes carry 210 000 iterations in the hash itself; older hashes still verify and ask for a renewal; a wrong password changes nothing; the right one stores a new hash, keeps the security stamp (no session ends) and never overwrites a password changed meanwhile; a database failure does not fail the login.
+
+**INT-AUTH-07c** · P1 · xunit — Mode of the uploaded TLS key [issue 71]
+- Steps: write a certificate and key (`CaddyCertificateFiles`); an existing key with mode 644 and the same content (`SharedVolumeFileModeTests`, Linux only).
+- Expect: the key is `rw-r-----`, the certificate `rw-r--r--`, the rclone configuration `rw-------`; a key that was written as 644 is corrected without being rewritten.
 
 **INT-AUTH-08** · P0 · xunit — CSRF header matrix
 - Steps: for every Admin POST/PUT/PATCH/DELETE endpoint (generated from endpoint metadata) send with the cookie and: no header; `X-StudioFlow: 0`; `X-StudioFlow: true`; empty value; `x-studioflow: 1` (case-insensitive name) ; value `1`. Also GETs without header. Also `POST /api/auth/login` and Device/Output/Pairing endpoints without the header.

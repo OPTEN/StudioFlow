@@ -105,6 +105,7 @@ public static class LogTexts
             AuditActions.PasswordChanged => With(LogCode.PasswordChanged, "Password changed"),
             AuditActions.AccountReset => With(LogCode.AccountReset, "Account reset"),
             AuditActions.LoginSucceeded => With(LogCode.LoginSucceeded, $"“{username}” signed in", (Param.Username, username)),
+            AuditActions.LoginFailed when username.Length == 0 => With(LogCode.LoginFailedUnknownUser, "Sign-in failed for an unknown user name"),
             AuditActions.LoginFailed => With(LogCode.LoginFailed, $"Sign-in failed for “{username}”", (Param.Username, username)),
             AuditActions.LoginLocked => With(LogCode.LoginLocked, "Sign-in locked after too many failed attempts"),
             AuditActions.Logout => With(LogCode.LoggedOut, $"“{username}” signed out", (Param.Username, username)),

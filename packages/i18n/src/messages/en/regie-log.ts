@@ -42,6 +42,7 @@ export const regieLog = {
   'regie.log.lensOther': 'Other',
   'regie.log.loggedOut': '“{username}” signed out',
   'regie.log.loginFailed': 'Sign-in failed for “{username}”',
+  'regie.log.loginFailedUnknownUser': 'Sign-in failed for an unknown user name',
   'regie.log.loginLocked': 'Sign-in locked after too many failed attempts',
   'regie.log.loginSucceeded': '“{username}” signed in',
   'regie.log.outputAccessChanged': 'Access of output link “{name}” changed',

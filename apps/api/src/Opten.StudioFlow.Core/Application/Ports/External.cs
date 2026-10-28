@@ -117,12 +117,25 @@ public interface IMediaStore
     void DeleteProduction(string productionId);
 }
 
-/// <summary>Hashes and checks the password of the Regie account (ASP.NET Core Identity v3 format).</summary>
+/// <summary>Result of checking a password against a stored hash.</summary>
+public enum PasswordCheck
+{
+    /// <summary>Wrong password, or a malformed hash.</summary>
+    Failed,
+
+    /// <summary>Right password.</summary>
+    Succeeded,
+
+    /// <summary>Right password, but the hash was made with weaker parameters than the current ones: hash the password again.</summary>
+    SucceededRehashNeeded,
+}
+
+/// <summary>Hashes and checks the password of the Regie account (ASP.NET Core Identity v3 format; the iteration count is part of the hash).</summary>
 public interface IAdminPasswordHasher
 {
-    /// <summary>Hashes a password with a random salt.</summary>
+    /// <summary>Hashes a password with a random salt and the current iteration count.</summary>
     string Hash(string password);
 
-    /// <summary>True when <paramref name="password"/> belongs to <paramref name="hash"/>; a malformed hash never matches.</summary>
-    bool Verify(string hash, string password);
+    /// <summary>Checks <paramref name="password"/> against <paramref name="hash"/>; every hash of an older, weaker format still verifies.</summary>
+    PasswordCheck Check(string hash, string password);
 }

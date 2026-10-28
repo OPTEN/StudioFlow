@@ -207,6 +207,31 @@ public interface IAdminAccountStore
 
     /// <summary>Deletes the account so the first-run setup opens again; false when there was none.</summary>
     Task<bool> TryDeleteAsync(AuditEntry audit, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Replaces the stored hash by <paramref name="newHash"/> when it still is <paramref name="expectedHash"/> (a login with
+    /// an outdated hash format upgraded it). The security stamp stays, so no session ends. False when the password was
+    /// changed or the account removed meanwhile.
+    /// </summary>
+    Task<bool> TryRehashAsync(string expectedHash, string newHash, CancellationToken cancellationToken);
+}
+
+/// <summary>A Regie session that a logout ended.</summary>
+/// <param name="SessionId">The session id (claim of its cookie).</param>
+/// <param name="Until">The revocation matters until then; afterwards the cookie is expired anyway.</param>
+public sealed record RevokedSessionEntry(string SessionId, DateTimeOffset Until);
+
+/// <summary>Persistence of the Regie sessions that a logout ended, so that a copied cookie stays dead after an API restart.</summary>
+public interface IRevokedSessionStore
+{
+    /// <summary>The revocations that are still in force at <paramref name="now"/>.</summary>
+    Task<IReadOnlyList<RevokedSessionEntry>> ListActiveAsync(DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Stores a revocation (the later <paramref name="until"/> wins when the session is stored already).</summary>
+    Task SaveAsync(string sessionId, DateTimeOffset until, CancellationToken cancellationToken);
+
+    /// <summary>Removes the revocations that are not in force any more; returns how many.</summary>
+    Task<int> DeleteExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken);
 }
 
 /// <summary>A device source that is live (or just stopped being live) at the time of a mutation.</summary>
