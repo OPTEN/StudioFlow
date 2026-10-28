@@ -20,6 +20,7 @@
     "build:sender": "ng build sender",
     "build:output": "vite build --config apps/output/vite.config.ts",
     "build:site": "vite build --config site/vite.config.ts",
+    "build:video": "node video/build.mjs",
     "build:web": "npm run build:studio && npm run build:sender && npm run build:output",
     "typecheck": "tsc -p tsconfig.packages.json --noEmit",
     "typecheck:site": "tsc -p site/tsconfig.json",

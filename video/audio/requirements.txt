@@ -1,0 +1,8 @@
+# The audio of the product video (music.py, mix.py and `earshot kit render`). earshot is installed with --no-deps:
+# its kit renderer needs only numpy and scipy, not the torch / CLAP stack of its listening tools (see video/README.md).
+#   pip install -r video/audio/requirements.txt && pip install --no-deps -r video/audio/earshot.txt
+numpy==2.5.4
+scipy==1.18.1
+soundfile==0.14.0
+soxr==1.1.0
+pyloudnorm==0.2.0
