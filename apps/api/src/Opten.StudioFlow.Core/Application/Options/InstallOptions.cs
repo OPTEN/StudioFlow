@@ -19,8 +19,19 @@ public sealed class InstallOptions : IValidatedOptions
     /// </summary>
     public string SecretsPath { get; set; } = "";
 
-    /// <summary><c>Install:CaddyAdminUrl</c>: the admin API of Caddy on the compose network (<c>http://caddy:2019</c>). Empty: Caddy is not configured.</summary>
+    /// <summary>
+    /// <c>Install:CaddyAdminUrl</c>: the admin API of Caddy over TCP (<c>http://caddy:2019</c>). Only for a Caddy that is not part of
+    /// the compose files (the admin API has no authentication, so the compose files use <see cref="CaddyAdminSocket"/>).
+    /// Empty: Caddy is not configured, unless <see cref="CaddyAdminSocket"/> is set.
+    /// </summary>
     public string CaddyAdminUrl { get; set; } = "";
+
+    /// <summary>
+    /// <c>Install:CaddyAdminSocket</c>: the unix socket of the admin API of Caddy (<c>/run/caddy-admin/admin.sock</c>), in a
+    /// volume that only Caddy and this API mount. Nothing else can reach the admin API (it can read the DNS credentials and
+    /// replace the whole configuration). Empty: not used.
+    /// </summary>
+    public string CaddyAdminSocket { get; set; } = "";
 
     /// <summary><c>Install:CaddyCertsPath</c>: the volume Caddy reads the uploaded certificate from. Empty: no custom certificate.</summary>
     public string CaddyCertsPath { get; set; } = "";
@@ -64,7 +75,21 @@ public sealed class InstallOptions : IValidatedOptions
         .. OptionRules.Count("Install:LiveKitEmptyTimeout", LiveKitEmptyTimeout, 1, 86_400),
         .. (HstsMaxAge is { } hsts ? OptionRules.Count("Install:HstsMaxAge", hsts, 0, 63_072_000) : []),
         .. ValidUrl("Install:CaddyAdminUrl", CaddyAdminUrl),
+        .. ValidSocket(CaddyAdminSocket, CaddyAdminUrl),
     ];
+
+    private static IEnumerable<string> ValidSocket(string socket, string url)
+    {
+        if (!string.IsNullOrEmpty(socket) && !Path.IsPathRooted(socket))
+        {
+            yield return "Install:CaddyAdminSocket must be an absolute path or empty.";
+        }
+
+        if (!string.IsNullOrEmpty(socket) && !string.IsNullOrEmpty(url))
+        {
+            yield return "Install:CaddyAdminSocket and Install:CaddyAdminUrl are alternatives: set only one.";
+        }
+    }
 
     private static IEnumerable<string> ValidUrl(string key, string value)
     {

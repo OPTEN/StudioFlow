@@ -1,8 +1,26 @@
-import { stackConfig, PROJECT } from './env';
+import { stackConfig } from './env';
 import { compose, containerName, docker, ensureHealthy, inspectService, type Service } from './stack';
 import { sleep, waitUntil } from './shell';
 
 /** Lifecycle and fault injection for the services of the sf-e2e project (docs/testing.md 1.6). */
+/** The compose networks of a service with its fixed address on each (docker-compose.yml, docker-compose.e2e.yml). */
+function networksOf(service: Service): Array<{ network: string; ip: string }> {
+  const config = stackConfig();
+  switch (service) {
+    case 'livekit':
+      return [{ network: config.network, ip: config.ips.livekit }];
+    case 'caddy':
+      return [{ network: config.network, ip: config.ips.caddy }];
+    case 'api':
+      return [
+        { network: config.network, ip: config.ips.api },
+        { network: config.backendNetwork, ip: config.backendIps.api },
+      ];
+    case 'postgres':
+      return [{ network: config.backendNetwork, ip: config.backendIps.postgres }];
+  }
+}
+
 export const dockerCtl = {
   pause: (service: Service) => docker(['pause', containerName(service)], { check: true }),
   unpause: (service: Service) => docker(['unpause', containerName(service)], { check: true }),
@@ -27,12 +45,13 @@ export const dockerCtl = {
    */
   crash: (service: Service) =>
     docker(['exec', ...(service === 'postgres' ? ['--user', 'postgres'] : []), containerName(service), 'kill', service === 'postgres' ? '-QUIT' : '-TERM', '1'], { check: true }),
-  /** Removes the container from the compose network: no RST for new packets, published ports keep their mapping. */
-  networkDisconnect: (service: Service) => docker(['network', 'disconnect', stackConfig().network, containerName(service)], { check: true }),
-  /** Reconnects with the previous address and the service name as alias. */
-  networkConnect: (service: Service) => {
-    const config = stackConfig();
-    return docker(['network', 'connect', '--ip', config.ips[service], '--alias', service, config.network, containerName(service)], { check: true });
+  /** Removes the container from every compose network it is on: no RST for new packets, published ports keep their mapping. */
+  async networkDisconnect(service: Service) {
+    for (const { network } of networksOf(service)) await docker(['network', 'disconnect', network, containerName(service)], { check: true });
+  },
+  /** Reconnects with the previous addresses and the service name as alias. */
+  async networkConnect(service: Service) {
+    for (const { network, ip } of networksOf(service)) await docker(['network', 'connect', '--ip', ip, '--alias', service, network, containerName(service)], { check: true });
   },
   /** `docker stats --no-stream` of one service: resident memory in bytes and CPU percent. */
   async stats(service: Service): Promise<{ memBytes: number; cpuPct: number; raw: string }> {
@@ -95,11 +114,11 @@ export async function restoreNetwork(): Promise<void> {
   await docker(['unpause', containerName('livekit')]);
   await docker(['unpause', containerName('postgres')]);
   await docker(['unpause', containerName('api')]);
-  const config = stackConfig();
   for (const service of ['livekit', 'api', 'postgres', 'caddy'] as const) {
     const info = await docker(['inspect', '-f', `{{ json .NetworkSettings.Networks }}`, containerName(service)]);
-    if (info.code === 0 && !info.stdout.includes(`"${PROJECT}_studioflow"`)) {
-      await docker(['network', 'connect', '--ip', config.ips[service], '--alias', service, config.network, containerName(service)]);
+    if (info.code !== 0) continue;
+    for (const { network, ip } of networksOf(service)) {
+      if (!info.stdout.includes(`"${network}"`)) await docker(['network', 'connect', '--ip', ip, '--alias', service, network, containerName(service)]);
     }
   }
   await livekitCtl.clearNetem().catch(() => undefined);

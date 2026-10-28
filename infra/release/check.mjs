@@ -5,6 +5,9 @@
 //     holds no version: its image tag defaults to "latest", so it is the same file for every release.
 //  2. docker-compose.release.yml is the twin of docker-compose.yml: the same services with the same settings, except
 //     that the images we build are pulled instead of built and the netem test service is missing.
+//  3. The edge cannot reach the data: the admin API of Caddy (it reads the DNS credentials and replaces the whole
+//     configuration, without authentication) is no TCP listener and its socket volume is shared by Caddy and the API
+//     only; LiveKit (media traffic from the internet) is not on the network of PostgreSQL and the backup service.
 //
 // Plain Node, no dependencies; the compose files are read with `docker compose config`.
 import { execFileSync } from 'node:child_process';
@@ -135,6 +138,66 @@ try {
     ),
   });
   problems.push(...differences(comparable(source), comparable(release)));
+
+  // --- 3. network segmentation and the admin API of Caddy ---------------------------------------------------------
+  for (const [file, config] of [
+    ['docker-compose.yml', source],
+    ['docker-compose.release.yml', release],
+  ]) {
+    const networks = (name) =>
+      Object.keys(config.services[name]?.networks ?? {})
+        .sort()
+        .join(',');
+    const mounts = (volume) =>
+      Object.entries(config.services)
+        .filter(([, service]) => (service.volumes ?? []).some((entry) => entry.source === volume))
+        .map(([name]) => name)
+        .sort()
+        .join(',');
+    const expectedNetworks = {
+      caddy: 'studioflow',
+      livekit: 'studioflow',
+      api: 'backend,studioflow',
+      postgres: 'backend',
+      backup: 'backend',
+    };
+    for (const [name, expected] of Object.entries(expectedNetworks)) {
+      if (networks(name) !== expected)
+        problems.push(
+          `${file}: ${name} is on the networks [${networks(name)}], expected [${expected}] (LiveKit must not reach PostgreSQL or the backup service).`,
+        );
+    }
+    if (mounts('caddy_admin') !== 'api,caddy,init')
+      problems.push(
+        `${file}: the admin socket volume caddy_admin is mounted by [${mounts('caddy_admin')}], expected [api,caddy,init].`,
+      );
+    if (config.services.api?.environment?.INSTALL__CADDYADMINURL)
+      problems.push(
+        `${file}: the API must reach the admin API of Caddy through the unix socket (INSTALL__CADDYADMINSOCKET), not over TCP.`,
+      );
+    for (const [name, service] of Object.entries(config.services)) {
+      if ((service.ports ?? []).some((port) => Number(port.target) === 2019))
+        problems.push(`${file}: ${name} publishes port 2019 (the admin API of Caddy).`);
+    }
+  }
+  for (const file of [
+    'Caddyfile',
+    'global.caddy',
+    'servers.caddy',
+    'studioflow.caddy',
+    'health.caddy',
+  ]) {
+    const text = read(`infra/caddy/${file}`).replace(/^\s*#.*$/gm, '');
+    const admin = /^\s*admin\s+(\S+)/m.exec(text);
+    if (admin && !admin[1].startsWith('unix//'))
+      problems.push(
+        `infra/caddy/${file}: the admin API must listen on a unix socket, found "admin ${admin[1]}" (a TCP listener is reachable from every container of the network).`,
+      );
+  }
+  if (!/^admin unix\/\/\S+\|0660\s*$/m.test(read('infra/caddy/global.caddy')))
+    problems.push(
+      'infra/caddy/global.caddy: expected "admin unix//<socket>|0660" (readable only by Caddy and the API).',
+    );
 } catch (error) {
   problems.push(
     `docker compose config failed: ${error.stderr?.toString().trim() || error.message}`,

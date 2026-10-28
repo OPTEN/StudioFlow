@@ -46,19 +46,27 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
     ),
   ];
 
+  // Caddy, API and LiveKit share "studioflow"; API and PostgreSQL share "backend" (LiveKit cannot reach the database).
+  const addresses: Record<(typeof SERVICES)[number], Record<string, string>> = {
+    caddy: { [config.network]: config.ips.caddy },
+    livekit: { [config.network]: config.ips.livekit },
+    api: { [config.network]: config.ips.api, [config.backendNetwork]: config.backendIps.api },
+    postgres: { [config.backendNetwork]: config.backendIps.postgres },
+  };
   for (const service of SERVICES) {
     const info = inspected.get(service)!;
     expect(info.Config.Labels['com.docker.compose.project'], `${service}: compose project`).toBe(
       PROJECT,
     );
     expect(
-      Object.keys(info.NetworkSettings.Networks),
-      `${service}: only the network of the project`,
-    ).toEqual([config.network]);
-    expect(
-      info.NetworkSettings.Networks[config.network]!.IPAddress,
-      `${service}: fixed address derived from the subnet`,
-    ).toBe(config.ips[service]);
+      Object.keys(info.NetworkSettings.Networks).sort(),
+      `${service}: only the networks it needs, of the project`,
+    ).toEqual(Object.keys(addresses[service]).sort());
+    for (const [name, address] of Object.entries(addresses[service]))
+      expect(
+        info.NetworkSettings.Networks[name]!.IPAddress,
+        `${service}: fixed address on ${name}, derived from the subnet`,
+      ).toBe(address);
   }
   for (const service of ['api', 'caddy'] as const) {
     expect(inspected.get(service)!.Config.Image, `${service}: image of the project`).toBe(
@@ -73,6 +81,13 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
     network[0]!.IPAM.Config.map((entry) => entry.Subnet),
     'subnet of the compose network',
   ).toEqual([config.subnet]);
+  const backend = JSON.parse(
+    (await docker(['network', 'inspect', config.backendNetwork], { check: true })).stdout,
+  ) as Array<{ IPAM: { Config: Array<{ Subnet: string }> } }>;
+  expect(
+    backend[0]!.IPAM.Config.map((entry) => entry.Subnet),
+    'subnet of the backend network',
+  ).toEqual([config.backendSubnet]);
 
   // Caddy: the https and http ports; the media ports of LiveKit with equal host and container port; the test-only
   // ports of API, LiveKit and PostgreSQL on 127.0.0.1.
@@ -121,6 +136,6 @@ test('H-STACK-02 the stack belongs to the selected project: names, network, subn
   ).stdout
     .split(/\r?\n/)
     .filter(Boolean);
-  for (const name of ['pgdata', 'media', 'keys', 'caddy_data', 'secrets', 'caddy_certs', 'livekit_config', 'backup_config', 'backups'])
+  for (const name of ['pgdata', 'media', 'keys', 'caddy_data', 'secrets', 'caddy_certs', 'caddy_admin', 'livekit_config', 'backup_config', 'backups'])
     expect(volumes, `volume ${name}`).toContain(volumeNameOf(name));
 });

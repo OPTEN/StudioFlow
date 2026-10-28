@@ -100,12 +100,8 @@ public static class InfrastructureServices
         });
 
         // The other services of the stack, configured through the admin API of Caddy and shared volumes (issue #27).
-        services.AddHttpClient<ICaddyGateway, CaddyAdminClient>((sp, http) =>
-        {
-            var install = sp.GetRequiredService<InstallOptions>();
-            http.BaseAddress = new Uri(string.IsNullOrEmpty(install.CaddyAdminUrl) ? "http://caddy.invalid" : install.CaddyAdminUrl);
-            http.Timeout = TimeSpan.FromSeconds(10);
-        });
+        services.AddHttpClient<ICaddyGateway, CaddyAdminClient>((sp, http) => CaddyAdminClient.Configure(http, sp.GetRequiredService<InstallOptions>()))
+            .ConfigurePrimaryHttpMessageHandler(sp => CaddyAdminClient.CreateHandler(sp.GetRequiredService<InstallOptions>()));
         services.AddSingleton<ILiveKitConfigGateway, LiveKitConfigFiles>();
         services.AddSingleton<ICertificateGateway, CaddyCertificateFiles>();
         services.AddSingleton<IBackupGateway, BackupFiles>();

@@ -30,8 +30,18 @@ export interface StackSettings {
   apiPort: number;
   livekitPort: number;
   postgresPort: number;
-  /** /24 of the compose network; the services take .10 (LiveKit), .11 (API), .12 (PostgreSQL), .13 (Caddy). */
+  /** /24 of the compose network "studioflow"; the services take .10 (LiveKit), .11 (API), .13 (Caddy). */
   subnet: string;
+}
+
+/**
+ * /24 of the network "backend" (API, PostgreSQL, backup) that belongs to `subnet`: ten third octets up for the numbered
+ * stacks (172.31.201.0 -> 172.31.211.0), the next one for the default stack (172.31.250.0 -> 172.31.251.0). The API takes
+ * .11 and PostgreSQL .12 of it.
+ */
+export function backendSubnetOf(subnet: string): string {
+  const [a, b, c] = subnet.split('/')[0]!.split('.').map(Number);
+  return `${a}.${b}.${c! < 250 ? c! + 10 : c! + 1}.0/24`;
 }
 
 /**
@@ -130,8 +140,8 @@ export const STATE_FILE = path.join(OUTPUT_DIR, 'stack-state.json');
 export function containerNameOf(service: string, project: string = PROJECT): string {
   return `${project}-${service}-1`;
 }
-export function networkNameOf(project: string = PROJECT): string {
-  return `${project}_studioflow`;
+export function networkNameOf(project: string = PROJECT, name: 'studioflow' | 'backend' = 'studioflow'): string {
+  return `${project}_${name}`;
 }
 export function volumeNameOf(name: string, project: string = PROJECT): string {
   return `${project}_${name}`;
@@ -190,13 +200,18 @@ export interface StackConfig {
   postgresPort: number;
   nodeIp: string;
   subnet: string;
+  /** /24 of the network "backend" (API, PostgreSQL, backup). */
+  backendSubnet: string;
   admin: { username: string; password: string };
   /** The key pair and the database password the stack generated (read when used, because a rebuilt stack has new ones). */
   readonly livekit: { apiKey: string; apiSecret: string };
   readonly postgresPassword: string;
   frameAncestors: string;
-  ips: { livekit: string; api: string; postgres: string; caddy: string };
+  /** Fixed addresses on the network "studioflow" (Caddy, API, LiveKit) and on "backend" (API, PostgreSQL). */
+  ips: { livekit: string; api: string; caddy: string };
+  backendIps: { api: string; postgres: string };
   network: string;
+  backendNetwork: string;
   mediaMaxImageBytes: number;
   mediaMaxVideoBytes: number;
 }
@@ -229,6 +244,7 @@ export function stackConfig(): StackConfig {
   const host = TEST_DOMAIN;
   const subnet = env['STUDIOFLOW_SUBNET'] ?? SETTINGS.subnet;
   const prefix = subnet.split('/')[0]!.split('.').slice(0, 3).join('.');
+  const backendPrefix = (env['STUDIOFLOW_BACKEND_SUBNET'] ?? backendSubnetOf(subnet)).split('/')[0]!.split('.').slice(0, 3).join('.');
   cached = {
     project: PROJECT,
     baseURL: originFor(host, httpsPort),
@@ -241,6 +257,7 @@ export function stackConfig(): StackConfig {
     postgresPort: Number(env['E2E_POSTGRES_PORT'] ?? SETTINGS.postgresPort),
     nodeIp: env['E2E_NODE_IP'] ?? '127.0.0.1',
     subnet,
+    backendSubnet: backendSubnetOf(subnet),
     admin: { username: TEST_ADMIN.username, password: TEST_ADMIN.password },
     get livekit() {
       const secrets = readStackSecrets();
@@ -253,10 +270,14 @@ export function stackConfig(): StackConfig {
     ips: {
       livekit: env['E2E_IP_LIVEKIT'] ?? `${prefix}.10`,
       api: env['E2E_IP_API'] ?? `${prefix}.11`,
-      postgres: env['E2E_IP_POSTGRES'] ?? `${prefix}.12`,
       caddy: env['E2E_IP_CADDY'] ?? `${prefix}.13`,
     },
+    backendIps: {
+      api: env['E2E_IP_API_BACKEND'] ?? `${backendPrefix}.11`,
+      postgres: env['E2E_IP_POSTGRES'] ?? `${backendPrefix}.12`,
+    },
     network: networkNameOf(),
+    backendNetwork: networkNameOf(PROJECT, 'backend'),
     mediaMaxImageBytes: Number(env['MEDIA__MAXIMAGEBYTES'] ?? 1_048_576),
     mediaMaxVideoBytes: Number(env['MEDIA__MAXVIDEOBYTES'] ?? 2_097_152),
   };
@@ -273,9 +294,12 @@ export function stackConfig(): StackConfig {
 export function renderEnvFile(nodeIp: string, overrides: Record<string, string> = {}, settings: StackSettings = SETTINGS): string {
   const subnet = overrides['STUDIOFLOW_SUBNET'] ?? settings.subnet;
   const prefix = subnet.split('/')[0]!.split('.').slice(0, 3).join('.');
+  const backendSubnet = overrides['STUDIOFLOW_BACKEND_SUBNET'] ?? backendSubnetOf(subnet);
+  const backendPrefix = backendSubnet.split('/')[0]!.split('.').slice(0, 3).join('.');
   const values: Record<string, string> = {
     STUDIOFLOW_HTTPS_PORT: String(settings.httpsPort),
     STUDIOFLOW_SUBNET: subnet,
+    STUDIOFLOW_BACKEND_SUBNET: backendSubnet,
     STUDIOFLOW_RTC_TCP_PORT: String(settings.rtcTcpPort),
     STUDIOFLOW_RTC_UDP_PORT: String(settings.rtcUdpPort),
     // Small limits so oversize uploads are cheap (INT-MEDIA-04 / E2E-MEDIA-02): 1 MiB images, 2 MiB videos.
@@ -291,7 +315,8 @@ export function renderEnvFile(nodeIp: string, overrides: Record<string, string> 
     E2E_POSTGRES_PORT: String(settings.postgresPort),
     E2E_IP_LIVEKIT: `${prefix}.10`,
     E2E_IP_API: `${prefix}.11`,
-    E2E_IP_POSTGRES: `${prefix}.12`,
+    E2E_IP_API_BACKEND: `${backendPrefix}.11`,
+    E2E_IP_POSTGRES: `${backendPrefix}.12`,
     E2E_IP_CADDY: `${prefix}.13`,
     ...overrides,
   };

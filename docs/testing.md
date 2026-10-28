@@ -116,7 +116,7 @@ docker compose -p sf-e2e --env-file tests/e2e/.env.e2e \
 `docker-compose.e2e.yml` (the production `docker-compose.yml` is never edited by tests):
 - publishes `127.0.0.1:18081:8080` (api: direct access that bypasses Caddy for header-trust tests), `127.0.0.1:17880:7880` (livekit admin/Twirp for the `lk` helper), `127.0.0.1:15432:5432` (postgres for audit and DB assertions), as `docker-compose.override.example.yml` does for development;
 - the HTTPS port is `STUDIOFLOW_HTTPS_PORT` (443 for the unnumbered stack, 8491 to 8495 for the numbered ones, `tests/e2e/README.md`); nothing listens on port 80;
-- sets `STUDIOFLOW_SUBNET=172.31.250.0/24` (the variable the base file uses for the network and for the API's trusted forwarded-header network) and gives each service a fixed `ipv4_address` on the `studioflow` network (livekit `.10`, api `.11`, postgres `.12`, caddy `.13`) so `docker network connect --ip` restores the same address after a disconnect; with `-p sf-e2e` the network is `sf-e2e_studioflow`;
+- sets `STUDIOFLOW_SUBNET=172.31.250.0/24` (the variable the base file uses for the network and for the API's trusted forwarded-header network) and `STUDIOFLOW_BACKEND_SUBNET=172.31.251.0/24` (the second network, ten third octets up for the numbered stacks) and gives each service a fixed `ipv4_address` on its networks (`studioflow`: livekit `.10`, api `.11`, caddy `.13`; `backend`: api `.11`, postgres `.12`) so `docker network connect --ip` restores the same address after a disconnect; with `-p sf-e2e` the networks are `sf-e2e_studioflow` and `sf-e2e_backend`;
 - sets `ASPNETCORE_ENVIRONMENT=Production` for the api (cookie flags are asserted in their production form; INT tests cover `Testing`);
 - keeps the image pins, healthchecks and restart policies of the base file (they are part of the system under test, see OPS).
 
@@ -2116,7 +2116,8 @@ The stack is started and operated as an operator does (issue #27): `docker compo
 
 **E2E-OPS-12** · P0 · pw — Network exposure
 - Steps: `docker compose config` of both files and `docker port` on the stack; probes from the LAN address of the machine.
-- Expect: published ports: caddy `${STUDIOFLOW_HTTPS_PORT}` tcp and udp (HTTP/3), livekit 7881/tcp and 7882/udp only; api 8080, postgres 5432, livekit 7880, Caddy's loopback health listener (2020) and the admin API (2019) are not published; `init` and `backup` publish nothing; from the LAN address those ports and the ports 80 and 443 (on a stack that does not use 443) are closed, the HTTPS port and 7881 are open.
+- Expect (static): caddy and livekit are on the network `studioflow` only, postgres and backup on `backend` only, the api on both; the volume `caddy_admin` (the admin socket of Caddy) is mounted by caddy, api and init only, as is `caddy_certs`; the API reaches the admin API through `INSTALL__CADDYADMINSOCKET` and no `admin` directive of the Caddy files is a TCP address.
+- Expect: published ports: caddy `${STUDIOFLOW_HTTPS_PORT}` tcp and udp (HTTP/3), livekit 7881/tcp and 7882/udp only; api 8080, postgres 5432, livekit 7880 and Caddy's loopback health listener (2020) are not published, the admin API has no port at all; `init` and `backup` publish nothing; from the LAN address those ports and the ports 80 and 443 (on a stack that does not use 443) are closed, the HTTPS port and 7881 are open.
 
 **E2E-OPS-13** · P1 · pw — Container hardening
 - Steps: `docker exec api id -u`; inspect images and containers; search images, `docker history`, environments and logs for the secrets of the stack.
@@ -2188,11 +2189,11 @@ Backups (runbook section 7). The backup service is part of the stack; its schedu
 
 **E2E-OPS-31** · P0 · pw — No host scripts, no Docker socket, no port 80
 - Steps: look for `setup`, `update`, `backup`, `restore` (`.sh`, `.ps1`) and `infra/scripts`; read the compose files; `docker inspect` of the running containers; probe the ports from inside the stack and the host.
-- Expect: none of the scripts exists and no compose file refers to one; no service mounts the Docker socket, runs privileged or joins the host network; no running container has the socket; nothing listens on port 80, and Caddy listens only on the HTTPS port (and on the admin and health ports inside the container).
+- Expect: none of the scripts exists and no compose file refers to one; no service mounts the Docker socket, runs privileged or joins the host network; no running container has the socket; nothing listens on port 80, and Caddy listens only on the HTTPS port (and on the health port inside the container); there is no TCP listener on 2019.
 
-**E2E-OPS-32** · P0 · pw — The Caddy admin API stays inside
-- Steps: `GET http://caddy:2019/config/apps/http/servers` from the API container; `/config/` through the HTTPS port; port 2019 on the LAN address of the machine.
-- Expect: the API sees the running server, named `sf-` and 12 hex characters; the HTTPS port answers `/config/` with the page of the Regie (the admin routes are not part of the public site); port 2019 is closed on the LAN address.
+**E2E-OPS-32** · P0 · pw — The Caddy admin API is a unix socket that only Caddy and the API can use [issue 70]
+- Steps: `stat` of the socket and its folder in the Caddy container; which containers mount the volume `caddy_admin`; `GET /api/settings/status` (the API applied the configuration through the socket); `GET http://caddy:2019/config/` and `http://<Caddy's address>:2019/config/` from the LiveKit container and from a throw-away container on the `studioflow` network; `http://postgres:5432/` from both; `/config/` through the HTTPS port; port 2019 on the LAN address of the machine.
+- Expect: the socket is `660 10001:10002` in a folder `770 1654:10002`; only caddy, api and init mount the volume; Caddy applied the configuration; every probe from LiveKit and from the throw-away container fails (connection refused for 2019, name not resolvable for postgres) and shows no configuration; the HTTPS port answers `/config/` with the page of the Regie (the admin routes are not part of the public site); port 2019 is closed on the LAN address.
 
 **E2E-OPS-33** — reserved.
 

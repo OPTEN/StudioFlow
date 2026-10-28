@@ -1,11 +1,13 @@
 # Global options of every StudioFlow configuration (imported inside the global options block of the bootstrap Caddyfile
 # and of the Caddyfile the API pushes).
 
-# The admin API takes the configuration from the StudioFlow API (apps/api, CaddyAdminClient). It listens on the compose
-# network only: no compose file publishes port 2019, so it cannot be reached from outside. The API is the only client.
-admin 0.0.0.0:2019 {
-	origins caddy:2019 localhost:2019 127.0.0.1:2019
-}
+# The admin API takes the configuration from the StudioFlow API (apps/api, CaddyAdminClient). It has no authentication and
+# can read the whole configuration (DNS credentials) and replace it, so it is no network service: it listens on a unix socket
+# in the volume caddy_admin, which only this container and the API mount (docker-compose.yml). Nothing else on the compose
+# networks can reach it (LiveKit, PostgreSQL, the backup service), and no compose file publishes it. Caddy runs with the primary
+# group 10002 and the API with the same one (compose: user), so the socket (group 10002, mode 660) is readable and writable for
+# exactly those two.
+admin unix//run/caddy-admin/admin.sock|0660
 
 # Pushed configurations hold secrets (DNS credentials); Caddy must not write them to its config volume. After a restart of
 # Caddy the API pushes the configuration again within seconds.

@@ -1340,9 +1340,15 @@ How the settings reach the other services (`ServerConfigApplier`, called after e
 same call; a failure is recorded in the status and retried, it never fails the save):
 
 - **Caddy**: the API renders a Caddyfile (`CaddyfileRenderer`: which sites exist and how each gets its certificate; the static
-  parts are in the image) and posts it to the **admin API of Caddy** (`http://caddy:2019/load`), which loads it without
-  dropping a connection. The admin listener binds `0.0.0.0:2019` inside the container, is not published and is reachable on
-  the compose network only (`origins caddy:2019 localhost:2019 127.0.0.1:2019`). The server of the pushed
+  parts are in the image) and posts it to the **admin API of Caddy** (`POST /load`), which loads it without
+  dropping a connection. The admin API has no authentication and shows the whole configuration (DNS credentials) and can replace
+  it, so it is **no network service**: Caddy listens on the unix socket `/run/caddy-admin/admin.sock` (`admin unix//run/caddy-admin/admin.sock|0660`
+  in `global.caddy`) in the volume `caddy_admin`, which only Caddy, the API (and the init service that sets the owner) mount. Caddy
+  (`user: 10001:10002`) and the API (`user: 1654:10002`) share the primary group 10002, so the socket (mode 660, group 10002) and its
+  folder (770) are usable by those two and nobody else. The API's HTTP client connects through `SocketsHttpHandler.ConnectCallback`
+  to `Install:CaddyAdminSocket`. There are two networks: `studioflow` (Caddy, API, LiveKit; subnet `STUDIOFLOW_SUBNET`) and
+  `backend` (API, PostgreSQL, backup; subnet `STUDIOFLOW_BACKEND_SUBNET`, default `172.30.1.0/24`), so that LiveKit, which
+  takes media traffic from the internet, cannot reach PostgreSQL, the backup service or any admin interface. The server of the pushed
   configuration is named `sf-` plus 12 hex characters of the Caddyfile, by which the API recognises in a `GET` that Caddy runs
   the saved state. Caddy starts with a **bootstrap** Caddyfile (`infra/caddy/Caddyfile`: a catch-all site on the HTTPS port with
   `tls internal { on_demand }` that answers `503 StudioFlow is starting`); the real configuration arrives a few seconds
@@ -1356,7 +1362,7 @@ same call; a failure is recorded in the status and retried, it never fails the s
   Caddyfile with `tls /certs/fullchain.pem /certs/privkey.pem`.
 
 `INSTALL__*` (the `Install` options, fixed by `docker-compose.yml`, never by the operator's choice): `HTTPSPORT`, `SECRETSPATH`
-(`/secrets`), `CADDYADMINURL` (`http://caddy:2019`), `CADDYCERTSPATH`, `LIVEKITCONFIGPATH`, `BACKUPCONFIGPATH`,
+(`/secrets`), `CADDYADMINSOCKET` (`/run/caddy-admin/admin.sock`; `CADDYADMINURL` is the TCP alternative for a Caddy outside the compose files), `CADDYCERTSPATH`, `LIVEKITCONFIGPATH`, `BACKUPCONFIGPATH`,
 `LIVEKITRTCTCPPORT`, `LIVEKITRTCUDPPORT`, `HSTSMAXAGE`.
 
 Caddy (`infra/caddy/`: `Caddyfile` bootstrap, `global.caddy`, `servers.caddy`, `health.caddy`, `studioflow.caddy` with the

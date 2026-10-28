@@ -24,11 +24,18 @@
 # Everything is optional (.env.example lists the overrides). Published ports: 8443/tcp and 8443/udp (HTTPS and HTTP/3,
 # STUDIOFLOW_HTTPS_PORT), 7881/tcp and 7882/udp (media, STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT). Nothing listens
 # on port 80. Address, media address, certificate, embedding and the backup schedule are set in the wizard and in the
-# "Server settings" of the Regie; the API applies them to Caddy (admin API on the compose network), LiveKit and the backup
-# service through shared volumes. No container has the Docker socket.
+# "Server settings" of the Regie; the API applies them to Caddy (admin API: a unix socket that only Caddy and the API mount),
+# LiveKit and the backup service through shared volumes. No container has the Docker socket.
+#
+# Networks: "studioflow" (Caddy, API, LiveKit: what the edge needs) and "backend" (API, PostgreSQL, backup: what the data
+# needs). LiveKit, the one container that takes media traffic from the internet, cannot reach PostgreSQL or the backup service.
 # Configuration contract: docs/architecture/implementation-spec.md section 10. Operations: docs/runbook.md.
 
 name: studioflow
+
+# Group 10002 is the primary group of Caddy (uid 10001) and of the API (uid 1654, the app user of the ASP.NET image): what the
+# two write for each other is readable by them and nobody else: the admin socket of Caddy (mode 660). No other container
+# runs with this group or mounts that volume.
 
 x-postgres-image: &postgres-image postgres:17.11-alpine
 
@@ -74,6 +81,7 @@ services:
     volumes:
       - secrets:/secrets
       - caddy_certs:/caddy-certs
+      - caddy_admin:/caddy-admin
       - livekit_config:/livekit-config
       - backup_config:/backup-config
     entrypoint: ["/bin/sh", "-c"]
@@ -82,6 +90,7 @@ services:
         set -eu
         umask 077
         app_uid=1654
+        shared_gid=10002
         random() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$$1"; }
         # name, value: creates /secrets/<name> once (mode 600, owner = the API) and keeps it afterwards
         secret() {
@@ -101,6 +110,10 @@ services:
         chown "$$app_uid:$$app_uid" /caddy-certs /livekit-config /backup-config
         chmod 755 /caddy-certs /backup-config
         chmod 1777 /livekit-config
+        # The folder of Caddy's admin socket belongs to the API and to the group of the two (the socket Caddy creates in it has
+        # that group, mode 660).
+        chown "$$app_uid:$$shared_gid" /caddy-admin
+        chmod 770 /caddy-admin
         echo "secrets: ready"
 
   caddy:
@@ -112,8 +125,9 @@ services:
       - ALL
     sysctls:
       net.ipv4.ip_unprivileged_port_start: 0
-    # Host and container port are the same number: HTTP/3 advertises the port Caddy listens on. The admin API (2019) is not
-    # published; the API reaches it on the compose network.
+    # Host and container port are the same number: HTTP/3 advertises the port Caddy listens on. The admin API is not on any
+    # network: it is the unix socket in the volume caddy_admin, which only this container and the API mount.
+    user: "10001:10002"
     ports:
       - "${STUDIOFLOW_HTTPS_PORT:-8443}:${STUDIOFLOW_HTTPS_PORT:-8443}/tcp"
       - "${STUDIOFLOW_HTTPS_PORT:-8443}:${STUDIOFLOW_HTTPS_PORT:-8443}/udp"
@@ -130,6 +144,8 @@ services:
       - caddy_config:/config
       # The uploaded certificate (server settings, mode custom); written by the API.
       - caddy_certs:/certs:ro
+      # The admin socket of Caddy (global.caddy): the API pushes the configuration through it.
+      - caddy_admin:/run/caddy-admin
     # healthcheck: from the image (loopback listener 127.0.0.1:2020/healthz, see infra/caddy/health.caddy)
     depends_on:
       init:
@@ -139,6 +155,11 @@ services:
 
   api:
     <<: *service-defaults
+    # The edge network (Caddy, LiveKit's webhook) and the data network (PostgreSQL).
+    networks:
+      - studioflow
+      - backend
+    user: "1654:10002"
     image: ${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-api:${STUDIOFLOW_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
@@ -147,7 +168,7 @@ services:
       # server settings in the database (first-run wizard, "Server settings").
       INSTALL__HTTPSPORT: ${STUDIOFLOW_HTTPS_PORT:-8443}
       INSTALL__SECRETSPATH: /secrets
-      INSTALL__CADDYADMINURL: http://caddy:2019
+      INSTALL__CADDYADMINSOCKET: /run/caddy-admin/admin.sock
       INSTALL__CADDYCERTSPATH: /caddy-certs
       INSTALL__LIVEKITCONFIGPATH: /livekit-config
       INSTALL__BACKUPCONFIGPATH: /backup-config
@@ -177,6 +198,7 @@ services:
       - secrets:/secrets:ro
       # The API writes the configuration of the other services here.
       - caddy_certs:/caddy-certs
+      - caddy_admin:/run/caddy-admin
       - livekit_config:/livekit-config
       - backup_config:/backup-config
       # Only the status file of the backup service, never the backups themselves.
@@ -222,6 +244,9 @@ services:
   postgres:
     <<: *service-defaults
     image: *postgres-image
+    # Only the API and the backup service can reach the database.
+    networks:
+      - backend
     # The official entrypoint starts as root, fixes the ownership and mode of the data and socket directories
     # (CHOWN, FOWNER, DAC_OVERRIDE to enter a 0700 data directory that postgres owns) and drops to the postgres user
     # (SETUID, SETGID). The server itself runs unprivileged; nothing else is granted.
@@ -268,6 +293,9 @@ services:
   # The image is built on the PostgreSQL image pinned above (same major version as the server).
   backup:
     <<: *service-defaults
+    # The database (backend network); the network also gives it the way out to an off-site target.
+    networks:
+      - backend
     image: ${STUDIOFLOW_IMAGE_REGISTRY:-ghcr.io/opten}/studioflow-backup:${STUDIOFLOW_IMAGE_TAG:-latest}
     cap_drop:
       - ALL
@@ -311,10 +339,16 @@ services:
         condition: service_healthy
 
 networks:
+  # Caddy, API and LiveKit.
   studioflow:
     ipam:
       config:
         - subnet: ${STUDIOFLOW_SUBNET:-172.30.0.0/24}
+  # API, PostgreSQL and the backup service. LiveKit is not on it.
+  backend:
+    ipam:
+      config:
+        - subnet: ${STUDIOFLOW_BACKEND_SUBNET:-172.30.1.0/24}
 
 volumes:
   # Generated once by the init service: database password and LiveKit key pair (mode 600). Not part of a backup; never delete
@@ -325,6 +359,8 @@ volumes:
   # Shared with the API: the uploaded certificate (read by Caddy), livekit.yaml (read by the LiveKit supervisor) and the
   # settings of the backup service.
   caddy_certs:
+  # The admin socket of Caddy: mounted into Caddy and the API only.
+  caddy_admin:
   livekit_config:
   backup_config:
   media:
