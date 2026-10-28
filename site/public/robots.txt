@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://opten.github.io/StudioFlow/sitemap.xml

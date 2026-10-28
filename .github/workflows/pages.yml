@@ -1,0 +1,78 @@
+# The product site on GitHub Pages (issue 67): https://opten.github.io/StudioFlow/. Source in site/, built with Vite
+# (`npm run build:site`, output dist/site) together with the clickable prototype (studioflow-prototype.html).
+#
+# The product video (issue 69) is not in Git: when the release "product-video" carries studioflow.mp4 (and optionally
+# studioflow-vertical.mp4 and studioflow.vtt), the job downloads them into site/public/media and the hero plays the video;
+# without them the hero shows the Regie screenshot. Upload a new video with
+#   gh release upload product-video video/out/studioflow.mp4 video/out/studioflow-vertical.mp4 video/out/studioflow.vtt --clobber
+# and run this workflow (Actions > Pages > Run workflow).
+#
+# One-time setup by the owner: Settings > Pages > Source "GitHub Actions" (needs a public repository or a plan with Pages for
+# private repositories). Every action is pinned by commit SHA; the comment names the release.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'prototype/**'
+      - 'tools/lib/prototype*.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer push waits instead of cancelling a deployment that is running.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Product video from the release (optional)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p site/public/media
+          if gh release download product-video --repo "$GITHUB_REPOSITORY" --dir site/public/media \
+               --pattern 'studioflow.mp4' --pattern 'studioflow-vertical.mp4' --pattern 'studioflow.vtt'; then
+            ls -l site/public/media
+          else
+            echo "::notice title=Product video::No release product-video with studioflow.mp4; the hero shows the screenshot."
+          fi
+      - run: npm run typecheck:site
+      - run: npm run build:site
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
