@@ -128,6 +128,12 @@ public sealed class ServerSettingsService(
     {
         ArgumentNullException.ThrowIfNull(request);
         var errors = new ValidationErrors();
+        if (request.Origins is null)
+        {
+            // A body without the list (`{}`) must not silently clear the allowed embedders: only an explicit empty list does.
+            errors.Add("origins", SettingsFieldErrors.OriginsRequired);
+        }
+
         var origins = ServerSettingsRules.ValidateOrigins(request.Origins, "origins", errors);
         errors.ThrowIfAny();
 

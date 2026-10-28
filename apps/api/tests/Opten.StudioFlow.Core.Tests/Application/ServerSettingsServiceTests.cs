@@ -347,6 +347,31 @@ public sealed class ServerSettingsServiceTests
     }
 
     [Fact]
+    public async Task Embedding_WithoutTheList_IsRefused_AndKeepsTheSavedOrigins()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateEmbeddingAsync(new UpdateEmbeddingRequest(["https://proxy.example.ch"]), Ct);
+        var saves = h.Store.Saves;
+
+        var refused = await Refused(() => h.Service.UpdateEmbeddingAsync(new UpdateEmbeddingRequest(null!), Ct));
+
+        Assert.Equal(SettingsFieldErrors.OriginsRequired, Codes(refused, "origins"));
+        Assert.Equal(saves, h.Store.Saves);
+        Assert.Equal(["'self'", "https://proxy.example.ch"], h.State.FrameAncestorSources);
+    }
+
+    [Fact]
+    public async Task Embedding_AnEmptyList_ClearsTheOrigins()
+    {
+        var h = new SettingsHarness();
+        await h.Service.UpdateEmbeddingAsync(new UpdateEmbeddingRequest(["https://proxy.example.ch"]), Ct);
+
+        var settings = await h.Service.UpdateEmbeddingAsync(new UpdateEmbeddingRequest([]), Ct);
+
+        Assert.Empty(settings.Embedding.Origins);
+    }
+
+    [Fact]
     public async Task Embedding_AnInvalidOrigin_IsRefusedWithItsIndex()
     {
         var h = new SettingsHarness();
