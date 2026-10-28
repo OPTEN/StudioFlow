@@ -13,7 +13,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD monitoring (issue #7, docs/testing.md 2.19): the Regie plays nothing unless the operator listens. PFL plays one
+ * AUD monitoring (issue #7, docs/testing.md 2.21): the Regie plays nothing unless the operator listens. PFL plays one
  * channel before its fader and mute (also while the broadcast is not live and while the channel is muted); "Program"
  * plays the mix as the output page does. The Regie page is measured with the audio probe (`uiInit: {audioProbe: true}`).
  */

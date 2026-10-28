@@ -17,7 +17,7 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * AUD, the whole chain (issue #7, docs/testing.md 2.19): the audio station sends the sound of the mixing desk, the output
+ * AUD, the whole chain (issue #7, docs/testing.md 2.21): the audio station sends the sound of the mixing desk, the output
  * page plays it only while the broadcast is live and the channel is audible. The microphone is a sine tone of known
  * frequency (support/browser/fake-audio.js) and the output page is measured with the audio probe, so a frequency in the
  * spectrum proves that the sound went through LiveKit, the output page and the mixer – and silence that it did not.

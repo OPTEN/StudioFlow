@@ -162,7 +162,7 @@ one function (`obsCanvasSize()`), so the production format of #8 can replace 192
 2. Preloading: the preview scene is immediate; other scenes may take about 0.5 s.
 3. Scene thumbnails as still images are fine.
 
-Implementation details fixed with the work on #12 (spec 7, 8.3, 8.4, 9.1–9.3, `docs/testing.md` 2.19 and 5.1):
+Implementation details fixed with the work on #12 (spec 7, 8.3, 8.4, 9.1–9.3, `docs/testing.md` 2.20 and 5.1):
 
 4. **Measuring.** `E2E-PERF-01` (project `perf`, tag `@perf`, not in the smoke set) builds the reference scenario: 4 phones
    (camera 1080p), 2 laptop screens (1440p), 6 scenes, Studio Mode, fake media, three Chromium instances (senders, Regie at

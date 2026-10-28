@@ -125,7 +125,6 @@ Open:
 - #33 (open until CI proves the fix), #48, #53, #54, #55, #56; #23 owner actions; #5 README; #18 closes with 0.1.0.
 - E2E-I18N-11: the settings popover covers the button the test clicks (test bug, no issue yet).
 - `AuditExportStreamingTests` times out in the cloud container now and then (green on GitHub).
-- `docs/testing.md` has two sections numbered 2.17 (I18N and FMT).
 
 ## Gotchas learned
 
