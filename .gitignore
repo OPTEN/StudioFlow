@@ -55,3 +55,13 @@ docker-compose.override.yml
 
 # Local git worktrees of coding agents (Claude Code); each is a checkout of a branch, never content of this one
 /.claude/worktrees/
+
+# Screen recordings of the real UI for the product video (tests/e2e/specs/ui/ui-product-video.spec.ts)
+/video/captures/
+# Frames cut from the captures, the rendered films (built by pages.yml, video/README.md) and the local audio venv
+/video/work/
+/video/out/
+/.venv-video/
+
+# Product video for the site: copied in from job video of pages.yml, never committed (issue 69)
+/site/public/media/

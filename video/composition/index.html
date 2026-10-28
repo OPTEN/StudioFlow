@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>StudioFlow product video</title>
+    <link rel="stylesheet" href="./comp.css" />
+  </head>
+  <!-- Rendered by video/render.mjs: ?format=landscape|vertical|square, then window.renderFrame(t) for each frame. -->
+  <body>
+    <div class="frame" id="frame">
+      <div class="glow" id="glow"></div>
+
+      <h1 class="caption" id="caption"></h1>
+
+      <div class="media" id="media">
+        <div class="media__layer" id="mediaLayer">
+          <img class="media__img" id="mediaImg" alt="" />
+          <!-- Over the pairing QR of the capture: the same tile with a QR for the product site, so no test token is scannable. -->
+          <div class="qr" id="qr"><img src="../work/qr.svg" alt="" /></div>
+        </div>
+        <svg class="cursor" id="cursor" viewBox="0 0 28 28" aria-hidden="true">
+          <circle class="cursor__ring" id="cursorRing" cx="6" cy="5" r="6" />
+          <path d="M5 3l15 9-6.5 1.6L17 21l-3 1.4-3.4-7.3L6 19.5z" />
+        </svg>
+      </div>
+
+      <div class="phone" id="phone">
+        <img class="phone__bg" src="../work/regie.png" alt="" />
+        <div class="phone__body"><img id="phoneImg" alt="" /></div>
+      </div>
+
+      <div class="type" id="type"></div>
+
+      <div class="end" id="end">
+        <img class="end__logo" src="../../docs/assets/logo-dark.svg" alt="StudioFlow" />
+        <p class="end__claim">Go live from any <em>phone.</em></p>
+        <p class="end__link">opten.github.io/StudioFlow</p>
+        <p class="end__meta">Free and open source · MIT</p>
+        <p class="end__sponsor">
+          <span>Sponsored by</span>
+          <svg viewBox="0 0 82.21 82.21" aria-hidden="true">
+            <circle cx="49.03" cy="39" r="3" fill="currentColor" />
+            <path
+              fill="currentColor"
+              d="M40.21,0V.05a41.09,41.09,0,1,0,42,42h0V0Zm-2.9,47.81H31.47v-13H28.4V30.16h8.91ZM49,48a9,9,0,1,1,9-9A9,9,0,0,1,49,48Z"
+            />
+          </svg>
+          <b>OPTEN</b>
+        </p>
+      </div>
+    </div>
+    <script type="module" src="./comp.js"></script>
+  </body>
+</html>
