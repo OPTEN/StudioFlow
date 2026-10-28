@@ -1,6 +1,7 @@
 using Opten.StudioFlow.Core.Application.Ports;
 using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Infrastructure;
+using Opten.StudioFlow.Infrastructure.Install;
 
 namespace Opten.StudioFlow.Web.Hosting;
 
@@ -94,6 +95,9 @@ internal static class CliCommands
     {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = args, ContentRootPath = AppContext.BaseDirectory });
         builder.Logging.ClearProviders();
+
+        // Like the API: the compose file names no database password, it is read from the secrets volume (Install:SecretsPath).
+        SecretFiles.Apply(builder.Configuration);
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddStudioFlowPersistence(builder.Configuration);
         builder.Services.AddSingleton<AdminAccountReset>();

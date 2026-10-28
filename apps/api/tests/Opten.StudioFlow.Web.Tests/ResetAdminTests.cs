@@ -1,9 +1,11 @@
 using System.Net;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Opten.StudioFlow.Core.Application.Services;
 using Opten.StudioFlow.Core.Contracts;
 using Opten.StudioFlow.Core.Domain;
+using Opten.StudioFlow.Infrastructure.Install;
 using Opten.StudioFlow.Infrastructure.Persistence;
 using Opten.StudioFlow.Web.Hosting;
 using Opten.StudioFlow.Web.Tests.Support;
@@ -109,6 +111,40 @@ public sealed class ResetAdminTests(PostgresFixture postgres)
     [Fact]
     public async Task TryRunAsync_HashPasswordIsNoCommandAnyMore() =>
         Assert.Null(await CliCommands.TryRunAsync(["hash-password"]));
+
+    [Fact]
+    public async Task ResetAdmin_TakesTheDatabasePasswordFromTheSecretsFolder_LikeTheShippedInstall()
+    {
+        await using var app = new StudioFlowApp(postgres);
+        await app.InitializeAsync();
+        var builder = new NpgsqlConnectionStringBuilder(app.ConnectionString);
+        var password = builder.Password!;
+        builder.Password = null;
+        var secrets = Directory.CreateTempSubdirectory("sf-secrets-");
+        try
+        {
+            // The three files the init service writes into the secrets volume.
+            await File.WriteAllTextAsync(Path.Combine(secrets.FullName, SecretFiles.PostgresPassword), password, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(secrets.FullName, SecretFiles.LiveKitApiKey), "APItest", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(secrets.FullName, SecretFiles.LiveKitApiSecret), "secret-of-the-test-only-0123456789abcdef", TestContext.Current.CancellationToken);
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var code = await CliCommands.ResetAdminAsync(
+                [CliCommands.YesOption, $"--ConnectionStrings:StudioFlow={builder.ConnectionString}", $"--Install:SecretsPath={secrets.FullName}"],
+                new StringReader(""),
+                output,
+                error);
+
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.Contains("The Regie account was deleted", output.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            secrets.Delete(recursive: true);
+        }
+    }
 
     private static async Task<(int Code, string Output, string Error)> RunAsync(StudioFlowApp app, string input, params string[] options)
     {
