@@ -79,8 +79,9 @@ test.describe('AUTH routes', () => {
     expect(all.length, 'operations in openapi/studioflow.json').toBeGreaterThan(50);
     for (const operation of all) {
       if (policyOf(operation) === 'admin') {
-        // The admin group is everything under /api/productions and /api/audit plus the session and password routes.
-        expect(operation.path, `${operation.operationId} would be classified as admin`).toMatch(/^\/api\/(productions|audit|auth\/(logout|me|password)|system\/info)/);
+        // The admin group is everything under /api/productions, /api/audit and /api/settings (server settings, #27) plus the
+        // session and password routes.
+        expect(operation.path, `${operation.operationId} would be classified as admin`).toMatch(/^\/api\/(productions|audit|settings|auth\/(logout|me|password)|system\/info)/);
       }
     }
     for (const id of Object.keys(POLICY)) expect(all.map((operation) => operation.operationId), `policy entry ${id} exists`).toContain(id);
