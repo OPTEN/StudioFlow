@@ -382,10 +382,14 @@ jobs:
       # The release pull request and the tag created with the default token start no workflow, so CI would never run on
       # the release pull request. A token of a fine-grained personal access token or a GitHub App fixes that
       # (docs/releasing.md, "Set-up by the owner"); without the secret the default token is used.
+      # Only the run of the release commit itself may tag and publish, after its own smoke run: a later commit would
+      # otherwise find the merged release pull request and publish it without images and files although its smoke failed
+      # (v0.1.0). Later runs only open or update the release pull request.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           target-branch: main
+          skip-github-release: ${{ needs.plan.outputs.release != 'true' }}
       # The tag that points at the commit of this run, if any: the release to ship now. Found by tag and not by an
       # output of the action, so that a re-run of this commit finds the release that was created before.
       - name: Find the release of this commit
