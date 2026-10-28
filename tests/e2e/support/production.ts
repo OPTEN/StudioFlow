@@ -33,9 +33,14 @@ export async function probeForwardedFor(admin: AdminApi): Promise<boolean> {
     const hub = OutputHub.connect(config.apiDirect, key, { headers: { 'X-Forwarded-For': fake } });
     try {
       await hub.open();
-      await sleep(300);
-      const snapshot = (await admin.getSnapshot(active.id)).body;
-      probed = snapshot.outputStatus.addresses.includes(fake);
+      // The address appears in the snapshot once the hub registered the connection, which takes longer on a loaded machine:
+      // poll for up to 5 s instead of one fixed wait, or a slow start sends every test of this worker from one address.
+      const deadline = Date.now() + 5000;
+      probed = false;
+      while (!probed && Date.now() < deadline) {
+        await sleep(200);
+        probed = (await admin.getSnapshot(active.id)).body.outputStatus.addresses.includes(fake);
+      }
     } finally {
       await hub.stop();
     }

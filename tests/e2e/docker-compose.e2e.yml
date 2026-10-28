@@ -19,9 +19,15 @@ services:
       - "127.0.0.1:${E2E_API_PORT:-18081}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      # The tests reach the published API port directly and send X-Forwarded-For (one fake client address per test, so rate
+      # limits are per test). With two networks the port proxy of Docker (Desktop) may connect from the gateway of either one:
+      # trust both subnets here. In an installation the API port is not published; only Caddy (studioflow) talks to it.
+      FORWARDEDHEADERS__KNOWNNETWORKS__1: ${STUDIOFLOW_BACKEND_SUBNET:-172.30.1.0/24}
     networks:
+      # The default route of the API stays on the studioflow network.
       studioflow:
         ipv4_address: ${E2E_IP_API:-172.31.250.11}
+        gw_priority: 1
       backend:
         ipv4_address: ${E2E_IP_API_BACKEND:-172.31.251.11}
 
