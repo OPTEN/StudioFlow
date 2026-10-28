@@ -213,9 +213,9 @@ create_backup() {
 prune_local() {
 	local expired old
 	step="retention"
-	# The folder of this run is never removed: names are only ordered by time as long as a name is not reused after the
-	# older folder of the same minute was pruned.
-	expired="$(list_auto_names | sf_backup_expired "$keep_daily" "$keep_weekly" | grep -vxF "$name" || true)"
+	# The folder of this run is the newest, whatever its name sorts like (a name is reused in the minute after the older
+	# folder of it was pruned), so it is never listed.
+	expired="$(list_auto_names | sf_backup_expired "$keep_daily" "$keep_weekly" "$name" || true)"
 	for old in $expired; do
 		rm -rf "${backup_dir:?}/$old"
 		sf_info "Old backup removed: $old"
@@ -270,7 +270,7 @@ offsite_media() {
 offsite_prune() {
 	local expired old
 	expired="$(rclone lsf -R --files-only --include "/*/$SF_CHECKSUMS" "$remote_base" 2>/dev/null | sed "s#/$SF_CHECKSUMS\$##" |
-		grep -E "$AUTO_NAME_PATTERN" | sf_backup_expired "$keep_daily" "$keep_weekly" | grep -vxF "$name" || true)"
+		grep -E "$AUTO_NAME_PATTERN" | sf_backup_expired "$keep_daily" "$keep_weekly" "$name" || true)"
 	for old in $expired; do
 		if rclone purge "$remote_base/$old" -q; then
 			sf_info "Old off-site backup removed: $old"
