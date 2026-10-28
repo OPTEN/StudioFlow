@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { pairPhone } from '../../support/production';
 import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
@@ -10,6 +11,21 @@ import { t } from '../../support/tags';
 
 const tags = t.with('@p1', '@i18n');
 
+/**
+ * Clicks `button` until `value` reads `end`, waiting for every step to show: a loop on isEnabled() raced the update and
+ * clicked a button that had just become disabled (#80).
+ */
+async function stepTo(button: Locator, value: Locator, end: string): Promise<void> {
+  for (let step = 0; step < 20; step++) {
+    const before = (await value.textContent()) ?? '';
+    if (before === end) break;
+    await button.click();
+    await expect(value).not.toHaveText(before);
+  }
+  await expect(value).toHaveText(end);
+  await expect(button).toBeDisabled();
+}
+
 test.describe('I18N formats', () => {
   test.use({ locale: 'en-US' });
 
@@ -20,8 +36,7 @@ test.describe('I18N formats', () => {
 
     // Step to the shortest duration: "0.2 s" in English.
     const shorter = page.getByRole('button', { name: 'Shorter fade' });
-    while (await shorter.isEnabled()) await shorter.click();
-    await expect(value).toHaveText('0.2 s');
+    await stepTo(shorter, value, '0.2 s');
 
     await page.getByRole('button', { name: 'Open settings' }).click();
     await page.getByRole('dialog', { name: 'Settings' }).getByLabel('Interface language').selectOption('de-CH');
@@ -29,12 +44,12 @@ test.describe('I18N formats', () => {
     await page.keyboard.press('Escape');
 
     const longer = page.getByRole('button', { name: 'Blende länger' });
-    while (await longer.isEnabled()) await longer.click();
-    await expect(value).toHaveText('2 s');
+    await stepTo(longer, value, '2 s');
 
     await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
     await page.getByRole('dialog', { name: 'Einstellungen' }).getByLabel('Sprache der Oberfläche').selectOption('en');
     await expect(value).toHaveText('2 s');
+    await page.keyboard.press('Escape'); // the open settings popover would take the click
     await shorter.click();
     await expect(value).toHaveText('1.5 s');
   });

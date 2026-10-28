@@ -35,19 +35,26 @@ async function monitoringRows(page: Page): Promise<MonitoringRow[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll('.c-mon-table tbody tr')].map((row) => {
       const text = (element: Element | undefined) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+      // Cells by column heading, not by position: a new column (Encoding, #12) must not shift the values (#78).
+      const headings = [...document.querySelectorAll('.c-mon-table thead th')].map((th) => text(th));
       const cells = [...row.querySelectorAll('td')];
+      const cell = (heading: string) => {
+        const index = headings.indexOf(heading);
+        if (index < 1) throw new Error(`no monitoring column "${heading}" in: ${headings.join(', ')}`);
+        return text(cells[index - 1]); // the first heading belongs to the station name, a th
+      };
       return {
         name: text(row.querySelector('th .c-mon-table__name') ?? undefined),
-        state: text(cells[0]),
-        slots: text(cells[1]),
-        resolution: text(cells[2]),
-        fps: text(cells[3]),
-        bitrate: text(cells[4]),
-        loss: text(cells[5]),
-        rtt: text(cells[6]),
-        battery: text(cells[7]),
-        network: text(cells[8]),
-        tech: text(cells[9]),
+        state: cell('State'),
+        slots: cell('Sources'),
+        resolution: cell('Resolution'),
+        fps: cell('fps'),
+        bitrate: cell('Mbit/s'),
+        loss: cell('Loss'),
+        rtt: cell('RTT'),
+        battery: cell('Battery'),
+        network: cell('Network'),
+        tech: cell('Tech check'),
       };
     }),
   );
