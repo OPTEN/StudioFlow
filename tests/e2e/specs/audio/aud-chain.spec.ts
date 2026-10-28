@@ -1,4 +1,4 @@
-import { percentile } from '../../support/helpers';
+import { percentile, pollUntil } from '../../support/helpers';
 import { sleep } from '../../support/shell';
 import { pairViaApi } from '../../support/ui/pairing';
 import {
@@ -9,7 +9,6 @@ import {
   silenceAt,
   toneAt,
   unlockSound,
-  waitForPeak,
   waitForSilence,
   waitForTone,
 } from '../../support/ui/audio';
@@ -74,9 +73,16 @@ test.describe('AUD audio chain', () => {
       // Live: the tone of the station comes out of the output page and the station says "Mic live".
       await api.startBroadcast(production.id);
       await waitForTone(target, STATION_HZ);
-      // Unity gain: the tone arrives at its own level (-6 dBFS) once the 300 ms ramp of the broadcast start is over.
-      const heard = await waitForPeak(target, -6);
-      expect(heard.peaks.some((peak) => Math.abs(peak.frequency - STATION_HZ) <= 8), 'the frequency of the station').toBe(true);
+      // Unity gain: the tone arrives at its own level (-6 dBFS) once the 300 ms ramp of the broadcast start is over. Level and
+      // frequency are judged on the same reading: a single reading that catches a stall of the page has the level of a
+      // transient but a smeared spectrum (the release smoke failed on that).
+      const { value: heard } = await pollUntil(
+        'the station tone at -6 dBFS ± 2.5',
+        () => measureAudio(target),
+        (measure) => measure !== null && Math.abs(measure.peakDb + 6) <= 2.5 && measure.peaks.some((peak) => Math.abs(peak.frequency - STATION_HZ) <= 8),
+        { timeoutMs: 10_000, intervalMs: 50 },
+      );
+      if (!heard) throw new Error('the output page measured nothing');
       testInfo.annotations.push({
         type: 'measurement',
         description: `output page: ${heard.peakDb.toFixed(1)} dBFS, strongest peak ${JSON.stringify(heard.peaks[0])} (played: ${STATION_HZ} Hz at -6 dBFS)`,
