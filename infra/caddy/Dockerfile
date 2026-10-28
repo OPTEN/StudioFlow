@@ -60,7 +60,12 @@ RUN apk upgrade --no-cache
 RUN addgroup -S -g 10001 caddy \
  && adduser -S -D -H -u 10001 -G caddy -h /data caddy \
  && chown -R caddy:caddy /data /config \
- && chmod -R u=rwX,go= /data /config
+ && chmod -R u=rwX,go= /data /config \
+ && mkdir -p /run/caddy-admin \
+ && chown caddy:caddy /run/caddy-admin \
+ && chmod 770 /run/caddy-admin
+# /run/caddy-admin holds the unix socket of the admin API (infra/caddy/global.caddy). Compose mounts a volume there that only
+# Caddy and the API share (the init service sets owner and group); the folder in the image lets the image run on its own too.
 
 # The builder sets cap_net_bind_service on the binary. Not needed here, and with no-new-privileges and no
 # capabilities a file capability makes exec fail ("operation not permitted"), so remove it.

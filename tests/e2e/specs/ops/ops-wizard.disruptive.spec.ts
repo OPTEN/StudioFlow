@@ -324,8 +324,8 @@ test.describe('OPS settings validation and secrets', () => {
         const logs = await serviceLogs(service);
         for (const secret of secrets) expect(logs, `${service} log`).not.toContain(secret);
       }
-      const caddyConfig = await docker(['exec', containerName('api'), 'wget', '-q', '-O', '-', 'http://caddy:2019/config/'], { check: true });
-      expect(caddyConfig.stdout, 'the DNS token is part of the running Caddy configuration, which only the compose network can read').toContain(token);
+      const caddyConfig = await docker(['exec', containerName('caddy'), 'curl', '-s', '--unix-socket', '/run/caddy-admin/admin.sock', 'http://caddy-admin/config/'], { check: true });
+      expect(caddyConfig.stdout, 'the DNS token is part of the running Caddy configuration, which only Caddy and the API can read (unix socket)').toContain(token);
       const viaHttps = await fetch(`${config.baseURL}/config/`);
       expect(await viaHttps.text()).not.toContain(token);
       // The audit log names the change, not the values.

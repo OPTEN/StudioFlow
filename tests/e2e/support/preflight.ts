@@ -1,6 +1,6 @@
 import dgram from 'node:dgram';
 import net from 'node:net';
-import { SETTINGS, type StackSettings } from './env';
+import { SETTINGS, backendSubnetOf, type StackSettings } from './env';
 import { exec } from './shell';
 import { docker } from './stack';
 
@@ -152,10 +152,11 @@ export async function assertStackFree(settings: StackSettings = SETTINGS): Promi
     problems.push(
       `port ${check.port}/${check.protocol} (${check.what}) is already in use on ${check.host}`,
     );
-  for (const clash of await overlappingNetworks(settings.subnet, settings.project))
-    problems.push(
-      `subnet ${settings.subnet} (E2E_SUBNET) overlaps the Docker network ${clash.name} (${clash.subnet})`,
-    );
+  for (const subnet of [settings.subnet, backendSubnetOf(settings.subnet)])
+    for (const clash of await overlappingNetworks(subnet, settings.project))
+      problems.push(
+        `subnet ${subnet} (E2E_SUBNET) overlaps the Docker network ${clash.name} (${clash.subnet})`,
+      );
   if (problems.length > 0) {
     const list = problems.map((problem) => ` - ${problem}`).join('\n');
     throw new Error(

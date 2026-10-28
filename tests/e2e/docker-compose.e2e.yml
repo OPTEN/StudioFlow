@@ -3,7 +3,7 @@
 # The production compose file is never edited by tests; everything the tests need on top is here:
 #   - 127.0.0.1-only published ports for the API (header-trust tests), LiveKit signalling/Twirp (the `lk` helper) and
 #     PostgreSQL (audit and DB assertions);
-#   - fixed addresses on the compose network, so `docker network connect --ip` restores the same address after a
+#   - fixed addresses on the compose networks (studioflow: Caddy, API, LiveKit; backend: API, PostgreSQL), so `docker network connect --ip` restores the same address after a
 #     disconnect.
 # Caddy's HTTPS port and LiveKit's media ports are not overridden here: they are the overrides a real installation has
 # (STUDIOFLOW_HTTPS_PORT, STUDIOFLOW_RTC_TCP_PORT / STUDIOFLOW_RTC_UDP_PORT), set in the generated env file.
@@ -22,6 +22,8 @@ services:
     networks:
       studioflow:
         ipv4_address: ${E2E_IP_API:-172.31.250.11}
+      backend:
+        ipv4_address: ${E2E_IP_API_BACKEND:-172.31.251.11}
 
   livekit:
     ports:
@@ -34,5 +36,5 @@ services:
     ports:
       - "127.0.0.1:${E2E_POSTGRES_PORT:-15432}:5432"
     networks:
-      studioflow:
-        ipv4_address: ${E2E_IP_POSTGRES:-172.31.250.12}
+      backend:
+        ipv4_address: ${E2E_IP_POSTGRES:-172.31.251.12}

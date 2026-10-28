@@ -27,8 +27,11 @@ goes over HTTPS on one port, **8443** by default. **Nothing listens on port 80.*
 
 The settings that used to be written into a `.env` file by a script (address, certificate, media address, embedding, backup
 schedule) are saved in the database through the Regie ("Server settings") and are therefore part of every backup. The API
-hands them to Caddy, LiveKit and the backup service over the internal network of the stack. No container has access to the
-Docker socket, and the admin interface of Caddy (port 2019) is reachable on that internal network only.
+hands them to Caddy, LiveKit and the backup service over the internal networks of the stack. No container has access to the
+Docker socket. The admin interface of Caddy is not a network service at all: it is a unix socket in a volume that only Caddy
+and the API mount, so no other container (LiveKit, PostgreSQL, the backup service) can read the configuration or replace it.
+The stack has two networks: `studioflow` (Caddy, API, LiveKit) and `backend` (API, PostgreSQL, backup service); LiveKit, the
+one container that takes media traffic from the internet, cannot reach the database.
 
 Two ways to operate it:
 
@@ -70,7 +73,7 @@ Two ways to operate it:
 There is **no port 80** and no redirect: addresses are always written with the port (`https://192.168.1.50:8443/`). If
 8443 is taken by another program, or you want the usual 443, set `STUDIOFLOW_HTTPS_PORT` (section 11, "Port already in
 use"). Not published, and never to be opened: 7880 (LiveKit signalling, only through Caddy `/rtc`), 8080 (API),
-5432 (PostgreSQL), 2019 (admin interface of Caddy, internal network only).
+5432 (PostgreSQL). The admin interface of Caddy has no port: it is a unix socket inside the stack.
 
 - **Linux (ufw):** `sudo ufw allow 8443/tcp && sudo ufw allow 8443/udp && sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`.
   Note: Docker bypasses ufw for published ports (its own iptables chain). Restrict only through the `DOCKER-USER`
@@ -739,8 +742,9 @@ The setting stays until `clear` or until the LiveKit container is recreated.
   data, the rclone configuration and the private key of an uploaded certificate are stored encrypted in the database and
   are never shown again.
 - Only open the ports from section 3. The API, the database and the LiveKit signalling are only reachable through
-  Caddy. The admin interface of Caddy (2019) and the files that configure LiveKit and the backup service are reachable
-  inside the stack only, and no container has the Docker socket.
+  Caddy. The admin interface of Caddy (a unix socket that only Caddy and the API mount) and the files that configure
+  LiveKit and the backup service are reachable inside the stack only, and no container has the Docker socket. LiveKit
+  cannot reach PostgreSQL or the backup service (separate networks).
 - The setup code and the sign-in protect the Server settings: they are only open to the signed-in admin.
 - Never set `STUDIOFLOW_TRUSTED_PROXIES` to the LAN – otherwise the IP restriction of the output can be bypassed with a
   forged `X-Forwarded-For`.

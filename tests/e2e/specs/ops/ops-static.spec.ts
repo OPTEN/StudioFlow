@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { AdminApi } from '../../support/api';
 import { REPO_ROOT, imageNameOf, stackConfig } from '../../support/env';
 import { expect, test } from '../../support/fixtures';
 import { composeConfigZeroConfig } from '../../support/ops';
@@ -172,12 +173,13 @@ test.describe('OPS no host scripts, no Docker socket, no port 80', () => {
     }
   });
 
-  test('E2E-OPS-31 [stack] nothing listens on port 80, and Caddy listens only on the HTTPS port (and on the admin and health ports inside)', t.p0, async () => {
+  test('E2E-OPS-31 [stack] nothing listens on port 80, and Caddy listens only on the HTTPS port (and on the health port inside); the admin API has no TCP listener', t.p0, async () => {
     const config = stackConfig();
     const listening = (await docker(['exec', containerName('caddy'), 'netstat', '-lnt'], { check: true })).stdout;
     const ports = [...listening.matchAll(/^tcp\s+\d+\s+\d+\s+(\S+):(\d+)\s/gm)].map((match) => ({ address: match[1]!, port: Number(match[2]) }));
     const caddyPorts = ports.filter((entry) => entry.address === '0.0.0.0' || entry.address === '::').map((entry) => entry.port).sort((a, b) => a - b);
-    expect(caddyPorts, 'public listeners of Caddy: the admin API (compose network only) and the HTTPS port').toEqual([2019, config.httpsPort].sort((a, b) => a - b));
+    expect(caddyPorts, 'public listeners of Caddy: the HTTPS port only').toEqual([config.httpsPort]);
+    expect(ports.map((entry) => entry.port), 'the admin API is not a network service (unix socket)').not.toContain(2019);
     expect(ports.map((entry) => entry.port), 'no listener on 80 or 443').not.toContain(80);
     expect(ports.map((entry) => entry.port)).not.toContain(443);
     // Nothing published on the host for 80, either.
@@ -294,6 +296,29 @@ echo "unique: $(basename "$(sf_backup_unique_dir "$dir" 2026-10-23_0300_auto)")"
 });
 
 test.describe('OPS network and hardening', () => {
+  test('E2E-OPS-12 [static] the networks are split by need: LiveKit cannot reach PostgreSQL, the admin socket of Caddy is shared by Caddy and the API only', t.p0, async () => {
+    const names = (service: ConfigService): string[] => Object.keys((service.networks ?? {}) as Record<string, unknown>).sort();
+    for (const file of COMPOSE_FILES) {
+      const services = await configOf(file);
+      expect(names(services['caddy']!), `${file}: caddy`).toEqual(['studioflow']);
+      expect(names(services['livekit']!), `${file}: livekit (the service that takes media traffic from the internet)`).toEqual(['studioflow']);
+      expect(names(services['api']!), `${file}: api`).toEqual(['backend', 'studioflow']);
+      expect(names(services['postgres']!), `${file}: postgres`).toEqual(['backend']);
+      expect(names(services['backup']!), `${file}: backup`).toEqual(['backend']);
+      const mounting = (volume: string) => Object.entries(services).filter(([, service]) => (service.volumes ?? []).some((entry) => entry.source === volume)).map(([name]) => name).sort();
+      expect(mounting('caddy_admin'), `${file}: who mounts the admin socket of Caddy`).toEqual(['api', 'caddy', 'init']);
+      expect(mounting('caddy_certs'), `${file}: who mounts the uploaded certificate and key`).toEqual(['api', 'caddy', 'init']);
+      expect(services['api']!.environment?.['INSTALL__CADDYADMINSOCKET'], `${file}: the API uses the socket`).toBe('/run/caddy-admin/admin.sock');
+      expect(services['api']!.environment?.['INSTALL__CADDYADMINURL'], `${file}: and no TCP address`).toBeUndefined();
+      expect(services['caddy']!.ports?.map((port) => port.target).sort(), `${file}: caddy publishes only the HTTPS port`).not.toContain(2019);
+    }
+    // The admin API is never a TCP listener in any Caddy configuration.
+    for (const file of ['infra/caddy/global.caddy', 'infra/caddy/Caddyfile', 'infra/caddy/studioflow.caddy', 'infra/caddy/servers.caddy']) {
+      expect(read(file).replace(/^\s*#.*$/gm, ''), `${file}: no TCP admin listener`).not.toMatch(/^\s*admin\s+(?!unix\/\/)\S+/m);
+    }
+    expect(read('infra/caddy/global.caddy')).toMatch(/^admin unix\/\/run\/caddy-admin\/admin\.sock\|0660$/m);
+  });
+
   test('E2E-OPS-12 [static] only Caddy (HTTPS tcp+udp) and the LiveKit media ports (7881 tcp, 7882 udp) are published; no helper publishes anything', t.p0, async () => {
     for (const file of COMPOSE_FILES) {
       const services = await configOf(file, ['chaos']);
@@ -322,12 +347,39 @@ test.describe('OPS network and hardening', () => {
     expect(await probe(config.rtcTcpPort), String(config.rtcTcpPort)).toBe(true);
   });
 
-  test('E2E-OPS-32 [stack] the Caddy admin API answers inside the compose network only', t.p0, async () => {
-    // From a container of the stack (the API pushes the configuration this way).
-    const inside = await docker(['exec', containerName('api'), 'wget', '-q', '-O', '-', 'http://caddy:2019/config/apps/http/servers'], { check: true });
-    expect(inside.stdout, 'the API sees the running server configuration').toMatch(/"sf-[0-9a-f]{12}"/);
-    // Not from the LAN address, not through the HTTPS port.
+  test('E2E-OPS-32 [stack] the Caddy admin API is a unix socket that only Caddy and the API mount: LiveKit, PostgreSQL and any other container of the networks cannot reach it', t.p0, async () => {
     const config = stackConfig();
+    // The socket: Caddy's user owns it, the shared group and nobody else may use it (mode 660), in a folder of the API and the same group.
+    const socket = (await docker(['exec', containerName('caddy'), 'stat', '-c', '%a %u:%g', '/run/caddy-admin/admin.sock', '/run/caddy-admin'], { check: true })).stdout.trim().split('\n');
+    expect(socket, 'mode and owner of the socket and of its folder').toEqual(['660 10001:10002', '770 1654:10002']);
+    // The volume is mounted into Caddy and the API (and the init service that sets its owner), into nothing else.
+    const mounting = (await docker(['ps', '-a', '--filter', `volume=${config.project}_caddy_admin`, '--format', '{{.Names}}'], { check: true })).stdout.split(/\s+/).filter(Boolean).sort();
+    expect(mounting, 'containers that mount the admin socket').toEqual([containerName('api'), containerName('caddy'), containerName('init')].sort());
+    // Caddy answers on the socket (the API pushed the configuration this way: the server is named sf- and 12 hex characters).
+    const status = await (await AdminApi.login()).getServerSettingsStatus();
+    expect(status.body.caddy.applied, 'the API applied the configuration to Caddy through the socket').toBe(true);
+    // Not from LiveKit (the one container that takes media traffic from the internet), not from a throw-away container on the
+    // networks of the stack, not by name and not by address.
+    const caddyAddress = JSON.parse((await docker(['inspect', containerName('caddy')], { check: true })).stdout)[0].NetworkSettings.Networks[config.network].IPAddress as string;
+    const postgresImage = (await docker(['inspect', '-f', '{{.Config.Image}}', containerName('postgres')], { check: true })).stdout.trim();
+    const probes: Array<{ from: string; run: string[] }> = [
+      { from: 'livekit', run: ['exec', containerName('livekit')] },
+      { from: 'a throw-away container on the studioflow network', run: ['run', '--rm', '--network', config.network, '--entrypoint', 'wget', postgresImage] },
+    ];
+    for (const probe of probes) {
+      for (const target of ['caddy', caddyAddress]) {
+        const answer = await docker([...probe.run, ...(probe.run[0] === 'exec' ? ['wget'] : []), '-T', '3', '-q', '-O', '-', `http://${target}:2019/config/`]);
+        expect(answer.code, `${probe.from}: http://${target}:2019/config/ must not answer`).not.toBe(0);
+        expect(answer.stdout, `${probe.from}: no configuration leaks`).not.toContain('"apps"');
+      }
+    }
+    // LiveKit and any container on the studioflow network cannot reach the database either: it is on the backend network only.
+    for (const probe of probes) {
+      const answer = await docker([...probe.run, ...(probe.run[0] === 'exec' ? ['wget'] : []), '-T', '3', '-q', '-O', '-', 'http://postgres:5432/']);
+      expect(answer.code, `${probe.from}: postgres is not resolvable or reachable`).not.toBe(0);
+      expect(answer.output, `${probe.from}: the name does not resolve`).toMatch(/bad address|not found|resolve|timed out|can't connect|Network is unreachable/i);
+    }
+    // Not from the LAN address, not through the HTTPS port.
     const viaHttps = await fetch(`${config.baseURL}/config/`, { signal: AbortSignal.timeout(8000) });
     expect(viaHttps.headers.get('content-type') ?? '', 'the admin routes are not part of the public site: /config/ is just a page of the Regie').toContain('text/html');
     expect(await viaHttps.text()).not.toContain('"apps"');

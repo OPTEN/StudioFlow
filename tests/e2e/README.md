@@ -60,8 +60,10 @@ overrides one value of it. Without `E2E_STACK` / `E2E_PROJECT` nothing changes: 
 | 4 | `sf-e2e-4` | 8494 | 7907 / 7908 | 18094 | 17894 | 15494 | 172.31.204.0/24 | `.env.e2e.sf-e2e-4`, `.output/sf-e2e-4` |
 | 5 | `sf-e2e-5` | 8495 | 7909 / 7910 | 18095 | 17895 | 15495 | 172.31.205.0/24 | `.env.e2e.sf-e2e-5`, `.output/sf-e2e-5` |
 
-The table lives in `support/env.ts` (`numberedStack`). The services take the addresses `.10` (LiveKit), `.11` (API),
-`.12` (PostgreSQL) and `.13` (Caddy) of the subnet, `STUDIOFLOW_HTTPS_PORT` carries the https port
+The table lives in `support/env.ts` (`numberedStack`). The compose project has two networks: `studioflow` (Caddy, API,
+LiveKit) takes the subnet above, `backend` (API, PostgreSQL) the one ten third octets up (`172.31.211.0/24` for stack 1;
+`172.31.251.0/24` for the unnumbered stack). The services take the addresses `.10` (LiveKit), `.11` (API) and `.13`
+(Caddy) of the first subnet and `.11` (API) and `.12` (PostgreSQL) of the second, `STUDIOFLOW_HTTPS_PORT` carries the https port
 (`https://localhost:8492`), `STUDIOFLOW_RTC_TCP_PORT` / `STUDIOFLOW_RTC_UDP_PORT` the media ports. Global setup refuses to
 start a stack whose port or subnet is taken and names what holds it.
 

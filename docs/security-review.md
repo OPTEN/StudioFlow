@@ -237,9 +237,16 @@ The audit describes commit dd13fd0. The installation changed with #27; the findi
 - **No Docker socket and no host scripts.** No container mounts the socket; Caddy and LiveKit follow the settings through
   the admin API of Caddy and files in shared volumes. The setup, update, backup and restore scripts are gone, so nothing
   runs with the rights of the operator's shell (E2E-OPS-31 pins both).
-- **The Caddy admin API (port 2019) has no authentication, therefore it is only on the compose network** (not published;
-  E2E-OPS-32 checks that the host cannot reach it). Whoever can run a container in that network could reconfigure Caddy; in
-  a default installation only the API (the one legitimate client) and the other services of the stack are members of it.
+- **The Caddy admin API has no authentication, therefore it is not on any network: it is a unix socket that only Caddy and
+  the API mount (issue #70).** It would show the DNS credentials (`GET /config/`) and accept a new configuration (`POST /load`:
+  serving `/data` with the keys of the local CA, redirecting the Regie login). It used to listen on `0.0.0.0:2019` of the one
+  network every container shared, so a compromised LiveKit (a third-party image that takes media traffic from the internet)
+  owned the edge. Now: the socket (mode 660, group 10002, folder 770) lives in the volume `caddy_admin`, mounted by Caddy, the
+  API and the init service only; Caddy and the API run with the primary group 10002. The stack has two networks, `studioflow`
+  (Caddy, API, LiveKit) and `backend` (API, PostgreSQL, backup), so LiveKit cannot reach PostgreSQL or the backup service
+  either. `infra/release/check.mjs` fails CI for an `admin` directive that is not a unix socket, a port 2019 published, a
+  service on the wrong network or another mount of the socket volume; E2E-OPS-12 and E2E-OPS-32 prove it on the running stack
+  (LiveKit and a throw-away container on the network cannot reach 2019 or PostgreSQL).
   The on-demand TLS `ask` endpoint (`/internal/tls/ask` of the API) is not routed by Caddy, answers only for names of a
   sensible form and admits 60 new names per minute.
 - **Settings are admin-only and CSRF-protected** (`/api/settings/*`: session cookie and `X-StudioFlow`), validated field by
