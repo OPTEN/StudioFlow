@@ -113,13 +113,16 @@ sf_backup_prune_newest() {
 # Retention by days and weeks. Reads backup folder names (one per line, any order) and prints the names to delete.
 #   $1 = number of days to keep   - the newest backup of each of the last $1 days that have a backup
 #   $2 = number of weeks to keep  - the newest backup of each of the last $2 ISO weeks that have a backup
+#   $3 = the backup of the run that retains (optional) - the newest of all, whatever its name sorts like
 # Counting days and weeks that have a backup (not calendar days) keeps the promised history after a pause. Names that
-# do not start with a date are ignored, so a foreign folder is never listed.
+# do not start with a date are ignored, so a foreign folder is never listed. The names alone do not always tell the
+# order: when the older folder of a minute was removed, the next run of that minute takes its name again, and
+# YYYY-MM-DD_HHMM_label sorts before YYYY-MM-DD_HHMM_label-2, which is older then.
 sf_backup_expired() {
-	local keep_days="$1" keep_weeks="$2" name day week keep
+	local keep_days="$1" keep_weeks="$2" newest="${3:-}" name day week keep
 	local days=0 weeks=0 last_day="" last_week=""
 	# Newest first, so the first name of a day is the newest of that day and the first name of a week the newest of it.
-	sort -r | while IFS= read -r name; do
+	{ [ -z "$newest" ] || printf '%s\n' "$newest"; sort -r | awk -v newest="$newest" '$0 != newest'; } | while IFS= read -r name; do
 		[[ "$name" =~ $SF_BACKUP_NAME_PATTERN ]] || continue
 		day="${name:0:10}"
 		if [ "$day" = "$last_day" ]; then

@@ -265,6 +265,16 @@ test.describe('OPS backup logic (unit)', () => {
     expect(empty.stdout).toBe('');
   });
 
+  test('E2E-OPS-21 [unit] retention keeps the backup of the running job as the newest, also when its name was used before in that minute', t.p1, async () => {
+    // The older folder of the minute (_auto) was removed by the first job (_auto-2); the second job of the minute takes the name again.
+    const names = ['2026-10-28_1435_auto-2', '2026-10-28_1435_auto', '2026-10-27_0300_auto'];
+    const byName = await bashScript(`printf '%s\\n' ${names.map((name) => `'${name}'`).join(' ')} | sf_backup_expired 1 1`);
+    expect(byName.stdout.split('\n').filter(Boolean).sort(), 'by name alone the older folder looks like the newest').toEqual(['2026-10-27_0300_auto', '2026-10-28_1435_auto'].sort());
+    const withNewest = await bashScript(`printf '%s\\n' ${names.map((name) => `'${name}'`).join(' ')} | sf_backup_expired 1 1 2026-10-28_1435_auto`);
+    expect(withNewest.code, withNewest.output).toBe(0);
+    expect(withNewest.stdout.split('\n').filter(Boolean).sort(), 'the folder of the running job stays, the older one of the same day goes').toEqual(['2026-10-27_0300_auto', '2026-10-28_1435_auto-2'].sort());
+  });
+
   test('E2E-OPS-22 [unit] the checksum check accepts an intact backup and names the first problem otherwise', t.p0, async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-sums-'));
     try {
