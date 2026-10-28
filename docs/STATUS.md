@@ -1,4 +1,4 @@
-# Status and handover (2026-10-27)
+# Status and handover (2026-10-28)
 
 Interim state of the work on issues #3–#58, written so a new session can continue without the previous conversation.
 Decisions for all open questions: `docs/decisions.md`. Binding i18n design: `docs/architecture/i18n-design.md`,
@@ -68,32 +68,39 @@ The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What 
 | #33 API crash under 30 parallel connections | fix pushed (GSS encryption off, 4f4eb7a); stays open until CI runs prove it | 4f4eb7a |
 | #12 performance | done: measured, budget in `docs/testing.md` 5.1, H.264 screens, pausing, visibility, still thumbnails, hold-frame budget, load warnings, `perf` project and `perf.yml` | up to af40467 (also #39, #50) |
 | #7 audio | done: audio station, microphones, screen and video sound, mixer, Audio dock, Web Audio on the output page, "Audio blocked" | the 25 commits after af40467 |
+| #57 CI minutes | path filters (`changes` job), aggregate check `ci-ok`, weekly `audit.yml`, Release builds only after a CI smoke run, second smoke only for release commits, `needs-full-e2e` label | e57babb, e0acbd5, 7a99793, 63b0f9a |
+| #53 #54 #56 | E2E harness: presence poll, SWITCH-15 on one clock, collision-free `uniqueIp()` | 2da04dc .. 51e395b |
+| #55 | Regie in-flight guard until the hub event, refused switch shown | aa116d5 |
+| #5 README, #59 MIT, #61 sponsor note, #62 logo | English README with real screenshots; licence MIT; "Sponsored by OPTEN" in the Regie header; "Programm" logo everywhere | a4a62d5, 35b4712, 4caa1f8 .. 7465213 |
+| #48 LiveKit 1.13.11, #65 netem probe | one upstream x/net finding left (Renovate) | e0acbd5, 3e5ecf9 |
+| #63 #66 + SRC-12 | no settings request before login, focus after failed login, monitoring cells by column name | 62aaa17 .. 20b44d4 |
+| #14 #33 | verified and closed (XFER specs; 18 green smoke runs since the GSS fix) | |
+| #67 #69 | landing page on Pages and product video: separate session, PR #72 | c7e92c5 |
+| #70 #71 #73 #74 (security audit 2026-10-28) | Caddy admin API on a unix socket only for caddy+api, networks `studioflow`/`backend`; TLS key 640, no typed user name in the audit log, absolute session lifetime 7 days with stored revocations, PBKDF2 210,000 with rehash; operator CLI reads the DB password from the secrets volume; flaky apply-status test | d83223d .. b883b3d |
 
-## Interim state (2026-10-27, work stopped on request)
+## Current state (2026-10-28)
 
-The owner asked to finish the issues in progress (#7, #12), record the state and start nothing new. Not started:
-#5 README, #48 LiveKit 1.13.11, #53–#56, the final full-application test and the 0.1.0 release (release PR #29 stays
-open; #18 closes with that release).
+Everything up to #74 is on `main` except what the table and the list below name. Local verification of the security
+work (#70, #71, #73) on stack 4: smoke, desktop-chromium and disruptive over `specs/ops`, `specs/auth`, `specs/net`,
+`specs/output`: 199 passed; the remaining failures are E2E-NET-05/09 and E2E-OPS-28 (green on a re-run, load) and two
+that fail on `main` as well on Docker Desktop for Windows: INT-AUTH-22 (a 5 MB body to the published API port answers
+400 instead of 413) and E2E-OPS-35 (taken port). Both still need a decision (test or product) and an issue.
 
-What was checked before the stop:
+Open:
 
-- #12: unit tests of all packages, Angular tests, API tests, the E2E specs of the agent on stack 3. Not re-run after the
-  last fixes: E2E-OUT-20, E2E-SWITCH-02 `[output, fade]` and `[fade pixels]`, E2E-SWITCH-09 `[output, fade]`;
-  `.github/workflows/perf.yml` (manual) has never run on GitHub.
-- #7: rebased onto #12 (conflicts in the output report, screen capture options, output page, header chip, sender
-  station, spec, runbook and `docs/testing.md`; both sides kept, the audio section is now 2.20). After the rebase:
-  `npm run check`, `format:check`, all Vitest, Angular and API tests, contracts, `infra/release/check.mjs` green. The
-  audio E2E specs (`tests/e2e/specs/audio/`) were green on the agent's stack 2 before the rebase and were not run
-  again after it. `screenCaptureOptions(frameRate, withAudio)` now builds the capture options of both features.
-- The migration `AddAudioMixer` was regenerated after `AddServerSettings` (#27); a database from before both is covered
-  by `AudioMixerMigrationTests`.
+- A full local E2E matrix (all projects incl. Firefox, WebKit and the mobile descriptors) was started and interrupted by
+  a usage limit; its triage files issues for every product or test defect.
+- #60 repository clean-up (last before the public release), #64 closes with the first release (or the copy of the
+  prototype on Pages from #67), #18 closes with 0.1.0, #23 owner actions (branch protection to `ci-ok`, GHCR package
+  access, Pages source), #69 product video (separate session, PR #75).
 
 ## Remaining plan
 
-1. Watch CI and Release on `main` after the #7 merge; fix what is red.
-2. #48 LiveKit 1.13.11, #53–#56, #5 README (describes the #27 install).
-3. Run the full E2E workflow (`e2e-full.yml`, on demand) and `perf.yml`; fix and file what fails.
-4. Merge release PR #29 (0.1.0) once everything is green; check the release run (images, signatures, scan, smoke).
+1. Finish the E2E matrix triage; fix and file what fails. Run the workflow **E2E full** on GitHub (label
+   `needs-full-e2e` on the release pull request) and `perf.yml`.
+2. #60 clean-up.
+3. Merge release PR #29 (0.1.0) once CI, E2E full and Release are green; check the release run (images, signatures,
+   scan, smoke, files) and install the bundle once on a clean stack.
 
 ## Follow-ups for the final pass
 
