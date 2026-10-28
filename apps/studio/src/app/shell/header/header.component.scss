@@ -31,7 +31,17 @@
 }
 
 // "Sponsored by OPTEN": quiet and muted, set apart from the brand by a hairline. The text goes first (below 1380 px
-// only the logo and the name stay, below 900 px only the logo), so that it never pushes the controls out.
+// only the logo and the name stay, below 900 px only the logo), so that it never pushes the controls out. Hidden text
+// stays readable for screen readers (like .u-sr-only): it is the accessible name of the link.
+@mixin sponsor-text-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .c-header__sponsor {
   align-items: center;
   border-left: 1px solid var(--seam-strong);
@@ -56,13 +66,13 @@
   letter-spacing: 0.06em;
 
   @include narrow {
-    display: none;
+    @include sponsor-text-hidden;
   }
 }
 
 .c-header__sponsor-prefix {
   @include presets-compact {
-    display: none;
+    @include sponsor-text-hidden;
   }
 }
 

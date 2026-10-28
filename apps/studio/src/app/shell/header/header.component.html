@@ -6,13 +6,11 @@
     target="_blank"
     rel="noopener"
     data-testid="sponsor"
-    [attr.aria-label]="t('regie.header.sponsor.label')"
   >
-    <span class="c-header__sponsor-prefix" aria-hidden="true">{{
-      t('regie.header.sponsor.prefix')
-    }}</span>
+    <!-- The text is the accessible name: narrow widths hide it visually only (axe label-content-name-mismatch, #79). -->
+    <span class="c-header__sponsor-prefix">{{ t('regie.header.sponsor.prefix') }}&ngsp;</span>
     <svg sfIcon="opten"></svg>
-    <span class="c-header__sponsor-name" aria-hidden="true">OPTEN</span>
+    <span class="c-header__sponsor-name">OPTEN</span>
   </a>
   <sf-production-menu />
 
