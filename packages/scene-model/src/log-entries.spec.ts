@@ -29,6 +29,9 @@ describe('logEntryText', () => {
     expect(logEntryText(entry('loginFailed', { username: 'root' }))).toBe(
       'Sign-in failed for “root”',
     );
+    expect(logEntryText(entry('loginFailedUnknownUser'))).toBe(
+      'Sign-in failed for an unknown user name',
+    );
     expect(logEntryText(entry('loginLocked'))).toBe(
       'Sign-in locked after too many failed attempts',
     );
@@ -152,7 +155,7 @@ describe('logEntryText', () => {
   });
 
   it('has a message key for every code of the API', () => {
-    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(64);
+    expect(Object.keys(LOG_MESSAGE_KEYS)).toHaveLength(65);
     for (const [code, key] of Object.entries(LOG_MESSAGE_KEYS)) {
       expect(key).toBe(`regie.log.${code}`);
     }

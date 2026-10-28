@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Opten.StudioFlow.Core.Application;
@@ -440,23 +441,55 @@ public sealed class AdminPasswordHasherTests
     private readonly AdminPasswordHasher hasher = new();
 
     [Fact]
-    public void Verify_Password_AcceptsOnlyTheRightOne()
+    public void Check_Password_AcceptsOnlyTheRightOne()
     {
         var hash = hasher.Hash("correct horse battery");
 
-        Assert.True(hasher.Verify(hash, "correct horse battery"));
-        Assert.False(hasher.Verify(hash, "Correct horse battery"));
-        Assert.False(hasher.Verify(hash, string.Empty));
+        Assert.Equal(PasswordCheck.Succeeded, hasher.Check(hash, "correct horse battery"));
+        Assert.Equal(PasswordCheck.Failed, hasher.Check(hash, "Correct horse battery"));
+        Assert.Equal(PasswordCheck.Failed, hasher.Check(hash, string.Empty));
     }
 
     [Fact]
-    public void Verify_CorruptHash_IsFalse() => Assert.False(hasher.Verify("%%%not-base64%%%", "x"));
+    public void Check_CorruptHash_Fails() => Assert.Equal(PasswordCheck.Failed, hasher.Check("%%%not-base64%%%", "x"));
 
     [Fact]
     public void Hash_SamePassword_UsesRandomSalt() => Assert.NotEqual(hasher.Hash("x"), hasher.Hash("x"));
 
     [Fact]
     public void Hash_IsAnIdentityV3Hash() => Assert.StartsWith("AQAAAA", hasher.Hash("x"), StringComparison.Ordinal);
+
+    [Fact]
+    public void Hash_StoresTheCurrentIterationCountInTheHash()
+    {
+        Assert.Equal(AdminPasswordHasher.IterationCount, IterationCountOf(hasher.Hash("x")));
+        Assert.True(AdminPasswordHasher.IterationCount >= 210_000, "OWASP guidance for PBKDF2-HMAC-SHA512");
+    }
+
+    [Fact]
+    public void Check_FreshHash_NeedsNoRehash() => Assert.Equal(PasswordCheck.Succeeded, hasher.Check(hasher.Hash("secret-password"), "secret-password"));
+
+    [Fact]
+    public void Check_HashWithTheOldHundredThousandIterations_StillVerifiesAndAsksForARehash()
+    {
+        var old = OldHash("secret-password", 100_000);
+
+        Assert.Equal(100_000, IterationCountOf(old));
+        Assert.Equal(PasswordCheck.SucceededRehashNeeded, hasher.Check(old, "secret-password"));
+        Assert.Equal(PasswordCheck.Failed, hasher.Check(old, "other-password"));
+    }
+
+    [Fact]
+    public void Check_HashWithMoreIterationsThanTheCurrentOnes_NeedsNoRehash() =>
+        Assert.Equal(PasswordCheck.Succeeded, hasher.Check(OldHash("secret-password", AdminPasswordHasher.IterationCount + 1), "secret-password"));
+
+    /// <summary>A hash as the earlier versions made it (Identity v3 with a lower iteration count).</summary>
+    internal static string OldHash(string password, int iterations) =>
+        new PasswordHasher<object>(Options.Create(new PasswordHasherOptions { IterationCount = iterations })).HashPassword(new object(), password);
+
+    /// <summary>The iteration count of an Identity v3 hash: byte 0 is the format marker, 1-4 the PRF, 5-8 the count (big endian).</summary>
+    internal static int IterationCountOf(string hash) =>
+        System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(Convert.FromBase64String(hash).AsSpan(5, 4));
 }
 
 public sealed class SnakeCaseTests

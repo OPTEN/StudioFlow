@@ -107,13 +107,23 @@ services:
         secret livekit-api-key "$${LIVEKIT_API_KEY:-API$$(random 12)}"
         secret livekit-api-secret "$${LIVEKIT_API_SECRET:-sk$$(random 46)}"
         # Folders the API writes into; the LiveKit supervisor (root, no capabilities) writes applied.json next to livekit.yaml.
-        chown "$$app_uid:$$app_uid" /caddy-certs /livekit-config /backup-config
-        chmod 755 /caddy-certs /backup-config
+        chown "$$app_uid:$$app_uid" /livekit-config /backup-config
+        chmod 755 /backup-config
         chmod 1777 /livekit-config
-        # The folder of Caddy's admin socket belongs to the API and to the group of the two (the socket Caddy creates in it has
-        # that group, mode 660).
-        chown "$$app_uid:$$shared_gid" /caddy-admin
+        # The folder of the uploaded certificate belongs to the API and to the group of the two (what the API writes in it has
+        # that group). The TLS key is readable for those two only (mode 640); a key that an earlier version wrote with mode 644
+        # (owner and group of the API) is corrected here.
+        chown "$$app_uid:$$shared_gid" /caddy-certs /caddy-admin
+        chmod 750 /caddy-certs
         chmod 770 /caddy-admin
+        for file in /caddy-certs/*.pem; do
+          [ -e "$$file" ] || continue
+          chown "$$app_uid:$$shared_gid" "$$file"
+          case "$$file" in
+            */key-*) chmod 640 "$$file" ;;
+            *) chmod 644 "$$file" ;;
+          esac
+        done
         echo "secrets: ready"
 
   caddy:

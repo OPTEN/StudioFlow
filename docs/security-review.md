@@ -256,10 +256,34 @@ The audit describes commit dd13fd0. The installation changed with #27; the findi
 - **The setup code** protects the first-run account as before; the settings and the wizard routes need the admin session
   (E2E-OPS-38).
 - **Files that other services read are world-readable inside dedicated volumes:** `livekit.yaml` (it holds the LiveKit key
-  pair) in `livekit_config` (mounted in the API and LiveKit only), and the uploaded certificate and its private key in
-  `caddy_certs` (API and Caddy only). The services run as different users and none of them may read another user's files,
-  so mode 600 would not work; the exposure is limited to containers that already hold the same secret. The rclone
-  configuration is mode 600.
+  pair) in `livekit_config` (mounted in the API and LiveKit only), and the uploaded certificate (public) in `caddy_certs`
+  (API, Caddy and the init service only). The services run as different users, so mode 600 would not work for LiveKit; the
+  exposure is limited to containers that already hold the same secret. The rclone configuration is mode 600.
+- **The private key of an uploaded certificate is mode 640 (issue #71).** It was written world-readable (644) so that Caddy
+  (uid 10001) could read it. Caddy and the API now run with the same primary group (10002, `user:` in the compose files),
+  the API writes the key as `rw-r-----` (`FileAudience.OwnerAndGroup`) and the init service closes a key that an earlier
+  version wrote as 644 (the API also corrects the mode of a key whose content did not change). `caddy_certs` is
+  `750` (API and group). Unit tests pin the modes.
+- **The audit log never records a typed user name that is not the account's (issue #71).** `login.failed` and `login.locked`
+  stored up to 100 characters of whatever was typed into the user name field, which is a password for somebody who mixed up
+  the fields; the entry went into the audit table and the CSV/JSON export. Now the entry names the user only when the typed
+  name is the account's, and says "Sign-in failed for an unknown user name" otherwise (`LogCode.LoginFailedUnknownUser`). The
+  migration `AddRevokedAdminSessions` removes the typed name from every older `login.failed` and `login.locked` entry
+  whose name is not the account's. (The in-memory lockout still counts attempts per typed name; that is never written down.)
+- **A session has an absolute lifetime and a logout survives a restart (issue #71).** The cookie slides 12 h
+  (`Admin:SessionLifetime`), and it used to slide forever, so a stolen cookie that was used regularly never expired. A
+  session now ends `Admin:AbsoluteSessionLifetime` (default 7 days, at most 90) after the sign-in: the time is a claim of
+  the cookie (`studioflow:iat`), a password change renews the cookie but keeps it. The logout revocation list was in memory
+  only, so after an API restart a signed-out cookie worked again until it expired; it is now also stored in the table
+  `admin_revoked_session` (the session id and the time until which it matters), loaded at startup, written at the logout
+  (kept in memory and stored by the maintenance loop if the database is down at that moment) and cleaned up every minute.
+  The other sessions are untouched by a logout. **Compatibility:** cookies without the time of issue are refused, so every
+  session that exists at the update has to sign in once; no password, hash or other data changes.
+- **PBKDF2 uses 210 000 iterations (issue #71).** The Identity v3 hash stores algorithm, iteration count and salt, so every
+  older hash (100 000 iterations) still verifies. A successful login with a lower count hashes the password again with
+  `AdminPasswordHasher.IterationCount` (210 000, the OWASP figure for PBKDF2-HMAC-SHA512) and stores it with a compare-and-set
+  on the old hash, without touching the security stamp: no session ends, a password changed meanwhile is never overwritten,
+  and a failure to store it only delays the renewal to the next login.
 - **The backup service carries capabilities** (`CHOWN`, `DAC_OVERRIDE`, `DAC_READ_SEARCH`, `FOWNER`) and mounts the data
   volumes read-write, because a restore replaces files of the API user, of Caddy and of the database. It publishes no port,
   its root filesystem is read-only and no other service mounts those volumes writable.

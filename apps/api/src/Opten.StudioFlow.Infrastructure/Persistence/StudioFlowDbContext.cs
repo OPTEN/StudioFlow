@@ -41,6 +41,9 @@ public sealed class StudioFlowDbContext(DbContextOptions<StudioFlowDbContext> op
     /// <summary>Last-live times of device sources.</summary>
     internal DbSet<SourceActivity> SourceActivity => Set<SourceActivity>();
 
+    /// <summary>Regie sessions that a logout ended.</summary>
+    internal DbSet<RevokedSession> RevokedSessions => Set<RevokedSession>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

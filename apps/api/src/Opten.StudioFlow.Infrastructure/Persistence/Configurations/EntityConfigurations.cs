@@ -160,6 +160,18 @@ internal sealed class SourceActivityConfiguration : IEntityTypeConfiguration<Sou
     }
 }
 
+/// <summary>Table <c>admin_revoked_session</c>: Regie sessions that a logout ended (the revocation survives a restart).</summary>
+internal sealed class RevokedSessionConfiguration : IEntityTypeConfiguration<RevokedSession>
+{
+    public void Configure(EntityTypeBuilder<RevokedSession> builder)
+    {
+        builder.ToTable("admin_revoked_session");
+        builder.HasKey(s => s.SessionId);
+        builder.Property(s => s.SessionId).HasMaxLength(Columns.Id).ValueGeneratedNever();
+        builder.HasIndex(s => s.RevokedUntil);
+    }
+}
+
 /// <summary>Table <c>audit_entries</c>.</summary>
 internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
 {

@@ -22,6 +22,7 @@ internal sealed class StartupInitializer(
     ProductionService productions,
     AudioMixerService audioMixer,
     AdminAccountState account,
+    AdminSessions adminSessions,
     ServerSettingsState serverSettings,
     ServerConfigApplier serverConfig,
     IConfiguration configuration,
@@ -53,6 +54,7 @@ internal sealed class StartupInitializer(
         await productions.EnsureDefaultProductionAsync(cancellationToken);
         await audioMixer.SyncAllAsync(cancellationToken);
         await account.RefreshAsync(cancellationToken);
+        await adminSessions.LoadAsync(cancellationToken);
         await serverSettings.RefreshAsync(cancellationToken);
         await ApplyServerSettingsAsync(cancellationToken);
         WarnAboutIgnoredAccountSettings();
@@ -132,10 +134,10 @@ internal sealed class MaintenanceWorker(
         await Task.WhenAll(
             LoopAsync(Second, token, ("output status", outputs.TickAsync), ("pairing requests", pairing.ExpireRequestsAsync), ("devices", devices.TickAsync), ("restart watch", restartWatch.CheckAfterStartAsync)),
             LoopAsync(InviteInterval, token, ("invites", pairing.MaintainInvitesAsync)),
-            LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync), ("server settings", ApplyServerSettingsAsync)),
+            LoopAsync(AccountInterval, token, ("admin account", RefreshAccountAsync), ("signed-out sessions", adminSessions.StorePendingAsync), ("server settings", ApplyServerSettingsAsync)),
             ReconcileLoopAsync(token),
             LoopAsync(sources.LiveMarkInterval, token, ("last-live times", restartWatch.MarkLiveSourcesAsync)),
-            LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync)),
+            LoopAsync(PruneInterval, token, ("lockout cleanup", PruneLockoutsAsync), ("signed-out sessions cleanup", adminSessions.PruneAsync)),
             LoopAsync(audit.MaintenanceInterval, token, ("audit retention", auditRetention.RunAsync)));
     }
 

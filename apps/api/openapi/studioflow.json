@@ -6724,6 +6724,7 @@
           "textHidden",
           "loginSucceeded",
           "loginFailed",
+          "loginFailedUnknownUser",
           "loginLocked",
           "loggedOut",
           "productionCreated",

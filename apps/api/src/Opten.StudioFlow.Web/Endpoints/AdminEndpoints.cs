@@ -16,13 +16,13 @@ namespace Opten.StudioFlow.Web.Endpoints;
 /// <summary>Regie session: first-run setup, login with lockout, logout, current session, password change.</summary>
 internal static class AuthEndpoints
 {
-    public static async Task<IResult> LoginAsync([FromBody] LoginRequest body, AdminLoginService logins, HttpContext context)
+    public static async Task<IResult> LoginAsync([FromBody] LoginRequest body, AdminLoginService logins, HttpContext context, TimeProvider clock)
     {
         var result = await logins.LoginAsync(body.Username, body.Password, ClientAddress.Of(context));
         switch (result.Outcome)
         {
             case LoginOutcome.Succeeded:
-                await SignInAsync(context, result.Identity!);
+                await SignInAsync(context, result.Identity!, clock.GetUtcNow());
                 return TypedResults.Ok(new SessionDto(result.Identity!.Username));
             case LoginOutcome.Locked:
                 var seconds = Math.Max(1, (int)Math.Ceiling(result.RetryAfter!.Value.TotalSeconds));
@@ -36,26 +36,31 @@ internal static class AuthEndpoints
     public static IResult GetSetupStatus(AdminAccountState account) => TypedResults.Ok(new SetupStatusDto(account.SetupRequired));
 
     // The account is created and the new admin is signed in at once.
-    public static async Task<IResult> SetUpAsync([FromBody] SetupRequest body, AdminAccountService accounts, HttpContext context, CancellationToken cancellationToken)
+    public static async Task<IResult> SetUpAsync([FromBody] SetupRequest body, AdminAccountService accounts, HttpContext context, TimeProvider clock, CancellationToken cancellationToken)
     {
         var identity = await accounts.SetUpAsync(body, ClientAddress.Of(context), cancellationToken);
-        await SignInAsync(context, identity);
+        await SignInAsync(context, identity, clock.GetUtcNow());
         return TypedResults.Ok(new SessionDto(identity.Username));
     }
 
     // Every other session ends: the new stamp is only in this session's renewed cookie, and the other sessions' hub
     // connections are closed.
-    public static async Task<IResult> ChangePasswordAsync([FromBody] ChangePasswordRequest body, AdminAccountService accounts, AdminSessions sessions, HttpContext context, CancellationToken cancellationToken)
+    public static async Task<IResult> ChangePasswordAsync([FromBody] ChangePasswordRequest body, AdminAccountService accounts, AdminSessions sessions, HttpContext context, TimeProvider clock, CancellationToken cancellationToken)
     {
         var identity = await accounts.ChangePasswordAsync(context.User.Identity!.Name!, body, ClientAddress.Of(context), cancellationToken);
         var sessionId = context.User.FindFirstValue(StudioFlowClaims.SessionId);
-        await SignInAsync(context, identity, sessionId);
+
+        // The renewed cookie keeps the time of the sign-in: a password change does not extend the absolute lifetime.
+        var issuedAt = long.TryParse(context.User.FindFirstValue(StudioFlowClaims.IssuedAt), NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : clock.GetUtcNow();
+        await SignInAsync(context, identity, issuedAt, sessionId);
         sessions.EndAllExcept(sessionId);
         return TypedResults.NoContent();
     }
 
-    private static Task SignInAsync(HttpContext context, AdminIdentity identity, string? sessionId = null) =>
-        context.SignInAsync(AuthSchemes.Admin, AdminSessions.Principal(identity, sessionId), new AuthenticationProperties { IsPersistent = true });
+    private static Task SignInAsync(HttpContext context, AdminIdentity identity, DateTimeOffset issuedAt, string? sessionId = null) =>
+        context.SignInAsync(AuthSchemes.Admin, AdminSessions.Principal(identity, issuedAt, sessionId), new AuthenticationProperties { IsPersistent = true });
 
     /// <summary>Detail of the answer to a locked login: the wait rounded up to whole minutes.</summary>
     internal static string LockoutDetail(int seconds)
@@ -71,7 +76,7 @@ internal static class AuthEndpoints
         if (context.User.FindFirstValue(StudioFlowClaims.SessionId) is { Length: > 0 } sessionId)
         {
             // No copy of the cookie (sliding renewals included) can be valid longer than one lifetime from now.
-            sessions.Revoke(sessionId, clock.GetUtcNow() + admin.Value.SessionLifetime);
+            await sessions.RevokeAsync(sessionId, clock.GetUtcNow() + admin.Value.SessionLifetime, CancellationToken.None);
         }
 
         await context.SignOutAsync(AuthSchemes.Admin);

@@ -37,6 +37,7 @@ export const regieLog: Translation<typeof en> = {
   'regie.log.lensOther': 'Anderes',
   'regie.log.loggedOut': '«{username}» abgemeldet',
   'regie.log.loginFailed': 'Anmeldung von «{username}» fehlgeschlagen',
+  'regie.log.loginFailedUnknownUser': 'Anmeldung mit unbekanntem Benutzernamen fehlgeschlagen',
   'regie.log.loginLocked': 'Anmeldung nach zu vielen Fehlversuchen gesperrt',
   'regie.log.loginSucceeded': '«{username}» angemeldet',
   'regie.log.outputAccessChanged': 'Zugriff des Output-Links «{name}» geändert',

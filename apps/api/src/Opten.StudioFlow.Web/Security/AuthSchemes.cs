@@ -41,6 +41,9 @@ internal static class StudioFlowClaims
     /// <summary>Random id of an admin session (logout revokes it, GAP-04).</summary>
     public const string SessionId = "studioflow:sid";
 
+    /// <summary>When an admin session was issued (Unix seconds); the session ends an absolute lifetime after that, however active it was.</summary>
+    public const string IssuedAt = "studioflow:iat";
+
     /// <summary>Security stamp of the account when the session was issued; a password change makes older stamps invalid.</summary>
     public const string SecurityStamp = "studioflow:stamp";
 }

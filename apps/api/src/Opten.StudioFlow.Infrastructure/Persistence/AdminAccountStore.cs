@@ -56,6 +56,14 @@ internal sealed class AdminAccountStore(IDbContextFactory<StudioFlowDbContext> c
         return await TrySaveAsync(db, cancellationToken);
     }
 
+    public async Task<bool> TryRehashAsync(string expectedHash, string newHash, CancellationToken cancellationToken)
+    {
+        await using var db = await contexts.CreateDbContextAsync(cancellationToken);
+        return await db.AdminAccounts
+            .Where(a => a.Id == AdminAccount.OnlyId && a.PasswordHash == expectedHash)
+            .ExecuteUpdateAsync(set => set.SetProperty(a => a.PasswordHash, newHash), cancellationToken) == 1;
+    }
+
     /// <summary>Saves; false when the account row was changed or deleted by someone else meanwhile.</summary>
     private static async Task<bool> TrySaveAsync(StudioFlowDbContext db, CancellationToken cancellationToken)
     {

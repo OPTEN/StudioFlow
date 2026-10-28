@@ -647,9 +647,10 @@ types; errors are RFC 7807 `ProblemDetails` with extension `code` (see `ErrorCod
 Authentication and authorization:
 - Admin account: there is exactly one, created in the **first-run setup** and stored in the table `admin_account`
   (constant primary key 1 plus a check constraint, so the database refuses a second row, also under concurrent setups;
-  password hashed with the ASP.NET Identity `PasswordHasher`, v3). It is in no configuration: `Admin:Username`,
-  `Admin:Password` and `Admin:PasswordHash` are ignored with a startup warning that names the keys. `Admin:SessionLifetime`
-  and `Admin:Lockout:*` stay.
+  password hashed with the ASP.NET Identity `PasswordHasher`, v3: PBKDF2-HMAC-SHA512 with 210 000 iterations, the count is
+  part of the hash; older hashes still verify and are renewed on the next successful login without ending any session). It
+  is in no configuration: `Admin:Username`, `Admin:Password` and `Admin:PasswordHash` are ignored with a startup warning
+  that names the keys. `Admin:SessionLifetime`, `Admin:AbsoluteSessionLifetime` and `Admin:Lockout:*` stay.
 - First-run setup: while no account exists the API issues a one-time **setup code** `XXXX-XXXX` (32 unambiguous
   characters, about 40 bits, from a cryptographic random source). It lives in memory only, is written to the server log
   (`Setup code: XXXX-XXXX`, `docker compose logs api`) and nowhere else, is new on every start and after every
@@ -665,8 +666,12 @@ Authentication and authorization:
   `password_equals_username`, `password_too_common`); the Regie shows its own texts (decision D7).
 - `POST /api/auth/login` checks the account (user name case-sensitive, the password is verified against a throw-away
   hash when the user name is wrong, so the time reveals nothing); before the setup it answers 401. Cookie
-  `sf_session`: HttpOnly, Secure (`SameAsRequest` only in Development/Testing), SameSite=Strict, sliding 12 h; it carries
-  a session id and the **security stamp** of the account. Data Protection keys persisted to
+  `sf_session`: HttpOnly, Secure (`SameAsRequest` only in Development/Testing), SameSite=Strict, sliding 12 h
+  (`Admin:SessionLifetime`) but never longer than `Admin:AbsoluteSessionLifetime` (7 days, at most 90) after the sign-in; it
+  carries a session id, the time of the sign-in and the **security stamp** of the account (a cookie without the time is
+  refused). A logout puts the session id on a revocation list that is kept in memory and in the table
+  `admin_revoked_session`, so it holds after an API restart. The audit entries of failed sign-ins name the user only when the
+  typed name is the account's. Data Protection keys persisted to
   `/data/keys` (`DataProtection:KeysPath`). Lockout: 5 failed attempts per client IP within 15 minutes → 15 minutes
   429 `rate_limited` with `Retry-After`; additionally 20 failures per username in 15 minutes lock the username.
 - `POST /api/auth/password` (admin, CSRF header; `ChangePasswordRequest`: `currentPassword`, `newPassword`) answers 204
@@ -1358,7 +1363,8 @@ same call; a failure is recorded in the status and retried, it never fails the s
 - **Backup service**: `backup-settings.json` (schedule, time zone, retention, off-site remote, age recipients, hashes) and
   `rclone.conf` in `backup_config`; a request for "Back up now" is a file `backup-now` with a new token in the same volume. The
   service answers in `backup_status/backup-status.json`.
-- **Uploaded certificate**: certificate chain and key as files in `caddy_certs` (mode 600 for the key), loaded by the pushed
+- **Uploaded certificate**: certificate chain and key as files in `caddy_certs` (the key mode 640, owner the API, group 10002 that
+  Caddy shares; the certificate 644), loaded by the pushed
   Caddyfile with `tls /certs/fullchain.pem /certs/privkey.pem`.
 
 `INSTALL__*` (the `Install` options, fixed by `docker-compose.yml`, never by the operator's choice): `HTTPSPORT`, `SECRETSPATH`

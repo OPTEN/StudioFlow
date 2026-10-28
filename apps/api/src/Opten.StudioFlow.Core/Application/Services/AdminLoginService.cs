@@ -34,15 +34,26 @@ public sealed class AdminLoginService(AdminAccountState account, LoginThrottle t
             return new LoginResult(LoginOutcome.Locked, null, locked);
         }
 
-        var details = new Dictionary<string, string>(StringComparer.Ordinal)
+        var check = account.Check(username, password);
+
+        // A typed user name that is not the account's may be a password put into the wrong field: the audit log (and its CSV
+        // and JSON export) records the name of the account when the attempt used it, and nothing of the typed text otherwise.
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Ip] = ip };
+        if (check.MatchedUsername is { } matched)
         {
-            [AuditDetails.Username] = TextRules.Truncate(username, 100) ?? string.Empty,
-            [AuditDetails.Ip] = ip,
-        };
-        if (account.Verify(username, password) is { } identity)
+            details[AuditDetails.Username] = matched;
+        }
+
+        if (check.Identity is { } identity)
         {
             throttle.RegisterSuccess(ip);
             await AuditAsync(AuditActions.LoginSucceeded, details);
+            if (check.StaleHash is { } stale)
+            {
+                // The hash was made with fewer iterations than the current ones: renew it now that the password is known.
+                await account.RehashAsync(password ?? string.Empty, stale, CancellationToken.None);
+            }
+
             return new LoginResult(LoginOutcome.Succeeded, identity, null);
         }
 

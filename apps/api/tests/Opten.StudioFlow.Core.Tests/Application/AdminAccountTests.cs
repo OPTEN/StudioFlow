@@ -372,6 +372,79 @@ public sealed class AdminAccountStateTests
     }
 
     [Fact]
+    public void Check_RightUserWrongPassword_NamesTheAccountButFails()
+    {
+        state.Replace(Account("regie", "secret-password"));
+
+        var check = state.Check(" regie ", "wrong-password");
+
+        Assert.Equal((null, "regie", null), (check.Identity, check.MatchedUsername, check.StaleHash));
+    }
+
+    [Theory]
+    [InlineData("other", "secret-password")]
+    [InlineData("secret-password", "secret-password")]
+    [InlineData("", "")]
+    [InlineData(null, null)]
+    public void Check_NotTheUserName_NeverNamesAnything(string? username, string? password)
+    {
+        state.Replace(Account("regie", "secret-password"));
+
+        var check = state.Check(username, password);
+
+        Assert.Equal((null, null, null), (check.Identity, check.MatchedUsername, check.StaleHash));
+    }
+
+    [Fact]
+    public void Check_RightPasswordWithAWeakHash_ReturnsTheStaleHash()
+    {
+        state.Replace(AdminAccount.Create("regie", "old:secret-password", DateTimeOffset.UtcNow));
+
+        var check = state.Check("regie", "secret-password");
+
+        Assert.NotNull(check.Identity);
+        Assert.Equal("old:secret-password", check.StaleHash);
+        Assert.NotNull(state.Verify("regie", "secret-password"));
+    }
+
+    [Fact]
+    public async Task Rehash_StoresTheNewHashKeepsTheStampAndLoginsGoOn()
+    {
+        var account = AdminAccount.Create("regie", "old:secret-password", DateTimeOffset.UtcNow);
+        store.Account = account;
+        state.Replace(account);
+
+        await state.RehashAsync("secret-password", "old:secret-password", CancellationToken.None);
+
+        Assert.Equal("hash:secret-password", store.Account.PasswordHash);
+        Assert.Equal(account.SecurityStamp, store.Account.SecurityStamp);
+        Assert.True(state.IsCurrent("regie", account.SecurityStamp));
+        var check = state.Check("regie", "secret-password");
+        Assert.NotNull(check.Identity);
+        Assert.Null(check.StaleHash);
+    }
+
+    [Fact]
+    public async Task Rehash_APasswordChangedMeanwhile_IsNeverOverwritten()
+    {
+        store.Account = Account("regie", "brand-new-password");
+
+        await state.RehashAsync("secret-password", "old:secret-password", CancellationToken.None);
+
+        Assert.Equal("hash:brand-new-password", store.Account.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Rehash_DatabaseFailure_DoesNotThrowAndIsLogged()
+    {
+        store.RehashFails = true;
+
+        await state.RehashAsync("secret-password", "old:secret-password", CancellationToken.None);
+
+        Assert.Contains(logger.Messages, m => m.Contains("could not be renewed", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IsCurrent_OnlyForTheCurrentUserAndStamp()
     {
         var account = Account("regie", "secret-password");
@@ -420,6 +493,29 @@ public sealed class AdminAccountStateTests
         public Task<bool> TryUpdateAsync(AdminAccount account, AuditEntry audit, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<bool> TryDeleteAsync(AuditEntry audit, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public List<(string Expected, string New)> Rehashes { get; } = [];
+
+        public bool RehashFails { get; set; }
+
+        public Task<bool> TryRehashAsync(string expectedHash, string newHash, CancellationToken cancellationToken)
+        {
+            if (RehashFails)
+            {
+                throw new InvalidOperationException("database down");
+            }
+
+            Rehashes.Add((expectedHash, newHash));
+            if (Account is null || !string.Equals(Account.PasswordHash, expectedHash, StringComparison.Ordinal))
+            {
+                return Task.FromResult(false);
+            }
+
+            var rehashed = AdminAccount.Create(Account.Username, newHash, DateTimeOffset.UtcNow);
+            typeof(AdminAccount).GetProperty(nameof(AdminAccount.SecurityStamp))!.SetValue(rehashed, Account.SecurityStamp);
+            Account = rehashed;
+            return Task.FromResult(true);
+        }
     }
 
     /// <summary>A reversible stand-in for the real hasher; counts the checks.</summary>
@@ -429,10 +525,15 @@ public sealed class AdminAccountStateTests
 
         public string Hash(string password) => "hash:" + password;
 
-        public bool Verify(string hash, string password)
+        public PasswordCheck Check(string hash, string password)
         {
             Verifications++;
-            return string.Equals(hash, "hash:" + password, StringComparison.Ordinal);
+            if (string.Equals(hash, "old:" + password, StringComparison.Ordinal))
+            {
+                return PasswordCheck.SucceededRehashNeeded;
+            }
+
+            return string.Equals(hash, "hash:" + password, StringComparison.Ordinal) ? PasswordCheck.Succeeded : PasswordCheck.Failed;
         }
     }
 

@@ -448,6 +448,7 @@ public sealed class LogTextsTests
         {
             (AuditActions.LoginSucceeded, [(AuditDetails.Username, "regie"), (AuditDetails.Ip, "10.0.0.7")], LogCode.LoginSucceeded, "“regie” signed in", new() { ["username"] = "regie" }),
             (AuditActions.LoginFailed, [(AuditDetails.Username, "root")], LogCode.LoginFailed, "Sign-in failed for “root”", new() { ["username"] = "root" }),
+            (AuditActions.LoginFailed, [(AuditDetails.Ip, "10.0.0.7")], LogCode.LoginFailedUnknownUser, "Sign-in failed for an unknown user name", new()),
             (AuditActions.LoginLocked, [(AuditDetails.Username, "root")], LogCode.LoginLocked, "Sign-in locked after too many failed attempts", new()),
             (AuditActions.Logout, [(AuditDetails.Username, "regie")], LogCode.LoggedOut, "“regie” signed out", new() { ["username"] = "regie" }),
             (AuditActions.ProductionCreated, [(AuditDetails.Name, "Spring")], LogCode.ProductionCreated, "Production “Spring” created", new() { ["name"] = "Spring" }),
@@ -529,9 +530,13 @@ public sealed class LogTextsTests
                 {
                     foreach (var change in new[] { AuditAudioChanges.Muted, AuditAudioChanges.Unmuted, AuditAudioChanges.Gain, AuditAudioChanges.Mode, AuditAudioChanges.SyncOffset })
                     {
-                        if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind), (AuditDetails.Slate, slate), (AuditDetails.Change, change))) is { } described)
+                        // With and without a user name: a failed sign-in with a name that is not the account's records none.
+                        foreach (var username in new[] { string.Empty, "admin" })
                         {
-                            produced.Add(described.Code);
+                            if (LogTexts.Describe(Entry(action, (AuditDetails.Kind, kind), (AuditDetails.Slate, slate), (AuditDetails.Change, change), (AuditDetails.Username, username))) is { } described)
+                            {
+                                produced.Add(described.Code);
+                            }
                         }
                     }
                 }
