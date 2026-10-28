@@ -6,9 +6,10 @@
 //   npm run build:video -- --capture --stack 1
 //
 // Needs Node, ffmpeg and a Python with video/audio/requirements.txt and earshot (video/audio/earshot.txt); set PYTHON to
-// that interpreter when it is not the `python` on PATH. Output: video/out/ (render.mjs lists the files).
+// that interpreter when it is not the `python` on PATH. Output: video/out/ (render.mjs lists the files); the files the
+// site plays are copied to site/public/media/, which is committed (the Pages workflow does not render).
 import { spawnSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,3 +69,10 @@ run(python, [
   join(videoDir, 'out', 'audio', 'mix.wav'),
 ]);
 run('node', ['video/render.mjs']);
+
+const media = join(repo, 'site', 'public', 'media');
+mkdirSync(media, { recursive: true });
+for (const file of ['studioflow.mp4', 'studioflow-vertical.mp4', 'studioflow.vtt'])
+  copyFileSync(join(videoDir, 'out', file), join(media, file));
+console.log(`
+Copied the site's video to ${media}; commit it to publish.`);

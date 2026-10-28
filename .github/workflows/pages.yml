@@ -1,11 +1,8 @@
 # The product site on GitHub Pages (issue 67): https://opten.github.io/StudioFlow/. Source in site/, built with Vite
 # (`npm run build:site`, output dist/site) together with the clickable prototype (studioflow-prototype.html).
 #
-# The product video (issue 69) is built here from its source in video/ (`npm run build:video`, video/README.md) and is not
-# in Git. Job video renders it only when its inputs changed: the rendered files are cached by the hash of video/ and of
-# the capture spec, the screen recordings of the UI by the hash of the capture spec. After a UI change, run the workflow
-# by hand with "Record the UI again" ticked. The three formats, the poster and the captions are also an artifact of the
-# run (product-video), for social media. Without a video the hero shows the Regie screenshot.
+# The product video (issue 69) is committed in site/public/media; it is rendered locally with `npm run build:video`
+# (video/README.md), which copies the files there. The workflow does not render it.
 #
 # One-time setup by the owner: Settings > Pages > Source "GitHub Actions" (needs a public repository or a plan with Pages for
 # private repositories). Every action is pinned by commit SHA; the comment names the release.
@@ -21,18 +18,8 @@ on:
       - 'tools/lib/prototype*.mjs'
       - 'package.json'
       - 'package-lock.json'
-      - 'video/**'
-      - '!video/**/*.md'
-      - 'tests/e2e/specs/ui/ui-product-video.spec.ts'
-      - 'tests/e2e/support/ui/screencast.ts'
-      - 'tests/e2e/support/ui/demo-sources.ts'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
-    inputs:
-      recapture:
-        description: Record the UI again (after a UI change) and render the video from the new recordings
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -43,103 +30,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  video:
-    runs-on: ubuntu-24.04
-    # Cached: about a minute. Rendered: about 15 minutes. Recorded and rendered (builds the images): about 35 minutes.
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # The inputs of the screen recordings, and on top of them the inputs of the rendered video (Markdown is no input).
-      - name: Hash the inputs
-        id: hash
-        env:
-          CAPTURE: ${{ hashFiles('tests/e2e/specs/ui/ui-product-video.spec.ts', 'tests/e2e/support/ui/screencast.ts', 'tests/e2e/support/ui/demo-sources.ts') }}
-          VIDEO: ${{ hashFiles('video/**', '!video/**/*.md') }}
-        run: |
-          echo "capture=$CAPTURE" >> "$GITHUB_OUTPUT"
-          echo "video=$VIDEO" >> "$GITHUB_OUTPUT"
-      # Cache keys end in the run id and are restored by prefix (the newest match): a run that records the UI again saves
-      # new entries under the same input hashes. A new recording always renders the video again.
-      - name: Restore the rendered video
-        id: video-cache
-        if: inputs.recapture != true
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: video/out
-          key: product-video-${{ steps.hash.outputs.capture }}-${{ steps.hash.outputs.video }}-${{ github.run_id }}
-          restore-keys: product-video-${{ steps.hash.outputs.capture }}-${{ steps.hash.outputs.video }}-
-      - name: Restore the screen recordings
-        id: capture-cache
-        if: steps.video-cache.outputs.cache-matched-key == '' && inputs.recapture != true
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: video/captures
-          key: product-video-captures-${{ steps.hash.outputs.capture }}-${{ github.run_id }}
-          restore-keys: product-video-captures-${{ steps.hash.outputs.capture }}-
-      - name: Decide what to build
-        id: plan
-        run: |
-          render=${{ steps.video-cache.outputs.cache-matched-key == '' }}
-          capture=${{ steps.video-cache.outputs.cache-matched-key == '' && steps.capture-cache.outputs.cache-matched-key == '' }}
-          echo "render=$render" >> "$GITHUB_OUTPUT"
-          echo "capture=$capture" >> "$GITHUB_OUTPUT"
-          echo "::notice title=Product video::render=$render, record the UI=$capture"
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.plan.outputs.render == 'true'
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - if: steps.plan.outputs.render == 'true'
-        run: npm ci
-      - name: Install Chromium, ffmpeg and the audio tools
-        if: steps.plan.outputs.render == 'true'
-        run: |
-          npx playwright install --with-deps chromium
-          sudo apt-get install -y --no-install-recommends ffmpeg
-          python3 -m venv "$RUNNER_TEMP/audio"
-          "$RUNNER_TEMP/audio/bin/pip" install --quiet -r video/audio/requirements.txt
-          "$RUNNER_TEMP/audio/bin/pip" install --quiet --no-deps -r video/audio/earshot.txt
-      - name: Build the video
-        if: steps.plan.outputs.render == 'true'
-        env:
-          PYTHON: ${{ runner.temp }}/audio/bin/python
-          CAPTURE: ${{ steps.plan.outputs.capture }}
-        run: |
-          if [ "$CAPTURE" = true ]; then
-            npm run build:video -- --capture --stack 1
-          else
-            npm run build:video
-          fi
-      - name: Save the screen recordings
-        if: steps.plan.outputs.capture == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: video/captures
-          key: product-video-captures-${{ steps.hash.outputs.capture }}-${{ github.run_id }}
-      - name: Save the rendered video
-        if: steps.plan.outputs.render == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: video/out
-          key: product-video-${{ steps.hash.outputs.capture }}-${{ steps.hash.outputs.video }}-${{ github.run_id }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: product-video
-          path: |
-            video/out/studioflow.mp4
-            video/out/studioflow-vertical.mp4
-            video/out/studioflow-square.mp4
-            video/out/studioflow.jpg
-            video/out/studioflow.vtt
-          if-no-files-found: error
-          retention-days: 90
-
-  # Also when the video failed: the site then goes out with the screenshot in the hero.
   build:
-    needs: video
-    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -151,24 +42,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Download the product video
-        id: video
-        continue-on-error: true
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: product-video
-          path: ${{ runner.temp }}/video
-          digest-mismatch: error
-      # Only what the hero plays; the square format and the poster stay in the artifact.
-      - name: Put the video next to the site
-        run: |
-          mkdir -p site/public/media
-          if [ "${{ steps.video.outcome }}" = success ]; then
-            cp "$RUNNER_TEMP"/video/{studioflow.mp4,studioflow-vertical.mp4,studioflow.vtt} site/public/media/
-            ls -l site/public/media
-          else
-            echo "::warning title=Product video::No video from job video; the hero shows the screenshot."
-          fi
       - run: npm run typecheck:site
       - run: npm run build:site
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -178,7 +51,6 @@ jobs:
 
   deploy:
     needs: build
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

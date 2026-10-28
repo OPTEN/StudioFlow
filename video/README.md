@@ -6,12 +6,10 @@ with synthetic demo content (drawn stand-ins for people and a slide). Around tho
 captions, zoom and pan, a cursor drawn from the recorded pointer log, transitions and the end card. The burned-in
 captions carry the story, so the video works muted; `out/studioflow.vtt` has the same lines as a captions file.
 
-The rendered files are not in Git (`/video/out/`, `/video/work/` and `/video/captures/` are ignored). The Pages workflow
-(`.github/workflows/pages.yml`) builds them from this folder: a push to `main` that changes `video/` (or the capture
-spec) renders the video again and the site goes out with it. The screen recordings are cached by the hash of the capture
-spec, so a change to the storyboard, the composition or the audio only renders; after a UI change, run the workflow by
-hand (Actions > Pages > Run workflow) with "Record the UI again" ticked. Each run also keeps the three formats, the
-poster and the captions as the artifact `product-video` (90 days), for posting.
+The video is rendered locally, not in CI. `npm run build:video` (below) writes all formats to `video/out/` (ignored, like
+`video/work/` and `video/captures/`) and copies the files the site plays (`studioflow.mp4`, `studioflow-vertical.mp4`,
+`studioflow.vtt`) to `site/public/media/`, which is committed: after a change here, render, commit those three files,
+and the Pages workflow publishes them with the site. The square format and the poster stay in `video/out/` for posting.
 
 ## Storyboard (120 BPM, every cut on a beat; the table is `scenes.mjs`)
 
@@ -34,7 +32,7 @@ and its headless-browser frame statistics never show.
 
 ## Build
 
-One command does what the Pages workflow does, from the repository root with Node and ffmpeg:
+One command, from the repository root with Node and ffmpeg:
 
 ```bash
 python -m venv .venv-video
@@ -99,8 +97,8 @@ Everything you hear is made in code: the music by `audio/music.py` (no samples, 
 earshot's bank (DSP recipes; earshot is MIT licensed, and the bank's 15 fitted sounds were fitted from CC0 recordings,
 see earshot's `docs/CREDITS_FIT.md`; this mix uses none of the fitted ones except where the launch preset names them:
 `fit/click/floss_lid` for `click`). The video uses the self-hosted fonts of the product (Sofia Sans Semi Condensed and
-JetBrains Mono, SIL Open Font License) and the StudioFlow and OPTEN logos from `docs/`. Nothing new needs to go into
-`THIRD_PARTY_NOTICES.md` while the MP4s stay out of the repository.
+JetBrains Mono, SIL Open Font License) and the StudioFlow and OPTEN logos from `docs/`. Since the site's MP4s are committed,
+`THIRD_PARTY_NOTICES.md` lists the video's material (section 6).
 
 ## earshot check, before and after
 

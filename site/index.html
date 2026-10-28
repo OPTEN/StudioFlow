@@ -167,21 +167,28 @@
         </div>
       </section>
 
-      <!-- The real Regie (and the product video once pages.yml has it), growing into view -->
+      <!-- The product video (issue 69, rendered from video/), growing into view -->
       <section class="film" data-progress>
         <div class="film__frame">
           <div class="film__screen">
-            <picture>
-              <source media="(max-width: 700px)" srcset="./assets/regie-960.webp" />
-              <img
-                data-hero-poster
-                src="./assets/regie.webp"
-                width="1920"
-                height="1080"
-                loading="lazy"
-                alt="The StudioFlow Regie in Studio Mode: preview and program monitors, scenes, sources, scene editor and stations"
+            <video
+              autoplay
+              muted
+              loop
+              playsinline
+              controls
+              preload="metadata"
+              poster="./hero-poster.webp"
+              aria-label="Product video: phones join as cameras, the Regie switches, the program goes on air (synthetic demo content)"
+            >
+              <source
+                media="(max-width: 700px) and (orientation: portrait)"
+                src="./media/studioflow-vertical.mp4"
+                type="video/mp4"
               />
-            </picture>
+              <source src="./media/studioflow.mp4" type="video/mp4" />
+              <track kind="captions" src="./media/studioflow.vtt" srclang="en" label="English" />
+            </video>
           </div>
         </div>
         <p class="caption">The real Regie. People and slides are synthetic demo content.</p>
