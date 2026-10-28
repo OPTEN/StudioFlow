@@ -53,7 +53,7 @@ everything else of the issue is done (`docs/open-source-checklist.md` lists what
    as `data:` URLs, the OFL texts embedded, a visible note that all data is synthetic). It replaces the former zip as
    the release asset and has a stable name, so that the README can link
    `.../releases/latest/download/studioflow-prototype.html`.
-7. Internal material (`.impeccable/`, `docs/history/`, `docs/STATUS.md`, the German README of the planning phase) is not
+7. Internal material (`.impeccable/`, since moved to `docs/history/design/`; `docs/history/`, `docs/STATUS.md`, the German README of the planning phase) is not
    deleted; `docs/open-source-checklist.md` records what to move, anonymise or drop before the repository becomes public.
    The complete history of the repository was scanned with gitleaks (`docs/security-review.md`, "Secret scan of the
    history").
@@ -416,7 +416,7 @@ working guide: [i18n.md](i18n.md)). D3 and D5 are the two the owner should confi
 11. **D11 Catalogues** are eager and single: both locales are bundled in every app. Lazy-loading `de-CH` only if the budgets fail.
 12. **D12 E2E.** Runs in `en-US` plus a small `de-CH` project (`specs/i18n`). E2E text lives in `tests/e2e/support/text.ts` as
     literal strings and does not import the product catalogue.
-13. **D13 Exempt from the German check:** `.impeccable/**`, `docs/history/**`, generated files, the `de-CH` catalogue and the
+13. **D13 Exempt from the German check:** `docs/history/**` (the former `.impeccable/` design material lives in `docs/history/design/`), generated files, the `de-CH` catalogue and the
     German test files (`*.de.spec.ts`).
 
 Results of the foundation spikes:

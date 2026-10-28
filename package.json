@@ -28,6 +28,7 @@
     "i18n:index": "node tools/i18n-index.mjs",
     "check:i18n": "node tools/i18n-index.mjs --check && node tools/check-i18n.mjs",
     "check:german": "node tools/check-german.mjs && node tools/check-german.mjs --comments",
+    "check:links": "node tools/check-links.mjs",
     "check": "npm run check:i18n && npm run check:german && npm run typecheck",
     "notices": "node tools/third-party-notices.mjs",
     "brand": "node tools/build-brand.mjs",

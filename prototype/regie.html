@@ -2410,7 +2410,7 @@ tick();
 fitCanvas(pvwCanvas); fitCanvas(pgmCanvas);
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { for (const f of Object.values(FEEDS)) f.dirty = true; });
-// 'stoerung' and 'koppeln' are the former German anchor names, kept so existing scripts (tools/capture.ps1) keep working
+// 'stoerung' and 'koppeln' are the former German anchor names, kept so existing links and scripts keep working
 if (demo.has('incident') || demo.has('stoerung')) { startIncident('S1', 'ended'); startIncident('K2', 'reconnecting'); }
 if (demo.has('pair') || demo.has('koppeln')) { knockNow(); openPair('laptop', false); }
 })();

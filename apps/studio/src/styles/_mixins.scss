@@ -18,7 +18,7 @@ $BREAKPOINTS: (
   wide: 1501px,
 ) !default;
 
-/// Desktop-first breakpoints of DESIGN.md / .impeccable/design.json ("breakpoints").
+/// Desktop-first breakpoints of DESIGN.md ("breakpoints"; token source of the design phase: docs/history/design/design.json).
 $DESKTOP_BREAKPOINTS: (
   // Header presence label hides.
   presence-compact: 1500px,

@@ -57,7 +57,7 @@ Everything runs in the browser and on your own server: phones and laptops become
 
 ## Evidence on Hand
 
-No real content, customer data or screenshots. Sample content in designs (names of people, slides, camera images) is synthetic and must be labelled as such. Architecture and plan: https://claude.ai/artifact/FKKxDiTsDcu2nfYqfEQRGP
+No real content, customer data or screenshots. Sample content in designs (names of people, slides, camera images) is synthetic and must be labelled as such. Architecture: [docs/architecture/implementation-spec.md](docs/architecture/implementation-spec.md).
 
 ## Product Principles
 

@@ -2,6 +2,11 @@
 
 Written 2026-10-23 as the binding design for issue #6 (after the #3 rename). Paths are relative to the repository root.
 
+> Sections 0 to 7 and 9 describe the shipped design. Section 8 (work partition) and the file lists of section 6 are the
+> record of how the work was split among parallel sessions in October 2026; they name files that have moved or are gone
+> (`tools/capture.ps1`, `tools/make-artifact.ps1` and `tools/mobile-wrap.html` now live in `docs/history/design/tools/`,
+> `infra/scripts` was removed by #27).
+
 ## 0. Pinned decisions
 
 These need to be fixed before the briefs go out, because parallel agents must not decide them individually. D3 and D5 are the two I recommend the owner confirms.
@@ -20,7 +25,7 @@ These need to be fixed before the briefs go out, because parallel agents must no
 | D10 | German identifiers in URLs are renamed: `/join/warten` → `/join/waiting` and `/o/_uhr` → `/o/_clock`. Hard switch, no redirect, consistent with #3. PWA `manifest.webmanifest` becomes `lang: "en"` with an English description. |
 | D11 | Catalogues are eager and single: both locales are bundled and there is no per-app split. The foundation measures the bundle budgets. Lazy-loading `de-CH` is a follow-up only if budgets fail. |
 | D12 | E2E runs in `en-US` plus a small `de-CH` project (`specs/i18n`). E2E text lives in `tests/e2e/support/text.ts` as literal strings and does NOT import the product catalogue (black-box principle). |
-| D13 | Exempt from the German check: `.impeccable/**` (design-tool state), `docs/history/**`, generated files, the `de-CH` catalogue and the German test files. |
+| D13 | Exempt from the German check: `docs/history/**` (including the design-phase material in `docs/history/design/`), generated files, the `de-CH` catalogue and the German test files. |
 
 ### Glossary (German → English), fixed for all agents
 - Szene → Scene; Quelle → Source; Element → Item; Vorlage → Template; Auto-Grid → Auto grid; Dock → Dock; Stationen/Station → Stations/Station; Eigenschaften → Properties.
@@ -344,7 +349,7 @@ Heuristics, evaluated per line after stripping:
 **Allowlist and markers.**
 - Suppression markers are `i18n-ignore: <reason>` on the same or previous line, in `//`, `<!-- -->` or `#` form, plus block markers `i18n-ignore-start` / `i18n-ignore-end`.
 - Path allowlist lives in `tools/german-allowlist/<package>.json`, one file per work package so edits never collide. Each entry is `{path glob, rules[] | "all", reason}`. An allowlist entry that matches nothing is exit 2.
-- Initial entries: `packages/i18n/src/messages/de-CH/**` (all), `**/*.de.spec.ts`, `packages/i18n/src/*.spec.ts`, `tests/e2e/support/text.de.ts`, `tests/e2e/specs/i18n/**`, `docs/history/**`, `.impeccable/**`, `**/generated/**`, `apps/api/openapi/*.json`, `**/Migrations/**`, `package-lock.json`, `apps/api/src/Opten.StudioFlow.Core/Domain/Slugs.cs` (H1, transliteration table).
+- Initial entries: `packages/i18n/src/messages/de-CH/**` (all), `**/*.de.spec.ts`, `packages/i18n/src/*.spec.ts`, `tests/e2e/support/text.de.ts`, `tests/e2e/specs/i18n/**`, `docs/history/**`, `**/generated/**`, `apps/api/openapi/*.json`, `**/Migrations/**`, `package-lock.json`, `apps/api/src/Opten.StudioFlow.Core/Domain/Slugs.cs` (H1, transliteration table).
 
 **Calibration (also part of the foundation's acceptance).** The checker must be unit-tested (`tools/lib/german.spec.ts`, with an added `include` in the `model` project of `vitest.config.ts`) against two corpora:
 - 25 German UI strings taken from `main` must be flagged. Examples: "Gleich geht's los", "Bild kommt gleich zurück", "Alle 2 Stationen ok", "Die Eingabe ist ungültig.", "Zu viele Versuche. Bitte später erneut versuchen.".

@@ -35,11 +35,6 @@
     "reason": "Historical German documents, kept unchanged (D13)."
   },
   {
-    "path": ".impeccable/**",
-    "rules": "all",
-    "reason": "Design tool state (D13)."
-  },
-  {
     "path": "**/generated/**",
     "rules": "all",
     "reason": "Generated from the API contracts; the texts come from the C# doc comments."

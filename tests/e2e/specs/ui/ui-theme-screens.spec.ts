@@ -5,14 +5,14 @@ import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
 
 /**
- * Screenshot set of both themes (.impeccable/review/themes/), for the design review of issue #10. Not a test of
+ * Screenshot set of both themes (tests/e2e/.output/theme-screens/, not tracked), for the design review of issue #10. Not a test of
  * behaviour: it only runs with `E2E_THEME_SCREENSHOTS=1` and writes one PNG per view, theme and viewport:
  * `<view>-<theme>-<width>x<height>.png`.
  *
  *   E2E_THEME_SCREENSHOTS=1 E2E_REUSE_STACK=1 tests/e2e/stack.sh test 3 --project=desktop-chromium specs/ui/ui-theme-screens.spec.ts
  */
 
-const OUTPUT = path.resolve(__dirname, '../../../../.impeccable/review/themes');
+const OUTPUT = path.resolve(__dirname, '../../.output/theme-screens');
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 1024, height: 768 },
