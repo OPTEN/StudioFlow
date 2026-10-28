@@ -63,8 +63,8 @@ jobs:
         id: filter
         with:
           predicate-quantifier: every
-          # code: everything that is built, tested or shipped. Docs, Markdown, the licence files, the static prototype
-          # and the Renovate configuration are not.
+          # code: everything that is built, tested or shipped. Docs, Markdown, the licence files, the static prototype,
+          # the product site and video (pages.yml builds the site) and the Renovate configuration are not.
           filters: |
             workflows:
               - '.github/workflows/**'
@@ -82,6 +82,8 @@ jobs:
               - '!LICENSE'
               - '!NOTICE'
               - '!prototype/**'
+              - '!site/**'
+              - '!video/**'
               - '!.github/**'
             code:
               - '**'
@@ -90,6 +92,8 @@ jobs:
               - '!LICENSE'
               - '!NOTICE'
               - '!prototype/**'
+              - '!site/**'
+              - '!video/**'
               - '!.github/renovate.json5'
               - '!.github/ISSUE_TEMPLATE/**'
 
@@ -117,6 +121,8 @@ jobs:
       - name: Type check (packages, output page, E2E harness)
         if: needs.changes.outputs.web == 'true'
         run: npm run typecheck
+      - name: Type check (product site)
+        run: npm run typecheck:site
       - name: Prettier
         run: npm run format:check
       - name: i18n catalogues (index, prefixes, banned formatting)

@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudioFlow: go live from any phone</title>
+    <meta
+      name="description"
+      content="StudioFlow is an open-source live production studio in the browser. Phones and laptops become cameras, you switch like in OBS, and the program goes on air. Self-hosted with Docker."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0e13" />
+    <link rel="canonical" href="https://opten.github.io/StudioFlow/" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StudioFlow" />
+    <meta property="og:title" content="StudioFlow: go live from any phone" />
+    <meta
+      property="og:description"
+      content="Phones and laptops as cameras, OBS-style switching, a program output for OBS. Self-hosted, open source."
+    />
+    <meta property="og:url" content="https://opten.github.io/StudioFlow/" />
+    <meta property="og:image" content="https://opten.github.io/StudioFlow/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="StudioFlow: go live from any phone" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      try {
+        const stored = localStorage.getItem('studioflow.site.theme');
+        document.documentElement.dataset.theme = stored === 'light' ? 'light' : 'dark';
+      } catch {}
+      document.documentElement.classList.add('js');
+    </script>
+    <link
+      rel="preload"
+      href="../prototype/fonts/sofia-sans-semi-condensed-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="nav" data-nav>
+      <a class="nav__brand" href="#top" aria-label="StudioFlow, back to the top">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect
+            x="6"
+            y="14"
+            width="52"
+            height="36"
+            rx="6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="4.5"
+          />
+          <path
+            d="M21 24l8 8-8 8M33 24l8 8-8 8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="4.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle class="mark__dot" cx="49" cy="23" r="3.5" />
+        </svg>
+        <span>Studio<b>Flow</b></span>
+      </a>
+      <nav class="nav__links" aria-label="Sections">
+        <a href="#features">Features</a>
+        <a href="#switch">Switching</a>
+        <a href="#setup">Setup</a>
+        <a href="#open-source">Open source</a>
+      </nav>
+      <div class="nav__right">
+        <a
+          class="nav__sponsor"
+          href="https://www.opten.ch"
+          rel="noopener"
+          aria-label="Sponsored by OPTEN (opens opten.ch)"
+        >
+          <span>Sponsored by</span>
+          <svg viewBox="0 0 82.21 82.21" aria-hidden="true"><use href="#opten" /></svg>
+          <b>OPTEN</b>
+        </a>
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to light mode">
+          <svg class="icon icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            />
+          </svg>
+          <svg class="icon icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+          </svg>
+        </button>
+        <a
+          class="pill pill--ghost pill--sm"
+          href="https://github.com/OPTEN/StudioFlow"
+          rel="noopener"
+          aria-label="StudioFlow on GitHub"
+        >
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#github" /></svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Hero: the claim, with real UI pieces floating around it -->
+      <section class="hero" id="top" data-hero>
+        <div class="hero__copy">
+          <h1 class="display" data-split>
+            Go live<br />from any <em class="hl hl--red">phone.</em>
+          </h1>
+          <p class="hero__lede" data-reveal style="--d: 0.55s">
+            StudioFlow is a live production studio in the browser. Phones and laptops become
+            cameras, you switch scenes like in OBS, and the program goes on air. On your own server,
+            open source.
+          </p>
+          <div class="cta" data-reveal style="--d: 0.7s">
+            <a class="pill pill--fill" href="#setup"
+              >Get started <span class="arrow" aria-hidden="true">→</span></a
+            >
+            <a class="pill pill--ghost" href="https://github.com/OPTEN/StudioFlow" rel="noopener"
+              >View on GitHub</a
+            >
+          </div>
+          <p class="hero__fine" data-reveal style="--d: 0.85s">
+            Free · MIT licence · one <code>docker compose</code> stack
+          </p>
+        </div>
+
+        <div class="stage" aria-hidden="true">
+          <svg class="stage__wires" viewBox="0 0 1000 700" preserveAspectRatio="none">
+            <path id="wire-a" class="wire" d="M190 470 C 300 470 300 300 420 290" />
+            <path id="wire-b" class="wire wire--b" d="M840 600 C 760 600 760 440 700 420" />
+            <circle class="pulse" r="6">
+              <animateMotion dur="2.2s" repeatCount="indefinite">
+                <mpath href="#wire-a" />
+              </animateMotion>
+            </circle>
+            <circle class="pulse pulse--b" r="6">
+              <animateMotion dur="2.6s" begin="0.6s" repeatCount="indefinite">
+                <mpath href="#wire-b" />
+              </animateMotion>
+            </circle>
+          </svg>
+          <figure class="float float--program" style="--depth: 0.5; --enter: 0.15s">
+            <span class="live"><i></i>LIVE</span>
+            <img src="./assets/ui/program.webp" width="838" height="470" alt="" />
+          </figure>
+          <figure class="float float--phone" style="--depth: 1.3; --enter: 0.35s">
+            <img src="./assets/screenshot-sender.webp" width="540" height="1099" alt="" />
+          </figure>
+          <figure class="float float--take" style="--depth: 1; --enter: 0.5s">
+            <img src="./assets/ui/control.webp" width="186" height="200" alt="" />
+          </figure>
+          <figure class="float float--stations" style="--depth: 0.8; --enter: 0.65s">
+            <img src="./assets/ui/stations.webp" width="372" height="160" alt="" />
+          </figure>
+          <span class="scribble scribble--phone">your phone, in the browser</span>
+          <span class="scribble scribble--take">one press, on air</span>
+        </div>
+      </section>
+
+      <!-- The real Regie (and the product video once pages.yml has it), growing into view -->
+      <section class="film" data-progress>
+        <div class="film__frame">
+          <div class="film__screen">
+            <picture>
+              <source media="(max-width: 700px)" srcset="./assets/regie-960.webp" />
+              <img
+                data-hero-poster
+                src="./assets/regie.webp"
+                width="1920"
+                height="1080"
+                loading="lazy"
+                alt="The StudioFlow Regie in Studio Mode: preview and program monitors, scenes, sources, scene editor and stations"
+              />
+            </picture>
+          </div>
+        </div>
+        <p class="caption">The real Regie. People and slides are synthetic demo content.</p>
+      </section>
+
+      <!-- Features -->
+      <section class="block" id="features">
+        <h2 class="display display--m" data-split>
+          So yes,<br /><em class="hl hl--green">your phone is</em><br /><em class="hl hl--green"
+            >the camera.</em
+          >
+        </h2>
+        <p class="prose" data-reveal>
+          A phone scans a QR code and sends its camera. A laptop shares its screens. A laptop at the
+          mixing desk sends the sound. No app, no account, no cables to a video mixer: everything
+          travels over the Wi-Fi you already have, to a server you run.
+        </p>
+        <ul class="features">
+          <li class="feature feature--wide" data-reveal style="--c: var(--green)">
+            <div class="feature__shot feature__shot--tilt-l">
+              <img
+                src="./assets/ui/pairing.webp"
+                width="516"
+                height="340"
+                loading="lazy"
+                alt="The pairing dock: a QR code for a phone, tabs for laptop and link"
+              />
+            </div>
+            <h3><span>Scan a QR code.</span> <em>Paired.</em></h3>
+            <p>
+              Phones by QR code, laptops by a short URL and a check code, guests by a one-time
+              invite link. No accounts.
+            </p>
+          </li>
+          <li class="feature feature--tall" data-reveal style="--d: 0.08s; --c: var(--red)">
+            <div class="feature__shot feature__shot--phone">
+              <img
+                src="./assets/screenshot-sender.webp"
+                width="540"
+                height="1099"
+                loading="lazy"
+                alt="The sender page on a phone with the red LIVE frame"
+              />
+            </div>
+            <h3><span>Red frame,</span> <em>you're on air.</em></h3>
+            <p>
+              Every phone shows its tally, so the person holding it knows when it is in the program.
+            </p>
+          </li>
+          <li class="feature" data-reveal style="--c: var(--blue)">
+            <div class="feature__shot feature__shot--tilt-r">
+              <img
+                src="./assets/ui/templates.webp"
+                width="392"
+                height="200"
+                loading="lazy"
+                alt="Layout templates: full screen, side by side, picture in picture, grids"
+              />
+            </div>
+            <h3><span>Layouts</span> <em>in one click.</em></h3>
+            <p>
+              Full screen, side by side, picture in picture, grids. Then move, scale and crop
+              freely.
+            </p>
+          </li>
+          <li class="feature" data-reveal style="--d: 0.08s; --c: var(--amber)">
+            <div class="feature__shot feature__shot--tilt-l">
+              <img
+                src="./assets/ui/stations.webp"
+                width="372"
+                height="160"
+                loading="lazy"
+                alt="The stations dock: each phone and laptop with its lamp, bitrate and latency"
+              />
+            </div>
+            <h3><span>Every station,</span> <em>at a glance.</em></h3>
+            <p>
+              A lamp, the bitrate and the latency per device. An outage turns amber or red where you
+              are looking.
+            </p>
+          </li>
+          <li class="feature feature--full" data-reveal style="--c: var(--violet)">
+            <div class="feature__shot feature__shot--tilt-r">
+              <img
+                src="./assets/ui/obs.webp"
+                width="430"
+                height="356"
+                loading="lazy"
+                alt="The output popover with the five steps to use the output as a camera in OBS, Teams or Zoom"
+              />
+            </div>
+            <h3><span>Out to OBS,</span> <em>Teams or Zoom.</em></h3>
+            <p>
+              The program is a web page behind a link you can revoke. A streaming proxy embeds it,
+              or OBS turns it into a camera with a scene collection you download.
+            </p>
+          </li>
+        </ul>
+        <p class="more" data-reveal>
+          Also inside: hold frames and endless reconnect, an audio mixer with an audio station at
+          the desk, texts and lower thirds, camera control from the Regie, light and dark mode,
+          English and German, an audit log and scheduled backups.
+        </p>
+      </section>
+
+      <!-- Interactive switching with real Regie pictures -->
+      <section class="block" id="switch">
+        <h2 class="display display--m" data-split>
+          Switch like a pro.<br /><em class="hl hl--blue">Cut. Fade. Take.</em>
+        </h2>
+        <p class="prose" data-reveal>
+          Build the next scene in the preview while the program is on air. One press on Take and it
+          fades over. Try it here, with pictures from the real Regie.
+        </p>
+        <div class="switcher" data-switcher data-reveal>
+          <div class="switcher__mon">
+            <span class="switcher__label switcher__label--pvw"
+              ><i></i>Preview <b data-pvw-name>Interview</b></span
+            >
+            <div class="switcher__screen switcher__screen--pvw">
+              <img
+                data-pvw
+                src="./assets/ui/preview.webp"
+                width="838"
+                height="470"
+                alt="Preview: Interview"
+              />
+            </div>
+          </div>
+          <div class="switcher__mon">
+            <span class="switcher__label switcher__label--pgm"
+              ><i></i>Program <b data-pgm-name>Presentation</b></span
+            >
+            <div class="switcher__screen switcher__screen--pgm">
+              <img
+                data-pgm
+                src="./assets/ui/program.webp"
+                width="838"
+                height="470"
+                alt="Program: Presentation"
+              />
+              <img
+                data-pgm-next
+                class="switcher__next"
+                src="./assets/ui/program.webp"
+                width="838"
+                height="470"
+                alt=""
+              />
+            </div>
+          </div>
+          <div class="switcher__bar">
+            <div class="switcher__scenes" role="group" aria-label="Load a scene into the preview">
+              <button type="button" class="chip" data-scene-btn="welcome">
+                <kbd>1</kbd>Welcome
+              </button>
+              <button type="button" class="chip" data-scene-btn="presentation">
+                <kbd>2</kbd>Presentation
+              </button>
+              <button type="button" class="chip" data-scene-btn="interview">
+                <kbd>3</kbd>Interview
+              </button>
+            </div>
+            <button type="button" class="take" data-take>Take</button>
+          </div>
+          <p class="switcher__status" role="status" aria-live="polite" data-switch-status>
+            Presentation is on air.
+          </p>
+        </div>
+      </section>
+
+      <!-- Failure, as a pinned scroll sequence -->
+      <section class="incident" data-progress data-incident>
+        <div class="incident__sticky">
+          <div class="incident__text">
+            <h2 class="display display--m">
+              Wi-Fi <em class="hl hl--amber">drops.</em><br />The show
+              <em class="hl hl--green">doesn't.</em>
+            </h2>
+            <ol class="incident__steps">
+              <li>A phone loses the Wi-Fi.</li>
+              <li>The audience keeps the last frame, softly blurred.</li>
+              <li>The phone reconnects by itself. Nobody has to touch it.</li>
+              <li>The Regie shows it where you are already looking.</li>
+            </ol>
+          </div>
+          <div class="incident__screen" aria-hidden="true">
+            <img src="./assets/ui/welcome.webp" width="419" height="470" alt="" />
+            <span class="incident__hold">Picture returns shortly</span>
+            <span class="incident__tab incident__tab--warn">K1 · reconnecting</span>
+            <span class="incident__tab incident__tab--ok">K1 · back</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Signal path, drawn while scrolling -->
+      <section class="block" id="how" data-progress data-path>
+        <h2 class="display display--m" data-split>
+          Everything stays<br />on <em class="hl hl--blue">your network.</em>
+        </h2>
+        <p class="prose" data-reveal>
+          Devices talk only to your server. Picture and sound travel over WebRTC through the LiveKit
+          media server inside the stack, and the output page hands the program to OBS, a streaming
+          proxy, or Teams and Zoom as a virtual camera.
+        </p>
+        <figure class="path">
+          <svg class="path__svg" viewBox="0 0 1100 360" role="img" aria-labelledby="path-t path-d">
+            <title id="path-t">Signal path</title>
+            <desc id="path-d">
+              Phones, laptops and an audio station send to the StudioFlow stack on your server. The
+              Regie switches, the output page carries the program to OBS.
+            </desc>
+            <g class="path__wires">
+              <path pathLength="1" d="M200 70 C 300 70 320 180 420 180" />
+              <path pathLength="1" d="M200 180 L 420 180" />
+              <path pathLength="1" d="M200 290 C 300 290 320 180 420 180" />
+              <path pathLength="1" d="M660 180 C 720 180 720 80 780 80" />
+              <path pathLength="1" class="red" d="M660 180 C 720 180 720 280 780 280" />
+              <path pathLength="1" class="red" d="M960 280 L 1010 280" />
+            </g>
+            <g class="path__pulses" aria-hidden="true">
+              <circle r="5">
+                <animateMotion
+                  dur="2.4s"
+                  repeatCount="indefinite"
+                  path="M200 70 C 300 70 320 180 420 180"
+                />
+              </circle>
+              <circle r="5">
+                <animateMotion
+                  dur="2.4s"
+                  begin="0.8s"
+                  repeatCount="indefinite"
+                  path="M200 180 L 420 180"
+                />
+              </circle>
+              <circle r="5">
+                <animateMotion
+                  dur="2.4s"
+                  begin="1.6s"
+                  repeatCount="indefinite"
+                  path="M200 290 C 300 290 320 180 420 180"
+                />
+              </circle>
+              <circle r="5">
+                <animateMotion
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                  path="M660 180 C 720 180 720 80 780 80"
+                />
+              </circle>
+              <circle class="red" r="5">
+                <animateMotion
+                  dur="1.8s"
+                  begin="0.9s"
+                  repeatCount="indefinite"
+                  path="M660 180 C 720 180 720 280 780 280 L 1010 280"
+                />
+              </circle>
+            </g>
+            <g class="node" style="--n: 0">
+              <rect x="30" y="40" width="170" height="60" rx="12" />
+              <text x="52" y="67">Phones</text>
+              <text class="sub" x="52" y="87">camera · microphone</text>
+            </g>
+            <g class="node" style="--n: 1">
+              <rect x="30" y="150" width="170" height="60" rx="12" />
+              <text x="52" y="177">Laptops</text>
+              <text class="sub" x="52" y="197">screens · camera</text>
+            </g>
+            <g class="node" style="--n: 2">
+              <rect x="30" y="260" width="170" height="60" rx="12" />
+              <text x="52" y="287">Audio station</text>
+              <text class="sub" x="52" y="307">the mix from the desk</text>
+            </g>
+            <g class="node node--core" style="--n: 3">
+              <rect x="420" y="105" width="240" height="150" rx="16" />
+              <text x="444" y="142">Your server</text>
+              <text class="sub" x="444" y="166">one docker compose stack</text>
+              <text class="mono" x="444" y="202">caddy · api · livekit</text>
+              <text class="mono" x="444" y="226">postgres · backup</text>
+            </g>
+            <g class="node" style="--n: 4">
+              <rect x="780" y="50" width="180" height="60" rx="12" />
+              <text x="802" y="77">Regie</text>
+              <text class="sub" x="802" y="97">switches the scenes</text>
+            </g>
+            <g class="node node--red" style="--n: 5">
+              <rect x="780" y="250" width="180" height="60" rx="12" />
+              <text x="802" y="277">Output page</text>
+              <text class="sub" x="802" y="297">the program</text>
+            </g>
+            <g class="node node--red" style="--n: 6">
+              <rect x="1010" y="250" width="80" height="60" rx="12" />
+              <text x="1024" y="280">OBS</text>
+              <text class="sub" x="1024" y="298">proxy</text>
+            </g>
+          </svg>
+          <svg
+            class="path__svg path__svg--v"
+            viewBox="0 0 360 700"
+            role="img"
+            aria-label="Signal path: phones, laptops and an audio station send to your server; the Regie switches; the output page goes to OBS or a streaming proxy."
+          >
+            <g class="path__wires">
+              <path pathLength="1" d="M60 70 C 60 150 180 150 180 230" />
+              <path pathLength="1" d="M180 70 L 180 230" />
+              <path pathLength="1" d="M300 70 C 300 150 180 150 180 230" />
+              <path pathLength="1" d="M180 370 C 180 420 90 420 90 470" />
+              <path pathLength="1" class="red" d="M180 370 C 180 420 270 420 270 470" />
+              <path pathLength="1" class="red" d="M270 530 L 270 600" />
+            </g>
+            <g class="node" style="--n: 0">
+              <rect x="10" y="20" width="100" height="50" rx="12" />
+              <text x="22" y="51">Phones</text>
+            </g>
+            <g class="node" style="--n: 1">
+              <rect x="130" y="20" width="100" height="50" rx="12" />
+              <text x="142" y="51">Laptops</text>
+            </g>
+            <g class="node" style="--n: 2">
+              <rect x="250" y="20" width="100" height="50" rx="12" />
+              <text x="262" y="51">Audio</text>
+            </g>
+            <g class="node node--core" style="--n: 3">
+              <rect x="40" y="230" width="280" height="140" rx="16" />
+              <text x="64" y="268">Your server</text>
+              <text class="sub" x="64" y="292">one docker compose stack</text>
+              <text class="mono" x="64" y="326">caddy · api · livekit</text>
+              <text class="mono" x="64" y="348">postgres · backup</text>
+            </g>
+            <g class="node" style="--n: 4">
+              <rect x="20" y="470" width="140" height="60" rx="12" />
+              <text x="38" y="497">Regie</text>
+              <text class="sub" x="38" y="517">switches</text>
+            </g>
+            <g class="node node--red" style="--n: 5">
+              <rect x="200" y="470" width="140" height="60" rx="12" />
+              <text x="218" y="497">Output</text>
+              <text class="sub" x="218" y="517">the program</text>
+            </g>
+            <g class="node node--red" style="--n: 6">
+              <rect x="200" y="600" width="140" height="60" rx="12" />
+              <text x="218" y="627">OBS</text>
+              <text class="sub" x="218" y="647">or a proxy</text>
+            </g>
+          </svg>
+        </figure>
+      </section>
+
+      <!-- Statement that lights up line by line -->
+      <section class="statement" data-progress data-statement>
+        <div class="statement__sticky">
+          <p class="statement__line">No app to install.</p>
+          <p class="statement__line">No cloud account.</p>
+          <p class="statement__line">No video mixer to carry.</p>
+          <p class="statement__line">Just <span class="hl hl--blue">docker compose up.</span></p>
+        </div>
+      </section>
+
+      <!-- Setup -->
+      <section class="block" id="setup">
+        <h2 class="display display--m" data-split>
+          This all takes<br /><em class="hl hl--red">three commands.</em>
+        </h2>
+        <p class="prose" data-reveal>
+          You need Docker (Engine on Linux, Docker Desktop on Windows or macOS) with Compose 2.24 or
+          newer. Download
+          <code>docker-compose.yml</code> from the
+          <a href="https://github.com/OPTEN/StudioFlow/releases/latest" rel="noopener"
+            >latest release</a
+          >, then:
+        </p>
+        <div class="setup">
+          <div class="term" data-term data-reveal>
+            <div class="term__bar"><i></i><i></i><i></i><span>studioflow</span></div>
+            <pre class="term__body" aria-hidden="true"><code data-term-out></code></pre>
+          </div>
+          <ol class="cmds">
+            <li data-reveal style="--d: 0s">
+              <span class="cmds__n">1</span>
+              <div class="cmds__body">
+                <strong>Start the stack</strong>
+                <div class="cmd">
+                  <code>docker compose up -d</code
+                  ><button type="button" data-copy="docker compose up -d">Copy</button>
+                </div>
+              </div>
+            </li>
+            <li data-reveal style="--d: 0.08s">
+              <span class="cmds__n">2</span>
+              <div class="cmds__body">
+                <strong>Read the setup code</strong>
+                <div class="cmd">
+                  <code>docker compose logs api</code
+                  ><button type="button" data-copy="docker compose logs api">Copy</button>
+                </div>
+              </div>
+            </li>
+            <li data-reveal style="--d: 0.16s">
+              <span class="cmds__n">3</span>
+              <div class="cmds__body">
+                <strong>Open the Regie, follow the wizard</strong>
+                <div class="cmd"><code>https://&lt;this computer&gt;:8443/</code></div>
+                <span class="cmds__note"
+                  >Accept the certificate warning once, enter the code, then scan the QR code with a
+                  phone.</span
+                >
+              </div>
+            </li>
+          </ol>
+        </div>
+        <p class="ports" data-reveal>
+          Open ports <code>8443/tcp+udp</code> <code>7881/tcp</code> <code>7882/udp</code> ·
+          Certificates, firewall, backups and updates:
+          <a href="https://github.com/OPTEN/StudioFlow/blob/main/docs/runbook.md" rel="noopener"
+            >operations guide</a
+          >
+        </p>
+      </section>
+
+      <!-- Prototype -->
+      <section class="block" id="demo">
+        <h2 class="display display--m" data-split>
+          Click around.<br /><em class="hl hl--violet">Right here.</em>
+        </h2>
+        <p class="prose" data-reveal>
+          The clickable prototype the Regie started from, with synthetic data. It runs in this page
+          and sends nothing anywhere.
+        </p>
+        <div class="demo" data-demo data-reveal>
+          <img src="./assets/regie-960.webp" width="960" height="600" loading="lazy" alt="" />
+          <div class="demo__cover">
+            <button class="pill pill--fill" type="button" data-demo-load>
+              Load the prototype <span class="arrow" aria-hidden="true">→</span>
+            </button>
+            <a href="./studioflow-prototype.html">or open it full screen</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Open source and OPTEN -->
+      <section class="block" id="open-source">
+        <h2 class="display display--m" data-split>
+          Open source.<br /><em class="hl hl--green">Built by OPTEN.</em>
+        </h2>
+        <div class="os">
+          <ul class="os__links" data-reveal>
+            <li>
+              <a href="https://github.com/OPTEN/StudioFlow/blob/main/LICENSE" rel="noopener"
+                ><b>MIT licence</b><span>Use it and change it, also commercially.</span></a
+              >
+            </li>
+            <li>
+              <a href="https://github.com/OPTEN/StudioFlow/releases" rel="noopener"
+                ><b>Releases</b
+                ><span data-release-meta>Ready-made images on GitHub Container Registry.</span></a
+              >
+            </li>
+            <li>
+              <a href="https://github.com/OPTEN/StudioFlow/blob/main/CONTRIBUTING.md" rel="noopener"
+                ><b>Contributing</b><span>Build, test and send a pull request.</span></a
+              >
+            </li>
+            <li>
+              <a href="https://github.com/OPTEN/StudioFlow/issues" rel="noopener"
+                ><b>Issues</b><span>Bugs and ideas.</span></a
+              >
+            </li>
+            <li>
+              <a href="https://github.com/OPTEN/StudioFlow/blob/main/SECURITY.md" rel="noopener"
+                ><b>Security policy</b><span>Report a vulnerability privately.</span></a
+              >
+            </li>
+          </ul>
+          <a class="opten" href="https://www.opten.ch" rel="noopener" data-reveal style="--d: 0.1s">
+            <svg viewBox="0 0 82.21 82.21" aria-hidden="true"><use href="#opten" /></svg>
+            <span class="opten__name">OPTEN</span>
+            <span class="opten__text"
+              >Sponsored, developed and maintained by OPTEN AG in Switzerland.</span
+            >
+          </a>
+        </div>
+      </section>
+
+      <!-- Close -->
+      <section class="close">
+        <h2 class="display" data-split>
+          Your next webinar.<br /><em class="hl hl--red">Live.</em>
+        </h2>
+        <div class="cta" data-reveal>
+          <a class="pill pill--fill" href="#setup"
+            >Get started <span class="arrow" aria-hidden="true">→</span></a
+          >
+          <a class="pill pill--ghost" href="https://github.com/OPTEN/StudioFlow" rel="noopener"
+            >Star on GitHub</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <a class="nav__brand" href="#top">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect
+            x="6"
+            y="14"
+            width="52"
+            height="36"
+            rx="6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="4.5"
+          />
+          <path
+            d="M21 24l8 8-8 8M33 24l8 8-8 8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="4.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle class="mark__dot" cx="49" cy="23" r="3.5" />
+        </svg>
+        <span>Studio<b>Flow</b></span>
+      </a>
+      <a href="https://github.com/OPTEN/StudioFlow" rel="noopener">GitHub</a>
+      <a href="https://github.com/OPTEN/StudioFlow/blob/main/docs/runbook.md" rel="noopener"
+        >Docs</a
+      >
+      <a href="https://github.com/OPTEN/StudioFlow/blob/main/LICENSE" rel="noopener">MIT licence</a>
+      <a href="https://www.opten.ch" rel="noopener">OPTEN</a>
+      <a href="./licenses/OFL-SofiaSansSemiCondensed.txt">Font licences</a>
+      <span class="foot__note">No cookies, no tracking. OPTEN is a trademark of OPTEN AG.</span>
+    </footer>
+
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="opten" viewBox="0 0 82.21 82.21">
+        <circle cx="49.03" cy="39" r="3" fill="currentColor" />
+        <path
+          fill="currentColor"
+          d="M40.21,0V.05a41.09,41.09,0,1,0,42,42h0V0Zm-2.9,47.81H31.47v-13H28.4V30.16h8.91ZM49,48a9,9,0,1,1,9-9A9,9,0,0,1,49,48Z"
+        />
+      </symbol>
+      <symbol id="github" viewBox="0 0 24 24">
+        <path
+          d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"
+        />
+      </symbol>
+    </svg>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
