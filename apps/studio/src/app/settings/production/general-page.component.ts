@@ -139,8 +139,7 @@ export class GeneralPageComponent {
   protected cancelRename(): void {
     this.renaming.set(false);
     afterNextRender(
-      () =>
-        this.host.nativeElement.querySelector<HTMLButtonElement>('[data-rename]')?.focus(),
+      () => this.host.nativeElement.querySelector<HTMLButtonElement>('[data-rename]')?.focus(),
       { injector: this.injector },
     );
   }

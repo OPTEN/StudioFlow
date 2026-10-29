@@ -8,7 +8,9 @@
   @if (store.production()) {
     <form class="c-page__body" novalidate [formGroup]="form" (submit)="save($event)">
       <section class="c-group" aria-labelledby="sf-text-preview">
-        <h2 class="c-group__title" id="sf-text-preview">{{ t('regie.production.text.preview') }}</h2>
+        <h2 class="c-group__title" id="sf-text-preview">
+          {{ t('regie.production.text.preview') }}
+        </h2>
         <div class="c-group__body">
           <div class="c-group__row c-group__row--stack c-text-style__stage">
             <sf-picture-preview
@@ -27,7 +29,9 @@
       </section>
 
       <section class="c-group" aria-labelledby="sf-text-colours">
-        <h2 class="c-group__title" id="sf-text-colours">{{ t('regie.production.text.colours') }}</h2>
+        <h2 class="c-group__title" id="sf-text-colours">
+          {{ t('regie.production.text.colours') }}
+        </h2>
         <div class="c-group__body">
           @for (field of fields; track field.key) {
             <div class="c-group__row">
@@ -39,7 +43,9 @@
                 <input
                   class="c-text-style__swatch"
                   type="color"
-                  [attr.aria-label]="t('regie.header.production.textPick', { colour: t(field.label) })"
+                  [attr.aria-label]="
+                    t('regie.header.production.textPick', { colour: t(field.label) })
+                  "
                   [value]="form.controls[field.key].value"
                   (input)="pick(field.key, $any($event.target).value)"
                 />
@@ -50,7 +56,9 @@
                   autocomplete="off"
                   spellcheck="false"
                   [formControlName]="field.key"
-                  [attr.aria-label]="t('regie.header.production.textHex', { colour: t(field.label) })"
+                  [attr.aria-label]="
+                    t('regie.header.production.textHex', { colour: t(field.label) })
+                  "
                   [class.is-invalid]="invalid(field.key)"
                   [attr.aria-invalid]="invalid(field.key) ? 'true' : null"
                   [attr.aria-describedby]="'text-' + field.key + '-error'"

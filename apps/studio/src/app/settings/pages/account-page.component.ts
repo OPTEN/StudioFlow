@@ -136,9 +136,7 @@ export class AccountPageComponent {
       await this.auth.logout();
     } catch (error) {
       // A refused logout keeps the session (see AuthService.logout): say so instead of pretending.
-      this.toasts.show(
-        t('regie.settings.account.signOutFailed', { reason: toUserMessage(error) }),
-      );
+      this.toasts.show(t('regie.settings.account.signOutFailed', { reason: toUserMessage(error) }));
     } finally {
       this.signingOut.set(false);
       this.confirming.set(false);

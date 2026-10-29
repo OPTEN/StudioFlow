@@ -98,9 +98,12 @@ export function formatWeekday(day: number): string {
   const { dateTag } = activeLocale();
   const options = { weekday: 'long', timeZone: 'UTC' } as const;
   // 7 January 2024 was a Sunday.
-  return cached('weekday', dateTag, options, () => new Intl.DateTimeFormat(dateTag, options)).format(
-    new Date(Date.UTC(2024, 0, 7 + (((day % 7) + 7) % 7))),
-  );
+  return cached(
+    'weekday',
+    dateTag,
+    options,
+    () => new Intl.DateTimeFormat(dateTag, options),
+  ).format(new Date(Date.UTC(2024, 0, 7 + (((day % 7) + 7) % 7))));
 }
 
 /** The IANA time zone of this browser ("Europe/Zurich"), or "UTC" when the browser does not tell. */
@@ -141,8 +144,11 @@ export function zonedClock(date: Date, timeZone: string): ZonedClock | null {
   } as const;
   let parts: Intl.DateTimeFormatPart[];
   try {
-    parts = cached('zoned', 'en-US', options, () =>
-      new Intl.DateTimeFormat('en-US', options),
+    parts = cached(
+      'zoned',
+      'en-US',
+      options,
+      () => new Intl.DateTimeFormat('en-US', options),
     ).formatToParts(date);
   } catch {
     return null;

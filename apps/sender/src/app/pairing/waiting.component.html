@@ -62,7 +62,11 @@
           <p class="c-code-card__caption" id="check-code-caption">
             {{ t('sender.pairing.waiting.codeCaption') }}
           </p>
-          <p class="c-code-card__code" data-testid="check-code" aria-describedby="check-code-caption">
+          <p
+            class="c-code-card__code"
+            data-testid="check-code"
+            aria-describedby="check-code-caption"
+          >
             {{ code() }}
           </p>
           <p class="c-code-card__lead">{{ t('sender.pairing.waiting.lead', { name: name() }) }}</p>

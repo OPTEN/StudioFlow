@@ -341,9 +341,7 @@ describe('CameraPanelComponent', () => {
     expect(light.request.body).toMatchObject({ camera: { torch: true } });
     light.flush({}, { status: 202, statusText: 'Accepted' });
 
-    element
-      .querySelector<HTMLButtonElement>('[aria-label="Reset the brightness to 0"]')
-      ?.click();
+    element.querySelector<HTMLButtonElement>('[aria-label="Reset the brightness to 0"]')?.click();
     await tick(CAMERA_COMMAND_INTERVAL_MS);
     const brightness = harness.http.expectOne(COMMANDS);
     expect(brightness.request.body).toMatchObject({ camera: { exposureCompensation: 0 } });

@@ -68,7 +68,12 @@
         <p class="c-group__footer">{{ t('regie.production.name.hint') }}</p>
       </section>
 
-      <form class="c-group" novalidate aria-labelledby="sf-general-canvas" (submit)="saveCanvas($event)">
+      <form
+        class="c-group"
+        novalidate
+        aria-labelledby="sf-general-canvas"
+        (submit)="saveCanvas($event)"
+      >
         <h2 class="c-group__title" id="sf-general-canvas">{{ t('regie.canvas.title') }}</h2>
         <div class="c-group__body">
           @if (live()) {

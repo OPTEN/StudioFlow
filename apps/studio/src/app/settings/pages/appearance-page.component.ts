@@ -43,7 +43,9 @@ import { SettingsPageHeadComponent } from './settings-page-head.component';
         </section>
 
         <section class="c-group" aria-labelledby="layout-heading">
-          <h2 class="c-group__title" id="layout-heading">{{ t('regie.settings.layout.heading') }}</h2>
+          <h2 class="c-group__title" id="layout-heading">
+            {{ t('regie.settings.layout.heading') }}
+          </h2>
           <div class="c-group__body">
             <div class="c-group__row">
               <span class="c-group__label">

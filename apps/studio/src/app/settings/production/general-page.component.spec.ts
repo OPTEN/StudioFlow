@@ -85,7 +85,11 @@ describe('GeneralPageComponent', () => {
 
       const request = harness.http.expectOne(BASE);
       expect(request.request.method).toBe('PATCH');
-      expect(request.request.body).toEqual({ name: 'Town hall', standbySlate: null, endSlate: null });
+      expect(request.request.body).toEqual({
+        name: 'Town hall',
+        standbySlate: null,
+        endSlate: null,
+      });
       request.flush(productionFixture({ name: 'Town hall' }));
       await render();
       expect(TestBed.inject(ToastService).current()?.message).toBe(

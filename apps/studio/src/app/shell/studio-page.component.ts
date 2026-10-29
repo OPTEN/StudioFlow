@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+} from '@angular/core';
 import { TitleStrategy } from '@angular/router';
 import { t } from '@studioflow/i18n';
 import { StudioMediaService } from '../core/media/studio-media.service';

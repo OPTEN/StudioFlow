@@ -10,7 +10,10 @@ export const TITLE_KEY = 'titleKey';
  * Document title: the app title alone, "<page> · <app title>" for a page with a title key, or "<status> · <app title>"
  * for the control room while it reports a status ("● On air · Webinar", "2 issues · Webinar").
  */
-export function documentTitle(titleKey: PlainMessageKey | null, status: string | null = null): string {
+export function documentTitle(
+  titleKey: PlainMessageKey | null,
+  status: string | null = null,
+): string {
   const app = t('regie.core.appTitle');
   if (titleKey) {
     return `${t(titleKey)} · ${app}`;

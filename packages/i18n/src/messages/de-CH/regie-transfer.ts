@@ -24,7 +24,8 @@ export const regieTransfer: Translation<typeof en> = {
 
   'regie.transfer.export.started':
     'Export von «{name}» gestartet. Dein Browser speichert die Datei.',
-  'regie.transfer.export.sub': 'Eine Datei zum Aufbewahren oder zum Importieren auf einem anderen Server.',
+  'regie.transfer.export.sub':
+    'Eine Datei zum Aufbewahren oder zum Importieren auf einem anderen Server.',
   'regie.transfer.export.title': 'Produktion exportieren',
 
   'regie.transfer.import.another': 'Andere Datei wählen',
@@ -45,7 +46,8 @@ export const regieTransfer: Translation<typeof en> = {
   'regie.transfer.import.previewTitle': 'Diese Datei enthält',
   'regie.transfer.import.progress': '{percent} hochgeladen',
   'regie.transfer.import.scenes': { one: '{count} Szene', other: '{count} Szenen' },
-  'regie.transfer.import.sub': 'Aus einer Datei, die aus StudioFlow exportiert wurde (.studioflow.zip).',
+  'regie.transfer.import.sub':
+    'Aus einer Datei, die aus StudioFlow exportiert wurde (.studioflow.zip).',
   'regie.transfer.import.submit': 'Importieren',
   'regie.transfer.import.texts': {
     '=0': 'Keine Texte',

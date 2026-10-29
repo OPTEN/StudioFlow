@@ -90,7 +90,9 @@ interface Check {
                     [disabled]="busy()"
                     (click)="end()"
                   >
-                    {{ busy() ? t('regie.header.broadcast.ending') : t('regie.header.broadcast.end') }}
+                    {{
+                      busy() ? t('regie.header.broadcast.ending') : t('regie.header.broadcast.end')
+                    }}
                   </button>
                 </div>
               </div>
@@ -129,7 +131,9 @@ interface Check {
           type="button"
           aria-haspopup="dialog"
           [class]="
-            broadcast() === 'ended' ? 'c-btn c-btn--sm c-btn--plain' : 'c-btn c-btn--sm c-btn--primary'
+            broadcast() === 'ended'
+              ? 'c-btn c-btn--sm c-btn--plain'
+              : 'c-btn c-btn--sm c-btn--primary'
           "
           [sfPopoverTrigger]="startPopover"
           [disabled]="busy() || unavailable() || !store.state()"

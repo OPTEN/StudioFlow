@@ -27,7 +27,11 @@ export type ServerSection = 'media' | 'network' | 'embedding' | 'backups';
 const SECTIONS: Readonly<
   Record<
     ServerSection,
-    { readonly title: PlainMessageKey; readonly note: PlainMessageKey; readonly service: ApplyTarget }
+    {
+      readonly title: PlainMessageKey;
+      readonly note: PlainMessageKey;
+      readonly service: ApplyTarget;
+    }
   >
 > = {
   media: {

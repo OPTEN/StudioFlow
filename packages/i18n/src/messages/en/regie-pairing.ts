@@ -38,7 +38,8 @@ export const regiePairing = {
   'regie.pairing.link.revokeInvite': 'Revoke invite: {url}',
   'regie.pairing.link.revokeShort': 'Revoke',
   'regie.pairing.link.show': 'Show link',
-  'regie.pairing.link.showHint': 'The links are hidden so that nobody copies them off a shared screen.',
+  'regie.pairing.link.showHint':
+    'The links are hidden so that nobody copies them off a shared screen.',
   'regie.pairing.link.text':
     'For laptops that are paired before the webinar. Send the link by Teams or email.',
   'regie.pairing.link.title': 'Invite link',
