@@ -189,7 +189,9 @@ export abstract class SenderPage {
   protected async clickAndConfirm(control: Locator): Promise<void> {
     await control.click();
     const sheet = this.confirmSheet();
-    if (await sheet.isVisible({ timeout: 1_000 }).catch(() => false)) await this.confirm();
+    // isVisible() does not wait (its timeout is ignored); the sheet rises with its open animation, so wait for it.
+    const asked = await sheet.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
+    if (asked) await this.confirm();
   }
 
   /** `window.__sfSender` (needs the test hooks), or null. */
