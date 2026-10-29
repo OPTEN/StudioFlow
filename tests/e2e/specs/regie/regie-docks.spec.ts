@@ -7,6 +7,7 @@ import { Gesture, SCENES, scenesDock, stationsDock, toastOf } from '../../suppor
 import { uniqueIp } from '../../support/fixtures';
 import { RegiePage } from '../../support/ui/regie';
 import { regieBug } from '../../support/regie/bugs';
+import { openSettingsPage } from '../../support/regie/settings-window';
 
 /**
  * DOCK in the Regie UI (docs/testing.md 2.9: E2E-DOCK-01 ... 10, 2.8 E2E-DEV-14): default arrangement, dragging docks with
@@ -859,8 +860,8 @@ test.describe('REGIE docks', () => {
       await expectZone(second.page, 'st', 'right');
       await expectZone(second.page, 'scenes', 'bottom', 'the other browser has its own layout');
 
-      // Logout (production menu) and login again through the form: the layout is still there.
-      await first.page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      // Logout (Settings › Account) and login again through the form: the layout is still there.
+      await openSettingsPage(first.page, '/settings/account');
       await first.page.getByRole('button', { name: 'Sign out' }).click();
       await expect(first.page).toHaveURL(/\/login/);
       await first.loginViaUi();

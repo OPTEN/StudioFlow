@@ -10,6 +10,7 @@ import { t } from '../../support/tags';
 import { uniqueIp } from '../../support/fixtures';
 import { expect, test } from '../../support/ui/fixtures';
 import { RegiePage } from '../../support/ui/regie';
+import { currentSetupStep, openSettingsPage } from '../../support/regie/settings-window';
 
 /**
  * OPS and the first-run wizard on a stack that starts from nothing (issue #27; docs/testing.md E2E-OPS-04, -38 to -41 and
@@ -128,7 +129,7 @@ test.describe('WIZ the wizard in the browser', () => {
     test.setTimeout(420_000);
     await page.goto('/');
     await expect(page).toHaveURL(/\/setup$/);
-    await expect(page.getByText('Step 1 of 4 · Account')).toBeVisible();
+    await expect(currentSetupStep(page)).toContainText('Account');
 
     // Step 1: the account (the setup code is in the log of the API).
     await page.getByLabel('Setup code').fill(await waitForSetupCode());
@@ -141,8 +142,8 @@ test.describe('WIZ the wizard in the browser', () => {
     // Until the media address is saved, every page of the Regie leads back to the wizard.
     await page.goto('/audit');
     await expect(page, 'the pages of the Regie lead to the wizard').toHaveURL(/\/setup\/server$/);
-    await expect(page.getByRole('heading', { name: 'Set up the server' })).toBeVisible();
-    await expect(page.getByText('Step 2 of 4 · Media address')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Connect the media server' })).toBeVisible();
+    await expect(currentSetupStep(page)).toContainText('Media server');
 
     // Step 2: the media address. An invalid one is refused in the form; a valid one is tested with a real round trip.
     const address = page.getByLabel('IPv4 address of this server');
@@ -155,7 +156,9 @@ test.describe('WIZ the wizard in the browser', () => {
     await page.getByRole('button', { name: 'Save and continue' }).click();
 
     // Step 3: the address and the local certificate. The CA certificate can be downloaded; a domain is optional.
-    await expect(page.getByText('Step 3 of 4 · Address and certificate')).toBeVisible({ timeout: 60_000 });
+    await expect(currentSetupStep(page)).toContainText('Address', { timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Choose how browsers reach the server' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: /^Local certificate/ })).toBeChecked();
     const download = page.getByRole('link', { name: 'Download the CA certificate' });
     await expect(download).toHaveAttribute('href', '/ca.crt');
     await page.getByLabel('Domain', { exact: true }).fill('not a host');
@@ -165,12 +168,19 @@ test.describe('WIZ the wizard in the browser', () => {
     await page.getByRole('button', { name: 'Save and continue' }).click();
 
     // Step 4: the embedding.
-    await expect(page.getByText('Step 4 of 4 · Embedding')).toBeVisible({ timeout: 60_000 });
-    const origins = page.getByLabel('Allowed origins, one per line');
-    await origins.fill(`${TEST_FRAME_ANCESTORS[0]}\nnot-an-origin`);
+    await expect(currentSetupStep(page)).toContainText('Embedding', { timeout: 60_000 });
+    // One row per website: "Add website" adds a row, each row is checked on its own.
+    await page.getByRole('button', { name: 'Add website' }).click();
+    await page.getByLabel('Website 1', { exact: true }).fill(TEST_FRAME_ANCESTORS[0]!);
+    await page.getByRole('button', { name: 'Add website' }).click();
+    await page.getByLabel('Website 2', { exact: true }).fill('not-an-origin');
     await page.getByRole('button', { name: 'Save and finish' }).click();
-    await expect(page.getByText(/Line 2 is not an origin/)).toBeVisible();
-    await origins.fill(TEST_FRAME_ANCESTORS.join('\n'));
+    await expect(page.getByText(/This is not a website address/)).toBeVisible();
+    await page.getByRole('button', { name: 'Remove website 2' }).click();
+    for (const [index, origin] of TEST_FRAME_ANCESTORS.entries()) {
+      if (index > 0) await page.getByRole('button', { name: 'Add website' }).click();
+      await page.getByLabel(`Website ${index + 1}`, { exact: true }).fill(origin);
+    }
     await page.getByRole('button', { name: 'Save and finish' }).click();
 
     await expect(page.getByRole('heading', { name: 'The server is ready' })).toBeVisible({ timeout: 60_000 });
@@ -191,38 +201,46 @@ test.describe('WIZ the wizard in the browser', () => {
     expect((await admin.getServerSettingsStatus()).body).toMatchObject({ caddy: { applied: true }, liveKit: { applied: true } });
   });
 
-  test('E2E-WIZ-02 [regie ui] the Server settings page: the services, the sections, the provider fields, the warning for paired devices, an own certificate and "Back up now"', t.disruptive('@p0'), async ({ page, config }) => {
+  test('E2E-WIZ-02 [regie ui] the server pages of the settings window: the services, the provider fields, the warning for paired devices, an own certificate and "Back up now"', t.disruptive('@p0'), async ({ page, config }) => {
     test.setTimeout(420_000);
     const regie = new RegiePage(page, config);
     await regie.loginViaApi();
     await page.goto('/');
     await regie.waitReady();
-    await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-    await page.getByRole('link', { name: 'Server settings' }).click();
-    await expect(page).toHaveURL(/\/settings$/);
-    await expect(page.getByRole('heading', { name: 'Server settings', level: 1 })).toBeVisible();
 
-    // Services: all three run the saved settings.
-    for (const service of ['Web server', 'Media server', 'Backup service']) {
-      await expect(page.locator('.c-set__service', { hasText: service })).toContainText('runs the saved settings', { timeout: 60_000 });
+    // Each server page shows the state of its service at the top: all three run the saved settings.
+    const pages = [
+      ['/settings/media', 'Media server', 'Media server'],
+      ['/settings/network', 'Web server', 'Address and certificate'],
+      ['/settings/backups', 'Backup service', 'Backups'],
+    ] as const;
+    for (const [path, service, title] of pages) {
+      await openSettingsPage(page, path);
+      await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+      await expect(page.locator('.c-service', { hasText: service })).toContainText('Running with the saved settings', { timeout: 60_000 });
+      await page.goto('/');
+      await regie.waitReady();
     }
+    await openSettingsPage(page, '/settings/media');
     await expect(page.getByLabel('IPv4 address of this server')).toHaveValue(config.nodeIp);
+    await page.goto('/settings/network');
     await expect(page.getByLabel('Domain', { exact: true })).toHaveValue(TEST_DOMAIN);
 
     // A provider shows its own credential fields and needs the domain with a dot; nothing is saved by looking.
-    const mode = page.getByLabel('Certificate', { exact: true });
-    await mode.selectOption('dns-route53');
+    const kind = (name: RegExp) => page.getByRole('radio', { name });
+    await kind(/^Let’s Encrypt via DNS/).check();
+    await page.getByLabel('DNS provider').selectOption('dns-route53');
     await expect(page.getByLabel('Access key ID')).toBeVisible();
     await expect(page.getByLabel('Secret access key')).toBeVisible();
     await expect(page.getByLabel('Region (for example eu-central-1)')).toBeVisible();
     await expect(page.getByText(/Paired phones, laptops and output links open the address they were paired with/), 'the warning for paired devices').toBeVisible();
     await page.locator('sf-address-section').getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Enter the domain.').or(page.getByText('Enter this value.')).first()).toBeVisible();
-    await mode.selectOption('internal');
+    await kind(/^Local certificate/).check();
 
     // An own certificate: upload, save, and Caddy presents it for its name; then back to the local certificate.
     const made = selfSigned({ names: ['studio.e2e.test'] });
-    await mode.selectOption('custom');
+    await kind(/^Own certificate/).check();
     await page.getByLabel('Domain', { exact: true }).fill('studio.e2e.test');
     await page.getByLabel('Certificate file (PEM)').setInputFiles({ name: 'fullchain.pem', mimeType: 'text/plain', buffer: Buffer.from(made.certificate) });
     await page.getByLabel('Private key file (PEM)').setInputFiles({ name: 'privkey.pem', mimeType: 'text/plain', buffer: Buffer.from(made.encryptedPrivateKey) });
@@ -232,20 +250,22 @@ test.describe('WIZ the wizard in the browser', () => {
     await page.locator('sf-address-section').getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Saved.').first()).toBeVisible({ timeout: 90_000 });
     await expect.poll(async () => (await presented('studio.e2e.test')).fingerprint, { timeout: 60_000, message: 'Caddy presents the uploaded certificate' }).toBe(made.fingerprint);
-    await expect(page.getByText(/Current certificate: CN=studio\.e2e\.test/)).toBeVisible();
+    const current = page.locator('section', { has: page.getByRole('heading', { name: 'Current certificate' }) });
+    await expect(current).toContainText('CN=studio.e2e.test');
 
     await page.getByLabel('Domain', { exact: true }).fill(TEST_DOMAIN);
-    await mode.selectOption('internal');
+    await kind(/^Local certificate/).check();
     await page.locator('sf-address-section').getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Saved.').first()).toBeVisible({ timeout: 90_000 });
     // "Saved." can still be the notice of the first save, and Caddy applies the change a moment after the API saved it.
     await expect.poll(async () => (await presented('studio.e2e.test')).fingerprint, { timeout: 60_000, message: 'the uploaded certificate is not presented any more' }).not.toBe(made.fingerprint);
 
     // Backups: "Back up now" makes a manual backup that shows in the list.
+    await page.goto('/settings/backups');
     const before = await page.locator('.c-srv__table tbody tr').count();
     await page.getByRole('button', { name: 'Back up now' }).click();
     await expect(page.locator('.c-srv__table tbody tr')).toHaveCount(before + 1, { timeout: 120_000 });
-    await expect(page.locator('.c-srv__table tbody tr').first()).toContainText('manual');
+    await expect(page.locator('.c-srv__table tbody tr').first()).toContainText('Manual');
   });
 });
 

@@ -482,13 +482,15 @@ test.describe('REGIE monitoring page', () => {
       await expect(rows).toHaveCount(3);
       const cell = (row: Locator, index: number) => row.locator('td').nth(index);
       const rowOf = (name: string) => mon.locator('tbody tr').filter({ hasText: name });
-      await expect(mon.locator('.c-mon__summary')).toContainText('3 stations');
+      await expect(mon.locator('.c-mon__summary')).toContainText('3 devices');
 
-      // Columns after the station name (a th): State, Sources, Resolution, fps, Mbit/s, Encoding, Loss, RTT, Battery, Network, Tech check, Last seen.
+      // Columns after the device name (a th): State, Source, Resolution, Frame rate, Bit rate, Encoding, Packet loss, Round trip,
+      // Battery, Network, Tech check, Last seen. The headings carry the units, so the cells hold plain figures.
       // Addressed by name, and the headings are checked once, so a new column cannot silently shift the cells again.
       const COL = { loss: 6, rtt: 7, battery: 8, network: 9, tech: 10, seen: 11 } as const;
       await expect(mon.locator('thead th')).toHaveText([
-        'Station', 'State', 'Sources', 'Resolution', 'fps', 'Mbit/s', 'Encoding', 'Loss', 'RTT', 'Battery', 'Network', 'Tech check', 'Last seen',
+        'Device', 'State', 'Source', 'Resolution', 'Frame rate (fps)', 'Bit rate (Mbit/s)', 'Encoding', 'Packet loss (%)',
+        'Round trip (ms)', 'Battery', 'Network', 'Tech check', 'Last seen',
       ]);
       const one = rowOf('Phone One');
       await expect(cell(one, 0)).toContainText('sending');
@@ -496,8 +498,8 @@ test.describe('REGIE monitoring page', () => {
       await expect(cell(one, 2)).toHaveText('1280 × 720');
       await expect(cell(one, 3)).toHaveText('30');
       await expect(cell(one, 4)).toHaveText('2.5');
-      await expect(cell(one, COL.loss)).toHaveText('0.5%');
-      await expect(cell(one, COL.rtt)).toHaveText('42 ms');
+      await expect(cell(one, COL.loss)).toHaveText('0.5');
+      await expect(cell(one, COL.rtt)).toHaveText('42');
       await expect(cell(one, COL.battery)).toHaveText('15%');
       await expect(cell(one, COL.battery), 'a low battery is amber').toHaveClass(/c-state--warn/);
       await expect(cell(one, COL.network)).toHaveText('Wi-Fi');
@@ -532,25 +534,25 @@ test.describe('REGIE monitoring page', () => {
 
       // Sorting: fps ascending (25, 30, then the station without a live slot last), descending, then back to the default.
       const header = (label: string) => mon.getByRole('columnheader', { name: label });
-      await mon.getByRole('button', { name: 'fps', exact: true }).click();
-      await expect(header('fps')).toHaveAttribute('aria-sort', 'ascending');
+      await mon.getByRole('button', { name: 'Frame rate (fps)', exact: true }).click();
+      await expect(header('Frame rate (fps)')).toHaveAttribute('aria-sort', 'ascending');
       await expect.poll(monitoringOrder).toEqual(['Laptop Lea', 'Phone One', 'Phone Two']);
-      await mon.getByRole('button', { name: 'fps', exact: true }).click();
-      await expect(header('fps')).toHaveAttribute('aria-sort', 'descending');
+      await mon.getByRole('button', { name: 'Frame rate (fps)', exact: true }).click();
+      await expect(header('Frame rate (fps)')).toHaveAttribute('aria-sort', 'descending');
       await expect.poll(monitoringOrder).toEqual(['Phone One', 'Laptop Lea', 'Phone Two']);
-      await mon.getByRole('button', { name: 'Mbit/s', exact: true }).click();
+      await mon.getByRole('button', { name: 'Bit rate (Mbit/s)', exact: true }).click();
       await expect
         .poll(monitoringOrder, { message: 'Mbit/s ascending: 2.5 then 4, unknown last' })
         .toEqual(['Phone One', 'Laptop Lea', 'Phone Two']);
-      await mon.getByRole('button', { name: 'Mbit/s', exact: true }).click();
+      await mon.getByRole('button', { name: 'Bit rate (Mbit/s)', exact: true }).click();
       await expect.poll(monitoringOrder).toEqual(['Laptop Lea', 'Phone One', 'Phone Two']);
-      await mon.getByRole('button', { name: 'Station', exact: true }).click();
+      await mon.getByRole('button', { name: 'Device', exact: true }).click();
       await expect
         .poll(monitoringOrder, { message: 'by name' })
         .toEqual(['Laptop Lea', 'Phone One', 'Phone Two']);
-      await mon.getByRole('button', { name: 'Station', exact: true }).click();
-      await mon.getByRole('button', { name: 'Station', exact: true }).click();
-      await expect(header('Station')).not.toHaveAttribute('aria-sort', /.+/);
+      await mon.getByRole('button', { name: 'Device', exact: true }).click();
+      await mon.getByRole('button', { name: 'Device', exact: true }).click();
+      await expect(header('Device')).not.toHaveAttribute('aria-sort', /.+/);
       expect(await monitoringOrder(), 'back to the Regie order').toEqual(await dockOrder());
 
       // Live values: a new report reaches the table within a few seconds (telemetry is relayed once per 2 s).
@@ -571,8 +573,8 @@ test.describe('REGIE monitoring page', () => {
       await expect(cell(rowOf('Phone One'), 2)).toHaveText('1920 × 1080', { timeout: 6000 });
       await expect(cell(rowOf('Phone One'), 3)).toHaveText('24');
       await expect(cell(rowOf('Phone One'), 4)).toHaveText('3.5');
-      await expect(cell(rowOf('Phone One'), COL.loss)).toHaveText('2.5%');
-      await expect(cell(rowOf('Phone One'), COL.rtt)).toHaveText('77 ms');
+      await expect(cell(rowOf('Phone One'), COL.loss)).toHaveText('2.5');
+      await expect(cell(rowOf('Phone One'), COL.rtt)).toHaveText('77');
       await expect(cell(rowOf('Phone One'), COL.battery)).toHaveText('14%');
       // Phone Two comes back: the state word changes.
       await report(hubTwo, [{ slot: 'camera' }], {
@@ -582,7 +584,13 @@ test.describe('REGIE monitoring page', () => {
         rttMs: 120,
       });
       await expect(cell(rowOf('Phone Two'), 0)).toContainText('sending', { timeout: 6000 });
-      await mon.getByRole('link', { name: 'Back to the control room' }).click();
+      // The menu of a row leads to the device in the control room.
+      await rowOf('Phone Two').getByRole('button', { name: 'Actions for Phone Two' }).click();
+      await mon.getByRole('menuitem', { name: 'Show in control room' }).click();
+      await expect(mon).toHaveURL(/\/$/);
+      await expect(mon.locator('.c-st[data-device]').filter({ hasText: 'Phone Two' })).toBeVisible();
+      await mon.goto('/monitoring');
+      await mon.getByRole('link', { name: 'Control room' }).first().click();
       await expect(mon).toHaveURL(/\/$/);
       await expect(regie.page).toHaveURL(/\/$/);
     },

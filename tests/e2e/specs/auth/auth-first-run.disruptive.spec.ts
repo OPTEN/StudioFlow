@@ -6,6 +6,7 @@ import { ensureHealthy, readSetupCode, resetAdminAccount, setupRequired, waitFor
 import { t } from '../../support/tags';
 import { expect, test } from '../../support/ui/fixtures';
 import { RegiePage } from '../../support/ui/regie';
+import { openSettingsPage } from '../../support/regie/settings-window';
 import { uniqueIp } from '../../support/fixtures';
 
 /**
@@ -56,7 +57,8 @@ test.describe('AUTH first-run setup', () => {
     await expect(page).toHaveURL(/\/setup$/);
     await page.goto('/login');
     await expect(page, 'the login leads to the setup while no account exists').toHaveURL(/\/setup$/);
-    await expect(page.getByRole('heading', { name: 'First-run setup' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
+    await expect(page, 'the document title names the step').toHaveTitle(/First-run setup/);
 
     const code = await waitForSetupCode();
     await page.getByLabel('Setup code').fill('AAAA-AAAA');
@@ -99,7 +101,7 @@ test.describe('AUTH first-run setup', () => {
     expect((await send({ method: 'POST', url: `${config.apiDirect}/api/auth/login`, headers: { 'X-Forwarded-For': uniqueIp() }, json: config.admin })).status, 'the account still signs in').toBe(200);
   });
 
-  test('E2E-AUTH-33 [regie ui] the password change in the production menu ends the other sessions and keeps this one', t.disruptive('@p1'), async ({ page, config }) => {
+  test('E2E-AUTH-33 [regie ui] the password change on the Account page of the settings ends the other sessions and keeps this one', t.disruptive('@p1'), async ({ page, config }) => {
     test.setTimeout(240_000);
     const other = await AdminApi.login(config.baseURL, config.admin);
     const regie = new RegiePage(page, config);
@@ -107,13 +109,14 @@ test.describe('AUTH first-run setup', () => {
     await page.goto('/');
     await regie.waitReady();
 
-    await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
-    await page.getByRole('button', { name: 'Change password' }).click();
+    await openSettingsPage(page, '/settings/account');
+    await expect(page.getByRole('heading', { name: 'Change password' })).toBeVisible();
+    await expect(page.getByText('Every other browser signed in with this account is signed out.'), 'the consequence is said before the button').toBeVisible();
     await page.getByLabel('Current password').fill(config.admin.password);
     await page.getByLabel('New password', { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel('Repeat new password').fill(NEW_PASSWORD);
     const changed = page.waitForResponse((response) => response.url().endsWith('/api/auth/password') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Change password' }).click();
+    await page.getByRole('button', { name: 'Update password' }).click();
     expect((await changed).status()).toBe(204);
     await expect(page.getByText('Password changed.')).toBeVisible();
 

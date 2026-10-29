@@ -6,6 +6,7 @@ import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
 import { RegiePage } from '../../support/ui/regie';
 import { randomClientIp, recordRequests } from '../../support/regie/kit';
+import { openSettingsPage } from '../../support/regie/settings-window';
 
 /**
  * The login, the session and the presence of the Regie in the browser (docs/testing.md 2.1: E2E-AUTH-01 ... 05, 25, 26). The
@@ -204,7 +205,8 @@ test.describe('REGIE login and session', () => {
         path.startsWith('/hubs/studio/negotiate'),
       );
 
-      await first.page.getByRole('button', { name: /^Production .*, menu$/ }).click();
+      // Settings › Account: "Sign out" (no confirmation while nothing is on air).
+      await openSettingsPage(first.page, '/settings/account');
       await first.page.getByRole('button', { name: 'Sign out' }).click();
       const loggedOutAt = Date.now();
       await expect(first.page).toHaveURL(/\/login$/);

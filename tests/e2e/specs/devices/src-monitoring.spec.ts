@@ -41,17 +41,17 @@ async function monitoringRows(page: Page): Promise<MonitoringRow[]> {
       const cell = (heading: string) => {
         const index = headings.indexOf(heading);
         if (index < 1) throw new Error(`no monitoring column "${heading}" in: ${headings.join(', ')}`);
-        return text(cells[index - 1]); // the first heading belongs to the station name, a th
+        return text(cells[index - 1]); // the first heading belongs to the device name, a th
       };
       return {
         name: text(row.querySelector('th .c-mon-table__name') ?? undefined),
         state: cell('State'),
-        slots: cell('Sources'),
+        slots: cell('Source'),
         resolution: cell('Resolution'),
-        fps: cell('fps'),
-        bitrate: cell('Mbit/s'),
-        loss: cell('Loss'),
-        rtt: cell('RTT'),
+        fps: cell('Frame rate (fps)'),
+        bitrate: cell('Bit rate (Mbit/s)'),
+        loss: cell('Packet loss (%)'),
+        rtt: cell('Round trip (ms)'),
         battery: cell('Battery'),
         network: cell('Network'),
         tech: cell('Tech check'),
@@ -98,7 +98,7 @@ test(
       expect(row.resolution, `${name}: resolution`).toMatch(/\d{3,4} × \d{3,4}|\d{3,4}p/);
       expect(row.fps, `${name}: fps`).toMatch(/\d/);
       expect(row.bitrate, `${name}: bitrate`).toMatch(/\d+\.\d/);
-      expect(row.loss, `${name}: loss`).toMatch(/\d+\.\d%/);
+      expect(row.loss, `${name}: loss (the unit is in the heading)`).toMatch(/^\d+\.\d$/);
       expect(row.rtt, `${name}: RTT`).toMatch(/\d+/);
       expect(row.network, `${name}: network type`).not.toBe('');
     }

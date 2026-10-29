@@ -60,7 +60,11 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Control+A');
     await page.keyboard.type(config.admin.password);
     await page.keyboard.press('Tab');
-    expect((await focused(page)).name, 'third stop is the submit button').toBe('Sign in');
+    expect((await focused(page)).name, 'third stop shows the password').toBe('Show password');
+    await page.keyboard.press('Tab');
+    expect((await focused(page)).name, 'fourth stop explains a forgotten password').toBe('Forgot your password?');
+    await page.keyboard.press('Tab');
+    expect((await focused(page)).name, 'fifth stop is the submit button').toBe('Sign in');
     const ring = (await describeActiveSettled(page))!.ring;
     expect(ring.kind, 'the submit button shows the focus outline').toBe('outline');
     await page.keyboard.press('Space');
