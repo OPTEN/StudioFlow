@@ -5,7 +5,7 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 export type ShortcutId =
   /** Keys 1–9: the handler receives the 0-based scene index. */
   | 'scene'
-  /** Space (not on a button or link): Take in Studio Mode. */
+  /** Space (not on a button, link or switch): Take in Studio Mode. */
   | 'take'
   /** Ctrl/Cmd+Z. */
   | 'undo'
@@ -36,13 +36,33 @@ const ESCAPE_ORDER: readonly EscapeLayer[] = [
   'pairing',
   'selection',
 ];
-const TYPING_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
+const TYPING_TAGS: ReadonlySet<string> = new Set(['SELECT', 'TEXTAREA']);
 const CONTROL_TAGS: ReadonlySet<string> = new Set(['BUTTON', 'A']);
+/** Input types that take no typed text: switches, checkboxes, radios, sliders and buttons (and file/colour pickers). */
+const NON_TEXT_INPUT_TYPES: ReadonlySet<string> = new Set([
+  'checkbox',
+  'radio',
+  'range',
+  'button',
+  'submit',
+  'reset',
+  'image',
+  'file',
+  'color',
+]);
+
+/** True for an input element that takes no typed text (a switch, checkbox, radio, slider or button). */
+function isNonTextInput(element: Element): boolean {
+  return element instanceof HTMLInputElement && NON_TEXT_INPUT_TYPES.has(element.type);
+}
 
 /** True while the focus is in a text field, select or editable element (shortcuts must not fire then). */
 export function isTypingTarget(element: Element | null): boolean {
   if (!element) {
     return false;
+  }
+  if (element.tagName === 'INPUT') {
+    return !isNonTextInput(element);
   }
   if (TYPING_TAGS.has(element.tagName)) {
     return true;
@@ -57,7 +77,7 @@ export function isTypingTarget(element: Element | null): boolean {
  * - nothing else while typing in an input, select, textarea or editable element;
  * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo;
  * - other combinations with Ctrl, Cmd or Alt are left to the browser;
- * - Space triggers `take` unless the focus is on a button or link (Space activates those);
+ * - Space triggers `take` unless the focus is on a button, link, switch or checkbox (Space activates those);
  * - M triggers `mute` (the selected audio channel);
  * - 1–9 trigger `scene`. Auto-repeat of Space and digits is ignored, so holding a key never fires twice.
  *
@@ -119,7 +139,10 @@ export class KeyboardService {
       return;
     }
     if (event.code === 'Space' || event.key === ' ') {
-      if (event.repeat || (active && CONTROL_TAGS.has(active.tagName))) {
+      if (
+        event.repeat ||
+        (active && (CONTROL_TAGS.has(active.tagName) || isNonTextInput(active)))
+      ) {
         return;
       }
       if (this.run('take', -1)) {

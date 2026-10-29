@@ -84,6 +84,31 @@ describe('KeyboardService', () => {
     expect(isTypingTarget(null)).toBe(false);
   });
 
+  it('does not count a switch, checkbox, radio or slider as a text field', () => {
+    for (const type of ['checkbox', 'radio', 'range', 'button']) {
+      const input = document.createElement('input');
+      input.type = type;
+      expect(isTypingTarget(input)).toBe(false);
+    }
+    for (const type of ['text', 'search', 'number', 'password', 'email']) {
+      const input = document.createElement('input');
+      input.type = type;
+      expect(isTypingTarget(input)).toBe(true);
+    }
+  });
+
+  it('keeps the scene keys alive on a focused switch, but leaves Space to the switch', () => {
+    const scenes: number[] = [];
+    let takes = 0;
+    cleanup.push(keyboard.register('scene', (index) => (scenes.push(index), true)));
+    cleanup.push(keyboard.register('take', () => (takes++, true)));
+    focus('<input type="checkbox" role="switch">');
+    press('4');
+    press(' ');
+    expect(scenes).toEqual([3]);
+    expect(takes).toBe(0);
+  });
+
   it('runs Space as take unless a button or link has the focus', () => {
     let takes = 0;
     cleanup.push(keyboard.register('take', () => (takes++, true)));

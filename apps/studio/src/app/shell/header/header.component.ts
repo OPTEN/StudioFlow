@@ -11,6 +11,7 @@ import { BroadcastControlComponent } from './broadcast-control.component';
 import { LAYOUT_POPOVER, LayoutPopoverComponent } from './layout-popover.component';
 import { outputLoad } from './output-load';
 import { OUTPUT_POPOVER, OutputPopoverComponent, linkStateText } from './output-popover.component';
+import { presenceText } from './presence-text';
 import { ProductionMenuComponent } from './production-menu.component';
 import { SETTINGS_POPOVER, SettingsPopoverComponent } from './settings-popover.component';
 
@@ -115,9 +116,7 @@ export class HeaderComponent {
   });
 
   protected readonly operators = computed(() => Math.max(1, this.store.operatorsOnline()));
-  protected readonly presenceText = computed(() =>
-    t('regie.header.presence.long', { count: this.operators() }),
-  );
+  protected readonly presenceText = computed(() => presenceText(this.operators()));
 
   /** Health chip: open the station of the most severe incident, or confirm that all stations send. */
   protected showHealth(): void {
