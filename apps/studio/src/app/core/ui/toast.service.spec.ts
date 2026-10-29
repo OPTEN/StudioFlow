@@ -122,4 +122,16 @@ describe('ToastService', () => {
     toasts.error(unavailable);
     expect(toasts.current()?.id).not.toBe(first?.id);
   });
+
+  it('moves a repeated message behind a newer toast to the end, as the newest feedback', () => {
+    toasts.show('Nothing to undo');
+    const nothing = toasts.current();
+    toasts.show('“Scene B” is live');
+    toasts.show('Nothing to undo');
+    expect(toasts.toasts().map((toast) => toast.message)).toEqual([
+      '“Scene B” is live',
+      'Nothing to undo',
+    ]);
+    expect(toasts.current()).toBe(nothing);
+  });
 });
