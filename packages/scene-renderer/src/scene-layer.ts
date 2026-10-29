@@ -38,7 +38,7 @@ export class MediaPool {
 }
 
 /** Items of a scene that can be rendered: entries with a string id, first occurrence of an id wins. */
-function renderableItems(scene: SceneDto): SceneItemDto[] {
+export function renderableItems(scene: SceneDto): SceneItemDto[] {
   const items: unknown = scene.items;
   if (!Array.isArray(items)) {
     return [];
@@ -84,8 +84,13 @@ export class SceneLayer {
   constructor(
     scene: SceneDto,
     private readonly ctx: RenderContext,
-    host: HTMLElement,
-    options: { readonly pool?: MediaPool; readonly opacity?: number } = {},
+    private readonly host: HTMLElement,
+    options: {
+      readonly pool?: MediaPool;
+      readonly opacity?: number;
+      /** Build the layer without putting it into `host` (see {@link insert}): it renders and decodes unseen. */
+      readonly deferred?: boolean;
+    } = {},
   ) {
     // Own stacking context: item z-indexes must never reach above a later layer or the slate.
     this.element = createElement(ctx.doc, 'div', 'sf-r-layer', {
@@ -105,11 +110,35 @@ export class SceneLayer {
     this.backgroundLoader = new AssetLoader(this.backgroundImage);
     this.itemsEl = createElement(ctx.doc, 'div', 'sf-r-items', FILL);
     this.element.append(this.backgroundImage, this.itemsEl);
-    host.append(this.element);
+    if (options.deferred !== true) {
+      host.append(this.element);
+    }
     this.scene = scene;
     this.pool = options.pool ?? null;
     this.applyScene(scene);
     this.pool = null;
+  }
+
+  /** Puts a deferred layer on top of the host's layers; a layer that is already there stays where it is. */
+  insert(): void {
+    if (!this.element.isConnected) {
+      this.host.append(this.element);
+    }
+  }
+
+  /** True when an item plays `source` through its own media view (a cut would hand that view over, see {@link MediaPool}). */
+  plays(source: ResolvedSource): boolean {
+    return this.order.some((view) => {
+      const own = view.mediaSource;
+      return own !== null && isSameSource(own, source);
+    });
+  }
+
+  /** The videos of shown, live device sources that have no decoded frame yet. */
+  unframedVideos(): HTMLVideoElement[] {
+    return this.order
+      .map((view) => view.unframedVideo)
+      .filter((video): video is HTMLVideoElement => video !== null);
   }
 
   /** Id of the shown scene. */
