@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/OPTEN/StudioFlow/compare/v0.1.1...v0.2.0) (2026-10-29)
+
+
+### Features
+
+* **ui:** complete UI/UX redesign of the studio, sender and output page ([#95](https://github.com/OPTEN/StudioFlow/issues/95)) ([ea9e2b5](https://github.com/OPTEN/StudioFlow/commit/ea9e2b549263f7783334ef34cc598dce5afd1e7d))
+
+
+### Bug Fixes
+
+* **studio:** accessible names that contain the visible text and a bounded message strip ([eaf7240](https://github.com/OPTEN/StudioFlow/commit/eaf7240520be2964fb92e4496a3dea3e654341bf))
+* **studio:** expose splitter values, drop the disabled tab stop and move seams by exact steps ([2a3df7e](https://github.com/OPTEN/StudioFlow/commit/2a3df7eaf2d272db24132806a91967b8c73cbc1e))
+* **studio:** honour reduced motion and forced colours in the CSS ([fc9c8c9](https://github.com/OPTEN/StudioFlow/commit/fc9c8c9d24b85331c25b1a24a1a0fc4733f93afd))
+* **studio:** keep the global keys alive on a focused switch and spell out small presence counts ([72a7646](https://github.com/OPTEN/StudioFlow/commit/72a76460f3726e4b36a9074109c087182596e677))
+
 ## [0.1.1](https://github.com/OPTEN/StudioFlow/compare/v0.1.0...v0.1.1) (2026-10-28)
 
 
