@@ -106,7 +106,7 @@ test.describe('Tally on the sender', () => {
       const three = (await appearance(k3.phone.page))!;
       expect(three.badge, 'K3 neutral').toBeNull();
       expect(three.shadow).toBe('none');
-      expect(three.spoken).toBe('Not live.');
+      expect(three.spoken, 'a station that opened off air and stayed there says nothing').toBe('');
       const laptop = (await appearance(lap.laptop.page))!;
       expect(laptop.tally, 'the laptop shows the strongest of its slots').toBe('program');
       expect(laptop.shadow).toContain(RED);
