@@ -146,7 +146,7 @@ test('screenshots of every screen', async ({ api, production, pairContext, openP
   await closeMenus(page);
   await shoot(page, '08-issues', 'Activity bar: issues popover', () => page.locator('.c-status__health').click());
   await closeMenus(page);
-  await shoot(page, '09-incident-menu', 'Right-click on an incident', () => rightClick(page.locator('sf-status-line .c-status__inc')));
+  await shoot(page, '09-incident-menu', 'Right-click on an incident', () => rightClick(page.locator('sf-status-line .c-status__lead')));
   await closeMenus(page);
   await shoot(page, '10-end-broadcast', 'Broadcast capsule: End broadcast asks first', () => page.getByRole('button', { name: 'End broadcast' }).first().click());
   await closeMenus(page);
@@ -171,7 +171,7 @@ test('screenshots of every screen', async ({ api, production, pairContext, openP
   await closeMenus(page);
   await shoot(page, '19-device-open', 'Devices: an open device with its tabs', () => page.locator('.c-st__row').filter({ hasText: 'Stage camera' }).click());
   for (const tab of ['Camera', 'Message']) {
-    await shoot(page, `20-device-${tab.toLowerCase()}`, `Device detail: tab ${tab}`, () => page.locator('.c-st__tabs').getByRole('tab', { name: tab }).click());
+    await shoot(page, `20-device-${tab.toLowerCase()}`, `Device detail: tab ${tab}`, () => page.locator('.c-st.is-open .c-st__tabs').getByRole('tab', { name: tab }).click());
   }
   await shoot(page, '21-device-menu', 'Right-click on a device', () => rightClick(page.locator('.c-st__row').filter({ hasText: 'Guest camera' })));
   await closeMenus(page);
@@ -230,9 +230,9 @@ test('screenshots of every screen', async ({ api, production, pairContext, openP
   await shoot(page, '31b-settings-slates-end', 'Settings › Slates, the end slate tab', () => page.getByRole('tab', { name: /After/ }).click(), { fullPage: true });
   await page.goto('/settings/output');
   await page.waitForTimeout(1200);
-  await shoot(page, '33b-output-link-open', 'Output links: a link opened (tab Link)', () => page.locator('.c-links__head').first().click(), { fullPage: true });
+  await shoot(page, '33b-output-link-open', 'Output links: a link opened (tab Link)', () => page.locator('.c-links__row').first().click(), { fullPage: true });
   for (const tab of ['Access', 'Use in OBS']) {
-    await shoot(page, `33c-output-${tab.toLowerCase().replaceAll(' ', '-')}`, `Output link detail: tab ${tab}`, () => page.getByRole('tab', { name: tab }).click(), { fullPage: true });
+    await shoot(page, `33c-output-${tab.toLowerCase().replaceAll(' ', '-')}`, `Output link detail: tab ${tab}`, () => page.locator('.c-output-link__tabs').getByRole('tab', { name: tab }).click(), { fullPage: true });
   }
   await shoot(page, '33d-output-menu', 'Right-click on an output link', () => rightClick(page.locator('.c-links__head')));
   await closeMenus(page);
