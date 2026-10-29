@@ -98,14 +98,18 @@ H.264), E2E-AUD-08 (stalls of the output page) and E2E-OUT-08 (still periods aga
 INT-AUTH-22 and OPS-35 were not Windows-only, as first assumed. Per the user, E2E full is no longer run on GitHub: the
 matrix runs locally (`tests/e2e/stack.sh`), GitHub CI is kept to the normal checks.
 
-**Local matrix (2026-10-28, main 0a0422d):** #78, #79, #80 fixed; #81 (audio measurements on Windows) hardened, open
-until a local matrix is green.
+**Local matrix (2026-10-28, main 0a0422d):** #78, #79, #80 fixed; #81 (audio measurements on Windows) hardened.
+
+**Full local matrix (2026-10-29, main 73f7e1b, 1.6 h):** 628 passed, 8 failed, 4 skipped. Fixed in b64c672 (13/13
+green locally): WebKit on Windows has no AudioContext (known difference in E2E-DEV-19), E2E-OPS-35 takes the port with
+a container on Docker Desktop, E2E-NET-12 [livekit] closes the cut-off publisher before the network returns (it rejoined
+under the same identity). E2E-AUD-13, E2E-PAIR-09 and E2E-SWITCH-08 (`ERR_NO_BUFFER_SPACE` after 1.3 h) were load
+flakes: 3x rerun, 33/33 green. #81 and #82 are closed. The v0.1.1 bundle was installed once as an operator (checksums,
+cosign 3, setup, login, backup, update, Caddy recreate): all fine.
 
 ## Remaining plan
 
-1. Install the v0.1.1 bundle once as an operator on a clean stack (update and Caddy recreate included).
-2. Full local E2E matrix on current `main`; fix and file what fails; then close #81 and #82.
-3. Follow-ups below.
+1. Follow-ups below.
 
 ## Follow-ups for the final pass
 
@@ -120,10 +124,11 @@ until a local matrix is green.
 - #13: in Studio Mode a text of the program scene can only be shown/hidden through the preview.
 - `apps/output/src/latency-probe.spec.ts` timed out once under load.
 - `stack.sh up` smoke H-STACK-01 timed out at 60 s under heavy machine load.
+- Flaky under the long local matrix: E2E-AUD-13 (phone camera slot `failed`), E2E-PAIR-09 (click intercepted while the
+  card re-renders), E2E-SWITCH-08 (`ERR_NO_BUFFER_SPACE` on Windows after hours of sockets).
 
 ## Known open bugs
 
-- #81 (audio measurements on Windows), #82 (failed E2E full run 40692998099, closes with a green local matrix).
 - `AuditExportStreamingTests` times out in the cloud container now and then (green on GitHub).
 
 ## Gotchas learned
