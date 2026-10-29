@@ -13,17 +13,17 @@ describe('DockLayoutService in German', () => {
     });
   });
 
-  it('says where a dock is docked and offers to reset the layout', () => {
+  it('says where a dock is docked and offers to undo the move', () => {
     const layout = TestBed.inject(DockLayoutService);
     const toasts = TestBed.inject(ToastService);
     layout.moveDock('st', 'right', 0);
     expect(toasts.current()).toMatchObject({
-      message: 'Stationen ist rechts angedockt',
-      action: { label: 'Layout zurücksetzen' },
+      message: 'Geräte ist rechts angedockt',
+      action: { label: 'Rückgängig' },
     });
     layout.moveDock('scenes', 'left', 0);
     expect(toasts.current()?.message).toBe('Szenen ist links angedockt');
     layout.moveDock('st', 'bottom', 0);
-    expect(toasts.current()?.message).toBe('Stationen ist unten angedockt');
+    expect(toasts.current()?.message).toBe('Geräte ist unten angedockt');
   });
 });

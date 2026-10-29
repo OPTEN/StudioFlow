@@ -49,7 +49,7 @@ test.describe('axe scans: Regie', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: false });
     const { page } = regie;
     const scanner = new Scanner(page);
-    await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
+    await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
     await scanner.scan('regie-direct-incident');
     // a toast (direct mode: a scene click switches and confirms)
     await regie.clickScene('Break');
@@ -99,14 +99,15 @@ test.describe('axe scans: Regie', () => {
     void production;
   });
 
-  test('E2E-DEV-15 [axe, popovers] output, Docks and layout, production menu, add source, scene menu', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-15 [axe, popovers] output, layout, issues of the activity bar, production menu, add source, scene menu', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
     const { page } = regie;
     const scanner = new Scanner(page);
     const cases: Array<[string, () => ReturnType<typeof page.getByRole>, string]> = [
       ['output', () => page.getByRole('button', { name: /^Output/ }), '[role=dialog][aria-label=Output]'],
-      ['layout', () => page.getByRole('button', { name: 'Docks and layout' }), '[role=dialog][aria-label="Docks and layout"]'],
+      ['layout', () => page.getByRole('button', { name: 'Layout', exact: true }), '[role=dialog][aria-label="Layout"]'],
+      ['issues', () => page.locator('sf-status-line .c-status__health'), '#sf-pop-issues'],
       ['production-menu', () => page.getByRole('button', { name: /^Production .*, menu$/ }), '[role=dialog][aria-label=Production]'],
       ['add-source', () => page.getByRole('button', { name: 'Source', exact: true }), '[role=menu][aria-label="Add source"]'],
       ['scene-menu', () => page.getByRole('button', { name: 'Actions for scene Break' }), '[role=menu][aria-label="Scene Break"]'],
@@ -341,9 +342,9 @@ test.describe('Regie semantics', () => {
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORT, incident: 'reconnecting', studio: true });
     const { page } = regie;
     // landmarks and regions
-    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio', 'Messages']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
+    for (const name of ['Monitors', 'Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio', 'Activity']) await expect(page.getByRole('region', { name }), `region “${name}”`).toHaveCount(1);
     await expect(page.getByRole('banner'), 'the header is the banner landmark').toHaveCount(1);
-    expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the message strip is a region').toBe('region');
+    expect(await page.locator('sf-status-line').evaluate((element) => element.getAttribute('role')), 'the activity bar is a region').toBe('region');
     // switch and groups
     await expect(page.getByRole('switch', { name: 'Studio Mode' })).toBeChecked();
     await expect(page.getByRole('group', { name: 'Transition type' }).getByRole('button')).toHaveCount(2);
@@ -370,10 +371,11 @@ test.describe('Regie semantics', () => {
     // every button has an accessible name
     for (const button of await page.getByRole('button').all()) await expect(button).toHaveAccessibleName(/\S/);
     for (const control of await page.locator('input:visible, select:visible, textarea:visible').all()) await expect(control).toHaveAccessibleName(/\S/);
-    // toast: polite live region (in Studio Mode a click on a scene only loads the Preview; the toast comes with the program switch)
+    // toast: polite live region that announces each new toast on its own (aria-atomic false; in Studio Mode a click on a scene
+    // only loads the Preview; the toast comes with the program switch)
     await regie.take().click();
     await expect(regie.toast().first()).toBeVisible();
-    expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic') }))).toEqual({ role: 'status', live: 'polite', atomic: 'true' });
+    expect(await page.locator('sf-toast-host').evaluate((element) => ({ role: element.getAttribute('role'), live: element.getAttribute('aria-live'), atomic: element.getAttribute('aria-atomic') }))).toEqual({ role: 'status', live: 'polite', atomic: 'false' });
     expect(await page.evaluate(() => document.documentElement.lang), 'the toast text is announced in the language of the document').toBe('en');
   });
 });

@@ -66,8 +66,8 @@ function criticalControls(regie: RegiePage, studio: boolean): Array<[string, Loc
     ['Longer fade', page.getByRole('button', { name: 'Longer fade' })],
     ['Pair device', regie.pairButton()],
     ['output chip', page.getByRole('button', { name: /^Output/ })],
-    ['health chip', page.getByRole('button', { name: /incident|station|ok/ }).first()],
-    ['Docks and layout', page.getByRole('button', { name: 'Docks and layout' })],
+    ['health button', page.locator('sf-status-line .c-status__health')],
+    ['Layout', page.getByRole('button', { name: 'Layout', exact: true })],
     ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
   ];
   if (studio) controls.push(['Take', regie.take()]);
@@ -107,13 +107,13 @@ async function checkDesktop(regie: RegiePage, options: { name: string; studio: b
   await expectNoOverflow(page, { vertical: false, label });
 
   const m = await metrics(page);
-  expect(m.header!.h, `${label}: header height`).toBeCloseTo(50, 0);
-  expect(m.strip!.h, `${label}: message strip height is at least 38 px`).toBeGreaterThanOrEqual(38);
+  expect(m.header!.h, `${label}: toolbar height`).toBeCloseTo(52, 0);
+  expect(m.strip!.h, `${label}: the activity bar is one line of 36 px`).toBeCloseTo(36, 0);
   const monitors = await checkMonitors(regie, options.studio, label);
   expect(monitors.program.y + monitors.program.h, `${label}: the monitors end above the docks`).toBeLessThanOrEqual(m.bottomZone!.y + 0.5);
 
   // five docks side by side at the bottom
-  expect(m.docks.map((dock) => dock.name), `${label}: five docks`).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
+  expect(m.docks.map((dock) => dock.name), `${label}: five docks`).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio']);
   const tops = m.docks.map((dock) => Math.round(dock.box.y));
   expect(new Set(tops).size, `${label}: the docks share one top edge (${tops.join(', ')})`).toBe(1);
   for (let index = 1; index < m.docks.length; index++)
@@ -157,7 +157,7 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
   const viewport = page.viewportSize()!;
   const triggers: Array<[string, Locator]> = [
     ['Output', page.getByRole('button', { name: /^Output/ })],
-    ['Docks and layout', page.getByRole('button', { name: 'Docks and layout' })],
+    ['Layout', page.getByRole('button', { name: 'Layout', exact: true })],
     ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
   ];
   for (const [name, trigger] of triggers) {
@@ -177,10 +177,10 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
 test.describe('Regie responsive layout', () => {
   for (const viewport of [VIEWPORTS.w1280, VIEWPORTS.w1366]) {
     const name = `${viewport.width}x${viewport.height}`;
-    test(`E2E-DEV-01 [regie-${name}] one screen without scroll: header 50 px, strip, 16:9 monitors, five docks at the bottom, compact scene rows, critical controls in the viewport`, tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
+    test(`E2E-DEV-01 [regie-${name}] one screen without scroll: toolbar 52 px, activity bar 36 px, 16:9 monitors, five docks at the bottom, compact scene rows, critical controls in the viewport`, tags('p0'), async ({ openRegie, pairContext, onCleanup }) => {
       test.setTimeout(120_000);
       const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
-      await expect(regie.page.getByRole('region', { name: 'Messages' }), 'the incident is visible in the message strip').toContainText('reconnecting');
+      await expect(regie.page.getByRole('region', { name: 'Activity' }), 'the incident is visible in the activity bar').toContainText('reconnecting');
       await checkDesktop(regie, { name, studio: false, compact: true });
       await saveScreen(regie.page, `regie-${name}-direct`);
       await openPopoversAndCheck(regie, `${name} direct`);
@@ -262,13 +262,13 @@ test.describe('Regie responsive layout', () => {
 
       const m = await metrics(page);
       await checkMonitors(regie, studio, label);
-      // two-column grid below the stage: Scenes | Sources over Properties | Stations, hairline separated
+      // two-column grid below the stage: Scenes | Sources over Properties | Devices, hairline separated
       const byName = Object.fromEntries(m.docks.map((dock) => [dock.name, dock.box]));
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio']);
       const stageBottom = m.program!.y + m.program!.h;
       expect(byName['Scenes']!.y, `${label}: the docks start below the stage`).toBeGreaterThan(stageBottom);
       expect(Math.abs(byName['Scenes']!.y - byName['Sources of the scene']!.y), `${label}: Scenes and Sources share the first row`).toBeLessThan(2);
-      expect(Math.abs(byName['Properties']!.y - byName['Stations']!.y), `${label}: Properties and Stations share the second row`).toBeLessThan(2);
+      expect(Math.abs(byName['Properties']!.y - byName['Devices']!.y), `${label}: Properties and Devices share the second row`).toBeLessThan(2);
       expect(byName['Properties']!.y, `${label}: the second row is below the first`).toBeGreaterThan(byName['Scenes']!.y + byName['Scenes']!.h - 2);
       expect(byName['Sources of the scene']!.x, `${label}: two columns`).toBeGreaterThan(byName['Scenes']!.x + byName['Scenes']!.w - 2);
       expect(Math.abs(byName['Scenes']!.x - byName['Properties']!.x), `${label}: the columns line up`).toBeLessThan(2);
@@ -351,7 +351,7 @@ test.describe('Regie responsive layout', () => {
       await expectNoOverflow(page, { label });
       const m = await metrics(page);
       // order top to bottom: Program, controls, (Preview), docks
-      expect(m.program!.y, `${label}: Program is below the header and strip`).toBeGreaterThan(m.strip!.y + m.strip!.h - 1);
+      expect(m.program!.y, `${label}: Program is below the toolbar and the activity bar`).toBeGreaterThan(m.strip!.y + m.strip!.h - 1);
       expect(m.control!.y, `${label}: the controls follow the Program monitor`).toBeGreaterThanOrEqual(m.program!.y + m.program!.h - 1);
       if (studio) {
         expect(m.preview, `${label}: Preview is rendered`).not.toBeNull();
@@ -365,7 +365,7 @@ test.describe('Regie responsive layout', () => {
       // docks in one column
       expect(new Set(m.docks.map((dock) => Math.round(dock.box.x))).size, `${label}: docks share one column`).toBe(1);
       for (let index = 1; index < m.docks.length; index++) expect(m.docks[index]!.box.y, `${label}: ${m.docks[index]!.name} below ${m.docks[index - 1]!.name}`).toBeGreaterThanOrEqual(m.docks[index - 1]!.box.y + m.docks[index - 1]!.box.h - 1);
-      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Stations', 'Audio']);
+      expect(m.docks.map((dock) => dock.name)).toEqual(['Scenes', 'Sources of the scene', 'Properties', 'Devices', 'Audio']);
       // the controls are two columns: the segmented control and the stepper side by side
       const transition = (await boxOf(page.getByRole('group', { name: 'Transition type' })))!;
       const stepper = (await boxOf(page.getByRole('group', { name: 'Fade duration' })))!;
@@ -383,24 +383,27 @@ test.describe('Regie responsive layout', () => {
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}`);
       await saveScreen(page, `regie-900x700-${studio ? 'studio' : 'direct'}-full`, { fullPage: true });
     }
-    // the message strip: the incident is shown
-    await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
+    // the activity bar: the incident is shown
+    await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
   });
 
-  test('E2E-DEV-05 [regie-900x700, message strip] without an incident the strip shows only the ok state, the log is hidden', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-05 [regie-900x700, activity bar] without an incident the activity bar shows the device health; the latest event shows at 1440 px and gives way at 900 px; one line', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: VIEWPORTS.w900, incident: null });
-    const strip = regie.page.getByRole('region', { name: 'Messages' });
-    await expect(strip).toContainText('No open messages');
-    // the log exists in the DOM at a wide size ...
+    const strip = regie.page.getByRole('region', { name: 'Activity' });
+    const health = strip.locator('.c-status__health');
+    await expect(health).toHaveText(/^All \d+ devices OK$/);
+    const latest = strip.locator('.c-status__log');
+    // the latest event at a wide size ...
     await regie.page.setViewportSize(VIEWPORTS.w1440);
-    await expect(strip.getByText('Recent events'), 'the log of recent events is shown at 1440 px').toBeVisible();
-    // ... and is hidden at 900 px
+    await expect(latest, 'the latest event is shown at 1440 px').toBeVisible();
+    // ... gives way at 900 px
     await regie.page.setViewportSize(VIEWPORTS.w900);
     await settle(regie.page);
-    await expect(strip.getByText('No open messages')).toBeVisible();
-    await expect(strip.getByText('Recent events'), 'the log is hidden at 900 px').toBeHidden();
-    expect((await boxOf(strip))!.h, 'the strip stays a single line').toBeLessThan(60);
+    await expect(health).toBeVisible();
+    await expect(latest, 'the latest event is hidden at 900 px').toBeHidden();
+    await expect(strip.getByRole('link', { name: 'Activity log' })).toBeVisible();
+    expect((await boxOf(strip))!.h, 'the activity bar stays one line of 36 px').toBeCloseTo(36, 0);
   });
 
   test('E2E-DEV-06 [regie-390x844] phone-sized: no horizontal scroll, Take >= 48 px, scene cards >= 44 px, every control reachable by scrolling, toast fits; touch operation', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {

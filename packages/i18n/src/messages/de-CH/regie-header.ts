@@ -8,25 +8,67 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.broadcast.endConfirmNoTitle':
     'Die Sendung wird beendet. Der Output zeigt danach die Schluss-Slate.',
   'regie.header.broadcast.endDone': 'Sendung beendet',
-  'regie.header.broadcast.ended': 'BEENDET',
+  'regie.header.broadcast.endHeading': 'Sendung beenden?',
+  'regie.header.broadcast.ended': 'Beendet',
   'regie.header.broadcast.endedTitle':
     'Die Sendung ist beendet; der Output zeigt die Schluss-Slate',
-  'regie.header.broadcast.live': 'LIVE',
-  'regie.header.broadcast.ready': 'BEREIT',
-  'regie.header.broadcast.readyTitle': 'Der Output zeigt die Slate vor der Sendung',
-  'regie.header.broadcast.reset': 'Zurück auf Bereit',
+  'regie.header.broadcast.ending': 'Wird beendet …',
+  'regie.header.broadcast.offAir': 'Nicht auf Sendung',
+  'regie.header.broadcast.offAirTitle': 'Der Output zeigt die Slate vor der Sendung',
+  'regie.header.broadcast.offline': 'Nicht verfügbar, solange die Regie keine Verbindung hat',
+  'regie.header.broadcast.onAir': 'Auf Sendung',
+  'regie.header.broadcast.reset': 'Zurück auf Standby',
+  'regie.header.broadcast.resetDone': 'Der Output zeigt wieder die Slate vor der Sendung',
+  'regie.header.broadcast.resetTitle': 'Die Slate von vor der Sendung wieder zeigen',
+  'regie.header.broadcast.restart': 'Neu starten …',
   'regie.header.broadcast.sinceStart': 'Seit Start der Sendung',
   'regie.header.broadcast.start': 'Sendung starten',
-  'regie.header.broadcast.startDone': 'Die Sendung läuft',
+  'regie.header.broadcast.startConfirm': 'Der Output wechselt von der Slate zum Programm.',
+  'regie.header.broadcast.startDone': 'Du bist auf Sendung',
+  'regie.header.broadcast.startHeading': 'Sendung starten?',
+  'regie.header.broadcast.starting': 'Wird gestartet …',
 
-  'regie.header.health.allSending': 'Alle Stationen senden',
-  'regie.header.health.noStations': 'Noch keine Stationen gekoppelt',
+  'regie.header.check.issues': { one: '1 offene Störung', other: '{count} offene Störungen' },
+  'regie.header.check.issuesNone': 'Keine offenen Störungen',
+  'regie.header.check.outputNone': 'Noch kein Output verbunden',
+  'regie.header.check.outputNoneHint':
+    'Das Publikum sieht nichts, bis der Proxy den Output öffnet.',
+  'regie.header.check.outputOk': 'Output verbunden',
+  'regie.header.check.program': 'Programm: {scene}',
+  'regie.header.check.programNone': 'Noch keine Szene im Programm',
+
+  'regie.header.clock': 'Ortszeit',
+
+  'regie.header.keys.arrows': 'Ein Dock am Griff verschieben oder an einer Trennlinie die Grösse ändern',
+  'regie.header.keys.arrowsShift': 'Grösse in grösseren Schritten ändern',
+  'regie.header.keys.editing': 'Bearbeiten',
+  'regie.header.keys.enter': 'An einer Trennlinie die Grösse zurücksetzen',
+  'regie.header.keys.escape': 'Popover schliessen, Ziehen abbrechen, Auswahl aufheben',
+  'regie.header.keys.help': 'Diese Kurzbefehle zeigen',
+  'regie.header.keys.layout': 'Anordnung',
+  'regie.header.keys.mute': 'Gewählten Tonkanal stumm schalten oder wieder einschalten',
+  'regie.header.keys.or': 'oder',
+  'regie.header.keys.redo': 'Wiederholen',
+  'regie.header.keys.scenes': 'Szene 1 bis 9 wählen: live, oder mit Studio Mode in die Preview',
+  'regie.header.keys.space': 'Leertaste',
+  'regie.header.keys.switching': 'Umschalten',
+  'regie.header.keys.take': 'Take: Preview ins Programm schicken (Studio Mode)',
+  'regie.header.keys.title': 'Tastenkürzel',
+  'regie.header.keys.typing': 'Während du in ein Feld tippst, sind die Kürzel aus.',
+  'regie.header.keys.undo': 'Letzte Änderung an der Szene oder am Mischpult rückgängig machen',
 
   'regie.header.layout.docks': 'Docks',
   'regie.header.layout.note':
-    'Ein Dock an der Kopfzeile nach unten, links oder rechts ziehen. Trennlinien ziehen ändert die Grösse, ein Doppelklick setzt sie zurück.',
-  'regie.header.layout.open': 'Docks und Layout',
-  'regie.header.layout.title': 'Docks und Layout',
+    'Ein Dock am Titel nach unten, links oder rechts ziehen. Trennlinien ziehen ändert die Grösse, ein Doppelklick setzt sie zurück.',
+  'regie.header.layout.open': 'Layout',
+  'regie.header.layout.shortcuts': 'Tastenkürzel',
+  'regie.header.layout.title': 'Layout',
+
+  'regie.header.outputChip.audioBlocked': 'Ton blockiert',
+  'regie.header.outputChip.connected': 'Verbunden',
+  'regie.header.outputChip.dropping': 'Verliert Bilder',
+  'regie.header.outputChip.none': 'Nicht verbunden',
+  'regie.header.outputChip.stale': 'Kein Bild',
 
   'regie.header.output.access': 'Zugriff',
   'regie.header.output.accessNoRestriction':
@@ -63,11 +105,12 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.output.stateNone': 'nicht verbunden',
   'regie.header.output.stateStale': 'verbunden, kein aktuelles Bild',
 
+  'regie.header.presence.hint':
+    'Was eine Person ändert, sehen alle in der Regie sofort.',
   'regie.header.presence.long': {
     one: 'Eine Person in der Regie',
     other: '{count} Personen in der Regie',
   },
-  'regie.header.presence.short': '{count} in der Regie',
 
   'regie.header.production.afterBroadcast': 'Nach der Sendung',
   'regie.header.production.background': 'Hintergrund',
@@ -118,5 +161,6 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.production.textSample': 'Beispiel einer Bauchbinde',
   'regie.header.production.title': 'Titel',
 
+  'regie.header.settings': 'Einstellungen',
   'regie.header.sponsor.prefix': 'Gesponsert von',
 };

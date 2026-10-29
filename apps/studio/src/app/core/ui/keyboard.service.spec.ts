@@ -43,6 +43,24 @@ describe('KeyboardService', () => {
     expect(scenes).toEqual([0, 8]);
   });
 
+  it('maps ? to the help shortcut, but not while typing', () => {
+    let calls = 0;
+    cleanup.push(keyboard.register('help', () => (calls++, true)));
+    expect(press('?', { shiftKey: true }).defaultPrevented).toBe(true);
+    press('?', { shiftKey: true, repeat: true });
+    focus('<input type="text">');
+    press('?', { shiftKey: true });
+    expect(calls).toBe(1);
+  });
+
+  it('closes an open sheet with Escape before anything else', () => {
+    const order: string[] = [];
+    cleanup.push(keyboard.registerEscape('popover', () => (order.push('popover'), true)));
+    cleanup.push(keyboard.registerEscape('sheet', () => (order.push('sheet'), true)));
+    press('Escape');
+    expect(order).toEqual(['sheet']);
+  });
+
   it('maps M to the mute shortcut of the audio mixer and leaves it alone when nothing handles it', () => {
     const calls: string[] = [];
     cleanup.push(keyboard.register('mute', () => (calls.push('mute'), true)));

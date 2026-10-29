@@ -90,7 +90,7 @@ test.describe('CSP and external hosts', () => {
     await regie.clickScene('Welcome');
     await expect(regie.scene('Welcome')).toHaveAttribute('aria-pressed', 'true');
     await regie.setStudioMode(true);
-    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Docks and layout' }), page.getByRole('button', { name: /^Production .*, menu$/ }), page.getByRole('button', { name: 'Source', exact: true })]) {
+    for (const trigger of [page.getByRole('button', { name: /^Output/ }), page.getByRole('button', { name: 'Layout', exact: true }), page.getByRole('button', { name: /^Production .*, menu$/ }), page.getByRole('button', { name: 'Source', exact: true })]) {
       await trigger.click();
       await expect(page.locator('.c-pop').first()).toBeVisible();
       await page.keyboard.press('Escape');
@@ -102,9 +102,10 @@ test.describe('CSP and external hosts', () => {
     await page.locator('.c-st__row').first().click();
     await page.getByRole('button', { name: /Select: / }).first().click();
     await page.getByRole('button', { name: 'Start broadcast' }).click();
+    await page.getByRole('dialog', { name: 'Start the broadcast?' }).getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     expect((await api.endBroadcast(production.id)).status).toBe(200);
-    await expect(page.getByText('ENDED')).toBeVisible();
+    await expect(page.locator('.c-live b')).toHaveText('Ended');
     await page.goto('/monitoring');
     await expect(page.getByRole('table')).toBeVisible();
     // every font request went to the stack

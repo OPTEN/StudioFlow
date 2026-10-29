@@ -1,0 +1,116 @@
+// The keyboard shortcuts sheet: a modal dialog on the floating material, grouped rows of keycaps and what they do.
+@use 'mixins' as *;
+
+.c-sheet {
+  @include floating;
+  border: 0;
+  color: var(--text);
+  max-height: min(640px, calc(100dvh - 48px));
+  max-width: calc(100vw - 32px);
+  overflow: auto;
+  padding: 0;
+  width: 520px;
+
+  &[open] {
+    animation: c-sheet-in var(--dur-reveal) var(--ease);
+  }
+
+  &::backdrop {
+    background: color-mix(in srgb, var(--well) 40%, transparent);
+  }
+}
+
+@keyframes c-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.c-sheet__body {
+  display: grid;
+  gap: 18px;
+  padding: 16px 20px 20px;
+}
+
+.c-sheet__head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-right: -8px;
+}
+
+.c-sheet__title {
+  @include heading-text(var(--fs-title-3));
+}
+
+.c-sheet__note {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+}
+
+.c-keys {
+  display: grid;
+  gap: 6px;
+}
+
+.c-keys__label {
+  @include label-text(var(--fs-footnote));
+}
+
+.c-keys__list {
+  background: var(--fill);
+  border-radius: var(--radius-lg);
+  display: grid;
+  margin: 0;
+  padding: 2px 12px;
+}
+
+.c-keys__row {
+  align-items: center;
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: 172px minmax(0, 1fr);
+  min-height: 36px;
+  padding: 6px 0;
+
+  & + & {
+    box-shadow: inset 0 1px 0 var(--seam);
+  }
+
+  @include narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.c-keys__combo {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.c-keys__cap {
+  @include mono;
+  background: var(--float);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-raise);
+  color: var(--text);
+  font: 600 var(--fs-caption) / 1 var(--font-ui);
+  min-width: 22px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.c-keys__or {
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  padding: 0 2px;
+}
+
+.c-keys__text {
+  color: var(--text-2);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  margin: 0;
+}

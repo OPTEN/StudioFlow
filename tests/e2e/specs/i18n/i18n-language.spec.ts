@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { backToControlRoom, chooseLanguage, languageSelect, openAppearanceSettings } from '../../support/regie/kit';
 import { TEXT_DE } from '../../support/text.de';
 import { newUiContext } from '../../support/ui';
 import { expect, test } from '../../support/ui/fixtures';
@@ -79,31 +80,28 @@ test.describe('I18N language', () => {
 test.describe('I18N language in English', () => {
   test.use({ locale: 'en-US' });
 
-  test('E2E-I18N-04 [regie] switching the language in the settings popover changes the open Regie without a reload', tags, async ({ regie }) => {
+  test('E2E-I18N-04 [regie] switching the language in the settings window changes the app at once and the control room after it, without a reload', tags, async ({ regie }) => {
     const { page } = regie;
-    // A marker on the window is gone after a reload; a navigation is also seen by the history length.
+    // A marker on the window is gone after a reload; the settings window is a client-side route of the same page.
     await page.evaluate(() => {
       (window as unknown as { __noReload: boolean }).__noReload = true;
     });
-    const historyLength = await page.evaluate(() => history.length);
     await expect(page.getByRole('region', { name: 'Scenes', exact: true })).toBeVisible();
     expect(await documentLanguage(page)).toBe('en');
 
-    await page.getByRole('button', { name: 'Open settings' }).click();
-    const settings = page.getByRole('dialog', { name: 'Settings' });
-    await expect(settings.locator('.c-version__value'), 'the version the server runs').toHaveText(/^\d+\.\d+\.\d+(\+[0-9a-f]{7})?$/);
-    await settings.getByLabel('Interface language').selectOption('de-CH');
+    await openAppearanceSettings(page);
+    await expect(page.locator('.c-settings__version'), 'the version the server runs').toHaveText(/^\d+\.\d+\.\d+(\+[0-9a-f]{7})?$/);
+    await languageSelect(page).selectOption('de-CH');
+    expect(await documentLanguage(page), 'the settings window follows at once').toBe('de-CH');
+    expect(await storedLocale(page)).toBe('de-CH');
 
+    await backToControlRoom(page);
     await expect(page.getByRole('region', { name: 'Szenen', exact: true })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Scenes', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('dialog', { name: 'Einstellungen' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Einstellungen öffnen' })).toBeVisible();
-    expect(await documentLanguage(page)).toBe('de-CH');
-    expect(await storedLocale(page)).toBe('de-CH');
+    await expect(page.getByRole('link', { name: 'Einstellungen', exact: true })).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload), 'the page was not reloaded').toBe(true);
-    expect(await page.evaluate(() => history.length)).toBe(historyLength);
 
-    await page.getByRole('dialog', { name: 'Einstellungen' }).getByLabel('Sprache der Oberfläche').selectOption('en');
+    await chooseLanguage(page, 'en');
     await expect(page.getByRole('region', { name: 'Scenes', exact: true })).toBeVisible();
     expect(await documentLanguage(page)).toBe('en');
     expect(regie.problems.pageErrors).toEqual([]);

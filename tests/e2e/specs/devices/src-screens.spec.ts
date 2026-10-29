@@ -41,7 +41,7 @@ test.describe('SRC laptop screens', () => {
       expect(strip.tone, 'red').toBe('bad');
       expect(strip.actions, 'the direct action').toContain('Ask to share again');
       expect(places.header.lamp, 'red lamp').toBe('is-bad');
-      expect(places.header.text).toBe('1 incident');
+      expect(places.header.text).toBe('1 issue');
       expect(places.program.find((label) => label.text.startsWith('S1'))!.outline, 'red dashed outline').toMatch(/^dashed rgb\(248, 81, 73\)/);
       expect(places.scenes[0]!.meta, 'scene row').toContain('S1');
       expect(places.scenes[0]!.health).toBe('disrupted');
@@ -151,7 +151,7 @@ test.describe('SRC laptop screens', () => {
       await waitForOutage(regie, 'S2', 'ended', { source: 'screen' });
       const places = await readPlaces(regie.page);
       expect(places.strip.map((entry) => entry.code), 'only S2 raises an incident').toEqual(['S2']);
-      expect(places.header.text).toBe('1 incident');
+      expect(places.header.text).toBe('1 issue');
 
       // “Remove” on screen 3: the source is gone, the scene item shows “Source missing”.
       await laptop.removeSlot('screen-3');

@@ -12,7 +12,9 @@ export type ShortcutId =
   /** Ctrl/Cmd+Shift+Z and Ctrl+Y. */
   | 'redo'
   /** M: mutes (or unmutes) the selected channel of the audio mixer. */
-  | 'mute';
+  | 'mute'
+  /** ? (Shift+/ on most layouts): shows the keyboard shortcuts. */
+  | 'help';
 
 /**
  * A shortcut handler. Returns true when it acted; only then the browser default (scrolling on Space, the browser's
@@ -21,15 +23,16 @@ export type ShortcutId =
 export type ShortcutHandler = (index: number) => boolean;
 
 /**
- * Escape is handled by the first layer that is open, in this order (prototype): a running list drag (reordering
- * rows), a running dock drag, open popovers, the pairing dock, the element selection.
+ * Escape is handled by the first layer that is open, in this order (prototype): a modal sheet (the keyboard shortcuts),
+ * a running list drag (reordering rows), a running dock drag, open popovers, the pairing dock, the element selection.
  */
-export type EscapeLayer = 'listDrag' | 'dockDrag' | 'popover' | 'pairing' | 'selection';
+export type EscapeLayer = 'sheet' | 'listDrag' | 'dockDrag' | 'popover' | 'pairing' | 'selection';
 
 /** Returns true when the layer consumed Escape. */
 export type EscapeHandler = () => boolean;
 
 const ESCAPE_ORDER: readonly EscapeLayer[] = [
+  'sheet',
   'listDrag',
   'dockDrag',
   'popover',
@@ -59,6 +62,7 @@ export function isTypingTarget(element: Element | null): boolean {
  * - other combinations with Ctrl, Cmd or Alt are left to the browser;
  * - Space triggers `take` unless the focus is on a button or link (Space activates those);
  * - M triggers `mute` (the selected audio channel);
+ * - ? triggers `help` (the keyboard shortcuts);
  * - 1–9 trigger `scene`. Auto-repeat of Space and digits is ignored, so holding a key never fires twice.
  *
  * Several handlers per id are allowed; the most recently registered one runs first and the first that returns true
@@ -123,6 +127,12 @@ export class KeyboardService {
         return;
       }
       if (this.run('take', -1)) {
+        event.preventDefault();
+      }
+      return;
+    }
+    if (event.key === '?') {
+      if (!event.repeat && this.run('help', -1)) {
         event.preventDefault();
       }
       return;

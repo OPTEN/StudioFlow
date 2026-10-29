@@ -1,98 +1,105 @@
 <header class="c-header">
-  <div class="c-header__brand"><svg sfIcon="mark"></svg>StudioFlow</div>
-  <a
-    class="c-header__sponsor"
-    href="https://www.opten.ch"
-    target="_blank"
-    rel="noopener"
-    data-testid="sponsor"
-  >
-    <!-- The text is the accessible name: narrow widths hide it visually only (axe label-content-name-mismatch, #79). -->
-    <span class="c-header__sponsor-prefix">{{ t('regie.header.sponsor.prefix') }}&ngsp;</span>
-    <svg sfIcon="opten"></svg>
-    <span class="c-header__sponsor-name">OPTEN</span>
-  </a>
-  <sf-production-menu />
+  <div class="c-header__lead">
+    <div class="c-header__brand">
+      <svg sfIcon="mark"></svg><span class="c-header__brand-name">StudioFlow</span>
+    </div>
+    <span class="c-header__sep" aria-hidden="true"></span>
+    <sf-production-menu />
+  </div>
+
+  <sf-broadcast-control class="c-header__center" />
 
   <div class="c-header__right">
-    <sf-broadcast-control />
-
     <div class="c-pop-wrap">
       <button
-        class="c-chipbtn"
+        class="c-chipbtn c-header__out"
         type="button"
         aria-haspopup="dialog"
         [attr.title]="outputTitle()"
         [sfPopoverTrigger]="outputPopover"
       >
-        <svg sfIcon="output"></svg>
-        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>
-        @if (connectedLinks(); as names) {
-          <span class="c-header__out-links">{{ names }}</span>
-        }
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
-        @if (outputDropping()) {
-          <span class="c-state--warn c-header__out-warn">{{
-            t('regie.load.output.dropping')
-          }}</span>
+        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>&ngsp;
+        @switch (outputState().kind) {
+          @case ('audio') {
+            <span class="c-header__out-state c-state--warn" data-testid="audio-blocked">{{
+              outputState().text
+            }}</span>
+          }
+          @case ('dropping') {
+            <span class="c-header__out-state c-header__out-warn c-state--warn">{{
+              outputState().text
+            }}</span>
+          }
+          @default {
+            <span
+              class="c-header__out-state"
+              [class.c-state--warn]="outputState().warn"
+              [class.is-quiet]="!outputState().warn"
+              >{{ outputState().text }}</span
+            >
+          }
         }
-        <span class="u-mono">{{ outputLatency() }}</span>
-        @if (audioBlocked()) {
-          <span class="c-state--warn" data-testid="audio-blocked">{{
-            t('regie.audio.output.blocked')
-          }}</span>
-        }
-        <svg sfIcon="chev" [size]="13"></svg>
+        <svg class="c-header__chev" sfIcon="chev" [size]="12"></svg>
       </button>
       @if (popovers.isOpen(outputPopover)) {
         <sf-output-popover />
       }
     </div>
 
-    <button class="c-chipbtn" type="button" (click)="showHealth()">
-      <span class="c-lamp" aria-hidden="true" [class]="healthLamp()"></span>
-      <span>{{ health().text }}</span>
-    </button>
-
     <div class="c-pop-wrap">
       <button
-        class="c-ibtn"
+        #layoutTrigger
+        class="c-chipbtn c-header__tool"
         type="button"
         aria-haspopup="dialog"
-        [attr.aria-label]="t('regie.header.layout.open')"
-        [title]="t('regie.header.layout.open')"
         [sfPopoverTrigger]="layoutPopover"
       >
         <svg sfIcon="layout"></svg>
+        <span class="c-header__tool-label">{{ t('regie.header.layout.open') }}</span>
       </button>
       @if (popovers.isOpen(layoutPopover)) {
-        <sf-layout-popover />
+        <sf-layout-popover (shortcuts)="openShortcuts()" />
       }
     </div>
+
+    <a
+      class="c-ibtn c-header__settings"
+      routerLink="/settings"
+      [attr.aria-label]="t('regie.header.settings')"
+      [title]="t('regie.header.settings')"
+    >
+      <svg sfIcon="gear"></svg>
+    </a>
 
     <div class="c-pop-wrap">
       <button
-        class="c-ibtn"
+        class="c-ibtn c-header__presence"
         type="button"
         aria-haspopup="dialog"
-        [attr.aria-label]="t('regie.settings.open')"
-        [title]="t('regie.settings.open')"
-        [sfPopoverTrigger]="settingsPopover"
+        [title]="presenceText()"
+        [sfPopoverTrigger]="presencePopover"
       >
-        <svg sfIcon="gear"></svg>
+        <svg sfIcon="users"></svg>
+        <span class="c-badge c-header__presence-count" aria-hidden="true">{{ operators() }}</span>
+        <span class="u-sr-only">{{ presenceText() }}</span>
       </button>
-      @if (popovers.isOpen(settingsPopover)) {
-        <sf-settings-popover />
+      @if (popovers.isOpen(presencePopover)) {
+        <div
+          class="c-pop c-header__presence-pop"
+          role="dialog"
+          aria-labelledby="sf-presence-title"
+          [sfPopover]="presencePopover"
+          [popoverFocus]="false"
+        >
+          <p class="c-header__presence-title" id="sf-presence-title">{{ presenceText() }}</p>
+          <p class="c-pop-note">{{ t('regie.header.presence.hint') }}</p>
+        </div>
       }
     </div>
 
-    <span class="c-header__presence" [title]="presenceText()">
-      <svg sfIcon="users"></svg>
-      <span class="c-header__presence-label" aria-hidden="true">{{
-        t('regie.header.presence.short', { count: operators() })
-      }}</span>
-      <span class="u-sr-only">{{ presenceText() }}</span>
-    </span>
-    <span class="c-header__clock u-mono">{{ clockText() }}</span>
+    <span class="c-header__clock u-mono" [title]="t('regie.header.clock')">{{ clockText() }}</span>
   </div>
 </header>
+
+<sf-shortcuts-sheet [open]="shortcutsOpen()" (closed)="closeShortcuts()" />

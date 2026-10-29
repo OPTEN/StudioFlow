@@ -467,8 +467,11 @@ export function recordRequests(
 
 // --- feedback -------------------------------------------------------------------------------------------------------
 
-/** The visible toast (`sf-toast-host`), without the message strip or other `role=status` regions. */
-export const toastOf = (page: Page): Locator => page.locator('sf-toast-host .c-toast');
+/**
+ * The newest toast (`sf-toast-host`), without the activity bar or other `role=status` regions. Toasts queue up (the
+ * newest is the last one), so this is the one a test just caused.
+ */
+export const toastOf = (page: Page): Locator => page.locator('sf-toast-host .c-toast').last();
 
 export async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(toastOf(page), `toast ${String(text)}`).toContainText(text);
@@ -483,7 +486,59 @@ export const sourcesDock = (page: Page): Locator =>
 export const inspector = (page: Page): Locator =>
   page.getByRole('region', { name: 'Properties' });
 export const stationsDock = (page: Page): Locator =>
-  page.getByRole('region', { name: 'Stations', exact: true });
+  page.getByRole('region', { name: 'Devices', exact: true });
+
+// --- broadcast ------------------------------------------------------------------------------------------------------
+
+/**
+ * Starts the broadcast through the toolbar: "Start broadcast" (or "Start again…" after an end) opens the confirmation
+ * with the pre-flight check, and its "Start broadcast" starts.
+ */
+export async function startBroadcast(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^(Start broadcast|Start again…)$/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Start the broadcast?' })
+    .getByRole('button', { name: 'Start broadcast' })
+    .click();
+}
+
+/** Ends the broadcast through the toolbar: "End broadcast" and the confirmation's "End broadcast". */
+export async function endBroadcast(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'End broadcast' }).click();
+  await page
+    .getByRole('dialog', { name: 'End the broadcast?' })
+    .getByRole('button', { name: 'End broadcast' })
+    .click();
+}
+
+// --- settings window ------------------------------------------------------------------------------------------------
+
+/**
+ * Opens "Appearance and language" of the settings window the way an operator does: the gear of the toolbar, then the
+ * page in the sidebar (client-side navigation, no reload).
+ */
+export async function openAppearanceSettings(page: Page): Promise<void> {
+  await page.locator('a.c-header__settings').click();
+  await page.waitForURL((url) => url.pathname.startsWith('/settings'));
+  await page.locator('a[href="/settings/appearance"]').click();
+  await page.waitForURL((url) => url.pathname === '/settings/appearance');
+}
+
+/** The language select of the appearance settings (and of the login page). */
+export const languageSelect = (page: Page): Locator => page.locator('sf-language-select select');
+
+/** Back from the settings window to the control room through the link of the sidebar (no reload). */
+export async function backToControlRoom(page: Page): Promise<void> {
+  await page.locator('a[href="/"]').first().click();
+  await page.waitForURL((url) => url.pathname === '/');
+}
+
+/** Chooses the interface language in the settings window and returns to the control room. */
+export async function chooseLanguage(page: Page, tag: 'en' | 'de-CH' | 'auto'): Promise<void> {
+  await openAppearanceSettings(page);
+  await languageSelect(page).selectOption(tag);
+  await backToControlRoom(page);
+}
 
 /** A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`. */
 export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
@@ -695,7 +750,7 @@ export async function trackToasts(page: Page): Promise<void> {
     const host = document.querySelector('sf-toast-host');
     if (!host) return;
     const take = () => {
-      const text = host.querySelector('.c-toast span')?.textContent?.trim();
+      const text = [...host.querySelectorAll('.c-toast__text')].at(-1)?.textContent?.trim();
       if (text && w.__sfToasts![w.__sfToasts!.length - 1] !== text) w.__sfToasts!.push(text);
     };
     w.__sfToastObserver = new MutationObserver(take);

@@ -65,11 +65,12 @@ describe('HeaderComponent: audio of the output', () => {
 
   afterEach(() => harness?.http.verify());
 
-  it('says "Audio blocked" in the output chip while the connected page cannot play sound', async () => {
+  it('says "Audio blocked" in the output capsule while the connected page cannot play sound', async () => {
     await setup({ state: 'blocked', levelDb: null });
     expect(warning()?.textContent?.trim()).toBe('Audio blocked');
     expect(warning()?.classList.contains('c-state--warn')).toBe(true);
-    const chip = element.querySelector<HTMLButtonElement>('.c-chipbtn');
+    const chip = element.querySelector<HTMLButtonElement>('.c-header__out');
+    expect(chip?.querySelector('.c-lamp')?.classList).toContain('is-warn');
     expect(chip?.getAttribute('title')).toContain('Proxy · connected');
     expect(chip?.getAttribute('title')).toContain('Click the output page once');
   });

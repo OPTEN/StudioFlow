@@ -1,8 +1,9 @@
 import type { Namespace } from '../../types';
 
 /**
- * Shared plumbing of the Regie shell: the document title, the clipboard toasts, the default name of the
- * confirmation box and the connection texts of the production store.
+ * Shared plumbing of the Regie shell: the document title (with the broadcast state and the open issues), the clipboard
+ * toasts, the dismiss button of a toast, the default name of the confirmation box and the connection texts of the
+ * production store.
  */
 export const regieCore = {
   'regie.core.appTitle': 'StudioFlow Control room',
@@ -14,5 +15,8 @@ export const regieCore = {
   'regie.core.store.noActiveProduction': 'No active production found.',
   'regie.core.store.serverUnreachable':
     'The server is not reachable. The control room is reconnecting…',
-  'regie.core.store.stationsLoading': 'Stations…',
+  'regie.core.store.stationsLoading': 'Devices…',
+  'regie.core.title.issues': { one: '{count} issue', other: '{count} issues' },
+  'regie.core.title.onAir': '● On air',
+  'regie.core.toast.dismiss': 'Dismiss',
 } as const satisfies Namespace<'regie.core'>;

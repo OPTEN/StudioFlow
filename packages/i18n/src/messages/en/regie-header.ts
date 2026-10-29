@@ -1,8 +1,9 @@
 import type { Namespace } from '../../types';
 
 /**
- * The header of the Regie (the control room): broadcast state and buttons, the output chip and its popover, the
- * production menu, the station health toasts, the layout popover and the presence chip.
+ * The toolbar of the Regie (the control room): the broadcast capsule with its confirmations and pre-flight checks, the
+ * output capsule and its popover, the production menu, the layout popover with the keyboard shortcuts, settings, presence
+ * and the clock.
  */
 export const regieHeader = {
   'regie.header.broadcast.end': 'End broadcast',
@@ -10,24 +11,65 @@ export const regieHeader = {
   'regie.header.broadcast.endConfirmNoTitle':
     'The broadcast will end. The output then shows the end slate.',
   'regie.header.broadcast.endDone': 'Broadcast ended',
-  'regie.header.broadcast.ended': 'ENDED',
+  'regie.header.broadcast.endHeading': 'End the broadcast?',
+  'regie.header.broadcast.ended': 'Ended',
   'regie.header.broadcast.endedTitle': 'The broadcast has ended; the output shows the end slate',
-  'regie.header.broadcast.live': 'LIVE',
-  'regie.header.broadcast.ready': 'READY',
-  'regie.header.broadcast.readyTitle': 'The output shows the slate before the broadcast',
-  'regie.header.broadcast.reset': 'Back to Ready',
+  'regie.header.broadcast.ending': 'Ending…',
+  'regie.header.broadcast.offAir': 'Off air',
+  'regie.header.broadcast.offAirTitle': 'The output shows the slate before the broadcast',
+  'regie.header.broadcast.offline': 'Not available while the control room has no connection',
+  'regie.header.broadcast.onAir': 'On air',
+  'regie.header.broadcast.reset': 'Back to standby',
+  'regie.header.broadcast.resetDone': 'The output shows the standby slate again',
+  'regie.header.broadcast.resetTitle': 'Show the slate from before the broadcast again',
+  'regie.header.broadcast.restart': 'Start again…',
   'regie.header.broadcast.sinceStart': 'Since the broadcast started',
   'regie.header.broadcast.start': 'Start broadcast',
-  'regie.header.broadcast.startDone': 'The broadcast is running',
+  'regie.header.broadcast.startConfirm': 'The output switches from the slate to the program.',
+  'regie.header.broadcast.startDone': 'You are on air',
+  'regie.header.broadcast.startHeading': 'Start the broadcast?',
+  'regie.header.broadcast.starting': 'Starting…',
 
-  'regie.header.health.allSending': 'All stations are sending',
-  'regie.header.health.noStations': 'No stations paired yet',
+  'regie.header.check.issues': { one: '1 open issue', other: '{count} open issues' },
+  'regie.header.check.issuesNone': 'No open issues',
+  'regie.header.check.outputNone': 'No output connected yet',
+  'regie.header.check.outputNoneHint': 'Viewers see nothing until the proxy opens the output.',
+  'regie.header.check.outputOk': 'Output connected',
+  'regie.header.check.program': 'Program: {scene}',
+  'regie.header.check.programNone': 'No scene on Program yet',
+
+  'regie.header.clock': 'Local time',
+
+  'regie.header.keys.arrows': 'Move a dock with its grip, or resize with a divider',
+  'regie.header.keys.arrowsShift': 'Resize in bigger steps',
+  'regie.header.keys.editing': 'Editing',
+  'regie.header.keys.enter': 'Reset the size at a divider',
+  'regie.header.keys.escape': 'Close a popover, cancel a drag, clear the selection',
+  'regie.header.keys.help': 'Show these shortcuts',
+  'regie.header.keys.layout': 'Layout',
+  'regie.header.keys.mute': 'Mute or unmute the selected audio channel',
+  'regie.header.keys.or': 'or',
+  'regie.header.keys.redo': 'Redo',
+  'regie.header.keys.scenes': 'Choose scene 1 to 9: live, or into Preview with Studio Mode',
+  'regie.header.keys.space': 'Space',
+  'regie.header.keys.switching': 'Switching',
+  'regie.header.keys.take': 'Take: send Preview to Program (Studio Mode)',
+  'regie.header.keys.title': 'Keyboard shortcuts',
+  'regie.header.keys.typing': 'Shortcuts pause while you type in a field.',
+  'regie.header.keys.undo': 'Undo the last change of the scene or the mixer',
 
   'regie.header.layout.docks': 'Docks',
   'regie.header.layout.note':
-    'Drag a dock by its header to the bottom, left or right. Drag the dividers to resize; a double click resets the size.',
-  'regie.header.layout.open': 'Docks and layout',
-  'regie.header.layout.title': 'Docks and layout',
+    'Drag a dock by its title to the bottom, left or right. Drag a divider to resize; a double click resets it.',
+  'regie.header.layout.open': 'Layout',
+  'regie.header.layout.shortcuts': 'Keyboard shortcuts',
+  'regie.header.layout.title': 'Layout',
+
+  'regie.header.outputChip.audioBlocked': 'Audio blocked',
+  'regie.header.outputChip.connected': 'Connected',
+  'regie.header.outputChip.dropping': 'Drops frames',
+  'regie.header.outputChip.none': 'Not connected',
+  'regie.header.outputChip.stale': 'No picture',
 
   'regie.header.output.access': 'Access',
   'regie.header.output.accessNoRestriction':
@@ -64,11 +106,12 @@ export const regieHeader = {
   'regie.header.output.stateNone': 'not connected',
   'regie.header.output.stateStale': 'connected, no current picture',
 
+  'regie.header.presence.hint':
+    'Changes made by one person appear for everyone in the control room at once.',
   'regie.header.presence.long': {
     one: 'One person in the control room',
     other: '{count} people in the control room',
   },
-  'regie.header.presence.short': '{count} in the control room',
 
   'regie.header.production.afterBroadcast': 'After the broadcast',
   'regie.header.production.background': 'Background',
@@ -119,5 +162,6 @@ export const regieHeader = {
   'regie.header.production.textSample': 'Sample of a lower third',
   'regie.header.production.title': 'Title',
 
+  'regie.header.settings': 'Settings',
   'regie.header.sponsor.prefix': 'Sponsored by',
 } as const satisfies Namespace<'regie.header'>;

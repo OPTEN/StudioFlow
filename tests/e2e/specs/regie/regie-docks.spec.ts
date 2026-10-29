@@ -22,7 +22,7 @@ const TITLES: Record<DockId, string> = {
   scenes: 'Scenes',
   src: 'Sources',
   insp: 'Properties',
-  st: 'Stations',
+  st: 'Devices',
   audio: 'Audio',
 };
 const DEFAULT_WEIGHTS = { scenes: 0.95, src: 1, insp: 1.2, st: 1.1, audio: 1.4, pair: 2.2 };
@@ -36,7 +36,7 @@ const DEFAULT_LAYOUT = {
   rightW: 340,
   split: 0.5,
 };
-const BLUE = 'rgb(121, 192, 255)';
+const BLUE = 'rgb(90, 169, 255)';
 
 const dock = (page: Page, id: string): Locator => page.locator(`sf-dock-slot[data-dock="${id}"]`);
 const zoneOf = (page: Page, id: string) =>
@@ -136,7 +136,7 @@ const zoneBox = (page: Page, zone: string) =>
 
 test.describe('REGIE docks', () => {
   test(
-    'E2E-DOCK-01 [regie] default arrangement: Scenes | Sources | Properties | Stations | Audio at the bottom, side zones empty, height clamp(240 px, 42 dvh, 420 px), 1 px seams',
+    'E2E-DOCK-01 [regie] default arrangement: Scenes | Sources | Properties | Devices | Audio at the bottom, side zones empty, height clamp(240 px, 42 dvh, 420 px), 1 px seams',
     t.p0,
     async ({ regie }) => {
       const page = regie.page;
@@ -182,7 +182,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-02 [regie] drag docks to the right, the left and back between two docks: ghost, drop strips, 3 px insertion line, toast with “Reset layout”, side widths, storage; under 5 px, Escape and pointercancel do nothing',
+    'E2E-DOCK-02 [regie] drag docks to the right, the left and back between two docks: ghost, drop strips, 3 px insertion line, toast with “Undo”, side widths, storage; under 5 px, Escape and pointercancel do nothing',
     t.smoke,
     async ({ regie }) => {
       const page = regie.page;
@@ -197,10 +197,10 @@ test.describe('REGIE docks', () => {
       await expect(toast).toHaveCount(0);
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st', 'audio']);
 
-      // Stations to the right edge: both empty zones show a dashed strip, the ghost follows the pointer.
+      // Devices to the right edge: both empty zones show a dashed strip, the ghost follows the pointer.
       let drag = await startDockDrag(page, 'st');
       await expect(page.locator('.c-dock-ghost')).toBeVisible();
-      await expect(page.locator('.c-dock-ghost')).toContainText('Stations');
+      await expect(page.locator('.c-dock-ghost')).toContainText('Devices');
       await expect(page.locator('[data-strip="right"]')).toHaveText('Dock on the right');
       await expect(page.locator('[data-strip="left"]')).toHaveText('Dock on the left');
       await expect(
@@ -214,8 +214,8 @@ test.describe('REGIE docks', () => {
       await drag.gesture.to(await center(page.locator('[data-strip="right"]')), 8);
       await expect(page.locator('[data-strip="right"]')).toHaveClass(/is-hot/);
       await drag.gesture.end();
-      await expect(toast).toContainText('Stations is docked on the right');
-      await expect(toast.getByRole('button', { name: 'Reset layout' })).toBeVisible();
+      await expect(toast).toContainText('Devices is docked on the right');
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
       await expectZone(page, 'st', 'right');
       expect(Math.round((await zoneBox(page, 'right'))!.width), 'a new right zone is 340 px').toBe(
         340,
@@ -226,12 +226,12 @@ test.describe('REGIE docks', () => {
         zones: { left: [], bottom: ['scenes', 'src', 'insp', 'audio'], right: ['st'] },
       });
 
-      // Then to the left edge (the right zone holds only Stations, so it counts as empty again): 320 px.
+      // Then to the left edge (the right zone holds only Devices, so it counts as empty again): 320 px.
       drag = await startDockDrag(page, 'st');
       await drag.gesture.to(await center(page.locator('[data-strip="left"]')), 8);
       await expect(page.locator('[data-strip="left"]')).toHaveClass(/is-hot/);
       await drag.gesture.end();
-      await expect(toast).toContainText('Stations is docked on the left');
+      await expect(toast).toContainText('Devices is docked on the left');
       await expectZone(page, 'st', 'left');
       expect(Math.round((await zoneBox(page, 'left'))!.width), 'a new left zone is 320 px').toBe(
         320,
@@ -252,7 +252,7 @@ test.describe('REGIE docks', () => {
         BLUE,
       );
       await drag.gesture.end();
-      await expect(toast).toContainText('Stations is docked at the bottom');
+      await expect(toast).toContainText('Devices is docked at the bottom');
       await expectOrder(page, 'bottom', ['scenes', 'st', 'src', 'insp', 'audio']);
       layout = await stored(page);
       expect(layout).toMatchObject({
@@ -449,20 +449,20 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-04 [regie] “Docks and layout”: hide and show each dock, hide all, restore; hidden docks leave the DOM, the others reflow, the state persists',
+    'E2E-DOCK-04 [regie] “Layout”: a switch per dock hides and shows it, hide all, restore; hidden docks leave the DOM, the others reflow, the state persists',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
       const open = async () => {
-        await page.getByRole('button', { name: 'Docks and layout' }).click();
-        return page.getByRole('dialog', { name: 'Docks and layout' });
+        await page.getByRole('button', { name: 'Layout', exact: true }).click();
+        return page.getByRole('dialog', { name: 'Layout' });
       };
       const popover = await open();
       for (const id of ['scenes', 'src', 'insp', 'st', 'audio'] as const)
-        await expect(popover.getByRole('checkbox', { name: TITLES[id] })).toBeChecked();
+        await expect(popover.getByRole('switch', { name: TITLES[id] })).toBeChecked();
       const before = await dock(page, 'scenes').boundingBox();
 
-      await popover.getByRole('checkbox', { name: 'Sources' }).uncheck();
+      await popover.getByRole('switch', { name: 'Sources' }).uncheck();
       await expect(
         dock(page, 'src'),
         'the hidden dock is gone from the DOM and the tab order',
@@ -473,10 +473,10 @@ test.describe('REGIE docks', () => {
         'the others reflow and grow',
       ).toBeGreaterThan(before!.width + 20);
       expect((await stored(page))!['hidden']).toEqual(['src']);
-      await expect(popover.getByRole('checkbox', { name: 'Sources' })).not.toBeChecked();
+      await expect(popover.getByRole('switch', { name: 'Sources' })).not.toBeChecked();
 
       for (const id of ['scenes', 'insp', 'st', 'audio'] as const)
-        await popover.getByRole('checkbox', { name: TITLES[id] }).uncheck();
+        await popover.getByRole('switch', { name: TITLES[id] }).uncheck();
       await expectOrder(page, 'bottom', []);
       expect((await stored(page))!['hidden'].sort()).toEqual(['audio', 'insp', 'scenes', 'src', 'st']);
       await expect(
@@ -489,7 +489,7 @@ test.describe('REGIE docks', () => {
       ).toBeGreaterThan(300);
 
       for (const id of ['scenes', 'src', 'insp', 'st', 'audio'] as const)
-        await popover.getByRole('checkbox', { name: TITLES[id] }).check();
+        await popover.getByRole('switch', { name: TITLES[id] }).check();
       await expectOrder(
         page,
         'bottom',
@@ -500,7 +500,7 @@ test.describe('REGIE docks', () => {
       await page.keyboard.press('Escape');
       await expect(popover).toBeHidden();
       // A reload keeps what was hidden.
-      await (await open()).getByRole('checkbox', { name: 'Stations' }).uncheck();
+      await (await open()).getByRole('switch', { name: 'Devices' }).uncheck();
       await page.reload();
       await regie.waitReady();
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'audio']);
@@ -509,7 +509,7 @@ test.describe('REGIE docks', () => {
   );
 
   test(
-    'E2E-DOCK-05 [regie] reset: “Reset layout” in the popover and the toast action restore zones, sizes, weights and hidden docks',
+    'E2E-DOCK-05 [regie] reset: “Reset layout…” in the popover asks first and restores zones, sizes, weights and hidden docks, its toast brings the layout back with “Undo”; a dock move is undone with the “Undo” of its toast',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
@@ -524,29 +524,44 @@ test.describe('REGIE docks', () => {
         weights: { ...DEFAULT_WEIGHTS, insp: 3 },
       });
       await expectZone(page, 'scenes', 'left');
-      await page.getByRole('button', { name: 'Docks and layout' }).click();
-      await page.getByRole('button', { name: 'Reset layout' }).click();
+      await page.getByRole('button', { name: 'Layout', exact: true }).click();
+      const popover = page.getByRole('dialog', { name: 'Layout' });
+      await popover.getByRole('button', { name: 'Reset layout…' }).click();
+      const confirm = popover.getByRole('group', { name: 'Reset layout' });
+      await expect(confirm).toContainText('Every dock goes back to the bottom');
+      await expectZone(page, 'scenes', 'left');
+      await confirm.getByRole('button', { name: 'Reset layout', exact: true }).click();
       await expect(toastOf(page)).toContainText('Layout reset');
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'st', 'audio']);
       expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
+      // The toast brings the custom layout back (the click outside closes the popover), and a second reset clears it.
+      await toastOf(page).getByRole('button', { name: 'Undo' }).click();
+      await expectZone(page, 'scenes', 'left');
+      await expect(popover).toBeHidden();
+      await page.getByRole('button', { name: 'Layout', exact: true }).click();
+      await popover.getByRole('button', { name: 'Reset layout…' }).click();
+      await confirm.getByRole('button', { name: 'Reset layout', exact: true }).click();
+      await expect(toastOf(page)).toContainText('Layout reset');
+      expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
       await page.keyboard.press('Escape');
 
-      // Rearrange by keyboard, then use the toast action.
+      // Rearrange by keyboard, then undo the last move with the toast action.
       const grip = page.getByRole('button', {
-        name: 'Move dock Stations with the arrow keys',
+        name: 'Move dock Devices with the arrow keys',
       });
       await grip.focus();
-      // Stations is second to last: the first arrow swaps it with Audio, the second one docks it on the right.
+      // Devices is second to last: the first arrow swaps it with Audio, the second one docks it on the right.
       await page.keyboard.press('ArrowRight');
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'audio', 'st']);
       await expect(grip).toBeFocused();
       await page.keyboard.press('ArrowRight');
-      await expect(toastOf(page)).toContainText('Stations is docked on the right');
+      await expect(toastOf(page)).toContainText('Devices is docked on the right');
       await expectZone(page, 'st', 'right');
-      await toastOf(page).getByRole('button', { name: 'Reset layout' }).click();
-      await expect(toastOf(page)).toContainText('Layout reset');
+      await toastOf(page).getByRole('button', { name: 'Undo' }).click();
+      await expect(toastOf(page)).toContainText('Move of Devices undone');
       await expectZone(page, 'st', 'bottom');
-      expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
+      // Only the last move is undone: Devices is back after Audio, where the first arrow put it.
+      await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'audio', 'st']);
     },
   );
 
@@ -645,8 +660,8 @@ test.describe('REGIE docks', () => {
       await page.goto('/');
       await view.waitReady();
       await page.evaluate(() => localStorage.setItem('studioflow.layout', '{broken')); // survived the load unchanged
-      await page.getByRole('button', { name: 'Docks and layout' }).click();
-      await page.getByRole('checkbox', { name: 'Stations' }).uncheck();
+      await page.getByRole('button', { name: 'Layout', exact: true }).click();
+      await page.getByRole('switch', { name: 'Devices' }).uncheck();
       const fixed = await stored(page);
       expect(fixed).toMatchObject({ v: 1, hidden: ['st'] });
       await page.close();
@@ -697,8 +712,8 @@ test.describe('REGIE docks', () => {
       await blocked.goto('/');
       await blockedView.waitReady();
       await expectOrder(blocked, 'bottom', ['scenes', 'src', 'insp', 'st', 'audio']);
-      await blocked.getByRole('button', { name: 'Docks and layout' }).click();
-      await blocked.getByRole('checkbox', { name: 'Stations' }).uncheck();
+      await blocked.getByRole('button', { name: 'Layout', exact: true }).click();
+      await blocked.getByRole('switch', { name: 'Devices' }).uncheck();
       await expectOrder(
         blocked,
         'bottom',
@@ -728,7 +743,7 @@ test.describe('REGIE docks', () => {
         scope.getByRole('group', { name: 'Pairing request' }).filter({ hasText: 'Laptop Dock' });
       await expect(
         card(stationsDock(page)),
-        'the knock card shows in Stations while the pairing dock is closed',
+        'the knock card shows in Devices while the pairing dock is closed',
       ).toBeVisible({ timeout: 5000 });
 
       const trigger = regie.pairButton();
@@ -747,7 +762,7 @@ test.describe('REGIE docks', () => {
         card(regie.pairingDock()),
         'the knock card is in the pairing dock side column',
       ).toBeVisible();
-      await expect(card(stationsDock(page)), 'and no longer in Stations').toHaveCount(0);
+      await expect(card(stationsDock(page)), 'and no longer in Devices').toHaveCount(0);
 
       // X button: the docks return, the focus goes back to “Pair device”.
       await regie.closePairing();
@@ -908,9 +923,9 @@ test.describe('REGIE docks', () => {
       await checkFits('left and right');
       // The docks of the bottom zone hidden through the popover.
       await seedLayout(regie, DEFAULT_LAYOUT);
-      await page.getByRole('button', { name: 'Docks and layout' }).click();
+      await page.getByRole('button', { name: 'Layout', exact: true }).click();
       for (const id of ['scenes', 'src', 'insp', 'st', 'audio'] as const)
-        await page.getByRole('checkbox', { name: TITLES[id] }).uncheck();
+        await page.getByRole('switch', { name: TITLES[id] }).uncheck();
       await page.keyboard.press('Escape');
       await expect(page.getByRole('separator', { name: 'Height of the docks at the bottom' })).toHaveCount(0);
       await checkFits('bottom docks hidden');
@@ -980,7 +995,7 @@ test.describe('REGIE docks', () => {
 
 test.describe('REGIE docks by keyboard', () => {
   test(
-    'E2E-DEV-14 [regie] a dock moves with the arrow keys on its grip (left > bottom > right and back, no wrap) with toast and “Reset layout”; focus stays; splitters move 16 px (Shift 64 px) and reset on Enter',
+    'E2E-DEV-14 [regie] a dock moves with the arrow keys on its grip (left > bottom > right and back, no wrap) with toast and “Undo”; focus stays; splitters move 16 px (Shift 64 px) and reset on Enter',
     t.p1,
     async ({ regie }) => {
       const page = regie.page;
@@ -992,7 +1007,7 @@ test.describe('REGIE docks by keyboard', () => {
       // Scenes is first at the bottom: ArrowRight walks through the bottom zone, then into the right zone.
       await page.keyboard.press('ArrowRight');
       await expect(toast).toContainText('Scenes is docked at the bottom');
-      await expect(toast.getByRole('button', { name: 'Reset layout' })).toBeVisible();
+      await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
       await expectOrder(page, 'bottom', ['src', 'scenes', 'insp', 'st', 'audio']);
       await expect(grip('scenes'), 'the focus stays on the grip').toBeFocused();
       await page.keyboard.press('ArrowRight');
@@ -1021,7 +1036,13 @@ test.describe('REGIE docks by keyboard', () => {
       await page.keyboard.press('ArrowLeft');
       await page.keyboard.press('ArrowUp');
       await expectZone(page, 'scenes', 'left', 'no move beyond the left end');
-      await toast.getByRole('button', { name: 'Reset layout' }).click();
+      await page.getByRole('button', { name: 'Layout', exact: true }).click();
+      await page.getByRole('button', { name: 'Reset layout…' }).click();
+      await page
+        .getByRole('group', { name: 'Reset layout' })
+        .getByRole('button', { name: 'Reset layout', exact: true })
+        .click();
+      await page.keyboard.press('Escape');
       expect(await stored(page)).toEqual(DEFAULT_LAYOUT);
 
       // Splitters: 16 px per arrow, 64 px with Shift, Enter resets; orientation and names as pinned.
@@ -1077,7 +1098,7 @@ test.describe('REGIE docks by keyboard', () => {
       await expectOrder(page, 'bottom', ['scenes', 'src', 'insp', 'audio', 'st']);
       await expect(grip('st')).toBeFocused();
       await page.keyboard.press('ArrowRight');
-      await expect(toast).toContainText('Stations is docked on the right');
+      await expect(toast).toContainText('Devices is docked on the right');
       const rightSeam = sep(page, 'Width of the docks on the right');
       await expect(rightSeam).toHaveAttribute('aria-orientation', 'vertical');
       const rightWidth = async () => Math.round((await zoneBox(page, 'right'))!.width);
@@ -1107,7 +1128,7 @@ test.describe('REGIE docks: edge seams', () => {
       const page = regie.page;
       for (const name of [
         'Size of Scenes and Sources',
-        'Size of Stations and Audio',
+        'Size of Devices and Audio',
       ]) {
         const seam = sep(page, name);
         const seamX = async () => {

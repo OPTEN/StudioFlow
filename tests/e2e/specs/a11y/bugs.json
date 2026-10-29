@@ -113,7 +113,8 @@
       "fix": "@media (forced-colors: active): border: 1px solid ButtonText on the switch input and the thumb in CanvasText; for the segments a border-bottom or outline on [aria-pressed=true]."
     },
     "A11Y-12": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: the redesigned activity bar has a fixed height and never wraps; the incident target shrinks (min-width: 0) and cuts the device name with an ellipsis (.c-status__name), the full name stays in the issues popover. The DEV-18 case is a regression guard now.",
       "severity": "medium",
       "area": "A11Y",
       "title": "At 390 px an incident of a station with a long device name makes the message strip wider than the viewport: horizontal page scroll (the name in button.c-status__target is neither wrapped nor cut)",

@@ -116,16 +116,17 @@ test.describe('German text audit', () => {
       await page.getByRole('button', { name: TEXT_DE.stationsDock.grip }).focus();
       await page.keyboard.press('ArrowLeft');
       await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.docked);
-      await audit.stateInGerman('toast: dock moved (with the “Reset layout” button)');
-      await page.getByRole('button', { name: TEXT_DE.stationsDock.resetLayout }).click();
-      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.layoutReset);
+      await audit.stateInGerman('toast: dock moved (with the “Undo” button)');
+      await regie.toast().first().getByRole('button', { name: TEXT_DE.stationsDock.undo }).click();
+      await expect(regie.toast().first()).toContainText(TEXT_DE.stationsDock.moveUndone);
     });
     await regie.setStudioMode(false);
 
     // popovers and menus
     const popovers: Array<[string, () => ReturnType<Page['getByRole']>]> = [
       ['output popover', () => page.getByRole('button', { name: /^Output/ })],
-      ['layout popover', () => page.getByRole('button', { name: 'Docks and layout' })],
+      ['layout popover', () => page.getByRole('button', { name: 'Layout', exact: true })],
+      ['issues popover', () => page.getByRole('region', { name: 'Activity' }).getByRole('button', { name: /^\d+ issues?$/ })],
       ['production menu', () => page.getByRole('button', { name: /^Production .*, menu$/ })],
       ['add-source popover', () => page.getByRole('button', { name: 'Source', exact: true })],
       ['scene menu', () => page.getByRole('button', { name: 'Actions for scene Break' })],
@@ -191,13 +192,17 @@ test.describe('German text audit', () => {
 
     // broadcast states: start, live, end
     await page.getByRole('button', { name: 'Start broadcast' }).click();
+    const preflight = page.getByRole('dialog', { name: 'Start the broadcast?' });
+    await expect(preflight).toBeVisible();
+    await audit.state('start broadcast: confirmation with the pre-flight check');
+    await preflight.getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     await audit.state('on air');
     await page.getByRole('button', { name: 'End broadcast' }).first().click();
     await audit.state('end broadcast: confirmation');
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     expect((await api.endBroadcast(production.id)).status).toBeLessThan(300);
-    await expect(page.getByText('ENDED')).toBeVisible();
+    await expect(page.locator('.c-live b')).toHaveText('Ended');
     await audit.state('broadcast ended');
 
     // the monitoring page
@@ -241,7 +246,7 @@ test.describe('German text audit', () => {
     const clock = (await page.locator('.c-header__clock').innerText()).trim();
     expect(clock, 'the header clock').toMatch(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/);
     // elapsed times of an incident («00:03»)
-    await expect(page.getByRole('region', { name: 'Meldungen' })).toContainText(/\d{2}:\d{2}/);
+    await expect(page.getByRole('region', { name: 'Aktivität' })).toContainText(/\d{2}:\d{2}/);
     // the log texts: times as HH:mm
     // monitoring: decimal comma in the rate column, «Mbit/s» header
     await page.goto('/monitoring');

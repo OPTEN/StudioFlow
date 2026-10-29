@@ -57,7 +57,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await page.getByLabel('Password').fill(config.admin.password);
       await page.getByRole('button', { name: 'Sign in' }).click();
       await page.waitForURL((url) => !url.pathname.startsWith('/login'));
-      await expect(page.getByRole('button', { name: 'Docks and layout' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Layout', exact: true })).toBeVisible();
       expect(await loadedFontFamilies(page), 'the web fonts are loaded').toEqual(expect.arrayContaining(['Sofia Sans Semi Condensed', 'JetBrains Mono']));
       for (const request of session.watch.requests.filter((entry) => entry.type === 'font')) expect(new URL(request.url).origin, `font ${request.url}`).toBe(session.origin);
       await expectStackOnly(session.watch, session.origin, `${browserName} login`);
@@ -125,7 +125,8 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await page.mouse.up();
       await expect(page.locator('[data-zone=left] sf-dock-slot[aria-label=Scenes]'), 'the dock moved to the left zone').toHaveCount(1);
       await saveScreen(page, SCREEN_PREFIX(`${browserName}-regie-dock-left`));
-      await page.getByRole('button', { name: 'Reset layout' }).click();
+      // the toast of the move offers "Undo", which puts the dock back
+      await page.locator('sf-toast-host .c-toast').last().getByRole('button', { name: 'Undo' }).click();
       await expect(page.locator('[data-zone=bottom] sf-dock-slot[aria-label=Scenes]')).toHaveCount(1);
 
       // drag a splitter: the docks grow
@@ -149,11 +150,11 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await regie.closePairing();
 
       // keyboard in this browser: Escape layers and the popover focus
-      await page.getByRole('button', { name: 'Docks and layout' }).focus();
+      await page.getByRole('button', { name: 'Layout', exact: true }).focus();
       await page.keyboard.press('Enter');
-      await expect(page.getByRole('dialog', { name: 'Docks and layout' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Layout' })).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog', { name: 'Docks and layout' })).toBeHidden();
+      await expect(page.getByRole('dialog', { name: 'Layout' })).toBeHidden();
 
       await expectStackOnly(session.watch, session.origin, `${browserName} Regie`);
       const problems = consoleProblems(session.watch, known, EXPECTED_STATUSES);

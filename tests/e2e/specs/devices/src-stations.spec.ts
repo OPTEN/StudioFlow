@@ -67,9 +67,11 @@ test.describe('SRC stations', () => {
       // K4 goes live: it leaves the “connecting” rank and falls back to the rest.
       await stations.get('K4')!.set('camera', 'live');
       await expect.poll(() => order(regie), { message: 'K4 is live now', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K5', 'K6', 'K4', 'K7']);
-      // “Seen” on K3 removes the recovered rank.
-      await regie.page.locator('sf-status-line').getByRole('button', { name: 'Seen' }).click();
-      await expect.poll(() => order(regie), { message: 'K3 after “Seen”', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
+      // “Dismiss” on K3 removes the recovered rank; K3 is not the lead incident, so it is in the issues popover.
+      await regie.page.locator('sf-status-line .c-status__health').click();
+      await regie.page.getByRole('dialog', { name: 'Issues' }).getByRole('button', { name: 'Dismiss' }).click();
+      await regie.page.keyboard.press('Escape');
+      await expect.poll(() => order(regie), { message: 'K3 after “Dismiss”', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
     },
   );
 

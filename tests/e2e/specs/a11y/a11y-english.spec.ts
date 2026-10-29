@@ -46,8 +46,8 @@ test.describe('English text audit', () => {
     await regie.setStudioMode(false);
 
     const popovers: Array<[string, string | RegExp]> = [
-      ['settings popover', 'Open settings'],
-      ['layout popover', 'Docks and layout'],
+      ['issues popover', /^\d+ issues?$/],
+      ['layout popover', /^Layout$/],
       ['production menu', /^Production .*, menu$/],
     ];
     for (const [label, name] of popovers) {
@@ -57,6 +57,13 @@ test.describe('English text audit', () => {
       await page.keyboard.press('Escape');
       await expect(page.locator('.c-pop')).toHaveCount(0);
     }
+    // the keyboard shortcuts sheet (the ? key)
+    await page.keyboard.press('?');
+    const shortcuts = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    await expect(shortcuts).toBeVisible();
+    await audit.state('keyboard shortcuts', page);
+    await page.keyboard.press('Escape');
+    await expect(shortcuts).toBeHidden();
 
     const row = page.locator('.c-st__row').first();
     await row.click();

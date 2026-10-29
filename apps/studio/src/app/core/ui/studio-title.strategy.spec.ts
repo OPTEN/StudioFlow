@@ -46,8 +46,32 @@ describe('StudioTitleStrategy', () => {
     );
   });
 
+  it('puts the status of the control room in front of the app title', async () => {
+    const { router, title } = setup();
+    const strategy = TestBed.inject(TitleStrategy) as StudioTitleStrategy;
+    await router.navigateByUrl('/plain');
+    strategy.setStatus('● On air · 2 issues · Webinar');
+    TestBed.tick();
+    expect(title.getTitle()).toBe('● On air · 2 issues · Webinar · StudioFlow Control room');
+    strategy.setStatus(null);
+    TestBed.tick();
+    expect(title.getTitle()).toBe('StudioFlow Control room');
+  });
+
+  it('keeps the page title on pages with a title key', async () => {
+    const { router, title } = setup();
+    const strategy = TestBed.inject(TitleStrategy) as StudioTitleStrategy;
+    strategy.setStatus('● On air · Webinar');
+    await router.navigateByUrl('/login');
+    TestBed.tick();
+    expect(title.getTitle()).toBe('Sign in · StudioFlow Control room');
+  });
+
   it('writes the same title with documentTitle', () => {
     expect(documentTitle(null)).toBe('StudioFlow Control room');
     expect(documentTitle('regie.monitoring.title')).toBe('Monitoring · StudioFlow Control room');
+    expect(documentTitle(null, '● On air · Webinar')).toBe(
+      '● On air · Webinar · StudioFlow Control room',
+    );
   });
 });

@@ -50,12 +50,12 @@ async function runScenario(regie: RegiePage, pairContext: PairContext, onCleanup
   await expect.poll(() => page.getByRole('img', { name: new RegExp(`^Program monitor: ${scene}`) }).count(), { message: 'the Program monitor shows the new scene' }).toBe(1);
   // a station detail opens (grid-row reveal), a popover, the mode switch, a dock move
   await page.locator('.c-st__row').first().click();
-  await page.getByRole('button', { name: 'Docks and layout' }).click();
+  await page.getByRole('button', { name: 'Layout', exact: true }).click();
   await page.keyboard.press('Escape');
   await regie.setStudioMode(true);
-  await page.getByRole('button', { name: 'Move dock Stations with the arrow keys' }).focus();
+  await page.getByRole('button', { name: 'Move dock Devices with the arrow keys' }).focus();
   await page.keyboard.press('ArrowLeft');
-  await expect(regie.toast().first()).toContainText('Stations is');
+  await expect(regie.toast().first()).toContainText('Devices is');
   // a new outage: a phone that was live stops reporting its camera (reconnecting)
   const phone = await pairPhone(pairContext, { name: `Phone Pulse ${label}` });
   const hub = DeviceHub.connect(pairContext.stack.anonymousBase, phone.credentials, { headers: pairContext.stack.forwardedForWorks ? { 'X-Forwarded-For': uniqueIp() } : {}, reconnect: true });
@@ -64,7 +64,7 @@ async function runScenario(regie: RegiePage, pairContext: PairContext, onCleanup
   await hub.reportLive(['camera']);
   await expect(regie.station(`Phone Pulse ${label}`)).toBeVisible();
   await hub.report({ rtc: 'connected', slots: [{ slot: 'camera', state: 'paused', width: 1280, height: 720, fps: 30, bitrateKbps: 2500, packetLossPct: 0, codec: 'h264' }] });
-  await expect(page.getByRole('region', { name: 'Messages' })).toContainText(`Phone Pulse ${label}`);
+  await expect(page.getByRole('region', { name: 'Activity' })).toContainText(`Phone Pulse ${label}`);
   // give the 1.2 s pulse and the 1 s station flash time to show up in the recorder
   await page.waitForTimeout(1500);
   return { transitionPosts };
@@ -135,7 +135,7 @@ test.describe('Reduced motion', () => {
     expect(recorded.map((entry) => `${entry.kind} ${entry.name} ${entry.duration} ms on ${entry.target}`).slice(0, 12), 'no CSS animation or transition with a duration ran').toEqual([]);
   });
 
-  test('E2E-DEV-16 [regie, scrollIntoView] showing a station from the strip scrolls with behavior auto under reduce and smooth otherwise', tags('p1'), async ({ browser, api, pairContext, onCleanup }) => {
+  test('E2E-DEV-16 [regie, scrollIntoView] showing a station from the activity bar scrolls with behavior auto under reduce and smooth otherwise', tags('p1'), async ({ browser, api, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
     await seedBusyConsole(pairContext, onCleanup, { incident: 'reconnecting' });
     const behaviours: Record<string, string[]> = {};
@@ -144,7 +144,7 @@ test.describe('Reduced motion', () => {
       await expect(regie.station('Phone Entrance')).toBeVisible();
       await settle(regie.page);
       await clearMotion(regie.page);
-      await regie.page.getByRole('button', { name: /Show \S+ in Stations/ }).first().click();
+      await regie.page.locator('sf-status-line .c-status__lead .c-status__target').click();
       await expect(regie.page.locator('.c-st__row[aria-expanded=true]').first(), 'the station is opened').toBeVisible();
       await expect.poll(async () => (await readMotion(regie.page)).scrolls.length, { message: 'the dock scrolled the row into view' }).toBeGreaterThan(0);
       behaviours[motion] = (await readMotion(regie.page)).scrolls.map((entry) => entry.options);

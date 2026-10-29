@@ -232,19 +232,41 @@ describe('DockLayoutService', () => {
     expect(layout.leftEdgeDocks()).toEqual(['scenes']);
   });
 
-  it('moves a dock, persists and offers "Reset layout"', () => {
+  it('moves a dock, persists and offers "Undo" for that move only', () => {
     const layout = setup();
     const toasts = TestBed.inject(ToastService);
+    layout.setShown('audio', false);
     expect(layout.moveDock('st', 'right', 0)).toBe(true);
     expect(stored().zones.right).toEqual(['st']);
     expect(toasts.current()).toMatchObject({
-      message: 'Stations is docked on the right',
-      action: { label: 'Reset layout' },
+      message: 'Devices is docked on the right',
+      action: { label: 'Undo' },
+      kind: 'success',
     });
     toasts.runAction();
+    expect(layout.layout().zones).toEqual(defaultLayout().zones);
+    // The undo puts the docks back; the hidden Audio dock stays hidden.
+    expect(layout.isShown('audio')).toBe(false);
+    expect(stored().zones).toEqual(defaultLayout().zones);
+    expect(toasts.current()?.message).toBe('Move of Devices undone');
+  });
+
+  it('resets the layout and brings it back with "Undo"', () => {
+    const layout = setup();
+    const toasts = TestBed.inject(ToastService);
+    layout.moveDock('scenes', 'left', 0);
+    layout.setShown('audio', false);
+    const custom = layout.layout();
+    layout.resetLayout();
     expect(layout.layout()).toEqual(defaultLayout());
     expect(stored()).toEqual(defaultLayout());
-    expect(toasts.current()?.message).toBe('Layout reset');
+    expect(toasts.current()).toMatchObject({
+      message: 'Layout reset',
+      action: { label: 'Undo' },
+    });
+    toasts.runAction();
+    expect(layout.layout()).toEqual(custom);
+    expect(stored()).toEqual(custom);
   });
 
   it('moves docks with the grip keys', () => {

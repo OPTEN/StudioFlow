@@ -1,5 +1,16 @@
-// Header (prototype .top, .brand, .mark, .top-r, .presence, .clock).
+// The toolbar: three columns on one 52 px bar (lead | broadcast capsule | tools). The side columns share the rest of
+// the width equally, so the capsule stays in the middle of the window whatever the production name or the output says.
 @use 'mixins' as *;
+
+/// Hidden visually, still read by screen readers (like .u-sr-only); used where a label gives way to its icon.
+@mixin visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
 
 :host {
   background: var(--panel);
@@ -9,118 +20,161 @@
 
 .c-header {
   align-items: center;
+  column-gap: 16px;
+  display: grid;
+  grid-template-areas: 'lead center right';
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  min-height: var(--header-h);
+  min-width: 0;
+  padding: 8px var(--gr) 8px var(--gl);
+
+  // Two rows below 1180 px: brand, production and tools on top, the broadcast capsule centred underneath.
+  @include stacked {
+    grid-template-areas:
+      'lead right'
+      'center center';
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 8px;
+  }
+}
+
+.c-header__lead {
+  align-items: center;
   display: flex;
   gap: 12px;
-  min-height: 50px;
+  grid-area: lead;
   min-width: 0;
-  padding: 6px var(--gr) 6px var(--gl);
 
-  @include stacked {
-    flex-wrap: wrap;
+  sf-production-menu {
+    min-width: 0;
   }
 }
 
 .c-header__brand {
   align-items: center;
+  color: var(--text);
   display: flex;
-  font-size: 16.5px;
-  font-weight: 700;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-headline);
+  font-weight: 600;
   gap: 9px;
-  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
-// "Sponsored by OPTEN": quiet and muted, set apart from the brand by a hairline. The text goes first (below 1380 px
-// only the logo and the name stay, below 900 px only the logo), so that it never pushes the controls out. Hidden text
-// stays readable for screen readers (like .u-sr-only): it is the accessible name of the link.
-@mixin sponsor-text-hidden {
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
+.c-header__brand-name {
+  @include narrow {
+    @include visually-hidden;
+  }
+}
+
+.c-header__sep {
+  background: var(--seam-strong);
+  flex: none;
+  height: 20px;
   width: 1px;
 }
 
-.c-header__sponsor {
-  align-items: center;
-  border-left: 1px solid var(--seam-strong);
-  border-radius: var(--radius-xs);
-  color: var(--muted);
-  display: inline-flex;
-  flex: none;
-  font-size: 12px;
-  gap: 6px;
-  padding: 2px 4px 2px 12px;
-  text-decoration: none;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--text-2);
-  }
-}
-
-.c-header__sponsor-name {
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-
-  @include narrow {
-    @include sponsor-text-hidden;
-  }
-}
-
-.c-header__sponsor-prefix {
-  @include presets-compact {
-    @include sponsor-text-hidden;
-  }
+.c-header__center {
+  grid-area: center;
 }
 
 .c-header__right {
   align-items: center;
   display: flex;
-  flex: none;
-  gap: 6px;
+  gap: 4px;
+  grid-area: right;
+  justify-content: flex-end;
   min-width: 0;
-
-  @include stacked {
-    flex: 1 1 auto;
-    flex-wrap: wrap;
-  }
 }
 
-// The connected output links in the output chip ("Proxy + Teams camera").
-.c-header__out-links {
-  @include ellipsis;
-  color: var(--text-2);
-  max-width: 18ch;
+// Output capsule: lamp, "Output" and one state word in a slot of steady width.
+.c-header__out {
+  gap: 8px;
+  padding: 0 10px 0 12px;
 }
 
-// "drops frames" in the output chip: the computer of the output page cannot keep up.
-.c-header__out-warn {
+.c-header__out-label {
+  font-weight: 600;
+}
+
+.c-header__out-state {
+  @include mono;
   @include ellipsis;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
   max-width: 14ch;
-}
+  min-width: 6ch;
 
-.c-header__presence {
-  align-items: center;
-  color: var(--text-2);
-  display: inline-flex;
-  font-size: 13px;
-  gap: 6px;
-  padding: 0 6px;
-  white-space: nowrap;
-}
-
-.c-header__presence-label {
-  @include presence-compact {
-    display: none;
+  &.is-quiet {
+    color: var(--muted);
+    font-weight: 500;
   }
+}
+
+.c-header__chev {
+  color: var(--muted);
+}
+
+// "Layout": a labelled tool, not a bare glyph.
+.c-header__tool {
+  color: var(--text-2);
+  gap: 6px;
+  padding: 0 10px;
+
+  .c-icon {
+    color: var(--muted);
+  }
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: var(--text);
+  }
+}
+
+.c-header__tool-label {
+  @include narrow {
+    @include visually-hidden;
+  }
+}
+
+.c-header__settings {
+  height: 30px;
+  width: 30px;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+// Presence: the users glyph with its count, always visible, focusable, its full sentence in the tooltip and popover.
+.c-header__presence {
+  gap: 5px;
+  grid-auto-flow: column;
+  height: 30px;
+  padding: 0 6px;
+  width: auto;
+}
+
+.c-header__presence-count {
+  color: var(--text-2);
+}
+
+.c-header__presence-pop {
+  width: 260px;
+}
+
+.c-header__presence-title {
+  @include heading-text;
+  padding: 8px 10px 2px;
 }
 
 .c-header__clock {
-  color: var(--text-2);
-  font-size: 13px;
+  color: var(--muted);
+  flex: none;
+  font-size: var(--fs-body);
   font-weight: 500;
-  padding: 0 0 0 6px;
+  min-width: 8ch;
+  padding-left: 8px;
+  text-align: right;
 }

@@ -24,17 +24,16 @@ describe('StatusLineComponent in German', () => {
 
   afterEach(() => harness?.http.verify());
 
-  it('renders the log from the code and its parameters', async () => {
+  it('renders the health, the latest event from the code and its parameters, and the log link', async () => {
     const element = await setup([logFixture('Pause')]);
-    expect(element.querySelector('.c-status__ok')?.textContent?.trim()).toBe(
-      'Keine offenen Meldungen',
-    );
-    expect(element.querySelector('.c-status__label')?.textContent?.trim()).toBe(
-      'Letzte Ereignisse',
+    expect(element.getAttribute('aria-label')).toBe('Aktivität');
+    expect(element.querySelector('.c-status__health')?.textContent?.trim()).toBe(
+      'Alle 2 Geräte OK',
     );
     expect(element.querySelector('.c-status__entry')?.textContent).toContain(
       'Szene «Pause» ist live',
     );
+    expect(element.querySelector('.c-status__audit')?.textContent?.trim()).toBe('Protokoll');
   });
 
   it('shows the English text of the API for a code this client does not know', async () => {

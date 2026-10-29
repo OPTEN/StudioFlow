@@ -606,7 +606,7 @@ test.describe('PAIR fleet', () => {
       const startedAt = Date.now();
       await output.waitForPlayingVideos(5, { timeout: 60_000, minFps: 5 });
       testInfo.annotations.push({ type: 'measurement', description: `five playing videos on the output after ${Date.now() - startedAt} ms (output opened with all five live)` });
-      await expect.poll(async () => (await readPlaces(regie.page)).header.text, { message: 'health chip', timeout: 20_000 }).toBe('All 5 stations ok');
+      await expect.poll(async () => (await readPlaces(regie.page)).header.text, { message: 'health chip', timeout: 20_000 }).toBe('All 5 devices OK');
       expect((await readPlaces(regie.page)).strip, 'no incident').toHaveLength(0);
     },
   );

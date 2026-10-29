@@ -470,13 +470,13 @@ test.describe('OUT media and reports', () => {
       await goLive(api, production);
       const chip = regie.page.getByRole('button', { name: /^Output/ });
       const lamp = chip.locator('.c-lamp');
-      // Connected means a green lamp. A lamp that is amber while the output is connected has exactly one other reason, the
-      // chip saying “drops frames” (the computer cannot keep up, issue #12): a loaded machine, or a page that was blocked.
+      // Connected means a green lamp. A lamp that is amber while the output is connected names its reason in the capsule:
+      // “Drops frames” (the computer cannot keep up, issue #12) or “Audio blocked” (the page waits for a click).
       const expectConnectedLamp = async (message: string) => {
         await expect(async () => {
           const classes = (await lamp.getAttribute('class')) ?? '';
           expect(classes, message).not.toMatch(/is-idle/);
-          if (/is-warn/.test(classes)) expect(await chip.innerText(), `${message}: amber only for dropped frames`).toContain('drops frames');
+          if (/is-warn/.test(classes)) expect(await chip.innerText(), `${message}: amber only with a named reason`).toMatch(/Drops frames|Audio blocked/);
         }).toPass({ timeout: 8000 });
       };
       await expect(chip).toBeVisible();

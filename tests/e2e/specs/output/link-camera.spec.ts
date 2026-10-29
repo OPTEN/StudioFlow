@@ -85,7 +85,7 @@ test.describe('LINK output links and the camera', () => {
       await proxyPage.stage();
       await teamsPage.stage();
       await expect(linkRow(pop, 'Proxy')).toHaveText('Proxy · connected', { timeout: 15_000 });
-      await expect(linkRow(pop, 'Teams camera')).toHaveText('Teams camera · connected', {
+      await expect(linkRow(pop, 'Teams camera')).toHaveText(/^Teams camera · connected$/, {
         timeout: 15_000,
       });
       await expect(chip(page)).toContainText('Proxy + Teams camera');
@@ -238,7 +238,7 @@ test.describe('LINK output links and the camera', () => {
         outputKey: parseOutputUrl(settings['url'] as string).key,
       });
       await output.stage();
-      await expect(linkRow(pop, 'Teams camera')).toHaveText('Teams camera · connected', {
+      await expect(linkRow(pop, 'Teams camera')).toHaveText(/^Teams camera · connected$/, {
         timeout: 15_000,
       });
       await expect(linkRow(pop, 'Proxy')).toContainText('not connected');
