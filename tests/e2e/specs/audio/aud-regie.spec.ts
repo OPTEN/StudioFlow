@@ -224,7 +224,7 @@ test.describe('AUD Regie', () => {
       // A warning is not an incident: no incident, the station is "ok", the header lamp is not red.
       const snapshot = await production.snapshot();
       expect(snapshot.incidents, 'no incident').toEqual([]);
-      await expect(page.getByText('1 station ok')).toBeVisible();
+      await expect(page.getByText('1 device OK')).toBeVisible();
 
       // The signal comes back: the warning goes.
       await setFakeTone(station.page, 'mic', { level: 0.5 });

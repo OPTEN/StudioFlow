@@ -192,9 +192,10 @@ for (const theme of THEMES) {
         }
 
         // The incident: an amber lamp with its halo and a wash that differs from the panel on screen.
+        // (the redesign draws the halo as a box-shadow ring; the amber is the theme's --amber, #ff9f0a / #9a4700)
         const lamp = row.locator('.c-lamp');
-        await expect(lamp).toHaveCSS('outline-style', 'solid');
-        const amber = theme === 'dark' ? 'rgb(227, 179, 65)' : 'rgb(138, 88, 0)';
+        await expect(lamp).not.toHaveCSS('box-shadow', 'none');
+        const amber = theme === 'dark' ? 'rgb(255, 159, 10)' : 'rgb(154, 71, 0)';
         await expect(lamp).toHaveCSS('background-color', amber);
         const panel = PixelImage.fromPng(await page.locator('.c-dock-frame__body').first().screenshot());
         const wash = PixelImage.fromPng(await row.screenshot());

@@ -22,9 +22,11 @@ const VIEWPORT = { width: 1440, height: 900 };
 function areaRank(info: FocusInfo): number {
   if (info.area === 'header') return 0;
   if (info.area === 'region:Activity') return 1;
-  if (/^(group:Items of the scene|section:Monitors|group:Transition type|group:Fade duration)/.test(info.area)) return 2;
+  if (/^(group:Items of the scene|section:Monitors|region:Preview$|region:Program$|group:Transition type|group:Fade duration)/.test(info.area)) return 2;
   if (info.role === 'separator' && info.name === 'Height of the docks at the bottom') return 3;
-  const dock = /^region:(Scenes|Sources of the scene|Properties|Add device|Devices|Audio)$/.exec(info.area)?.[1];
+  // a toast's Dismiss is a transient stop wherever the toast host sits; a labelled group counts for its dock
+  if (info.area === 'status') return -1;
+  const dock = /^region:(Scenes|Sources of the scene|Properties|Add device|Devices|Audio)$/.exec(info.area)?.[1] ?? /^(Scenes|Sources of the scene|Properties|Add device|Devices|Audio)$/.exec(info.region ?? '')?.[1];
   if (dock) return { Scenes: 4, 'Sources of the scene': 5, Properties: 6, 'Add device': 6, Devices: 7, Audio: 8 }[dock]!;
   return 99;
 }
@@ -92,9 +94,10 @@ test.describe('Keyboard-only Regie', () => {
     expect(stops.filter((stop) => !stop.info.inViewport).map((stop) => labelOf(stop.info)), 'every tab stop is inside the viewport').toEqual([]);
 
     // logical order: toolbar -> activity bar -> monitors/control column -> docks in zone order
-    const ranks = stops.map((stop) => areaRank(stop.info));
+    const ranked = stops.filter((stop) => areaRank(stop.info) >= 0);
+    const ranks = ranked.map((stop) => areaRank(stop.info));
     expect(ranks.filter((rank) => rank === 99), 'every stop belongs to a known area').toEqual([]);
-    const decreasing = ranks.flatMap((rank, index) => (index > 0 && rank < ranks[index - 1]! ? [`${labelOf(stops[index - 1]!.info)} -> ${labelOf(stops[index]!.info)}`] : []));
+    const decreasing = ranks.flatMap((rank, index) => (index > 0 && rank < ranks[index - 1]! ? [`${labelOf(ranked[index - 1]!.info)} -> ${labelOf(ranked[index]!.info)}`] : []));
     expect(decreasing, 'the tab order follows toolbar, activity bar, monitors and controls, then the docks left to right').toEqual([]);
 
     // the controls of the control column come after the monitor overlay, Take last
@@ -260,7 +263,8 @@ test.describe('Keyboard-only Regie', () => {
         expect(inside.name, `${entry.name}: the trigger keeps the focus`).toBe((await trigger.getAttribute('aria-label')) ?? inside.name);
       }
       // the popover has an accessible name and is the only one open
-      expect(await page.locator('.c-pop').count(), `${entry.name}: exactly one popover is open`).toBe(1);
+      // (the ⋯ menus of the redesign are the shared context menu, .c-ctx, not a .c-pop)
+      expect(await page.locator('.c-pop, .c-ctx').count(), `${entry.name}: exactly one popover is open`).toBe(1);
       await page.keyboard.press('Escape');
       await expect(popover, `${entry.name}: Escape closes it`).toBeHidden();
       await expect(trigger, `${entry.name}: aria-expanded is false again`).toHaveAttribute('aria-expanded', 'false');

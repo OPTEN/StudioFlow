@@ -46,7 +46,9 @@ test.describe('Forced colours and zoom', () => {
     await expect(page.locator('.c-st.is-warn .c-st__row').first()).toHaveAccessibleName(/reconnecting/);
     await expect(page.locator('.c-st.is-warn .c-st__l2').first()).toContainText('reconnecting');
     // Program and Preview are told in words, the scene rows carry the tags
-    await expect(page.getByText('PROGRAM', { exact: false }).first()).toBeVisible();
+    // (the monitor heads: the redesign writes them in title case, “Program” and “Preview”)
+    await expect(page.locator('.c-monitor__tally', { hasText: /^program$/i })).toBeVisible();
+    await expect(page.locator('.c-monitor__tally', { hasText: /^preview$/i })).toBeVisible();
     await expect(page.locator('.c-tag--pgm').first()).toHaveText('Live');
     await expect(page.locator('.c-tag--pvw').first()).toHaveText('Preview');
     // lamps are decorative and the words carry the meaning

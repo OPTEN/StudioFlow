@@ -235,7 +235,7 @@ test.describe('Regie responsive layout', () => {
     expect(inspector.field, 'the scene name field exists').not.toBeNull();
     expect(inspector.field!.w, 'the name field is not wider than the dock').toBeLessThanOrEqual(inspector.dock.w);
     expect(inspector.field!.w, 'the name field keeps a readable width (<= 420 px)').toBeLessThanOrEqual(420);
-    expect(inspector.field!.h, 'the name field keeps its 30 px height').toBeCloseTo(30, 0);
+    expect(inspector.field!.h, 'the name field keeps the 28 px control height (--control-h)').toBeCloseTo(28, 0);
     await saveScreen(regie.page, 'regie-1920x1080-direct');
     await regie.setStudioMode(true);
     await settle(regie.page);
@@ -444,6 +444,8 @@ test.describe('Regie responsive layout', () => {
     const unreachable: string[] = [];
     const controls = await page.locator('button:visible, a[href]:visible, input:visible, select:visible, [role=switch]:visible').all();
     for (const control of controls) {
+      // a transient control (the Dismiss button of a toast that timed out) may be gone by now: the list shrank by one
+      if ((await control.count()) === 0) continue;
       const name = (await control.getAttribute('aria-label')) ?? ((await control.innerText().catch(() => '')) || (await control.getAttribute('class')) || 'control');
       if (/\bu-sr-only\b/.test((await control.getAttribute('class')) ?? '')) continue;
       await control.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => undefined);

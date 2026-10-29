@@ -124,7 +124,7 @@ test.describe('AUDIT audit log page', () => {
 
       // The export itself is in the log.
       await page.getByLabel('Time range').selectOption({ label: 'Any time' });
-      await page.getByLabel('Production').selectOption({ label: 'All productions' });
+      await page.getByLabel('Production', { exact: true }).selectOption({ label: 'All productions' });
       // Earlier runs on the same stack (a retry, a repetition) left the same entry behind: one of them is enough.
       await expect(page.getByRole('table').getByText(/^Audit log exported as csv, 4 rows$/).first()).toBeVisible();
     },
@@ -152,7 +152,7 @@ test.describe('AUDIT audit log page', () => {
       await expect.poll(async () => (await tableRows(page)).map((row) => row[2])).not.toContainEqual(expect.stringContaining('Scene'));
 
       await page.getByRole('button', { name: 'Clear filters' }).click();
-      await page.getByLabel('Production').selectOption({ label: `${production.name} renamed (active)` });
+      await page.getByLabel('Production', { exact: true }).selectOption({ label: `${production.name} renamed (active)` });
       await page.getByLabel('Search').fill(snapshot.scenes[2]!.name);
       await expect(page.locator('.c-audit__count')).toHaveText('Showing 1 entry');
       expect(await tableRows(page)).toEqual([[expect.any(String), 'Admin', `Scene “${snapshot.scenes[2]!.name}” is live`, `${production.name} renamed`]]);
@@ -208,7 +208,7 @@ test.describe('AUDIT audit log page', () => {
     for (const viewport of [{ width: 1024, height: 768 }, { width: 768, height: 1024 }]) {
       await page.setViewportSize(viewport);
       await expectNoOverflow(page, { label: `the audit log at ${viewport.width} px` });
-      for (const name of ['Time range', 'Production', 'Search']) await expect(page.getByLabel(name)).toBeVisible();
+      for (const name of ['Time range', 'Production', 'Search']) await expect(page.getByLabel(name, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Export', exact: true })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Time' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'What' })).toBeVisible();
