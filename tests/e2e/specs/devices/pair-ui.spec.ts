@@ -54,7 +54,7 @@ test.describe('PAIR phone, QR code', () => {
         const stored = await phone.waitForStoredDevice();
         expect(new URL(phone.page.url()).pathname, 'the token left the address bar').toBe('/join/station');
         await expect(phone.page.getByRole('heading', { name: 'Phone 1' })).toBeVisible();
-        await expect(phone.page.getByText('Paired as K1. The camera is starting and the control room can see the picture now.')).toBeVisible();
+        await expect(phone.page.getByText('Paired as K1. The control room sees the picture as soon as the camera runs.')).toBeVisible();
         const row = regie.page.locator(`.c-st[data-device="${stored.deviceId}"]`);
         await expect(row).toBeVisible({ timeout: THRESHOLD.pairHardMs + 3000 });
         const stationMs = Date.now() - redeemedAt;
@@ -538,8 +538,8 @@ test.describe('PAIR kind detection', () => {
         if ('noDisplayMedia' in entry) await context.addInitScript(() => Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', { value: undefined, configurable: true }));
         const page = await context.newPage();
         await page.goto('/join/');
-        const phoneRadio = page.getByRole('radio', { name: 'Phone (camera)' });
-        const laptopRadio = page.getByRole('radio', { name: 'Laptop (screen)' });
+        const phoneRadio = page.getByRole('radio', { name: 'Phone camera' });
+        const laptopRadio = page.getByRole('radio', { name: 'Laptop screen' });
         await expect(phoneRadio).toBeVisible();
         expect(await phoneRadio.isChecked(), `${entry.name} defaults to ${entry.kind}`).toBe(entry.kind === 'phone');
         await expect(page.getByLabel('Device name')).toHaveValue(entry.os);

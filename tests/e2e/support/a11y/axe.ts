@@ -25,7 +25,7 @@ export const KNOWN_BUG_EXCLUDES: Record<string, { selector: string; rule: string
   'A11Y-01': { selector: '[role=separator][tabindex]', rule: 'aria-required-attr', why: 'focusable separators (splitters) lack aria-valuenow' },
   'A11Y-06': { selector: '.c-status__target, button.c-scene, .c-src__select, .c-st__row', rule: 'label-content-name-mismatch', why: 'accessible names of rows and incident targets do not contain their visible text (WCAG 2.5.3)' },
   'A11Y-09': { selector: '.c-src-dock__list:not(:has([role=listitem]))', rule: 'aria-required-children', why: 'the Sources list of an empty scene is role=list without a listitem (the empty note sits inside it)' },
-  'A11Y-07': { selector: '.c-phone__dark-code, .c-phone__dark-hint', rule: 'color-contrast', why: 'dark mode of the phone sender: code 2.96:1, hint 2.35:1' },
+  'A11Y-07': { selector: '.c-phone__screen-off-code, .c-phone__screen-off-hint', rule: 'color-contrast', why: 'dark mode of the phone sender: code 2.96:1, hint 2.35:1' },
 };
 
 export interface AxeNode {

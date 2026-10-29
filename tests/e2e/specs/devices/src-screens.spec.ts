@@ -51,7 +51,7 @@ test.describe('SRC laptop screens', () => {
       // The sender: the large “Share again”; it did not call getDisplayMedia again.
       const reshare = s1.laptop.slot('screen-1').getByRole('button', { name: 'Share again' });
       await expect(reshare).toBeVisible();
-      await expect(reshare).toHaveClass(/c-button--large/);
+      await expect(reshare).toHaveClass(/c-btn--lg/);
       await sleep(1500); // a quiet period: nothing may share by itself
       expect((await s1.laptop.mediaCalls()).display, 'the sender did not ask for the screen again').toBe(1);
       // The output holds the last frame: the item stays on the stage.
@@ -81,8 +81,10 @@ test.describe('SRC laptop screens', () => {
       await regie.page.locator('sf-status-line').getByRole('button', { name: 'Ask to share again' }).click();
       await expect(regie.toast()).toContainText('Request sent to Laptop Lea · Screen 1: “Share screen again”');
       await expect(s1.laptop.reshareBanner()).toBeVisible();
-      const prompt = s1.laptop.page.locator('.c-laptop__reshare').getByRole('button', { name: 'Share again' });
-      await expect(prompt, 'a prominent button').toHaveClass(/c-button--large/);
+      // The request sits in the card of the screen (highlighted), with the large “Share again” as its action.
+      await expect(s1.laptop.slot('screen-1')).toHaveClass(/is-requested/);
+      const prompt = s1.laptop.slot('screen-1').locator('.c-source__actions').getByRole('button', { name: 'Share again' });
+      await expect(prompt, 'a prominent button').toHaveClass(/c-btn--lg/);
       expect(await logTexts(api, production), 'the request writes no log entry').toEqual(logBefore);
       expect((await s1.laptop.mediaCalls()).display).toBe(1);
 
@@ -153,7 +155,7 @@ test.describe('SRC laptop screens', () => {
       expect(places.strip.map((entry) => entry.code), 'only S2 raises an incident').toEqual(['S2']);
       expect(places.header.text).toBe('1 issue');
 
-      // “Remove” on screen 3: the source is gone, the scene item shows “Source missing”.
+      // “Remove from the control room…” (⋯ menu, confirmed) on screen 3: the source is gone, the scene item shows “Source missing”.
       await laptop.removeSlot('screen-3');
       await expect.poll(async () => (await production.snapshot()).sources.some((source) => source.id === s3Id), { message: 'S3 is removed from the production' }).toBe(false);
       const scene = (await production.snapshot()).scenes[1]!;
@@ -168,7 +170,7 @@ test.describe('SRC laptop screens', () => {
       expect(camera.code).toMatch(/^K\d+$/);
       expect(camera.label).toBe('Laptop Lea · Camera');
 
-      // The limit: nine screens per device. The sender stops offering “+ Another screen”, the API answers 409.
+      // The limit: nine screens per device. The sender stops offering “Share another screen”, the API answers 409.
       for (let index = 0; index < 7; index++) {
         const allocated = await s1.device.api.allocateSlot({ kind: 'screen' });
         expect([200, 201], `allocation ${index}: ${allocated.raw.text()}`).toContain(allocated.status);
@@ -178,7 +180,7 @@ test.describe('SRC laptop screens', () => {
       expect(tenth.body.code).toBe('limit_reached');
       await laptop.page.reload();
       await laptop.waitConnected();
-      await expect(laptop.page.getByRole('button', { name: '+ Another screen' }), 'no more screens are offered at nine').toHaveCount(0);
+      await expect(laptop.addScreenButton(), 'no more screens are offered at nine').toHaveCount(0);
       await expect(laptop.page.locator('[data-testid^="slot-screen-"]')).toHaveCount(9);
       const row = await openStation(regie, s1.device.id);
       await expect(row.locator('.c-st__codes .c-code')).toHaveCount(10); // nine screens and the camera
@@ -186,7 +188,7 @@ test.describe('SRC laptop screens', () => {
   );
 
   test(
-    'E2E-SRC-14 [ui, quick clicks] two clicks on “+ Another screen” before the server has answered the first: both screens stay live under the slots S2 and S3',
+    'E2E-SRC-14 [ui, quick clicks] two clicks on “Share another screen” before the server has answered the first: both screens stay live under the slots S2 and S3',
     t.p1,
     async ({ regie, openLaptop, pairContext, production }) => {
       test.setTimeout(180_000);

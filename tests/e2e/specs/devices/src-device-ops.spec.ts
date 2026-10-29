@@ -227,7 +227,7 @@ test.describe('SRC device operations', () => {
       await expect(banner).toContainText('Live in 10 s');
       await expect(banner).toContainText(/Message from the control room\s*\d\d:\d\d/);
       await expect(regie.toast()).toContainText('Message sent to Phone One: “Live in 10 s”');
-      await banner.getByRole('button', { name: 'OK' }).click();
+      await banner.getByRole('button', { name: 'Dismiss' }).click();
       await expect(banner).toBeHidden();
 
       // A typed message with markup: shown as text, nothing executes.
@@ -238,7 +238,7 @@ test.describe('SRC device operations', () => {
       await expect(banner).toContainText(payload);
       expect(await k1.phone.page.evaluate(() => (window as unknown as { __xss?: number }).__xss), 'no markup is executed').toBeUndefined();
       expect(await k1.phone.page.locator('[data-testid=message-banner] img').count()).toBe(0);
-      await banner.getByRole('button', { name: 'OK' }).click();
+      await banner.getByRole('button', { name: 'Dismiss' }).click();
 
       // 141 characters cannot be sent: the field stops at 140, the API refuses 141.
       await input.fill('x'.repeat(141));
@@ -311,7 +311,7 @@ test.describe('SRC device operations', () => {
   );
 
   test(
-    'E2E-SRC-18 [ui, phone controls] Front/Back on the phone: the browser is asked for the other camera, the choice survives a reload and only the front picture is mirrored',
+    'E2E-SRC-18 [ui, phone controls] “Switch camera” on the phone: the browser is asked for the other camera, the choice survives a reload and only the front picture is mirrored',
     t.p2,
     async ({ regie, openPhone, pairContext }) => {
       test.setTimeout(120_000);
@@ -323,7 +323,7 @@ test.describe('SRC device operations', () => {
       };
       expect(await phone.facing(), 'a fixed phone films with the back camera by default').toBe('environment');
       await expect(phone.preview(), 'the back picture is not mirrored').not.toHaveClass(/is-mirrored/);
-      await phone.page.getByRole('radio', { name: 'Front' }).check();
+      await phone.switchCamera();
       await expect.poll(lastFacing, { message: 'the browser was asked for the front camera', timeout: 10_000 }).toContain('user');
       await expect(phone.preview(), 'the front picture is mirrored').toHaveClass(/is-mirrored/);
       await phone.waitForCamera('live', 15_000);
@@ -333,9 +333,9 @@ test.describe('SRC device operations', () => {
       await phone.waitConnected();
       await phone.waitForCamera('live', 45_000);
       expect(await phone.facing(), 'the choice survives a reload').toBe('user');
-      await expect(phone.page.getByRole('radio', { name: 'Front' })).toBeChecked();
+      await expect(phone.switchButton()).toHaveAttribute('data-facing', 'user');
       expect(await lastFacing(), 'the auto-start after the reload asks for the front camera').toContain('user');
-      await phone.page.getByRole('radio', { name: 'Back' }).check();
+      await phone.switchCamera();
       await expect.poll(lastFacing, { message: 'back again', timeout: 10_000 }).toContain('environment');
       await expect(phone.preview()).not.toHaveClass(/is-mirrored/);
     },
@@ -506,7 +506,7 @@ test.describe('SRC device operations', () => {
   );
 
   test(
-    'E2E-SRC-19 [ui] phone behaviour: wake lock after start and again when visible, reload auto-starts with the saved settings, 720p/1080p, dark mode with a thin tally frame, stopping the camera is “camera stopped”',
+    'E2E-SRC-19 [ui] phone behaviour: wake lock after start and again when visible, reload auto-starts with the saved settings, Standard/High quality (720p/1080p), screen off with a thin tally frame, stopping the camera is “camera stopped”',
     t.p1,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(240_000);
@@ -535,17 +535,17 @@ test.describe('SRC device operations', () => {
       await k1.phone.waitConnected();
       await k1.phone.waitForCamera('live', 45_000);
       expect(page.url(), 'a reload resumes into the station').toContain('/join/station');
-      await expect(page.getByRole('radio', { name: '1080p' })).toBeChecked();
+      expect(await k1.phone.resolution(), 'quality “High” (1080p) after the reload').toBe(1080);
       await expect(row.locator('.c-st__kv')).toContainText(/Resolution\s*1080p/, { timeout: 30_000 });
       await k1.phone.setResolution(720);
       await expect(row.locator('.c-st__kv'), 'published resolution 720p').toContainText(/Resolution\s*720p/, { timeout: 30_000 });
 
-      // Dark mode: black screen with a thin tally frame in the tally colour (K1 is in the program scene).
+      // Screen off (formerly dark mode): black screen with a thin tally frame in the tally colour (K1 is in the program scene).
       await k1.phone.waitForTally('program');
       await k1.phone.darkToggle().click();
-      await expect(page.locator('.c-phone__dark'), 'the black screen is shown').toBeVisible();
+      await expect(k1.phone.screenOffCover(), 'the black screen is shown').toBeVisible();
       const dark = await page.evaluate(() => {
-        const overlay = document.querySelector('.c-phone__dark') as HTMLElement | null;
+        const overlay = document.querySelector('.c-phone__screen-off') as HTMLElement | null;
         const tally = document.querySelector('[data-testid=tally]') as HTMLElement | null;
         const frame = tally ? getComputedStyle(tally) : null;
         return {
@@ -560,7 +560,7 @@ test.describe('SRC device operations', () => {
       expect(dark.overlayCovers, 'the dark overlay covers the viewport').toBe(true);
       expect(dark.thin, 'thin tally frame').toBe(true);
       expect(dark.tally).toBe('program');
-      expect(dark.frame, 'the frame is red (the tally colour)').toMatch(/rgb\(248, 81, 73\)/);
+      expect(dark.frame, 'the frame is red (the tally colour)').toMatch(/rgb\(255, 105, 97\)/);
       expect((await page.evaluate(() => JSON.parse(localStorage.getItem('studioflow.sender.settings') ?? '{}'))).dark).toBe(true);
       await page.locator('main.c-phone').click({ position: { x: 20, y: 400 } }); // tap wakes the controls
       await k1.phone.darkToggle().click();

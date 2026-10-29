@@ -9,12 +9,13 @@ import { t } from '../../support/tags';
 
 /**
  * Tally on the sender (docs/testing.md 2.4 E2E-SWITCH-11, the device side; the Regie side of switching is another
- * engineer's area): a red frame and “LIVE” while the source is in the program, a green frame and “Up next” in the
+ * engineer's area): a red frame and “Live” while the source is in the program, a green frame and “Preview” in the
  * preview (Studio Mode), nothing otherwise and nothing during standby and after the end.
  */
 
-const RED = 'rgb(248, 81, 73)';
-const GREEN = 'rgb(86, 211, 100)';
+/** The Regie's state hues (dark): `--red` #ff6961 and `--green` #30d158. */
+const RED = 'rgb(255, 105, 97)';
+const GREEN = 'rgb(48, 209, 88)';
 
 /** Records every change of `[data-testid=tally][data-tally]` with `Date.now()` (same clock as the test process). */
 async function recordTally(page: Page): Promise<void> {
@@ -39,7 +40,7 @@ async function tallyChanges(page: Page): Promise<Array<{ at: number; value: stri
   return page.evaluate(() => (window as unknown as { __tallyLog: Array<{ at: number; value: string }> }).__tallyLog.slice());
 }
 
-/** What the sender shows for its tally: attribute, badge text, frame colour of the whole viewport. */
+/** What the sender shows for its tally: attribute, the Live/Preview capsule of the station, frame colour of the whole viewport. */
 async function appearance(page: Page) {
   return page.evaluate(() => {
     const element = document.querySelector('[data-testid=tally]') as HTMLElement | null;
@@ -48,7 +49,7 @@ async function appearance(page: Page) {
     const box = element.getBoundingClientRect();
     return {
       tally: element.getAttribute('data-tally'),
-      badge: (element.querySelector('.c-tally__badge') as HTMLElement | null)?.textContent?.trim() ?? null,
+      badge: (document.querySelector('[data-testid=tally-tag]') as HTMLElement | null)?.textContent?.trim() ?? null,
       shadow: style.boxShadow,
       covers: box.width >= window.innerWidth - 1 && box.height >= window.innerHeight - 1,
       pointerEvents: style.pointerEvents,
@@ -61,7 +62,7 @@ async function appearance(page: Page) {
 
 test.describe('Tally on the sender', () => {
   test(
-    'E2E-SWITCH-11 [tally on the sender] red “LIVE” in the program, green “Up next” in the preview, nothing otherwise and nothing in standby or after the end; a take flips both within T-TALLY',
+    'E2E-SWITCH-11 [tally on the sender] red “Live” in the program, green “Preview” in the preview, nothing otherwise and nothing in standby or after the end; a take flips both within T-TALLY',
     t.smoke,
     async ({ regie, openPhone, openLaptop, pairContext, api, production }, testInfo) => {
       test.setTimeout(300_000);
@@ -93,15 +94,15 @@ test.describe('Tally on the sender', () => {
       expect(await k3.phone.tally(), 'K3 is in no scene').toBe('off');
 
       const one = (await appearance(k1.phone.page))!;
-      expect(one.badge, 'K1 “LIVE”').toBe('LIVE');
+      expect(one.badge, 'K1 “Live”').toBe('Live');
       expect(one.shadow, 'K1 red frame').toContain(RED);
       expect(one.covers, 'the frame covers the whole viewport').toBe(true);
       expect(one.pointerEvents, 'the frame never takes input').toBe('none');
       expect(one.spoken).toBe('Live: this device is now on Program.');
       const two = (await appearance(k2.phone.page))!;
-      expect(two.badge, 'K2 “Up next”').toBe('Up next');
+      expect(two.badge, 'K2 “Preview”').toBe('Preview');
       expect(two.shadow, 'K2 green frame').toContain(GREEN);
-      expect(two.spoken).toBe('Up next: this device is in Preview.');
+      expect(two.spoken).toBe('Preview: this device is ready to go live next.');
       const three = (await appearance(k3.phone.page))!;
       expect(three.badge, 'K3 neutral').toBeNull();
       expect(three.shadow).toBe('none');
@@ -110,8 +111,8 @@ test.describe('Tally on the sender', () => {
       expect(laptop.tally, 'the laptop shows the strongest of its slots').toBe('program');
       expect(laptop.shadow).toContain(RED);
       expect(laptop.compact, 'a narrower frame on the laptop page').toBe(true);
-      await expect(lap.laptop.slot('screen-1').locator('.c-tag--program')).toHaveText('LIVE');
-      await expect(lap.laptop.slot('camera').locator('.c-tag--preview')).toHaveText('Up next');
+      await expect(lap.laptop.slot('screen-1').locator('.c-tag--pgm')).toHaveText('Live');
+      await expect(lap.laptop.slot('camera').locator('.c-tag--pvw')).toHaveText('Preview');
 
       // Takes: K1 and K2 flip together, within T-TALLY. Ten takes (back to the start), 20 samples.
       await recordTally(k1.phone.page);
@@ -161,14 +162,14 @@ test.describe('Tally on the sender', () => {
       await k1.phone.waitForTally('program');
       await k2.phone.waitForTally('preview');
 
-      // Dark mode: a black screen with a thin frame in the tally colour; attribute and colour agree.
+      // Screen off (formerly dark mode): a black screen with a thin frame in the tally colour; attribute and colour agree.
       await k1.phone.darkToggle().click();
-      await expect(k1.phone.page.locator('.c-phone__dark')).toBeVisible();
+      await expect(k1.phone.screenOffCover()).toBeVisible();
       const dark = (await appearance(k1.phone.page))!;
       expect(dark.thin, 'thin frame').toBe(true);
       expect(dark.tally).toBe('program');
       expect(dark.shadow).toContain(RED);
-      expect(await k1.phone.page.evaluate(() => getComputedStyle(document.querySelector('.c-phone__dark')!).backgroundColor)).toMatch(/^rgb\(0, 0, 0\)|rgba\(0, 0, 0/);
+      expect(await k1.phone.page.evaluate(() => getComputedStyle(document.querySelector('.c-phone__screen-off')!).backgroundColor)).toMatch(/^rgb\(0, 0, 0\)|rgba\(0, 0, 0/);
       await api.take(production.id, { transition: CUT });
       await k1.phone.waitForTally('preview');
       const darkPreview = (await appearance(k1.phone.page))!;

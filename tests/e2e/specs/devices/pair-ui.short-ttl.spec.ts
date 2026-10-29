@@ -42,7 +42,7 @@ test.describe('PAIR short-TTL, UI', () => {
       const code = await laptop.checkCode();
       await openPairingTab(regie, 'laptop');
       await expect(regie.knockCard('Laptop Anna')).toBeVisible();
-      await expect(laptop.page.locator('.c-waiting__expiry')).toContainText(/Valid for another 00:\d\d min\./);
+      await expect(laptop.page.locator('.c-waiting__expiry')).toContainText(/Expires in 00:\d\d/);
 
       // Nobody answers for 25 s.
       await expect(laptop.page.getByTestId('pairing-expired')).toBeVisible({ timeout: 40_000 });

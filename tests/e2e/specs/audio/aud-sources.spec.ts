@@ -40,7 +40,7 @@ test.use({ locale: 'en-US', viewport: { width: 1440, height: 900 } });
 
 test.describe('AUD sources', () => {
   test(
-    'E2E-AUD-06 [laptop + output] a screen shared with sound is heard while its picture is in the program, and only then; “Share audio” is honest about what the browser can do',
+    'E2E-AUD-06 [laptop + output] a screen shared with sound is heard while its picture is in the program, and only then; “With sound” is honest about what the browser can do',
     t.p0,
     async ({ regie, openLaptop, openOutput, pairContext, production, api }, testInfo) => {
       test.setTimeout(240_000);
@@ -48,9 +48,11 @@ test.describe('AUD sources', () => {
         share: false,
         screenAudio: { frequency: SCREEN_HZ },
       });
-      // The page explains what is possible, before anything is shared.
+      // The page explains what is possible, before anything is shared: “With sound” next to the share action, the browser
+      // limits behind “Which browsers share sound?”.
       const shareAudio = laptop.page.getByTestId('share-audio');
       await expect(shareAudio).not.toBeChecked();
+      await laptop.page.getByText('Which browsers share sound?').click();
       await expect(laptop.page.getByText('Chrome and Edge on Windows can share the sound of the whole computer')).toBeVisible();
       await expect(laptop.page.getByText('Firefox and Safari share no sound.')).toBeVisible();
 
@@ -122,7 +124,7 @@ test.describe('AUD sources', () => {
   );
 
   test(
-    'E2E-AUD-07 [laptop] a browser that shares no sound is said so on the laptop and gives no channel in the Regie; sharing without “Share audio” asks the browser for no sound',
+    'E2E-AUD-07 [laptop] a browser that shares no sound is said so on the laptop and gives no channel in the Regie; sharing without “With sound” asks the browser for no sound',
     t.p1,
     async ({ regie, openLaptop, pairContext, production }) => {
       test.setTimeout(180_000);

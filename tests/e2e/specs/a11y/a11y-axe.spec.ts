@@ -238,7 +238,7 @@ test.describe('axe scans: sender', () => {
     const laptop = await openLaptop();
     await pairViaApi(pairContext, laptop, { name: 'Laptop Axe Station' });
     const scanner = new Scanner(laptop.page);
-    await expect(laptop.page.getByRole('heading', { name: /Sources of this laptop/ })).toBeVisible();
+    await expect(laptop.page.getByRole('heading', { name: /What this laptop sends/ })).toBeVisible();
     await scanner.scan('sender-laptop-before-share');
     await laptop.shareScreen();
     await laptop.waitForSlot('screen-1', 'live');
@@ -326,12 +326,12 @@ test.describe('axe scans: open bugs, isolated', () => {
 
   test('E2E-DEV-15 [axe, contrast phone dark mode] the dimmed code and hint of the phone sender in dark mode meet 4.5:1', tags('p2'), async ({ openPhone, pairContext }) => {
     test.setTimeout(120_000);
-    knownBug('A11Y-07', 'dark mode of the phone sender: the station code is 2.96:1 and “Tap for controls” 2.35:1 (needs 4.5:1)');
+    knownBug('A11Y-07', 'dark mode of the phone sender: the station code is 2.96:1 and “Tap to show the controls” 2.35:1 (needs 4.5:1)');
     const phone = await openPhone({ profile: 'pixel7' });
     await pairViaApi(pairContext, phone, { name: 'Phone Contrast' });
     await phone.waitForCamera('live');
     await phone.darkToggle().click();
-    const scan = await scanAxe(phone.page, 'sender-phone-dark-contrast', { include: ['.c-phone__dark'], includeKnownBugs: true, noBestPractice: true });
+    const scan = await scanAxe(phone.page, 'sender-phone-dark-contrast', { include: ['.c-phone__screen-off'], includeKnownBugs: true, noBestPractice: true });
     expect(scan.blocking.map((violation) => `${violation.id}: ${violation.nodes.map((node) => `${node.target} ${JSON.stringify(node.data)}`).join(' | ')}`), 'the dark overlay text has enough contrast').toEqual([]);
   });
 });

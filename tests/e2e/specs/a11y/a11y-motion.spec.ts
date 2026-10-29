@@ -195,11 +195,11 @@ test.describe('Reduced motion', () => {
       const page = await context.newPage();
       await page.goto('/join/');
       await page.getByLabel('Device name').fill(`Laptop Motion ${motion}`);
-      await page.getByRole('radio', { name: 'Laptop (screen)' }).check();
+      await page.getByRole('radio', { name: 'Laptop screen' }).check();
       await page.getByRole('button', { name: 'Continue' }).click();
       await expect(page.getByTestId('check-code')).toBeVisible();
       result[motion] = await page.evaluate(() => {
-        const button = document.querySelector('.c-button') as HTMLElement;
+        const button = document.querySelector('.c-btn') as HTMLElement;
         const dot = document.querySelector('.c-pulse__dot') as HTMLElement;
         return { button: getComputedStyle(button).transitionDuration, dot: getComputedStyle(dot).animationDuration, dotAnimation: getComputedStyle(dot).animationName };
       });
