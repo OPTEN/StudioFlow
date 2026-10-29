@@ -80,8 +80,30 @@ function summarize(violation: Awaited<ReturnType<AxeBuilder['analyze']>>['violat
   };
 }
 
-/** Runs axe on the page in its current state. */
+/**
+ * Waits until the finite animations and transitions of the page have finished (a sheet rising, a popover fading in):
+ * axe blends opacity into its contrast figures, so a scan in mid-fade reports colours the page never rests at. Endless
+ * animations (a pulsing lamp) are not waited for; at most two seconds.
+ */
+async function settleAnimations(page: Page): Promise<void> {
+  await page
+    .evaluate(() =>
+      Promise.race([
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+            .map((animation) => animation.finished.catch(() => undefined)),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 2_000)),
+      ]),
+    )
+    .catch(() => undefined);
+}
+
+/** Runs axe on the page in its current state, once its animations have settled. */
 export async function scanAxe(page: Page, label: string, options: ScanOptions = {}): Promise<ScanResult> {
+  await settleAnimations(page);
   const excluded: string[] = [];
   let builder = new AxeBuilder({ page }).withTags(AXE_TAGS);
   for (const selector of options.include ?? []) builder = builder.include(selector);
