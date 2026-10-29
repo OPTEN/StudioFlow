@@ -244,7 +244,9 @@ describe('StationComponent', () => {
     const overlay = query(element, '.c-phone__screen-off');
     expect(overlay?.textContent).toContain('K3');
     expect(overlay?.textContent).toContain('Connected');
-    expect(overlay?.getAttribute('aria-label')).toBe('Tap to show the controls');
+    // The name is the visible text (WCAG 2.5.3), so it carries the hint as well as the code and the state.
+    expect(overlay?.hasAttribute('aria-label')).toBe(false);
+    expect(overlay?.textContent).toContain('Tap to show the controls');
     expect(query(element, '[data-testid=tally]')?.classList).toContain('c-tally--thin');
 
     overlay?.click();

@@ -2,7 +2,7 @@
 @use 'tokens' as *;
 
 // Tabs of a sheet with two to four parts (the tech check: “Check” and “This device”): the Regie's segmented tab bar
-// (`.c-tabs` / `.c-tab` in apps/studio/src/styles/_primitives.scss), 44 px high for fingers.
+// (`.c-tabs` / `.c-tab` in apps/studio/src/styles/_primitives.scss), each segment 44 px high for fingers.
 .c-tabs {
   background: var(--fill);
   border-radius: var(--radius-md);
@@ -26,7 +26,7 @@
   font-weight: 500;
   gap: $SPACE_SM;
   justify-content: center;
-  min-height: $TOUCH_TARGET - 4px;
+  min-height: $TOUCH_TARGET;
   padding: 0 $SPACE_LG;
 
   &:hover {

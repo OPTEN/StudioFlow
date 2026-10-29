@@ -399,9 +399,10 @@ export class RegiePage {
 
   // --- feedback ---------------------------------------------------------------------------------------------------
 
-  /** The toast region (`role=status`). */
+  /** The toast region (`role=status` on the toast host; other `<output>` values, such as a camera's distance, are
+   *  status elements too). */
   toast(): Locator {
-    return this.page.getByRole('status').filter({ hasText: /\S/ });
+    return this.page.getByRole('status').and(this.page.locator('sf-toast-host'));
   }
 
   /** Text of the visible incident strip (“K1 reconnecting”). */

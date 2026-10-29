@@ -63,7 +63,8 @@
 
 // What to do about a limited or insufficient result, under its row.
 .c-check__advice {
-  color: var(--muted);
+  // --text-2, not --muted: the footnote size needs 4.5:1 on the raised sheet.
+  color: var(--text-2);
   font-size: var(--fs-footnote);
   grid-column: 1 / -1;
   padding-left: 19px;

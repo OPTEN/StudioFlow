@@ -67,7 +67,8 @@
       "fix": "Incident target: aria-label “Show K3 Phone Entrance in Stations” (contains the visible text); rows: keep the visible text first in the name, then add the state."
     },
     "A11Y-07": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: UI redesign of the sender: the screen-off cover (formerly .c-phone__dark) uses the text tokens of the redesign; axe color-contrast finds nothing on it any more.",
       "severity": "low",
       "area": "A11Y",
       "title": "Dark mode of the phone sender: the station code (2.96:1) and the hint “Tap for controls” (2.35:1) are below 4.5:1",
