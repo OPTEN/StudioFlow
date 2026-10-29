@@ -1,0 +1,60 @@
+@use 'mixins' as *;
+@use 'tokens' as *;
+
+// Tabs of a sheet with two to four parts (the tech check: “Check” and “This device”): the Regie's segmented tab bar
+// (`.c-tabs` / `.c-tab` in apps/studio/src/styles/_primitives.scss), 44 px high for fingers.
+.c-tabs {
+  background: var(--fill);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 2px;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  padding: 2px;
+}
+
+.c-tab {
+  @include state-transition(background-color, box-shadow, color);
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  gap: $SPACE_SM;
+  justify-content: center;
+  min-height: $TOUCH_TARGET - 4px;
+  padding: 0 $SPACE_LG;
+
+  &:hover {
+    color: var(--text);
+  }
+
+  &:focus-visible {
+    outline-offset: 0;
+  }
+
+  // The selected segment is lighter than the track, as on iOS: the sheet behind is already the float surface.
+  &[aria-selected='true'] {
+    background: color-mix(in srgb, var(--text) 24%, var(--float));
+    box-shadow: var(--shadow-raise);
+    color: var(--text);
+    font-weight: 600;
+  }
+}
+
+.c-tabpanel {
+  display: grid;
+  gap: $SPACE_STAGE;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline-offset: 4px;
+  }
+}

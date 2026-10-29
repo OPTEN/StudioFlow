@@ -86,6 +86,12 @@
   gap: $SPACE_LG;
   line-height: 1.4;
   padding: $SPACE_LG $SPACE_GUTTER;
+
+  // It holds the focus so Enter confirms and Escape cancels at once (sfConfirmKeys); a quiet ring marks it.
+  &:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+  }
 }
 
 .c-confirm__row {

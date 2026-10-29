@@ -67,19 +67,34 @@
             {{ t('sender.pairing.redeem.alreadyStation') }}
           </button>
           @if (confirming()) {
-            <div class="c-confirm" role="group" [attr.aria-label]="t('sender.pairing.redeem.alreadyConfirmAction')">
+            <div
+              class="c-confirm"
+              role="group"
+              sfConfirmKeys
+              [attr.aria-label]="t('sender.pairing.redeem.alreadyConfirmAction')"
+              (confirmKey)="busy() || repair()"
+              (cancelKey)="confirming.set(false)"
+            >
               <p>{{ t('sender.pairing.redeem.alreadyConfirm') }}</p>
               <div class="c-confirm__row">
                 <button
                   class="c-btn c-btn--danger-fill"
                   type="button"
+                  aria-keyshortcuts="Enter"
                   [disabled]="busy()"
                   (click)="repair()"
                 >
                   {{ t('sender.pairing.redeem.alreadyConfirmAction') }}
+                  <kbd class="c-btn__key" aria-hidden="true">↵</kbd>
                 </button>
-                <button class="c-btn" type="button" (click)="confirming.set(false)">
+                <button
+                  class="c-btn"
+                  type="button"
+                  aria-keyshortcuts="Escape"
+                  (click)="confirming.set(false)"
+                >
                   {{ t('common.cancel') }}
+                  <kbd class="c-btn__key" aria-hidden="true">esc</kbd>
                 </button>
               </div>
             </div>

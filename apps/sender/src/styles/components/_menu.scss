@@ -12,7 +12,7 @@
   @include floating;
   animation: c-menu-in var(--dur-state) var(--ease);
   display: grid;
-  min-width: 240px;
+  min-width: 280px;
   padding: $SPACE_SM;
   position: absolute;
   right: 0;

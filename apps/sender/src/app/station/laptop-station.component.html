@@ -1,28 +1,28 @@
 <div class="c-laptop">
   <div class="c-top">
-  <header class="c-bar">
-    <sf-brand-mark class="c-bar__brand" />
-    <sf-connection-status
-      class="c-bar__connection"
-      [view]="session.connection()"
-      [since]="session.degradedSince()"
-      [now]="session.now()"
-    />
-    <div class="c-bar__end">
-      <sf-tally-tag [state]="tally()" testId="tally-tag" />
-      <button class="c-btn" type="button" aria-haspopup="dialog" (click)="openTechCheck.emit()">
-        <span
-          class="c-lamp"
-          [class.is-idle]="techLevel() === 'unknown'"
-          [class.is-warn]="techLevel() === 'warn'"
-          [class.is-bad]="techLevel() === 'bad'"
-          aria-hidden="true"
-        ></span>
-        {{ t('sender.techcheck.open') }}
-      </button>
-    </div>
-  </header>
-  <div class="c-top__banners"><ng-content /></div>
+    <header class="c-bar">
+      <sf-brand-mark class="c-bar__brand" />
+      <sf-connection-status
+        class="c-bar__connection"
+        [view]="session.connection()"
+        [since]="session.degradedSince()"
+        [now]="session.now()"
+      />
+      <div class="c-bar__end">
+        <sf-tally-tag [state]="tally()" testId="tally-tag" />
+        <button class="c-btn" type="button" aria-haspopup="dialog" (click)="openTechCheck.emit()">
+          <span
+            class="c-lamp"
+            [class.is-idle]="techLevel() === 'unknown'"
+            [class.is-warn]="techLevel() === 'warn'"
+            [class.is-bad]="techLevel() === 'bad'"
+            aria-hidden="true"
+          ></span>
+          {{ t('sender.techcheck.open') }}
+        </button>
+      </div>
+    </header>
+    <div class="c-top__banners"><ng-content /></div>
   </div>
 
   <main class="c-column">
@@ -53,6 +53,7 @@
             [class.is-program]="slot.tally === 'program'"
             [class.is-preview]="slot.tally === 'preview'"
             [class.is-requested]="slot.reshareRequested"
+            (contextmenu)="openMenuAt($event, slot)"
           >
             <div class="c-source__thumb">
               @if (preview(slot); as stream) {
@@ -102,140 +103,50 @@
               </div>
             }
 
-            @if (asking()?.slot === slot.slot) {
-              <div class="c-confirm c-source__confirm" role="group" [attr.aria-label]="label(slot)">
-                <p>
-                  {{
-                    asking()?.action === 'remove'
-                      ? t('sender.station.laptop.removeConfirm', { name: label(slot) })
-                      : t('sender.station.laptop.stopLive', { name: label(slot) })
-                  }}
-                </p>
-                <div class="c-confirm__row">
-                  @if (asking()?.action === 'remove') {
-                    <button
-                      class="c-btn c-btn--danger-fill"
-                      type="button"
-                      (click)="confirmAsk()"
-                    >
-                      {{ t('common.remove') }}
-                    </button>
-                  } @else {
-                    <button
-                      class="c-btn c-btn--danger-fill"
-                      type="button"
-                      (click)="confirmAsk()"
-                    >
-                      {{ t('sender.station.laptop.stopSharing') }}
-                    </button>
-                  }
-                  <button class="c-btn" type="button" data-cancel (click)="cancelAsk()">
-                    {{ t('common.cancel') }}
+            <div class="c-source__actions">
+              @switch (slot.state) {
+                @case ('ended') {
+                  <button class="c-btn c-btn--fill c-btn--lg" type="button" (click)="share(slot)">
+                    {{ t('sender.station.laptop.shareAgain') }}
                   </button>
-                </div>
-              </div>
-            } @else {
-              <div class="c-source__actions">
-                @switch (slot.state) {
-                  @case ('ended') {
-                    <button
-                      class="c-btn c-btn--fill c-btn--lg"
-                      type="button"
-                      (click)="share(slot)"
-                    >
-                      {{ t('sender.station.laptop.shareAgain') }}
-                    </button>
-                  }
-                  @case ('failed') {
-                    <button
-                      class="c-btn c-btn--fill c-btn--lg"
-                      type="button"
-                      (click)="share(slot)"
-                    >
-                      {{ t('sender.station.laptop.shareAgain') }}
-                    </button>
-                  }
-                  @case ('idle') {
-                    <button
-                      class="c-btn c-btn--fill c-btn--lg"
-                      type="button"
-                      [disabled]="!canShareScreen"
-                      (click)="share(slot)"
-                    >
-                      <sf-icon name="screen" />
-                      {{ t('sender.station.laptop.shareScreen') }}
-                    </button>
-                  }
-                  @default {
-                    <button class="c-btn" type="button" (click)="stopShare(slot)">
-                      <sf-icon name="stop" />
-                      {{ t('sender.station.laptop.stopSharing') }}
-                    </button>
-                  }
                 }
-                @if (slot.reshareRequested) {
+                @case ('failed') {
+                  <button class="c-btn c-btn--fill c-btn--lg" type="button" (click)="share(slot)">
+                    {{ t('sender.station.laptop.shareAgain') }}
+                  </button>
+                }
+                @case ('idle') {
                   <button
-                    class="c-btn c-btn--plain"
+                    class="c-btn c-btn--fill c-btn--lg"
                     type="button"
-                    (click)="session.dismissReshare(slot.slot)"
+                    [disabled]="!canShareScreen"
+                    (click)="share(slot)"
                   >
-                    {{ t('sender.station.laptop.later') }}
+                    <sf-icon name="screen" />
+                    {{ t('sender.station.laptop.shareScreen') }}
                   </button>
                 }
-                @if (soundHost() === slot.slot) {
-                  <ng-container *ngTemplateOutlet="sound" />
+                @default {
+                  <button class="c-btn" type="button" (click)="stopShare(slot)">
+                    <sf-icon name="stop" />
+                    {{ t('sender.station.laptop.stopSharing') }}
+                  </button>
                 }
-                @if (slot.code !== null) {
-                  <div class="c-menu-wrap c-source__more">
-                    <button
-                      class="c-ibtn"
-                      type="button"
-                      aria-haspopup="menu"
-                      [attr.aria-expanded]="menuFor() === slot.slot"
-                      [attr.aria-label]="t('sender.station.laptop.more', { name: label(slot) })"
-                      (click)="toggleMenu(slot.slot)"
-                    >
-                      <sf-icon name="more" />
-                    </button>
-                    @if (menuFor() === slot.slot) {
-                      <div
-                        class="c-menu"
-                        role="menu"
-                        [attr.aria-label]="label(slot)"
-                        (keydown)="menuKey($event)"
-                      >
-                        <button
-                          class="c-menu-item"
-                          type="button"
-                          role="menuitemcheckbox"
-                          data-testid="video-screen"
-                          [attr.aria-checked]="videoScreen(slot)"
-                          (click)="toggleVideoScreen(slot)"
-                        >
-                          <span class="c-menu-item__body">
-                            <span>{{ t('sender.station.laptop.smooth') }}</span>
-                            <span class="c-menu-item__sub">{{
-                              t('sender.station.laptop.smoothHint')
-                            }}</span>
-                          </span>
-                          <sf-icon class="c-menu-item__check" name="check" />
-                        </button>
-                        <div class="c-menu-sep" role="separator"></div>
-                        <button
-                          class="c-menu-item c-menu-item--danger"
-                          type="button"
-                          role="menuitem"
-                          (click)="ask(slot, 'remove')"
-                        >
-                          <sf-icon name="trash" />
-                          {{ t('sender.station.laptop.remove') }}
-                        </button>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
+              }
+              @if (slot.reshareRequested) {
+                <button
+                  class="c-btn c-btn--plain"
+                  type="button"
+                  (click)="session.dismissReshare(slot.slot)"
+                >
+                  {{ t('sender.station.laptop.later') }}
+                </button>
+              }
+              @if (soundHost() === slot.slot) {
+                <ng-container *ngTemplateOutlet="sound" />
+              }
+              <ng-container *ngTemplateOutlet="more; context: { $implicit: slot }" />
+            </div>
           </li>
         }
 
@@ -247,6 +158,7 @@
             [attr.data-tally]="slot.tally"
             [class.is-program]="slot.tally === 'program'"
             [class.is-preview]="slot.tally === 'preview'"
+            (contextmenu)="openMenuAt($event, slot)"
           >
             <div class="c-source__thumb">
               @if (preview(slot); as stream) {
@@ -282,85 +194,24 @@
               }
             </div>
 
-            @if (asking()?.slot === slot.slot) {
-              <div class="c-confirm c-source__confirm" role="group" [attr.aria-label]="label(slot)">
-                <p>
-                  {{
-                    asking()?.action === 'remove'
-                      ? t('sender.station.laptop.removeConfirm', { name: label(slot) })
-                      : t('sender.station.laptop.stopLive', { name: label(slot) })
-                  }}
-                </p>
-                <div class="c-confirm__row">
-                  <button class="c-btn c-btn--danger-fill" type="button" (click)="confirmAsk()">
-                    {{
-                      asking()?.action === 'remove'
-                        ? t('common.remove')
-                        : t('sender.station.laptop.stopCamera')
-                    }}
-                  </button>
-                  <button class="c-btn" type="button" data-cancel (click)="cancelAsk()">
-                    {{ t('common.cancel') }}
-                  </button>
-                </div>
-              </div>
-            } @else {
-              <div class="c-source__actions">
-                @if (busy(slot)) {
-                  <button class="c-btn" type="button" (click)="stopCamera(slot)">
-                    <sf-icon name="stop" />
-                    {{ t('sender.station.laptop.stopCamera') }}
-                  </button>
-                } @else if (slot.state === 'failed') {
-                  <button
-                    class="c-btn c-btn--fill"
-                    type="button"
-                    (click)="session.startCamera()"
-                  >
-                    {{ t('sender.station.laptop.tryAgain') }}
-                  </button>
-                } @else {
-                  <button
-                    class="c-btn c-btn--primary"
-                    type="button"
-                    (click)="session.startCamera()"
-                  >
-                    <sf-icon name="camera" />
-                    {{ t('sender.station.laptop.startCamera') }}
-                  </button>
-                }
-                <div class="c-menu-wrap c-source__more">
-                  <button
-                    class="c-ibtn"
-                    type="button"
-                    aria-haspopup="menu"
-                    [attr.aria-expanded]="menuFor() === slot.slot"
-                    [attr.aria-label]="t('sender.station.laptop.more', { name: label(slot) })"
-                    (click)="toggleMenu(slot.slot)"
-                  >
-                    <sf-icon name="more" />
-                  </button>
-                  @if (menuFor() === slot.slot) {
-                    <div
-                      class="c-menu"
-                      role="menu"
-                      [attr.aria-label]="label(slot)"
-                      (keydown)="menuKey($event)"
-                    >
-                      <button
-                        class="c-menu-item c-menu-item--danger"
-                        type="button"
-                        role="menuitem"
-                        (click)="ask(slot, 'remove')"
-                      >
-                        <sf-icon name="trash" />
-                        {{ t('sender.station.laptop.remove') }}
-                      </button>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <div class="c-source__actions">
+              @if (busy(slot)) {
+                <button class="c-btn" type="button" (click)="stopCamera(slot)">
+                  <sf-icon name="stop" />
+                  {{ t('sender.station.laptop.stopCamera') }}
+                </button>
+              } @else if (slot.state === 'failed') {
+                <button class="c-btn c-btn--fill" type="button" (click)="session.startCamera()">
+                  {{ t('sender.station.laptop.tryAgain') }}
+                </button>
+              } @else {
+                <button class="c-btn c-btn--primary" type="button" (click)="session.startCamera()">
+                  <sf-icon name="camera" />
+                  {{ t('sender.station.laptop.startCamera') }}
+                </button>
+              }
+              <ng-container *ngTemplateOutlet="more; context: { $implicit: slot }" />
+            </div>
           </li>
         }
 
@@ -439,3 +290,69 @@
     <span>{{ t('sender.audio.screen.label') }}</span>
   </label>
 </ng-template>
+
+<!-- The ⋯ menu of a card: every command of the source, also offered on a right-click of the card. -->
+<ng-template #more let-slot>
+  <div class="c-menu-wrap c-source__more">
+    <button
+      class="c-ibtn"
+      type="button"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="menuFor() === slot.slot"
+      [attr.aria-label]="t('sender.station.laptop.more', { name: label(slot) })"
+      [title]="t('sender.station.laptop.more', { name: label(slot) })"
+      (click)="toggleMenu(slot.slot)"
+    >
+      <sf-icon name="more" />
+    </button>
+    @if (menuFor() === slot.slot) {
+      <div class="c-menu" role="menu" [attr.aria-label]="label(slot)" (keydown)="menuKey($event)">
+        @for (entry of menuEntries(slot); track entry.id) {
+          @if (entry.id === 'remove') {
+            <div class="c-menu-sep" role="separator"></div>
+          }
+          @if (entry.checked !== undefined) {
+            <button
+              class="c-menu-item"
+              type="button"
+              role="menuitemcheckbox"
+              [attr.data-testid]="entry.testId"
+              [attr.aria-checked]="entry.checked"
+              (click)="entry.run()"
+            >
+              <span class="c-menu-item__body">
+                <span>{{ entry.label }}</span>
+                @if (entry.hint) {
+                  <span class="c-menu-item__sub">{{ entry.hint }}</span>
+                }
+              </span>
+              <sf-icon class="c-menu-item__check" name="check" />
+            </button>
+          } @else {
+            <button
+              class="c-menu-item"
+              type="button"
+              role="menuitem"
+              [class.c-menu-item--danger]="entry.danger"
+              [disabled]="entry.disabled"
+              (click)="entry.run()"
+            >
+              <sf-icon [name]="entry.icon" />
+              {{ entry.label }}
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+@if (asking(); as pending) {
+  <sf-confirm-sheet
+    [title]="confirmTitle(pending)"
+    [text]="confirmText(pending)"
+    [confirmLabel]="confirmLabel(pending)"
+    (confirmed)="confirmAsk()"
+    (cancelled)="cancelAsk()"
+  />
+}

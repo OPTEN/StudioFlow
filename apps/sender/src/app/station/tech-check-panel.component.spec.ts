@@ -45,11 +45,42 @@ describe('TechCheckPanelComponent', () => {
     expect(element.querySelector('[data-level=ok]')?.textContent).not.toContain('Move closer');
   });
 
-  it('offers the language select in the group about this device', () => {
-    const element = render(null);
-    expect(element.querySelector('sf-language-select select')).not.toBeNull();
-    expect(element.textContent).toContain('This device');
-    expect(element.textContent).toContain('App version');
+  it('offers the language select on the tab about this device', () => {
+    const fixture = TestBed.createComponent(TechCheckPanelComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const tabs = [...element.querySelectorAll<HTMLButtonElement>('[role=tab]')];
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Check', 'This device']);
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+    const devicePanel = element.querySelector<HTMLElement>('#tech-check-panel-device');
+    expect(devicePanel?.hidden).toBe(true);
+
+    tabs[1]?.click();
+    fixture.detectChanges();
+    expect(devicePanel?.hidden).toBe(false);
+    expect(devicePanel?.querySelector('sf-language-select select')).not.toBeNull();
+    expect(devicePanel?.textContent).toContain('App version');
+    expect(element.querySelector<HTMLElement>('#tech-check-panel-check')?.hidden).toBe(true);
+  });
+
+  it('moves between the tabs with the arrow keys', () => {
+    const fixture = TestBed.createComponent(TechCheckPanelComponent);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const list = element.querySelector('[role=tablist]')!;
+
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(element.querySelector('#tech-check-tab-device')?.getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(element.querySelector('#tech-check-tab-check')?.getAttribute('tabindex')).toBe('-1');
+
+    list.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    fixture.detectChanges();
+    expect(element.querySelector('#tech-check-tab-check')?.getAttribute('aria-selected')).toBe(
+      'true',
+    );
   });
 });
 

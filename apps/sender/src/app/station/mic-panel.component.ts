@@ -1,5 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { t } from '@studioflow/i18n';
+import { ConfirmKeysDirective } from '../shared/confirm-keys.directive';
 import { IconComponent } from '../shared/icon.component';
 import { DeviceSessionService } from './device-session.service';
 import { InputLevelComponent } from './input-level.component';
@@ -14,13 +22,14 @@ const BUSY = new Set(['starting', 'live', 'paused']);
  */
 @Component({
   selector: 'sf-mic-panel',
-  imports: [IconComponent, InputLevelComponent],
+  imports: [ConfirmKeysDirective, IconComponent, InputLevelComponent],
   templateUrl: './mic-panel.component.html',
   styleUrl: './mic-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MicPanelComponent {
   protected readonly session = inject(DeviceSessionService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly t = t;
   protected readonly slot = this.session.mic;
@@ -83,6 +92,13 @@ export class MicPanelComponent {
   protected stop(): void {
     this.confirming.set(false);
     this.session.stopMic();
+    this.focusToggle();
+  }
+
+  /** “Cancel” or Escape: nothing changes, the focus goes back to the toggle. */
+  protected cancel(): void {
+    this.confirming.set(false);
+    this.focusToggle();
   }
 
   protected choose(event: Event): void {
@@ -92,5 +108,9 @@ export class MicPanelComponent {
 
   protected refresh(): void {
     void this.session.refreshMicInputs();
+  }
+
+  private focusToggle(): void {
+    setTimeout(() => this.host.querySelector<HTMLElement>('[data-testid="mic-toggle"]')?.focus());
   }
 }

@@ -55,6 +55,7 @@ export const senderStation = {
   'sender.station.laptop.remove': 'Remove from the control room…',
   'sender.station.laptop.removeConfirm':
     '{name} disappears from the control room and from every scene that shows it.',
+  'sender.station.laptop.removeTitle': 'Remove {name}?',
   'sender.station.laptop.reshare': 'The control room asks you to share this screen again',
   'sender.station.laptop.shareAgain': 'Share again',
   'sender.station.laptop.shareScreen': 'Share screen',
@@ -66,6 +67,7 @@ export const senderStation = {
   'sender.station.laptop.stopLive':
     '{name} is live. Stopping it cuts its picture in the broadcast.',
   'sender.station.laptop.stopSharing': 'Stop sharing',
+  'sender.station.laptop.stopTitle': 'Stop {name} while live?',
   'sender.station.laptop.tryAgain': 'Try again',
   'sender.station.laptop.videoHint':
     'Smooth motion: 30 frames per second for a video in this screen. This needs more computing power.',
@@ -132,7 +134,6 @@ export const senderStation = {
   'sender.station.starting': 'Station starting',
   'sender.station.startingSlow':
     'This takes longer than usual. Check the Wi-Fi; StudioFlow keeps trying.',
-
 
   'sender.station.tab.message': 'Message',
 

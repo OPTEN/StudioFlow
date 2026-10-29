@@ -5,6 +5,11 @@
   display: contents;
 }
 
+// “Check” and “This device” under the title, above the content of the sheet.
+.c-tabs {
+  margin: $SPACE_XS 0 $SPACE_SM;
+}
+
 // The verdict in plain words, tinted by its level; the time of the check below.
 .c-check__summary {
   background: var(--fill);

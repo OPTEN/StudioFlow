@@ -14,6 +14,7 @@ import { t } from '@studioflow/i18n';
 import { AppUpdateService } from '../core/app-update.service';
 import { LiveStateService } from '../core/live-state.service';
 import { NoticeService } from '../core/notice.service';
+import { ConfirmKeysDirective } from '../shared/confirm-keys.directive';
 import { IconComponent } from '../shared/icon.component';
 import { AudioStationComponent } from './audio-station.component';
 import { ConnectionStatusComponent } from './connection-status.component';
@@ -44,6 +45,7 @@ const BRAND = 'StudioFlow';
   selector: 'sf-station',
   imports: [
     AudioStationComponent,
+    ConfirmKeysDirective,
     ConnectionStatusComponent,
     IconComponent,
     LaptopStationComponent,

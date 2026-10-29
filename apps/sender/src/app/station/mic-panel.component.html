@@ -78,14 +78,34 @@
     </p>
 
     @if (confirming()) {
-      <div class="c-confirm" role="group" [attr.aria-label]="toggleLabel()">
+      <div
+        class="c-confirm"
+        role="group"
+        sfConfirmKeys
+        [attr.aria-label]="toggleLabel()"
+        (confirmKey)="stop()"
+        (cancelKey)="cancel()"
+      >
         <p>{{ t('sender.audio.station.stopConfirm') }}</p>
         <div class="c-confirm__row">
-          <button class="c-btn c-btn--danger-fill" type="button" (click)="stop()">
+          <button
+            class="c-btn c-btn--danger-fill"
+            type="button"
+            aria-keyshortcuts="Enter"
+            (click)="stop()"
+          >
             {{ toggleLabel() }}
+            <kbd class="c-btn__key" aria-hidden="true">↵</kbd>
           </button>
-          <button class="c-btn" type="button" data-cancel (click)="confirming.set(false)">
+          <button
+            class="c-btn"
+            type="button"
+            data-cancel
+            aria-keyshortcuts="Escape"
+            (click)="cancel()"
+          >
             {{ t('common.cancel') }}
+            <kbd class="c-btn__key" aria-hidden="true">esc</kbd>
           </button>
         </div>
       </div>

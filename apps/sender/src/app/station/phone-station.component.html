@@ -34,7 +34,9 @@
         />
         <span class="c-phone__tags">
           @if (session.micLive()) {
-            <span class="c-tag c-tag--pgm" data-testid="mic-live">{{ t('sender.audio.live') }}</span>
+            <span class="c-tag c-tag--pgm" data-testid="mic-live">{{
+              t('sender.audio.live')
+            }}</span>
           }
           <sf-tally-tag [state]="tally()" testId="tally-tag" />
         </span>
@@ -89,7 +91,11 @@
   }
 
   <div class="c-phone__rail" [class.is-hidden]="!controlsVisible()">
-    <div class="c-phone__controls" role="group" [attr.aria-label]="t('sender.station.phone.controls')">
+    <div
+      class="c-phone__controls"
+      role="group"
+      [attr.aria-label]="t('sender.station.phone.controls')"
+    >
       <button
         class="c-round c-phone__control--switch"
         type="button"
@@ -187,11 +193,18 @@
             [class.is-warn]="
               session.connection() === 'reconnecting' || session.connection() === 'offline'
             "
-            [class.is-bad]="session.connection() === 'blocked' || session.connection() === 'removed'"
+            [class.is-bad]="
+              session.connection() === 'blocked' || session.connection() === 'removed'
+            "
           ></span>
           {{ connectionWord() }}
           @if (tally() !== 'off') {
-            · {{ tally() === 'program' ? t('sender.station.tally.live') : t('sender.station.tally.preview') }}
+            ·
+            {{
+              tally() === 'program'
+                ? t('sender.station.tally.live')
+                : t('sender.station.tally.preview')
+            }}
           }
         </span>
       </span>
@@ -201,17 +214,27 @@
   }
 
   @if (qualityOpen()) {
-    <sf-sheet labelledBy="quality-title" testId="quality-sheet" (closed)="qualityOpen.set(false)" #qualitySheet>
+    <sf-sheet
+      labelledBy="quality-title"
+      testId="quality-sheet"
+      (closed)="qualityOpen.set(false)"
+      #qualitySheet
+    >
       <div class="c-sheet__head">
         <h2 class="c-sheet__title" id="quality-title" tabindex="-1" autofocus>
           {{ t('sender.station.phone.qualityTitle') }}
         </h2>
-        <button class="c-btn c-btn--plain" type="button" (click)="qualitySheet.close()">
+        <button
+          class="c-btn c-btn--plain"
+          type="button"
+          aria-keyshortcuts="Enter Escape"
+          (click)="qualitySheet.close()"
+        >
           {{ t('sender.station.phone.done') }}
         </button>
       </div>
       <div class="c-sheet__body">
-        <fieldset class="c-choices">
+        <fieldset class="c-choices" (keydown.enter)="qualitySheet.close()">
           <legend class="u-sr-only">{{ t('sender.station.phone.qualityTitle') }}</legend>
           <div class="c-choices__list">
             <label class="c-choice">

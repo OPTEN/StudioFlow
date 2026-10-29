@@ -19,90 +19,127 @@
     </button>
   </div>
 
-  <div class="c-sheet__body">
-    <p
-      class="c-check__summary"
-      id="tech-check-summary"
-      role="status"
-      aria-live="polite"
-      [class.is-ok]="!running() && level() === 'ok'"
-      [class.is-warn]="!running() && level() === 'warn'"
-      [class.is-bad]="!running() && level() === 'bad'"
-    >
-      @if (running()) {
-        <span class="c-check__verdict">{{ t('sender.techcheck.running') }}</span>
-      } @else {
-        <span class="c-check__verdict">{{ summary() }}</span>
-        @if (checkedAt(); as time) {
-          <span class="c-check__time">{{ t('sender.techcheck.checkedAt', { time }) }}</span>
-        }
-      }
-    </p>
-
-    <div class="c-group">
-      <ul class="c-group__body c-check__rows">
-        @for (row of rows(); track row.key) {
-          <li class="c-group__row c-check__row" [attr.data-level]="row.level">
-            <span class="c-check__name">
-              <span [class]="lampClass(row.level)" aria-hidden="true"></span>
-              {{ t(`sender.techcheck.row.${row.key}`) }}
-            </span>
-            <span class="c-check__level">
-              {{ t(`sender.techcheck.level.${row.level}`) }}
-              @if (row.value; as value) {
-                · <span class="u-mono">{{ value }}</span>
-              }
-            </span>
-            @if (row.level === 'warn' || row.level === 'bad') {
-              <span class="c-check__advice">{{ t(`sender.techcheck.advice.${row.key}`) }}</span>
-            }
-          </li>
-        }
-      </ul>
-    </div>
-
-    @if (note(); as text) {
-      <p class="c-check__note" [class.is-bad]="level() === 'bad'">{{ text }}</p>
+  <div
+    class="c-tabs"
+    role="tablist"
+    [attr.aria-label]="t('sender.techcheck.tab.label')"
+    (keydown)="tabKey($event)"
+  >
+    @for (tab of tabs; track tab) {
+      <button
+        class="c-tab"
+        type="button"
+        role="tab"
+        [id]="'tech-check-tab-' + tab"
+        [attr.aria-controls]="'tech-check-panel-' + tab"
+        [attr.aria-selected]="active() === tab"
+        [tabIndex]="active() === tab ? 0 : -1"
+        (click)="active.set(tab)"
+      >
+        {{ tab === 'check' ? t('sender.techcheck.tab.check') : t('sender.techcheck.device') }}
+      </button>
     }
+  </div>
 
-    <button
-      class="c-btn c-btn--primary c-btn--lg c-btn--block"
-      type="button"
-      [disabled]="running()"
-      (click)="run.emit()"
+  <div class="c-sheet__body">
+    <div
+      class="c-tabpanel"
+      id="tech-check-panel-check"
+      role="tabpanel"
+      aria-labelledby="tech-check-tab-check"
+      [hidden]="active() !== 'check'"
     >
-      {{
-        running()
-          ? t('sender.techcheck.busy')
-          : result()
-            ? t('sender.techcheck.again')
-            : t('sender.techcheck.run')
-      }}
-    </button>
-
-    <section class="c-group" aria-labelledby="tech-check-device">
-      <h3 class="c-group__title" id="tech-check-device">{{ t('sender.techcheck.device') }}</h3>
-      <div class="c-group__body">
-        @if (device(); as self) {
-          <div class="c-group__row">
-            <span class="c-group__label">{{ t('sender.techcheck.device.name') }}</span>
-            <span class="c-group__value">{{ self.name }}</span>
-          </div>
-          @if (self.productionName) {
-            <div class="c-group__row">
-              <span class="c-group__label">{{ t('sender.techcheck.device.production') }}</span>
-              <span class="c-group__value">{{ self.productionName }}</span>
-            </div>
+      <p
+        class="c-check__summary"
+        id="tech-check-summary"
+        role="status"
+        aria-live="polite"
+        [class.is-ok]="!running() && level() === 'ok'"
+        [class.is-warn]="!running() && level() === 'warn'"
+        [class.is-bad]="!running() && level() === 'bad'"
+      >
+        @if (running()) {
+          <span class="c-check__verdict">{{ t('sender.techcheck.running') }}</span>
+        } @else {
+          <span class="c-check__verdict">{{ summary() }}</span>
+          @if (checkedAt(); as time) {
+            <span class="c-check__time">{{ t('sender.techcheck.checkedAt', { time }) }}</span>
           }
         }
-        <div class="c-group__row">
-          <span class="c-group__label">{{ t('sender.techcheck.device.version') }}</span>
-          <span class="c-group__value u-mono">{{ version }}</span>
-        </div>
-        <div class="c-group__row c-group__row--stack">
-          <sf-language-select />
+      </p>
+
+      <div class="c-group">
+        <ul class="c-group__body c-check__rows">
+          @for (row of rows(); track row.key) {
+            <li class="c-group__row c-check__row" [attr.data-level]="row.level">
+              <span class="c-check__name">
+                <span [class]="lampClass(row.level)" aria-hidden="true"></span>
+                {{ t(`sender.techcheck.row.${row.key}`) }}
+              </span>
+              <span class="c-check__level">
+                {{ t(`sender.techcheck.level.${row.level}`) }}
+                @if (row.value; as value) {
+                  · <span class="u-mono">{{ value }}</span>
+                }
+              </span>
+              @if (row.level === 'warn' || row.level === 'bad') {
+                <span class="c-check__advice">{{ t(`sender.techcheck.advice.${row.key}`) }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+
+      @if (note(); as text) {
+        <p class="c-check__note" [class.is-bad]="level() === 'bad'">{{ text }}</p>
+      }
+
+      <button
+        class="c-btn c-btn--primary c-btn--lg c-btn--block"
+        type="button"
+        [disabled]="running()"
+        (click)="run.emit()"
+      >
+        {{
+          running()
+            ? t('sender.techcheck.busy')
+            : result()
+              ? t('sender.techcheck.again')
+              : t('sender.techcheck.run')
+        }}
+      </button>
+    </div>
+
+    <div
+      class="c-tabpanel"
+      id="tech-check-panel-device"
+      role="tabpanel"
+      aria-labelledby="tech-check-tab-device"
+      [hidden]="active() !== 'device'"
+    >
+      <div class="c-group">
+        <div class="c-group__body">
+          @if (device(); as self) {
+            <div class="c-group__row">
+              <span class="c-group__label">{{ t('sender.techcheck.device.name') }}</span>
+              <span class="c-group__value">{{ self.name }}</span>
+            </div>
+            @if (self.productionName) {
+              <div class="c-group__row">
+                <span class="c-group__label">{{ t('sender.techcheck.device.production') }}</span>
+                <span class="c-group__value">{{ self.productionName }}</span>
+              </div>
+            }
+          }
+          <div class="c-group__row">
+            <span class="c-group__label">{{ t('sender.techcheck.device.version') }}</span>
+            <span class="c-group__value u-mono">{{ version }}</span>
+          </div>
+          <div class="c-group__row c-group__row--stack">
+            <sf-language-select />
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   </div>
 </sf-sheet>

@@ -220,6 +220,29 @@ describe('StationComponent: sound', () => {
       expect(media.audio.calls).toContain('unpublish');
     });
 
+    it('Escape keeps the sound and Enter stops it in that confirmation', async () => {
+      const element = await render(audioStationSelf());
+      media.audio.emit('live');
+      hub.emit('tally', { overall: 'off', slots: { mic: 'program' } });
+      fixture.detectChanges();
+      const ask = (): HTMLElement => {
+        (query(element, '[data-testid=mic-toggle]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        return query(element, '[data-testid=slot-mic] .c-confirm')!;
+      };
+
+      ask().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(query(element, '[data-testid=slot-mic] .c-confirm')).toBeNull();
+      expect(media.audio.calls).not.toContain('unpublish');
+
+      const confirm = ask();
+      expect(confirm.getAttribute('tabindex')).toBe('-1');
+      confirm.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      fixture.detectChanges();
+      expect(media.audio.calls).toContain('unpublish');
+    });
+
     it('explains a microphone that does not work', async () => {
       const element = await render(audioStationSelf());
 

@@ -27,5 +27,7 @@ export const senderTechcheck: Translation<typeof en> = {
   'sender.techcheck.summary.ok': 'Alles bereit für die Sendung.',
   'sender.techcheck.summary.unknown': 'Noch nicht geprüft.',
   'sender.techcheck.summary.warn': 'Es geht, aber mit Einschränkungen.',
+  'sender.techcheck.tab.check': 'Prüfung',
+  'sender.techcheck.tab.label': 'Teile des Technik-Checks',
   'sender.techcheck.title': 'Technik-Check',
 };

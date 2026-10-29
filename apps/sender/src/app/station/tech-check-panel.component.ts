@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { t } from '@studioflow/i18n';
 import { techProblemText, type TechCheckResult } from '@studioflow/media-client/device';
 import {
@@ -19,6 +28,9 @@ interface CheckRow {
   readonly level: TechCheckLevel;
   readonly value: string | null;
 }
+
+/** The two parts of the sheet: the check itself and what this device is. */
+type TechCheckTab = 'check' | 'device';
 
 const LEVEL_LAMPS: Readonly<Record<TechCheckLevel, string>> = {
   ok: 'c-lamp',
@@ -46,8 +58,9 @@ export function techCheckNote(result: TechCheckResult | null): string | null {
 }
 
 /**
- * “Tech check” as a modal sheet: the verdict in plain words, camera, network and upload as lamps with advice for what is
- * limited, “Check again”, and what this device is (name, production, app version, language).
+ * “Tech check” as a modal sheet in two tabs: “Check” with the verdict in plain words, camera, network and upload as
+ * lamps with advice for what is limited and “Check again”; “This device” with its name, production, app version and
+ * language. Arrow keys, Home and End move between the tabs; Escape closes the sheet.
  */
 @Component({
   selector: 'sf-tech-check-panel',
@@ -68,6 +81,9 @@ export class TechCheckPanelComponent {
 
   protected readonly t = t;
   protected readonly version = APP_VERSION;
+  protected readonly tabs: readonly TechCheckTab[] = ['check', 'device'];
+  protected readonly active = signal<TechCheckTab>('check');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   protected readonly level = computed(() => this.result()?.overall ?? 'unknown');
   protected readonly summary = computed(() => techCheckSummary(this.result()));
   protected readonly note = computed(() => techCheckNote(this.result()));
@@ -99,4 +115,27 @@ export class TechCheckPanelComponent {
   });
 
   protected readonly lampClass = (level: TechCheckLevel): string => LEVEL_LAMPS[level];
+
+  /** Arrow keys, Home and End move between the tabs (automatic activation, like the Regie's tabs). */
+  protected tabKey(event: KeyboardEvent): void {
+    const index = this.tabs.indexOf(this.active());
+    const last = this.tabs.length - 1;
+    const next =
+      event.key === 'ArrowRight'
+        ? (index + 1) % this.tabs.length
+        : event.key === 'ArrowLeft'
+          ? (index + last) % this.tabs.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? last
+              : null;
+    if (next === null) {
+      return;
+    }
+    event.preventDefault();
+    const tab = this.tabs[next] ?? 'check';
+    this.active.set(tab);
+    this.host.querySelector<HTMLElement>(`#tech-check-tab-${tab}`)?.focus();
+  }
 }

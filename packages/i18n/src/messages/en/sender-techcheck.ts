@@ -30,5 +30,7 @@ export const senderTechcheck = {
   'sender.techcheck.summary.ok': 'Everything is ready for the broadcast.',
   'sender.techcheck.summary.unknown': 'Not checked yet.',
   'sender.techcheck.summary.warn': 'It works, but with limitations.',
+  'sender.techcheck.tab.check': 'Check',
+  'sender.techcheck.tab.label': 'Parts of the tech check',
   'sender.techcheck.title': 'Tech check',
 } as const satisfies Namespace<'sender.techcheck'>;

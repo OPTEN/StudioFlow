@@ -134,7 +134,8 @@ export class SheetComponent {
     const opener = this.opener;
     this.opener = null;
     const active = opener?.ownerDocument.activeElement ?? null;
-    const lost = active === null || active === opener?.ownerDocument.body || dialog.contains(active);
+    const lost =
+      active === null || active === opener?.ownerDocument.body || dialog.contains(active);
     if (opener !== null && opener.isConnected && lost) {
       opener.focus();
     }

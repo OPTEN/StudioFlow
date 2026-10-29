@@ -61,12 +61,19 @@
   font-size: var(--fs-title-3);
   font-weight: 700;
   letter-spacing: -0.01em;
+  // It takes the focus when the sheet opens (tabindex -1) but is no control: no ring.
+  outline: none;
 }
 
 .c-sheet__body {
   display: grid;
   gap: $SPACE_STAGE;
   padding-top: $SPACE_SM;
+}
+
+// The body of a confirmation holds the focus so Enter and Escape work at once; it is no control, so no ring.
+.c-sheet__body--keys:focus {
+  outline: none;
 }
 
 .c-sheet__text {

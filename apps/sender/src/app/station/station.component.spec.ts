@@ -365,20 +365,90 @@ describe('StationComponent', () => {
     expect(media.publisher.calls).toContain('setScreenFrameRate:screen-1:15');
   });
 
-  it('laptop: “Remove from the control room…” asks in the card before the source is removed', async () => {
+  it('laptop: “Remove from the control room…” asks in a sheet; Escape keeps the source', async () => {
     const element = await render(laptopSelf(), undefined, true);
     (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     button(element, 'Remove from the control room').click();
     fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
 
-    const card = query(element, '[data-testid=slot-screen-1]');
-    expect(card?.textContent).toContain(
+    const sheet = query(element, '[data-testid=confirm-sheet]');
+    expect(sheet?.querySelector('h2')?.textContent).toContain('Remove Screen 1?');
+    expect(sheet?.textContent).toContain(
       'Screen 1 disappears from the control room and from every scene that shows it.',
     );
-    button(card!, 'Cancel').click();
+    const ok = query(sheet!, '[data-testid=confirm-sheet-ok]');
+    expect(ok?.textContent).toContain('Remove');
+    expect(ok?.getAttribute('aria-keyshortcuts')).toBe('Enter');
+
+    query(sheet!, '.c-sheet__body')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
     fixture.detectChanges();
-    expect(card?.textContent).not.toContain('disappears from the control room');
+    expect(query(element, '[data-testid=confirm-sheet]')).toBeNull();
+    expect(TestBed.inject(DeviceApiService).releaseSlot).not.toHaveBeenCalled();
+  });
+
+  it('laptop: Enter in the remove sheet confirms and removes the source', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    button(element, 'Remove from the control room').click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+
+    query(element, '[data-testid=confirm-sheet] .c-sheet__body')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+    );
+    fixture.detectChanges();
+    expect(TestBed.inject(DeviceApiService).releaseSlot).toHaveBeenCalledWith('screen-1');
+  });
+
+  it('laptop: the ⋯ menu holds the commands of the card and opens on a right-click', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    const card = query(element, '[data-testid=slot-screen-1]')!;
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    card.querySelector('.c-source__info')!.dispatchEvent(event);
+    fixture.detectChanges();
+
+    expect(event.defaultPrevented).toBe(true);
+    const items = [...card.querySelectorAll('[role=menu] [role^=menuitem]')].map((item) =>
+      item.textContent?.trim().replace(/\s+/g, ' '),
+    );
+    expect(items[0]).toBe('Share screen');
+    expect(items.at(-1)).toBe('Remove from the control room…');
+
+    card.querySelector<HTMLButtonElement>('[role=menuitem]')!.click();
+    expect(media.publisher.calls).toContain('publishScreen:screen-1');
+    fixture.detectChanges();
+    expect(card.querySelector('[role=menu]')).toBeNull();
+  });
+
+  it('laptop: stopping a live screen from the ⋯ menu asks first', async () => {
+    const element = await render(laptopSelf(), undefined, true);
+    button(element, 'Share screen').click();
+    await settle();
+    media.publisher.emitSlot('screen-1', 'live');
+    hub.emit('tally', { overall: 'program', slots: { 'screen-1': 'program' } });
+    fixture.detectChanges();
+
+    (query(element, '[aria-label="More for Screen 1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const stop = [
+      ...element.querySelectorAll<HTMLButtonElement>('[data-testid=slot-screen-1] [role=menuitem]'),
+    ].find((item) => item.textContent?.includes('Stop sharing'));
+    stop!.click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+
+    expect(query(element, '[data-testid=confirm-sheet] h2')?.textContent).toContain(
+      'Stop Screen 1 while live?',
+    );
+    expect(media.publisher.calls).not.toContain('unpublish:screen-1');
   });
 
   it('laptop: greets with “Paired” right after pairing and keeps the device name as the title', async () => {

@@ -15,6 +15,7 @@ import { CredentialsService } from '../core/credentials.service';
 import { DeviceApiService } from '../core/device-api.service';
 import { DEVICE_ENVIRONMENT, detectDeviceKind } from '../core/device-environment';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
+import { ConfirmKeysDirective } from '../shared/confirm-keys.directive';
 import { IconComponent } from '../shared/icon.component';
 import { LanguageSelectComponent } from '../shared/language-select.component';
 import { RedeemService } from './redeem.service';
@@ -33,7 +34,13 @@ const SLOW_MS = 8000;
  */
 @Component({
   selector: 'sf-redeem',
-  imports: [RouterLink, BrandMarkComponent, IconComponent, LanguageSelectComponent],
+  imports: [
+    RouterLink,
+    BrandMarkComponent,
+    ConfirmKeysDirective,
+    IconComponent,
+    LanguageSelectComponent,
+  ],
   templateUrl: './redeem.component.html',
   styleUrl: './redeem.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -54,6 +54,7 @@ export const senderStation: Translation<typeof en> = {
   'sender.station.laptop.remove': 'Aus der Regie entfernen …',
   'sender.station.laptop.removeConfirm':
     '{name} verschwindet aus der Regie und aus jeder Szene, die es zeigt.',
+  'sender.station.laptop.removeTitle': '{name} entfernen?',
   'sender.station.laptop.reshare': 'Die Regie bittet dich, diesen Bildschirm erneut zu teilen',
   'sender.station.laptop.shareAgain': 'Erneut teilen',
   'sender.station.laptop.shareScreen': 'Bildschirm teilen',
@@ -62,9 +63,9 @@ export const senderStation: Translation<typeof en> = {
   'sender.station.laptop.sources': 'Was dieser Laptop sendet',
   'sender.station.laptop.startCamera': 'Kamera starten',
   'sender.station.laptop.stopCamera': 'Kamera beenden',
-  'sender.station.laptop.stopLive':
-    '{name} ist live. Beenden schneidet das Bild aus der Sendung.',
+  'sender.station.laptop.stopLive': '{name} ist live. Beenden schneidet das Bild aus der Sendung.',
   'sender.station.laptop.stopSharing': 'Teilen beenden',
+  'sender.station.laptop.stopTitle': '{name} stoppen, während es live ist?',
   'sender.station.laptop.tryAgain': 'Erneut versuchen',
   'sender.station.laptop.videoHint':
     'Flüssige Bewegung: 30 Bilder pro Sekunde für ein Video in diesem Bildschirm. Das braucht mehr Rechenleistung.',
@@ -87,8 +88,7 @@ export const senderStation: Translation<typeof en> = {
   'sender.station.phone.previewLabel': 'Vorschau der Kamera',
   'sender.station.phone.quality': 'Qualität',
   'sender.station.phone.qualityHigh': 'Hoch',
-  'sender.station.phone.qualityHighHint':
-    '1080p. Schärfer; braucht ein gutes WLAN und mehr Akku.',
+  'sender.station.phone.qualityHighHint': '1080p. Schärfer; braucht ein gutes WLAN und mehr Akku.',
   'sender.station.phone.qualityLive':
     'Du bist live: Das Bild stockt kurz, wenn sich die Qualität ändert.',
   'sender.station.phone.qualityName': 'Bildqualität: {quality}',
@@ -133,12 +133,12 @@ export const senderStation: Translation<typeof en> = {
   'sender.station.startingSlow':
     'Das dauert länger als üblich. Prüfe das WLAN; StudioFlow versucht es weiter.',
 
-
   'sender.station.tab.message': 'Nachricht',
 
   'sender.station.tally.live': 'Live',
   'sender.station.tally.preview': 'Preview',
-  'sender.station.tally.previewHint': 'Die Regie hält dieses Bild bereit, um es als Nächstes live zu schalten.',
+  'sender.station.tally.previewHint':
+    'Die Regie hält dieses Bild bereit, um es als Nächstes live zu schalten.',
   'sender.station.tally.spokenOff': 'Nicht auf Sendung.',
   'sender.station.tally.spokenPreview':
     'Preview: Dieses Gerät ist bereit, als Nächstes live zu gehen.',

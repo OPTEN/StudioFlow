@@ -12,7 +12,8 @@ import { t } from '@studioflow/i18n';
 import { LIMITS } from '@studioflow/scene-model';
 import { DEVICE_ENVIRONMENT } from '../core/device-environment';
 import { BrandMarkComponent } from '../shared/brand-mark.component';
-import { IconComponent } from '../shared/icon.component';
+import { ConfirmSheetComponent } from '../shared/confirm-sheet.component';
+import { IconComponent, type IconName } from '../shared/icon.component';
 import { MediaPreviewDirective } from '../shared/media-preview.directive';
 import { describeCameraProblem, type CameraProblem } from './camera-problem';
 import { ConnectionStatusComponent } from './connection-status.component';
@@ -28,6 +29,19 @@ const BUSY = new Set(['starting', 'live', 'paused']);
 interface PendingAsk {
   readonly slot: string;
   readonly action: 'stop' | 'remove';
+}
+
+/** One command of a card's ⋯ menu. A `checked` value makes it a checkable item. */
+interface MenuEntry {
+  readonly id: string;
+  readonly label: string;
+  readonly icon: IconName;
+  readonly run: () => void;
+  readonly hint?: string;
+  readonly danger?: boolean;
+  readonly disabled?: boolean;
+  readonly checked?: boolean;
+  readonly testId?: string;
 }
 
 /** State line of a slot, in the active language. */
@@ -55,14 +69,17 @@ export function slotStateText(slot: StationSlot): string {
  * Laptop with screens (plan “Laptop with screens”): a centred column with one card per source (thumbnail, code and
  * name, Live/Preview, state, and the primary action next to it): “Share screen”, “Stop sharing” or a large “Share
  * again” after an ended share or a request of the control room, which highlights its card. “With sound” sits next to
- * the next share action. Rare and destructive actions live in a ⋯ menu per card (“Smooth motion”, “Remove from the
- * control room…”, confirmed in the card); stopping a live source asks first. “Share another screen”, “Add camera” and
- * “Add microphone” are the secondary actions below the cards.
+ * the next share action. A ⋯ menu per card (also opened by a right-click on the card) holds every command of the
+ * source: share, stop or share again, “Smooth motion” and “Remove from the control room…”. Removing, and stopping a
+ * source while it is live, ask first in a confirm sheet (Enter confirms, Escape cancels). The page binds no other keys:
+ * a presenter's keyboard belongs to the presentation. “Share another screen”, “Add camera” and “Add microphone” are the
+ * secondary actions below the cards.
  */
 @Component({
   selector: 'sf-laptop-station',
   imports: [
     BrandMarkComponent,
+    ConfirmSheetComponent,
     ConnectionStatusComponent,
     IconComponent,
     MediaPreviewDirective,
@@ -170,6 +187,95 @@ export class LaptopStationComponent {
     this.session.setShareScreenAudio((event.target as HTMLInputElement).checked);
   }
 
+  /** The commands of a card's ⋯ menu, in the order of the card: the primary action first, removal last. */
+  protected menuEntries(slot: StationSlot): readonly MenuEntry[] {
+    const entries: MenuEntry[] = [];
+    if (slot.kind === 'camera') {
+      entries.push(
+        this.busy(slot)
+          ? {
+              id: 'stop',
+              label: t('sender.station.laptop.stopCamera'),
+              icon: 'stop',
+              run: () => this.fromMenu(() => this.stopCamera(slot)),
+            }
+          : {
+              id: 'start',
+              label:
+                slot.state === 'failed'
+                  ? t('sender.station.laptop.tryAgain')
+                  : t('sender.station.laptop.startCamera'),
+              icon: 'camera',
+              run: () => this.fromMenu(() => this.session.startCamera()),
+            },
+      );
+    } else {
+      if (this.busy(slot)) {
+        entries.push({
+          id: 'stop',
+          label: t('sender.station.laptop.stopSharing'),
+          icon: 'stop',
+          run: () => this.fromMenu(() => this.stopShare(slot)),
+        });
+      } else {
+        // Synchronous inside the click, so the browser's share dialog still counts it as the user's gesture.
+        entries.push({
+          id: 'share',
+          label:
+            slot.state === 'idle'
+              ? t('sender.station.laptop.shareScreen')
+              : t('sender.station.laptop.shareAgain'),
+          icon: slot.state === 'idle' ? 'screen' : 'refresh',
+          disabled: !this.canShareScreen,
+          run: () => this.fromMenu(() => this.share(slot)),
+        });
+      }
+      entries.push({
+        id: 'smooth',
+        label: t('sender.station.laptop.smooth'),
+        hint: t('sender.station.laptop.smoothHint'),
+        icon: 'check',
+        checked: this.videoScreen(slot),
+        testId: 'video-screen',
+        run: () => this.toggleVideoScreen(slot),
+      });
+    }
+    if (slot.code !== null) {
+      entries.push({
+        id: 'remove',
+        label: t('sender.station.laptop.remove'),
+        icon: 'trash',
+        danger: true,
+        run: () => this.ask(slot, 'remove'),
+      });
+    }
+    return entries;
+  }
+
+  protected confirmTitle(pending: PendingAsk): string {
+    const name = this.labelOf(pending.slot);
+    return pending.action === 'remove'
+      ? t('sender.station.laptop.removeTitle', { name })
+      : t('sender.station.laptop.stopTitle', { name });
+  }
+
+  protected confirmText(pending: PendingAsk): string {
+    const name = this.labelOf(pending.slot);
+    return pending.action === 'remove'
+      ? t('sender.station.laptop.removeConfirm', { name })
+      : t('sender.station.laptop.stopLive', { name });
+  }
+
+  /** The confirming button names the action itself. */
+  protected confirmLabel(pending: PendingAsk): string {
+    if (pending.action === 'remove') {
+      return t('common.remove');
+    }
+    return this.find(pending.slot)?.kind === 'camera'
+      ? t('sender.station.laptop.stopCamera')
+      : t('sender.station.laptop.stopSharing');
+  }
+
   /** Must stay synchronous: the browser's share dialog needs the click (user gesture). */
   protected share(slot: StationSlot): void {
     this.session.shareScreen(slot.slot);
@@ -198,11 +304,10 @@ export class LaptopStationComponent {
     }
   }
 
-  /** Shows the confirmation in the card and moves focus to its safe choice (“Cancel”). */
+  /** Opens the confirm sheet of a consequential action. */
   protected ask(slot: StationSlot, action: PendingAsk['action']): void {
     this.closeMenu(false);
     this.asking.set({ slot: slot.slot, action });
-    this.focusLater(`[data-testid="slot-${slot.slot}"] [data-cancel]`);
   }
 
   protected confirmAsk(): void {
@@ -211,21 +316,37 @@ export class LaptopStationComponent {
     if (pending === null) {
       return;
     }
-    const slot = [...this.screens(), this.camera()].find((entry) => entry?.slot === pending.slot);
     if (pending.action === 'remove') {
       void this.session.removeSlot(pending.slot);
-    } else if (slot?.kind === 'camera') {
+      this.focusLater('.c-column__title');
+      return;
+    }
+    if (this.find(pending.slot)?.kind === 'camera') {
       this.session.stopCamera();
     } else {
       this.session.endShare(pending.slot);
     }
+    this.focusLater(`[data-testid="slot-${pending.slot}"] .c-source__actions button`);
   }
 
+  /** “Cancel”, Escape or a tap beside the sheet: nothing changes, the focus goes back to the card. */
   protected cancelAsk(): void {
     const pending = this.asking();
     this.asking.set(null);
     if (pending !== null) {
       this.focusLater(`[data-testid="slot-${pending.slot}"] .c-source__actions button`);
+    }
+  }
+
+  /** A right-click on a card opens its ⋯ menu instead of the browser's menu (not on a field or a link). */
+  protected openMenuAt(event: MouseEvent, slot: StationSlot): void {
+    const target = event.target as Element | null;
+    if (target?.closest('input, select, textarea, a[href]') != null) {
+      return;
+    }
+    event.preventDefault();
+    if (this.menuFor() !== slot.slot) {
+      this.toggleMenu(slot.slot);
     }
   }
 
@@ -235,7 +356,7 @@ export class LaptopStationComponent {
       return;
     }
     this.menuFor.set(slot);
-    this.focusLater('.c-menu [role^="menuitem"]');
+    this.focusLater('.c-menu [role^="menuitem"]:not(:disabled)');
   }
 
   /** Closes the open ⋯ menu; `restore` puts focus back on its button. */
@@ -252,7 +373,9 @@ export class LaptopStationComponent {
 
   /** Arrow keys, Home and End move between the items of the open menu. */
   protected menuKey(event: KeyboardEvent): void {
-    const items = [...this.host.querySelectorAll<HTMLElement>('.c-menu [role^="menuitem"]')];
+    const items = [
+      ...this.host.querySelectorAll<HTMLElement>('.c-menu [role^="menuitem"]:not(:disabled)'),
+    ];
     if (items.length === 0) {
       return;
     }
@@ -283,6 +406,23 @@ export class LaptopStationComponent {
     if (target === null || target.closest('.c-menu-wrap') === null) {
       this.closeMenu(false);
     }
+  }
+
+  /** Runs a menu command after closing the menu (synchronously, for the share dialog's user gesture). */
+  private fromMenu(command: () => void): void {
+    this.closeMenu(true);
+    command();
+  }
+
+  private find(slot: string): StationSlot | undefined {
+    return [...this.screens(), this.camera()].find(
+      (entry): entry is StationSlot => entry?.slot === slot,
+    );
+  }
+
+  private labelOf(slot: string): string {
+    const found = this.find(slot);
+    return found === undefined ? '' : this.label(found);
   }
 
   /** Focuses an element once the view shows it. */
