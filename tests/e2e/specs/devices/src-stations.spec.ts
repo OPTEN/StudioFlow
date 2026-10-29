@@ -74,7 +74,7 @@ test.describe('SRC stations', () => {
   );
 
   test(
-    'E2E-SRC-16 [ui] accessible name of a station row: “<code> <name>, on Program, reconnecting”, aria-expanded toggles',
+    'E2E-SRC-16 [ui] accessible name of a station row: its visible text (“<code> <name> PGM <state>”), aria-expanded toggles',
     t.p2,
     async ({ regie, api, production, pairContext, onCleanup }) => {
       test.setTimeout(120_000);
@@ -85,9 +85,9 @@ test.describe('SRC stations', () => {
       const row = regie.page.locator(`.c-st[data-device="${phone.id}"]`);
       await expect(row).toBeVisible();
       const toggle = row.locator('.c-st__row');
-      await expect(toggle).toHaveAccessibleName('K1 Phone stage right, on Program');
+      await expect(toggle).toHaveAccessibleName(/^K1 Phone stage right PGM /);
       await fake.disconnect();
-      await expect(toggle, 'name while reconnecting').toHaveAccessibleName('K1 Phone stage right, on Program, reconnecting', { timeout: 20_000 });
+      await expect(toggle, 'name while reconnecting').toHaveAccessibleName(/^K1 Phone stage right PGM .*reconnecting/, { timeout: 20_000 });
       expect(await toggle.getAttribute('aria-expanded')).toBe('false');
       await toggle.click();
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');

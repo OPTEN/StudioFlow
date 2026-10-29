@@ -39,7 +39,6 @@ export const regieSources = {
 
   'regie.sources.row.hide': 'Hide: {name}',
   'regie.sources.row.lock': 'Lock: {name}',
-  'regie.sources.row.select': 'Select: {code} {name}',
   'regie.sources.row.show': 'Show: {name}',
   'regie.sources.row.unlock': 'Unlock: {name}',
 } as const satisfies Namespace<'regie.sources'>;

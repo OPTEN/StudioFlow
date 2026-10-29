@@ -47,7 +47,6 @@ describe('station view in German', () => {
       studioMode: false,
     });
     expect(view.line).toMatchObject({ rate: '2,8' });
-    expect(view.ariaLabel).toBe('K1 Handy, im Program');
     const reconnecting = stationView(deviceFixture(DEVICE, 'Handy'), {
       sources: [{ ...camera, status: 'reconnecting' }],
       incidents: [],

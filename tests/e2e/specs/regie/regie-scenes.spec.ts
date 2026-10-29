@@ -272,7 +272,7 @@ test.describe('REGIE scenes', () => {
       await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('2');
       await expect(regie.scene('Scene C')).toHaveAttribute('aria-pressed', 'true');
-      await expect(regie.scene('Scene C')).toHaveAccessibleName(/^Scene C, in Preview$/);
+      await expect(regie.scene('Scene C')).toHaveAccessibleName(/^Scene C PVW( |$)/);
       expect(sceneB).toBeTruthy();
 
       // The live scene: Studio Mode on with preview = program (locked): hint, disabled button; REST says 409.
@@ -593,7 +593,7 @@ test.describe('REGIE scenes', () => {
       ).toBe('rgb(18, 24, 33)');
 
       // The Sources row is selectable and removable.
-      const row = sourcesDock(page).getByRole('button', { name: 'Select: – Source missing' });
+      const row = sourceRow(page, '– Source missing');
       await row.click();
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(inspectorSub(page)).toHaveText('Source missing');

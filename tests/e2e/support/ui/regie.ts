@@ -268,10 +268,10 @@ export class RegiePage {
 
   // --- scenes and switching ----------------------------------------------------------------------------------------
 
-  /** A scene button (“Presentation”, aria-pressed; the accessible name may add “, live on Program” etc.). */
+  /** A scene button (“Presentation”, aria-pressed; the accessible name is its visible text: name, PGM / PVW tag, slot codes). */
   scene(name: string): Locator {
     return this.page
-      .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$)`) })
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(name)}(,|$| (PGM|PVW|empty|[A-Z]\\d)( |$))`) })
       .and(this.page.locator('[aria-pressed]'));
   }
 

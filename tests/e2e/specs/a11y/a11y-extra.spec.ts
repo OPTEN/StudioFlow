@@ -41,7 +41,7 @@ test.describe('Forced colours and zoom', () => {
     await saveScreen(page, 'regie-1440x900-forced-colors');
     // the outage is named in words in the strip, on the scene row and on the station row (not only by a lamp colour)
     await expect(page.getByRole('region', { name: 'Messages' })).toContainText('reconnecting');
-    await expect(page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Presentation PVW K3 disrupted$/ })).toBeVisible();
     await expect(page.locator('.c-st__row').first()).toHaveAccessibleName(/reconnecting/);
     await expect(page.locator('.c-st__l2').first()).toContainText('reconnecting');
     // Program and Preview are told in words, the scene rows carry the tags

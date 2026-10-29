@@ -144,7 +144,7 @@ test.describe('Reduced motion', () => {
       await expect(regie.station('Phone Entrance')).toBeVisible();
       await settle(regie.page);
       await clearMotion(regie.page);
-      await regie.page.getByRole('button', { name: /Show \S+ in Stations/ }).first().click();
+      await regie.page.getByRole('button', { name: /Show \S+ .+ in Stations/ }).first().click();
       await expect(regie.page.locator('.c-st__row[aria-expanded=true]').first(), 'the station is opened').toBeVisible();
       await expect.poll(async () => (await readMotion(regie.page)).scrolls.length, { message: 'the dock scrolled the row into view' }).toBeGreaterThan(0);
       behaviours[motion] = (await readMotion(regie.page)).scrolls.map((entry) => entry.options);

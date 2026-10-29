@@ -3,7 +3,7 @@
     <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
-        <span class="c-keycap">{{ view().key }}</span>
+        <span class="c-keycap" [attr.data-key]="view().key"></span>
       }
     </span>
     <sf-inline-edit
@@ -22,14 +22,13 @@
     [attr.aria-pressed]="view().pressed"
     [class.is-blocked]="blocked()"
     [attr.aria-keyshortcuts]="view().key"
-    [attr.aria-label]="view().ariaLabel"
     (click)="choose.emit(view().id)"
     (keydown)="onRowKeyDown($event)"
   >
     <span class="c-scene__thumb" aria-hidden="true" [style.aspect-ratio]="store.canvasAspect()">
       <sf-scene-thumb [scene]="scene()" />
       @if (view().key) {
-        <span class="c-keycap">{{ view().key }}</span>
+        <span class="c-keycap" [attr.data-key]="view().key"></span>
       }
     </span>
     <span class="c-scene__text">

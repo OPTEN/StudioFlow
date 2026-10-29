@@ -91,9 +91,6 @@
                   data-sortable-grab
                   [attr.aria-pressed]="row.selected"
                   [attr.aria-disabled]="row.hidden && !row.isText ? 'true' : null"
-                  [attr.aria-label]="
-                    t('regie.sources.row.select', { code: row.code, name: row.name })
-                  "
                   (click)="select(row, $event)"
                 >
                   <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>

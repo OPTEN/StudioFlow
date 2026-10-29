@@ -94,10 +94,10 @@ describe('StationsDockComponent', () => {
     await render();
     const [first, second] = rows();
     expect(rows()).toHaveLength(2);
-    expect(first.getAttribute('aria-label')).toBe('K1 Phone stage left, on Program');
+    // The visible text is the accessible name (WCAG 2.5.3): no aria-label.
+    expect(first.hasAttribute('aria-label')).toBe(false);
     expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
     expect(text(first.querySelector('.c-st__l2'))).toBe('2.8Mbit/s31msBattery 14%');
-    expect(second.getAttribute('aria-label')).toBe('S1 Laptop Lea');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('2');
   });
 

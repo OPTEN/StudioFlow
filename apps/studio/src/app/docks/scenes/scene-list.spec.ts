@@ -25,7 +25,6 @@ describe('scene list helpers', () => {
     expect(view.isProgram).toBe(true);
     expect(view.pressed).toBe(true);
     expect(view.codes).toBe('S1 · K1');
-    expect(view.ariaLabel).toBe('Lea presents, live on Program');
   });
 
   it('marks the preview only in Studio Mode and reports the outage', () => {
@@ -38,7 +37,6 @@ describe('scene list helpers', () => {
     const studio = sceneRowView(scene, 0, { ...context, studioMode: true });
     expect(studio.isPreview).toBe(true);
     expect(studio.pressed).toBe(true);
-    expect(studio.ariaLabel).toBe('Lea presents, in Preview, K2 disrupted');
     const direct = sceneRowView(scene, 0, { ...context, studioMode: false });
     expect(direct.isPreview).toBe(false);
     expect(direct.pressed).toBe(false);

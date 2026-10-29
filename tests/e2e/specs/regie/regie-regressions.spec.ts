@@ -15,6 +15,7 @@ import {
   monitorPixels,
   overlayOf,
   renderedItems,
+  sourceRow,
   sourcesDock,
   uploadSolid,
 } from '../../support/regie/kit';
@@ -198,7 +199,7 @@ test.describe('REGIE regressions', () => {
         (scene) => scene.items[0]!.w === 1920 && scene.items[0]!.h === 1080,
         'the element is full canvas',
       );
-      const row = sourcesDock(page).getByRole('button', { name: /^Select: M\d Logo/ });
+      const row = sourceRow(page, /^M\d Logo/);
       const overlay = overlayOf(page, 'program');
 
       const toSceneInspector = async (way: string) => {

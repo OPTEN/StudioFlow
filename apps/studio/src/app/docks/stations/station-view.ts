@@ -83,8 +83,6 @@ export interface StationView {
   readonly blocked: boolean;
   /** Not connected to the server (no control connection). */
   readonly offline: boolean;
-  /** Accessible name of the row (prototype): "K2 Phone stage right, on Program, reconnecting". */
-  readonly ariaLabel: string;
 }
 
 /** Inputs of {@link stationView}. */
@@ -278,14 +276,6 @@ export function stationView(device: DeviceDto, context: StationContext): Station
     canControlCamera: device.kind === 'phone' && !!camera && !blocked,
     blocked,
     offline: device.connection === 'offline',
-    ariaLabel:
-      `${codes.join(' ')} ${device.name}`.trim() +
-      (tally === 'program'
-        ? `, ${t('model.status.placeProgram')}`
-        : tally === 'preview'
-          ? `, ${t('model.status.placePreview')}`
-          : '') +
-      (status !== 'ok' ? `, ${statusWord(status, worst?.kind)}` : ''),
   };
 }
 

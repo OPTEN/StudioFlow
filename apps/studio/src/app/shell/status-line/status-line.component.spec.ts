@@ -93,12 +93,12 @@ describe('StatusLineComponent', () => {
     );
     expect(element.querySelector('.c-status__ok')).toBeNull();
     const [first, second, third] = segments();
-    expect(first).toContain('S1Laptop Lea · Slides');
+    expect(first).toContain('S1 Laptop Lea · Slides');
     expect(first).toContain('sharing stopped');
     expect(first).toContain('not live');
     expect(first).toMatch(/00:0[34]/);
     expect(first).toContain('Ask to share again');
-    expect(second).toContain('K1Phone stage left');
+    expect(second).toContain('K1 Phone stage left');
     expect(second).toContain('reconnecting');
     expect(second).toContain('on Program');
     expect(second).not.toContain('Ask to share again');

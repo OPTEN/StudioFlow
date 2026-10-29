@@ -350,7 +350,7 @@ test.describe('Keyboard-only Regie', () => {
     // select an element of the Preview scene with the keyboard: the “Select” button of its Sources row
     await page.keyboard.press('2');
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
-    const pick = page.getByRole('button', { name: /^Select: / }).first();
+    const pick = page.locator('.c-src__select').first();
     await pick.focus();
     await page.keyboard.press('Enter');
     const selected = page.locator('.c-edit-box.is-sel');
@@ -400,7 +400,7 @@ test.describe('Keyboard-only Regie', () => {
     await expect.poll(() => previewSceneId(regie, production.id)).toBe(seeded.scenes[1]!.id);
     const sceneId = seeded.scenes[1]!.id;
     const items = async () => (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === sceneId)!.items;
-    const row = page.getByRole('button', { name: /^Select: / }).first();
+    const row = page.locator('.c-src__select').first();
     await row.focus();
     await page.keyboard.press('Space');
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);
@@ -569,7 +569,8 @@ test.describe('Dock moves and splitters by keyboard', () => {
       const seam = page.getByRole('separator', { name });
       await seam.focus();
       const x = async () => (await boxOf(seam))!.x;
-      for (const [key, delta] of [['ArrowRight', 16], ['Shift+ArrowRight', 64], ['ArrowLeft', -16], ['Shift+ArrowLeft', -64]] as const) {
+      // Each step is undone before the next one: a dock is at least 180 px wide, so at 1440 px Scenes and Sources have no room for 16 + 64 px in one direction.
+      for (const [key, delta] of [['ArrowRight', 16], ['ArrowLeft', -16], ['Shift+ArrowRight', 64], ['Shift+ArrowLeft', -64]] as const) {
         const before = await x();
         await page.keyboard.press(key);
         await page.waitForTimeout(250);

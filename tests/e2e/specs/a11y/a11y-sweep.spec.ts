@@ -100,7 +100,7 @@ test.describe('CSP and external hosts', () => {
     await regie.openPairing('link');
     await regie.closePairing();
     await page.locator('.c-st__row').first().click();
-    await page.getByRole('button', { name: /Select: / }).first().click();
+    await page.locator('.c-src__select').first().click();
     await page.getByRole('button', { name: 'Start broadcast' }).click();
     await expect(page.getByRole('button', { name: 'End broadcast' }).first()).toBeVisible();
     expect((await api.endBroadcast(production.id)).status).toBe(200);

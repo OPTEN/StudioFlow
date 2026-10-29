@@ -21,7 +21,7 @@ export const regieStatusline = {
     '{name} is not connected. Please share again directly on the device.',
   'regie.statusline.incident.reshareSent': 'Request sent to {name}: “Share screen again”',
   'regie.statusline.incident.seen': 'Seen',
-  'regie.statusline.incident.show': 'Show {code} in Stations',
+  'regie.statusline.incident.show': 'Show {code} {name} in Stations',
 
   'regie.statusline.label': 'Messages',
   'regie.statusline.log': 'Recent events',

@@ -40,7 +40,6 @@ export const regieSources: Translation<typeof en> = {
 
   'regie.sources.row.hide': 'Ausblenden: {name}',
   'regie.sources.row.lock': 'Sperren: {name}',
-  'regie.sources.row.select': 'Auswählen: {code} {name}',
   'regie.sources.row.show': 'Einblenden: {name}',
   'regie.sources.row.unlock': 'Entsperren: {name}',
 };

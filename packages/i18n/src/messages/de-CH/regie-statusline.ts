@@ -18,7 +18,7 @@ export const regieStatusline: Translation<typeof en> = {
     '{name} ist nicht verbunden. Bitte direkt am Gerät neu teilen.',
   'regie.statusline.incident.reshareSent': 'Bitte an {name} geschickt: «Bildschirm erneut teilen»',
   'regie.statusline.incident.seen': 'Gesehen',
-  'regie.statusline.incident.show': '{code} bei den Stationen zeigen',
+  'regie.statusline.incident.show': '{code} {name} bei den Stationen zeigen',
 
   'regie.statusline.label': 'Meldungen',
   'regie.statusline.log': 'Letzte Ereignisse',

@@ -485,11 +485,21 @@ export const inspector = (page: Page): Locator =>
 export const stationsDock = (page: Page): Locator =>
   page.getByRole('region', { name: 'Stations', exact: true });
 
-/** A row of the Sources dock by the accessible name of its select button, e.g. `K1 Phone One`. */
+const escapeForRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * A row of the Sources dock by the accessible name of its select button (its accessible name is the visible text, followed by the
+ * state and the timer), e.g. `K1 Phone One`.
+ */
 export const sourceRow = (page: Page, codeAndName: string | RegExp): Locator =>
-  sourcesDock(page).getByRole('button', {
-    name: typeof codeAndName === 'string' ? `Select: ${codeAndName}` : codeAndName,
-  });
+  sourcesDock(page)
+    .getByRole('button', {
+      name:
+        typeof codeAndName === 'string'
+          ? new RegExp(`^${escapeForRegExp(codeAndName)}(\\s|$)`)
+          : codeAndName,
+    })
+    .and(page.locator('.c-src__select'));
 
 /** A number field of the element inspector: `x`, `y`, `w`, `h`. */
 export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>

@@ -69,7 +69,6 @@ describe('station view', () => {
     expect(view.tone).toBe('');
     expect(view.thumbSourceId).toBe(camera.id);
     expect(view.canSwitchCamera).toBe(true);
-    expect(view.ariaLabel).toBe('K1 Phone stage left, on Program');
   });
 
   it('shows a microphone instead of a picture for the audio station, which is on Program with its mode', () => {
@@ -147,7 +146,6 @@ describe('station view', () => {
     const view = stationView(deviceFixture(DEVICE, 'Phone'), context([ended]));
     expect(view.line).toMatchObject({ kind: 'state', word: 'camera stopped', tone: 'bad' });
     expect(view.endedScreens).toEqual([]);
-    expect(view.ariaLabel).toBe('K1 Phone, camera stopped');
   });
 
   it('shows "reconnecting" with timer and "freeze frame" while reconnecting', () => {
@@ -168,7 +166,6 @@ describe('station view', () => {
     expect(view.tone).toBe('is-warn');
     expect(view.lamp).toBe('is-warn');
     expect(view.canSwitchCamera).toBe(false);
-    expect(view.ariaLabel).toBe('K1 Phone, reconnecting');
   });
 
   it('takes the worst slot of a laptop and names its code', () => {

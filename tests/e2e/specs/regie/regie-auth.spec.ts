@@ -297,7 +297,7 @@ test.describe('REGIE login and session', () => {
       await expect(label(first.page)).toHaveText('2 in the control room', { timeout: 8000 });
       await expect(label(second.page)).toHaveText('2 in the control room', { timeout: 8000 });
       await expect(reader(first.page), 'screen readers get the full sentence').toHaveText(
-        '2 people in the control room',
+        'Two people in the control room',
       );
 
       await first.page.reload();

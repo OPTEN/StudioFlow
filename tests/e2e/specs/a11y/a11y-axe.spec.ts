@@ -70,7 +70,7 @@ test.describe('axe scans: Regie', () => {
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     // an element selected: the overlay box, the label tab and the handles (the first scene holds one)
     await regie.clickScene('Welcome');
-    await page.getByRole('button', { name: /^Select: / }).first().click();
+    await page.locator('.c-src__select').first().click();
     await expect(page.locator('.c-edit-box.is-sel')).toHaveCount(1);
     await scanner.scan('regie-element-selected');
     scanner.verify();
@@ -349,9 +349,9 @@ test.describe('Regie semantics', () => {
     await expect(page.getByRole('group', { name: 'Transition type' }).getByRole('button')).toHaveCount(2);
     await expect(page.getByRole('group', { name: 'Fade duration' }).getByRole('button')).toHaveCount(2);
     // scene buttons: aria-pressed, tally and health text in the name
-    const program = page.getByRole('button', { name: 'Welcome, live on Program' });
+    const program = page.getByRole('button', { name: /^Welcome PGM( |$)/ });
     await expect(program).toHaveAttribute('aria-pressed', 'false');
-    const preview = page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ });
+    const preview = page.getByRole('button', { name: /^Presentation PVW K3 disrupted$/ });
     await expect(preview, 'the Preview scene is pressed and carries the tally and the health word').toHaveAttribute('aria-pressed', 'true');
     // sources: role=list with listitems
     await expect(page.getByRole('list', { name: 'Items of the scene' }).getByRole('listitem')).toHaveCount(2);

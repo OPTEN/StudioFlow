@@ -16,9 +16,6 @@ export const regieScenes = {
   'regie.scenes.name.copyNth': '{name} (copy {number})',
   'regie.scenes.name.new': 'New scene {number}',
 
-  'regie.scenes.row.ariaDisrupted': '{code} disrupted',
-  'regie.scenes.row.ariaPreview': 'in Preview',
-  'regie.scenes.row.ariaProgram': 'live on Program',
   'regie.scenes.row.disrupted': 'disrupted',
   'regie.scenes.row.duplicate': 'Duplicate',
   'regie.scenes.row.empty': 'empty',

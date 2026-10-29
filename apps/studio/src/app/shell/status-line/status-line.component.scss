@@ -70,7 +70,9 @@
   border-right: 1px solid var(--seam);
   display: flex;
   gap: 10px;
+  max-width: 100%;
   min-height: 38px;
+  min-width: 0;
   padding: 5px 10px 5px 4px;
 
   &.is-warn {
@@ -103,6 +105,8 @@
   font-weight: 600;
   gap: 8px;
   height: 28px;
+  max-width: 100%;
+  min-width: 0;
   padding: 0 6px;
   white-space: nowrap;
 
@@ -111,6 +115,13 @@
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+}
+
+// A long device name is cut with an ellipsis inside the button, so the strip never grows wider than the viewport.
+.c-status__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .c-status__inc.is-warn .c-status__target > .c-icon {

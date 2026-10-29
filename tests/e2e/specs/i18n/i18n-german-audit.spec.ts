@@ -172,7 +172,7 @@ test.describe('German text audit', () => {
     await row.click();
 
     // an element selected, with the label tab
-    await page.getByRole('button', { name: /^Select: / }).first().click();
+    await page.locator('.c-src__select').first().click();
     await audit.state('element selected (properties of the element)');
 
     // the pairing dock on its three tabs, with a knock card

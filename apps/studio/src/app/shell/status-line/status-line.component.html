@@ -26,11 +26,11 @@
       <button
         class="c-status__target"
         type="button"
-        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code })"
+        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code, name: row.name })"
         (click)="show(row)"
       >
         <svg sfIcon="check"></svg><span class="c-code">{{ row.code }}</span
-        >{{ row.name }}
+        >&ngsp;<span class="c-status__name">{{ row.name }}</span>
       </button>
       <strong class="c-state--ok">{{ t('regie.statusline.incident.back') }}</strong>
       <span class="c-status__where">{{ row.downFor }}</span>
@@ -48,11 +48,11 @@
       <button
         class="c-status__target"
         type="button"
-        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code })"
+        [attr.aria-label]="t('regie.statusline.incident.show', { code: row.code, name: row.name })"
         (click)="show(row)"
       >
         <svg sfIcon="alert"></svg><span class="c-code">{{ row.code }}</span
-        >{{ row.name }}
+        >&ngsp;<span class="c-status__name">{{ row.name }}</span>
       </button>
       <strong [class.c-state--bad]="row.bad" [class.c-state--warn]="!row.bad">{{
         row.word

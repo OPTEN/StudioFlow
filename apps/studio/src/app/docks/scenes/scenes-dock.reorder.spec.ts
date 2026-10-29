@@ -52,7 +52,7 @@ describe('ScenesDockComponent reordering', () => {
   function list(): string[] {
     return Array.from(element.querySelectorAll('button.c-scene')).map(
       (button) =>
-        `${button.querySelector('.c-keycap')?.textContent?.trim()} ${button.querySelector('.c-scene__name')?.textContent?.trim()}`,
+        `${button.querySelector('.c-keycap')?.getAttribute('data-key')} ${button.querySelector('.c-scene__name')?.textContent?.trim()}`,
     );
   }
 

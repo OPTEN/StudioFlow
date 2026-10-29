@@ -22,8 +22,6 @@ export interface SceneRowView {
   readonly health: SceneHealth | null;
   /** Slot codes of the visible items in z-order, "S1 · K1"; "empty" without visible items. */
   readonly codes: string;
-  /** Accessible name like the prototype: "Lea presents, live on Program, K2 disrupted". */
-  readonly ariaLabel: string;
 }
 
 /** Context of {@link sceneRowView}. */
@@ -48,16 +46,6 @@ export function sceneRowView(
     .map((sourceId) => context.codeOf(sourceId))
     .filter((code): code is string => !!code);
   const health = context.health;
-  const labelParts = [scene.name];
-  if (isProgram) {
-    labelParts.push(t('regie.scenes.row.ariaProgram'));
-  }
-  if (isPreview) {
-    labelParts.push(t('regie.scenes.row.ariaPreview'));
-  }
-  if (health) {
-    labelParts.push(t('regie.scenes.row.ariaDisrupted', { code: health.code }));
-  }
   return {
     id: scene.id,
     name: scene.name,
@@ -67,7 +55,6 @@ export function sceneRowView(
     pressed: context.studioMode ? isPreview : isProgram,
     health,
     codes: codes.length > 0 ? codes.join(' · ') : t('regie.scenes.row.empty'),
-    ariaLabel: labelParts.join(', '),
   };
 }
 
