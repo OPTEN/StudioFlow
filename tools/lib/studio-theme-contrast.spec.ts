@@ -139,6 +139,13 @@ describe.each([
     expectContrast(colour(name), wash, AA_TEXT, `${name} on ${name}-wash`);
   });
 
+  // Tinted buttons (.c-btn--primary) sit on the toolbar and the docks: blue-ink on the wash and on its 24 % hover.
+  it.each(['ground', 'panel', 'raised-2'] as const)('keeps tinted button text readable on %s (4.5:1)', (surface) => {
+    expectContrast(colour('blue-ink'), composite(colour('blue-wash'), colour(surface)), AA_TEXT, `blue-ink on blue-wash over ${surface}`);
+    const hover = composite({ rgb: colour('blue').rgb, alpha: 0.24 }, colour(surface));
+    expectContrast(colour('blue-ink'), hover, AA_TEXT, `blue-ink on the hover over ${surface}`);
+  });
+
   // The Live tag is a filled red capsule (the brightest mark on screen, DESIGN.md "Only the live path burns").
   it('keeps the Live tag readable (on-state on red, 4.5:1)', () => {
     expectContrast(colour('on-state'), colour('red'), AA_TEXT, 'Live tag');

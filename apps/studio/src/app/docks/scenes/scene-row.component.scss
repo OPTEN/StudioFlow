@@ -24,8 +24,13 @@
   display: grid;
   gap: 10px;
   grid-template-columns: auto minmax(0, 1fr);
-  min-height: 52px;
-  padding: 6px 34px 6px 6px;
+  min-height: 42px;
+  padding: 3px 34px 3px 6px;
+
+  // The strip cards of the phone layout are touch targets: 44 px at least.
+  @include narrow {
+    min-height: 44px;
+  }
   text-align: left;
   width: 100%;
 
@@ -43,10 +48,11 @@
     }
   }
 
+  // Short laptops (≤ 820 px high): one line per scene, so all seven fit the 36 % dock zone without scrolling.
   @include short-laptop {
     gap: 8px;
-    min-height: 42px;
-    padding-block: 4px;
+    min-height: 0;
+    padding-block: 3px;
   }
 }
 
@@ -54,6 +60,11 @@
 :host(.is-current) .c-scene,
 .c-scene--editing {
   background: var(--raised-2);
+
+  @include forced-colors {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .c-scene--editing {
@@ -61,9 +72,9 @@
   padding-right: 6px;
 }
 
-// The thumbnail is 40 px high (32 px on short laptops) and as wide as the shape of the canvas makes it: 71 px for
-// 16:9, narrower for 9:16. The component sets the aspect ratio; 16:9 until the canvas is known. The ring is the tally:
-// red on the Program, green on the Preview.
+// The thumbnail is 36 px high (27 px on short laptops) and as wide as the shape of the canvas makes it: 64 px for
+// 16:9, narrower for 9:16. Seven rows must fit the dock zone at 1440 × 900 without scrolling. The component sets the
+// aspect ratio; 16:9 until the canvas is known. The ring is the tally: red on the Program, green on the Preview.
 .c-scene__thumb {
   @include state-transition(box-shadow);
   aspect-ratio: 16 / 9;
@@ -71,12 +82,12 @@
   border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px var(--seam-strong);
   display: block;
-  height: 40px;
+  height: 36px;
   justify-self: center;
   position: relative;
 
   @include short-laptop {
-    height: 32px;
+    height: 27px;
   }
 }
 
@@ -101,8 +112,14 @@
 
 .c-scene__text {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
+
+  @include short-laptop {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+  }
 }
 
 .c-scene__name {
@@ -110,6 +127,10 @@
   font-size: var(--fs-body);
   font-weight: 600;
   line-height: 1.25;
+
+  @include short-laptop {
+    flex: 0 1 auto;
+  }
 }
 
 // The meta line: the tag and the state word never shrink. The code list ellipsizes; when the tag and "K3 disrupted"
@@ -124,6 +145,12 @@
   line-height: 1.2;
   min-width: 0;
   white-space: nowrap;
+
+  // One line on short laptops: the meta keeps its words and the name gives way first.
+  @include short-laptop {
+    flex: none;
+    flex-wrap: nowrap;
+  }
 
   .c-tag,
   .c-lamp {

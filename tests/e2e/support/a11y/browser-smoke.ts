@@ -61,7 +61,7 @@ export function registerBrowserSmoke(browserName: 'firefox' | 'webkit'): void {
       await page.getByRole('button', { name: 'Sign in' }).click();
       await page.waitForURL((url) => !url.pathname.startsWith('/login'));
       await expect(page.getByRole('button', { name: 'Layout', exact: true })).toBeVisible();
-      expect(await loadedFontFamilies(page), 'the web fonts are loaded').toEqual(expect.arrayContaining(['Sofia Sans Semi Condensed', 'JetBrains Mono']));
+      expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily), 'the system UI font (REDESIGN-SPEC §2)').toMatch(/-apple-system|system-ui/);
       for (const request of session.watch.requests.filter((entry) => entry.type === 'font')) expect(new URL(request.url).origin, `font ${request.url}`).toBe(session.origin);
       await expectStackOnly(session.watch, session.origin, `${browserName} login`);
       const problems = consoleProblems(session.watch, known, EXPECTED_STATUSES);

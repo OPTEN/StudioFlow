@@ -67,9 +67,11 @@
     </span>
   </button>
   <button
+    #more
     class="c-ibtn c-scene__more"
     type="button"
     aria-haspopup="menu"
+    [attr.aria-expanded]="menuOpen()"
     [attr.aria-label]="t('regie.scenes.row.menuTriggerLabel', { name: displayName() })"
     [title]="t('regie.scenes.row.menuTitle')"
     (click)="openMenuAt($event)"

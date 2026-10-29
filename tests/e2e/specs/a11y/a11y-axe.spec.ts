@@ -143,7 +143,7 @@ test.describe('axe scans: Regie', () => {
   test('E2E-DEV-15 [axe, monitoring, empty] the monitoring page without stations', tags('p2'), async ({ regie, page }) => {
     const scanner = new Scanner(page);
     await page.goto('/monitoring');
-    await expect(page.getByText('No stations yet.')).toBeVisible();
+    await expect(page.getByText('No devices yet.')).toBeVisible();
     await scanner.scan('monitoring-empty');
     scanner.verify();
     void regie;

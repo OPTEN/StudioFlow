@@ -109,6 +109,19 @@
         {{ t('regie.statusline.issues.more', { count: more() }) }}
       </button>
     }
+  } @else if (audioWarning(); as warning) {
+    <!-- A quiet audio channel is a warning, not an incident: it takes the incident's place only while there is none. -->
+    <p class="c-status__lead c-status__audio is-warn">
+      <svg sfIcon="alert"></svg>
+      <span class="c-code">{{ warning.code }}</span
+      >&ngsp;<span class="c-status__name">{{ warning.name }}</span>
+      <strong class="c-state--warn">{{ t('regie.audio.state.silent') }}</strong>
+      @if (warning.more > 0) {
+        <span class="c-status__where">{{
+          t('regie.statusline.issues.more', { count: warning.more })
+        }}</span>
+      }
+    </p>
   }
 
   <span class="u-spacer"></span>

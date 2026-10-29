@@ -285,36 +285,37 @@
                               </button>
                             }
                           </div>
-                          <dl
-                            class="c-audit-details"
+                          <div
                             role="tabpanel"
                             [id]="'audit-panel-' + entry.id"
                             [attr.aria-labelledby]="'audit-tab-' + tabOf(entry) + '-' + entry.id"
                           >
-                            @if (tabOf(entry) === 'summary') {
-                              <dt>{{ t('regie.audit.details.when') }}</dt>
-                              <dd class="u-mono">{{ time(entry) }}</dd>
-                              <dt>{{ t('regie.audit.details.time') }}</dt>
-                              <dd class="u-mono">{{ utc(entry) }}</dd>
-                              <dt>{{ t('regie.audit.details.who') }}</dt>
-                              <dd>{{ actor(entry) }}</dd>
-                              <dt>{{ t('regie.audit.details.what') }}</dt>
-                              <dd>{{ entryText(entry) }}</dd>
-                              <dt>{{ t('regie.audit.column.production') }}</dt>
-                              <dd>{{ production(entry) }}</dd>
-                            } @else {
-                              <dt>{{ t('regie.audit.details.actor') }}</dt>
-                              <dd class="c-audit-details__code">{{ entry.actor }}</dd>
-                              <dt>{{ t('regie.audit.details.action') }}</dt>
-                              <dd class="c-audit-details__code">{{ entry.action }}</dd>
-                              <dt>{{ t('regie.audit.details.entry') }}</dt>
-                              <dd class="u-mono">#{{ entry.id }}</dd>
-                              @for (row of details(entry); track row.key) {
-                                <dt class="c-audit-details__code">{{ row.key }}</dt>
-                                <dd class="c-audit-details__code">{{ row.value }}</dd>
+                            <dl class="c-audit-details">
+                              @if (tabOf(entry) === 'summary') {
+                                <dt>{{ t('regie.audit.details.when') }}</dt>
+                                <dd class="u-mono">{{ time(entry) }}</dd>
+                                <dt>{{ t('regie.audit.details.time') }}</dt>
+                                <dd class="u-mono">{{ utc(entry) }}</dd>
+                                <dt>{{ t('regie.audit.details.who') }}</dt>
+                                <dd>{{ actor(entry) }}</dd>
+                                <dt>{{ t('regie.audit.details.what') }}</dt>
+                                <dd>{{ entryText(entry) }}</dd>
+                                <dt>{{ t('regie.audit.column.production') }}</dt>
+                                <dd>{{ production(entry) }}</dd>
+                              } @else {
+                                <dt>{{ t('regie.audit.details.actor') }}</dt>
+                                <dd class="c-audit-details__code">{{ entry.actor }}</dd>
+                                <dt>{{ t('regie.audit.details.action') }}</dt>
+                                <dd class="c-audit-details__code">{{ entry.action }}</dd>
+                                <dt>{{ t('regie.audit.details.entry') }}</dt>
+                                <dd class="u-mono">#{{ entry.id }}</dd>
+                                @for (row of details(entry); track row.key) {
+                                  <dt class="c-audit-details__code">{{ row.key }}</dt>
+                                  <dd class="c-audit-details__code">{{ row.value }}</dd>
+                                }
                               }
-                            }
-                          </dl>
+                            </dl>
+                          </div>
                         </td>
                       </tr>
                     }

@@ -101,7 +101,8 @@
 // Tinted: the accent action of a panel (Add device, Add source).
 .c-btn--primary {
   background: var(--blue-wash);
-  color: var(--blue);
+  // A step deeper than the accent: the text stays AA on the wash and its hover on every toolbar and dock surface.
+  color: var(--blue-ink);
   font-weight: 600;
 
   &:hover {
@@ -187,6 +188,11 @@
   &[aria-expanded='true'] {
     background: var(--fill);
     color: var(--text);
+
+    @include forced-colors {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
   }
 
   &:disabled {
@@ -392,6 +398,11 @@
     .c-hint {
       color: var(--on-fill);
     }
+
+    @include forced-colors {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   &:disabled {
@@ -516,6 +527,11 @@
       box-shadow: var(--shadow-raise);
       color: var(--text);
       font-weight: 600;
+
+      @include forced-colors {
+        border-bottom: 3px solid Highlight;
+        font-weight: 800;
+      }
     }
 
     &:disabled {
@@ -564,6 +580,11 @@
     box-shadow: var(--shadow-raise);
     color: var(--text);
     font-weight: 600;
+
+    @include forced-colors {
+      border-bottom: 3px solid Highlight;
+      font-weight: 800;
+    }
   }
 }
 
@@ -621,6 +642,28 @@
     &:disabled {
       cursor: not-allowed;
       opacity: 0.4;
+    }
+
+    // Track and thumb are backgrounds: a border draws the track, the thumb keeps a system colour.
+    @include forced-colors {
+      border: 1px solid ButtonText;
+      forced-color-adjust: none;
+      background: Canvas;
+
+      &::after {
+        background: ButtonText;
+        top: 1px;
+        left: 1px;
+      }
+
+      &:checked {
+        background: Highlight;
+        border-color: Highlight;
+      }
+
+      &:checked::after {
+        background: HighlightText;
+      }
     }
   }
 }

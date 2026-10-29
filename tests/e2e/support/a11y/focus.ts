@@ -13,8 +13,12 @@ export interface FocusRing {
   boxShadow: string;
   backgroundColor: string;
   borderColor: string;
-  /** Which indicator the element shows: the 2 px blue outline, the blue hairline of a splitter, a blue border (fields) or none. */
-  kind: 'outline' | 'hairline' | 'border' | 'none';
+  /**
+   * Which indicator the element shows: the 2 px blue outline, the blue hairline of a splitter, a blue border (fields),
+   * the 2 px blue outline on the row it stretches over (`container`, drawn with `:has(:focus-visible)`), the accent fill
+   * of a system-style menu row (`highlight`) or none.
+   */
+  kind: 'outline' | 'hairline' | 'border' | 'container' | 'highlight' | 'none';
   /** kind !== none */
   visible: boolean;
 }
@@ -33,6 +37,8 @@ export interface FocusInfo {
   zone: string | null;
   /** The section it belongs to: `banner`, `region:<name>`, ... (nearest landmark). */
   area: string;
+  /** The labelled region (dock, monitor, activity bar) around it, also when a labelled group sits in between. */
+  region: string | null;
   tabindex: string | null;
 }
 
@@ -79,15 +85,32 @@ export function describeActive(page: Page): Promise<FocusInfo | null> {
     // :focus-visible (hairline splitters turn blue through their background and a box-shadow): compare with the
     // unfocused look is not possible here, so the outline, the box-shadow and a blue/background change are read.
     const outlineWidth = parseFloat(style.outlineWidth) || 0;
-    const BLUE = 'rgb(121, 192, 255)';
-    const outlineVisible = style.outlineStyle !== 'none' && outlineWidth >= 2 && style.outlineColor === BLUE;
+    // The accent of the current theme (`--blue`), resolved through a probe so a token change follows here.
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--blue, rgb(121, 192, 255))';
+    document.body.appendChild(probe);
+    const BLUE = getComputedStyle(probe).color;
+    probe.style.color = 'var(--blue-fill, rgb(0, 113, 227))';
+    const BLUE_FILL = getComputedStyle(probe).color;
+    probe.remove();
+    const outlined = (target: Element) => {
+      const look = getComputedStyle(target);
+      return look.outlineStyle !== 'none' && (parseFloat(look.outlineWidth) || 0) >= 2 && look.outlineColor === BLUE;
+    };
+    const outlineVisible = outlined(element);
     const after = getComputedStyle(element, '::after');
     const hairline = element.getAttribute('role') === 'separator' && ((style.backgroundColor === BLUE && style.boxShadow.includes(BLUE)) || after.backgroundColor === BLUE);
     const border = ['INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName) && style.borderTopColor === BLUE;
-    const kind = outlineVisible ? 'outline' : hairline ? 'hairline' : border ? 'border' : 'none';
+    let container = false;
+    for (let parent = element.parentElement, depth = 0; parent && depth < 3 && !container; parent = parent.parentElement, depth++) container = outlined(parent);
+    const menuRow = ['menuitem', 'menuitemradio', 'menuitemcheckbox', 'option'].includes(roleOf(element)) || element.classList.contains('c-menu-item');
+    const highlight = menuRow && style.backgroundColor === BLUE_FILL;
+    const kind = outlineVisible ? 'outline' : hairline ? 'hairline' : border ? 'border' : container ? 'container' : highlight ? 'highlight' : 'none';
     const zoneElement = element.closest('[data-zone]');
     const landmark = element.closest('header, [role=region], [role=group][aria-label], section[aria-label], main, nav, form, [role=dialog], [role=menu]');
-    const landmarkName = landmark ? `${landmark.getAttribute('role') ?? landmark.tagName.toLowerCase()}${landmark.getAttribute('aria-label') ? `:${landmark.getAttribute('aria-label')}` : ''}` : 'page';
+    // the name of the landmark: its aria-label, else the text it is labelled by (the monitors name themselves by their head)
+    const landmarkLabel = landmark ? (attr(landmark, 'aria-label') ?? (attr(landmark, 'aria-labelledby') ? nameOf(landmark as HTMLElement) : null)) : null;
+    const landmarkName = landmark ? `${landmark.getAttribute('role') ?? landmark.tagName.toLowerCase()}${landmarkLabel ? `:${landmarkLabel}` : ''}` : 'page';
     return {
       tag: element.tagName.toLowerCase(),
       role: roleOf(element),
@@ -104,11 +127,12 @@ export function describeActive(page: Page): Promise<FocusInfo | null> {
         boxShadow: style.boxShadow,
         backgroundColor: style.backgroundColor,
         borderColor: style.borderTopColor,
-        kind: kind as 'outline' | 'hairline' | 'border' | 'none',
+        kind: kind as FocusRing['kind'],
         visible: kind !== 'none',
       },
       zone: zoneElement?.getAttribute('data-zone') ?? null,
-      area: landmarkName,
+      area: element.closest('[role=status]') ? 'status' : landmarkName,
+      region: element.closest('[role=region][aria-label]')?.getAttribute('aria-label') ?? null,
       tabindex: attr(element, 'tabindex'),
     };
   });

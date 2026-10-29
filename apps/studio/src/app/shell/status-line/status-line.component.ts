@@ -24,6 +24,7 @@ import {
   type IncidentPlace,
 } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
+import { StudioAudioService } from '../../core/audio/studio-audio.service';
 import { StudioMediaService } from '../../core/media/studio-media.service';
 import { IncidentAckService } from '../../core/state/incident-ack.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
@@ -109,6 +110,7 @@ export class StatusLineComponent {
   protected readonly placeWord = incidentPlaceWord;
   protected readonly store = inject(ProductionStoreService);
   protected readonly media = inject(StudioMediaService);
+  private readonly audio = inject(StudioAudioService);
   protected readonly popovers = inject(PopoverService);
   private readonly clock = inject(ClockService);
   private readonly api = inject(StudioApiService);
@@ -160,6 +162,14 @@ export class StatusLineComponent {
   protected readonly lead = computed(() => this.rows()[0] ?? null);
   /** Incidents behind "+N more". */
   protected readonly more = computed(() => Math.max(0, this.rows().length - 1));
+  /** The first audible channel that has been quiet for 10 s (a warning, shown while there is no incident). */
+  protected readonly audioWarning = computed(() => {
+    const silent = [...this.audio.silent()];
+    const first = silent[0];
+    if (first === undefined) return null;
+    const source = this.store.sourceById(first);
+    return { code: source?.code ?? '', name: source?.label ?? '', more: silent.length - 1 };
+  });
   /** Recovered incidents waiting for "Dismiss" ("Mark all as seen" acknowledges them together). */
   protected readonly recovered = computed(() => this.rows().filter((row) => row.recovered));
 

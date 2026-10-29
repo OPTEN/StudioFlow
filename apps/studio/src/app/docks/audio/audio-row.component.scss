@@ -18,6 +18,11 @@ $knob: 14px;
   &.is-selected {
     background: var(--fill);
     box-shadow: var(--shadow-selected);
+
+    @include forced-colors {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
   }
 
   // A muted or switched-off channel keeps its place but reads quieter.

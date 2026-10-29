@@ -60,6 +60,15 @@ const KIND_ICON: Readonly<Record<ToastKind, IconName>> = {
       z-index: 60;
     }
 
+    // Short screens (a 200 % zoom on a laptop): at the bottom the toast would sit on Take, so it drops in under the
+    // toolbar and the activity bar instead, over the monitor head.
+    @media (max-height: 480px) {
+      :host {
+        bottom: auto;
+        top: calc(96px + env(safe-area-inset-top, 0px));
+      }
+    }
+
     .c-toast {
       align-items: center;
       animation: c-toast-in var(--dur-reveal) var(--ease);
