@@ -24,15 +24,19 @@ export const SPLITTER_STEP_LARGE_PX = 64;
  * listeners outside Angular's template bindings; only the behaviour decides what to update.
  *
  * ```html
- * <div class="c-splitter" [sfSplitter]="behavior" orientation="vertical" aria-label="Size of Preview and Program"></div>
+ * <div class="c-splitter" [sfSplitter]="behavior" orientation="vertical" [splitterValue]="42" aria-label="Size of Preview and Program"></div>
  * ```
  */
 @Directive({
   selector: '[sfSplitter]',
   host: {
     role: 'separator',
-    tabindex: '0',
+    '[attr.aria-hidden]': 'splitterDisabled() ? true : null',
+    '[attr.tabindex]': 'splitterDisabled() ? null : 0',
     '[attr.aria-orientation]': 'orientation()',
+    '[attr.aria-valuemax]': 'splitterMax()',
+    '[attr.aria-valuemin]': 'splitterMin()',
+    '[attr.aria-valuenow]': 'splitterValue()',
     '(pointerdown)': 'onPointerDown($event)',
     '(dblclick)': 'onReset($event)',
     '(keydown)': 'onKeyDown($event)',
@@ -43,7 +47,13 @@ export class SplitterDirective {
   readonly sfSplitter = input.required<SplitterBehavior>();
   /** `vertical`: moves along x; `horizontal`: moves along y. */
   readonly orientation = input<'vertical' | 'horizontal'>('vertical');
-  /** Disables pointer and keyboard resizing (e.g. on stacked layouts). */
+  /** Position of the splitter for assistive technology (`aria-valuenow`, a focusable separator is a widget). */
+  readonly splitterValue = input.required<number>();
+  /** Lowest value of {@link splitterValue}. */
+  readonly splitterMin = input(0);
+  /** Highest value of {@link splitterValue}. */
+  readonly splitterMax = input(100);
+  /** Disables pointer and keyboard resizing (e.g. on stacked layouts): no tab stop, hidden from assistive technology. */
   readonly splitterDisabled = input(false);
 
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

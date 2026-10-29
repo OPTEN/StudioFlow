@@ -13,6 +13,7 @@ import { t } from '@studioflow/i18n';
 import type { SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { ViewportService } from '../core/ui/viewport.service';
+import { LAYOUT_LIMITS } from '../shell/workspace/dock-layout';
 import { DockLayoutService } from '../shell/workspace/dock-layout.service';
 import { SplitterDirective } from '../shell/workspace/splitter.directive';
 import { ControlColumnComponent } from './control-column.component';
@@ -99,6 +100,11 @@ export class StageComponent {
   protected readonly splitBehavior = this.layout.monitorSplitBehavior(
     () => this.monitors().nativeElement.getBoundingClientRect().width - MONITOR_SPLIT_PX,
   );
+
+  /** Position of the split for assistive technology: the share of the Preview in percent. */
+  protected readonly splitPercent = computed(() => Math.round(this.layout.split() * 100));
+  protected readonly splitMinPercent = Math.round(LAYOUT_LIMITS.splitMin * 100);
+  protected readonly splitMaxPercent = Math.round(LAYOUT_LIMITS.splitMax * 100);
 
   constructor() {
     effect(() => {
