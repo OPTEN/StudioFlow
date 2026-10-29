@@ -1,4 +1,4 @@
-# Status and handover (2026-10-28)
+# Status and handover (2026-10-29)
 
 > **Internal working log.** This file is the hand-over of the maintainer's working sessions until the first release. It
 > is not user documentation and may be removed afterwards; the lasting content is in `docs/decisions.md`,
@@ -82,29 +82,30 @@ The coordinating session moved to a Linux cloud container (4 CPUs, 15 GB). What 
 | #67 #69 | landing page on Pages and product video: separate session, PR #72 | c7e92c5 |
 | #70 #71 #73 #74 (security audit 2026-10-28) | Caddy admin API on a unix socket only for caddy+api, networks `studioflow`/`backend`; TLS key 640, no typed user name in the audit log, absolute session lifetime 7 days with stored revocations, PBKDF2 210,000 with rehash; operator CLI reads the DB password from the secrets volume; flaky apply-status test | d83223d .. b883b3d |
 
-## Current state (2026-10-28)
+## Current state (2026-10-29)
 
-Everything up to #74 is on `main` except what the table and the list below name. Local verification of the security
-work (#70, #71, #73) on stack 4: smoke, desktop-chromium and disruptive over `specs/ops`, `specs/auth`, `specs/net`,
-`specs/output`: 199 passed; the remaining failures are E2E-NET-05/09 and E2E-OPS-28 (green on a re-run, load) and two
-that fail on `main` as well on Docker Desktop for Windows: INT-AUTH-22 (a 5 MB body to the published API port answers
-400 instead of 413) and E2E-OPS-35 (taken port). Both still need a decision (test or product) and an issue.
+**Released:** v0.1.1 (90b5abe) is the first complete release: four images signed and tagged `0.1.1`, `0.1` and
+`latest`, smoke and scan green, files attached (bundle, compose file, env.example, QUICKSTART, SHA256SUMS, prototype).
+v0.1.0 (e6bbdd8) exists as a tag and an empty GitHub release only: its smoke run failed on a test bug (E2E-AUD-01 read
+the onset of the tone, fixed in 37b6021) and a later commit's run published it anyway (#90, fixed in 62aef31: only the
+run of the release commit tags and publishes). Tags are not deleted (docs/releasing.md section 9).
 
-Open:
+**E2E full on GitHub** (run 40692998099, 3b88378): 624 passed, 8 failed, 1 flaky. All eight are explained and fixed:
+#84 (embedding update without `origins` cleared the allow-list; also behind OPS-36 and H-UI-05), #86 (a Caddy
+recreated without the init service locked the API out of the admin socket; OPS-35, OPS-09), #88 (backup retention with
+a reused folder name; OPS-28), test fixes for INT-AUTH-22 (two Host headers above 1 MB), E2E-OUT-17 (Firefox without
+H.264), E2E-AUD-08 (stalls of the output page) and E2E-OUT-08 (still periods against the undisturbed picture).
+INT-AUTH-22 and OPS-35 were not Windows-only, as first assumed. Per the user, E2E full is no longer run on GitHub: the
+matrix runs locally (`tests/e2e/stack.sh`), GitHub CI is kept to the normal checks.
 
-- A full local E2E matrix (all projects incl. Firefox, WebKit and the mobile descriptors) was started and interrupted by
-  a usage limit; its triage files issues for every product or test defect.
-- #60 repository clean-up (last before the public release), #64 closes with the first release (or the copy of the
-  prototype on Pages from #67), #18 closes with 0.1.0, #23 owner actions (branch protection to `ci-ok`, GHCR package
-  access; the Pages source is set), #69 product video (rendered locally and committed in `site/public/media`, PR #76).
+**Local matrix (2026-10-28, main 0a0422d):** #78, #79, #80 fixed; #81 (audio measurements on Windows) hardened, open
+until a local matrix is green.
 
 ## Remaining plan
 
-1. Finish the E2E matrix triage; fix and file what fails. Run the workflow **E2E full** on GitHub (label
-   `needs-full-e2e` on the release pull request) and `perf.yml`.
-2. #60 clean-up.
-3. Merge release PR #29 (0.1.0) once CI, E2E full and Release are green; check the release run (images, signatures,
-   scan, smoke, files) and install the bundle once on a clean stack.
+1. Install the v0.1.1 bundle once as an operator on a clean stack (update and Caddy recreate included).
+2. Full local E2E matrix on current `main`; fix and file what fails; then close #81 and #82.
+3. Follow-ups below.
 
 ## Follow-ups for the final pass
 
@@ -122,8 +123,7 @@ Open:
 
 ## Known open bugs
 
-- #33 (open until CI proves the fix), #48, #53, #54, #55, #56; #23 owner actions; #5 README; #18 closes with 0.1.0.
-- E2E-I18N-11: the settings popover covers the button the test clicks (test bug, no issue yet).
+- #81 (audio measurements on Windows), #82 (failed E2E full run 40692998099, closes with a green local matrix).
 - `AuditExportStreamingTests` times out in the cloud container now and then (green on GitHub).
 
 ## Gotchas learned
@@ -136,4 +136,4 @@ Open:
 - New executable scripts need `git update-index --chmod=+x` (Windows commits them as 100644).
 - Pushing from a worktree (`git push origin HEAD:main`) does not move the local `main` branch: fast-forward it in the
   main checkout afterwards, otherwise agents rebase onto a stale `main`.
-- Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (or Sonnet 5.5 when Sonnet commits).
+- No Co-Authored-By trailer in commits (the user's global instructions).
