@@ -246,7 +246,7 @@ test.describe('OUT media and reports', () => {
         expect(payload.programSceneId, 'the scene the page shows').toBe(production.sceneIds[0]);
         // The product reports the frame rate of the busiest video on the stage (what the audience sees; decision #12), no longer the animation frame rate of the page.
         expect(payload.fps, 'rendered frames per second').not.toBeNull();
-        expect(payload.fps!).toBeLessThanOrEqual(144);
+        expect(payload.fps!, 'the 30 fps of the program, not the 60 Hz of the page').toBeLessThanOrEqual(31);
         expect(payload.latencyMs, 'estimated latency').not.toBeNull();
       }
       // outputStatusChanged reaches the Regie at most every 5 s, unless a value changed by more than 20 % or the share of dropped frames

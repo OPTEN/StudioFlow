@@ -2,7 +2,8 @@
   "_comment": "Product bugs and documentation differences found by the OUT specs (tests/e2e/specs/output). Same schema as tests/e2e/known-bugs.json; the orchestrator merges the entries. support/output/bugs.ts (outBug) reads this file until they are merged: an `open` entry makes the test named in `test` an expected failure. Entries without a marked test (severity info) document a difference between docs/testing.md and the product that the specs already assert as implemented. Evidence files are written by the specs to tests/e2e/.output/<project>/results/ (git-ignored), traces and screenshots of a failing run to .output/<project>/artifacts/ (run with E2E_BUG_REPORT=1 to get the raw failure of an open entry).",
   "bugs": {
     "OUT-01": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): a cut to a scene with a live camera that no item of the shown scene plays builds the new layer unseen (its sources are requested and its videos decode) and puts it on stage when every new video has a decoded frame, after 100 ms at the latest; the shown scene stays until then (SceneRenderer.cutWhenFramed). A cut between scenes that share their cameras still moves the videos (MediaPool). Fades are unchanged. Tests: scene-renderer.transitions.spec.ts 'a cut to a camera that is not on stage yet'.",
       "severity": "high",
       "area": "OUT",
       "title": "A cut to a scene whose camera is not in the program shows 1-5 frames (16-95 ms) of the empty scene ground (rgb 13,17,23) before the picture: the new <video> has no decoded frame when its layer appears",
@@ -14,7 +15,8 @@
       "fix": "Keep a decoding <video> per source of the other scenes in the DOM (hidden, not display:none) and move it into the new layer like MediaPool already does for sources that two scenes share, or insert the new layer only after requestVideoFrameCallback / loadeddata of its videos (with a timeout of about 100 ms); fades can stay as they are."
     },
     "OUT-02": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): Production.Update lets the standby subtitle follow a rename while it is still the old name (the default of a new production); an edited subtitle stays. The audit log records the rename only. Tests: ProductionTests.Update_Rename_*, AuditEventTests.Update_Rename_RecordsTheOldAndTheNewName.",
       "severity": "low",
       "area": "OUT",
       "title": "Renaming a production does not change the subtitle of the standby slate (it is a copy of the name taken when the production was created)",
@@ -39,7 +41,8 @@
       "fix": "Pass the desired size of the item (or the highest layer) for the sources of the preview scene in the renderer's preload requests; keep LOW for the other scenes."
     },
     "OUT-04": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): the output joins LiveKit with autoSubscribe false and LiveKitSourceProvider.setWantedSources subscribes only to the pictures of the sources the scenes use (hidden items and fallback sources included) and the sounds of the mixer channels; the page tells the provider on every state change. A source in no scene is not received at all. Not done: a server-side restriction of the output token (whoever holds the link can still subscribe by hand). Tests: source-provider.spec.ts 'wanted sources (output)', output-app.spec.ts, selectors.spec.ts sourcesOfScenes.",
       "severity": "medium",
       "area": "OUT",
       "title": "The output subscribes to every published track (autoSubscribe), also to sources that are in no scene",
@@ -51,7 +54,8 @@
       "fix": "Connect the output with autoSubscribe: false and subscribe/unsubscribe the publications of the sources that appear in a scene (plus a server-side restriction of the output token if possible)."
     },
     "OUT-05": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): the uplink loss is the share of the packets the sender had to send again (retransmittedPacketsSent over packetsSent per interval, summed over the simulcast layers), or the net loss the remote reports where that is larger. Every transmission of a packet is lost with the same probability, so that share is the link loss; the net figure of the remote is near zero because the retransmissions fill the gaps. Measured with 5 % loss on the link: the Regie figure is now in the 2-9 % band (E2E-NET-04 [sender report]). Tests: media-stats.spec.ts summarizeSenderStats.",
       "severity": "low",
       "area": "NET",
       "title": "The uplink loss a sender reports (Regie “Packet loss”) is net of retransmissions: 0.1-0.3 % with 5 % and 20 % packet loss on the link, the plan expects 2-9 %",
@@ -75,7 +79,8 @@
       "fix": "Open: tune the output role for lossy links (larger playout delay when packetsLost > 2 %, request keyframes earlier, prefer a lower simulcast layer sooner), or relax the T-FREEZE budget of the plan for 20 % loss."
     },
     "OUT-11": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): MediaView.dispose() pauses a device video, clears srcObject and calls load() after the provider detached it, so the removed element releases its track and the old layer can be collected. Tests: scene-renderer.lifecycle.spec.ts 'releases the stream of a removed device video'.",
       "severity": "medium",
       "area": "OUT",
       "title": "Every program switch leaves the removed device <video> alive with its live MediaStream track: about 150 DOM nodes and one <video> element leak per switch (20 switches: 20 removed videos, 260 -> 3235 nodes), the page grows without bound during a show",
@@ -87,7 +92,8 @@
       "fix": "In MediaView.dispose() for device sources: video.pause(); video.srcObject = null (after provider.detach) and video.load(); the same for the fallback media and for videos handed to MediaPool.disposeRest()."
     },
     "OUT-07": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): the product is right, the plan was wrong. The output page keeps its renderer DOM (.sf-r-layer[data-scene-id], .sf-r-item[data-item-id], .sf-r-slate with -title and -subtitle, <pre class=\"c-debug\">), a state attribute per item would duplicate what the elements already say, and the debug overlay is localized on purpose. docs/testing.md 1.7 and E2E-OUT-05, -06, -08, -09, -11, -12 now name the real hooks, how the item state is derived (output-probe.js) and the real overlay lines; the specs already asserted that.",
       "severity": "info",
       "area": "OUT",
       "title": "docs/testing.md 1.7 / GAP-24 pin hooks and a debug overlay format the output page does not have: no data-state, data-source, data-slate, slate-title/-subtitle or debug-overlay test ids; the overlay is <pre class=\"c-debug\"> with English lines",
@@ -96,7 +102,8 @@
       "actual": "Only data-item-id and data-scene-id exist. The specs derive the item state from the computed styles the renderer toggles (hold-frame canvas shown = hold, .sf-r-held shown = held, .sf-r-fallback shown = fallback; support/output/browser/output-probe.js) and read the overlay as it is: “<Production> · Scene “Name””, “Revision n · Broadcast live”, “Hub connected · Sync up to date”, “LiveKit connected”, “Latency ≈ n ms · Renderer n fps”, “K1 Name · 1280×720 · 30 fps · 1.7 Mbit/s · Loss 0.0% · Buffer 31 ms”. Update the plan or add the attributes."
     },
     "OUT-08": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): out of date. The output reports the frame rate of the busiest picture (FpsMeter over getVideoPlaybackQuality, 30 for a 30 fps camera), no longer the animation frame rate of the page; the popover's \"30 fps\" is the format of the production, not a measurement. E2E-OUT-20 asserts 20..31 again (the upper bound was 144 while the registry entry was open) and docs/testing.md says what the number is.",
       "severity": "info",
       "area": "OUT",
       "title": "The output reports the animation frame rate of the page (about 60 fps) as OutputReport.fps and the popover says “1920 × 1080 · 30 fps”; E2E-OUT-20 expects 20-31",
@@ -105,7 +112,8 @@
       "actual": "FpsMeter counts requestAnimationFrame callbacks, so the report is 60 on a 60 Hz display regardless of the content. The spec asserts 20..144. Whether “fps” should mean the page's frame rate or the program's is open; the number says nothing about dropped video frames (use the decoded frame rate)."
     },
     "OUT-09": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): the product is right, the plan was wrong. A blocked main thread answers no hub pings, the API closes the connection after its client timeout of 5 s (shorter than Output:StaleAfter of 6 s) and the Regie shows \"not connected\" (state none) after 3.5-5.3 s; the page reconnects at once when it runs again. \"stale\" belongs to a connected hub client that stops reporting (asserted with a silent hub client). docs/testing.md E2E-OUT-15 says so; the spec already asserted it.",
       "severity": "info",
       "area": "OUT",
       "title": "E2E-OUT-15 expects a main-thread-blocked output page to turn “stale”; the API drops its hub connection after 5 s, so the Regie shows “not connected” (state none) after about 3.5-5.3 s and the page reconnects at once when it runs again",
@@ -114,7 +122,8 @@
       "actual": "States: connected -> none/0 consumers (+3.5 to +5.3 s, SignalR client timeout 5 s < Output:StaleAfter 6 s) -> connected (about 0.2 s after the block ended). “stale” is only reachable by a connected hub client that stops reporting (asserted with a silent Node hub client: lamp warning, “connected, no current picture”)."
     },
     "OUT-10": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29 (issue #94): the product is right, the plan was wrong. livekit-client negotiates three receive-only audio and three video transceivers up front; the audio ones are muted and carry no RTP unless a microphone or a screen sound is on air (it then arrives on such a transceiver and the Web Audio mix plays it). docs/testing.md E2E-OUT-02 and the test title now say \"no audio data\" instead of \"no audio receiver\"; the spec already asserted that.",
       "severity": "info",
       "area": "OUT",
       "title": "E2E-OUT-02 expects no audio receiver on any peer connection; LiveKit negotiates three receive-only audio transceivers (muted, no RTP) and three video transceivers up front",

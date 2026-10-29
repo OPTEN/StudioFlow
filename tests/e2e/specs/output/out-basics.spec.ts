@@ -84,7 +84,7 @@ test.describe('OUT basics', () => {
   );
 
   test(
-    'E2E-OUT-02 [output, K1 + S1] program rendering: two muted playing videos at the item rectangles x stage scale, no audio receiver, autoplay without a gesture (direct and in an iframe)',
+    'E2E-OUT-02 [output, K1 + S1] program rendering: two muted playing videos at the item rectangles x stage scale, no audio data on any peer connection, autoplay without a gesture (direct and in an iframe)',
     t.smoke,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
       test.setTimeout(180_000);
