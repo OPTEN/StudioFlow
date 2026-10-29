@@ -1,12 +1,32 @@
 <div class="c-monitor__head">
-  <span class="c-monitor__tally" [id]="labelId"><i aria-hidden="true"></i>{{ title() }}</span>
+  <span class="c-monitor__tally" [id]="labelId"
+    ><i class="c-monitor__lamp" aria-hidden="true"></i>{{ title() }}</span
+  >
   <span class="c-monitor__name">{{ scene()?.name }}</span>
   @if (liveEdit()) {
-    <span class="c-monitor__live-edit">{{ t('regie.stage.monitor.liveEdit') }}</span>
+    <span
+      class="c-monitor__live-edit"
+      [class.is-on-air]="onAir()"
+      [title]="t('regie.stage.monitor.liveEdit')"
+      ><svg sfIcon="pencil" [size]="12"></svg
+      ><span class="c-monitor__note-text">{{ t('regie.stage.monitor.liveEdit') }}</span></span
+    >
   }
-  <span class="c-monitor__meta" [class.c-monitor__meta--mono]="kind() === 'program'">{{
-    meta()
-  }}</span>
+  @if (locked()) {
+    <span class="c-monitor__live-note" [title]="t('regie.stage.monitor.liveNote')"
+      ><svg sfIcon="lock" [size]="12"></svg
+      ><span class="c-monitor__note-text">{{ t('regie.stage.monitor.locked') }}</span></span
+    >
+  }
+  <span class="c-monitor__meta">{{ meta() }}</span>
+  @if (fade(); as running) {
+    <span
+      class="c-monitor__fade"
+      aria-hidden="true"
+      [style.animation-duration.ms]="running.durationMs"
+      [style.animation-delay.ms]="-running.elapsedMs"
+    ></span>
+  }
 </div>
 <div class="c-monitor__screen" #screen [style.aspect-ratio]="store.canvasAspect()">
   <sf-scene-view
@@ -19,12 +39,14 @@
     (transitionEnd)="onTransitionEnd()"
   />
   @if (!scene() && emptyText(); as text) {
-    <span class="c-monitor__empty">{{ text }}</span>
+    <p class="c-monitor__empty">
+      <strong>{{ text }}</strong>
+      @if (emptyHint(); as hint) {
+        <span>{{ hint }}</span>
+      }
+    </p>
   }
   @if (editable()) {
     <sf-edit-overlay [view]="view() ?? null" />
-  }
-  @if (locked()) {
-    <div class="c-monitor__live-note">{{ t('regie.stage.monitor.liveNote') }}</div>
   }
 </div>

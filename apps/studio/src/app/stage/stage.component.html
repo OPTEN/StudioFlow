@@ -6,18 +6,43 @@
       [editable]="true"
       [locked]="editor.editLocked()"
       [emptyText]="emptyText()"
+      [emptyHint]="emptyHint()"
     />
-    <div
-      class="c-stage__split"
-      orientation="vertical"
-      [attr.aria-label]="t('regie.stage.split.label')"
-      [sfSplitter]="splitBehavior"
-      [splitterDisabled]="viewport.stacked()"
-    ></div>
+    @if (viewport.stacked()) {
+      <div class="c-stage__gap" aria-hidden="true"></div>
+    } @else {
+      <div
+        class="c-stage__split"
+        orientation="vertical"
+        [attr.aria-label]="t('regie.stage.split.label')"
+        [sfSplitter]="splitBehavior"
+      ></div>
+    }
   } @else {
-    <div class="c-stage__preview-off" aria-hidden="true">
-      <b class="c-stage__preview-off-title">{{ t('regie.stage.previewOff.title') }}</b>
-      <span>{{ t('regie.stage.previewOff.hint') }}</span>
+    <div class="c-stage__preview-off">
+      <div class="c-stage__off">
+        <div class="c-stage__off-head">
+          <span class="c-stage__off-label"
+            ><i class="c-stage__off-lamp" aria-hidden="true"></i
+            >{{ t('regie.stage.monitor.preview') }}</span
+          >
+          <span class="c-stage__off-state">{{ t('regie.stage.previewOff.state') }}</span>
+        </div>
+        <div class="c-stage__off-panel" [style.aspect-ratio]="store.canvasAspect()">
+          <svg class="c-stage__off-icon" sfIcon="eye-off" [size]="22"></svg>
+          <strong class="c-stage__preview-off-title">{{
+            t('regie.stage.previewOff.title')
+          }}</strong>
+          <p class="c-stage__off-text">{{ t('regie.stage.previewOff.hint') }}</p>
+          <button
+            class="c-btn c-btn--primary c-stage__off-action"
+            type="button"
+            (click)="turnOnStudioMode()"
+          >
+            {{ t('regie.stage.previewOff.action') }}
+          </button>
+        </div>
+      </div>
     </div>
   }
   <sf-monitor
@@ -26,7 +51,9 @@
     [editable]="!switcher.studioMode()"
     [liveEdit]="!switcher.studioMode()"
     [cue]="cue()"
+    [fade]="fade()"
     [emptyText]="emptyText()"
+    [emptyHint]="emptyHint()"
   />
 </div>
 <sf-control-column />

@@ -29,8 +29,6 @@ export const MIN_DRAG_HEIGHT = 54;
 export const NUDGE_STEP = 1;
 /** Arrow key step with Shift (prototype: 10 px). */
 export const NUDGE_STEP_LARGE = 10;
-/** Pitch of the dot raster shown while dragging, in canvas pixels (prototype `--grid`: 40 canvas px). */
-export const RASTER_PITCH = 40;
 
 /**
  * Largest sum of two opposite crop sides a crop drag produces: the server demands strictly less than 0.9, the margin
@@ -377,11 +375,11 @@ export function cropSummary(crop: CropDto | null | undefined): string {
 }
 
 /**
- * Text of the selection label (prototype "K1 · 600 × 338"), with the crop when there is one:
- * "K1 · 540 × 338 · Crop R 10%".
+ * Size part of the selection label (after the code and the name of the source): "600 × 338", with the crop when there
+ * is one: "540 × 338 · Crop R 10%".
  */
-export function boxLabel(code: string, rect: CanvasRect, crop?: CropDto | null): string {
-  const size = `${code} · ${Math.round(rect.w)} × ${Math.round(rect.h)}`;
+export function boxDetail(rect: CanvasRect, crop?: CropDto | null): string {
+  const size = `${Math.round(rect.w)} × ${Math.round(rect.h)}`;
   const cropped = cropSummary(crop);
   return cropped ? `${size} · ${t('regie.stage.crop.summary', { sides: cropped })}` : size;
 }

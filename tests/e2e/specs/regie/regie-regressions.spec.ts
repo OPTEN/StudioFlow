@@ -249,12 +249,13 @@ test.describe('REGIE regressions', () => {
         'true',
       );
 
-      // 4. A click beside the monitor (the free stage area, here the quiet “Preview off” space and the monitor header).
+      // 4. A click beside the monitor (the free stage area, here the Studio Mode panel in the place of the Preview, away
+      // from its button, and the monitor header).
       await selectElement();
-      const preview = page.locator('.c-stage__preview-off');
+      const preview = page.locator('.c-stage__preview-off .c-stage__off-panel');
       await expect(preview).toBeVisible();
-      await preview.click();
-      await toSceneInspector('click beside the monitor (Preview off space)');
+      await preview.click({ position: { x: 12, y: 12 } });
+      await toSceneInspector('click beside the monitor (Studio Mode panel)');
       await selectElement();
       await monitorOf(page, 'program').locator('.c-monitor__head').click();
       await toSceneInspector('click on the monitor header');

@@ -87,24 +87,40 @@ describe('ControlColumnComponent: level of the program sound', () => {
     vi.useRealTimers();
   });
 
-  it('shows no level for a production without audio channels', async () => {
+  it('says that there is no sound yet for a production without audio channels', async () => {
     await setup(false);
     expect(element.querySelector('[data-testid="program-level"]')).toBeNull();
+    // The row keeps its place, so Take does not move when the first channel arrives.
+    expect(element.querySelector('.c-program-level.is-empty')?.textContent).toContain(
+      'No sound sources yet',
+    );
+    expect(element.querySelector('[role="meter"]')).toBeNull();
   });
 
   it('shows the peak of the program mix as a bar and in dB', async () => {
     await setup(true);
     expect(element.querySelector('.c-program-level .c-control-column__label')?.textContent).toBe(
-      'Audio',
+      'Program audio',
     );
     expect(element.querySelector('[data-testid="program-db"]')?.textContent).toBe('−∞ dB');
+    const bar = element.querySelector('[role="meter"]') as HTMLElement;
+    expect(bar.getAttribute('aria-valuenow')).toBe('-60');
+    expect(bar.getAttribute('aria-valuetext')).toBe('Silent');
+    const labelId = bar.getAttribute('aria-labelledby') as string;
+    expect(element.querySelector(`#${labelId}`)?.textContent).toBe('Program audio');
 
     mix.program = -30;
     await tick();
     expect(meter().style.transform).toBe('scaleX(0.5)');
     expect(element.querySelector('[data-testid="program-db"]')?.textContent).toBe('−30.0 dB');
+    expect(bar.getAttribute('aria-valuenow')).toBe('-30');
+    expect(bar.getAttribute('aria-valuetext')).toBe('−30.0 dB');
     expect(meter().classList.contains('is-hot')).toBe(false);
 
+    // Red only from −3 dBFS (DESIGN.md "Audio").
+    mix.program = -4;
+    await tick();
+    expect(meter().classList.contains('is-hot')).toBe(false);
     mix.program = -3;
     await tick();
     expect(meter().classList.contains('is-hot')).toBe(true);

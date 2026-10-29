@@ -3,13 +3,24 @@ import type { Namespace } from '../../types';
 /** The stage: the two monitors, the control column (transition, Take), the edit overlay and the editing toasts. */
 export const regieStage = {
   'regie.stage.control.cut': 'Cut',
+  'regie.stage.control.cutDuration': 'A cut switches at once, so it has no duration.',
+  'regie.stage.control.duration': 'Duration',
   'regie.stage.control.fade': 'Fade',
   'regie.stage.control.fadeDuration': 'Fade duration',
   'regie.stage.control.fadeLonger': 'Longer fade',
   'regie.stage.control.fadeShorter': 'Shorter fade',
+  'regie.stage.control.noAudio': 'No sound sources yet',
+  'regie.stage.control.programAudio': 'Program audio',
+  'regie.stage.control.programAudioTitle': 'Peak level of what the output plays',
+  'regie.stage.control.silent': 'Silent',
   'regie.stage.control.space': 'Space',
   'regie.stage.control.studioMode': 'Studio Mode',
   'regie.stage.control.take': 'Take',
+  'regie.stage.control.takeFading': 'Fading…',
+  'regie.stage.control.takeNoPreview': 'No scene in Preview',
+  'regie.stage.control.takeOffline': 'No connection to the server',
+  'regie.stage.control.takeSame': 'Preview is already on air',
+  'regie.stage.control.takeSwitching': 'Switching…',
   'regie.stage.control.transition': 'Transition',
   'regie.stage.control.transitionKind': 'Transition type',
 
@@ -40,10 +51,13 @@ export const regieStage = {
   'regie.stage.editor.undone': 'Undone',
 
   'regie.stage.monitor.connecting': 'Connecting…',
+  'regie.stage.monitor.hidden': '{count} hidden',
   'regie.stage.monitor.liveEdit': 'Changes go live immediately',
   'regie.stage.monitor.liveNote':
     'This scene is live right now. Editing is possible once another scene is on Program.',
-  'regie.stage.monitor.noScene': 'No scene',
+  'regie.stage.monitor.locked': 'Live, read only',
+  'regie.stage.monitor.noScene': 'No scene yet',
+  'regie.stage.monitor.noSceneHint': 'Add a scene in the Scenes dock.',
   'regie.stage.monitor.noSceneName': 'no scene',
   'regie.stage.monitor.preview': 'Preview',
   'regie.stage.monitor.previewLabel': 'Preview monitor: {name}',
@@ -52,19 +66,23 @@ export const regieStage = {
 
   'regie.stage.overlay.label':
     'Items of the scene. Drag to move, corners to resize, arrow keys to fine-tune.',
+  'regie.stage.overlay.locked': 'Locked. Unlock it in Sources to move it.',
 
-  'regie.stage.previewOff.hint': 'With Studio Mode the Preview appears here.',
-  'regie.stage.previewOff.title': 'Preview off',
+  'regie.stage.previewOff.action': 'Turn on Studio Mode',
+  'regie.stage.previewOff.hint':
+    'A click on a scene goes live at once. Turn it on to prepare the next scene in Preview first.',
+  'regie.stage.previewOff.state': 'Off',
+  'regie.stage.previewOff.title': 'Studio Mode is off',
 
   'regie.stage.split.label': 'Size of Preview and Program',
 
-  'regie.stage.switch.hintDirect': 'Click a scene to switch it live directly.',
-  'regie.stage.switch.hintStudio': 'Click a scene to load it into Preview. Take switches it live.',
+  'regie.stage.switch.hintDirect': 'A click on a scene puts it live at once.',
+  'regie.stage.switch.hintStudio': 'A click on a scene loads it into Preview.',
   'regie.stage.switch.live': '“{name}” is live',
   'regie.stage.switch.offline':
     'No connection to the server. Switching works again as soon as the control room is connected.',
-  'regie.stage.switch.studioOff': 'Studio Mode off: scenes switch live directly',
-  'regie.stage.switch.studioOn': 'Studio Mode on: Preview and Take',
+  'regie.stage.switch.studioOff': 'Studio Mode is off. A click on a scene goes live at once.',
+  'regie.stage.switch.studioOn': 'Studio Mode is on. Take puts the Preview live.',
 
   'regie.stage.view.label': 'Scene',
 } as const satisfies Namespace<'regie.stage'>;

@@ -1,123 +1,139 @@
-// Control column (prototype .ctrl, .ctrl-l, .tr-seg, .dur, .take-btn, .ctrl-hint). The switch uses .c-switch.
+// Control column: one calm stack from the mode to the action (Studio Mode, Transition, duration, Program audio,
+// Take). The switch, the segmented control and the buttons are the shared primitives (.c-switch, .c-seg, .c-btn).
 @use 'mixins' as *;
 
 :host {
-  align-content: start;
-  display: grid;
+  display: flex;
   flex: 0 0 var(--control-column);
-  gap: 8px;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .c-control-column__label {
-  @include label-text(11px);
+  @include label-text(var(--fs-footnote));
+}
+
+// Studio Mode: the label left, the switch right, the explanation under it. Two lines are reserved for the
+// explanation, so the controls below never move when the mode (and with it the text) changes.
+.c-control-column__mode {
+  display: grid;
+  gap: 4px;
+}
+
+.c-control-column__switch {
+  font-weight: 600;
+  justify-content: space-between;
 }
 
 .c-control-column__hint {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
+  line-height: 16px;
+  margin: 0;
+  min-height: 32px;
 }
 
-// Transition: Cut | Fade (the active segment is blue-wash with a blue underline).
-.c-transition {
-  border: 1px solid var(--seam-strong);
-  border-radius: var(--radius-md);
+// Transition: label above the segmented control.
+.c-control-column__transition {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
+  gap: 6px;
+  margin-top: 14px;
 }
 
-.c-transition__option {
-  @include state-transition(background-color, color);
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(--seam-strong);
-  color: var(--text-2);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  height: 30px;
-  padding: 0 4px;
-  white-space: nowrap;
+.c-transition {
+  display: grid;
+  width: 100%;
+}
 
-  &:last-child {
-    border-right: 0;
-  }
+// Duration of the fade: label left, stepper right. Under Cut the row stays in place but is dimmed and inert.
+.c-control-column__duration {
+  @include state-transition(opacity);
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-top: 8px;
 
-  &:hover {
-    background: var(--raised);
-  }
-
-  &:focus-visible {
-    outline-offset: -3px;
-  }
-
-  &[aria-pressed='true'] {
-    background: var(--blue-wash);
-    box-shadow: var(--shadow-selected);
-    color: var(--blue);
+  &.is-off {
+    opacity: 0.45;
   }
 }
 
-// Duration stepper: violet mono value, muted under Cut.
+// The stepper looks like a small segmented track: − value +.
 .c-duration {
   align-items: center;
-  border: 1px solid var(--seam);
-  border-radius: var(--radius-md);
+  background: var(--fill);
+  border-radius: 8px;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 28px;
-  height: 30px;
-  padding: 1px;
-
-  &.is-off .c-duration__value {
-    color: var(--muted);
-  }
+  flex: none;
+  grid-template-columns: 24px minmax(44px, auto) 24px;
+  height: 28px;
+  padding: 2px;
 }
 
 .c-duration__btn {
+  @include state-transition(background-color, color);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-xs);
-  color: var(--muted);
+  border-radius: 6px;
+  color: var(--text-2);
   cursor: pointer;
   display: grid;
-  height: 26px;
+  height: 24px;
+  padding: 0;
   place-items: center;
 
-  &:hover {
-    background: var(--raised);
+  &:hover:not(:disabled) {
+    background: var(--fill);
     color: var(--text);
   }
 
+  &:focus-visible {
+    outline-offset: 0;
+  }
+
   &:disabled {
-    background: transparent;
     color: var(--muted);
     cursor: not-allowed;
-    opacity: 0.4;
+    opacity: 0.5;
+  }
+
+  // Under Cut the whole row is dimmed already.
+  .is-off &:disabled {
+    opacity: 1;
   }
 }
 
 .c-duration__value {
   @include mono;
-  color: var(--violet);
+  color: var(--text);
   font-size: 12.5px;
   font-weight: 500;
   text-align: center;
   white-space: nowrap;
 }
 
-// Level of the program sound: a neutral bar (red only close to full scale) with the peak in dB.
+// Program audio: what the output plays. Label and value on one line, a thin bar under them (red from −3 dBFS).
 .c-program-level {
   align-items: center;
   display: grid;
-  gap: 4px 8px;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  margin-top: 4px;
+  gap: 6px 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 16px;
+}
+
+.c-program-level__value {
+  @include mono;
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  white-space: nowrap;
 }
 
 .c-program-level__bar {
-  background: var(--raised-2);
-  border-radius: 3px;
-  height: 6px;
+  background: var(--fill);
+  border-radius: 2px;
+  grid-column: 1 / -1;
+  height: 4px;
   overflow: hidden;
 }
 
@@ -137,79 +153,152 @@
   }
 }
 
-.c-program-level__value {
+.c-program-level__none {
   color: var(--muted);
-  font-size: 11.5px;
-  min-width: 7ch;
-  text-align: right;
-  white-space: nowrap;
+  font-size: var(--fs-footnote);
+  grid-column: 1 / -1;
 }
 
-// TAKE: the only large filled control (Studio Mode only).
+// Take: the one filled action of the stage (Studio Mode only), its key hint, and the reason while it cannot take.
+.c-control-column__take {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
 .c-take {
-  @include state-transition(background-color);
+  @include state-transition(background-color, box-shadow, color, transform);
+  align-items: center;
   background: var(--blue-fill);
-  border: 1px solid var(--blue-fill);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raise);
   color: var(--on-fill);
   cursor: pointer;
-  display: grid;
-  font-size: 15px;
-  font-weight: 700;
-  gap: 2px;
-  letter-spacing: 0.08em;
-  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-title-3);
+  font-weight: 600;
+  gap: 5px;
+  justify-content: center;
+  line-height: 1;
   min-height: 56px;
-  place-content: center;
-  text-transform: uppercase;
+  padding: 8px 12px;
+  width: 100%;
 
   &:hover:not(:disabled) {
     background: var(--blue-fill-hover);
-    border-color: var(--blue-fill-hover);
   }
 
   &:active:not(:disabled) {
-    transform: translateY(1px);
+    transform: scale(0.98);
   }
 
+  &:focus-visible {
+    outline-offset: 2px;
+  }
+
+  // Inactive: a quiet fill instead of a faded blue, so it never reads as ready.
   &:disabled {
+    background: var(--fill);
+    box-shadow: none;
+    color: var(--muted);
     cursor: not-allowed;
-    opacity: 0.45;
   }
 }
 
+// "Space" as a keycap outline on the fill (the text stays on-fill on blue: 4.6:1).
 .c-take__hint {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  line-height: 1;
+  padding: 2px 6px;
 }
 
-// ≤ 900 px: controls in two columns below the Program, Take full width.
+.c-take__reason {
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+  line-height: 16px;
+  margin: 0;
+  min-height: 16px;
+  text-align: center;
+}
+
+// Short laptops (≤ 820 px high): the same stack, a little tighter.
+@include short-laptop {
+  .c-control-column__transition {
+    margin-top: 10px;
+  }
+
+  .c-program-level,
+  .c-control-column__take {
+    margin-top: 12px;
+  }
+
+  .c-take {
+    min-height: 48px;
+  }
+}
+
+// ≤ 900 px: below the Program in two columns: the mode across, Transition | duration side by side (each with its label
+// above), Program audio and Take across.
 @include narrow {
   :host {
+    display: grid;
     flex: none;
+    gap: 14px 16px;
+    grid-template-areas:
+      'mode mode'
+      'transition duration'
+      'level level'
+      'take take';
     grid-template-columns: repeat(2, minmax(0, 1fr));
     order: 2;
   }
 
-  .c-control-column__switch,
-  .c-control-column__hint,
+  .c-control-column__mode {
+    grid-area: mode;
+  }
+
+  .c-control-column__hint {
+    min-height: 0;
+  }
+
+  .c-control-column__transition {
+    grid-area: transition;
+    margin-top: 0;
+  }
+
+  .c-control-column__duration {
+    align-items: stretch;
+    display: grid;
+    gap: 6px;
+    grid-area: duration;
+    justify-content: stretch;
+    margin-top: 0;
+  }
+
+  .c-duration {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+  }
+
+  .c-duration__btn {
+    width: 100%;
+  }
+
   .c-program-level {
-    grid-column: 1 / -1;
+    grid-area: level;
+    margin-top: 0;
   }
 
-  .c-control-column__label {
-    grid-column: 1 / -1;
-  }
-
-  .c-program-level .c-control-column__label {
-    grid-column: auto;
+  .c-control-column__take {
+    grid-area: take;
+    margin-top: 0;
   }
 
   .c-take {
-    grid-column: 1 / -1;
-    margin-top: 0;
     min-height: 48px;
   }
 }

@@ -87,7 +87,7 @@ describe('StageComponent: shape of the canvas', () => {
   it('names the size of the canvas on the Program monitor', async () => {
     await setup(canvasDto('portrait', 'p720'), true);
 
-    expect(meta('program')).toBe('720 × 1280 · 30 fps');
+    expect(meta('program')).toBe('720 × 1280');
   });
 
   it('follows a change of the format live', async () => {
@@ -102,6 +102,6 @@ describe('StageComponent: shape of the canvas', () => {
     await render();
 
     expect(screens()[0].style.aspectRatio.replace(/\s/g, '')).toBe('1080/1080');
-    expect(meta('program')).toBe('1080 × 1080 · 30 fps');
+    expect(meta('program')).toBe('1080 × 1080');
   });
 });

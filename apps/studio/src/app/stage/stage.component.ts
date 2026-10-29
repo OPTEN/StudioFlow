@@ -12,6 +12,7 @@ import {
 import { t } from '@studioflow/i18n';
 import type { SceneDto } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
+import { IconComponent } from '../core/ui/icon.component';
 import { ViewportService } from '../core/ui/viewport.service';
 import { DockLayoutService } from '../shell/workspace/dock-layout.service';
 import { SplitterDirective } from '../shell/workspace/splitter.directive';
@@ -19,7 +20,7 @@ import { ControlColumnComponent } from './control-column.component';
 import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { MONITOR_SPLIT_PX, monitorWidths } from './monitor-layout';
-import { MonitorComponent } from './monitor.component';
+import { MonitorComponent, type MonitorFade } from './monitor.component';
 import type { SceneTransitionCue } from './scene-view.component';
 import { SwitcherService } from './switcher.service';
 
@@ -34,29 +35,31 @@ function sceneIn(scenes: readonly SceneDto[], id: string | null): SceneDto | nul
 }
 
 /**
- * The stage (prototype `.stage-in`, DESIGN.md "Stage"): monitors on the left, the fixed control column on the right.
- * Rendered by the workspace inside `section.c-workspace__stage` ("Monitors").
+ * The stage (DESIGN.md "Stage"): the monitors on the dark viewer surface (`--stage`), the fixed control column on the
+ * right. Rendered by the workspace inside `section.c-workspace__stage` ("Monitors").
  *
- * - Studio Mode off: one Program monitor, right-aligned against the control column, with the quiet "Preview off"
- *   note in the free space; the Program header says "Changes go live immediately" and carries the edit overlay.
+ * - Studio Mode off: one Program monitor, right-aligned against the control column; its header says "Changes go live
+ *   immediately" and it carries the edit overlay. The place of the Preview teaches instead of staying blank: a quiet
+ *   picture-shaped panel says that a click goes live at once and offers "Turn on Studio Mode".
  * - Studio Mode on: Preview | split | Program. The split is resizable (pointer, arrow keys, double-click/Enter
  *   resets; `DockLayoutService.split`), the Preview carries the overlay, and while preview = program editing is
- *   locked (live note). The control column and the docks never move when the mode toggles.
+ *   locked ("Live, read only"). The control column and the docks never move when the mode toggles.
  * - Both monitors show the scenes with local edit drafts (`EditorService.scenes`); the Program plays the transition of
- *   every program switch event and flashes.
+ *   every program switch event, shows the progress of a fade under its header and flashes at the end.
  * - The monitors have the shape of the production's canvas (16:9, 9:16, 1:1 or 4:3); a portrait monitor is narrow and
  *   the free space stays empty beside it.
  * - Sizes: a ResizeObserver measures the stage and, one animation frame later, writes the monitor widths
  *   (`monitor-layout.ts`) as the custom properties `--sf-preview-w` / `--sf-program-w` directly on the host, so resizing
  *   never runs change detection. The write is not made inside the observer callback: it resizes the observed host again.
- * - ≤ 1180 px only the width counts; ≤ 900 px everything stacks: Program, controls, Preview.
- * - A press on the stage around the editable screen (monitor headers, the "Preview off" space, the other monitor,
- *   the free stage) clears the element selection, so Properties shows the scene again even when an element fills
- *   the whole editable screen ("Full screen"). Controls (control column, splitter) are left alone.
+ * - ≤ 1180 px only the width counts and the split is not rendered (resizing is off there, so it would be a dead tab
+ *   stop); ≤ 900 px everything stacks: Program, controls, Preview.
+ * - A press on the stage around the editable screen (monitor headers, the Studio Mode panel, the other monitor, the
+ *   free stage) clears the element selection, so Properties shows the scene again even when an element fills the
+ *   whole editable screen ("Full screen"). Controls (control column, splitter, buttons) are left alone.
  */
 @Component({
   selector: 'sf-stage',
-  imports: [MonitorComponent, ControlColumnComponent, SplitterDirective],
+  imports: [MonitorComponent, ControlColumnComponent, SplitterDirective, IconComponent],
   templateUrl: './stage.component.html',
   styleUrl: './stage.component.scss',
   host: { class: 'c-stage', '(pointerdown)': 'onPointerDown($event)' },
@@ -67,7 +70,7 @@ export class StageComponent {
   protected readonly switcher = inject(SwitcherService);
   protected readonly editor = inject(EditorService);
   protected readonly viewport = inject(ViewportService);
-  private readonly store = inject(ProductionStoreService);
+  protected readonly store = inject(ProductionStoreService);
   private readonly layout = inject(DockLayoutService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly monitors = viewChild.required<ElementRef<HTMLElement>>('monitors');
@@ -95,6 +98,32 @@ export class StageComponent {
   protected readonly emptyText = computed(() =>
     this.store.state() ? t('regie.stage.monitor.noScene') : t('regie.stage.monitor.connecting'),
   );
+  /** The next step in an empty monitor: where to add a scene (only once the state is loaded and has none). */
+  protected readonly emptyHint = computed(() =>
+    this.store.state() && this.store.scenes().length === 0
+      ? t('regie.stage.monitor.noSceneHint')
+      : null,
+  );
+  /**
+   * The fade of the program while it runs (server time, so a late render starts the progress line where the fade is),
+   * else null. A cut has no progress.
+   */
+  protected readonly fade = computed<MonitorFade | null>(() => {
+    if (!this.switcher.transitionRunning()) {
+      return null;
+    }
+    const production = this.store.production();
+    const transition = production?.lastTransition;
+    const start = production?.lastSwitchAt ? Date.parse(production.lastSwitchAt) : Number.NaN;
+    if (transition?.kind !== 'fade' || Number.isNaN(start)) {
+      return null;
+    }
+    const elapsed = untracked(() => this.store.serverNow()) - start;
+    return {
+      durationMs: transition.durationMs,
+      elapsedMs: Math.min(transition.durationMs, Math.max(0, elapsed)),
+    };
+  });
   /** Splitter between Preview and Program (width of the monitor row minus the split itself). */
   protected readonly splitBehavior = this.layout.monitorSplitBehavior(
     () => this.monitors().nativeElement.getBoundingClientRect().width - MONITOR_SPLIT_PX,
@@ -112,6 +141,11 @@ export class StageComponent {
       untracked(() => this.applyWidths());
     });
     this.observeSize();
+  }
+
+  /** "Turn on Studio Mode" in the place of the Preview. */
+  protected turnOnStudioMode(): void {
+    void this.switcher.setStudioMode(true);
   }
 
   /** Deselects on a primary press outside the editable screen and outside controls. */

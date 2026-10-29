@@ -40,7 +40,8 @@
       "fix": "isTypingTarget: only text-like input types (text, search, number, password, email, url, tel ...), not checkbox, radio, range, button; or blur the switch after toggling."
     },
     "A11Y-05": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: the stage renders the Preview/Program split only above 1180 px; in the stacked layout a plain 20 px gap keeps the spacing, so there is no separator to tab to. Guarded by the E2E-DEV-04 test (a regression guard now) and the unit test of StageComponent (A11Y-05).",
       "severity": "low",
       "area": "A11Y",
       "title": "At <= 1180 px the Preview/Program splitter stays visible and focusable (role=separator, tabindex=0) although it is disabled: a dead tab stop announced as resizable",

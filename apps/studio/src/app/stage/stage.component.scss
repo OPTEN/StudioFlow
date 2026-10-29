@@ -1,8 +1,9 @@
-// Stage: monitors left, fixed control column right (prototype .stage-in, .mons, .pvw-off, .split-mon).
+// Stage: the monitors on the dark viewer surface, the fixed control column on the right.
 @use 'mixins' as *;
 
 :host {
   align-items: flex-start;
+  background: var(--stage);
   display: flex;
   gap: 20px;
   height: 100%;
@@ -32,42 +33,135 @@
   }
 }
 
-// Without Studio Mode the place of the Preview stays free, with a quiet note.
+// Studio Mode off: the place of the Preview teaches. A picture-shaped panel (never larger than the Program) with what
+// the mode means and the switch to turn it on, right-aligned against the Program with the split's 20 px between.
 .c-stage__preview-off {
-  align-self: stretch;
-  color: var(--muted);
-  container-type: inline-size;
-  display: grid;
+  container: preview-off / inline-size;
   flex: 1 1 0px;
-  font-size: 12.5px;
-  gap: 4px;
   min-width: 0;
-  padding: 32px 20px 0 0;
-  place-content: center;
-  text-align: center;
 
   @include narrow {
     display: none;
   }
 }
 
-.c-stage__preview-off-title {
-  @include label-text(11px);
+.c-stage__off {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 20px 0 auto;
+  width: min(calc(100% - 20px), var(--sf-program-w, 100%));
 }
 
-@container (max-width: 220px) {
-  .c-stage__preview-off > * {
+@container preview-off (max-width: 160px) {
+  .c-stage__off {
     display: none;
   }
 }
 
-// Resizable split between Preview and Program (20 px hit area, 1 px line that turns blue).
+// Same rhythm as a monitor header: an idle (hollow) lamp, "Preview" and its state.
+.c-stage__off-head {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.c-stage__off-label {
+  align-items: center;
+  display: inline-flex;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  gap: 6px;
+}
+
+.c-stage__off-lamp {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+
+.c-stage__off-state {
+  font-size: var(--fs-footnote);
+  margin-left: auto;
+}
+
+.c-stage__off-panel {
+  align-content: center;
+  background: var(--panel);
+  border-radius: var(--radius-screen);
+  box-shadow: inset 0 0 0 1px var(--seam);
+  container: off-panel / size;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  overflow: hidden;
+  padding: 16px 24px;
+  text-align: center;
+}
+
+.c-stage__off-icon {
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.c-stage__preview-off-title {
+  color: var(--text);
+  font-size: var(--fs-headline);
+  font-weight: 600;
+}
+
+.c-stage__off-text {
+  color: var(--muted);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  margin: 0 0 6px;
+  max-width: 34ch;
+  text-wrap: pretty;
+}
+
+// A small panel keeps the title and the action; the explanation goes first, then the icon.
+@container off-panel (max-height: 230px) {
+  .c-stage__off-icon {
+    display: none;
+  }
+}
+
+@container off-panel (max-height: 160px) or (max-width: 140px) {
+  .c-stage__off-text {
+    display: none;
+  }
+}
+
+@container off-panel (max-height: 84px) or (max-width: 120px) {
+  .c-stage__off-panel > * {
+    display: none;
+  }
+}
+
+// Resizable split between Preview and Program: a 20 px hit area with a quiet grip at rest; line and grip turn blue on
+// hover, focus or drag. Not rendered at ≤ 1180 px, where resizing is off (a plain gap keeps the spacing).
 .c-stage__split {
   align-self: stretch;
   cursor: col-resize;
   flex: 0 0 20px;
   position: relative;
   touch-action: none;
+
+  // The grip, centred on the pictures (below the 32 px of header and gap).
+  &::before {
+    @include state-transition(background-color);
+    background: var(--seam-strong);
+    border-radius: var(--radius-pill);
+    content: '';
+    height: 28px;
+    left: 8px;
+    position: absolute;
+    top: calc(32px + (100% - 32px) / 2 - 14px);
+    width: 4px;
+  }
 
   &::after {
     background: transparent;
@@ -80,6 +174,12 @@
     width: 1px;
   }
 
+  &:hover::before,
+  &:focus-visible::before,
+  &.is-drag::before {
+    background: var(--blue);
+  }
+
   &:hover::after,
   &:focus-visible::after,
   &.is-drag::after {
@@ -89,10 +189,10 @@
   &:focus-visible {
     outline: none;
   }
+}
 
-  @include stacked {
-    cursor: default;
-  }
+.c-stage__gap {
+  flex: 0 0 20px;
 
   @include narrow {
     display: none;

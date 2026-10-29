@@ -311,8 +311,8 @@ test.describe('REGIE editing: templates', () => {
       await addItems(api, production, production.sceneIds[0]!, [phone!.sourceId()]);
       await regie.setStudioMode(true);
       await regie.clickScene('Scene A'); // preview = program: the live scene is locked
-      await expect(monitorOf(page, 'preview')).toContainText(
-        'This scene is live right now. Editing is possible once another scene is on Program.',
+      await expect(monitorOf(page, 'preview').locator('.c-monitor__live-note')).toHaveText(
+        'Live, read only',
       );
       for (const name of Object.values(NAMES))
         await expect(inspector(page).getByRole('button', { name, exact: true })).toBeDisabled();
@@ -369,14 +369,16 @@ test.describe('REGIE editing: monitor gestures', () => {
       // Free move by (+320, +130): no line near the new position, so x/y = start + delta (rounding of one pixel).
       await dragTo(320, 130, {
         holdCheck: async () => {
-          await expect(overlay, 'the dot raster shows while dragging').toHaveClass(/is-dragging/);
+          await expect(overlay, 'the drag state shows while dragging').toHaveClass(/is-dragging/);
           await expect(
             overlay.locator('.c-edit-overlay__guide'),
             'no guide for a free move',
           ).toHaveCount(0);
         },
       });
-      await expect(overlay, 'the raster is gone after the release').not.toHaveClass(/is-dragging/);
+      await expect(overlay, 'the drag state is gone after the release').not.toHaveClass(
+        /is-dragging/,
+      );
       let moved = await expectScene(
         api,
         production,
@@ -492,7 +494,9 @@ test.describe('REGIE editing: monitor gestures', () => {
       const handle = overlay.locator('.c-edit-box.is-sel [data-handle="se"]');
       await expect(handle).toBeVisible();
       const label = overlay.locator('.c-edit-box.is-sel .c-edit-box__label');
-      await expect(label).toHaveText('K1 · 600 × 338');
+      // The label tab names the source: code, name and size.
+      await expect(label.locator('.c-edit-box__code')).toHaveText('K1');
+      await expect(label.locator('.c-edit-box__detail')).toHaveText('600 × 338');
 
       const resize = async (
         to: (
@@ -1642,7 +1646,10 @@ test.describe('REGIE editing: two operators, requests, live scene', () => {
       await regie.setStudioMode(true);
       await regie.clickScene('Scene A');
       const preview = monitorOf(page, 'preview');
-      await expect(preview.locator('.c-monitor__live-note')).toHaveText(
+      // The lock is named in the header (nothing covers the lower third); the tooltip gives the way out.
+      await expect(preview.locator('.c-monitor__live-note')).toHaveText('Live, read only');
+      await expect(preview.locator('.c-monitor__live-note')).toHaveAttribute(
+        'title',
         'This scene is live right now. Editing is possible once another scene is on Program.',
       );
       await expect(overlayOf(page, 'preview')).toHaveClass(/is-locked/);

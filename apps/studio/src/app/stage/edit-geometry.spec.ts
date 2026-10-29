@@ -9,7 +9,7 @@ import {
   MIN_DRAG_HEIGHT,
   MIN_DRAG_WIDTH,
   NO_GUIDES,
-  boxLabel,
+  boxDetail,
   cropRect,
   cropSummary,
   hasCrop,
@@ -262,10 +262,10 @@ describe('edit geometry', () => {
   });
 
   describe('labels and conversions', () => {
-    it('labels the selection like the prototype, with the crop when there is one', () => {
-      expect(boxLabel('K1', ITEM)).toBe('K1 · 600 × 338');
-      expect(boxLabel('K1', { ...ITEM, w: 540.4 }, { ...NO_CROP, right: 0.1 })).toBe(
-        'K1 · 540 × 338 · Crop R 10%',
+    it('labels the size of the selection, with the crop when there is one', () => {
+      expect(boxDetail(ITEM)).toBe('600 × 338');
+      expect(boxDetail({ ...ITEM, w: 540.4 }, { ...NO_CROP, right: 0.1 })).toBe(
+        '540 × 338 · Crop R 10%',
       );
       expect(cropSummary({ top: 0.05, right: 0, bottom: 0.002, left: 0.25 })).toBe(
         'L 25% T 5% B 1%',

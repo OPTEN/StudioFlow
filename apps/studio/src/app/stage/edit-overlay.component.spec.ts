@@ -169,9 +169,24 @@ describe('EditOverlayComponent', () => {
     const element = box('itm_a1');
     expect(element.style.left).toBe(`${(100 / 1920) * 100}%`);
     expect(element.style.width).toBe(`${(600 / 1920) * 100}%`);
-    expect(element.querySelector('.c-edit-box__label')?.textContent).toBe('K1 · 600 × 338');
+    // The label tab names the source: code, name and size.
+    expect(element.querySelector('.c-edit-box__code')?.textContent).toBe('K1');
+    expect(element.querySelector('.c-edit-box__name')?.textContent).toBe('Phone stage left');
+    expect(element.querySelector('.c-edit-box__detail')?.textContent).toBe('600 × 338');
     expect(element.classList.contains('is-sel')).toBe(false);
     expect(element.querySelectorAll('.c-edit-box__handle')).toHaveLength(0);
+    expect(element.querySelector('.c-edit-box__lock')).toBeNull();
+    expect(element.getAttribute('title')).toBeNull();
+  });
+
+  it('names a source that is gone “Source missing”, without a code', async () => {
+    const scenes = defaultScenes();
+    scenes[0] = sceneFixture('scn_a', 'Welcome', 0, [
+      itemFixture('itm_a1', 'dev_xxxxxxxxxxxxxxxx/camera'),
+    ]);
+    await setup({ scenes });
+    expect(box('itm_a1').querySelector('.c-edit-box__code')).toBeNull();
+    expect(box('itm_a1').querySelector('.c-edit-box__name')?.textContent).toBe('Source missing');
   });
 
   it('selects on click, shows the handles and deselects on the empty area', async () => {
@@ -284,8 +299,8 @@ describe('EditOverlayComponent', () => {
     await drag(corner, [350, 219], [-30, 0], { altKey: true });
     expect(item()).toMatchObject({ x: 100, y: 100, w: 540, h: 338 });
     expect(item().crop.right).toBeCloseTo(0.1, 6);
-    expect(box('itm_a1').querySelector('.c-edit-box__label')?.textContent).toBe(
-      'K1 · 540 × 338 · Crop R 10%',
+    expect(box('itm_a1').querySelector('.c-edit-box__detail')?.textContent).toBe(
+      '540 × 338 · Crop R 10%',
     );
     await answerAll();
   });
@@ -316,6 +331,10 @@ describe('EditOverlayComponent', () => {
     expect(item()).toMatchObject({ x: 100, y: 100 });
     expect(box('itm_a1').classList.contains('is-locked')).toBe(true);
     expect(box('itm_a1').querySelectorAll('.c-edit-box__handle')).toHaveLength(0);
+    // The lock badge and the tooltip say why it does not move and how to change that.
+    expect(box('itm_a1').classList.contains('is-pinned')).toBe(true);
+    expect(box('itm_a1').querySelector('.c-edit-box__lock')).not.toBeNull();
+    expect(box('itm_a1').getAttribute('title')).toBe('Locked. Unlock it in Sources to move it.');
     expect(harness.http.match(() => true)).toHaveLength(0);
   });
 

@@ -20,13 +20,13 @@ import {
 } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { DragCursorService, type DragCursor } from '../core/ui/drag-cursor.service';
+import { IconComponent } from '../core/ui/icon.component';
 import { ToastService } from '../core/ui/toast.service';
 import {
   CORNERS,
   EDGES,
   NO_GUIDES,
-  RASTER_PITCH,
-  boxLabel,
+  boxDetail,
   cropRect,
   isArrowKey,
   isCorner,
@@ -58,11 +58,17 @@ export interface EditBox {
   /** Rectangle on the canvas (the renderer's rectangle for Auto-Grid scenes). */
   readonly rect: CanvasRect;
   readonly percent: PercentRect;
-  /** "K1 · 600 × 338" (with crop). */
-  readonly label: string;
+  /** Slot code of the source ("K1"), or null when the source is gone. */
+  readonly code: string | null;
+  /** Name of the source ("Stage phone"), "Source missing" when it is gone. */
+  readonly name: string;
+  /** Size on the canvas, with the crop: "600 × 338 · Crop R 10%". */
+  readonly detail: string;
   readonly selected: boolean;
   /** Locked element (not draggable) or the whole scene is locked. */
   readonly locked: boolean;
+  /** The element itself is locked: a lock badge on hover and selection, with the way out as tooltip. */
+  readonly pinned: boolean;
   /** Down source: amber (`warn`, reconnecting) or red (`bad`) dashed outline. */
   readonly alert: 'warn' | 'bad' | null;
   /** Corner handles and crop edges are shown (selected and not locked). */
@@ -141,13 +147,15 @@ function isHandle(value: string | undefined): value is Handle {
  * The edit overlay on the editable monitor (Preview in Studio Mode, else Program; prototype "Overlay: edit items",
  * spec 9.1). It edits `EditorService.editScene()`:
  *
- * - Boxes for every visible element (the renderer's rectangles for Auto-Grid scenes), the selected one with a blue
- *   outline, the label tab "K1 · 600 × 338" and four corner handles; down sources get the amber/red dashed outline.
+ * - Boxes for every visible element (the renderer's rectangles for Auto-Grid scenes). The selected one gets a blue
+ *   outline (with a dark hairline, so it shows on bright slides too), soft round corner handles and a label tab with
+ *   the source: code, name and size ("K1 Stage phone 600 × 338", with the crop). Down sources get the amber/red dashed
+ *   outline; a locked element shows a lock badge on hover and selection, with the way out as its tooltip.
  * - Click selects (empty area deselects), drag moves with snapping to the canvas edges, the safe margin, the centre and
  *   the other elements' edges and centres (7 screen px, blue guides; Alt disables snapping), a corner resizes keeping
  *   the aspect ratio (Shift frees it, minimum 96 × 54), Alt+drag on a corner or an edge crops (OBS). Arrow keys move
  *   by 1 px (Shift 10 px), one undo step per key-repeat burst. Escape deselects (EditorService).
- * - While dragging: dot raster and the faint safe-area guide. Locked elements are selectable but not draggable; while
+ * - While hovering or dragging: the dashed safe-area guide. Locked elements are selectable but not draggable; while
  *   the scene is locked (Studio Mode, preview = program) a press shows the prototype's toast.
  * - Pointer moves are native listeners (no change detection per event), batched to one geometry step per animation
  *   frame; the overlay rectangle is measured once at pointerdown (no layout reads during a drag). Every step goes to
@@ -156,6 +164,7 @@ function isHandle(value: string | undefined): value is Handle {
  */
 @Component({
   selector: 'sf-edit-overlay',
+  imports: [IconComponent],
   templateUrl: './edit-overlay.component.html',
   styleUrl: './edit-overlay.component.scss',
   host: {
@@ -238,13 +247,12 @@ export class EditOverlayComponent {
         id: item.id,
         rect,
         percent: toPercent(rect, canvas),
-        label: boxLabel(
-          this.store.codeOf(item.source) ?? t('model.scene.sourceMissing'),
-          rect,
-          item.crop,
-        ),
+        code: this.store.codeOf(item.source) ?? null,
+        name: this.store.sourceLabel(item.source),
+        detail: boxDetail(rect, item.crop),
         selected,
         locked: locked || item.locked,
+        pinned: item.locked,
         alert: status && isDown(status) ? (status === 'reconnecting' ? 'warn' : 'bad') : null,
         handles: selected && !item.locked,
       });
@@ -444,7 +452,6 @@ export class EditOverlayComponent {
       this.editor.beginGesture();
       this.dragging.set(true);
       this.cursor.begin(cursorFor(drag.mode));
-      this.host.style.setProperty('--grid', `${drag.start.scale * RASTER_PITCH}px`);
     }
     const result = this.step(drag, dx, dy, sample);
     this.guides.set(result.guides);

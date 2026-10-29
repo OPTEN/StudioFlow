@@ -74,7 +74,7 @@ describe('SwitcherService', () => {
 
   it('switches the program directly without Studio-Modus, with the transition', async () => {
     await setup();
-    expect(switcher.hint()).toBe('Click a scene to switch it live directly.');
+    expect(switcher.hint()).toBe('A click on a scene puts it live at once.');
     const done = switcher.chooseScene('scn_b');
     const request = harness.http.expectOne(`${BASE}/program`);
     expect(request.request.body).toEqual({
@@ -132,7 +132,7 @@ describe('SwitcherService', () => {
   it('turns Studio Mode on: preview = the scene after the program, toast', async () => {
     await setup();
     const done = switcher.setStudioMode(true);
-    expect(toasts.current()?.message).toBe('Studio Mode on: Preview and Take');
+    expect(toasts.current()?.message).toBe('Studio Mode is on. Take puts the Preview live.');
     const request = harness.http.expectOne(`${BASE}/preview`);
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual({ sceneId: 'scn_b' });
@@ -140,13 +140,15 @@ describe('SwitcherService', () => {
     await done;
     expect(switcher.studioMode()).toBe(true);
     expect(storage.getItem(PREFERENCE_KEYS.studioMode)).toBe('1');
-    expect(switcher.hint()).toBe('Click a scene to load it into Preview. Take switches it live.');
+    expect(switcher.hint()).toBe('A click on a scene loads it into Preview.');
   });
 
   it('turns Studio Mode off and clears the preview when nobody else is in the Regie', async () => {
     await setup({ studio: true, preview: 'scn_b' });
     const done = switcher.setStudioMode(false);
-    expect(toasts.current()?.message).toBe('Studio Mode off: scenes switch live directly');
+    expect(toasts.current()?.message).toBe(
+      'Studio Mode is off. A click on a scene goes live at once.',
+    );
     harness.http.expectOne(`${BASE}/preview`).flush(productionFixture());
     await done;
   });

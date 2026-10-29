@@ -122,7 +122,7 @@ test.describe('REGIE format and resolution', () => {
 
       // The Program monitor is narrow and says its size.
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1080 × 1920 · 30 fps',
+        '1080 × 1920',
       );
       expect((await screenRatios(page))[0]).toBeCloseTo(0.5625, 2);
 
@@ -177,7 +177,7 @@ test.describe('REGIE format and resolution', () => {
       // The open output page follows without a reload; the monitors are square.
       await expect.poll(() => stageSize(output), { timeout: 5_000 }).toEqual({ width: 1080, height: 1080 });
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1080 × 1080 · 30 fps',
+        '1080 × 1080',
       );
       expect((await screenRatios(page))[0]).toBeCloseTo(1, 2);
       const fitted = (await api.getSnapshot(created.id)).body.scenes[0]!.items.find(
@@ -270,7 +270,7 @@ test.describe('REGIE format and resolution', () => {
         .poll(async () => (await api.getSnapshot(production.id)).body.production.canvas.width)
         .toBe(1280);
       await expect(page.locator('sf-monitor.c-monitor--program .c-monitor__meta')).toHaveText(
-        '1280 × 720 · 30 fps',
+        '1280 × 720',
       );
 
       // Another format, no scene has elements: saved without a question; the thumbnails are as tall as before.

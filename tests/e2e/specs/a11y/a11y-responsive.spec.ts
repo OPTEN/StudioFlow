@@ -194,21 +194,21 @@ test.describe('Regie responsive layout', () => {
     });
   }
 
-  test('E2E-DEV-02 [regie-1440x900] the first-viewport composition of the brief: header, strip, monitors with the 172 px control column, docks; two-line scene rows, 40 px dock headers', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-02 [regie-1440x900] the first-viewport composition of the brief: header, strip, monitors with the 176 px control column, docks; two-line scene rows, 40 px dock headers', tags('p1'), async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(120_000);
     const viewport = VIEWPORTS.w1440;
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport, incident: 'reconnecting', studio: false });
     await checkDesktop(regie, { name: '1440x900', studio: false, compact: false });
     const m = await metrics(regie.page);
-    expect(m.control!.w, 'the control column is 172 px wide').toBeCloseTo(172, 0);
+    expect(m.control!.w, 'the control column is 176 px wide').toBeCloseTo(176, 0);
     await saveScreen(regie.page, 'regie-1440x900-direct');
     await openPopoversAndCheck(regie, '1440x900 direct');
     await regie.setStudioMode(true);
     await settle(regie.page);
     await checkDesktop(regie, { name: '1440x900', studio: true, compact: false });
     const studio = await metrics(regie.page);
-    expect(studio.control!.w, 'the control column is still 172 px wide in Studio Mode').toBeCloseTo(172, 0);
-    expect(studio.take!.w, 'Take is as wide as the column').toBeCloseTo(172, 0);
+    expect(studio.control!.w, 'the control column is still 176 px wide in Studio Mode').toBeCloseTo(176, 0);
+    expect(studio.take!.w, 'Take is as wide as the column').toBeCloseTo(176, 0);
     expect(studio.take!.h, 'Take is at least 56 px high').toBeGreaterThanOrEqual(56);
     await saveScreen(regie.page, 'regie-1440x900-studio');
   });

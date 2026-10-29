@@ -1,61 +1,98 @@
-<label class="c-switch c-control-column__switch" [for]="switchId">
-  <input
-    type="checkbox"
-    role="switch"
-    [id]="switchId"
-    [checked]="switcher.studioMode()"
-    (change)="onStudioModeChange($event)"
-  />{{ t('regie.stage.control.studioMode') }}
-</label>
-<span class="c-control-column__label">{{ t('regie.stage.control.transition') }}</span>
-<div class="c-transition" role="group" [attr.aria-label]="t('regie.stage.control.transitionKind')">
-  <button
-    class="c-transition__option"
-    type="button"
-    [attr.aria-pressed]="switcher.transitionKind() === 'cut'"
-    (click)="setKind('cut')"
-  >
-    {{ t('regie.stage.control.cut') }}
-  </button>
-  <button
-    class="c-transition__option"
-    type="button"
-    [attr.aria-pressed]="switcher.transitionKind() === 'fade'"
-    (click)="setKind('fade')"
-  >
-    {{ t('regie.stage.control.fade') }}
-  </button>
+<div class="c-control-column__mode">
+  <label class="c-switch c-control-column__switch" [for]="switchId"
+    >{{ t('regie.stage.control.studioMode')
+    }}<input
+      type="checkbox"
+      role="switch"
+      [id]="switchId"
+      [attr.aria-describedby]="hintId"
+      [checked]="switcher.studioMode()"
+      (change)="onStudioModeChange($event)"
+  /></label>
+  <p class="c-control-column__hint" [id]="hintId">{{ switcher.hint() }}</p>
 </div>
+
+<div class="c-control-column__transition">
+  <span class="c-control-column__label">{{ t('regie.stage.control.transition') }}</span>
+  <div
+    class="c-seg c-transition"
+    role="group"
+    [attr.aria-label]="t('regie.stage.control.transitionKind')"
+  >
+    <button
+      class="c-transition__option"
+      type="button"
+      [attr.aria-pressed]="switcher.transitionKind() === 'cut'"
+      (click)="setKind('cut')"
+    >
+      {{ t('regie.stage.control.cut') }}
+    </button>
+    <button
+      class="c-transition__option"
+      type="button"
+      [attr.aria-pressed]="switcher.transitionKind() === 'fade'"
+      (click)="setKind('fade')"
+    >
+      {{ t('regie.stage.control.fade') }}
+    </button>
+  </div>
+</div>
+
 <div
-  class="c-duration"
-  role="group"
-  [attr.aria-label]="t('regie.stage.control.fadeDuration')"
-  [class.is-off]="switcher.transitionKind() === 'cut'"
+  class="c-control-column__duration"
+  [class.is-off]="cut()"
+  [attr.title]="cut() ? t('regie.stage.control.cutDuration') : null"
 >
-  <button
-    class="c-duration__btn"
-    type="button"
-    [attr.aria-label]="t('regie.stage.control.fadeShorter')"
-    [disabled]="!switcher.canStepDuration(-1)"
-    (click)="step(-1)"
+  <span class="c-control-column__label">{{ t('regie.stage.control.duration') }}</span>
+  <div
+    class="c-duration"
+    role="group"
+    [attr.aria-label]="t('regie.stage.control.fadeDuration')"
+    [class.is-off]="cut()"
   >
-    <svg sfIcon="minus" [size]="14"></svg>
-  </button>
-  <span class="c-duration__value">{{ switcher.durationLabel() }}</span>
-  <button
-    class="c-duration__btn"
-    type="button"
-    [attr.aria-label]="t('regie.stage.control.fadeLonger')"
-    [disabled]="!switcher.canStepDuration(1)"
-    (click)="step(1)"
-  >
-    <svg sfIcon="plus" [size]="14"></svg>
-  </button>
+    <button
+      class="c-duration__btn"
+      type="button"
+      [attr.aria-label]="t('regie.stage.control.fadeShorter')"
+      [disabled]="!switcher.canStepDuration(-1)"
+      (click)="step(-1)"
+    >
+      <svg sfIcon="minus" [size]="13"></svg>
+    </button>
+    <span class="c-duration__value">{{ switcher.durationLabel() }}</span>
+    <button
+      class="c-duration__btn"
+      type="button"
+      [attr.aria-label]="t('regie.stage.control.fadeLonger')"
+      [disabled]="!switcher.canStepDuration(1)"
+      (click)="step(1)"
+    >
+      <svg sfIcon="plus" [size]="13"></svg>
+    </button>
+  </div>
 </div>
+
 @if (hasAudio()) {
-  <div class="c-program-level" data-testid="program-level" [title]="t('regie.audio.program.title')">
-    <span class="c-control-column__label">{{ t('regie.audio.program.label') }}</span>
-    <div class="c-program-level__bar" aria-hidden="true">
+  <div
+    class="c-program-level"
+    data-testid="program-level"
+    [title]="t('regie.stage.control.programAudioTitle')"
+  >
+    <span class="c-control-column__label" [id]="levelId">{{
+      t('regie.stage.control.programAudio')
+    }}</span>
+    <span class="c-program-level__value" data-testid="program-db" aria-hidden="true">{{
+      programText()
+    }}</span>
+    <div
+      class="c-program-level__bar"
+      role="meter"
+      aria-valuemin="-60"
+      aria-valuemax="0"
+      [attr.aria-labelledby]="levelId"
+      [attr.aria-valuenow]="programDb()"
+      [attr.aria-valuetext]="programValueText()"
+    >
       <div
         class="c-program-level__fill"
         data-testid="program-meter"
@@ -63,19 +100,27 @@
         [style.transform]="'scaleX(' + programFill() + ')'"
       ></div>
     </div>
-    <span class="c-program-level__value u-mono" data-testid="program-db">{{ programText() }}</span>
+  </div>
+} @else {
+  <div class="c-program-level is-empty">
+    <span class="c-control-column__label">{{ t('regie.stage.control.programAudio') }}</span>
+    <span class="c-program-level__none">{{ t('regie.stage.control.noAudio') }}</span>
   </div>
 }
+
 @if (switcher.studioMode()) {
-  <button
-    class="c-take"
-    type="button"
-    aria-keyshortcuts="Space"
-    [disabled]="!switcher.canTake()"
-    (click)="take()"
-  >
-    {{ t('regie.stage.control.take') }}
-    <small class="c-take__hint">{{ t('regie.stage.control.space') }}</small>
-  </button>
+  <div class="c-control-column__take">
+    <button
+      class="c-take"
+      type="button"
+      aria-keyshortcuts="Space"
+      [attr.aria-describedby]="takeReason() ? reasonId : null"
+      [disabled]="!switcher.canTake()"
+      (click)="take()"
+    >
+      {{ t('regie.stage.control.take') }}
+      <small class="c-take__hint">{{ t('regie.stage.control.space') }}</small>
+    </button>
+    <p class="c-take__reason" [id]="reasonId">{{ takeReason() }}</p>
+  </div>
 }
-<span class="c-control-column__hint">{{ switcher.hint() }}</span>

@@ -236,7 +236,7 @@ test.describe('REGIE scenes', () => {
 
       // The inspector edits the preview scene in Studio Mode: “Scene B” (the scene after the program).
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
+      await expect(toastOf(page)).toContainText('Studio Mode is on. Take puts the Preview live.');
       await expect(inspectorSub(page)).toHaveText('Scene B');
       await inspector(page).getByRole('button', { name: 'Delete scene' }).click();
       const confirm = inspector(page).getByRole('group', { name: 'Delete scene' });

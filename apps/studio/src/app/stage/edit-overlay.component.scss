@@ -1,18 +1,19 @@
-// Edit overlay on the editable monitor (prototype .ovl, .box, .box-label, .hdl, .guide).
+// Edit overlay on the editable monitor: selection boxes, label tab, handles, snap guides and the safe-area guide.
+// Everything here sits on the picture, so it uses the picture tokens (`--pic-*`, `--well`) in both themes.
 @use 'mixins' as *;
 
 // The overlay covers the screen exactly; percentages refer to the canvas of the production.
 :host {
   border-radius: var(--radius-screen);
   // Elements may reach beyond the canvas: their boxes are clipped at the screen (they must not cover the control
-  // column), except a margin for the corner handles and, above, for the label tab of elements at the top edge.
-  clip-path: inset(-24px -6px -6px);
+  // column), except a margin for the round handles and, above, for the label tab of elements near the top edge.
+  clip-path: inset(-28px -8px -8px);
   inset: 0;
   position: absolute;
   // Panning the page stays possible on the empty area (stacked layouts scroll); boxes take every touch.
   touch-action: manipulation;
 
-  // Faint dashed safe-area guide (40 px margin at 1080p), shown while hovering or dragging.
+  // Dashed safe-area guide (40 px margin at 1080p), shown while hovering or dragging.
   &::after {
     @include state-transition(border-color);
     border: 1px dashed transparent;
@@ -26,19 +27,12 @@
   }
 }
 
-:host(:hover)::after,
-:host(.is-dragging)::after {
+:host(:hover)::after {
   border-color: color-mix(in srgb, var(--pic-muted) 40%, transparent);
 }
 
-// 1 px dot raster while an element is dragged (pitch: 40 canvas px, set as --grid by the component).
-:host(.is-dragging) {
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--pic-muted) 55%, transparent) 1px,
-    transparent 1.4px
-  );
-  background-size: var(--grid, 20px) var(--grid, 20px);
+:host(.is-dragging)::after {
+  border-color: color-mix(in srgb, var(--pic-muted) 70%, transparent);
 }
 
 :host(.is-locked) {
@@ -49,18 +43,22 @@
   }
 }
 
+// Selection box: invisible at rest, a blue hint on hover, a blue outline with a dark hairline around it when selected
+// (the hairline keeps it visible on a white slide).
 .c-edit-box {
+  @include state-transition(border-color);
   border: 1px solid transparent;
   cursor: move;
   position: absolute;
   touch-action: none;
 
   &:hover {
-    border-color: color-mix(in srgb, var(--pic-blue) 55%, transparent);
+    border-color: color-mix(in srgb, var(--pic-blue) 70%, transparent);
   }
 
   &.is-sel {
     border-color: var(--pic-blue);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--well) 45%, transparent);
   }
 
   &.is-locked {
@@ -77,30 +75,95 @@
   }
 }
 
+// Label tab above the selection: code, name and size of the source.
 .c-edit-box__label {
+  align-items: center;
   background: var(--pic-blue);
-  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  border-radius: 5px;
+  bottom: calc(100% + 4px);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--well) 50%, transparent);
   color: var(--pic-ink);
   display: none;
-  font: 600 10.5px / 1 var(--font-mono);
+  font: 600 11px / 1 var(--font-ui);
+  gap: 6px;
+  height: 20px;
   left: -1px;
-  padding: 3px 5px;
+  max-width: max(100%, 260px);
+  padding: 0 7px 0 3px;
   pointer-events: none;
   position: absolute;
-  top: -1px;
-  transform: translateY(-100%);
   white-space: nowrap;
 
   .c-edit-box.is-sel > & {
-    display: block;
+    display: inline-flex;
+  }
+
+  // A box in the right half carries its tab at its right edge, so the tab never runs off the picture.
+  .c-edit-box.is-end > & {
+    left: auto;
+    right: -1px;
+  }
+
+  // A box at the top edge (a full-screen element) carries its tab inside, clear of the monitor header.
+  .c-edit-box.is-top > & {
+    bottom: auto;
+    left: 4px;
+    top: 4px;
+  }
+
+  .c-edit-box.is-top.is-end > & {
+    left: auto;
+    right: 4px;
   }
 }
 
-// Corner handles: 11 px squares on the corners; a wider invisible hit area on touch screens.
+.c-edit-box__code {
+  @include mono;
+  background: color-mix(in srgb, var(--pic-ink) 16%, transparent);
+  border-radius: 3px;
+  flex: none;
+  font-weight: 700;
+  padding: 3px 4px;
+}
+
+.c-edit-box__name {
+  @include ellipsis;
+}
+
+.c-edit-box__detail {
+  @include mono;
+  border-left: 1px solid color-mix(in srgb, var(--pic-ink) 30%, transparent);
+  flex: none;
+  font-weight: 500;
+  padding-left: 6px;
+}
+
+// Lock badge of a locked element (on hover and when selected); the tooltip of the box says how to unlock it.
+.c-edit-box__lock {
+  background: var(--pic-scrim);
+  border-radius: 50%;
+  color: var(--pic-text);
+  display: none;
+  height: 20px;
+  place-items: center;
+  pointer-events: none;
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 20px;
+
+  .c-edit-box:hover > &,
+  .c-edit-box.is-sel > & {
+    display: grid;
+  }
+}
+
+// Corner handles: soft round knobs on the corners; a wider invisible hit area on touch screens.
 .c-edit-box__handle {
-  background: var(--pic-ink);
+  background: var(--pic-text);
   border: 1.5px solid var(--pic-blue);
-  border-radius: 2px;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--well) 60%, transparent);
   height: 11px;
   position: absolute;
   transform: translate(-50%, -50%);
@@ -187,8 +250,10 @@
   }
 }
 
+// Snap guides: a blue line with a dark hairline, across the whole picture.
 .c-edit-overlay__guide {
   background: var(--pic-blue);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--well) 40%, transparent);
   pointer-events: none;
   position: absolute;
 }

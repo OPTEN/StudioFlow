@@ -405,24 +405,22 @@ test.describe('REGIE switching', () => {
         st: await page.locator('sf-dock-slot[data-dock="st"]').boundingBox(),
       });
       const hint = page.locator('.c-control-column__hint');
-      await expect(hint).toHaveText('Click a scene to switch it live directly.');
-      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
+      await expect(hint).toHaveText('A click on a scene puts it live at once.');
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toBeVisible();
       await expect(monitorOf(page, 'program').locator('.c-monitor__live-edit')).toBeVisible();
       const before = await boxes();
 
       await regie.setStudioMode(true);
-      await expect(toastOf(page)).toContainText('Studio Mode on: Preview and Take');
+      await expect(toastOf(page)).toContainText('Studio Mode is on. Take puts the Preview live.');
       await expect(monitorOf(page, 'preview')).toBeVisible();
       await expect(regie.take()).toBeVisible();
       await expect(regie.take()).toContainText('Space');
-      await expect(page.getByText('Preview off', { exact: true })).toHaveCount(0);
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toHaveCount(0);
       await expect(
         monitorOf(page, 'program').locator('.c-monitor__live-edit'),
         '“Changes go live immediately” is hidden',
       ).toHaveCount(0);
-      await expect(hint).toHaveText(
-        'Click a scene to load it into Preview. Take switches it live.',
-      );
+      await expect(hint).toHaveText('A click on a scene loads it into Preview.');
       const after = await boxes();
       expect(after.scenes, 'docks do not move').toEqual(before.scenes);
       expect(after.src).toEqual(before.src);
@@ -452,10 +450,12 @@ test.describe('REGIE switching', () => {
       await expect(regie.studioModeSwitch()).toBeChecked();
       await expect(regie.take()).toBeVisible();
 
-      // Off: toast, “Preview off”, the preview is cleared (only operator).
+      // Off: toast, “Studio Mode is off” in the place of the Preview, the preview is cleared (only operator).
       await regie.setStudioMode(false);
-      await expect(toastOf(page)).toContainText('Studio Mode off: scenes switch live directly');
-      await expect(page.getByText('Preview off', { exact: true })).toBeVisible();
+      await expect(toastOf(page)).toContainText(
+        'Studio Mode is off. A click on a scene goes live at once.',
+      );
+      await expect(page.getByText('Studio Mode is off', { exact: true })).toBeVisible();
       await expect.poll(() => previewId(api, production)).toBeNull();
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('0');
       await expect(regie.take()).toHaveCount(0);
