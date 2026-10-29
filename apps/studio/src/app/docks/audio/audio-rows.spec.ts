@@ -172,12 +172,12 @@ describe('rowStateWord', () => {
   });
 
   it('puts the silence warning before everything else', () => {
-    expect(rowStateWord(row({ muted: true }), true)).toBe('no signal for 10 s');
+    expect(rowStateWord(row({ muted: true }), true)).toBe('silent for 10 s');
   });
 
-  it('says muted, and no sound for a channel that is on but has none', () => {
+  it('says muted, and not sending for a channel that is on but has no sound', () => {
     expect(rowStateWord(row({ muted: true }), false)).toBe('muted');
-    expect(rowStateWord(row({ hasSound: false }), false)).toBe('no sound');
+    expect(rowStateWord(row({ hasSound: false }), false)).toBe('not sending');
     expect(rowStateWord(row({ hasSound: false, mode: 'off' }), false)).toBeNull();
   });
 });

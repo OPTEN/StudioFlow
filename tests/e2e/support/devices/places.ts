@@ -113,7 +113,7 @@ export async function readPlaces(page: Page): Promise<Places> {
         codes: [...row.querySelectorAll('.c-st__codes .c-code')].map((code) => text(code)),
         line: text(row.querySelector('.c-st__l2')),
         tone: (row.classList.contains('is-bad') ? 'bad' : row.classList.contains('is-warn') ? 'warn' : '') as 'bad' | 'warn' | '',
-        lamp: [...(row.querySelector('.c-st__row .c-lamp')?.classList ?? [])].filter((name) => name.startsWith('is-')).join(' '),
+        lamp: [...(row.querySelector('.c-st__l2 .c-lamp')?.classList ?? [])].filter((name) => name.startsWith('is-')).join(' '),
         tag: text(row.querySelector('.c-st__l1 .c-tag')),
         recoveredBox: text(row.querySelector('.c-st__ack')) || null,
         expanded: row.querySelector('.c-st__row')?.getAttribute('aria-expanded') === 'true',
@@ -237,7 +237,7 @@ export async function waitForOutage(
   return { elapsedMs: last!.places.readAt - startedAt, check: last!.check, places: last!.places };
 }
 
-/** The recovered state in the places that keep it until “Dismiss”: strip entry, station line and box. */
+/** The recovered state in the places that keep it until “Dismiss”: strip entry, device line and its strip. */
 export function checkRecovered(places: Places, code: string, seconds?: { min: number; max: number }): { ok: boolean; detail: string; seconds: number | null } {
   const strip = places.strip.find((entry) => entry.code === code && entry.recovered);
   const station = places.stations.find((row) => row.codes.includes(code));
@@ -249,7 +249,7 @@ export function checkRecovered(places: Places, code: string, seconds?: { min: nu
       strip.actions.includes('Dismiss') &&
       station &&
       /back\s*was gone \d+ s/.test(station.line) &&
-      station.recoveredBox?.includes('The station is back. Confirm to dismiss the message.') &&
+      station.recoveredBox?.includes('The device is back.') &&
       inRange,
   );
   return {

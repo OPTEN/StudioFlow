@@ -119,8 +119,8 @@ test.describe('Keyboard-only Regie', () => {
     await expect(row).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('Tab');
     const inside = (await describeActive(page))!;
-    expect(inside.area, 'the next Tab enters the opened station detail').toBe('region:Devices');
-    expect(inside.name, 'the first control of the opened detail').toMatch(/^(Camera|Send message|Rename|Switch camera|Ask to share again|Block device)$/);
+    expect(inside.area, 'the next Tab enters the opened device detail').toBe('region:Devices');
+    expect(inside.name, 'the first control of the opened detail').toMatch(/^(Send message|Camera settings|Switch camera|Technical details|Rename|Ask to share again|Block device)$/);
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Enter');
     await expect(row).toHaveAttribute('aria-expanded', 'false');
@@ -271,7 +271,7 @@ test.describe('Keyboard-only Regie', () => {
     expect(leave, 'Tab leaves the popover').not.toBeNull();
     await page.keyboard.press('Escape');
 
-    // the pairing dock: “Pair device” is a disclosure (aria-expanded, aria-controls), Escape closes it, the focus returns
+    // the pairing dock: “Add device” is a disclosure (aria-expanded, aria-controls), Escape closes it, the focus returns
     const pair = regie.pairButton();
     await pair.focus();
     await expect(pair).toHaveAttribute('aria-expanded', 'false');
@@ -281,7 +281,7 @@ test.describe('Keyboard-only Regie', () => {
     await page.keyboard.press('Escape');
     await expect(regie.pairingTab('phone')).toBeHidden();
     await expect(pair).toHaveAttribute('aria-expanded', 'false');
-    expect(await pair.evaluate((element) => element === document.activeElement), 'the focus returns to “Pair device” after Escape').toBe(true);
+    expect(await pair.evaluate((element) => element === document.activeElement), 'the focus returns to “Add device” after Escape').toBe(true);
     expect(regie.problems.pageErrors).toEqual([]);
   });
 

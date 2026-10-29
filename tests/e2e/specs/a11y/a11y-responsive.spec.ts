@@ -64,7 +64,7 @@ function criticalControls(regie: RegiePage, studio: boolean): Array<[string, Loc
     ['Fade', regie.transitionOption('Fade')],
     ['Shorter fade', page.getByRole('button', { name: 'Shorter fade' })],
     ['Longer fade', page.getByRole('button', { name: 'Longer fade' })],
-    ['Pair device', regie.pairButton()],
+    ['Add device', regie.pairButton()],
     ['output chip', page.getByRole('button', { name: /^Output/ })],
     ['health button', page.locator('sf-status-line .c-status__health')],
     ['Layout', page.getByRole('button', { name: 'Layout', exact: true })],
@@ -292,7 +292,7 @@ test.describe('Regie responsive layout', () => {
         await expectInViewport(regie.take(), `${label}: Take after scrolling`);
       }
       await regie.pairButton().scrollIntoViewIfNeeded();
-      await expectInViewport(regie.pairButton(), `${label}: Pair device after scrolling`);
+      await expectInViewport(regie.pairButton(), `${label}: Add device after scrolling`);
       await page.evaluate(() => window.scrollTo(0, 0));
       await saveScreen(page, `regie-1180x800-${studio ? 'studio' : 'direct'}`);
       await saveScreen(page, `regie-1180x800-${studio ? 'studio' : 'direct'}-full`, { fullPage: true });
@@ -468,7 +468,7 @@ test.describe('Regie responsive layout', () => {
     await regie.pairButton().scrollIntoViewIfNeeded();
     await regie.pairButton().tap();
     await expect(regie.pairingTab('phone')).toBeVisible();
-    await regie.pairingDock().getByRole('button', { name: 'Close pair device' }).tap();
+    await regie.pairingDock().getByRole('button', { name: 'Close add device' }).tap();
     const station = regie.page.locator('.c-st__row').first();
     await station.scrollIntoViewIfNeeded();
     await station.tap();

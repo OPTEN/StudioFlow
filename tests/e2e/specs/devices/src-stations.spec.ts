@@ -7,16 +7,17 @@ import { expect, test } from '../../support/ui/fixtures';
 import { t } from '../../support/tags';
 
 /**
- * Stations dock with many stations at once: the order (SRC-15) and the accessible names (SRC-16). Eight stations in eight
- * states would need eight browsers, so the stations are device hub stand-ins (support/devices/fake-station.ts): Hello and a
- * report per second, which is all the status rules of the API look at. The Regie is a real browser.
+ * Devices dock (formerly Stations) with many devices at once: the order (SRC-15) and the accessible names (SRC-16). Eight
+ * devices in eight states would need eight browsers, so the devices are device hub stand-ins
+ * (support/devices/fake-station.ts): Hello and a report per second, which is all the status rules of the API look at.
+ * The Regie is a real browser.
  */
 
 const order = async (regie: { page: import('@playwright/test').Page }) => (await readPlaces(regie.page)).stations.map((station) => station.codes[0]);
 
 test.describe('SRC stations', () => {
   test(
-    'E2E-SRC-15 [ui] station order: red, amber, recovered, connecting, in program, in preview, the rest; ties by code; the order follows the states live',
+    'E2E-SRC-15 [ui] device order: stable by code whatever the states (red, amber, recovered, connecting, program, preview); the rows show the states in place',
     t.p1,
     async ({ regie, api, production, pairContext, onCleanup }) => {
       test.setTimeout(180_000);
@@ -56,22 +57,23 @@ test.describe('SRC stations', () => {
       await stations.get('K3')!.reconnect({ camera: 'live' });
       await expect.poll(async () => (await readPlaces(regie.page)).strip.find((entry) => entry.code === 'K3')?.recovered, { message: 'K3 is back', timeout: 20_000 }).toBe(true);
 
-      // Red, amber, recovered, connecting, program, preview, rest by code.
-      await expect.poll(() => order(regie), { message: 'the station order', timeout: 20_000 }).toEqual(['S1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K1', 'K7']);
+      // Stable by code: red, amber, recovered, connecting, program and preview do not move a row.
+      const byCode = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'S1'];
+      await expect.poll(() => order(regie), { message: 'the device order', timeout: 20_000 }).toEqual(byCode);
       const places = await readPlaces(regie.page);
-      expect(places.stations.map((station) => station.tag)).toEqual(['', 'PGM', '', '', 'PGM', 'PVW', '', '']);
+      expect(places.stations.map((station) => station.tag)).toEqual(['', 'Live', '', '', 'Live', 'Preview', '', '']);
+      // Each row shows its state in place: S1 red, K2 amber, K3 back with its “Dismiss” strip.
+      const tone = (code: string) => places.stations.find((station) => station.codes[0] === code)?.tone;
+      expect([tone('S1'), tone('K2'), tone('K3')]).toEqual(['bad', 'warn', '']);
+      expect(places.stations.find((station) => station.codes[0] === 'K3')?.recoveredBox).toContain('The device is back.');
 
-      // The order follows the states live: K1 loses its connection and moves up behind the red one, ahead of K2 (by code).
+      // A change of state never moves a row: K1 loses its connection, K4 goes live.
       await stations.get('K1')!.disconnect();
-      await expect.poll(() => order(regie), { message: 'K1 moved to the amber group', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7']);
-      // K4 goes live: it leaves the “connecting” rank and falls back to the rest.
+      await expect.poll(async () => (await readPlaces(regie.page)).stations.find((station) => station.codes[0] === 'K1')?.tone, { message: 'K1 is amber', timeout: 20_000 }).toBe('warn');
+      expect(await order(regie), 'K1 stays first').toEqual(byCode);
       await stations.get('K4')!.set('camera', 'live');
-      await expect.poll(() => order(regie), { message: 'K4 is live now', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K3', 'K5', 'K6', 'K4', 'K7']);
-      // “Dismiss” on K3 removes the recovered rank; K3 is not the lead incident, so it is in the issues popover.
-      await regie.page.locator('sf-status-line .c-status__health').click();
-      await regie.page.getByRole('dialog', { name: 'Issues' }).getByRole('button', { name: 'Dismiss' }).click();
-      await regie.page.keyboard.press('Escape');
-      await expect.poll(() => order(regie), { message: 'K3 after “Dismiss”', timeout: 20_000 }).toEqual(['S1', 'K1', 'K2', 'K5', 'K6', 'K3', 'K4', 'K7']);
+      await expect.poll(async () => (await readPlaces(regie.page)).stations.find((station) => station.codes[0] === 'K4')?.line, { message: 'K4 is live now', timeout: 20_000 }).toMatch(/sending/);
+      expect(await order(regie), 'K4 stays in its place').toEqual(byCode);
     },
   );
 

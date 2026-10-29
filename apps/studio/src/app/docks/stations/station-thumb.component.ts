@@ -13,9 +13,9 @@ import {
 import { requestPixelRatio, watchVisibility } from '@studioflow/scene-renderer';
 import { StudioMediaService } from '../../core/media/studio-media.service';
 
-/** Thumbnail size in CSS px (prototype `.st-thumb`: 56 px, 16:9). */
-const THUMB_WIDTH = 56;
-const THUMB_HEIGHT = 31.5;
+/** Thumbnail size in CSS px (64 px, 16:9). */
+const THUMB_WIDTH = 64;
+const THUMB_HEIGHT = 36;
 
 let consumerCount = 0;
 
@@ -25,9 +25,9 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
 }
 
 /**
- * The small live picture of a station row (prototype `canvas.st-thumb`): a muted `<video>` registered with the
+ * The small live picture of a device row (prototype `canvas.st-thumb`): a muted `<video>` registered with the
  * Regie's source provider, which sets its `srcObject` and keeps the last frame on loss. It requests a tiny layer
- * (56 × 32 CSS px × device pixel ratio, at most 1.5), so many station thumbnails cost little bandwidth. While the thumbnail
+ * (64 × 36 CSS px × device pixel ratio, at most 1.5), so many thumbnails cost little bandwidth. While the thumbnail
  * cannot be seen (the Stations dock is hidden, its section is collapsed, the row is scrolled away, the tab is in the
  * background) it asks for nothing, so the source is paused after a short while. Without media connection it stays an
  * empty well; a down source is dimmed.
@@ -51,11 +51,11 @@ function toLayerPixels(cssPixels: number, ratio: number): number {
     :host {
       aspect-ratio: 16 / 9;
       background: var(--well);
-      border-radius: var(--radius-screen);
+      border-radius: var(--radius-xs);
       display: block;
       overflow: hidden;
       position: relative;
-      width: 56px;
+      width: 64px;
     }
 
     .c-station-thumb__video {

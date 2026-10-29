@@ -21,12 +21,12 @@ describe('StationsDockComponent language switch', () => {
     const rowLabel = (): string | null =>
       element.querySelector('.c-st__row')?.getAttribute('aria-label') ?? null;
     expect(rowLabel()).toBe('K1 Phone stage left, on Program');
-    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Pair device');
+    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Add device');
 
     i18n.setSetting('de-CH');
     fixture.detectChanges();
     await fixture.whenStable();
     expect(rowLabel()).toBe('K1 Phone stage left, im Program');
-    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Gerät koppeln');
+    expect(element.querySelector('.c-btn--primary')?.textContent).toContain('Gerät hinzufügen');
   });
 });

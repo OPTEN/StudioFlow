@@ -204,7 +204,7 @@ describe('AudioDockComponent', () => {
     }
   });
 
-  it('lists the channels with code, name, role and the PGM tag of the audible ones', async () => {
+  it('lists the channels with code, name, role, mode and the Live tag of the audible ones', async () => {
     await setup();
     provider.give(SCREEN, sound());
     await tick();
@@ -213,7 +213,8 @@ describe('AudioDockComponent', () => {
     const desk = row(DESK);
     expect(text(desk.querySelector('.c-audio__name'))).toBe('Mixing desk');
     expect(text(desk.querySelector('.c-audio__sub'))).toContain('Audio station');
-    expect(desk.querySelector('.c-tag--pgm')).not.toBeNull();
+    expect(text(desk.querySelector('.c-audio__sub'))).toContain('Always');
+    expect(text(desk.querySelector('.c-tag--pgm'))).toBe('Live');
     expect(text(control(desk, 'audio-db'))).toBe('0.0 dB');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('2');
   });
@@ -228,7 +229,7 @@ describe('AudioDockComponent', () => {
 
   it('says what to do when there is no channel yet', async () => {
     await setup(false);
-    expect(text(element.querySelector('.c-empty'))).toContain('No sound sources yet.');
+    expect(text(element.querySelector('.c-empty'))).toContain('No sound sources yet');
     // An empty list would break the ARIA rules (a list needs list items), so there is none.
     expect(element.querySelector('[role="list"]')).toBeNull();
   });
@@ -244,7 +245,7 @@ describe('AudioDockComponent', () => {
     expect(control(row(DESK), 'audio-meter').classList.contains('is-hot')).toBe(true);
   });
 
-  it('mutes with the M button, shows it at once and sends one request', async () => {
+  it('mutes with the Mute button, shows it at once and sends one request', async () => {
     await setup();
     const mute = control<HTMLButtonElement>(row(DESK), 'audio-mute');
     expect(mute.getAttribute('aria-pressed')).toBe('false');
@@ -330,7 +331,7 @@ describe('AudioDockComponent', () => {
     mix.levelsByChannel.set(DESK, -90);
     await tick(10_500);
     const state = row(DESK).querySelector('[data-testid="audio-state"]');
-    expect(text(state)).toBe('no signal for 10 s');
+    expect(text(state)).toBe('silent for 10 s');
     expect(state?.classList.contains('c-state--warn')).toBe(true);
 
     mix.levelsByChannel.set(DESK, -20);
@@ -338,18 +339,21 @@ describe('AudioDockComponent', () => {
     expect(row(DESK).querySelector('[data-testid="audio-state"]')).toBeNull();
   });
 
-  it('says "no sound" for a microphone without a sound', async () => {
+  it('says "not sending" for a microphone without a sound', async () => {
     await setup();
-    expect(text(row(DESK).querySelector('[data-testid="audio-state"]'))).toBe('no sound');
+    expect(text(row(DESK).querySelector('[data-testid="audio-state"]'))).toBe('not sending');
   });
 
-  it('listens to one channel (PFL) and stops, and the monitor popover shows where', async () => {
+  it('listens to one channel and stops, and the headphones button and popover say what plays', async () => {
     await setup();
     const pfl = control<HTMLButtonElement>(row(DESK), 'audio-pfl');
+    expect(pfl.getAttribute('aria-label')).toBe('Listen to Mixing desk');
+    expect(text(control(element, 'audio-monitor'))).toBe('Headphones');
     pfl.click();
     await render();
     expect(pfl.getAttribute('aria-pressed')).toBe('true');
     expect(mix.monitors.at(-1)).toEqual({ kind: 'channel', sourceId: DESK });
+    expect(text(control(element, 'audio-monitor'))).toBe('Headphones: A1');
 
     control<HTMLButtonElement>(element, 'audio-monitor').click();
     await render();
@@ -358,6 +362,7 @@ describe('AudioDockComponent', () => {
     await render();
     expect(mix.monitors.at(-1)).toEqual({ kind: 'program' });
     expect(pfl.getAttribute('aria-pressed')).toBe('false');
+    expect(text(control(element, 'audio-monitor'))).toBe('Headphones: Program');
     control<HTMLButtonElement>(element, 'monitor-off').click();
     expect(mix.monitors.at(-1)).toEqual({ kind: 'off' });
   });

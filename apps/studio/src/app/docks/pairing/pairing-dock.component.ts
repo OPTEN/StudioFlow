@@ -15,6 +15,7 @@ import { LaptopTabComponent } from './laptop-tab.component';
 import { LinkTabComponent } from './link-tab.component';
 import { PairingRequestsComponent } from './pairing-requests.component';
 import { PairingRequestsService } from './pairing-requests.service';
+import { PairingTabMemory } from './pairing-tab-memory.service';
 import { PhoneTabComponent } from './phone-tab.component';
 
 /** A tab of the pairing dock. */
@@ -50,11 +51,12 @@ export function tabForKey(current: PairingTab, key: string): PairingTab | null {
 }
 
 /**
- * The "Pair device" dock (prototype "Pair device (docked)"): tabs Phone | Laptop | Link with roving tabindex
- * (arrow keys, Home, End), the tab content on the left and on the right the waiting requests with knock cards
- * (Laptop, Link) or tips (Phone; waiting requests follow below them, so no knock goes unseen). Shown by the
- * workspace in place of Sources and Properties while `DockLayoutService.pairingOpen()`; Escape and the close
- * button close it. Opening it moves the focus to the selected tab.
+ * The "Add device" dock (prototype "Pair device (docked)"): tabs Phone | Laptop | Link with roving tabindex (arrow
+ * keys, Home, End) pinned above the scrolling tab content, and a side column with the waiting requests (knock cards;
+ * on the Phone tab only while one waits) and, on the Phone tab, the tips for mounted phones. The chosen tab is
+ * remembered per browser ({@link PairingTabMemory}). Shown by the workspace in place of Sources and Properties while
+ * `DockLayoutService.pairingOpen()`; Escape and the close button close it. Opening it moves the focus to the
+ * selected tab.
  */
 @Component({
   selector: 'sf-pairing-dock',
@@ -74,6 +76,7 @@ export function tabForKey(current: PairingTab, key: string): PairingTab | null {
 export class PairingDockComponent {
   protected readonly layout = inject(DockLayoutService);
   protected readonly requests = inject(PairingRequestsService);
+  private readonly tabMemory = inject(PairingTabMemory);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
@@ -93,6 +96,7 @@ export class PairingDockComponent {
 
   protected select(tab: PairingTab): void {
     this.layout.setPairingTab(tab);
+    this.tabMemory.remember(tab);
   }
 
   protected onTabKeyDown(event: KeyboardEvent): void {
@@ -101,7 +105,7 @@ export class PairingDockComponent {
       return;
     }
     event.preventDefault();
-    this.layout.setPairingTab(next);
+    this.select(next);
     this.focusTab(next);
   }
 

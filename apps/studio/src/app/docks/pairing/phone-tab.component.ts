@@ -35,44 +35,52 @@ export function latestPhoneInvite(invites: readonly InviteDto[]): InviteDto | nu
 
 /**
  * "Phone" tab of the pairing dock (prototype `renderPair` phone): the QR code of the current phone invite
- * (`GET …/pairing/phone-invite` creates one when missing) with its remaining time, and "Generate new code". The
- * server replaces a redeemed or renewed invite at once and announces it, so the code shown is always the newest one;
- * an expired code is replaced automatically.
+ * (`GET …/pairing/phone-invite` creates one when missing), large, next to three numbered steps, its remaining time and
+ * "Generate new code". The server replaces a redeemed or renewed invite at once and announces it, so the code shown is
+ * always the newest one; an expired code is replaced automatically.
  */
 @Component({
   selector: 'sf-phone-tab',
   imports: [IconComponent, QrCodeComponent],
   template: `
-    <h3 class="c-pair__title">{{ t('regie.pairing.phone.title') }}</h3>
-    <p class="c-pair__text">{{ t('regie.pairing.phone.text') }}</p>
     <div class="c-pair__qr-wrap">
-      @if (invite(); as invite) {
-        <sf-qr-code [value]="invite.url" [label]="t('regie.pairing.phone.qrLabel')" />
-      } @else {
-        <div class="c-pair__qr-empty" role="status">
-          {{ tm(error()) || t('regie.pairing.phone.generating') }}
-        </div>
-      }
-      <div class="c-pair__qr-side">
-        @if (invite()) {
-          @let valid = validParts();
-          <span class="c-hint">
-            {{ valid.before }}<span class="u-mono">{{ remainingText() }}</span
-            >{{ valid.after }}
-          </span>
-        } @else if (error()) {
-          <button class="c-btn c-btn--sm" type="button" (click)="load()">
-            {{ t('common.retry') }}
-          </button>
+      <div class="c-pair__qr">
+        @if (invite(); as invite) {
+          <sf-qr-code [value]="invite.url" [label]="t('regie.pairing.phone.qrLabel')" />
+        } @else {
+          <div class="c-pair__qr-empty" role="status">
+            {{ tm(error()) || t('regie.pairing.phone.generating') }}
+          </div>
         }
-        <button
-          class="c-btn c-btn--sm"
-          type="button"
-          [disabled]="commands.blocked('pairing:renew') || loading()"
-          (click)="renew()"
-        >
-          <svg sfIcon="refresh" [size]="14"></svg>{{ t('regie.pairing.phone.renew') }}
-        </button>
+      </div>
+      <div class="c-pair__qr-side">
+        <h3 class="c-pair__title">{{ t('regie.pairing.phone.title') }}</h3>
+        <ol class="c-pair__steps">
+          <li>{{ t('regie.pairing.phone.step1') }}</li>
+          <li>{{ t('regie.pairing.phone.step2') }}</li>
+          <li>{{ t('regie.pairing.phone.step3') }}</li>
+        </ol>
+        <div class="c-pair__qr-meta">
+          @if (invite()) {
+            @let valid = validParts();
+            <span class="c-hint">
+              {{ valid.before }}<span class="u-mono">{{ remainingText() }}</span
+              >{{ valid.after }}
+            </span>
+          } @else if (error()) {
+            <button class="c-btn c-btn--sm" type="button" (click)="load()">
+              {{ t('common.retry') }}
+            </button>
+          }
+          <button
+            class="c-btn c-btn--sm"
+            type="button"
+            [disabled]="commands.blocked('pairing:renew') || loading()"
+            (click)="renew()"
+          >
+            <svg sfIcon="refresh" [size]="14"></svg>{{ t('regie.pairing.phone.renew') }}
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -109,7 +117,7 @@ export class PhoneTabComponent {
       : 0;
   });
   protected readonly remainingText = computed(() => formatDuration(this.remainingMs()));
-  /** "Valid once, 29:50 min left.": the text around the mono countdown. */
+  /** "Valid once, 29:50 left.": the text around the mono countdown. */
   protected readonly validParts = computed(() =>
     messageParts((mark) => t('regie.pairing.phone.valid', { time: mark })),
   );

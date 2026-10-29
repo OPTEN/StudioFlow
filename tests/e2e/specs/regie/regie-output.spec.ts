@@ -514,22 +514,21 @@ test.describe('REGIE monitoring page', () => {
       await expect(cell(two, COL.battery)).not.toHaveClass(/c-state--warn/);
       await expect(cell(two, COL.network)).toHaveText('4G');
 
-      // The default order is the order of the Stations dock (problems first).
+      // The default order of the table puts problems first; the Devices dock keeps a stable order by code instead (a
+      // row never moves while the operator works in it).
       const names = (locator: Locator) =>
         locator.evaluateAll((elements) => elements.map((element) => element.textContent ?? ''));
       const monitoringOrder = async () => await names(mon.locator('tbody th .c-mon-table__name'));
       const dockOrder = async () => {
-        const text = await names(regie.page.locator('.c-st[data-device]'));
-        return ['Phone One', 'Phone Two', 'Laptop Lea'].sort(
-          (a, b) =>
-            text.findIndex((entry) => entry.includes(a)) -
-            text.findIndex((entry) => entry.includes(b)),
-        );
+        const text = await names(regie.page.locator('.c-st[data-device] .c-st__name'));
+        return text.map((entry) => entry.trim());
       };
-      expect(await monitoringOrder(), 'same order as the Stations dock').toEqual(
-        await dockOrder(),
-      );
       expect((await monitoringOrder())[0], 'the problem station comes first').toBe('Phone Two');
+      expect(await dockOrder(), 'the Devices dock lists by code: K1, K2, then S1').toEqual([
+        'Phone One',
+        'Phone Two',
+        'Laptop Lea',
+      ]);
 
       // Sorting: fps ascending (25, 30, then the station without a live slot last), descending, then back to the default.
       const header = (label: string) => mon.getByRole('columnheader', { name: label });

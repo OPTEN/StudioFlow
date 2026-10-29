@@ -6,38 +6,49 @@
     type="button"
     aria-controls="sf-pairing-dock"
     [attr.aria-expanded]="layout.pairingOpen()"
-    (click)="layout.togglePairing()"
+    (click)="togglePairing()"
   >
-    <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.stations.dock.pair') }}
+    <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.stations.dock.add') }}
   </button>
 
-  @for (knock of knocks(); track knock.id) {
-    <sf-knock-card [request]="knock" />
-  }
+  <div class="c-st-dock">
+    @if (knocks().length > 0) {
+      <div class="c-st-dock__knocks">
+        @for (knock of knocks(); track knock.id) {
+          <sf-knock-card [request]="knock" />
+        }
+      </div>
+    }
 
-  @if (loading()) {
-    <div class="c-empty">
-      <strong>{{ t('regie.stations.dock.loadingTitle') }}</strong
-      >{{ t('regie.docks.loadingText') }}
-    </div>
-  } @else {
-    <div class="c-st-dock__list">
-      @for (entry of entries(); track entry.view.id) {
-        <sf-station-row
-          [device]="entry.device"
-          [sources]="entry.sources"
-          [view]="entry.view"
-          [open]="openId() === entry.view.id"
-          [pulse]="pulsing().has(entry.view.id)"
-          [flash]="flashFor(entry.view.id)"
-          (toggle)="toggle(entry.view.id)"
-        />
-      } @empty {
-        <div class="c-empty">
-          <strong>{{ t('regie.stations.dock.emptyTitle') }}</strong
-          >{{ t('regie.stations.dock.emptyText') }}
-        </div>
-      }
-    </div>
-  }
+    @if (loading()) {
+      <div class="c-empty">
+        <strong>{{ t('regie.stations.dock.loadingTitle') }}</strong
+        >{{ t('regie.docks.loadingText') }}
+      </div>
+    } @else {
+      <div class="c-st-dock__list">
+        @for (entry of entries(); track entry.view.id) {
+          <sf-station-row
+            [device]="entry.device"
+            [sources]="entry.sources"
+            [view]="entry.view"
+            [open]="openId() === entry.view.id"
+            [pulse]="pulsing().has(entry.view.id)"
+            [flash]="flashFor(entry.view.id)"
+            (toggle)="toggle(entry.view.id)"
+          />
+        } @empty {
+          <div class="c-empty c-st-dock__empty">
+            <strong>{{ t('regie.stations.dock.emptyTitle') }}</strong>
+            <span>{{ t('regie.stations.dock.emptyText') }}</span>
+            @if (!layout.pairingOpen()) {
+              <button class="c-btn c-btn--sm" type="button" (click)="togglePairing()">
+                <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.stations.dock.addFirst') }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
 </sf-dock-frame>

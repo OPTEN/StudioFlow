@@ -3,10 +3,11 @@ import type { regieAudio as en } from '../en/regie-audio';
 
 export const regieAudio: Translation<typeof en> = {
   'regie.audio.dock.emptyText':
-    'Eine Audiostation oder ein Mikrofon koppeln, einen Bildschirm mit Ton teilen oder ein Video mit Ton hochladen.',
-  'regie.audio.dock.emptyTitle': 'Noch keine Tonquellen.',
+    'Die Audiostation am Mischpult mit «Gerät hinzufügen» koppeln, einen Bildschirm mit Ton teilen oder ein Video mit Ton hochladen.',
+  'regie.audio.dock.emptyTitle': 'Noch keine Tonquellen',
+  'regie.audio.dock.headphones': 'Kopfhörer',
+  'regie.audio.dock.headphonesOn': 'Kopfhörer: {what}',
   'regie.audio.dock.loadingTitle': 'Ton wird geladen …',
-  'regie.audio.dock.monitor': 'Abhören',
   'regie.audio.dock.redo': 'Mischpult-Änderung wiederholen',
   'regie.audio.dock.shortcut': 'Kanal auswählen und mit M stummschalten.',
   'regie.audio.dock.suspended': 'Die Pegelanzeigen starten mit dem ersten Klick auf diese Seite.',
@@ -26,18 +27,21 @@ export const regieAudio: Translation<typeof en> = {
   'regie.audio.mode.off': 'Aus',
   'regie.audio.mode.offHint': 'Nie hörbar',
 
-  'regie.audio.monitor.channel': 'PFL: {name}',
+  'regie.audio.monitor.channel': 'Du hörst {name}',
+  'regie.audio.monitor.choice': 'Was du hörst',
   'regie.audio.monitor.device': 'Ausgabegerät',
   'regie.audio.monitor.deviceDefault': 'Standardausgabe',
   'regie.audio.monitor.deviceFailed': 'Das Ausgabegerät konnte nicht verwendet werden.',
   'regie.audio.monitor.deviceNamed': 'Ausgabe {number}',
   'regie.audio.monitor.deviceUnsupported':
-    'Dieser Browser spielt das Abhören nur auf der Standardausgabe ab.',
+    'Dieser Browser spielt die Kopfhörer nur auf der Standardausgabe ab.',
   'regie.audio.monitor.hint':
-    'Das Abhören ist aus. Kopfhörer verwenden: Das Program auf Lautsprechern koppelt in die Mikrofone zurück.',
+    'Kopfhörer verwenden: Das Program auf Lautsprechern koppelt in die Mikrofone zurück.',
   'regie.audio.monitor.off': 'Aus',
+  'regie.audio.monitor.offNote': 'In diesem Browser ist gerade nichts zu hören.',
   'regie.audio.monitor.program': 'Program',
-  'regie.audio.monitor.title': 'Abhören',
+  'regie.audio.monitor.stop': 'Abhören beenden',
+  'regie.audio.monitor.title': 'Kopfhörer',
 
   'regie.audio.output.blocked': 'Ton blockiert',
   'regie.audio.output.blockedHint':
@@ -55,20 +59,22 @@ export const regieAudio: Translation<typeof en> = {
   'regie.audio.row.fader': 'Pegel von {name}',
   'regie.audio.row.faderText': '{value} dB',
   'regie.audio.row.group': 'Tonkanal {name}',
+  'regie.audio.row.listen': '{name} abhören',
+  'regie.audio.row.listenHint':
+    '{name} im Kopfhörer abhören, vor Fader und Stummschaltung. Auf Sendung ändert sich nichts.',
+  'regie.audio.row.live': 'Live',
+  'regie.audio.row.liveHint': 'Gerade auf Sendung hörbar',
   'regie.audio.row.mode': 'Modus',
-  'regie.audio.row.mute': 'M',
+  'regie.audio.row.muteHint': '{name} stummschalten (Taste M)',
   'regie.audio.row.muteName': '{name} stummschalten',
-  'regie.audio.row.pfl': 'PFL',
-  'regie.audio.row.pflStop': 'Abhören von {name} beenden',
-  'regie.audio.row.pflStart': '{name} vor dem Fader abhören',
   'regie.audio.row.resetHint': 'Doppelklick für 0 dB',
   'regie.audio.row.sync': 'Laufzeitversatz',
   'regie.audio.row.syncHint':
     'Verzögert den Ton, damit er zu einem später ankommenden Bild passt (0–500 ms).',
   'regie.audio.row.syncUnit': 'ms',
-  'regie.audio.row.unmuteName': 'Stummschaltung von {name} aufheben',
+  'regie.audio.row.unmuteHint': 'Stummschaltung von {name} aufheben (Taste M)',
 
   'regie.audio.state.muted': 'stumm',
-  'regie.audio.state.noSound': 'kein Ton',
-  'regie.audio.state.silent': 'seit 10 s kein Signal',
+  'regie.audio.state.noSound': 'sendet nicht',
+  'regie.audio.state.silent': 'seit 10 s still',
 };

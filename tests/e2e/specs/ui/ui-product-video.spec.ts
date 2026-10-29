@@ -102,7 +102,7 @@ test('product video: pairing, sender tally, take, layout, output and OBS', async
   pairing.markStart();
   await page.waitForTimeout(800);
   await pairing.click(regie.pairButton());
-  // A desktop browser opens on the Laptop tab; the video shows the phone's QR code.
+  // A fresh browser opens “Add device” on the Phone tab; the video shows the phone's QR code.
   await page.waitForTimeout(700);
   if ((await regie.pairingTab('phone').getAttribute('aria-selected')) !== 'true') await pairing.click(regie.pairingTab('phone'));
   await expect(regie.pairingQr()).toBeVisible();

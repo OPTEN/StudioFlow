@@ -1,57 +1,120 @@
-// Camera panel of a phone station: labelled rows (label, control, violet value).
+// Camera settings of a phone: one field per control, the label left and the value right above the slider or the
+// segmented control, so the panel reads like a short settings list even in a narrow dock.
+@use 'mixins' as *;
+@use 'range' as *;
+
 :host {
   display: block;
 }
 
 .c-cam {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
-.c-cam__row {
+.c-cam__live {
   align-items: center;
-  display: grid;
+  color: var(--text-2);
+  display: flex;
+  font-size: var(--fs-footnote);
   gap: 8px;
-  grid-template-columns: 74px minmax(0, 1fr) auto auto;
+  margin: 0;
+}
 
-  // A row without a slider (segmented control) only needs label and control.
+// Field: label | value (| reset) on top, the control below over the full width. The DOM order stays label, control,
+// value, so the value is the `<output>` that follows its slider.
+.c-cam__field {
+  align-items: center;
+  column-gap: 8px;
+  display: grid;
+  grid-template-areas:
+    'label value'
+    'control control';
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap: 2px;
+
+  > .c-cam__label {
+    grid-area: label;
+  }
+
+  > .c-cam__slider,
   > .c-seg {
-    grid-column: 2 / -1;
-    justify-self: start;
+    grid-area: control;
+  }
+
+  > .c-cam__value {
+    grid-area: value;
   }
 }
 
-.c-cam__row--end {
-  grid-template-columns: 1fr;
+.c-cam__field--reset {
+  grid-template-areas:
+    'label value zero'
+    'control control control';
+  grid-template-columns: minmax(0, 1fr) auto auto;
+
+  > .c-cam__zero {
+    grid-area: zero;
+  }
+}
+
+.c-cam__field--seg {
+  grid-template-areas:
+    'label'
+    'control';
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 6px;
+
+  > .c-seg {
+    display: grid;
+  }
 }
 
 .c-cam__label {
-  color: var(--muted);
-  font-size: 12.5px;
+  color: var(--text-2);
+  font-size: var(--fs-footnote);
+  font-weight: 500;
 }
 
 .c-cam__slider {
-  accent-color: var(--blue);
-  min-width: 0;
-  width: 100%;
+  @include range(4px, 16px);
 }
 
 .c-cam__value {
-  color: var(--violet);
-  font: 500 12px var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  min-width: 6ch;
+  @include mono;
+  color: var(--text);
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  min-width: 5ch;
   text-align: right;
+}
+
+.c-cam__zero {
+  height: 20px;
+  padding: 0 6px;
+}
+
+.c-cam__foot {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .c-cam__status {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
   margin: 0;
 }
 
 .c-cam__problem {
+  align-items: flex-start;
   color: var(--text-2);
-  font-size: 12.5px;
+  display: flex;
+  font-size: var(--fs-footnote);
+  gap: 6px;
   margin: 0;
+
+  .c-icon {
+    color: var(--amber);
+    margin-top: 1px;
+  }
 }

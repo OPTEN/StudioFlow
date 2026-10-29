@@ -12,6 +12,7 @@ import {
 import { t } from '@studioflow/i18n';
 import type { DeviceDto } from '@studioflow/scene-model';
 import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
+import { IconComponent } from '../../core/ui/icon.component';
 import { brightnessText, cameraPanelView, distanceText, zoomText } from './camera-panel-view';
 import { CameraControlService } from './camera-control.service';
 
@@ -23,16 +24,17 @@ const DRAG_QUIET_MS = 400;
 type Slider = 'zoom' | 'distance' | 'brightness';
 
 /**
- * Camera panel of a phone station (issue #11): lens picker, zoom, focus (automatic or locked, with distance),
- * brightness, light and "Reset to auto". Only the controls the phone reported are shown, and every slider shows the
- * value the phone reports back; while the user drags, the dragged value is shown and sent (throttled by
- * {@link CameraControlService}). A lens switch of a source that is in the program asks first (dashed red box). A refusal
- * by the phone or the server appears as an inline message. Sliders are native range inputs: arrow keys, Page Up/Down,
- * Home and End work.
+ * "Camera settings" of a phone (issue #11): lens picker, zoom, focus (automatic or locked, with distance), brightness,
+ * light and "Reset to auto", each as a labelled field with its value on the right. Only the controls the phone reported
+ * are shown, and every slider shows the value the phone reports back; while the user drags, the dragged value is shown
+ * and sent (throttled by {@link CameraControlService}). While the camera is in the program a Live note says that every
+ * change shows on air, and the two changes that interrupt or undo the picture (a lens switch, "Reset to auto") ask
+ * first. A refusal by the phone or the server appears as an inline message, which is forgotten when the panel closes.
+ * Sliders are native range inputs: arrow keys, Page Up/Down, Home and End work.
  */
 @Component({
   selector: 'sf-camera-panel',
-  imports: [ConfirmBoxComponent],
+  imports: [ConfirmBoxComponent, IconComponent],
   templateUrl: './camera-panel.component.html',
   styleUrl: './camera-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +53,8 @@ export class CameraPanelComponent {
   protected readonly view = computed(() => cameraPanelView(this.device()));
   /** The lens waiting for the confirmation. */
   protected readonly lensToConfirm = signal<{ id: string; label: string } | null>(null);
+  /** "Reset to auto" of a camera on air waits for the confirmation. */
+  protected readonly confirmReset = signal(false);
   private readonly drafts = signal<Readonly<Partial<Record<Slider, number>>>>({});
   private lastMoveAt = 0;
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,7 +67,11 @@ export class CameraPanelComponent {
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.clearDraftTimer());
+    inject(DestroyRef).onDestroy(() => {
+      this.clearDraftTimer();
+      // A message about an earlier command must not greet the next opening of the panel.
+      this.control.clearFailure(this.device().id);
+    });
     effect(() => {
       this.view();
       untracked(() => {
@@ -121,12 +129,24 @@ export class CameraPanelComponent {
   }
 
   protected reset(): void {
+    if (this.inProgram()) {
+      this.lensToConfirm.set(null);
+      this.confirmReset.set(true);
+      return;
+    }
+    this.drafts.set({});
+    this.control.send(this.device(), { reset: true });
+  }
+
+  protected confirmResetNow(): void {
+    this.confirmReset.set(false);
     this.drafts.set({});
     this.control.send(this.device(), { reset: true });
   }
 
   protected chooseLens(id: string, label: string): void {
     if (this.inProgram()) {
+      this.confirmReset.set(false);
       this.lensToConfirm.set({ id, label });
       return;
     }

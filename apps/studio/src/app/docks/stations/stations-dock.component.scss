@@ -1,5 +1,33 @@
-// Stationen dock (prototype .st-list, #knockSlot).
+// Devices dock: waiting requests on top, then the device rows as rounded strips with 2 px gaps.
+.c-st-dock {
+  display: grid;
+  gap: 8px;
+  padding: 6px;
+}
+
+.c-st-dock__knocks {
+  display: grid;
+  gap: 6px;
+}
+
 .c-st-dock__list {
   align-content: start;
   display: grid;
+  gap: 2px;
+}
+
+// Empty state: title, one sentence, the action that does it.
+.c-st-dock__empty {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 14px 10px;
+
+  strong {
+    margin-bottom: 0;
+  }
+
+  .c-btn {
+    margin-top: 8px;
+  }
 }

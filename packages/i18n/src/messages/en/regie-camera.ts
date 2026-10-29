@@ -2,8 +2,8 @@ import type { Namespace } from '../../types';
 
 /** The camera control panel of a station in the Stations dock (remote zoom, lens, focus, brightness, light). */
 export const regieCamera = {
-  'regie.camera.brightness.auto': 'Auto',
-  'regie.camera.brightness.autoLabel': 'Set the brightness to automatic',
+  'regie.camera.brightness.auto': 'Reset',
+  'regie.camera.brightness.autoLabel': 'Reset the brightness to 0',
   'regie.camera.brightness.label': 'Brightness',
   'regie.camera.brightness.value': '{value} EV',
 
@@ -23,13 +23,18 @@ export const regieCamera = {
   'regie.camera.lens.tele': 'Tele',
   'regie.camera.lens.ultraWide': 'Wide-angle',
 
+  'regie.camera.live': 'Every change shows on air right away.',
+
   'regie.camera.panel.label': 'Camera controls of {name}',
-  'regie.camera.panel.open': 'Camera',
+  'regie.camera.panel.open': 'Camera settings',
 
   'regie.camera.problem.failed': 'The phone could not apply the change.',
   'regie.camera.problem.overconstrained': 'The camera does not support this setting.',
 
   'regie.camera.reset': 'Reset to auto',
+  'regie.camera.resetConfirm':
+    '{label} is live. Zoom, focus, brightness and light go back to automatic at once.',
+  'regie.camera.resetNow': 'Reset now',
 
   'regie.camera.status.notReported': 'The phone has not reported its camera yet.',
   'regie.camera.status.offline': 'The phone is offline. Changes are not sent.',

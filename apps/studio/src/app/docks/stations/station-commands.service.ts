@@ -15,11 +15,11 @@ export const QUICK_MESSAGE_KEYS = [
 ] as const;
 
 /**
- * The station commands of the Stations dock (spec 4.6): ask for a reshare, switch the camera, send a control room
- * chat message, rename, block / unblock, remove, and acknowledge recovered incidents ("Seen"). Each command has its
+ * The device commands of the Devices dock (spec 4.6): ask for a reshare, switch the camera, send a control room
+ * chat message, rename, block / unblock, remove, and acknowledge recovered incidents ("Dismiss"). Each command has its
  * own lock per device ({@link busy}), goes through {@link DockCommandService} (offline guard, error toasts in the
  * active language) and confirms with a toast. Commands to a disconnected device are accepted by the server and
- * dropped; the toast says so.
+ * dropped; the toast says so. Unsent messages are kept per device ({@link draft}), so closing a row loses nothing.
  */
 @Injectable({ providedIn: 'root' })
 export class StationCommandsService {
@@ -28,6 +28,22 @@ export class StationCommandsService {
   private readonly commands = inject(DockCommandService);
   private readonly toasts = inject(ToastService);
   private readonly acks = inject(IncidentAckService);
+  /** Unsent message per device id (kept while the Regie is open). */
+  private readonly drafts = new Map<string, string>();
+
+  /** The unsent message of a device, or ''. */
+  draft(deviceId: string): string {
+    return this.drafts.get(deviceId) ?? '';
+  }
+
+  /** Keeps the unsent message of a device (an empty text forgets it). */
+  keepDraft(deviceId: string, text: string): void {
+    if (text) {
+      this.drafts.set(deviceId, text);
+    } else {
+      this.drafts.delete(deviceId);
+    }
+  }
 
   /** True while the command `kind` for the device runs (e.g. `block`, `message`, `reshare:screen-1`). */
   busy(deviceId: string, kind: string): boolean {
@@ -148,7 +164,7 @@ export class StationCommandsService {
   }
 
   /**
-   * "Seen": acknowledges the recovered incidents of the station (shared by every Regie session). Incidents that are
+   * "Dismiss": acknowledges the recovered incidents of the station (shared by every Regie session). Incidents that are
    * open again are left alone (see {@link IncidentAckService}).
    */
   async acknowledge(device: DeviceDto, incidents: readonly IncidentDto[]): Promise<boolean> {

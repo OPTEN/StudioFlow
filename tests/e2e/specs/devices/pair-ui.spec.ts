@@ -31,13 +31,14 @@ test.describe('PAIR phone, QR code', () => {
         await openPairingTab(regie, 'phone');
         await expect(regie.page.getByRole('tab', { name: 'Phone' })).toHaveAttribute('aria-selected', 'true');
         // The title “Phone as a camera” is hidden on short laptops (height <= 820 px, by design): the text under it is the check.
-        await expect(regie.page.locator('sf-phone-tab')).toContainText('Scan with the camera app. The phone opens StudioFlow and then appears under Stations.');
-        // The countdown: “Valid once, 29:5x min left.” and it runs down.
+        await expect(regie.page.locator('sf-phone-tab')).toContainText('Scan this code. StudioFlow opens in the browser.');
+        await expect(regie.page.locator('sf-phone-tab')).toContainText('Allow the camera. The phone then appears under Devices.');
+        // The countdown: “Valid once, 29:5x left.” and it runs down.
         const countdown = regie.page.locator('.c-pair__qr-side .c-hint .u-mono');
         await expect(countdown).toHaveText(/^(30:00|29:[0-5]\d)$/);
         const first = await countdown.textContent();
         await expect.poll(async () => countdown.textContent(), { message: 'the countdown runs down', timeout: 5000 }).not.toBe(first);
-        await expect(regie.page.locator('.c-pair__qr-side .c-hint')).toContainText(/Valid once, \d\d:\d\d min left\./);
+        await expect(regie.page.locator('.c-pair__qr-side .c-hint')).toContainText(/Valid once, \d\d:\d\d left\./);
 
         const qr = await regie.readPairingQr();
         expect(qr.url, 'the QR code decodes to the invite URL of the API').toBe(invite.url);
@@ -81,7 +82,8 @@ test.describe('PAIR phone, QR code', () => {
       knownDevBug('DEV-04', 'the tab row of the pairing dock collapses to 2 px height on the Phone tab and its buttons are covered by the panel');
       expect(regie.page.viewportSize(), 'the smallest Regie size of the plan').toEqual({ width: 1280, height: 720 });
       await regie.pairButton().click();
-      // The dock opens on “Laptop” (the short panel: the tab row is 34 px high); “Phone” is reachable with a real click.
+      // A fresh browser opens “Add device” on “Phone”, the tab with the QR code (the clicks below are real pointer clicks).
+      await expect(regie.pairingTab('phone')).toHaveAttribute('aria-selected', 'true');
       await regie.pairingTab('phone').click();
       await expect(regie.pairingQr()).toBeVisible();
       const geometry = await regie.page.evaluate(() => {
@@ -135,9 +137,9 @@ test.describe('PAIR phone, QR code', () => {
       await expectVideoPlaying(video, { minFps: 8, timeout: 30_000 });
       const videoMs = Date.now() - liveAt;
       testInfo.annotations.push({ type: 'measurement', description: `T-VIDEO-START (source already live, item added -> playing picture in the Program monitor): ${videoMs} ms` });
-      await expect(paired.row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
+      await expect(paired.row.locator('.c-st__l2 .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
       await expect(paired.row.locator('.c-st__l2')).toHaveText(/\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
-      await expect(paired.row.locator('.c-st__tag, .c-tag--pgm')).toHaveText('PGM');
+      await expect(paired.row.locator('.c-tag--pgm')).toHaveText('Live');
       expect((await readPlaces(regie.page)).strip).toHaveLength(0);
       // The sender's own preview and tally agree: K1 is in the program scene, the broadcast has not started.
       expect(await phone.tally(), 'standby: nothing is on air').toBe('off');
@@ -202,7 +204,8 @@ test.describe('PAIR laptop, check code', () => {
       const cardMs = Date.now() - requestedAt;
       expect(await regie.knockCheckCode('Laptop Anna'), 'the same code on the knock card').toBe(code);
       await expect(regie.knockCard('Laptop Anna')).toContainText('Laptop Anna wants to join');
-      await expect(regie.knockCard('Laptop Anna')).toContainText('Does the laptop show the same check code? Then allow.');
+      await expect(regie.knockCard('Laptop Anna')).toContainText('Same code on the device?');
+      await expect(regie.knockCard('Laptop Anna'), 'the card names the kind and the platform').toContainText(/Laptop · .+ · expires in/);
       const approvedAt = Date.now();
       await regie.approveKnock('Laptop Anna');
       await laptop.waitConnected();
@@ -391,6 +394,10 @@ test.describe('PAIR invite links, re-recognition, redeem', () => {
       await regie.page.getByRole('button', { name: 'Create link' }).click();
       await expect(regie.toast()).toContainText('Invite link created');
       const shown = regie.page.locator('.c-pair__url--wrap');
+      // The secret part is hidden until “Show link”.
+      await expect(shown).toHaveText(/\/j\/•+$/);
+      await regie.page.getByRole('button', { name: 'Show link' }).click();
+      await expect(regie.page.getByRole('button', { name: 'Show link' })).toHaveAttribute('aria-pressed', 'true');
       await expect(shown).toHaveText(/\/j\/[A-Za-z0-9_-]{20,}$/);
       const text = (await shown.textContent())!.trim();
       await expect(regie.page.locator('.c-hint').filter({ hasText: 'Valid once and' })).toHaveText(/Valid once and expires in (30|29) minutes\. Whoever opens it is paired straight away\./);

@@ -79,7 +79,7 @@ describe('station view in German', () => {
       'Auflösung',
       'Codierung',
       'Gekoppelt',
-      'Verlust',
+      'Paketverlust',
       'Akku',
       'Netz',
     ]);

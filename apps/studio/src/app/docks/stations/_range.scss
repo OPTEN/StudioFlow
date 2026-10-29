@@ -1,0 +1,81 @@
+// Slider of the device and audio docks (camera zoom, focus, brightness; the audio fader): a quiet rounded track and a
+// round white knob with a soft shadow, as on Apple's platforms, so the knob reads as the thing to grab and never as a
+// level. Native range input underneath: arrow keys, Page Up/Down, Home and End keep working.
+@use 'mixins' as *;
+
+/// Styles a native `input[type=range]`.
+/// @param {Length} $track - height of the track
+/// @param {Length} $knob - diameter of the knob
+@mixin range($track: 4px, $knob: 16px) {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: $knob + 6px;
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+
+  &::-webkit-slider-runnable-track {
+    background: var(--fill-hover);
+    border-radius: var(--radius-pill);
+    height: $track;
+  }
+
+  &::-moz-range-track {
+    background: var(--fill-hover);
+    border-radius: var(--radius-pill);
+    height: $track;
+  }
+
+  &::-webkit-slider-thumb {
+    @include state-transition(box-shadow, transform);
+    appearance: none;
+    background: var(--on-fill);
+    border: 0;
+    border-radius: 50%;
+    box-shadow:
+      var(--shadow-raise),
+      0 0 0 0.5px var(--seam-strong);
+    height: $knob;
+    margin-top: calc((#{$track} - #{$knob}) / 2);
+    width: $knob;
+  }
+
+  &::-moz-range-thumb {
+    background: var(--on-fill);
+    border: 0;
+    border-radius: 50%;
+    box-shadow:
+      var(--shadow-raise),
+      0 0 0 0.5px var(--seam-strong);
+    height: $knob;
+    width: $knob;
+  }
+
+  &:active::-webkit-slider-thumb {
+    transform: scale(1.08);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::-webkit-slider-thumb {
+    box-shadow:
+      var(--shadow-raise),
+      0 0 0 2px var(--blue),
+      var(--shadow-focus);
+  }
+
+  &:focus-visible::-moz-range-thumb {
+    box-shadow:
+      var(--shadow-raise),
+      0 0 0 2px var(--blue),
+      var(--shadow-focus);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}

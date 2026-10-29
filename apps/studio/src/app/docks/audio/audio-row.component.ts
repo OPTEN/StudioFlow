@@ -1,21 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import { AUDIO_LIMITS, faderValue, formatDb, type AudioMode } from '@studioflow/scene-model';
+import {
+  AUDIO_LIMITS,
+  faderPosition,
+  faderValue,
+  formatDb,
+  type AudioMode,
+} from '@studioflow/scene-model';
 import { StudioAudioService } from '../../core/audio/studio-audio.service';
 import { IconComponent } from '../../core/ui/icon.component';
 import { AudioCommandsService } from './audio-commands.service';
 import { meterFill, modeHint, modeLabel, rowStateWord, type AudioRowView } from './audio-rows';
 
-/** Highest level shown in the meter's last segment: from here on a peak is close to clipping. */
-const HOT_FILL = 0.9;
+/** Meter share from which a peak is close to clipping: −3 dBFS on the −60 … 0 dBFS scale (DESIGN.md). */
+const HOT_FILL = 0.95;
 
 /**
- * One channel of the Audio dock: code, name and role, the PGM tag while it is audible, the state word (muted, no sound,
- * no signal for 10 s), PFL and mute, the level meter above the fader with its value in dB, and the details (mode and
- * sync offset) behind the chevron. A click or focus inside selects the channel (the target of the M key).
+ * One channel of the Audio dock: code, name, role and mode as words ("Audio station · Always"), the state word (muted,
+ * not sending, silent for 10 s), the Live capsule while it is audible on air, and the icon buttons Listen (headphones;
+ * pre-fader listening in this browser) and Mute (speaker / speaker off), both toggle buttons with `aria-pressed` and a
+ * constant name. Below, the level meter (a thin neutral bar) sits above the fader, whose round knob is clearly a
+ * control and never a level; a notch marks 0 dB. The details behind the chevron change the mode (segmented control,
+ * each mode explained) and the sync offset. A click or focus inside selects the channel (the target of the M key).
  *
- * The meter is neutral; it turns red only for a peak close to full scale, the one meaning that colour has for a
- * level. The silence warning is the amber state word, never an incident.
+ * The meter turns red only for a peak close to full scale, the one meaning that colour has for a level. The silence
+ * warning is the amber state word, never an incident.
  */
 @Component({
   selector: 'sf-audio-row',
@@ -37,6 +46,8 @@ export class AudioRowComponent {
   protected readonly modeLabel = modeLabel;
   protected readonly modeHint = modeHint;
   protected readonly open = signal(false);
+  /** Fader position of 0 dB, for the notch under the track. */
+  protected readonly unity = faderPosition(0);
 
   protected readonly selected = computed(() => this.commands.selected() === this.row().sourceId);
   protected readonly muted = computed(() => this.row().channel.muted);
@@ -54,6 +65,10 @@ export class AudioRowComponent {
   protected readonly detailId = computed(() => `sf-audio-detail-${this.row().sourceId}`);
   protected readonly modeLabelId = computed(() => `sf-audio-mode-${this.row().sourceId}`);
   protected readonly syncId = computed(() => `sf-audio-sync-${this.row().sourceId}`);
+
+  protected modeHintId(mode: AudioMode): string {
+    return `sf-audio-mode-${this.row().sourceId}-${mode}`;
+  }
   /** A fader gesture is running (a pointer drag fires `input` many times before one `change`). */
   private gesture = false;
 

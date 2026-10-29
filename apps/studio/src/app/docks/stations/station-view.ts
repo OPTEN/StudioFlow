@@ -1,11 +1,13 @@
-import { t, type PlainMessageKey } from '@studioflow/i18n';
+import { compareText, t, type PlainMessageKey } from '@studioflow/i18n';
 import {
   MISSING_VALUE,
+  compareCodes,
   formatHm,
   formatKbpsAsMbit,
   formatPercent,
   statusWord,
   type DeviceDto,
+  type DeviceKind,
   type DeviceTelemetryDto,
   type IncidentDto,
   type SourceDto,
@@ -18,7 +20,7 @@ import { statusLamp, statusTone, type LampTone, type StateTone } from '../shared
 import { decodingText, encodingView, type DecodingInput } from '../shared/stream-load';
 
 /**
- * Pure view model of the Stations dock (prototype "Stations": `stationLine`, `renderStations`): one station per
+ * Pure view model of the Devices dock (formerly "Stations"; prototype `stationLine`, `renderStations`): one row per
  * paired device, with the worst state of its slots, metrics, tally and the details. No Angular, no DOM. The texts are
  * looked up when a model is built, so build it inside a `computed` (and rebuild it when the language changes).
  */
@@ -56,6 +58,8 @@ export type StationLine =
 export interface StationView {
   readonly id: string;
   readonly name: string;
+  /** What the device is (phone, laptop, audio station): the kind icon next to the codes. */
+  readonly kind: DeviceKind;
   /** Slot codes, sorted (K1, S1, S2). */
   readonly codes: readonly string[];
   /** Status of the station (its worst slot; `blocked` for blocked devices). */
@@ -263,6 +267,7 @@ export function stationView(device: DeviceDto, context: StationContext): Station
   return {
     id: device.id,
     name: device.name,
+    kind: device.kind,
     codes,
     status,
     lamp: statusLamp(status),
@@ -287,6 +292,33 @@ export function stationView(device: DeviceDto, context: StationContext): Station
           : '') +
       (status !== 'ok' ? `, ${statusWord(status, worst?.kind)}` : ''),
   };
+}
+
+/** What {@link compareStations} reads of a row. */
+export interface StationOrderKey {
+  readonly id: string;
+  readonly name: string;
+  readonly codes: readonly string[];
+}
+
+/**
+ * Order of the Devices dock: by the first slot code (K1, K2 … S1), devices without a slot last, then by name. It never
+ * depends on the state or the tally, so a row does not move while the operator works in it (an outage, a take); the
+ * row itself shows the problem with its lamp, word and wash.
+ */
+export function compareStations(a: StationOrderKey, b: StationOrderKey): number {
+  const codeA = a.codes[0] ?? null;
+  const codeB = b.codes[0] ?? null;
+  if (codeA !== codeB) {
+    if (codeA === null || codeB === null) {
+      return codeA === null ? 1 : -1;
+    }
+    const byCode = compareCodes(codeA, codeB);
+    if (byCode !== 0) {
+      return byCode;
+    }
+  }
+  return compareText(a.name, b.name, { numeric: true }) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 /** One entry of the details list. */

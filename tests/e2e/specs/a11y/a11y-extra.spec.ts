@@ -33,7 +33,7 @@ async function visualFingerprint(page: Page, selector: string): Promise<string> 
 }
 
 test.describe('Forced colours and zoom', () => {
-  test('E2E-DEV-22 [forced colours] states stay distinguishable without colour: the words “reconnecting”, “PGM”, “PVW” and “PROGRAM”/“PREVIEW” name them, lamps are decorative; focus indicators stay', tags, async ({ openRegie, pairContext, onCleanup }) => {
+  test('E2E-DEV-22 [forced colours] states stay distinguishable without colour: the words “reconnecting”, “Live”, “Preview” and “PROGRAM”/“PREVIEW” name them, lamps are decorative; focus indicators stay', tags, async ({ openRegie, pairContext, onCleanup }) => {
     test.setTimeout(150_000);
     const { regie } = await openBusyRegie({ openRegie, pairContext, onCleanup }, { viewport: { width: 1440, height: 900 }, forcedColors: 'active', incident: 'reconnecting', studio: true });
     const { page } = regie;
@@ -42,12 +42,13 @@ test.describe('Forced colours and zoom', () => {
     // the outage is named in words in the activity bar, on the scene row and on the station row (not only by a lamp colour)
     await expect(page.getByRole('region', { name: 'Activity' })).toContainText('reconnecting');
     await expect(page.getByRole('button', { name: /^Presentation, in Preview, K3 disrupted$/ })).toBeVisible();
-    await expect(page.locator('.c-st__row').first()).toHaveAccessibleName(/reconnecting/);
-    await expect(page.locator('.c-st__l2').first()).toContainText('reconnecting');
+    // the Devices dock keeps its order (by code): the device with the outage is the one with the amber wash
+    await expect(page.locator('.c-st.is-warn .c-st__row').first()).toHaveAccessibleName(/reconnecting/);
+    await expect(page.locator('.c-st.is-warn .c-st__l2').first()).toContainText('reconnecting');
     // Program and Preview are told in words, the scene rows carry the tags
     await expect(page.getByText('PROGRAM', { exact: false }).first()).toBeVisible();
-    await expect(page.locator('.c-tag--pgm').first()).toHaveText('PGM');
-    await expect(page.locator('.c-tag--pvw').first()).toHaveText('PVW');
+    await expect(page.locator('.c-tag--pgm').first()).toHaveText('Live');
+    await expect(page.locator('.c-tag--pvw').first()).toHaveText('Preview');
     // lamps are decorative and the words carry the meaning
     expect(await page.locator('.c-lamp').evaluateAll((elements) => elements.filter((element) => element.getAttribute('aria-hidden') !== 'true').length)).toBe(0);
 

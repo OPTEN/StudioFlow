@@ -22,8 +22,15 @@
       </p>
     }
     @case ('controls') {
+      @if (inProgram()) {
+        <p class="c-cam__live">
+          <span class="c-tag c-tag--pgm">{{ t('regie.stations.tag.live') }}</span>&ngsp;
+          <span>{{ t('regie.camera.live') }}</span>
+        </p>
+      }
+
       @if (current.lenses.length > 0) {
-        <div class="c-cam__row">
+        <div class="c-cam__field c-cam__field--seg">
           <span class="c-cam__label" id="sf-cam-lens-{{ device().id }}">{{
             t('regie.camera.lens.label')
           }}</span>
@@ -54,7 +61,7 @@
       }
 
       @if (current.zoom; as zoom) {
-        <div class="c-cam__row">
+        <div class="c-cam__field">
           <label class="c-cam__label" [for]="'sf-cam-zoom-' + device().id">{{
             t('regie.camera.zoom.label')
           }}</label>
@@ -77,7 +84,7 @@
       }
 
       @if (current.focus; as focus) {
-        <div class="c-cam__row">
+        <div class="c-cam__field c-cam__field--seg">
           <span class="c-cam__label" id="sf-cam-focus-{{ device().id }}">{{
             t('regie.camera.focus.label')
           }}</span>
@@ -105,7 +112,7 @@
           </div>
         </div>
         @if (focus.distance; as distance) {
-          <div class="c-cam__row">
+          <div class="c-cam__field">
             <label class="c-cam__label" [for]="'sf-cam-distance-' + device().id">{{
               t('regie.camera.focus.distance')
             }}</label>
@@ -129,7 +136,7 @@
       }
 
       @if (current.brightness; as brightness) {
-        <div class="c-cam__row">
+        <div class="c-cam__field c-cam__field--reset">
           <label class="c-cam__label" [for]="'sf-cam-brightness-' + device().id">{{
             t('regie.camera.brightness.label')
           }}</label>
@@ -149,7 +156,7 @@
             shownText('brightness', brightness.value)
           }}</output>
           <button
-            class="c-btn c-btn--sm"
+            class="c-btn c-btn--sm c-btn--plain c-cam__zero"
             type="button"
             [disabled]="shown('brightness', brightness.value) === 0"
             [attr.aria-label]="t('regie.camera.brightness.autoLabel')"
@@ -161,7 +168,7 @@
       }
 
       @if (current.torch; as torch) {
-        <div class="c-cam__row">
+        <div class="c-cam__field c-cam__field--seg">
           <span class="c-cam__label" id="sf-cam-torch-{{ device().id }}">{{
             t('regie.camera.torch.label')
           }}</span>
@@ -186,15 +193,27 @@
         </div>
       }
 
-      <div class="c-cam__row c-cam__row--end">
+      <div class="c-cam__foot">
         <button class="c-btn c-btn--sm" type="button" data-testid="camera-reset" (click)="reset()">
-          {{ t('regie.camera.reset') }}
+          <svg sfIcon="refresh" [size]="14"></svg>{{ t('regie.camera.reset') }}
         </button>
       </div>
+      @if (confirmReset()) {
+        <sf-confirm-box
+          [label]="t('regie.camera.reset')"
+          [confirmLabel]="t('regie.camera.resetNow')"
+          [flush]="true"
+          [message]="t('regie.camera.resetConfirm', { label: label() || device().name })"
+          (confirm)="confirmResetNow()"
+          (cancel)="confirmReset.set(false)"
+        />
+      }
     }
   }
 
   @if (failure(); as message) {
-    <p class="c-cam__problem" role="status" data-testid="camera-problem">{{ message }}</p>
+    <p class="c-cam__problem" role="status" data-testid="camera-problem">
+      <svg sfIcon="alert" [size]="14"></svg>{{ message }}
+    </p>
   }
 </section>

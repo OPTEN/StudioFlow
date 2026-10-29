@@ -38,7 +38,7 @@
       "fix": "In updateDerived() treat phase `replaced` (and `blocked`) like a terminal phase for the wake lock: disable it while the session is not the active one."
     },
     "DEV-04": {
-      "status": "open",
+      "status": "fixed",
       "severity": "medium",
       "area": "PAIR",
       "title": "At 1280 x 720 the tab row of the pairing dock (Phone / Laptop / Link) collapses to 2 px height while the Phone tab shows its QR code; the tab buttons are covered by the panel and cannot be clicked",
@@ -47,7 +47,8 @@
       "expected": "The tabs are visible and clickable (a tab button is 32 px high); DEV-01: critical controls reachable at 1280 x 720.",
       "actual": "getBoundingClientRect: .c-tabs 320 x 2 px at (307,465), tab buttons 106 x 32 px overflowing it, the panel (.c-pair__panel, 282 px) starts at y=475 and covers them; Playwright: the click on the tab is intercepted by the panel text (<p class=c-pair__text>) or the dock header, 15 s timeout. On the Laptop and Link tabs the row is 34 px high (the panels are shorter). Only the keyboard (focus + Enter) switches tabs from the Phone tab. Reproduced in every run that clicked a tab after the QR code had loaded.",
       "evidence": "E2E_BUG_REPORT=1 run (twice): tab row height 2, expected >= 30 (test E2E-PAIR-01 [ui, dock tabs]); screenshot tests/e2e/.output/sf-e2e-2/artifacts/devices-pair-ui-PAIR-phone-74a92--Regie-the-code-is-replaced-smoke/test-failed-1.png of an earlier run shows the hairline above the QR code; measured: .c-tabs 307,465 320x2, tab button 308,466 106x32, panel 307,475 320x282.",
-      "fix": "Give the tab row flex: none (or min-height) so the panel scrolls instead of the tabs shrinking; or scroll the dock body, not the tab row."
+      "fix": "Give the tab row flex: none (or min-height) so the panel scrolls instead of the tabs shrinking; or scroll the dock body, not the tab row.",
+      "resolution": "UI redesign (Add device dock): the tab row is a flex: none child above the panel, which scrolls on its own; at 1280 x 720 the tabs keep their 32 px height and are never covered."
     },
     "DEV-05": {
       "status": "open",

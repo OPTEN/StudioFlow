@@ -39,7 +39,8 @@ export function qrMatrix(value: string, ecc: QrEcc = 'M'): boolean[][] {
 /**
  * QR code as inline SVG (spec 3, research "QR code"): `uqr` encodes the URL, the modules become one `<path>`, dark
  * on white with a 4-module quiet zone, never inverted in the dark theme. No `[innerHTML]` (Angular strips SVG).
- * The size comes from CSS (`width` of the host, default 168 px).
+ * The size comes from CSS (`--qr-size` of a parent, default 168 px). The white field is the one literal colour here:
+ * a QR code must stay dark on white in both themes, or phone cameras do not read it.
  */
 @Component({
   selector: 'sf-qr-code',
@@ -68,7 +69,7 @@ export function qrMatrix(value: string, ecc: QrEcc = 'M'): boolean[][] {
       display: block;
       flex: none;
       overflow: hidden;
-      width: 168px;
+      width: var(--qr-size, 168px);
     }
 
     .c-qr__svg {

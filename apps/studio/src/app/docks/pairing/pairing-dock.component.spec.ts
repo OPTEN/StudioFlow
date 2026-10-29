@@ -6,8 +6,9 @@ import { startStore, studioTestProviders, type StoreHarness } from '../../../tes
 import { ToastService } from '../../core/ui/toast.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
-import { expiryText } from './link-tab.component';
+import { expiryText, maskedUrl } from './link-tab.component';
 import { PairingDockComponent, tabForKey } from './pairing-dock.component';
+import { PAIRING_TAB_KEY, PairingTabMemory } from './pairing-tab-memory.service';
 import { latestPhoneInvite } from './phone-tab.component';
 import { displayUrl } from './public-url.service';
 
@@ -47,6 +48,9 @@ describe('pairing helpers', () => {
     expect(expiryText(50_000)).toBe('expires in 1 minute');
     expect(expiryText(10_000)).toBe('expires shortly');
     expect(expiryText(0)).toBe('expired');
+    expect(maskedUrl('studioflow.example.com/j/inv_cccccccccccccccc')).toBe(
+      'studioflow.example.com/j/••••••••',
+    );
   });
 
   it('picks the newest phone invite', () => {
@@ -105,6 +109,7 @@ describe('PairingDockComponent', () => {
 
   it('shows the Laptop tab with the short address and roving tabs', async () => {
     await setup();
+    expect(text(element.querySelector('.c-dock-frame__title'))).toBe('Add device');
     expect(tabs().map((tab) => text(tab))).toEqual(['Phone', 'Laptop', 'Link']);
     expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toEqual([
       'false',
@@ -121,6 +126,8 @@ describe('PairingDockComponent', () => {
     await render();
     expect(layout.pairingTab()).toBe('link');
     expect(document.activeElement).toBe(tabs()[2]);
+    expect(TestBed.inject(PairingTabMemory).last()).toBe('link');
+    localStorage.removeItem(PAIRING_TAB_KEY);
   });
 
   it('shows the QR code of the phone invite with its remaining time and renews it', async () => {
@@ -133,7 +140,7 @@ describe('PairingDockComponent', () => {
     await render();
     expect(element.querySelector('sf-qr-code svg path')?.getAttribute('d')).toBeTruthy();
     expect(text(element.querySelector('.c-pair__qr-side .c-hint'))).toMatch(
-      /^Valid once, (29:59|30:00) min left.$/,
+      /^Valid once, (29:59|30:00) left\.$/,
     );
     expect(text(element.querySelector('.c-pair__side-title'))).toBe(
       'Tips for permanently mounted phones',
@@ -160,6 +167,12 @@ describe('PairingDockComponent', () => {
       statusText: 'Created',
     });
     await render();
+    expect(text(element.querySelector('.c-pair__url'))).toBe('studioflow.example.com/j/••••••••');
+    const show = element.querySelector<HTMLButtonElement>('[aria-label="Show link"]');
+    expect(show?.getAttribute('aria-pressed')).toBe('false');
+    show?.click();
+    await render();
+    expect(show?.getAttribute('aria-pressed')).toBe('true');
     expect(text(element.querySelector('.c-pair__url'))).toBe(
       'studioflow.example.com/j/inv_cccccccccccccccc',
     );
@@ -177,7 +190,7 @@ describe('PairingDockComponent', () => {
 
   it('closes with the close button', async () => {
     await setup();
-    element.querySelector<HTMLButtonElement>('[aria-label="Close pair device"]')?.click();
+    element.querySelector<HTMLButtonElement>('[aria-label="Close add device"]')?.click();
     expect(layout.pairingOpen()).toBe(false);
   });
 });

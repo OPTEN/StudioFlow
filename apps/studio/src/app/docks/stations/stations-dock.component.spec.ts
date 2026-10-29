@@ -6,6 +6,7 @@ import { startStore, studioTestProviders, type StoreHarness } from '../../../tes
 import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../../shell/station-focus.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
+import { PAIRING_TAB_KEY, PairingTabMemory } from '../pairing/pairing-tab-memory.service';
 import { dockSnapshot } from '../testing/dock-fixtures';
 import { StationsDockComponent } from './stations-dock.component';
 
@@ -66,7 +67,7 @@ describe('StationsDockComponent', () => {
 
   afterEach(() => harness.http.verify());
 
-  it('lists the stations in station order with code, PGM tag and metrics', async () => {
+  it('lists the devices by code with the Live tag and the labelled metrics', async () => {
     await setup();
     hub.emit(HUB.telemetry, {
       deviceId: PHONE,
@@ -95,8 +96,12 @@ describe('StationsDockComponent', () => {
     const [first, second] = rows();
     expect(rows()).toHaveLength(2);
     expect(first.getAttribute('aria-label')).toBe('K1 Phone stage left, on Program');
-    expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
-    expect(text(first.querySelector('.c-st__l2'))).toBe('2.8Mbit/s31msBattery 14%');
+    const phone = station(PHONE);
+    expect(text(phone.querySelector('.c-st__name'))).toBe(text(first));
+    expect(text(phone.querySelector('.c-tag--pgm'))).toBe('Live');
+    expect(text(phone.querySelector('.c-st__codes'))).toBe('K1');
+    expect(text(phone.querySelector('.c-st__l2'))).toBe('sending 2.8 Mbit/s 31 ms Battery 14%');
+    expect(first.getAttribute('aria-describedby')).toBe(phone.querySelector('.c-st__l2')?.id);
     expect(second.getAttribute('aria-label')).toBe('S1 Laptop Lea');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('2');
   });
@@ -153,10 +158,10 @@ describe('StationsDockComponent', () => {
     await setup();
     rows()[1].click();
     await render();
-    expect(button(station(LAPTOP), 'Camera')).toBeUndefined();
+    expect(button(station(LAPTOP), 'Camera settings')).toBeUndefined();
     rows()[0].click();
     await render();
-    const open = button(station(PHONE), 'Camera') as HTMLButtonElement;
+    const open = button(station(PHONE), 'Camera settings') as HTMLButtonElement;
     expect(open.getAttribute('aria-expanded')).toBe('false');
 
     open.click();
@@ -211,13 +216,29 @@ describe('StationsDockComponent', () => {
 
   it('hides the knock cards while the pairing dock shows them', async () => {
     await setup([knock()]);
-    const toggle = button(element, 'Pair device');
+    const toggle = button(element, 'Add device');
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
     toggle?.click();
     await render();
     expect(TestBed.inject(DockLayoutService).pairingOpen()).toBe(true);
     expect(toggle?.getAttribute('aria-expanded')).toBe('true');
     expect(element.querySelector('.c-knock')).toBeNull();
+  });
+
+  it('opens "Add device" on the Phone tab the first time and on the tab used last after that', async () => {
+    localStorage.removeItem(PAIRING_TAB_KEY);
+    await setup();
+    const layout = TestBed.inject(DockLayoutService);
+    const add = button(element, 'Add device') as HTMLButtonElement;
+    add.click();
+    expect(layout.pairingOpen()).toBe(true);
+    expect(layout.pairingTab()).toBe('phone');
+    add.click();
+    expect(layout.pairingOpen()).toBe(false);
+    TestBed.inject(PairingTabMemory).remember('link');
+    add.click();
+    expect(layout.pairingTab()).toBe('link');
+    localStorage.removeItem(PAIRING_TAB_KEY);
   });
 
   it('opens and flashes a station on a focus request', async () => {

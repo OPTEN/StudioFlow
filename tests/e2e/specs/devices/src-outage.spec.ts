@@ -39,10 +39,10 @@ test.describe('SRC outage, phone', () => {
       expect(k1.code).toBe('K1');
 
       const row = await openStation(regie, k1.device.id);
-      await expect(row.locator('.c-st__row .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
-      // Line 2: “2.8 Mbit/s 31 ms” once the first telemetry is there.
+      await expect(row.locator('.c-st__l2 .c-lamp')).not.toHaveClass(/is-(warn|bad|idle)/);
+      // The state line: “sending · 2.8 Mbit/s · 31 ms” once the first telemetry is there (the dots are drawn by CSS).
       const line = row.locator('.c-st__l2');
-      await expect(line, 'metrics line “<n.n> Mbit/s <n> ms”').toHaveText(/^\s*\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
+      await expect(line, 'state line “sending <n.n> Mbit/s <n> ms”').toHaveText(/^\s*sending\s*\d+\.\d\s*Mbit\/s\s*\d+\s*ms/, { timeout: 15_000 });
 
       const details = row.locator('.c-st__kv');
       await expect(details).toContainText('Device');
@@ -143,7 +143,8 @@ test.describe('SRC outage, phone', () => {
       expect(back.seconds, '“was gone for N s” is a number').not.toBeNull();
 
       const row = regie.page.locator(`.c-st[data-device="${k1.device.id}"]`);
-      await expect(row.locator('.c-st__ack')).toContainText('The station is back. Confirm to dismiss the message.');
+      await expect(row.locator('.c-st__ack')).toContainText('The device is back.');
+      await expect(row.locator('.c-st__ack').getByRole('button', { name: 'Dismiss' })).toBeVisible();
       const chip = (await readPlaces(regie.page)).header;
       expect(chip.text, 'recovered entries are no faults').toMatch(/^(All \d+ devices OK|1 device OK)$/);
       expect(chip.lamp).toBe('');
