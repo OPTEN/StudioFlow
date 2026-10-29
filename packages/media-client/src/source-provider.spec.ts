@@ -611,6 +611,63 @@ describe('LiveKitSourceProvider', () => {
       expect(track.receiver?.jitterBufferTarget).toBe(50);
     });
 
+    describe('on a link that loses packets (output)', () => {
+      const lossStats = (lost: number, received: number): Map<string, unknown> =>
+        new Map<string, unknown>([
+          [
+            'IT',
+            {
+              type: 'inbound-rtp',
+              kind: 'video',
+              packetsLost: lost,
+              packetsReceived: received,
+              bytesReceived: 1000,
+            },
+          ],
+        ]);
+
+      async function subscribed() {
+        const { room, provider } = setup('output');
+        need(provider, CAMERA);
+        const track = new FakeRemoteTrack();
+        room.subscribe(DEVICE, 'camera', { track });
+        return { provider, track };
+      }
+
+      it('buffers longer as the loss grows and shrinks again when the link is calm', async () => {
+        const { provider, track } = await subscribed();
+        track.stats = lossStats(0, 1000);
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(50);
+
+        track.stats = lossStats(50, 1950); // 5 % of the 1000 packets of the interval
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(200);
+
+        track.stats = lossStats(250, 2750); // 20 %
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(400);
+
+        for (let interval = 1; interval <= 5; interval += 1) {
+          track.stats = lossStats(250, 2750 + interval * 1000);
+          await provider.decoderSummary();
+        }
+        expect(track.receiver?.jitterBufferTarget).toBe(50);
+      });
+
+      it('leaves the buffer of the Regie alone', async () => {
+        const { room, provider } = setup('studio');
+        need(provider, CAMERA);
+        const track = new FakeRemoteTrack();
+        room.subscribe(DEVICE, 'camera', { track });
+        track.stats = lossStats(0, 1000);
+        await provider.decoderSummary();
+        track.stats = lossStats(250, 1750);
+        await provider.decoderSummary();
+        expect(track.receiver?.jitterBufferTarget).toBe(0);
+      });
+    });
+
     it('tolerates browsers without playout APIs', () => {
       const { room, provider } = setup('output');
       const track = new FakeRemoteTrack();

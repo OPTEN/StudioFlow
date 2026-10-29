@@ -14,6 +14,7 @@ import { systemClock, type Clock, type TimerHandle } from './clock';
 import { DecoderCapability, kindFromStats, type DecoderKind } from './decoder-info';
 import { DesiredSizes } from './desired-size';
 import { Listeners } from './listeners';
+import { LossPlayout } from './loss-playout';
 import type {
   MediaPublicationRef,
   MediaRemoteParticipant,
@@ -194,6 +195,8 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   #wanted: WantedSources | null = null;
   /** The subscription state asked for per publication, so that a publication is only told once. */
   readonly #requested = new WeakMap<MediaRemotePublication, boolean>();
+  /** The playout buffer of each video track an output receives, sized by its loss. */
+  readonly #lossPlayouts = new WeakMap<MediaRemoteTrack, LossPlayout>();
   readonly #changes: Listeners<[string]>;
   readonly #audioChanges: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
@@ -356,6 +359,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
    * What the decoders did since the previous call: how many streams decode, how many of them in software, and the
    * frames dropped against the frames received (the output reports this; a share above a few percent means the machine
    * cannot keep up). Paused streams decode nothing and do not count. The first call counts since the stream started.
+   * An output also sizes the playout buffer of every stream by the loss of the interval with each call (see {@link LossPlayout}).
    */
   async decoderSummary(): Promise<DecoderSummary> {
     const tracks = [...this.#entries.values()]
@@ -370,6 +374,7 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     let framesDropped = 0;
     let framesReceived = 0;
     for (const { track, snapshot } of reads) {
+      this.#adaptPlayout(track, snapshot.packetLossPct);
       const mark: DecoderMark = {
         framesDecoded: snapshot.framesDecoded ?? 0,
         framesDropped: snapshot.framesDropped ?? 0,
@@ -671,11 +676,36 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   #applyPlayout(track: MediaRemoteTrack): void {
     const playout = PLAYOUT[this.#role];
     this.#guard('setPlayoutDelay', () => track.setPlayoutDelay?.(playout.delaySeconds));
+    this.#setJitterBufferTarget(track, playout.jitterBufferTargetMs);
+  }
+
+  #setJitterBufferTarget(track: MediaRemoteTrack, targetMs: number): void {
     const receiver = track.receiver;
     if (receiver !== undefined && 'jitterBufferTarget' in receiver) {
       this.#guard('jitterBufferTarget', () => {
-        receiver.jitterBufferTarget = playout.jitterBufferTargetMs;
+        receiver.jitterBufferTarget = targetMs;
       });
+    }
+  }
+
+  /**
+   * An output sizes the playout buffer of a video stream by its loss (see {@link LossPlayout}); `lossPct` is the loss of the
+   * last interval from the receiver statistics. Called with every reading of the decoder summary, which the output page takes
+   * every 2 s.
+   */
+  #adaptPlayout(track: MediaRemoteTrack, lossPct: number | undefined): void {
+    if (this.#role !== 'output') {
+      return;
+    }
+    let playout = this.#lossPlayouts.get(track);
+    if (playout === undefined) {
+      playout = new LossPlayout(PLAYOUT.output.jitterBufferTargetMs);
+      this.#lossPlayouts.set(track, playout);
+    }
+    const before = playout.target;
+    const after = playout.update(lossPct === undefined ? undefined : lossPct / 100);
+    if (after !== before) {
+      this.#setJitterBufferTarget(track, after);
     }
   }
 
