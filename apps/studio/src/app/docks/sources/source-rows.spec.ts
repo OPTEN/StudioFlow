@@ -53,6 +53,7 @@ describe('source rows', () => {
     expect(front).toMatchObject({
       code: 'M1',
       icon: 'image',
+      thumbSourceId: null,
       hidden: true,
       lamp: null,
       state: null,
@@ -65,7 +66,13 @@ describe('source rows', () => {
       statusSince: '2026-10-22T10:00:00.000Z',
     });
     expect(middle.state).toEqual({ word: 'reconnecting', tone: 'warn', timer: true });
-    expect(back).toMatchObject({ code: 'S1', icon: 'screen', lamp: '', selected: false });
+    expect(back).toMatchObject({
+      code: 'S1',
+      icon: 'screen',
+      thumbSourceId: S1.id,
+      lamp: '',
+      selected: false,
+    });
   });
 
   it('shows a deleted source as "Source missing" with the icon of its reference', () => {
@@ -73,7 +80,13 @@ describe('source rows', () => {
       itemFixture('itm_1', 'dev_zzzzzzzzzzzzzzzz/screen-2'),
     ]);
     const [row] = sourceRows(scene, sources, null);
-    expect(row).toMatchObject({ code: '–', name: 'Source missing', icon: 'screen', missing: true });
+    expect(row).toMatchObject({
+      code: '–',
+      name: 'Source missing',
+      icon: 'screen',
+      thumbSourceId: null,
+      missing: true,
+    });
     expect(kindOfReference('ast_zzzzzzzzzzzzzzzz', null)).toBe('image');
   });
 

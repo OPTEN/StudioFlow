@@ -34,6 +34,8 @@ export interface SourceRowView {
   /** Source label, "Source missing" for a deleted source. */
   readonly name: string;
   readonly icon: IconName;
+  /** Device source for the small live thumbnail (a camera or a screen that exists), or null: the row shows its glyph. */
+  readonly thumbSourceId: string | null;
   readonly hidden: boolean;
   readonly locked: boolean;
   readonly selected: boolean;
@@ -108,6 +110,7 @@ export function sourceRows(
           ? (placeholder.label ?? t('regie.placeholders.unnamed'))
           : t('model.scene.sourceMissing')),
       icon: KIND_ICON[kind],
+      thumbSourceId: source && (kind === 'camera' || kind === 'screen') ? source.id : null,
       hidden: item.hidden,
       locked: item.locked,
       selected: item.id === selectedItemId && (!item.hidden || kind === 'text'),

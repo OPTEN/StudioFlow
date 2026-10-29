@@ -44,16 +44,22 @@
           <span class="c-tag c-tag--pvw">{{ t('regie.scenes.row.preview') }}</span>
         }
         @if (view().health; as health) {
-          <span
-            class="c-lamp"
-            aria-hidden="true"
-            [class.is-bad]="health.bad"
-            [class.is-warn]="!health.bad"
-          ></span>
-          <span class="c-scene__codes">{{ health.code }}</span>
-          <span [class.c-state--bad]="health.bad" [class.c-state--warn]="!health.bad">{{
-            t('regie.scenes.row.disrupted')
-          }}</span>
+          <span class="c-scene__health">
+            <span
+              class="c-lamp"
+              aria-hidden="true"
+              [class.is-bad]="health.bad"
+              [class.is-warn]="!health.bad"
+            ></span>
+            <span class="c-scene__codes">{{ health.code }}</span
+            >&ngsp;
+            <span
+              class="c-scene__state"
+              [class.c-state--bad]="health.bad"
+              [class.c-state--warn]="!health.bad"
+              >{{ t('regie.scenes.row.disrupted') }}</span
+            >
+          </span>
         } @else {
           <span class="c-scene__codes">{{ view().codes }}</span>
         }

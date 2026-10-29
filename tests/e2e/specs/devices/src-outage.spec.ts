@@ -369,7 +369,7 @@ test.describe('SRC outage, phone', () => {
   );
 
   test(
-    'E2E-SRC-21 [ui] hold frame on the Regie monitors: the last picture stays (sharp, not black) with the dashed outline, then it is dimmed',
+    'E2E-SRC-21 [ui] hold frame on the Regie monitors: the last picture stays (sharp, not black) with the solid outline, then it is dimmed',
     t.p1,
     async ({ regie, openPhone, pairContext, api, production }) => {
       test.setTimeout(180_000);
@@ -398,7 +398,7 @@ test.describe('SRC outage, phone', () => {
         expect(luma(r, g, b), `${name}: the frozen picture is not black`).toBeGreaterThan(25);
         expect(g, `${name}: it is still the green picture of the fake camera`).toBeGreaterThan(r + 20);
         const outline = await monitors[index]!.evaluate((element) => getComputedStyle(element.querySelector('.sf-r-alert') as HTMLElement).borderTopStyle);
-        expect(outline, `${name}: dashed outline`).toBe('dashed');
+        expect(outline, `${name}: solid outline`).toBe('solid');
       }
       // After the item's hold time (3 s default, counted from the moment LiveKit drops the track at the Regie, which is
       // later than the API's “reconnecting”) the monitor shows the blurred, dimmed picture (and the sentence on a wide item).

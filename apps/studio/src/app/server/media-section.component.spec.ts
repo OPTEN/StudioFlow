@@ -120,13 +120,13 @@ describe('MediaSectionComponent', () => {
       'live',
     );
     expect(buttons().map((button) => button.disabled)).toEqual([true, true]);
-    expect(element.querySelector('#media-live-note')?.textContent).toContain(
-      'End the broadcast first.',
-    );
-    expect(buttons()[0].getAttribute('aria-describedby')).toBe('media-test-note media-live-note');
+    // One hint, next to the save button; the test button points at it too.
+    expect(element.querySelector('#media-live-note')).toBeNull();
+    expect(buttons()[0].getAttribute('aria-describedby')).toBe('media-test-note media-save-note');
     expect(element.querySelector('#media-save-note')?.textContent).toContain(
-      'Not possible while the broadcast is on air.',
+      'Not possible while the broadcast is on air. End the broadcast first.',
     );
+    expect(element.textContent?.split('Not possible while the broadcast is on air').length).toBe(2);
   });
 
   it('shows the saved address', async () => {

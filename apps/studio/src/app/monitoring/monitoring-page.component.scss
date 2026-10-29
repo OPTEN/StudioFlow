@@ -68,14 +68,14 @@
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  min-width: 1040px;
   width: 100%;
 
+  // Compact cells, so all the columns fit the wide page at 1440 px; a narrower window scrolls the table sideways.
   th,
   td {
     background: var(--group);
     line-height: 20px;
-    padding: 9px 10px;
+    padding: 9px 7px;
     text-align: left;
     vertical-align: top;
     white-space: nowrap;
@@ -86,11 +86,15 @@
     box-shadow: inset 0 1px 0 var(--seam);
   }
 
+  // Headings wrap between words (the cells never do), the unit sits on a line of its own.
   thead th {
     color: var(--muted);
     font-size: 12px;
     font-weight: 600;
+    line-height: 16px;
     padding-block: 6px;
+    vertical-align: bottom;
+    white-space: normal;
   }
 
   th:first-child {
@@ -127,19 +131,19 @@
   }
 }
 
-// Sortable heading: the label and a quiet arrow on every column; the sorted one shows its arrow in full.
+// Sortable heading: the label with a quiet arrow right after its last word, the unit on the line below; the sorted
+// column shows its arrow in full.
 .c-mon-table__sort {
-  align-items: center;
   background: transparent;
   border: 0;
   border-radius: var(--radius-xs);
   color: inherit;
   cursor: pointer;
-  display: inline-flex;
+  display: inline-block;
   font: inherit;
-  gap: 4px;
   min-height: 28px;
   padding: 0;
+  text-align: inherit;
 
   &:hover {
     color: var(--text);
@@ -151,13 +155,24 @@
   }
 }
 
-.is-num .c-mon-table__sort {
-  flex-direction: row-reverse;
+.c-mon-table__label {
+  display: block;
+}
+
+.c-mon-table__last {
+  white-space: nowrap;
+}
+
+.c-mon-table__unit {
+  display: block;
+  font-weight: 400;
 }
 
 .c-mon-table__dir {
   @include state-transition(opacity, transform);
+  margin-left: 2px;
   opacity: 0.3;
+  vertical-align: -2px;
 
   &.is-up {
     transform: rotate(180deg);
@@ -209,6 +224,7 @@
   display: inline-block;
   font-family: var(--font-ui);
   font-size: 12px;
+  font-weight: 400;
 }
 
 // One line per source: the lines of a row have the same height in every column and a hairline between them, so they

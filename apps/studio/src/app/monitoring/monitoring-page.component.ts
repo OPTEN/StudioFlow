@@ -213,6 +213,15 @@ export class MonitoringPageComponent {
     void this.clipboard.copy(lines.join('\n'), { label: row.name });
   }
 
+  /**
+   * The heading split before its last word, so the sort arrow stays on the line of that word when the heading wraps.
+   */
+  protected labelParts(column: ColumnDefinition): { head: string; last: string } {
+    const label = t(column.label);
+    const cut = label.lastIndexOf(' ') + 1;
+    return { head: label.slice(0, cut), last: label.slice(cut) };
+  }
+
   protected heading(column: ColumnDefinition): string {
     return column.unit ? `${t(column.label)} (${column.unit})` : t(column.label);
   }

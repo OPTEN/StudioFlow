@@ -42,7 +42,7 @@ test.describe('SRC laptop screens', () => {
       expect(strip.actions, 'the direct action').toContain('Ask to share again');
       expect(places.header.lamp, 'red lamp').toBe('is-bad');
       expect(places.header.text).toBe('1 issue');
-      expect(places.program.find((label) => label.text.startsWith('S1'))!.outline, 'red dashed outline').toMatch(/^dashed rgb\(248, 81, 73\)/);
+      expect(places.program.find((label) => label.text.startsWith('S1'))!.outline, 'red solid outline').toMatch(/^solid rgb\(248, 81, 73\)/);
       expect(places.scenes[0]!.meta, 'scene row').toContain('S1');
       expect(places.scenes[0]!.health).toBe('disrupted');
       expect(places.sources.find((row) => row.code === 'S1')!.state).toMatch(/sharing stopped\s*\d\d:\d\d/);

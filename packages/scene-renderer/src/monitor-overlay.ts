@@ -8,7 +8,7 @@ import { PALETTE, UI_FONT } from './palette';
 export interface MonitorOverlayState {
   /** “Source missing” (`renderer.sourceMissing`) in the centre, for an item whose source does not exist (any more). */
   readonly missing: boolean;
-  /** Dashed outline and label tab, or null. */
+  /** Solid outline and label tab, or null. */
   readonly alert: AlertPresentation | null;
   /** Corner radius of the item (canvas pixels). */
   readonly radius: number;
@@ -17,7 +17,7 @@ export interface MonitorOverlayState {
 }
 
 /**
- * Regie-only decorations of an item: “Source missing”, the dashed alert outline and the filled label tab
+ * Regie-only decorations of an item: “Source missing”, the solid alert outline in the state hue and the filled label tab
  * (“K2 · Freeze frame 00:12”). They keep a fixed size on screen although the stage is scaled: lengths are given in screen
  * pixels and converted with the current scale on every render (resizes re-render).
  */
@@ -42,7 +42,7 @@ export class MonitorOverlay {
     });
     this.outlineEl = createElement(doc, 'div', 'sf-r-alert', {
       position: 'absolute',
-      'border-style': 'dashed',
+      'border-style': 'solid',
       'box-sizing': 'border-box',
       display: 'none',
     });
@@ -81,7 +81,7 @@ export class MonitorOverlay {
       top: inset,
       right: inset,
       bottom: inset,
-      'border-width': screen(2),
+      'border-width': screen(1.5),
       'border-color': alert.color,
       'border-radius': px(Math.max(0, state.radius - unit)),
     });

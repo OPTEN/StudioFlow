@@ -129,7 +129,17 @@
                   (click)="select(row, $event)"
                   (keydown)="onRowKeyDown(row, $event)"
                 >
-                  <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
+                  <span class="c-src__thumb" aria-hidden="true">
+                    @if (row.thumbSourceId; as thumbId) {
+                      <sf-station-thumb
+                        [sourceId]="thumbId"
+                        [width]="40"
+                        [dimmed]="row.state !== null"
+                      />
+                    } @else {
+                      <svg class="c-src__kind" [sfIcon]="row.icon"></svg>
+                    }
+                  </span>
                   <span class="c-code">{{ row.code }}</span>
                   <span class="c-src__main">
                     <span class="c-src__name">{{ row.name }}</span>

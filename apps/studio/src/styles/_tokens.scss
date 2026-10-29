@@ -204,7 +204,8 @@ $shadow-focus: 0 0 0 3px color-mix(in srgb, var(--blue) 45%, transparent) !defau
 
 // Motion: state changes ease out quickly; reveals take a little longer.
 $ease: cubic-bezier(0.22, 1, 0.36, 1) !default;
-$ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1) !default;
+// "Spring" in name only: a soft settle without overshoot (nothing in the UI bounces).
+$ease-spring: cubic-bezier(0.32, 0.72, 0, 1) !default;
 $duration-state: 160ms !default;
 $duration-splitter-delay: 100ms !default;
 $duration-reveal: 240ms !default;

@@ -98,6 +98,22 @@
   font-weight: 600;
 }
 
+// Narrow windows: the capsule collapses to its lamp and chevron, so it never runs over the mark. The label and the
+// state stay for screen readers; the full sentence is in the tooltip and the popover.
+.c-header__out {
+  @include narrow {
+    gap: 6px;
+    padding: 0 8px 0 10px;
+  }
+}
+
+.c-header__out-label,
+.c-header__out-state {
+  @include narrow {
+    @include visually-hidden;
+  }
+}
+
 .c-header__out-state {
   @include mono;
   @include ellipsis;

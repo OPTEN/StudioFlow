@@ -25,6 +25,7 @@ import { messageParts } from '../shared/message-parts';
 import { SceneTagComponent } from '../shared/scene-tag.component';
 import { SortableItemDirective, SortableListComponent } from '../shared/sortable-list.component';
 import { toneClass, type StateTone } from '../shared/source-view';
+import { StationThumbComponent } from '../stations/station-thumb.component';
 import { ADD_SOURCE_POPOVER, AddSourcePopoverComponent } from './add-source-popover.component';
 import { AssetUploadService } from './asset-upload.service';
 import { MEDIA_POPOVER, MediaPopoverComponent } from './media-popover.component';
@@ -62,6 +63,7 @@ import { dragHasFiles } from './upload-validation';
     SceneTagComponent,
     SortableItemDirective,
     SortableListComponent,
+    StationThumbComponent,
   ],
   templateUrl: './sources-dock.component.html',
   styleUrl: './sources-dock.component.scss',

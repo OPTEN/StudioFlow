@@ -97,6 +97,8 @@
   height: 26px;
   max-width: 100%;
   min-width: 0;
+  // Squeezed below its glyph and code, the button clips instead of drawing over the state word next to it.
+  overflow: hidden;
   padding: 0 8px;
 
   &:hover {
@@ -255,10 +257,12 @@
   padding: 10px 10px 12px;
 }
 
-// Narrow windows: the latest event gives way, the lead incident keeps its action.
+// Narrow windows: the latest event, the place and the timer give way; the lead incident keeps its code, its state word
+// (the name ellipsizes first) and its action.
 @include narrow {
   .c-status__log,
-  .c-status__lead > .c-status__where {
+  .c-status__lead > .c-status__where,
+  .c-status__lead > .c-status__time {
     display: none;
   }
 

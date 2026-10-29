@@ -106,26 +106,52 @@
   line-height: 1.25;
 }
 
+// The meta line: the tag and the state word never shrink. The code list ellipsizes; when the tag and "K3 disrupted"
+// do not fit side by side, the health part wraps whole onto a second line.
 .c-scene__meta {
   align-items: center;
   color: var(--muted);
   display: flex;
+  flex-wrap: wrap;
   font-size: var(--fs-footnote);
-  gap: 6px;
+  gap: 2px 6px;
   line-height: 1.2;
   min-width: 0;
-  overflow: hidden;
   white-space: nowrap;
+
+  .c-tag,
+  .c-lamp {
+    flex: none;
+  }
 
   .c-lamp {
     height: 7px;
     width: 7px;
   }
+
+  // A plain code list takes the rest of the line (basis 0, so it never wraps) and ellipsizes.
+  > .c-scene__codes {
+    flex: 1 1 0;
+  }
+}
+
+.c-scene__health {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .c-scene__codes {
   @include mono;
   @include ellipsis;
+  min-width: 0;
+}
+
+.c-scene__state {
+  flex: none;
 }
 
 // "⋯": shown on hover, on focus and while its menu is open; touch screens have no hover, so it stays there.

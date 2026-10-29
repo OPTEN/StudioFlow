@@ -65,9 +65,10 @@
     cursor: default;
   }
 
-  // Down source: dashed like the renderer's alert outline (amber reconnecting, red otherwise).
+  // Down source: a solid outline in the state hue like the renderer's (amber reconnecting, red otherwise); the
+  // renderer's label tab carries the state word.
   &.is-alert {
-    border: 1px dashed var(--pic-amber);
+    border: 1.5px solid var(--pic-amber);
   }
 
   &.is-alert.is-bad {

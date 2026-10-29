@@ -4,6 +4,7 @@ import type { Namespace } from '../../types';
 export const renderer = {
   'renderer.alertEnded': 'ended',
   'renderer.alertFrozen': 'Freeze frame {time}',
+  'renderer.alertFrozenShort': 'Frozen {time}',
   'renderer.held': 'Picture returns shortly',
   'renderer.sourceMissing': 'Source missing',
   'renderer.stageLabel': 'Scene',

@@ -67,7 +67,7 @@
           class="c-btn"
           type="button"
           [disabled]="busy() || onAir()"
-          [attr.aria-describedby]="onAir() ? 'media-test-note media-live-note' : 'media-test-note'"
+          [attr.aria-describedby]="onAir() ? 'media-test-note media-save-note' : 'media-test-note'"
           (click)="test()"
         >
           {{ testing() ? t('regie.server.media.testing') : t('regie.server.media.test') }}
@@ -94,9 +94,6 @@
         </div>
       }
     </div>
-    @if (onAir()) {
-      <p class="c-group__footer" id="media-live-note">{{ t('regie.server.onAir') }}</p>
-    }
     <p class="u-sr-only" role="status" aria-live="polite">
       {{ testing() ? t('regie.server.media.testing') : checkText() }}
     </p>

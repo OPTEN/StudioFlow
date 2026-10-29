@@ -71,7 +71,7 @@ export interface EditBox {
   readonly locked: boolean;
   /** The element itself is locked: a lock badge on hover and selection, with the way out as tooltip. */
   readonly pinned: boolean;
-  /** Down source: amber (`warn`, reconnecting) or red (`bad`) dashed outline. */
+  /** Down source: amber (`warn`, reconnecting) or red (`bad`) solid outline. */
   readonly alert: 'warn' | 'bad' | null;
   /** Corner handles and crop edges are shown (selected and not locked). */
   readonly handles: boolean;
@@ -151,7 +151,7 @@ function isHandle(value: string | undefined): value is Handle {
  *
  * - Boxes for every visible element (the renderer's rectangles for Auto-Grid scenes). The selected one gets a blue
  *   outline (with a dark hairline, so it shows on bright slides too), soft round corner handles and a label tab with
- *   the source: code, name and size ("K1 Stage phone 600 × 338", with the crop). Down sources get the amber/red dashed
+ *   the source: code, name and size ("K1 Stage phone 600 × 338", with the crop). Down sources get the amber/red solid
  *   outline; a locked element shows a lock badge on hover and selection, with the way out as its tooltip.
  * - Click selects (empty area deselects), drag moves with snapping to the canvas edges, the safe margin, the centre and
  *   the other elements' edges and centres (7 screen px, blue guides; Alt disables snapping), a corner resizes keeping

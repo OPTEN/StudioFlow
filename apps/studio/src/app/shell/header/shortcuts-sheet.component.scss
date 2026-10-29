@@ -5,14 +5,17 @@
   @include floating;
   border: 0;
   color: var(--text);
-  max-height: min(640px, calc(100dvh - 48px));
+  // As tall as the window allows; the groups scroll, the title and the footnote stay in view.
+  max-height: calc(100dvh - 48px);
   max-width: calc(100vw - 32px);
-  overflow: auto;
+  overflow: hidden;
   padding: 0;
   width: 860px;
 
   &[open] {
     animation: c-sheet-in var(--dur-reveal) var(--ease);
+    display: flex;
+    flex-direction: column;
   }
 
   &::backdrop {
@@ -29,7 +32,10 @@
 
 .c-sheet__body {
   display: grid;
+  flex: 1 1 auto;
   gap: 14px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   padding: 16px 20px 20px;
 }
 
@@ -45,6 +51,9 @@
   display: grid;
   gap: 18px 20px;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 
   @include narrow {
     grid-template-columns: minmax(0, 1fr);

@@ -50,7 +50,7 @@ describe('alertPresentation', () => {
   });
 
   it('uses short variants below 190 screen pixels', () => {
-    expect(alertPresentation('reconnecting', 'K2', 75_000, 189)?.text).toBe('K2 · 01:15');
+    expect(alertPresentation('reconnecting', 'K2', 75_000, 189)?.text).toBe('K2 · Frozen 01:15');
     expect(alertPresentation('ended', 'S1', 0, 120)?.text).toBe('S1 · ended');
     expect(alertPresentation('blocked', 'K3', 0, 120)?.text).toBe('K3 · blocked');
     expect(alertPresentation('reconnecting', 'K2', 0, 190)?.text).toBe('K2 · Freeze frame 00:00');

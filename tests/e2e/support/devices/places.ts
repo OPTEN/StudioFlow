@@ -174,7 +174,7 @@ export function checkOutage(places: Places, code: string, kind: OutageKind, opti
 
   const monitorWord = (text: string): boolean => {
     if (!text.startsWith(`${code} · `)) return false;
-    if (kind === 'reconnecting') return wide ? /· Freeze frame \d+:\d\d$/.test(text) : /· \d+:\d\d$/.test(text);
+    if (kind === 'reconnecting') return wide ? /· Freeze frame \d+:\d\d$/.test(text) : /· Frozen \d+:\d\d$/.test(text);
     if (kind === 'ended') return wide ? text.endsWith(`· ${word}`) : text.endsWith('· ended');
     return text.endsWith(`· ${word}`);
   };

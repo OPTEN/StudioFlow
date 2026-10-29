@@ -63,7 +63,7 @@ describe('scene renderer: monitor alerts', () => {
     }
   });
 
-  it('draws an amber dashed outline and the running hold timer while reconnecting', async () => {
+  it('draws a solid amber outline and the running hold timer while reconnecting', async () => {
     mountMonitor();
     mounted.provider.live(CAMERA);
     mounted.provider.lose(CAMERA);
@@ -71,8 +71,8 @@ describe('scene renderer: monitor alerts', () => {
 
     expect(outline('itm_k1')?.style.display).toBe('block');
     expect(outline('itm_k1')?.style.borderColor).toBe('#e3b341');
-    expect(outline('itm_k1')?.style.borderStyle).toBe('dashed');
-    expect(outline('itm_k1')?.style.borderWidth).toBe('2px');
+    expect(outline('itm_k1')?.style.borderStyle).toBe('solid');
+    expect(outline('itm_k1')?.style.borderWidth).toBe('1.5px');
     expect(outline('itm_k1')?.style.left).toBe('1px');
     expect(outline('itm_k1')?.style.bottom).toBe('1px');
     expect(outline('itm_k1')?.style.borderRadius).toBe('11px');
@@ -122,10 +122,10 @@ describe('scene renderer: monitor alerts', () => {
     expect(label('itm_s1')?.textContent).toBe('S1 · ended');
     expect(label('itm_k1')?.textContent).toBe('K1 · Freeze frame 00:00');
     mounted.setSize(480, 270);
-    expect(label('itm_k1')?.textContent).toBe('K1 · 00:00');
+    expect(label('itm_k1')?.textContent).toBe('K1 · Frozen 00:00');
     // Screen-pixel lengths follow the scale (0.25): 11.5 screen px = 46 canvas px.
     expect(label('itm_k1')?.style.fontSize).toBe('46px');
-    expect(outline('itm_k1')?.style.borderWidth).toBe('8px');
+    expect(outline('itm_k1')?.style.borderWidth).toBe('6px');
   });
 
   it('only ticks while a timer label is visible', async () => {

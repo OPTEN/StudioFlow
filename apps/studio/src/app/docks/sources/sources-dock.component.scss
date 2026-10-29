@@ -102,15 +102,30 @@
   display: grid;
   flex: 1 1 auto;
   gap: 8px;
-  grid-template-columns: 16px auto minmax(0, 1fr);
+  grid-template-columns: 40px auto minmax(0, 1fr);
   min-width: 0;
   padding: 0 4px 0 0;
   text-align: left;
 }
 
+// The picture of the layer: a live thumbnail of a camera or screen (40 × 22.5, 16:9), the kind glyph in a well of the
+// same size for media, texts and missing sources.
+.c-src__thumb {
+  align-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--ground);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 1px var(--seam);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  width: 40px;
+}
+
 .c-src__kind {
   color: var(--muted);
-  display: inline-flex;
+  height: 14px;
+  width: 14px;
 }
 
 .c-src__main {

@@ -42,10 +42,11 @@ function alertWord(
 ): string {
   switch (status) {
     case 'reconnecting':
-      // The same timer as everywhere in the Regie: mm:ss, from one hour on h:mm:ss.
-      return narrow
-        ? formatDuration(elapsedMs)
-        : t('renderer.alertFrozen', { time: formatDuration(elapsedMs) });
+      // The same timer as everywhere in the Regie: mm:ss, from one hour on h:mm:ss. Narrow items keep a short state
+      // word with the timer, never the timer alone.
+      return t(narrow ? 'renderer.alertFrozenShort' : 'renderer.alertFrozen', {
+        time: formatDuration(elapsedMs),
+      });
     case 'ended':
       return narrow ? t('renderer.alertEnded') : statusWord(status, kind);
     case 'blocked':
