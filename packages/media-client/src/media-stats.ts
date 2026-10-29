@@ -271,7 +271,13 @@ export function summarizeAudioReceiver(
 
 /**
  * Summarizes the per-layer sender statistics of one track: resolution and frame rate of the largest active layer,
- * packet loss over all layers (from the remote-inbound reports, interval-based via `loss`).
+ * packet loss over all layers (interval-based via `loss`).
+ *
+ * The loss is what the link lost before the sender recovered it: the packets the sender had to send again (NACK) over all
+ * packets it sent. The count the remote reports (`packetsLost`) is net of those retransmissions and stays near zero while
+ * the link loses 5 % or 20 % of its packets, so it only counts where it is larger (what could not be recovered).
+ * Every transmission of a packet is lost with the same probability p, so the retransmitted share of the transmissions is
+ * p, however often a packet had to be sent again.
  */
 export function summarizeSenderStats(
   stats: readonly VideoSenderStats[],
@@ -288,8 +294,12 @@ export function summarizeSenderStats(
     undefined,
   );
   const lost = stats.reduce((sum, layer) => sum + Math.max(0, finiteOrZero(layer.packetsLost)), 0);
+  const resent = stats.reduce(
+    (sum, layer) => sum + Math.max(0, finiteOrZero(layer.retransmittedPacketsSent)),
+    0,
+  );
   const sent = stats.reduce((sum, layer) => sum + finiteOrZero(layer.packetsSent), 0);
-  const ratio = loss.ratio(key, lost, sent);
+  const ratio = loss.ratio(key, Math.max(lost, resent), sent);
   return {
     width: top?.frameWidth ?? null,
     height: top?.frameHeight ?? null,
