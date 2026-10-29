@@ -36,6 +36,7 @@ import { SplitterDirective } from './splitter.directive';
         class="c-dock-slot__split"
         [class.c-dock-slot__split--across]="split.across"
         [sfSplitter]="split.behavior"
+        [splitterValue]="splitValue()"
         [orientation]="split.across ? 'vertical' : 'horizontal'"
         [splitterDisabled]="viewport.stacked()"
         [attr.aria-label]="split.label"
@@ -105,6 +106,7 @@ export class DockSlotComponent {
         const across = zone === 'bottom';
         return {
           across,
+          previous,
           behavior: this.workspace.splitBehavior(previous, id, across),
           label: t('regie.workspace.splitter.between', {
             first: t(DOCK_TITLE_KEYS[previous]),
@@ -114,5 +116,16 @@ export class DockSlotComponent {
       }
     }
     return null;
+  });
+
+  /** Share of the previous dock in the space of both docks (percent), the position of the hairline. */
+  protected readonly splitValue = computed(() => {
+    const previous = this.splitBefore()?.previous;
+    if (!previous) {
+      return 0;
+    }
+    const weights = this.layout.layout().weights;
+    const first = weights[previous];
+    return Math.round((first / (first + weights[this.dockId()])) * 100);
   });
 }

@@ -585,7 +585,8 @@ test.describe('Dock moves and splitters by keyboard', () => {
       const seam = page.getByRole('separator', { name });
       await seam.focus();
       const x = async () => (await boxOf(seam))!.x;
-      for (const [key, delta] of [['ArrowRight', 16], ['Shift+ArrowRight', 64], ['ArrowLeft', -16], ['Shift+ArrowLeft', -64]] as const) {
+      // Each step is undone before the next one: a dock is at least 180 px wide, so at 1440 px Scenes and Sources have no room for 16 + 64 px in one direction.
+      for (const [key, delta] of [['ArrowRight', 16], ['ArrowLeft', -16], ['Shift+ArrowRight', 64], ['Shift+ArrowLeft', -64]] as const) {
         const before = await x();
         await page.keyboard.press(key);
         await page.waitForTimeout(250);

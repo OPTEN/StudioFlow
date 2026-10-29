@@ -4,6 +4,9 @@ import { AdminApi } from '../../support/api';
 import { HEALTH_SERVICES, SERVICES, containerName, docker, inspectService } from '../../support/stack';
 
 test('H-STACK-01 all five containers of the stack are healthy and the init service has made the secrets @smoke @harness', async () => {
+  // Six `docker inspect` calls take more than the default 60 s when the machine is busy (seen while `stack.sh up` ran
+  // next to a full matrix).
+  test.setTimeout(180_000);
   for (const service of HEALTH_SERVICES) {
     const state = await inspectService(service);
     expect(state?.running, `${service} running`).toBe(true);

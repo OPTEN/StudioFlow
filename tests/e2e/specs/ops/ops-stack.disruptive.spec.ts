@@ -24,6 +24,29 @@ test.afterEach(async () => {
 
 const HEALTH_SLACK_MS = 60_000;
 
+/**
+ * Takes `port` on every address of the host until the returned function frees it. Docker Desktop on Windows does not see
+ * a listener of a Windows process, so there the port is taken by a container that publishes it (#82); elsewhere by this
+ * process, as another program of the operator would.
+ */
+async function holdPort(port: number): Promise<() => Promise<void>> {
+  if (process.platform === 'win32') {
+    const holder = `${PROJECT}-port-holder`;
+    const image = (await docker(['inspect', '--format', '{{.Config.Image}}', containerName('caddy')], { check: true })).stdout.trim();
+    await docker(['rm', '--force', holder]);
+    await docker(['run', '--detach', '--rm', '--name', holder, '--publish', `${port}:${port}`, '--entrypoint', 'sleep', image, '600'], { check: true });
+    return async () => {
+      await docker(['rm', '--force', holder]);
+    };
+  }
+  const holder = net.createServer();
+  await new Promise<void>((resolve, reject) => {
+    holder.once('error', reject);
+    holder.listen({ port, host: '0.0.0.0', exclusive: true }, () => resolve());
+  });
+  return () => new Promise<void>((resolve) => holder.close(() => resolve()));
+}
+
 test.describe('OPS healthchecks', () => {
   test('E2E-OPS-05 [stack] all five containers report healthy and the init service has finished', t.p1, async () => {
     for (const service of HEALTH_SERVICES) {
@@ -236,11 +259,7 @@ test.describe('OPS secrets and ports', () => {
     test.setTimeout(300_000);
     const config = stackConfig();
     await compose(['stop', 'caddy'], { check: true });
-    const holder = net.createServer();
-    await new Promise<void>((resolve, reject) => {
-      holder.once('error', reject);
-      holder.listen({ port: config.httpsPort, host: '0.0.0.0', exclusive: true }, () => resolve());
-    });
+    const release = await holdPort(config.httpsPort);
     try {
       const start = await compose(['up', '-d', 'caddy']);
       expect(start.code, 'caddy cannot start on a port that is taken').not.toBe(0);
@@ -248,7 +267,7 @@ test.describe('OPS secrets and ports', () => {
       expect(start.output, 'the message says why').toMatch(/port is already allocated|address already in use|already in use/i);
       expect((await inspectService('caddy'))?.running, 'caddy is not running').not.toBe(true);
     } finally {
-      await new Promise<void>((resolve) => holder.close(() => resolve()));
+      await release();
     }
     // Docker 29 leaves the container that failed to start without its network and port bindings, and a plain `up -d`
     // starts it again in that state although its own healthcheck passes; the way out is to create it anew (the runbook

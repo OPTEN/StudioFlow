@@ -36,6 +36,8 @@ internal static class AuditSeed
     public static async Task ExecuteAsync(StudioFlowApp app, string sql)
     {
         await using var db = await app.Service<IDbContextFactory<StudioFlowDbContext>>().CreateDbContextAsync(TestContext.Current.CancellationToken);
+        // A bulk seed of 100 000 rows outlasts the default 30 s command timeout on a slow container.
+        db.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
         await db.Database.ExecuteSqlRawAsync(sql, TestContext.Current.CancellationToken);
     }
 

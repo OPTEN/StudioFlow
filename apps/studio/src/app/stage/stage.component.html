@@ -16,6 +16,9 @@
         orientation="vertical"
         [attr.aria-label]="t('regie.stage.split.label')"
         [sfSplitter]="splitBehavior"
+        [splitterValue]="splitPercent()"
+        [splitterMin]="splitMinPercent"
+        [splitterMax]="splitMaxPercent"
       ></div>
     }
   } @else {

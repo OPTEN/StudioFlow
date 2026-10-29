@@ -396,6 +396,8 @@ test.describe('NET other services', () => {
     // The API logs a warning, not stack traces, while LiveKit is away.
     const apiLog = await serviceLogs('api', sinceLogs);
     expect(apiLog, 'no unhandled exception from the LiveKit outage').not.toMatch(/Unhandled exception|System\.Net\.Http\.HttpRequestException[\s\S]{0,200}\n\s+at /);
+    // The old page would rejoin under the same identity once the network is back and cancel the new publication.
+    await publisher.close();
     await net.restore(context);
     // A new session gets a token and publishes within T-RESTART-LK.
     const retry = await LiveKitPage.open(context, 'retry');

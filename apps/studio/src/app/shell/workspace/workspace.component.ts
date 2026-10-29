@@ -40,6 +40,30 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/** A dock along the splitter axis: its content size and the padding and border around it. */
+interface DockExtent {
+  readonly content: number;
+  readonly chrome: number;
+}
+
+/**
+ * Size of a dock along the splitter axis. The docks share the zone by flex weight (flex-basis 0), so only the content
+ * size (without padding and border) is proportional to the weight: the docks at the window edge carry a gutter as
+ * padding that would otherwise skew the conversion of pixels into weights.
+ */
+function dockExtent(element: HTMLElement, across: boolean): DockExtent {
+  const style = getComputedStyle(element);
+  const names = across
+    ? ['padding-left', 'padding-right', 'border-left-width', 'border-right-width']
+    : ['padding-top', 'padding-bottom', 'border-top-width', 'border-bottom-width'];
+  const chrome = names.reduce(
+    (sum, name) => sum + (parseFloat(style.getPropertyValue(name)) || 0),
+    0,
+  );
+  const size = element.getBoundingClientRect()[across ? 'width' : 'height'];
+  return { content: Math.max(1, size - chrome), chrome };
+}
+
 /** Width of the control column plus the monitor split and gap (prototype fitStage: 212 px). */
 const STAGE_CHROME_PX = 212;
 /** Monitor header and stage padding above/below the picture (prototype fitStage: 58 px). */
@@ -90,6 +114,8 @@ export class WorkspaceComponent extends DockWorkspace {
   private readonly slots = new Map<DockSlotId, ComponentRef<DockSlotComponent>>();
   /** Bottom zone height computed by fitStage (px), or null for the CSS default. */
   private readonly fittedBottom = signal<number | null>(null);
+  /** Share of the bottom zone in the centre column as fitStage or the CSS default left it (0–1). */
+  private readonly fittedBottomShare = signal(0.4);
   private readonly scheduleFrame = inject(FRAME_SCHEDULER);
   /** Cancels the pending fit of {@link scheduleFit}, null when none is scheduled. */
   private cancelFit: (() => void) | null = null;
@@ -110,6 +136,14 @@ export class WorkspaceComponent extends DockWorkspace {
     const fitted = this.fittedBottom();
     return fitted === null ? null : `${fitted}px`;
   });
+
+  /** Share of the bottom zone in the centre column (percent), the position of its splitter. */
+  protected readonly bottomPercent = computed(() => {
+    const fraction = this.layout.layout().bottomH;
+    return Math.round((fraction ?? this.fittedBottomShare()) * 100);
+  });
+  protected readonly sideMin = LAYOUT_LIMITS.sideMin;
+  protected readonly sideMax = LAYOUT_LIMITS.sideMax;
 
   protected readonly bottomSplit: SplitterBehavior = {
     begin: () => {
@@ -173,17 +207,24 @@ export class WorkspaceComponent extends DockWorkspace {
         if (!first || !second) {
           return null;
         }
-        const rectA = first.getBoundingClientRect();
-        const rectB = second.getBoundingClientRect();
-        const sizeA = across ? rectA.width : rectA.height;
-        const sizeB = across ? rectB.width : rectB.height;
+        const extentA = dockExtent(first, across);
+        const extentB = dockExtent(second, across);
+        const sizeA = extentA.content;
+        const sizeB = extentB.content;
         const weights = this.layout.layout().weights;
         const weightA = weights[a];
         const weightB = weights[b];
+        // The minimum sizes the whole dock (as min-width does), so the content of an edge dock may get smaller.
         const min = across ? LAYOUT_LIMITS.bottomDockMinPx : LAYOUT_LIMITS.sideDockMinPx;
+        const minA = Math.max(1, min - extentA.chrome);
+        const minB = Math.max(1, min - extentB.chrome);
         return {
           move: (dx, dy) => {
-            const next = clamp(sizeA + (across ? dx : dy), min, Math.max(min, sizeA + sizeB - min));
+            const next = clamp(
+              sizeA + (across ? dx : dy),
+              minA,
+              Math.max(minA, sizeA + sizeB - minB),
+            );
             const nextA = ((weightA + weightB) * next) / Math.max(1, sizeA + sizeB);
             this.layout.setWeights(a, nextA, b, weightA + weightB - nextA);
           },
@@ -289,6 +330,7 @@ export class WorkspaceComponent extends DockWorkspace {
       !sideDocks
     ) {
       this.fittedBottom.set(null);
+      this.measureBottomShare();
       return;
     }
     const style = getComputedStyle(stage);
@@ -305,7 +347,20 @@ export class WorkspaceComponent extends DockWorkspace {
     const defaultDock = clamp(window.innerHeight * 0.42, 240, 420);
     const dock = Math.max(defaultDock, centerHeight - 1 - stageHeight);
     const height = Math.round(Math.min(dock, centerHeight - LAYOUT_LIMITS.stageMinPx - 1));
-    this.fittedBottom.set(Math.max(LAYOUT_LIMITS.bottomMinPx, height));
+    const fitted = Math.max(LAYOUT_LIMITS.bottomMinPx, height);
+    this.fittedBottom.set(fitted);
+    this.fittedBottomShare.set(Math.min(1, fitted / Math.max(1, centerHeight)));
+  }
+
+  /** Reads the share of the bottom zone that the CSS default gives it. */
+  private measureBottomShare(): void {
+    const zone = this.bottomRef()?.nativeElement;
+    const center = this.centerRef()?.nativeElement;
+    if (zone && center && center.clientHeight > 0) {
+      this.fittedBottomShare.set(
+        Math.min(1, zone.getBoundingClientRect().height / center.clientHeight),
+      );
+    }
   }
 
   private observeSize(): void {

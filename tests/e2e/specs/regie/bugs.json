@@ -2,7 +2,7 @@
   "_comment": "Bugs found by the Regie specs (specs/regie). Same schema as tests/e2e/known-bugs.json; the orchestrator merges the entries. Marked tests call regieBug(id, ...) (support/regie/bugs.ts), which behaves like knownBug() until the merge.",
   "bugs": {
     "REGIE-01": {
-      "status": "open",
+      "status": "fixed",
       "severity": "low",
       "area": "SWITCH",
       "title": "prefers-reduced-motion does not switch the Regie's CSS transitions and animations off: the --dur-* tokens stay at 150 ms (docs/testing.md E2E-SWITCH-16, E2E-DEV-16)",
@@ -11,10 +11,11 @@
       "expected": "--dur-state is 0s and every transition and animation duration of the UI is 0s (spec 9.1, DESIGN.md, docs/testing.md E2E-SWITCH-16 and E2E-DEV-16: “CSS transition/animation durations in the Regie are 0 s”).",
       "actual": "matchMedia('(prefers-reduced-motion: reduce)') is true and the JavaScript honours it (monitors cut, no flash), but --dur-state computes to .15s and all component transitions run for 0.15 s. Root cause in the served stylesheet (styles-*.css): the @media (prefers-reduced-motion: reduce) { :root { --dur-state: 0s; ... } } block (from styles/_base.scss, offset ~1178) comes BEFORE the unconditional :root { --dur-state: .15s; ... } token block (emitted at the end of styles.scss, offset ~11846). Same specificity, later rule wins, so the override never applies; the universal * { transition-duration: 0s } rule has specificity 0 and loses to every component class that sets transition.",
       "evidence": "Reproduced twice with E2E_BUG_REPORT=1 (run1, run2): tests/e2e/.output/sf-e2e-1/regie-evidence/run1|run2/regie-regie-switching-REGI-0f58d-uration-of-the-Regie-is-0-s-desktop-chromium/{test-failed-1.png,trace.zip,error-context.md}; raw failure: --dur-state is \".15s\" while matchMedia('(prefers-reduced-motion: reduce)') is true. Compiled CSS (curl https://localhost:8491/styles-*.css): reduced-motion :root override at offset ~1178, unconditional :root token block at offset ~11846.",
-      "fix": "Emit the :root token block before the reduced-motion override (e.g. @use 'base' after the :root block in styles.scss), or put the override inside the same :root rule after the token declarations."
+      "fix": "Emit the :root token block before the reduced-motion override (e.g. @use 'base' after the :root block in styles.scss), or put the override inside the same :root rule after the token declarations.",
+      "resolution": "2026-10-29: same root cause and fix as A11Y-10."
     },
     "REGIE-02": {
-      "status": "open",
+      "status": "fixed",
       "severity": "low",
       "area": "DOCK",
       "title": "The seam between two docks moves 20.3 px or 11.6 px instead of 16 px per arrow key when one of the docks is at the window edge (E2E-DEV-14, E2E-DOCK-03)",
@@ -23,7 +24,8 @@
       "expected": "The seam moves by 16 px per arrow key and by 64 px with Shift (docs/testing.md E2E-DEV-14, DESIGN.md “arrows 16 px, Shift 64 px”), and a pointer drag keeps the seam under the pointer.",
       "actual": "Scenes | Sources moves +20.30 px, Sources | Properties +16.05 px (correct, middle of the zone), Properties | Stations +11.63 px. A pointer drag of +100 px moves the seams 102.9 / 99.8 / 94.6 px. The weights of the two docks are converted to widths without the 10 px window-gutter padding that the first and the last dock carry (.is-edge-l / .is-edge-r, flex-basis 0 + padding), so the width change of the edge dock is not proportional to the weight change.",
       "evidence": "Reproduced twice with E2E_BUG_REPORT=1 (run1, run2): tests/e2e/.output/sf-e2e-1/regie-evidence/run1|run2/regie-regie-docks-REGIE-do-53e1b-indow-edge-is-16-px-as-well-desktop-chromium/{test-failed-1.png,trace.zip,error-context.md}; raw failure: “Size of Scenes and Sources: one arrow moves the seam by 16 px” (off by 4.3 px). Measured by hand: ArrowRight moves Scenes|Sources +20.30 px, Sources|Properties +16.05 px, Properties|Stations +11.63 px; pointer +100 px moves them 102.9 / 99.8 / 94.6 px.",
-      "fix": "In SplitterBehavior of DockSlotComponent / WorkspaceComponent.splitBehavior compute the content widths (client width minus the padding of the edge docks) instead of the border-box width, or move the gutter into the zone so that the docks have equal chrome."
+      "fix": "In SplitterBehavior of DockSlotComponent / WorkspaceComponent.splitBehavior compute the content widths (client width minus the padding of the edge docks) instead of the border-box width, or move the gutter into the zone so that the docks have equal chrome.",
+      "resolution": "2026-10-29: same root cause and fix as A11Y-13."
     },
     "REGIE-03": {
       "status": "fixed",

@@ -83,6 +83,12 @@
 // Above the thumbnail picture.
 .c-scene__thumb .c-keycap {
   z-index: 1;
+
+  // Generated, not text: the key is announced by aria-keyshortcuts, and the visible text of the row (its name) stays
+  // equal to the accessible name (WCAG 2.5.3 Label in Name).
+  &::before {
+    content: attr(data-key);
+  }
 }
 
 :host(.is-program) .c-scene__thumb {

@@ -329,7 +329,11 @@ test.describe('PAIR laptop, check code', () => {
       for (const page of [regie.page, other.page]) page.on('response', (response) => {
         if (/\/pairing\/requests\/[^/]+\/approve$/.test(response.url())) statuses.push(response.status());
       });
-      await Promise.all([regie.approveKnock('Laptop Anna'), other.approveKnock('Laptop Anna')]);
+      // Both buttons are resolved first and clicked in the same instant: a click that waits for its actionability checks
+      // can find the card already removed by the other operator's approval and never land.
+      const allow = [regie, other].map((operator) => operator.knockCard('Laptop Anna').getByRole('button', { name: 'Allow' }));
+      for (const button of allow) await expect(button).toBeEnabled();
+      await Promise.all(allow.map((button) => button.dispatchEvent('click')));
       await expect(regie.knockCard('Laptop Anna')).toHaveCount(0, { timeout: 1500 });
       await expect(other.knockCard('Laptop Anna')).toHaveCount(0, { timeout: 1500 });
       await expect.poll(() => statuses.length, { message: 'both operators answered', timeout: 5000 }).toBe(2);

@@ -25,3 +25,5 @@
 :root {
   @include tokens.custom-properties;
 }
+
+@include base.reduced-motion-overrides;

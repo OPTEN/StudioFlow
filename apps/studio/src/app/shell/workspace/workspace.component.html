@@ -13,6 +13,9 @@
     orientation="vertical"
     [attr.aria-label]="t('regie.workspace.splitter.left')"
     [sfSplitter]="leftSplit"
+    [splitterValue]="layout.layout().leftW"
+    [splitterMin]="sideMin"
+    [splitterMax]="sideMax"
     [splitterDisabled]="viewport.stacked()"
   ></div>
 }
@@ -26,6 +29,7 @@
       orientation="horizontal"
       [attr.aria-label]="t('regie.workspace.splitter.bottom')"
       [sfSplitter]="bottomSplit"
+      [splitterValue]="bottomPercent()"
       [splitterDisabled]="viewport.stacked()"
     ></div>
   }
@@ -45,6 +49,9 @@
     orientation="vertical"
     [attr.aria-label]="t('regie.workspace.splitter.right')"
     [sfSplitter]="rightSplit"
+    [splitterValue]="layout.layout().rightW"
+    [splitterMin]="sideMin"
+    [splitterMax]="sideMax"
     [splitterDisabled]="viewport.stacked()"
   ></div>
 }

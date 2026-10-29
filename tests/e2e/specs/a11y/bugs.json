@@ -2,7 +2,7 @@
   "_comment": "Confirmed product bugs of the a11y area (prefix A11Y-nn), same schema as ../../known-bugs.json; the orchestrator merges them. support/a11y/known-bug.ts reads this file next to the shared registry, so the tests are marked before and after the merge. Evidence paths are relative to the repository root; the .output folders are produced by the tests themselves (stack 4: tests/e2e/.output/sf-e2e-4).",
   "bugs": {
     "A11Y-01": {
-      "status": "open",
+      "status": "fixed",
       "severity": "medium",
       "area": "A11Y",
       "title": "Every splitter is role=separator with tabindex=0 but has no aria-valuenow: axe aria-required-attr (critical) on 4-5 nodes in every Regie state",
@@ -11,7 +11,8 @@
       "expected": "A focusable separator is a widget (ARIA 1.2): it exposes aria-valuenow (and ideally aria-valuemin/-max) so a screen reader can announce its position; axe reports no critical violation.",
       "actual": "Separators 'Height of the docks at the bottom', 'Size of Scenes and Sources', 'Size of Sources and Properties', 'Size of Properties and Stations' and (Studio Mode) 'Size of Preview and Program' have role=separator, tabindex=0, aria-label and aria-orientation but no aria-valuenow: 'Required ARIA attribute not present: aria-valuenow' (critical, 4 nodes direct mode, 5 in Studio Mode).",
       "evidence": "tests/e2e/.output/sf-e2e-4/a11y/axe/regie-separators.json (axe result with targets and html); tests/e2e/.output/sf-e2e-4/a11y/axe-summary.jsonl",
-      "fix": "Set aria-valuenow (percentage or px of the split), aria-valuemin and aria-valuemax in SplitterDirective, or drop role=separator in favour of role=slider."
+      "fix": "Set aria-valuenow (percentage or px of the split), aria-valuemin and aria-valuemax in SplitterDirective, or drop role=separator in favour of role=slider.",
+      "resolution": "2026-10-29: a separator is a widget: SplitterDirective takes a required splitterValue (plus splitterMin/Max) and exposes aria-valuenow/-min/-max (dock seams: share of the previous dock in percent, side zones: width in px, bottom zone and monitor split: percent)."
     },
     "A11Y-02": {
       "status": "fixed",
@@ -91,7 +92,7 @@
       "fix": "Render the list only when there are rows (@if rows().length) and the empty note next to it."
     },
     "A11Y-10": {
-      "status": "open",
+      "status": "fixed",
       "severity": "medium",
       "area": "A11Y",
       "title": "prefers-reduced-motion has no effect on the CSS of the Regie: transitions (0.15 s) and the lamp pulse (1.2 s) still run; only the JS side (renderer fade, Program flash, scroll behaviour) honours it",
@@ -100,7 +101,8 @@
       "expected": "docs/testing.md DEV-16 / GAP-28: computed transition-duration and animation-duration are 0 s on UI elements, lamp pulse and flash animations are absent; _base.scss documents it: every duration token drops to 0 s with reduce.",
       "actual": "--dur-state is .15s and --dur-lamp-pulse 1.2s under reduce. Cause: in styles.scss the base partial (with @media (prefers-reduced-motion: reduce) { :root { --dur-state: 0s ... } }) is emitted before the final :root block with the token values, which has the same specificity and wins; the universal '*, *::before, *::after { animation-duration: 0s; transition-duration: 0s }' has specificity 0 and loses to every component rule that sets a transition shorthand. The recorder sees css-transition and css-animation entries (lamp pulse, station flash/reveal) with reduce on.",
       "evidence": "tests/e2e/.output/sf-e2e-4/artifacts (attachments motion-no-preference.json, motion-reduce.json, durations-at-rest.json of the failing run with E2E_BUG_REPORT=1); apps/studio/src/styles.scss, apps/studio/src/styles/_base.scss",
-      "fix": "Emit the reduced-motion token overrides after the token block (media query inside the :root block of styles.scss), and use !important in the universal rule or put it in an @layer that wins."
+      "fix": "Emit the reduced-motion token overrides after the token block (media query inside the :root block of styles.scss), and use !important in the universal rule or put it in an @layer that wins.",
+      "resolution": "2026-10-29: styles.scss emits the reduced-motion overrides (base.reduced-motion-overrides mixin) after the :root token block, and the universal rule uses !important (also delays), so every duration token and every transition and animation computes to 0s under prefers-reduced-motion."
     },
     "A11Y-11": {
       "status": "open",
@@ -128,7 +130,7 @@
       "fix": "min-width: 0 and text-overflow: ellipsis (or wrapping) on .c-status__target and its name text; the strip entry is a flex container."
     },
     "A11Y-13": {
-      "status": "open",
+      "status": "fixed",
       "severity": "low",
       "area": "A11Y",
       "title": "The seams next to the outer docks move 20.3 px or 11.6 px per arrow key instead of 16 px (Shift: 66.8 / 58.7 instead of 64); the middle seam is exact (same finding as REGIE-02)",
@@ -137,7 +139,8 @@
       "expected": "docs/testing.md DEV-14 / DESIGN.md: arrows move a separator 16 px, Shift 64 px.",
       "actual": "Scenes|Sources: ArrowRight +20.3, +20.0, Shift +66.8, ArrowLeft -13.0, Shift -59.9, -11.7; Properties|Stations: +11.6, +11.5, Shift +58.7, -21.0, -68.1, -19.9; Sources|Properties (middle): +16.0, +16.0, +63.8, -16.1, -64.0, -15.9.",
       "evidence": "assertion message of the run with E2E_BUG_REPORT=1; tests/e2e/specs/regie/bugs.json REGIE-02 (same finding)",
-      "fix": "Compute the weight change from the width of the two docks without the window gutter (or convert the pixel step with the real content widths)."
+      "fix": "Compute the weight change from the width of the two docks without the window gutter (or convert the pixel step with the real content widths).",
+      "resolution": "2026-10-29: the dock SplitterBehavior of the workspace converts pixels with the content size of the docks (without padding and border) instead of the border-box size, so edge seams move exactly 16 px (Shift 64 px)."
     },
     "A11Y-08": {
       "status": "open",
