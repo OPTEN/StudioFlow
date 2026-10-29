@@ -1,6 +1,6 @@
 import type { Namespace } from '../../types';
 
-/** The settings popover of the Regie: language, appearance and the version the server runs. */
+/** The settings window of the Regie: its sidebar, the scope line of each page, and the settings of this browser (language, appearance, version). */
 export const regieSettings = {
   'regie.settings.open': 'Open settings',
   'regie.settings.title': 'Settings',
@@ -9,4 +9,31 @@ export const regieSettings = {
   'regie.settings.theme.light': 'Light',
   'regie.settings.theme.system': 'System',
   'regie.settings.version.label': 'Version',
+  'regie.settings.nav.label': 'Settings',
+  'regie.settings.nav.back': 'Control room',
+  'regie.settings.group.production': 'Production',
+  'regie.settings.group.browser': 'This browser',
+  'regie.settings.group.server': 'Server',
+  'regie.settings.group.insights': 'Diagnostics',
+  'regie.settings.group.account': 'Account',
+  'regie.settings.nav.general': 'General',
+  'regie.settings.nav.slates': 'Slates',
+  'regie.settings.nav.textStyle': 'Text style',
+  'regie.settings.nav.output': 'Output links',
+  'regie.settings.nav.productions': 'All productions',
+  'regie.settings.nav.appearance': 'Appearance and language',
+  'regie.settings.nav.media': 'Media server',
+  'regie.settings.nav.network': 'Address and certificate',
+  'regie.settings.nav.embedding': 'Embedding',
+  'regie.settings.nav.backups': 'Backups',
+  'regie.settings.nav.monitoring': 'Monitoring',
+  'regie.settings.nav.audit': 'Activity log',
+  'regie.settings.nav.account': 'Account',
+  'regie.settings.nav.about': 'About StudioFlow',
+  'regie.settings.scope.production': 'Applies to the production “{name}”.',
+  'regie.settings.scope.productionNone': 'Applies to the active production.',
+  'regie.settings.scope.browser':
+    'Saved in this browser only. Senders and the output keep their own look.',
+  'regie.settings.scope.server': 'Applies to the whole server and every production.',
+  'regie.settings.page.loading': 'Loading …',
 } as const satisfies Namespace<'regie.settings'>;

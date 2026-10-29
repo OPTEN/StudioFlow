@@ -159,31 +159,31 @@ describe('ThemeService', () => {
 
     it('is the Panel colour of the dark theme', () => {
       start();
-      expect(meta.content).toBe('#151a22');
+      expect(meta.content).toBe('#1e1e21');
     });
 
     it('is the Panel colour of the light theme, at start and after a choice', () => {
       storage.setItem(PREFERENCE_KEYS.theme, 'light');
       const service = start();
-      expect(meta.content).toBe('#f3f5f8');
+      expect(meta.content).toBe('#f7f7f9');
       service.choose('dark');
       TestBed.tick();
-      expect(meta.content).toBe('#151a22');
+      expect(meta.content).toBe('#1e1e21');
       service.choose('light');
       TestBed.tick();
-      expect(meta.content).toBe('#f3f5f8');
+      expect(meta.content).toBe('#f7f7f9');
     });
 
     it('follows the system setting live while System is chosen', () => {
       storage.setItem(PREFERENCE_KEYS.theme, 'system');
       start();
-      expect(meta.content).toBe('#151a22');
+      expect(meta.content).toBe('#1e1e21');
       system.flip(true);
       TestBed.tick();
-      expect(meta.content).toBe('#f3f5f8');
+      expect(meta.content).toBe('#f7f7f9');
       system.flip(false);
       TestBed.tick();
-      expect(meta.content).toBe('#151a22');
+      expect(meta.content).toBe('#1e1e21');
     });
 
     it('follows a change made in another tab', () => {
@@ -191,7 +191,7 @@ describe('ThemeService', () => {
       storage.setItem(PREFERENCE_KEYS.theme, 'light');
       window.dispatchEvent(new StorageEvent('storage', { key: PREFERENCE_KEYS.theme }));
       TestBed.tick();
-      expect(meta.content).toBe('#f3f5f8');
+      expect(meta.content).toBe('#f7f7f9');
     });
 
     it('is not created when the page has no theme-color meta', () => {

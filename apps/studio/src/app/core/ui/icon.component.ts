@@ -45,6 +45,38 @@ export type IconName =
   | 'list'
   | 'mic'
   | 'headphones'
+  // Redesign additions (same grid and stroke): navigation, settings sections and media controls
+  | 'chev-right'
+  | 'chev-left'
+  | 'back'
+  | 'info'
+  | 'film'
+  | 'slate'
+  | 'type'
+  | 'globe'
+  | 'server'
+  | 'shield'
+  | 'archive'
+  | 'pulse'
+  | 'clock'
+  | 'user'
+  | 'keyboard'
+  | 'sun'
+  | 'moon'
+  | 'appearance'
+  | 'speaker'
+  | 'speaker-off'
+  | 'play'
+  | 'stop'
+  | 'sidebar'
+  | 'search'
+  | 'help'
+  | 'sliders'
+  | 'external'
+  | 'qr'
+  | 'wifi'
+  | 'stack'
+  | 'circle-check'
   // The StudioFlow brand mark "Programm": program frame, two flow chevrons, tally dot (cropped 58 × 42)
   | 'mark'
   // The OPTEN logo symbol (sponsor note in the header), one colour, filled
@@ -230,6 +262,138 @@ export type IconName =
       @case ('download') {
         <svg:path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" />
         <svg:path d="M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+      }
+      @case ('chev-right') {
+        <svg:path d="m9 6 6 6-6 6" />
+      }
+      @case ('chev-left') {
+        <svg:path d="m15 6-6 6 6 6" />
+      }
+      @case ('back') {
+        <svg:path d="M19 12H5M11 6l-6 6 6 6" />
+      }
+      @case ('info') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path d="M12 11v5.5M12 7.6v.1" />
+      }
+      @case ('film') {
+        <svg:rect x="3.5" y="5" width="17" height="14" rx="2" />
+        <svg:path d="M3.5 9h17M3.5 15h17M8 5v4M12 5v4M16 5v4M8 15v4M12 15v4M16 15v4" />
+      }
+      @case ('slate') {
+        <svg:rect x="3" y="5" width="18" height="14" rx="2" />
+        <svg:path d="M7.5 10h9M9.5 13.5h5" />
+      }
+      @case ('type') {
+        <svg:path d="M4 18.5 8.5 6h1L14 18.5M5.6 14h6.8" />
+        <svg:path
+          d="M15.5 12.2a2.6 2.6 0 0 1 4.5 1.8v4.5M20 15.6c-3.3-.4-5 .4-5 1.6 0 .9.8 1.4 1.8 1.4 1.4 0 3.2-1 3.2-3"
+        />
+      }
+      @case ('globe') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path
+          d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5S14.4 18.1 12 20.5C9.6 18.1 8.4 15.3 8.4 12S9.6 5.9 12 3.5Z"
+        />
+      }
+      @case ('server') {
+        <svg:rect x="4" y="4" width="16" height="7" rx="1.6" />
+        <svg:rect x="4" y="13" width="16" height="7" rx="1.6" />
+        <svg:path d="M7.5 7.5h.1M7.5 16.5h.1M11 7.5h5.5M11 16.5h5.5" />
+      }
+      @case ('shield') {
+        <svg:path d="M12 3.5 5 6v5.5c0 4.3 3 7.6 7 9 4-1.4 7-4.7 7-9V6l-7-2.5Z" />
+        <svg:path d="m9 12 2.2 2.2L15.5 10" />
+      }
+      @case ('archive') {
+        <svg:rect x="3.5" y="4.5" width="17" height="4.5" rx="1.2" />
+        <svg:path d="M5 9v9a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18V9M10 13h4" />
+      }
+      @case ('pulse') {
+        <svg:path d="M3 12h4l2.5-6 5 12 2.5-6h4" />
+      }
+      @case ('clock') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path d="M12 7.5V12l3 2" />
+      }
+      @case ('user') {
+        <svg:circle cx="12" cy="8.5" r="3.5" />
+        <svg:path d="M5 19.5a7 7 0 0 1 14 0" />
+      }
+      @case ('keyboard') {
+        <svg:rect x="2.5" y="6" width="19" height="12" rx="2" />
+        <svg:path
+          d="M6 9.5h.1M9 9.5h.1M12 9.5h.1M15 9.5h.1M18 9.5h.1M6 12.5h.1M18 12.5h.1M9 12.5h6M8 15h8"
+        />
+      }
+      @case ('sun') {
+        <svg:circle cx="12" cy="12" r="3.8" />
+        <svg:path
+          d="M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21M5.6 5.6l1.3 1.3M17.1 17.1l1.3 1.3M18.4 5.6l-1.3 1.3M6.9 17.1l-1.3 1.3"
+        />
+      }
+      @case ('moon') {
+        <svg:path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z" />
+      }
+      @case ('appearance') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path class="c-icon__fill" d="M12 3.5a8.5 8.5 0 0 1 0 17Z" />
+      }
+      @case ('speaker') {
+        <svg:path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" />
+        <svg:path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+      }
+      @case ('speaker-off') {
+        <svg:path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" />
+        <svg:path d="m16 9.5 5 5M21 9.5l-5 5" />
+      }
+      @case ('play') {
+        <svg:path d="M8 5.5v13l10.5-6.5L8 5.5Z" />
+      }
+      @case ('stop') {
+        <svg:rect x="6.5" y="6.5" width="11" height="11" rx="1.6" />
+      }
+      @case ('sidebar') {
+        <svg:rect x="3" y="4.5" width="18" height="15" rx="2" />
+        <svg:path d="M9 4.5v15" />
+      }
+      @case ('search') {
+        <svg:circle cx="10.5" cy="10.5" r="6" />
+        <svg:path d="m15 15 5 5" />
+      }
+      @case ('help') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7M12 16.8v.1" />
+      }
+      @case ('sliders') {
+        <svg:path d="M5 6.5h8M17 6.5h2M5 12h2M11 12h8M5 17.5h10M19 17.5h0" />
+        <svg:circle cx="15" cy="6.5" r="2" />
+        <svg:circle cx="9" cy="12" r="2" />
+        <svg:circle cx="17" cy="17.5" r="2" />
+      }
+      @case ('external') {
+        <svg:path d="M14 4.5h5.5V10M19.5 4.5 11 13" />
+        <svg:path
+          d="M17 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 4 18.5v-10A1.5 1.5 0 0 1 5.5 7H10"
+        />
+      }
+      @case ('qr') {
+        <svg:rect x="4" y="4" width="6" height="6" rx="1" />
+        <svg:rect x="14" y="4" width="6" height="6" rx="1" />
+        <svg:rect x="4" y="14" width="6" height="6" rx="1" />
+        <svg:path d="M14 14h2.5v2.5H14ZM18.5 18.5H20V20h-1.5ZM14 18.5h2.5M18.5 14H20" />
+      }
+      @case ('wifi') {
+        <svg:path d="M3 9.5a13 13 0 0 1 18 0M6 12.8a8.5 8.5 0 0 1 12 0M9 16a4 4 0 0 1 6 0" />
+        <svg:path d="M12 19.2v.1" />
+      }
+      @case ('stack') {
+        <svg:path d="m12 4 8.5 4.5L12 13 3.5 8.5 12 4Z" />
+        <svg:path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5" />
+      }
+      @case ('circle-check') {
+        <svg:circle cx="12" cy="12" r="8.5" />
+        <svg:path d="m8.5 12.3 2.4 2.4 4.6-4.9" />
       }
       @case ('opten') {
         <svg:circle class="c-icon__fill" cx="49.03" cy="39" r="3" />

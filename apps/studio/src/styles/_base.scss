@@ -18,11 +18,14 @@ body {
 }
 
 body {
+  -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   background: var(--panel);
   color: var(--text);
-  font: 400 14px / 1.4 var(--font-ui);
+  font: 400 13px / 1.38 var(--font-ui);
+  font-synthesis-weight: none;
   margin: 0;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
   padding: 0;
 
@@ -32,7 +35,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--blue) 30%, transparent);
+  background: color-mix(in srgb, var(--blue) 32%, transparent);
   color: var(--text);
 }
 
@@ -42,14 +45,24 @@ body {
 }
 
 ::-webkit-scrollbar {
-  height: 10px;
-  width: 10px;
+  height: 11px;
+  width: 11px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--seam-strong);
-  border: 3px solid var(--panel);
-  border-radius: 10px;
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--control-edge);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 ::-webkit-scrollbar-track {
@@ -67,6 +80,16 @@ textarea {
   outline-offset: 2px;
 }
 
+a {
+  color: var(--blue);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
 button,
 input,
 select,
@@ -78,8 +101,17 @@ textarea {
 h1,
 h2,
 h3,
+h4,
 p {
   margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 // Utilities
