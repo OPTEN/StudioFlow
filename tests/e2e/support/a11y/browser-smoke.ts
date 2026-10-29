@@ -23,8 +23,8 @@ import {
  * E2E-DEV-19 [Browsers for the Regie]: the same flows as in Chromium in Firefox and WebKit (docs/testing.md 2.8):
  * login, scene switch, Studio Mode and Take, dragging an element and a dock with the pointer, a splitter, the pairing
  * dock with its QR code, the layouts of 1180, 900 and 390 px, and the output page. Registered by the `*.firefox.spec.ts`
- * and `*.webkit.spec.ts` files (project desktop-firefox, webkit). WebKit has no WebRTC in Playwright on Windows: its
- * media connection warnings are the known difference below (UI only, docs/testing.md 1.3).
+ * and `*.webkit.spec.ts` files (project desktop-firefox, webkit). WebKit has no WebRTC and no Web Audio in Playwright on Windows: its
+ * media and audio warnings are the known differences below (UI only, docs/testing.md 1.3).
  */
 
 const tags = t.with('@p1', '@a11y', '@browsers');
@@ -32,7 +32,10 @@ const SCREEN_PREFIX = (name: string) => `${name}`;
 
 const KNOWN: Record<string, KnownDifference[]> = {
   firefox: [],
-  webkit: [{ pattern: /LiveKit connect failed.*(doesn't seem to be supported|webRTC)/i, reason: 'Playwright WebKit on Windows has no RTCPeerConnection (typeof RTCPeerConnection === "undefined"): LiveKit cannot connect; the Regie shows “Video connection interrupted”' }],
+  webkit: [
+    { pattern: /LiveKit connect failed.*(doesn't seem to be supported|webRTC)/i, reason: 'Playwright WebKit on Windows has no RTCPeerConnection (typeof RTCPeerConnection === "undefined"): LiveKit cannot connect; the Regie shows “Video connection interrupted”' },
+    { pattern: /audio context could not be created.*Web Audio is not available/i, reason: 'Playwright WebKit on Windows has no AudioContext: the page warns once and stays silent' },
+  ],
 };
 
 const EXPECTED_STATUSES = [
