@@ -1,4 +1,4 @@
-<div class="c-monitor__head">
+<div class="c-monitor__head" [sfContextMenu]="menu" [sfContextMenuLabel]="title()">
   <span class="c-monitor__tally" [id]="labelId"
     ><i class="c-monitor__lamp" aria-hidden="true"></i>{{ title() }}</span
   >
@@ -19,6 +19,15 @@
     >
   }
   <span class="c-monitor__meta">{{ meta() }}</span>
+  <button
+    class="c-ibtn c-monitor__more"
+    type="button"
+    [attr.aria-label]="moreLabel()"
+    [title]="moreLabel()"
+    (click)="openMenu($event)"
+  >
+    <svg sfIcon="more" [size]="16"></svg>
+  </button>
   @if (fade(); as running) {
     <span
       class="c-monitor__fade"
@@ -28,7 +37,13 @@
     ></span>
   }
 </div>
-<div class="c-monitor__screen" #screen [style.aspect-ratio]="store.canvasAspect()">
+<div
+  class="c-monitor__screen"
+  #screen
+  [style.aspect-ratio]="store.canvasAspect()"
+  [sfContextMenu]="menu"
+  [sfContextMenuLabel]="title()"
+>
   <sf-scene-view
     class="c-monitor__view"
     mode="monitor"
@@ -45,6 +60,14 @@
         <span>{{ hint }}</span>
       }
     </p>
+  }
+  @if (commands.showSafeArea()) {
+    <div
+      class="c-monitor__safe"
+      aria-hidden="true"
+      [style.--sf-safe-x]="safeArea().x"
+      [style.--sf-safe-y]="safeArea().y"
+    ></div>
   }
   @if (editable()) {
     <sf-edit-overlay [view]="view() ?? null" />

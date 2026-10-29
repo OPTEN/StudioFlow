@@ -253,6 +253,31 @@ export class SwitcherService {
   }
 
   /**
+   * The scene a "Load next scene" would put into the Preview: the one after the program in list order, or null when
+   * there is none besides the program.
+   */
+  readonly nextSceneId = computed(() => {
+    const next = this.sceneAfter(this.store.programSceneId());
+    return next === this.store.programSceneId() ? null : next;
+  });
+
+  /** "Send Program to Preview" (Studio Mode): the live scene goes into the Preview as well (read only there). */
+  async programToPreview(): Promise<void> {
+    const program = this.store.programSceneId();
+    if (this.studioModeSignal() && program !== null) {
+      await this.chooseScene(program);
+    }
+  }
+
+  /** "Load next scene" (Studio Mode): the scene after the program goes into the Preview. */
+  async loadNextScene(): Promise<void> {
+    const next = this.nextSceneId();
+    if (this.studioModeSignal() && next !== null) {
+      await this.chooseScene(next);
+    }
+  }
+
+  /**
    * Sends one switching request under the in-flight guard. The guard is released by the hub event of the result
    * (see {@link releaseInFlightOnEvents}), by an error (shown as a notice) or by the safety timeout.
    */

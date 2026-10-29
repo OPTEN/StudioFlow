@@ -8,12 +8,19 @@ import {
   viewChild,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
-import { canvasSizeLabel, formatItemCount, type SceneDto } from '@studioflow/scene-model';
+import {
+  canvasSizeLabel,
+  formatItemCount,
+  safeMargin,
+  type SceneDto,
+} from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
+import { ContextMenuDirective, ContextMenuService } from '../core/ui/context-menu';
 import { IconComponent } from '../core/ui/icon.component';
 import { ViewportService } from '../core/ui/viewport.service';
 import { EditOverlayComponent } from './edit-overlay.component';
 import { SceneViewComponent, type SceneTransitionCue } from './scene-view.component';
+import { StageCommandsService } from './stage-commands.service';
 
 /** Which monitor: Preview (green tally) or Program (red tally, shows exactly the output). */
 export type MonitorKind = 'preview' | 'program';
@@ -46,12 +53,17 @@ let nextMonitorId = 0;
  *   canvas. It holds a {@link SceneViewComponent}; on the editable monitor also the {@link EditOverlayComponent}.
  *   An empty screen says what is missing ("Connecting…", "No scene yet" and where to add one).
  *
+ * Menu: a right click on the header or the picture (or the ⋯ button at the end of the header) offers the monitor's
+ * commands ({@link StageCommandsService.monitorMenu}): Take, Send Program to Preview, Load next scene on the Preview,
+ * Studio Mode on the Program, Show safe area and Copy scene name on both. With "Show safe area" on, the dashed guide
+ * stays on both pictures.
+ *
  * The Program monitor flashes once whenever a cued program switch has been played. The width comes from the stage
  * (`--sf-preview-w` / `--sf-program-w`, see `monitor-layout.ts`).
  */
 @Component({
   selector: 'sf-monitor',
-  imports: [SceneViewComponent, EditOverlayComponent, IconComponent],
+  imports: [SceneViewComponent, EditOverlayComponent, IconComponent, ContextMenuDirective],
   templateUrl: './monitor.component.html',
   styleUrl: './monitor.component.scss',
   host: {
@@ -85,6 +97,8 @@ export class MonitorComponent {
   readonly emptyHint = input<string | null>(null);
 
   protected readonly store = inject(ProductionStoreService);
+  protected readonly commands = inject(StageCommandsService);
+  private readonly menus = inject(ContextMenuService);
   private readonly viewport = inject(ViewportService);
   private readonly screen = viewChild.required<ElementRef<HTMLElement>>('screen');
 
@@ -115,6 +129,33 @@ export class MonitorComponent {
       ? t('regie.stage.monitor.programLabel', { name })
       : t('regie.stage.monitor.previewLabel', { name });
   });
+
+  /** Accessible name and tooltip of the ⋯ button ("Program options"). */
+  protected readonly moreLabel = computed(() =>
+    t('regie.stage.menu.monitorMore', { monitor: this.title() }),
+  );
+  /** The safe margin as a share of the canvas (the dashed guide of "Show safe area"). */
+  protected readonly safeArea = computed(() => {
+    const canvas = this.store.canvas();
+    const margin = safeMargin(canvas);
+    return {
+      x: `${(margin / canvas.width) * 100}%`,
+      y: `${(margin / canvas.height) * 100}%`,
+    };
+  });
+  /** The monitor's menu (right click on the header or the picture, ⋯ button). */
+  protected readonly menu = () => this.commands.monitorMenu(this.kind(), this.scene());
+
+  /** The ⋯ button: the monitor's menu under the button. */
+  protected openMenu(event: MouseEvent): void {
+    const button = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    const rect = button?.getBoundingClientRect();
+    this.menus.open(
+      this.menu(),
+      { x: rect?.left ?? event.clientX, y: (rect?.bottom ?? event.clientY) + 4 },
+      { label: this.title(), returnFocus: button },
+    );
+  }
 
   /** Flashes the Program outline once (prototype `is-flash`); skipped with reduced motion. */
   protected onTransitionEnd(): void {

@@ -21,6 +21,18 @@
       }
       <span class="c-edit-box__name">{{ box.name }}</span>
       <span class="c-edit-box__detail">{{ box.detail }}</span>
+      @if (box.selected) {
+        <button
+          class="c-edit-box__more"
+          type="button"
+          tabindex="-1"
+          [attr.aria-label]="t('regie.stage.menu.itemMore', { name: box.name })"
+          [title]="t('regie.stage.menu.itemMore', { name: box.name })"
+          (click)="openItemMenu(box.id, $event)"
+        >
+          <svg sfIcon="more" [size]="14"></svg>
+        </button>
+      }
     </span>
     @if (box.pinned) {
       <span class="c-edit-box__lock" aria-hidden="true"><svg sfIcon="lock" [size]="11"></svg></span>

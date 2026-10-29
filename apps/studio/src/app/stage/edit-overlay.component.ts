@@ -19,6 +19,7 @@ import {
   type SceneItemDto,
 } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../core/state/production-store.service';
+import { ContextMenuService } from '../core/ui/context-menu';
 import { DragCursorService, type DragCursor } from '../core/ui/drag-cursor.service';
 import { IconComponent } from '../core/ui/icon.component';
 import { ToastService } from '../core/ui/toast.service';
@@ -50,6 +51,7 @@ import {
 import { EditorService, liveLockedMessage, offlineEditMessage } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import type { SceneViewComponent } from './scene-view.component';
+import { StageCommandsService } from './stage-commands.service';
 import { SwitcherService } from './switcher.service';
 
 /** One selection box over a visible element. */
@@ -154,7 +156,10 @@ function isHandle(value: string | undefined): value is Handle {
  * - Click selects (empty area deselects), drag moves with snapping to the canvas edges, the safe margin, the centre and
  *   the other elements' edges and centres (7 screen px, blue guides; Alt disables snapping), a corner resizes keeping
  *   the aspect ratio (Shift frees it, minimum 96 × 54), Alt+drag on a corner or an edge crops (OBS). Arrow keys move
- *   by 1 px (Shift 10 px), one undo step per key-repeat burst. Escape deselects (EditorService).
+ *   by 1 px (Shift 10 px), one undo step per key-repeat burst. Escape deselects (EditorService). Delete/Backspace
+ *   removes the selected item (toast with "Undo"), Tab/Shift+Tab selects the next/previous item.
+ * - Right click on an item (or the context-menu key, or the ⋯ button in its label tab) opens its menu
+ *   ({@link StageCommandsService.itemMenu}): layer order, Fit/Fill, Full screen, Lock, Hide, Properties…, Remove.
  * - While hovering or dragging: the dashed safe-area guide. Locked elements are selectable but not draggable; while
  *   the scene is locked (Studio Mode, preview = program) a press shows the prototype's toast.
  * - Pointer moves are native listeners (no change detection per event), batched to one geometry step per animation
@@ -180,6 +185,7 @@ function isHandle(value: string | undefined): value is Handle {
     '(pointerdown)': 'onPointerDown($event)',
     '(keydown)': 'onKeyDown($event)',
     '(keyup)': 'onKeyUp($event)',
+    '(contextmenu)': 'onContextMenu($event)',
     '(focusout)': 'onFocusOut()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -195,6 +201,8 @@ export class EditOverlayComponent {
   private readonly toasts = inject(ToastService);
   private readonly cursor = inject(DragCursorService);
   private readonly frame = inject(FRAME_SCHEDULER);
+  private readonly menus = inject(ContextMenuService);
+  private readonly commands = inject(StageCommandsService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly corners = CORNERS;
@@ -288,6 +296,10 @@ export class EditOverlayComponent {
       return;
     }
     const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('.c-edit-box__more')) {
+      // The ⋯ button of the label tab opens the menu on click; no drag starts there.
+      return;
+    }
     const boxElement = target?.closest<HTMLElement>('[data-item-id]') ?? null;
     this.host.focus({ preventScroll: true });
     if (!boxElement || !this.host.contains(boxElement)) {
@@ -357,11 +369,52 @@ export class EditOverlayComponent {
     this.host.addEventListener('lostpointercapture', this.onEnd);
   }
 
+  /** Right click on an item: its menu (selects it); elsewhere the monitor's menu takes over. */
+  protected onContextMenu(event: MouseEvent): void {
+    const target = event.target instanceof Element ? event.target : null;
+    const id = target?.closest<HTMLElement>('[data-item-id]')?.dataset['itemId'];
+    if (!id || this.drag) {
+      return;
+    }
+    const entries = this.commands.itemMenu(id);
+    if (entries.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.host.focus({ preventScroll: true });
+    this.menus.open(
+      entries,
+      { x: event.clientX, y: event.clientY },
+      { label: this.nameOf(id), returnFocus: this.host },
+    );
+  }
+
+  /** The ⋯ button in the label tab of the selected item: the same menu, under the button. */
+  protected openItemMenu(itemId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    const button = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    const rect = button?.getBoundingClientRect();
+    this.menus.open(
+      this.commands.itemMenu(itemId),
+      { x: rect?.left ?? event.clientX, y: (rect?.bottom ?? event.clientY) + 4 },
+      { label: this.nameOf(itemId), returnFocus: this.host },
+    );
+  }
+
   protected onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Alt') {
       // Alt+drag crops; keep the browser from moving the focus to its menu.
       event.preventDefault();
       this.altHeld.set(true);
+      return;
+    }
+    if (this.drag) {
+      return;
+    }
+    if (this.onItemKey(event)) {
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
     if (!isArrowKey(event.key) || event.ctrlKey || event.metaKey || event.altKey || this.drag) {
@@ -404,6 +457,50 @@ export class EditOverlayComponent {
   protected onFocusOut(): void {
     this.endNudge();
     this.altHeld.set(false);
+  }
+
+  /**
+   * Keys on the selected item: Delete/Backspace removes it (the toast offers "Undo"), Tab/Shift+Tab selects the next or
+   * previous item (past the last one the focus leaves the overlay as usual, so it is no trap), the context-menu key or
+   * Shift+F10 opens its menu. Returns true when the key was used.
+   */
+  private onItemKey(event: KeyboardEvent): boolean {
+    const box = this.boxes().find((entry) => entry.selected);
+    if (!box || event.ctrlKey || event.metaKey || event.altKey) {
+      return false;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && !event.shiftKey) {
+      if (!event.repeat) {
+        this.editor.removeItem(box.id);
+      }
+      return true;
+    }
+    if (event.key === 'Tab') {
+      const boxes = this.boxes();
+      const next = boxes[boxes.indexOf(box) + (event.shiftKey ? -1 : 1)];
+      if (!next) {
+        return false;
+      }
+      this.endNudge();
+      this.editor.select(next.id);
+      return true;
+    }
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      const rect = this.host
+        .querySelector<HTMLElement>(`[data-item-id="${CSS.escape(box.id)}"]`)
+        ?.getBoundingClientRect();
+      this.menus.open(
+        this.commands.itemMenu(box.id),
+        { x: (rect?.left ?? 0) + 12, y: (rect?.top ?? 0) + 12 },
+        { label: box.name, returnFocus: this.host },
+      );
+      return true;
+    }
+    return false;
+  }
+
+  private nameOf(itemId: string): string {
+    return this.boxes().find((entry) => entry.id === itemId)?.name ?? '';
   }
 
   private modeFor(handle: Handle | null, alt: boolean): DragMode {

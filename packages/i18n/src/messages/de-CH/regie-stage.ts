@@ -15,6 +15,8 @@ export const regieStage: Translation<typeof en> = {
   'regie.stage.control.silent': 'Stille',
   'regie.stage.control.space': 'Leerschlag',
   'regie.stage.control.studioMode': 'Studio-Modus',
+  'regie.stage.control.studioModeTitle':
+    'Die nächste Szene in der Preview vorbereiten und mit Take (Leerschlag) live schalten',
   'regie.stage.control.take': 'Take',
   'regie.stage.control.takeFading': 'Blende läuft …',
   'regie.stage.control.takeNoPreview': 'Keine Szene in der Preview',
@@ -57,6 +59,27 @@ export const regieStage: Translation<typeof en> = {
   'regie.stage.monitor.liveNote':
     'Diese Szene ist gerade live. Bearbeiten geht erst, wenn eine andere Szene im Program ist.',
   'regie.stage.monitor.locked': 'Live, nicht bearbeitbar',
+  'regie.stage.menu.back': 'In den Hintergrund',
+  'regie.stage.menu.backward': 'Eine Ebene nach hinten',
+  'regie.stage.menu.copyName': 'Szenennamen kopieren',
+  'regie.stage.menu.fill': 'Füllen',
+  'regie.stage.menu.fit': 'Einpassen',
+  'regie.stage.menu.forward': 'Eine Ebene nach vorne',
+  'regie.stage.menu.front': 'In den Vordergrund',
+  'regie.stage.menu.fullScreen': 'Vollbild',
+  'regie.stage.menu.hide': 'Ausblenden',
+  'regie.stage.menu.itemMore': 'Optionen für {name}',
+  'regie.stage.menu.lock': 'Sperren',
+  'regie.stage.menu.monitorMore': 'Optionen für {monitor}',
+  'regie.stage.menu.nextScene': 'Nächste Szene laden',
+  'regie.stage.menu.programToPreview': 'Program in die Preview holen',
+  'regie.stage.menu.properties': 'Eigenschaften …',
+  'regie.stage.menu.remove': 'Aus der Szene entfernen',
+  'regie.stage.menu.resetCrop': 'Zuschnitt zurücksetzen',
+  'regie.stage.menu.safeArea': 'Sicheren Bereich zeigen',
+  'regie.stage.menu.studioOff': 'Studio-Modus ausschalten',
+  'regie.stage.menu.unlock': 'Entsperren',
+
   'regie.stage.monitor.noScene': 'Noch keine Szene',
   'regie.stage.monitor.noSceneHint': 'Füge im Dock «Szenen» eine Szene hinzu.',
   'regie.stage.monitor.noSceneName': 'keine Szene',
@@ -66,7 +89,7 @@ export const regieStage: Translation<typeof en> = {
   'regie.stage.monitor.programLabel': 'Program-Monitor: {name}, entspricht dem Output',
 
   'regie.stage.overlay.label':
-    'Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren.',
+    'Elemente der Szene. Ziehen zum Verschieben, Ecken zum Skalieren, Pfeiltasten zum Feinjustieren, Tab für das nächste Element, Entf zum Entfernen.',
   'regie.stage.overlay.locked': 'Gesperrt. In den Quellen entsperren, um es zu verschieben.',
 
   'regie.stage.previewOff.action': 'Studio-Modus einschalten',

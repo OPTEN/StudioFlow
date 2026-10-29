@@ -112,6 +112,13 @@
   }
 }
 
+// ⋯ at the end of the header: the monitor's menu (24 px, so the header keeps its height).
+.c-monitor__more {
+  height: 24px;
+  margin-left: -4px;
+  width: 24px;
+}
+
 // A narrow monitor keeps the note and drops the facts; a very narrow one (a portrait canvas) shows the note as its
 // icon, with the words as tooltip and for screen readers.
 @container monitor (max-width: 520px) {
@@ -189,6 +196,17 @@
   border-radius: var(--radius-screen);
   inset: 0;
   position: absolute;
+}
+
+// "Show safe area": the dashed guide of the safe margin, all the time (the overlay shows it only while editing).
+.c-monitor__safe {
+  border: 1px dashed color-mix(in srgb, var(--pic-muted) 60%, transparent);
+  bottom: var(--sf-safe-y, 3.704%);
+  left: var(--sf-safe-x, 2.083%);
+  pointer-events: none;
+  position: absolute;
+  right: var(--sf-safe-x, 2.083%);
+  top: var(--sf-safe-y, 3.704%);
 }
 
 // Empty picture: what is missing and where to fix it, quiet on the well.

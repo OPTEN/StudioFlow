@@ -138,6 +138,28 @@
   padding-left: 6px;
 }
 
+// ⋯ in the label tab of the selected item: the item's menu (the same as the right click).
+.c-edit-box__more {
+  @include state-transition(background-color);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  flex: none;
+  height: 18px;
+  margin-right: -5px;
+  padding: 0;
+  place-items: center;
+  pointer-events: auto;
+  width: 20px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--pic-ink) 18%, transparent);
+  }
+}
+
 // Lock badge of a locked element (on hover and when selected); the tooltip of the box says how to unlock it.
 .c-edit-box__lock {
   background: var(--pic-scrim);

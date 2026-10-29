@@ -17,6 +17,7 @@ import {
   studioTestProviders,
   type StoreHarness,
 } from '../../testing/store-harness';
+import { ContextMenuService } from '../core/ui/context-menu';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ToastService } from '../core/ui/toast.service';
 import { EditOverlayComponent } from './edit-overlay.component';
@@ -368,6 +369,95 @@ describe('EditOverlayComponent', () => {
     expect(item()).toMatchObject({ x: 100, y: 100 });
     await answerAll();
     expect(editor.canUndo()).toBe(false);
+  });
+
+  describe('keys and menus on the selected item', () => {
+    const twoItems = (): SceneDto[] => {
+      const scenes = defaultScenes();
+      scenes[0] = sceneFixture('scn_a', 'Welcome', 0, [
+        itemFixture('itm_a1', 'dev_aaaaaaaaaaaaaaaa/camera'),
+        itemFixture('itm_a2', 'dev_bbbbbbbbbbbbbbbb/screen-1', { x: 900, y: 500 }),
+      ]);
+      return scenes;
+    };
+    const key = (init: KeyboardEventInit): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      overlay.dispatchEvent(event);
+      return event;
+    };
+
+    it('Tab and Shift+Tab select the next and previous item; past the ends the focus moves on', async () => {
+      await setup({ scenes: twoItems() });
+      expect(key({ key: 'Tab' }).defaultPrevented, 'nothing selected: Tab leaves').toBe(false);
+      editor.select('itm_a1');
+      await render();
+      expect(key({ key: 'Tab' }).defaultPrevented).toBe(true);
+      expect(editor.selectedItemId()).toBe('itm_a2');
+      await render();
+      expect(key({ key: 'Tab' }).defaultPrevented, 'the last item lets the focus go').toBe(false);
+      expect(editor.selectedItemId()).toBe('itm_a2');
+      expect(key({ key: 'Tab', shiftKey: true }).defaultPrevented).toBe(true);
+      expect(editor.selectedItemId()).toBe('itm_a1');
+      expect(harness.http.match(() => true)).toHaveLength(0);
+    });
+
+    it('Delete removes the selected item with “Undo” in the toast; Backspace too', async () => {
+      await setup({ scenes: twoItems() });
+      const show = vi.spyOn(toasts, 'show');
+      expect(key({ key: 'Delete' }).defaultPrevented, 'nothing selected').toBe(false);
+      editor.select('itm_a1');
+      await render();
+      expect(key({ key: 'Delete' }).defaultPrevented).toBe(true);
+      expect(editor.itemById('itm_a1')).toBeNull();
+      expect(show).toHaveBeenLastCalledWith(
+        expect.stringContaining('removed'),
+        expect.objectContaining({ label: 'Undo' }),
+      );
+      await answerAll();
+      editor.select('itm_a2');
+      await render();
+      key({ key: 'Backspace' });
+      expect(editor.itemById('itm_a2')).toBeNull();
+      await answerAll();
+    });
+
+    it('a right click on an item selects it and opens its menu; the ⋯ button opens the same', async () => {
+      await setup({ scenes: twoItems() });
+      const menus = TestBed.inject(ContextMenuService);
+      box('itm_a2').dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 50,
+          clientY: 60,
+        }),
+      );
+      await render();
+      expect(editor.selectedItemId()).toBe('itm_a2');
+      const labels = (menus.current()?.entries ?? []).flatMap((entry) =>
+        entry === 'separator' ? [] : [entry.label],
+      );
+      expect(labels).toEqual([
+        'Bring forward',
+        'Send backward',
+        'Bring to front',
+        'Send to back',
+        'Fit',
+        'Fill',
+        'Full screen',
+        'Lock',
+        'Hide',
+        'Properties…',
+        'Remove from scene',
+      ]);
+      menus.close(false);
+      const more = box('itm_a2').querySelector<HTMLButtonElement>('.c-edit-box__more');
+      expect(more?.getAttribute('aria-label')).toBe('Options for Laptop Lea · Slides');
+      expect(box('itm_a1').querySelector('.c-edit-box__more')).toBeNull();
+      more?.click();
+      expect(menus.current()?.entries.length).toBeGreaterThan(0);
+      expect(harness.http.match(() => true)).toHaveLength(0);
+    });
   });
 
   it('switches an Auto-Grid scene to free layout with the renderer rectangles on the first change', async () => {

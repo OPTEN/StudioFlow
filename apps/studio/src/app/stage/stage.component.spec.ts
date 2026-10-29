@@ -9,11 +9,13 @@ import {
   studioTestProviders,
   type StoreHarness,
 } from '../../testing/store-harness';
+import { ContextMenuService } from '../core/ui/context-menu';
 import { PREFERENCE_KEYS } from '../core/ui/preferences.service';
 import { ViewportService } from '../core/ui/viewport.service';
 import { EditorService } from './editor.service';
 import { FRAME_SCHEDULER } from './frame-scheduler';
 import { SCENE_RENDERER_FACTORY } from './scene-view.component';
+import { StageCommandsService } from './stage-commands.service';
 import { StageComponent } from './stage.component';
 import { FakeRendererFactory, ManualFrames, type FakeSceneRenderer } from './testing/stage-fakes';
 
@@ -207,6 +209,29 @@ describe('StageComponent', () => {
     expect(monitor('program')?.querySelector('.c-monitor__live-edit')?.classList).toContain(
       'is-on-air',
     );
+  });
+
+  it('offers each monitor’s menu on its ⋯ button and a right click; “Show safe area” draws the guide', async () => {
+    await setup();
+    const menus = TestBed.inject(ContextMenuService);
+    const program = monitor('program') as HTMLElement;
+    const more = program.querySelector('.c-monitor__more') as HTMLButtonElement;
+    expect(more.getAttribute('aria-label')).toBe('Program options');
+    more.click();
+    const labels = (menus.current()?.entries ?? []).flatMap((entry) =>
+      entry === 'separator' ? [] : [entry.label],
+    );
+    expect(labels).toEqual(['Turn on Studio Mode', 'Show safe area', 'Copy scene name']);
+    menus.close(false);
+    program
+      .querySelector('.c-monitor__head')
+      ?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(menus.current()?.label).toBe('Program');
+    menus.close(false);
+    expect(program.querySelector('.c-monitor__safe')).toBeNull();
+    TestBed.inject(StageCommandsService).toggleSafeArea();
+    await render();
+    expect(program.querySelector('.c-monitor__safe')).not.toBeNull();
   });
 
   it('“Turn on Studio Mode” in the place of the Preview turns the mode on', async () => {

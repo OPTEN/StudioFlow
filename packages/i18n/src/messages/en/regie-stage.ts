@@ -15,6 +15,8 @@ export const regieStage = {
   'regie.stage.control.silent': 'Silent',
   'regie.stage.control.space': 'Space',
   'regie.stage.control.studioMode': 'Studio Mode',
+  'regie.stage.control.studioModeTitle':
+    'Prepare the next scene in Preview, then put it live with Take (Space)',
   'regie.stage.control.take': 'Take',
   'regie.stage.control.takeFading': 'Fading…',
   'regie.stage.control.takeNoPreview': 'No scene in Preview',
@@ -50,6 +52,27 @@ export const regieStage = {
   'regie.stage.editor.undo': 'Undo',
   'regie.stage.editor.undone': 'Undone',
 
+  'regie.stage.menu.back': 'Send to back',
+  'regie.stage.menu.backward': 'Send backward',
+  'regie.stage.menu.copyName': 'Copy scene name',
+  'regie.stage.menu.fill': 'Fill',
+  'regie.stage.menu.fit': 'Fit',
+  'regie.stage.menu.forward': 'Bring forward',
+  'regie.stage.menu.front': 'Bring to front',
+  'regie.stage.menu.fullScreen': 'Full screen',
+  'regie.stage.menu.hide': 'Hide',
+  'regie.stage.menu.itemMore': 'Options for {name}',
+  'regie.stage.menu.lock': 'Lock',
+  'regie.stage.menu.monitorMore': '{monitor} options',
+  'regie.stage.menu.nextScene': 'Load next scene',
+  'regie.stage.menu.programToPreview': 'Send Program to Preview',
+  'regie.stage.menu.properties': 'Properties…',
+  'regie.stage.menu.remove': 'Remove from scene',
+  'regie.stage.menu.resetCrop': 'Reset crop',
+  'regie.stage.menu.safeArea': 'Show safe area',
+  'regie.stage.menu.studioOff': 'Turn off Studio Mode',
+  'regie.stage.menu.unlock': 'Unlock',
+
   'regie.stage.monitor.connecting': 'Connecting…',
   'regie.stage.monitor.hidden': '{count} hidden',
   'regie.stage.monitor.liveEdit': 'Changes go live immediately',
@@ -65,7 +88,7 @@ export const regieStage = {
   'regie.stage.monitor.programLabel': 'Program monitor: {name}, matches the output',
 
   'regie.stage.overlay.label':
-    'Items of the scene. Drag to move, corners to resize, arrow keys to fine-tune.',
+    'Items of the scene. Drag to move, corners to resize, arrow keys to fine-tune, Tab for the next item, Delete to remove.',
   'regie.stage.overlay.locked': 'Locked. Unlock it in Sources to move it.',
 
   'regie.stage.previewOff.action': 'Turn on Studio Mode',

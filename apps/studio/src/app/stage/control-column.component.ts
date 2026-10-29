@@ -4,6 +4,7 @@ import { formatDb, type TransitionKind } from '@studioflow/scene-model';
 import { StudioAudioService } from '../core/audio/studio-audio.service';
 import { ProductionStoreService } from '../core/state/production-store.service';
 import { IconComponent } from '../core/ui/icon.component';
+import { keyHint } from '../core/ui/shortcuts';
 import { SwitcherService } from './switcher.service';
 
 /** The program meter spans −60 … 0 dBFS. */
@@ -48,6 +49,8 @@ export class ControlColumnComponent {
   protected readonly levelId = `sf-program-level-${this.id}`;
   protected readonly reasonId = `sf-take-reason-${this.id}`;
 
+  /** Tooltip of Take while it can take: "Take (Space)". */
+  protected readonly takeTitle = `${t('regie.stage.control.take')} (${keyHint('space')})`;
   /** Cut is chosen: the duration row is inactive. */
   protected readonly cut = computed(() => this.switcher.transitionKind() === 'cut');
   /** The production has a mixer: show the level of the program sound. */

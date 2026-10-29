@@ -518,9 +518,10 @@ test.describe('REGIE editing: monitor gestures', () => {
       // Default: the ratio is kept. +200 canvas px wide -> 800 x 451.
       await resize((start, space) => ({ x: start.x + 200 * space.scale, y: start.y }), {
         check: async () => {
-          await expect(label, 'the label shows the size while dragging').toHaveText(
-            /^K1 · 8\d\d × 4[45]\d$/,
-          );
+          await expect(
+            label.locator('.c-edit-box__detail'),
+            'the label shows the size while dragging',
+          ).toHaveText(/^8\d\d × 4[45]\d$/);
         },
       });
       let current = await expectScene(
