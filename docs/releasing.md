@@ -181,6 +181,7 @@ prototype); the version must match the one in the files. `npm run build:prototyp
 ## 6. Verifying an image
 
 ```bash
+# cosign 3 or newer: the workflow signs with cosign 3, whose signatures cosign 2 does not find ("no signatures found").
 # The signature belongs to the Release workflow of this repository on main (the regular expression covers the rename):
 cosign verify ghcr.io/opten/studioflow-api:0.4.2 \
   --certificate-identity-regexp '^https://github.com/OPTEN/(FlowStudio|StudioFlow)/\.github/workflows/release\.yml@refs/heads/main$' \

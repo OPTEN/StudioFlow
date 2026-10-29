@@ -24,7 +24,8 @@ once, because the certificate comes from the stack's own certificate authority; 
 Ports that must be open in the firewall of the server: 8443 (tcp and udp, the Regie, the output and the phones), 7881/tcp and
 7882/udp (picture and sound). Nothing listens on port 80. If 8443 is taken, Docker says so when the stack starts; choose
 another port with `STUDIOFLOW_HTTPS_PORT=9443` in a `.env` file next to the Compose file (`.env.example` lists the optional
-overrides) and run `docker compose up -d` again.
+overrides) and run `docker compose up -d` again. A second stack on the same Docker host also needs its own networks:
+`STUDIOFLOW_SUBNET` and `STUDIOFLOW_BACKEND_SUBNET` (otherwise Docker reports "Pool overlaps with other one").
 
 ## Update and roll back
 
