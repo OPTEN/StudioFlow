@@ -72,4 +72,5 @@ export {
   type LiveKitSourceProviderOptions,
   type SourceStats,
   type StreamDecoder,
+  type WantedSources,
 } from './source-provider';

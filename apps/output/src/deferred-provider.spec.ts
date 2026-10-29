@@ -32,6 +32,20 @@ describe('DeferredSourceProvider', () => {
     expect(provider.bound).toBe(true);
   });
 
+  it('remembers the wanted sources until the real provider is bound, then follows changes once', () => {
+    const provider = new DeferredSourceProvider(() => null);
+    provider.setWantedSources({ pictures: new Set([CAMERA]), sounds: new Set() });
+    const inner = new FakeMediaProvider();
+    provider.bind(inner);
+    expect(inner.wanted).toEqual({ pictures: new Set([CAMERA]), sounds: new Set() });
+
+    const same = vi.spyOn(inner, 'setWantedSources');
+    provider.setWantedSources({ pictures: new Set([CAMERA]), sounds: new Set() });
+    expect(same).not.toHaveBeenCalled();
+    provider.setWantedSources({ pictures: new Set([CAMERA, SCREEN]), sounds: new Set() });
+    expect(inner.wanted?.pictures).toEqual(new Set([CAMERA, SCREEN]));
+  });
+
   it('forwards everything after bind', () => {
     const provider = new DeferredSourceProvider(() => null);
     const inner = new FakeMediaProvider();

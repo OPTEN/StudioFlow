@@ -50,6 +50,8 @@ export interface MediaRemotePublication {
   setVideoQuality(quality: VideoQuality): void;
   setVideoDimensions(dimensions: VideoDimensions): void;
   setEnabled(enabled: boolean): void;
+  /** Starts or ends the subscription to this track (rooms connected with `autoSubscribe: false`). */
+  setSubscribed(subscribed: boolean): void;
 }
 
 /** A remote participant (`RemoteParticipant`); the identity is the device id for senders. */
@@ -100,6 +102,10 @@ export interface MediaRoomEvents {
   ) => void;
   [RoomEvent.TrackUnsubscribed]: (
     track: MediaRemoteTrack,
+    publication: MediaRemotePublication,
+    participant: MediaRemoteParticipant,
+  ) => void;
+  [RoomEvent.TrackPublished]: (
     publication: MediaRemotePublication,
     participant: MediaRemoteParticipant,
   ) => void;

@@ -5,7 +5,11 @@ import type { MediaRoom } from './livekit-port';
 import { silentLogger } from './logger';
 import { MediaSession, type RoomSource } from './media-session';
 import type { MediaRole } from './room-options';
-import { LiveKitSourceProvider, type LiveKitSourceProviderOptions } from './source-provider';
+import {
+  LiveKitSourceProvider,
+  type LiveKitSourceProviderOptions,
+  type WantedSources,
+} from './source-provider';
 import {
   FakeLifecycle,
   FakeMediaStream,
@@ -171,6 +175,78 @@ describe('LiveKitSourceProvider', () => {
       room.subscribe(DEVICE, 'camera');
       expect(element.srcObject).toBeNull();
       expect(() => provider.detach('unknown', element)).not.toThrow();
+    });
+  });
+
+  describe('wanted sources (output)', () => {
+    const wanted = (pictures: string[], sounds: string[] = []): WantedSources => ({
+      pictures: new Set(pictures),
+      sounds: new Set(sounds),
+    });
+
+    it('subscribes to the tracks of wanted sources as they are published and leaves the others alone', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const camera = room.publish(DEVICE, 'camera').publication;
+      const screen = room.publish(DEVICE, 'screen-1').publication;
+      expect(camera.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+      expect(screen.setSubscribed).not.toHaveBeenCalled();
+    });
+
+    it('subscribes to tracks that were published before the set arrived', () => {
+      const { room, provider } = setup();
+      const camera = room.publish(DEVICE, 'camera').publication;
+      const mic = room.publish(DEVICE, 'mic', 'audio').publication;
+      expect(camera.setSubscribed).not.toHaveBeenCalled();
+      provider.setWantedSources(wanted([CAMERA], [`${DEVICE}/mic`]));
+      expect(camera.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+      expect(mic.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+    });
+
+    it('keeps the picture and the sound of a screen apart', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([], [SCREEN]));
+      const picture = room.publish(DEVICE, 'screen-1').publication;
+      const sound = room.publish(DEVICE, 'screen-1-audio', 'audio').publication;
+      expect(picture.setSubscribed).not.toHaveBeenCalled();
+      expect(sound.setSubscribed).toHaveBeenCalledExactlyOnceWith(true);
+    });
+
+    it('unsubscribes a source that leaves the set and subscribes it again when it returns', () => {
+      const { room, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const { publication } = room.publish(DEVICE, 'camera');
+      publication.isSubscribed = true;
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(publication.setSubscribed).toHaveBeenCalledTimes(1);
+
+      provider.setWantedSources(wanted([]));
+      expect(publication.setSubscribed).toHaveBeenLastCalledWith(false);
+      provider.setWantedSources(wanted([CAMERA]));
+      expect(publication.setSubscribed).toHaveBeenLastCalledWith(true);
+      expect(publication.setSubscribed).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not touch the room before it is told which sources are wanted', () => {
+      const { room } = setup();
+      const { publication } = room.publish(DEVICE, 'camera');
+      expect(publication.setSubscribed).not.toHaveBeenCalled();
+    });
+
+    it('applies the set to the next room too', () => {
+      const { room, source, provider } = setup();
+      provider.setWantedSources(wanted([CAMERA]));
+      const next = new FakeRoom();
+      next.publish(DEVICE, 'camera');
+      next.publish(DEVICE, 'screen-1');
+      source.switchTo(next);
+      expect(
+        next.remoteParticipants.get(DEVICE)?.trackPublications.get('camera')?.setSubscribed,
+      ).toHaveBeenCalledWith(true);
+      expect(
+        next.remoteParticipants.get(DEVICE)?.trackPublications.get('screen-1')?.setSubscribed,
+      ).not.toHaveBeenCalled();
+      expect(room.listenerCount(RoomEvent.TrackPublished)).toBe(0);
     });
   });
 

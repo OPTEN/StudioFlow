@@ -17,6 +17,7 @@ import {
   canvasChanged,
   FADE,
   IMAGE,
+  SCREEN,
   item,
   KEY,
   productionChanged,
@@ -220,6 +221,16 @@ describe('output app: boot', () => {
     const options = ctx.loadMedia.mock.calls[0][0] as { tokenProvider: () => Promise<unknown> };
     await options.tokenProvider();
     expect(ctx.api.liveKitToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('receives the sources of every scene and the channels of the mix, not the rest of the room', async () => {
+    const ctx = setup();
+    ctx.hub.connect();
+    await flush(300);
+    expect(ctx.media.provider.wanted).toEqual({
+      pictures: new Set([CAMERA, SCREEN, IMAGE]),
+      sounds: new Set(),
+    });
   });
 
   it('starts LiveKit after 2 s even when the hub does not answer', async () => {

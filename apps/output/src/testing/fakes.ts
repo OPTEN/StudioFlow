@@ -24,6 +24,7 @@ import type {
   DecoderSummary,
   MediaSessionState,
   SourceStats,
+  WantedSources,
 } from '@studioflow/media-client';
 import type { OutputApi } from '../api';
 import type { OutputHub } from '../output-app';
@@ -299,8 +300,13 @@ export class FakeMediaProvider implements OutputMediaProvider {
   /** Answer of {@link decoderSummary}. */
   decoders: DecoderSummary = { decoding: 0, software: 0, framesDropped: 0, framesReceived: 0 };
   disposed = false;
+  /** What the page asked to receive last. */
+  wanted: WantedSources | null = null;
   readonly #listeners = new Set<(sourceId: string) => void>();
 
+  setWantedSources(wanted: WantedSources): void {
+    this.wanted = wanted;
+  }
   attach(sourceId: string, video: HTMLVideoElement): void {
     this.attached.push([sourceId, video]);
   }

@@ -78,6 +78,15 @@ export interface LiveKitSourceProviderOptions {
 
 type SubscriberRole = 'studio' | 'output';
 
+/**
+ * The sources an output subscribes to: the pictures (cameras and screens) and the sounds (microphones, the audio of
+ * screens) it needs. A source in neither set is not received at all.
+ */
+export interface WantedSources {
+  readonly pictures: ReadonlySet<string>;
+  readonly sounds: ReadonlySet<string>;
+}
+
 /** Playout targets: the Regie wants the lowest possible delay, the output a small cushion against jitter. */
 const PLAYOUT: Readonly<
   Record<SubscriberRole, { readonly delaySeconds: number; readonly jitterBufferTargetMs: number }>
@@ -180,6 +189,10 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #decoders: DecoderCapability;
   readonly #decoderMarks = new WeakMap<MediaRemoteTrack, DecoderMark>();
   readonly #entries = new Map<string, SourceEntry>();
+  /** Null: the room decides (a studio subscribes to everything). */
+  #wanted: WantedSources | null = null;
+  /** The subscription state asked for per publication, so that a publication is only told once. */
+  readonly #requested = new WeakMap<MediaRemotePublication, boolean>();
   readonly #changes: Listeners<[string]>;
   readonly #audioChanges: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
@@ -260,6 +273,20 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     }
     this.#applyQuality(entry);
     this.#prune(sourceId, entry);
+  }
+
+  /**
+   * Restricts the room to the sources an output needs (a room joined with `autoSubscribe: false`): the tracks of these
+   * sources are subscribed, as they are published and as the set changes, and the tracks of every other source are not
+   * (or no longer) received, so a source that is in no scene costs no bandwidth and cannot be seen by whoever holds the
+   * output link. Without a call the room's own subscription mode applies.
+   */
+  setWantedSources(wanted: WantedSources): void {
+    if (this.#disposed) {
+      return;
+    }
+    this.#wanted = wanted;
+    this.#syncSubscriptions();
   }
 
   /** {@inheritDoc SourceMediaProvider.assetUrl} */
@@ -423,6 +450,9 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       .on(RoomEvent.TrackSubscribed, (track, publication, participant) =>
         this.#onSubscribed(track, publication, participant.identity),
       )
+      .on(RoomEvent.TrackPublished, (publication, participant) =>
+        this.#subscribeIfWanted(publication, participant.identity),
+      )
       .on(RoomEvent.TrackUnsubscribed, (track, publication, participant) =>
         this.#onTrackGone(
           participant.identity,
@@ -449,11 +479,39 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     // Tracks that were subscribed before this provider was bound (provider created after the session connected).
     for (const participant of room.remoteParticipants.values()) {
       for (const publication of participant.trackPublications.values()) {
+        this.#subscribeIfWanted(publication, participant.identity);
         if (publication.isSubscribed && publication.track !== undefined) {
           this.#onSubscribed(publication.track, publication, participant.identity);
         }
       }
     }
+  }
+
+  #syncSubscriptions(): void {
+    for (const participant of this.#boundRoom?.remoteParticipants.values() ?? []) {
+      for (const publication of participant.trackPublications.values()) {
+        this.#subscribeIfWanted(publication, participant.identity);
+      }
+    }
+  }
+
+  /** Subscribes or unsubscribes a publication according to {@link setWantedSources}, once per change. */
+  #subscribeIfWanted(publication: MediaRemotePublication, identity: string): void {
+    const wanted = this.#wanted;
+    if (wanted === null) {
+      return;
+    }
+    const soundId = audioSourceIdOf(identity, publication.trackName);
+    const pictureId = sourceIdOf(identity, publication.trackName);
+    const subscribe =
+      soundId === null
+        ? pictureId !== null && wanted.pictures.has(pictureId)
+        : wanted.sounds.has(soundId);
+    if ((this.#requested.get(publication) ?? publication.isSubscribed) === subscribe) {
+      return;
+    }
+    this.#requested.set(publication, subscribe);
+    this.#guard('subscription', () => publication.setSubscribed(subscribe));
   }
 
   #onSubscribed(

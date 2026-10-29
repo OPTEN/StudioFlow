@@ -6,6 +6,7 @@ import type {
   MediaLogger,
   MediaSessionState,
   SourceStats,
+  WantedSources,
 } from '@studioflow/media-client';
 
 /** The part of `MediaSession` the page uses. */
@@ -19,6 +20,8 @@ export interface OutputMediaSession {
 
 /** The part of `LiveKitSourceProvider` the page uses beyond {@link SourceMediaProvider}. */
 export interface OutputMediaProvider extends SourceMediaProvider {
+  /** Receive only the tracks of these sources (the rest of the room is not subscribed). */
+  setWantedSources(wanted: WantedSources): void;
   getStats(sourceId: string): Promise<SourceStats | null>;
   /** Receive statistics of the sound of a source (`?debug=1`). */
   getAudioStats(sourceId: string): Promise<AudioSourceStats | null>;
