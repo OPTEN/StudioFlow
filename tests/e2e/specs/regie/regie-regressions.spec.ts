@@ -58,7 +58,7 @@ test.describe('REGIE regressions', () => {
       // Camera first, then the screen: the order that put the camera behind the screen.
       const add = async (code: string) => {
         await sourcesDock(page)
-          .getByRole('button', { name: /^Source$/ })
+          .getByRole('button', { name: /^Add source$/ })
           .click();
         await page
           .getByRole('menu', { name: 'Add source' })
@@ -88,7 +88,7 @@ test.describe('REGIE regressions', () => {
       ).toEqual([camera.sourceId(), screen.sourceId()]);
 
       await page.keyboard.press('Escape'); // the new element is selected: back to the scene view
-      await expect(inspectorTitle(page)).toHaveText('Scene');
+      await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'scene');
       await inspector(page).getByRole('button', { name: 'Picture in picture', exact: true }).click();
       await expectToast(page, 'Template “Picture in picture” applied');
 
@@ -202,15 +202,14 @@ test.describe('REGIE regressions', () => {
       const overlay = overlayOf(page, 'program');
 
       const toSceneInspector = async (way: string) => {
-        await expect(inspectorTitle(page), `${way}: the inspector shows the scene`).toHaveText(
-          'Scene',
-          { timeout: 3000 },
-        );
+        await expect(
+          inspectorTitle(page),
+          `${way}: the inspector shows the scene`,
+        ).toHaveAttribute('data-view', 'scene', { timeout: 3000 });
         await expect(
           inspector(page)
-            .getByRole('button', { name: 'Apply template' })
-            .or(inspector(page).getByText('Apply template')),
-          `${way}: “Apply template”`,
+            .getByText('Layout templates', { exact: true }),
+          `${way}: “Layout templates”`,
         ).toBeVisible();
         await expect(
           inspector(page).getByRole('button', { name: 'Side by side', exact: true }),
@@ -221,7 +220,7 @@ test.describe('REGIE regressions', () => {
         // The element fills the monitor: a click anywhere on the editable screen selects it.
         const box = (await overlay.boundingBox())!;
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        await expect(inspectorTitle(page)).toHaveText('Item');
+        await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
         await expect(row).toHaveAttribute('aria-pressed', 'true');
       };
 

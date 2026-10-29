@@ -240,7 +240,7 @@ test.describe('Keyboard-only Regie', () => {
       { name: 'output chip', trigger: () => page.getByRole('button', { name: /^Output/ }), popover: '[role=dialog][aria-label=Output]', focusInside: false, key: 'Space' },
       { name: 'Layout', trigger: () => page.getByRole('button', { name: 'Layout', exact: true }), popover: '[role=dialog][aria-label="Layout"]', focusInside: true, key: 'Enter' },
       { name: 'issues', trigger: () => page.getByRole('region', { name: 'Activity' }).getByRole('button', { name: /^\d+ issues?$/ }), popover: '#sf-pop-issues', focusInside: true, key: 'Enter' },
-      { name: '+ Source', trigger: () => page.getByRole('button', { name: 'Source', exact: true }), popover: '[role=menu][aria-label="Add source"]', focusInside: true, key: 'Space' },
+      { name: '+ Source', trigger: () => page.getByRole('button', { name: 'Add source', exact: true }), popover: '[role=menu][aria-label="Add source"]', focusInside: true, key: 'Space' },
       { name: 'scene menu', trigger: () => page.getByRole('button', { name: 'Actions for scene Break' }), popover: '[role=menu][aria-label="Scene Break"]', focusInside: true, key: 'Enter' },
     ];
     for (const entry of cases) {
@@ -343,7 +343,7 @@ test.describe('Keyboard-only Regie', () => {
     expect((await regie.requireAdmin().getSnapshot(production.id)).body.devices.some((device) => device.state === 'blocked')).toBe(false);
 
     // the add-source popover leads to the media popover: keyboard open, Escape closes, the focus returns to “Source”
-    const add = page.getByRole('button', { name: 'Source', exact: true });
+    const add = page.getByRole('button', { name: 'Add source', exact: true });
     await add.focus();
     await page.keyboard.press('Enter');
     const menu = page.getByRole('menu', { name: 'Add source' });

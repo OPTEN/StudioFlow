@@ -43,7 +43,7 @@ test.describe('SRC device operations', () => {
       const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       await putInScene(api, production, 0, k1.sourceId, FULL);
       await studioPreview(regie, api, production, 1);
-      const popoverButton = regie.page.getByRole('button', { name: 'Source', exact: true });
+      const popoverButton = regie.page.getByRole('button', { name: 'Add source', exact: true });
       await popoverButton.click();
       await expect(regie.page.getByRole('menu', { name: 'Add source' }).getByRole('menuitem', { name: /K1 Phone One/ }), 'K1 is offered while it is not blocked').toBeVisible();
       await regie.page.keyboard.press('Escape');
@@ -93,7 +93,7 @@ test.describe('SRC device operations', () => {
       expect(await logTexts(api, production)).toContain('K1 Phone One blocked');
       await popoverButton.click();
       await expect(regie.page.getByRole('menu', { name: 'Add source' })).toBeVisible();
-      await expect(regie.page.getByRole('menu', { name: 'Add source' }).getByRole('menuitem', { name: /K1/ }), 'a blocked source is not offered').toHaveCount(0);
+      await expect(regie.page.getByRole('menu', { name: 'Add source' }).getByRole('menuitem', { name: /K1/ }), 'a blocked source is listed but cannot be added').toBeDisabled();
       await regie.page.keyboard.press('Escape');
 
       // 45 s blocked: the sender polls on a 15 s cadence, not in a loop.

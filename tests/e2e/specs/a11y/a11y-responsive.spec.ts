@@ -68,7 +68,7 @@ function criticalControls(regie: RegiePage, studio: boolean): Array<[string, Loc
     ['output chip', page.getByRole('button', { name: /^Output/ })],
     ['health button', page.locator('sf-status-line .c-status__health')],
     ['Layout', page.getByRole('button', { name: 'Layout', exact: true })],
-    ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
+    ['+ Source', page.getByRole('button', { name: 'Add source', exact: true })],
   ];
   if (studio) controls.push(['Take', regie.take()]);
   return controls;
@@ -158,7 +158,7 @@ async function openPopoversAndCheck(regie: RegiePage, label: string): Promise<vo
   const triggers: Array<[string, Locator]> = [
     ['Output', page.getByRole('button', { name: /^Output/ })],
     ['Layout', page.getByRole('button', { name: 'Layout', exact: true })],
-    ['+ Source', page.getByRole('button', { name: 'Source', exact: true })],
+    ['+ Source', page.getByRole('button', { name: 'Add source', exact: true })],
   ];
   for (const [name, trigger] of triggers) {
     await trigger.click();

@@ -95,7 +95,7 @@ test.describe('REGIE texts', () => {
       const page = regie.page;
 
       // "+ Source" > "Lower third": a hidden row T1 with placeholder content; the editor is open with a preview.
-      await page.getByRole('button', { name: 'Source', exact: true }).click();
+      await page.getByRole('button', { name: 'Add source', exact: true }).click();
       await page.getByRole('menuitem', { name: 'Lower third' }).click();
       const row = rowOf(page, 'Name');
       await expect(row).toBeVisible();
@@ -178,7 +178,8 @@ test.describe('REGIE texts', () => {
 
       await rowOf(page, 'Welcome to the show').locator('.c-src__select').click();
       await expect(page.locator('#sf-text-line1')).toHaveValue('Welcome to the show');
-      await expect(page.locator('#sf-text-line1-count')).toHaveText('19 of 120');
+      // The counter only shows near the limit of 120 characters.
+      await expect(page.locator('#sf-text-line1-count')).toHaveCount(0);
 
       // A title is centred; the output changes style without a reload.
       await page.getByRole('group', { name: 'Style' }).getByRole('button', { name: 'Title' }).click();

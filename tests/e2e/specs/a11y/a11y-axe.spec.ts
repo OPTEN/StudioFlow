@@ -109,7 +109,7 @@ test.describe('axe scans: Regie', () => {
       ['layout', () => page.getByRole('button', { name: 'Layout', exact: true }), '[role=dialog][aria-label="Layout"]'],
       ['issues', () => page.locator('sf-status-line .c-status__health'), '#sf-pop-issues'],
       ['production-menu', () => page.getByRole('button', { name: /^Production .*, menu$/ }), '[role=dialog][aria-label=Production]'],
-      ['add-source', () => page.getByRole('button', { name: 'Source', exact: true }), '[role=menu][aria-label="Add source"]'],
+      ['add-source', () => page.getByRole('button', { name: 'Add source', exact: true }), '[role=menu][aria-label="Add source"]'],
       ['scene-menu', () => page.getByRole('button', { name: 'Actions for scene Break' }), '[role=menu][aria-label="Scene Break"]'],
     ];
     for (const [label, trigger, popover] of cases) {

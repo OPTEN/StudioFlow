@@ -551,10 +551,19 @@ export const field = (page: Page, key: 'x' | 'y' | 'w' | 'h'): Locator =>
   page.locator(`#sf-insp-${key}`);
 export const radiusField = (page: Page): Locator => page.getByLabel('Corner radius');
 
-/** Dock title text in the inspector header (`Scene` or `Item`) and its subtitle. */
-export const inspectorTitle = (page: Page): Locator =>
-  inspector(page).locator('.c-dock-frame__title');
-export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c-dock-frame__sub');
+/**
+ * The head of the Properties dock: `data-view` is `scene` or `item`; {@link inspectorSub} is the name it shows (the
+ * scene name, or the name of the selected item's source without its code).
+ */
+export const inspectorTitle = (page: Page): Locator => inspector(page).locator('.c-insp-head');
+export const inspectorSub = (page: Page): Locator => inspector(page).locator('.c-insp-head__name');
+
+/** Opens a tab of the element inspector (`Layout`, `Style`, `When it fails`, `Text`). */
+export async function inspectorTab(page: Page, name: string): Promise<void> {
+  const tab = inspector(page).getByRole('tab', { name, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
 
 /** Rounds like the product does for comparisons of canvas pixels. */
 export const near = (actual: number, expected: number, tolerance = 1): boolean =>
@@ -565,7 +574,7 @@ export async function selectViaRow(page: Page, codeAndName: string | RegExp): Pr
   const row = sourceRow(page, codeAndName);
   if ((await row.getAttribute('aria-pressed')) !== 'true') await row.click();
   await expect(row).toHaveAttribute('aria-pressed', 'true');
-  await expect(inspectorTitle(page)).toHaveText('Item');
+  await expect(inspectorTitle(page)).toHaveAttribute('data-view', 'item');
 }
 
 // --- animations, toasts and probes (installed into a page at run time) ---------------------------------------------

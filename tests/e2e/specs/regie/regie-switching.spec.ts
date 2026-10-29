@@ -101,7 +101,7 @@ test.describe('REGIE switching', () => {
       const row = regie.scene('Scene B');
       await expect(row).toHaveAttribute('aria-pressed', 'true');
       await expect(row).toHaveAccessibleName(/, live on Program$/);
-      await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('PGM');
+      await expect(page.locator('sf-scene-row.is-program .c-tag--pgm')).toHaveText('Live');
       await expect(regie.scene('Scene A')).toHaveAttribute('aria-pressed', 'false');
       expect(await programId(api, production)).toBe(b);
       await expect
@@ -434,7 +434,7 @@ test.describe('REGIE switching', () => {
       await expect.poll(() => previewId(api, production)).toBe(b);
       await expect(regie.scene('Scene B')).toHaveAttribute('aria-pressed', 'true');
       await expect(regie.scene('Scene B')).toHaveAccessibleName(/, in Preview$/);
-      await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('PVW');
+      await expect(page.locator('sf-scene-row.is-preview .c-tag--pvw')).toHaveText('Preview');
       expect(await page.evaluate(() => localStorage.getItem('studioflow.studio'))).toBe('1');
 
       // A click only changes the preview: program and output stay.

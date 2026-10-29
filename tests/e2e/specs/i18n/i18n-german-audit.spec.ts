@@ -128,15 +128,15 @@ test.describe('German text audit', () => {
       ['layout popover', () => page.getByRole('button', { name: 'Layout', exact: true })],
       ['issues popover', () => page.getByRole('region', { name: 'Activity' }).getByRole('button', { name: /^\d+ issues?$/ })],
       ['production menu', () => page.getByRole('button', { name: /^Production .*, menu$/ })],
-      ['add-source popover', () => page.getByRole('button', { name: 'Source', exact: true })],
+      ['add-source popover', () => page.getByRole('button', { name: 'Add source', exact: true })],
       ['scene menu', () => page.getByRole('button', { name: 'Actions for scene Break' })],
     ];
     for (const [label, trigger] of popovers) {
       await trigger().click();
-      await expect(page.locator('.c-pop').first()).toBeVisible();
+      await expect(page.locator('.c-pop, .c-ctx').first()).toBeVisible();
       await audit.state(label);
       await page.keyboard.press('Escape');
-      await expect(page.locator('.c-pop')).toHaveCount(0);
+      await expect(page.locator('.c-pop, .c-ctx')).toHaveCount(0);
     }
     // the production menu in its three modes
     await page.getByRole('button', { name: /^Production .*, menu$/ }).click();
@@ -151,7 +151,7 @@ test.describe('German text audit', () => {
     await page.keyboard.press('Escape');
     // the add-source popover of a scene with elements, the layout popover with a hidden dock
     await regie.clickScene('Welcome');
-    await page.getByRole('button', { name: 'Source', exact: true }).click();
+    await page.getByRole('button', { name: 'Add source', exact: true }).click();
     await audit.state('add-source popover (scene with elements)');
     await page.keyboard.press('Escape');
 
