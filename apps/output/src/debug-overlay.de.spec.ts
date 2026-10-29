@@ -1,6 +1,6 @@
 import { resetLocaleForTests } from '@studioflow/i18n';
 import { canvasDto } from '@studioflow/scene-model';
-import { formatDebugLines, type DebugInfo } from './debug-overlay';
+import { formatDebugLines, formatDebugSections, type DebugInfo } from './debug-overlay';
 
 beforeEach(() => resetLocaleForTests('de-CH'));
 
@@ -40,9 +40,9 @@ describe('formatDebugLines in German', () => {
       'Webinar · Szene «Begrüssung»',
       'Revision 100 · Sendung live',
       'Leinwand 720 × 720 · 1:1 · 720p',
-      'Hub verbindet neu · Sync offline, letzter Stand',
-      'LiveKit lädt …',
-      'Latenz ≈ 62 ms · Renderer 60 fps',
+      'Server verbindet neu · Daten offline, letzter bekannter Stand',
+      'Medienserver lädt …',
+      'Latenz ≈ 62 ms · Bild 60 fps',
       'K1 Handy Lea · 1920×1080 · 30 fps · 2,8 Mbit/s · Verlust 0,3 % · Puffer 48 ms · kein Bild',
       'StudioFlow 0.1.0+1a2b3c4',
     ]);
@@ -68,6 +68,15 @@ describe('formatDebugLines in German', () => {
     }).slice(6);
     expect(software).toContain('Software-Decodierung');
     expect(hardware).toContain('Hardware-Decodierung');
+  });
+
+  it('writes the headings of the sections', () => {
+    expect(formatDebugSections(INFO).map((section) => section.heading)).toEqual([
+      'Program',
+      'Verbindungen',
+      'Quellen',
+      null,
+    ]);
   });
 
   it('names a missing scene and production', () => {

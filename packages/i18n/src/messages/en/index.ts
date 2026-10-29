@@ -11,6 +11,7 @@ import { modelStatus } from './model-status';
 import { outputAudio } from './output-audio';
 import { outputClock } from './output-clock';
 import { outputDebug } from './output-debug';
+import { outputPage } from './output-page';
 import { outputSlates } from './output-slates';
 import { regieAccount } from './regie-account';
 import { regieAudio } from './regie-audio';
@@ -62,6 +63,7 @@ export const en = {
   ...outputAudio,
   ...outputClock,
   ...outputDebug,
+  ...outputPage,
   ...outputSlates,
   ...regieAccount,
   ...regieAudio,

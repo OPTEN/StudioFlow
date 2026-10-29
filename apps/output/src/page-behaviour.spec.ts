@@ -1,7 +1,6 @@
 import { keepVideosPlaying, resumeVideos } from './autoplay';
 import { CURSOR_IDLE_CLASS, CURSOR_IDLE_MS, hideIdleCursor } from './cursor';
-import { formatClockMs, startClockPage } from './clock-page';
-import { clockHint } from './slates';
+import { clockHint, formatClockMs, startClockPage } from './clock-page';
 import { whenFontsReady } from './fonts';
 
 function pausedVideo(src: string | null): HTMLVideoElement {

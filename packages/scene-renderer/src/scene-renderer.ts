@@ -18,7 +18,13 @@ import { fitStage } from './stage-fit';
 import { StatusClock } from './status-clock';
 import { DeadlineTimer, now, Ticker } from './timers';
 import { watchVisibility, type VisibilityWatch } from './visibility';
-import type { CanvasRect, RendererStats, SceneRenderer, SceneRendererOptions } from './types';
+import type {
+  CanvasRect,
+  RendererStats,
+  SceneRenderer,
+  SceneRendererOptions,
+  SlateNotice,
+} from './types';
 
 /** Longest fade the renderer plays (the API allows up to 2 s; anything longer is clamped). */
 const MAX_FADE_MS = 10_000;
@@ -221,9 +227,13 @@ class DomSceneRenderer implements SceneRenderer {
     }, Promise.resolve());
   }
 
-  showSlate(slate: SlateDto | null, assetUrl?: string | null): void {
+  showSlate(slate: SlateDto | null, assetUrl?: string | null, notice?: SlateNotice | null): void {
     this.run(() =>
-      this.slate.show(slate, assetUrl === undefined ? this.slateImageUrl(slate) : assetUrl),
+      this.slate.show(
+        slate,
+        assetUrl === undefined ? this.slateImageUrl(slate) : assetUrl,
+        notice ?? null,
+      ),
     );
   }
 

@@ -16,6 +16,7 @@ import type {
   DesiredSize,
   RendererStats,
   SceneRenderer,
+  SlateNotice,
   SourceAvailability,
 } from '@studioflow/scene-renderer';
 import type {
@@ -41,6 +42,7 @@ export type RendererCall =
       readonly method: 'showSlate';
       readonly slate: SlateDto | null;
       readonly assetUrl?: string | null;
+      readonly notice?: SlateNotice | null;
     }
   | { readonly method: 'setPreloadScenes'; readonly scenes: readonly SceneDto[] };
 
@@ -71,12 +73,13 @@ export class FakeRenderer implements SceneRenderer {
     this.calls.push({ method: 'transitionTo', scene, transition });
     return Promise.resolve();
   }
-  showSlate(slate: SlateDto | null, assetUrl?: string | null): void {
-    this.calls.push(
-      assetUrl === undefined
-        ? { method: 'showSlate', slate }
-        : { method: 'showSlate', slate, assetUrl },
-    );
+  showSlate(slate: SlateDto | null, assetUrl?: string | null, notice?: SlateNotice | null): void {
+    this.calls.push({
+      method: 'showSlate',
+      slate,
+      ...(assetUrl === undefined ? {} : { assetUrl }),
+      ...(notice === undefined ? {} : { notice }),
+    });
   }
   setPreloadScenes(scenes: readonly SceneDto[]): void {
     this.calls.push({ method: 'setPreloadScenes', scenes: [...scenes] });
@@ -128,10 +131,19 @@ export class FakeRenderer implements SceneRenderer {
 
   /** The slate currently shown according to the recorded calls. */
   currentSlate(): SlateDto | null {
+    return this.lastSlateCall()?.slate ?? null;
+  }
+
+  /** The notice look of the current slate (null for a production slate or none). */
+  currentNotice(): SlateNotice | null {
+    return this.lastSlateCall()?.notice ?? null;
+  }
+
+  private lastSlateCall(): Extract<RendererCall, { method: 'showSlate' }> | null {
     for (let index = this.calls.length - 1; index >= 0; index -= 1) {
       const call = this.calls[index];
       if (call.method === 'showSlate') {
-        return call.slate;
+        return call;
       }
     }
     return null;

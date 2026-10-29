@@ -310,6 +310,9 @@ describe('output app: audio', () => {
     const button = document.querySelector<HTMLButtonElement>('.c-sound-on');
     expect(button).not.toBeNull();
     expect(button?.textContent).toBe('Sound on');
+    // A speaker glyph that assistive technology skips, and the hint as the button's description.
+    expect(button?.querySelector('svg.c-sound-on__icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(button?.title).toBe('The browser blocks the sound until you click the page.');
     await flush(REPORT_INTERVAL_MS);
     expect(sent().at(-1)?.audio?.state).toBe('blocked');
 

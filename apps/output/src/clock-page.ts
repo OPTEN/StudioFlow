@@ -1,6 +1,5 @@
 import { t } from '@studioflow/i18n';
 import { MONO_FONT_PROBE, UI_FONT_PROBE, whenFontsReady } from './fonts';
-import { clockHint } from './slates';
 
 /**
  * `/o/_clock`: running clock for glass-to-glass measurements (plan phase 0: measure the latency by filming a running
@@ -8,6 +7,11 @@ import { clockHint } from './slates';
  * output side by side shows the latency as the difference. No key, no API, no LiveKit. The digits are redrawn on
  * every animation frame (that is the point of this page) in tabular JetBrains Mono, so nothing moves sideways.
  */
+
+/** Hint under the clock: how to read the latency off a photo. */
+export function clockHint(): string {
+  return t('output.clock.hint');
+}
 
 function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');
