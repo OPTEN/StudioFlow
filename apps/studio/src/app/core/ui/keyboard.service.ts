@@ -49,6 +49,13 @@ export function isTypingTarget(element: Element | null): boolean {
   if (!element) {
     return false;
   }
+  // A switch or a checkbox takes no text: the shortcuts keep working after a click on Studio Mode (A11Y-04).
+  if (
+    element instanceof HTMLInputElement &&
+    (element.type === 'checkbox' || element.type === 'radio')
+  ) {
+    return false;
+  }
   if (TYPING_TAGS.has(element.tagName)) {
     return true;
   }
@@ -105,6 +112,14 @@ export class KeyboardService {
       return;
     }
     if (isTypingTarget(active)) {
+      return;
+    }
+    // Space on a focused switch or checkbox toggles it, as the platform does; the digits still switch scenes.
+    if (
+      event.key === ' ' &&
+      active instanceof HTMLInputElement &&
+      (active.type === 'checkbox' || active.type === 'radio')
+    ) {
       return;
     }
     const mod = event.ctrlKey || event.metaKey;

@@ -28,7 +28,8 @@
       "resolution": "2026-10-26: the hint no longer fades (opacity 0.85 removed): on-fill white on the Action Blue fill is 4.63:1 (3.78:1 before). Guarded by tools/lib/studio-theme-contrast.spec.ts and the dedicated axe test."
     },
     "A11Y-04": {
-      "status": "open",
+      "status": "fixed",
+      "resolution": "2026-10-29: isTypingTarget no longer counts a checkbox or radio (the Studio Mode switch) as a text field, so 1-9 work after a click on the switch; Space on a focused switch only toggles it, as the platform does.",
       "severity": "medium",
       "area": "A11Y",
       "title": "The keys 1-9 and Space (Take) are ignored while the Studio Mode switch has the focus (a checkbox counts as a text field); Space on it toggles the mode back off",
