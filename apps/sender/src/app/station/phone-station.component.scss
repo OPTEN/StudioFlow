@@ -46,16 +46,22 @@ $RAIL_SIDE: 76px;
   visibility: hidden;
 }
 
-// Top: the status bar, the note about remote camera changes and the banners, in the flow one under the other.
+// Top: the status bar, the note about remote camera changes and the banners, in the flow one under the other. A long
+// message on a small phone may reach the rail: the top then lies above it (its “Dismiss” stays reachable) and scrolls
+// rather than running off the screen.
 .c-phone__top {
+  align-content: start;
   display: grid;
   gap: $SPACE_MD;
   left: 0;
-  padding: calc(var(--safe-top) + #{$SPACE_ROW}) var(--gr) 0 var(--gl);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--safe-top) + #{$SPACE_ROW}) var(--gr) $SPACE_MD var(--gl);
   position: absolute;
   right: 0;
   top: 0;
-  z-index: z(controls);
+  z-index: z(controls) + 1;
 
   @include landscape-low {
     padding-right: calc(var(--gr) + #{$RAIL_SIDE});
@@ -233,7 +239,8 @@ $RAIL_SIDE: 76px;
   @include material;
   border-radius: 26px;
   display: grid;
-  gap: $SPACE_MD;
+  // 12 px, not 8: separate fingers' targets keep at least 8 px apart after the device-pixel snapping of the 1fr columns.
+  gap: $SPACE_LG;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: 600px;
   padding: $SPACE_ROW $SPACE_MD;
