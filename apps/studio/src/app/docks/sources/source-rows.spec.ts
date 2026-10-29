@@ -8,9 +8,10 @@ import {
   sourceFixture,
 } from '../../../testing/fixtures';
 import {
-  addableSourceGroups,
   assetUsage,
+  canAddEntry,
   kindOfReference,
+  sourceMenuGroups,
   sourceRows,
   usageSentence,
 } from './source-rows';
@@ -109,19 +110,28 @@ describe('source rows', () => {
     expect(row.state).toBeNull();
   });
 
-  it('offers the sources not in the scene, without blocked ones, grouped and sorted', () => {
+  it('lists every source grouped and sorted, marking the ones in the scene and the blocked ones', () => {
     const scene = sceneFixture('scn_a', 'A', 0, [itemFixture('itm_1', K1.id)]);
-    const groups = addableSourceGroups(scene, sources);
+    const groups = sourceMenuGroups(scene, sources);
     expect(groups.map((group) => group.label)).toEqual(['Cameras', 'Screens', 'Media']);
-    expect(groups[0].sources.map((source) => source.code)).toEqual(['K2']);
-    expect(groups[2].sources.map((source) => source.code)).toEqual(['M1']);
+    expect(
+      groups[0].entries.map((entry) => [entry.source.code, entry.inScene, entry.blocked]),
+    ).toEqual([
+      ['K1', true, false],
+      ['K2', false, false],
+      ['K10', false, true],
+    ]);
+    expect(groups[0].entries.map(canAddEntry)).toEqual([false, true, false]);
+    expect(groups[2].entries.map((entry) => entry.source.code)).toEqual(['M1']);
     const full = sceneFixture('scn_b', 'B', 1, [
       itemFixture('itm_1', K1.id),
       itemFixture('itm_2', K2.id),
       itemFixture('itm_3', S1.id),
       itemFixture('itm_4', M1.id),
     ]);
-    expect(addableSourceGroups(full, sources)).toEqual([]);
+    expect(
+      sourceMenuGroups(full, sources).every((group) => !group.entries.some(canAddEntry)),
+    ).toBe(true);
   });
 
   it('finds every use of a medium and turns it into a sentence', () => {

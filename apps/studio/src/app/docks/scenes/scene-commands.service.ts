@@ -21,7 +21,8 @@ const PENDING_ORDER_MS = 3000;
 
 /**
  * The scene commands of the Scenes and Properties docks (spec 4.2, 4.3): create ("+ Scene"), duplicate, rename,
- * reorder (drag and drop, move up/down), change the background or layout mode and delete. Every command goes through
+ * reorder (drag and drop, move up/down), send to the Preview, change the background or layout mode and delete. Every
+ * command goes through
  * {@link DockCommandService} (double-click protection, offline guard, error toasts in the active language); the new
  * state arrives as `sceneUpserted` / `scenesReordered` / `sceneRemoved` events through the store.
  *
@@ -238,6 +239,25 @@ export class SceneCommandsService {
       this.toasts.show(t('regie.scenes.toast.deleted', { name: scene.name }));
     }
     return done === true;
+  }
+
+  /**
+   * "Send to Preview" of the row menu: loads the scene into the Preview so that it can be prepared in Sources and
+   * Properties without going live. Without Studio Mode it turns Studio Mode on first (the switcher says so in a toast).
+   */
+  async sendToPreview(sceneId: string): Promise<void> {
+    if (!this.store.sceneById(sceneId)) {
+      return;
+    }
+    if (!this.switcher.studioMode()) {
+      await this.switcher.setStudioMode(true);
+    }
+    await this.switcher.chooseScene(sceneId);
+  }
+
+  /** True when the scene is in the Preview of Studio Mode ("Send to Preview" has nothing to do). */
+  inPreview(sceneId: string): boolean {
+    return this.switcher.studioMode() && this.store.previewSceneId() === sceneId;
   }
 
   /** True while the command with this key runs (see {@link DockCommandService.busy}). */

@@ -7,16 +7,18 @@ export const regieMedia: Translation<typeof en> = {
 
   'regie.media.label': 'Medien',
 
+  'regie.media.library.add': 'Hinzufügen',
+  'regie.media.library.addLabel': '{name} zu «{scene}» hinzufügen',
   'regie.media.library.delete': 'Löschen: {name}',
   'regie.media.library.deleteLabel': 'Datei löschen',
   'regie.media.library.deleteMessage':
     '«{name}» wird gelöscht. Das lässt sich nicht rückgängig machen.',
   'regie.media.library.empty': 'Noch keine Medien hochgeladen.',
-  'regie.media.library.inUse': 'wird verwendet',
+  'regie.media.library.inScene': 'In der Szene',
   'regie.media.library.nameLabel': 'Name der Datei',
   'regie.media.library.removeFirst': 'Erst dort entfernen.',
   'regie.media.library.rename': 'Umbenennen: {name}',
-  'regie.media.library.title': 'Medien der Produktion',
+  'regie.media.library.title': 'In dieser Produktion',
 
   'regie.media.toast.addToScene': 'Zur Szene hinzufügen',
   'regie.media.toast.cancelled': 'Hochladen von «{name}» abgebrochen',
@@ -26,9 +28,8 @@ export const regieMedia: Translation<typeof en> = {
   'regie.media.toast.uploaded': '«{name}» ist hochgeladen und steht als {code} bereit',
 
   'regie.media.upload.hint': 'PNG, JPEG oder WebP bis 25 MB · MP4 oder WebM bis 1 GB',
-  'regie.media.upload.pick': 'Datei wählen',
-  'regie.media.upload.prompt': 'Hierher ziehen oder {pick}',
-  'regie.media.upload.title': 'Bild oder Video hochladen',
+  'regie.media.upload.pick': 'Dateien wählen',
+  'regie.media.upload.prompt': 'Bilder oder Videos hierher ziehen oder {pick}',
 
   'regie.media.uploads.aborted': 'abgebrochen',
   'regie.media.uploads.addToScene': 'Zu «{scene}»',

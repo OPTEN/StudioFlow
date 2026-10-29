@@ -1,9 +1,55 @@
-// Quellen dock (prototype .src-list, .src, .src-main, .src-name, .src-state, .src-hint, .empty).
+// Sources dock: the edit scene's head and status, the layer list, its hint and the drop target for files.
 @use 'mixins' as *;
 
 .c-src-dock {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   position: relative;
+}
+
+// Undo and redo side by side; in a narrow dock redo gives way first, then both (Ctrl+Z and Ctrl+Shift+Z stay), so
+// that "+ Source" always fits in the head. The dock slot is the container.
+.c-src-dock__history {
+  display: flex;
+}
+
+@container (max-width: 250px) {
+  .c-src-dock__redo {
+    display: none;
+  }
+}
+
+@container (max-width: 225px) {
+  .c-src-dock__history {
+    display: none;
+  }
+}
+
+// "in Interview  [Preview]": which scene the list shows.
+.c-src-dock__head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-height: 32px;
+  min-width: 0;
+  padding: 8px 12px 2px;
+}
+
+.c-src-dock__scene {
+  @include ellipsis;
+  color: var(--muted);
+  font-size: var(--fs-footnote);
+}
+
+.c-src-dock__scene-name {
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+
+.c-src-dock__status {
+  padding: 2px 6px 0;
 }
 
 .c-src-dock__list {
@@ -13,40 +59,52 @@
   padding: 6px;
 }
 
+.c-src-dock__empty {
+  max-width: 46ch;
+}
+
+.c-src-dock__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+// One layer: kind, code, name and state in the select button; lamp, eye and lock at the end.
 .c-src {
+  @include state-transition(background-color);
   align-items: center;
-  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 28px minmax(0, 1fr) 12px 28px;
-  min-height: 40px;
-  padding: 3px 4px;
+  display: flex;
+  gap: 2px;
+  min-height: 36px;
+  min-width: 0;
+  padding: 2px 2px 2px 8px;
 
   &:hover {
     background: var(--raised);
   }
 
   &.is-sel {
-    background: var(--raised);
-    border-color: var(--blue);
+    background: var(--blue-wash);
   }
 }
 
-// Kind icon, code and name/state in one button (prototype columns 16px auto 1fr).
 .c-src__select {
   align-items: center;
+  align-self: stretch;
   background: transparent;
   border: 0;
   border-radius: var(--radius-xs);
   color: var(--text);
   cursor: pointer;
   display: grid;
+  flex: 1 1 auto;
   gap: 8px;
   grid-template-columns: 16px auto minmax(0, 1fr);
   min-width: 0;
-  padding: 0;
+  padding: 0 4px 0 0;
   text-align: left;
 }
 
@@ -62,27 +120,79 @@
 
 .c-src__name {
   @include ellipsis;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   font-weight: 600;
+  line-height: 1.3;
 }
 
 .c-src__state {
   align-items: baseline;
   display: flex;
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
   gap: 6px;
   line-height: 1.3;
+  min-width: 0;
+  overflow: hidden;
   white-space: nowrap;
 
   .u-mono {
     color: var(--text-2);
-    font-size: 11.5px;
   }
 }
 
-.c-src.is-hidden .c-src__name,
-.c-src.is-hidden .c-code {
-  opacity: 0.5;
+.c-src__lamp {
+  margin: 0 6px;
+}
+
+// Eye and lock: quiet until the row is hovered, focused or selected; switched on (hidden, locked) they stay visible.
+.c-src__toggle {
+  opacity: 0;
+
+  &:focus-visible,
+  &.is-on {
+    opacity: 1;
+  }
+}
+
+.c-src:hover .c-src__toggle,
+.c-src.is-sel .c-src__toggle {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .c-src__toggle {
+    opacity: 1;
+  }
+}
+
+// In a narrow dock the quiet toggles take no room at rest, so the names keep their width; they come in on hover, with
+// the keyboard focus in the row and on the selected row.
+@container (max-width: 260px) {
+  .c-src__toggle:not(.is-on) {
+    display: none;
+  }
+
+  .c-src:hover,
+  .c-src:focus-within,
+  .c-src.is-sel {
+    .c-src__toggle {
+      display: inline-grid;
+    }
+  }
+
+  @media (hover: none) {
+    .c-src__toggle {
+      display: inline-grid;
+    }
+  }
+}
+
+// Hidden on the output: muted text next to the visible eye-off (shape and word, not only colour).
+.c-src.is-hidden {
+  .c-src__name,
+  .c-code {
+    color: var(--muted);
+  }
 }
 
 .c-src.is-hidden:not(.is-text) .c-src__select {
@@ -90,21 +200,32 @@
 }
 
 .c-src-dock__hint {
-  margin: 0;
-  padding: 6px 12px 12px;
+  padding: 4px 14px 12px;
 }
 
+// Drop target for files (dashed, the one place besides the safe-area guide where dashes are right).
 .c-src-dock__drop {
+  align-items: center;
   background: var(--blue-wash);
-  border: 1px dashed var(--blue);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius-lg);
   color: var(--blue);
-  display: grid;
-  font-size: 12.5px;
-  font-weight: 700;
-  inset: 4px;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  gap: 6px;
+  inset: 6px;
+  justify-content: center;
+  padding: 12px;
   pointer-events: none;
   position: absolute;
+  text-align: center;
+
+  .c-icon {
+    height: 20px;
+    width: 20px;
+  }
 }
 
 .c-state--muted {

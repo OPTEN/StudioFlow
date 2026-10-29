@@ -31,10 +31,11 @@ import { UPLOAD_ACCEPT, dragHasFiles } from './upload-validation';
 export const MEDIA_POPOVER = 'media';
 
 /**
- * The media popover of the Sources dock: upload images and videos (drag & drop or file dialog, pre-check, progress,
- * cancel, server errors in the active language) and manage the uploaded media (rename, delete behind a dashed red
- * confirmation; a medium that is still used shows "in use" and where). A finished upload can be added to the edit
- * scene directly.
+ * The media popover of the Sources dock ("Media"): upload images and videos (drag & drop or file dialog, pre-check,
+ * progress, cancel, server errors in the active language) and the media of the production, each with a thumbnail,
+ * "Add" to the edit scene (or an "In scene" checkmark), rename and delete (behind a confirmation; a medium that is still
+ * used says where instead). A finished upload leaves the upload list and shows up highlighted in the library, so every
+ * file is listed once.
  */
 @Component({
   selector: 'sf-media-popover',
@@ -69,6 +70,19 @@ export class MediaPopoverComponent {
   /** Media the server (or the local check) reported as still used, with where they are used. */
   protected readonly inUse = signal<ReadonlyMap<string, readonly Msg[]>>(new Map());
   protected readonly assets = computed(() => sortedAssets(this.store.assets()));
+  /** Uploads that are waiting, running, failed or cancelled; a finished one is listed in the library instead. */
+  protected readonly activeUploads = computed(() =>
+    this.uploads.uploads().filter((entry) => entry.state !== 'done'),
+  );
+  /** Media that were uploaded while the Regie was open (highlighted in the library). */
+  protected readonly justUploaded = computed(
+    () =>
+      new Set(
+        this.uploads
+          .uploads()
+          .flatMap((entry) => (entry.state === 'done' && entry.asset ? [entry.asset.id] : [])),
+      ),
+  );
   protected readonly sceneName = computed(
     () => this.editor.editScene()?.name ?? t('regie.sources.add.sceneFallback'),
   );
@@ -92,12 +106,19 @@ export class MediaPopoverComponent {
     });
   }
 
-  /** Can the uploaded asset go into the edit scene right now? */
+  /** Can the medium go into the edit scene right now? */
   protected canAddToScene(asset: AssetDto): boolean {
-    const scene = this.editor.editScene();
-    return (
-      !!scene && this.editor.canEdit() && !scene.items.some((item) => item.source === asset.id)
-    );
+    return this.editor.canEdit() && !this.inScene(asset);
+  }
+
+  /** The medium is already in the edit scene. */
+  protected inScene(asset: AssetDto): boolean {
+    return this.editor.editScene()?.items.some((item) => item.source === asset.id) ?? false;
+  }
+
+  /** A thumbnail that cannot load leaves the dark picture well with the code instead of a broken-image glyph. */
+  protected hideBrokenThumb(event: Event): void {
+    (event.target as HTMLImageElement).style.visibility = 'hidden';
   }
 
   protected percent(entry: UploadEntry): number {

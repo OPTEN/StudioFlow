@@ -10,36 +10,37 @@
     <p class="c-pop-note">{{ t('regie.sources.add.liveLocked') }}</p>
   } @else if (offline()) {
     <p class="c-pop-note">{{ t('regie.sources.add.offline') }}</p>
+  } @else if (allUsed()) {
+    <p class="c-pop-note">{{ t('regie.sources.add.allUsed') }}</p>
   }
 
   @for (group of groups(); track group.id) {
     <div class="c-add-pop__group" role="group" [attr.aria-labelledby]="'sf-add-src-' + group.id">
       <div class="c-add-pop__label" [id]="'sf-add-src-' + group.id">{{ group.label }}</div>
-      @for (source of group.sources; track source.id) {
+      @for (entry of group.entries; track entry.source.id) {
         <button
-          class="c-menu-item"
+          class="c-menu-item c-add-pop__item"
           type="button"
           role="menuitem"
-          [disabled]="!canAdd()"
-          (click)="add(source)"
+          [class.is-in-scene]="entry.inScene"
+          [disabled]="!canAdd() || !canAddEntry(entry)"
+          (click)="add(entry.source)"
         >
-          <svg [sfIcon]="icon(source)"></svg>
-          <span class="c-code">{{ source.code }}</span>
-          <span class="c-add-pop__name">{{ source.label }}</span>
-          @if (stateOf(source); as state) {
+          <svg [sfIcon]="icon(entry.source)"></svg>
+          <span class="c-code">{{ entry.source.code }}</span>
+          <span class="c-add-pop__name">{{ entry.source.label }}</span>
+          @if (entry.inScene) {
+            <span class="c-add-pop__state c-add-pop__in-scene"
+              ><svg sfIcon="check" [size]="14"></svg>{{ t('regie.sources.add.inScene') }}</span
+            >
+          } @else if (stateOf(entry.source); as state) {
             <span class="c-add-pop__state" [class]="state.className">{{ state.word }}</span>
           }
         </button>
       }
     </div>
   } @empty {
-    <p class="c-pop-note">
-      @if (hasSources()) {
-        {{ t('regie.sources.add.allUsed') }}
-      } @else {
-        {{ t('regie.sources.add.noSources') }}
-      }
-    </p>
+    <p class="c-pop-note">{{ t('regie.sources.add.noSources') }}</p>
   }
 
   <div class="c-menu-sep" role="separator"></div>
@@ -58,14 +59,13 @@
         <svg sfIcon="text"></svg>{{ t(`regie.text.style.${style}`) }}
       </button>
     }
+    <p class="c-add-pop__hint">{{ t('regie.sources.add.newTextHint') }}</p>
   </div>
   <div class="c-menu-sep" role="separator"></div>
   <button class="c-menu-item" type="button" role="menuitem" (click)="upload.emit()">
     <svg sfIcon="upload"></svg>{{ t('regie.sources.add.upload') }}
   </button>
-  @if (hasMedia()) {
-    <button class="c-menu-item" type="button" role="menuitem" (click)="manage.emit()">
-      <svg sfIcon="image"></svg>{{ t('regie.sources.add.manage') }}
-    </button>
-  }
+  <button class="c-menu-item" type="button" role="menuitem" (click)="manage.emit()">
+    <svg sfIcon="image"></svg>{{ t('regie.sources.add.manage') }}
+  </button>
 </div>

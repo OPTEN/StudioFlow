@@ -22,8 +22,6 @@ import {
 } from '@studioflow/scene-model';
 import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
-import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
-import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { EditorService } from '../../stage/editor.service';
 import { TextPreviewComponent } from './text-preview.component';
@@ -32,6 +30,9 @@ import { TextPreviewComponent } from './text-preview.component';
 const SEND_DELAY_MS = 250;
 
 const ALIGNMENTS: readonly TextAlign[] = ['left', 'center', 'right'];
+
+/** The character counter shows up this close to the limit (and stays while a line is too long). */
+const COUNTER_FROM = 20;
 
 /** The editable fields of a text. */
 interface TextDraft {
@@ -50,15 +51,17 @@ function sameDraft(a: TextDraft, b: TextDraft): boolean {
 }
 
 /**
- * Editor of one text or lower third in the Properties dock (issue #13): a live preview with the production colours,
- * the show/hide button, the two lines with a character counter, the style and the alignment. Typing is sent to the API
- * after a short pause (one request at a time, the newest state wins), so the output follows within a moment; the
- * preview shows what was typed at once. The text itself is shared by every scene that shows it. "Delete text" removes
- * it from all scenes after a confirmation.
+ * Editor of one text or lower third in the Properties dock (issue #13). It starts with the switch "Show on the output"
+ * (with the "Live" capsule while the text is visible in the Program), then the style, the two lines (a character
+ * counter appears near the limit), the alignment of titles and notes, and a live preview with the production colours.
+ * Typing is sent to the API after a short pause (one request at a time, the newest state wins), so the output follows
+ * within a moment; the preview shows what was typed at once. The text itself is shared by every scene that shows it.
+ * "Delete text…" (its button sits in the footer of the element inspector) removes it from all scenes after a
+ * confirmation; this component owns that request, so typing that is still pending is never sent for a deleted text.
  */
 @Component({
   selector: 'sf-text-editor',
-  imports: [ConfirmBoxComponent, IconComponent, TextPreviewComponent],
+  imports: [TextPreviewComponent],
   templateUrl: './text-editor.component.html',
   styleUrl: './text-editor.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,10 +87,13 @@ export class TextEditorComponent {
     style: 'lowerThird',
     align: 'left',
   });
-  protected readonly confirming = signal(false);
-  protected readonly busy = signal(false);
+  /** "Delete text…" asks for the confirmation (shown by the element inspector). */
+  readonly confirming = signal(false);
+  /** The delete request runs. */
+  readonly busy = signal(false);
 
-  protected readonly disabled = computed(() => !this.store.canCommand());
+  /** Editing a text needs the connection only: its content and visibility change live, also on air. */
+  readonly disabled = computed(() => !this.store.canCommand());
   protected readonly line1Empty = computed(() => this.draft().line1.trim() === '');
   protected readonly line1Count = computed(() => countCharacters(this.draft().line1));
   protected readonly line2Count = computed(() => countCharacters(this.draft().line2));
@@ -103,6 +109,13 @@ export class TextEditorComponent {
     return { ...text, line1, line2: line2.trim() === '' ? null : line2, style, align };
   });
   protected readonly shown = computed(() => !this.item().hidden);
+  /** The text is visible in the Program scene (on air). */
+  protected readonly onAir = computed(
+    () =>
+      this.store
+        .programScene()
+        ?.items.some((item) => item.source === this.text().id && !item.hidden) ?? false,
+  );
   /** Scenes that show the text: a change applies to all of them. */
   protected readonly sharedCount = computed(
     () =>
@@ -110,7 +123,7 @@ export class TextEditorComponent {
         .scenes()
         .filter((scene) => scene.items.some((item) => item.source === this.text().id)).length,
   );
-  protected readonly deleteMessage = computed(() =>
+  readonly deleteMessage = computed(() =>
     t('regie.text.delete.message', { code: this.text().code, count: this.sharedCount() }),
   );
 
@@ -139,12 +152,25 @@ export class TextEditorComponent {
     this.schedule();
   }
 
+  /** The counter shows from 20 characters before the limit on. */
+  protected showCount(count: number): boolean {
+    return count > this.lineMax - COUNTER_FROM;
+  }
+
   protected setStyle(style: TextStyle): void {
     if (this.draft().style === style) {
       return;
     }
-    // A new style starts with its usual alignment (titles are centred).
-    this.draft.update((draft) => ({ ...draft, style, align: defaultTextAlign(style) }));
+    // A title and a note keep the alignment the other one had; coming from a lower third, a style starts with its usual
+    // alignment (titles are centred).
+    this.draft.update((draft) => ({
+      ...draft,
+      style,
+      align:
+        styleHasAlignment(draft.style) && styleHasAlignment(style)
+          ? draft.align
+          : defaultTextAlign(style),
+    }));
     this.unsent = true;
     this.flush();
   }
@@ -158,8 +184,12 @@ export class TextEditorComponent {
     this.flush();
   }
 
-  protected toggleShown(): void {
-    this.editor.toggleHidden(this.item().id);
+  /** The switch: shows or hides the text live; when that is refused (a toast says why) the switch goes back. */
+  protected toggleShown(event: Event): void {
+    const field = event.target as HTMLInputElement;
+    if (!this.editor.toggleHidden(this.item().id)) {
+      field.checked = this.shown();
+    }
   }
 
   /** Leaving a field sends what was typed at once. */
@@ -167,11 +197,17 @@ export class TextEditorComponent {
     this.flush();
   }
 
-  protected askDelete(): void {
+  /** "Delete text…": shows the confirmation. */
+  askDelete(): void {
     this.confirming.set(true);
   }
 
-  protected async deleteText(): Promise<void> {
+  cancelDelete(): void {
+    this.confirming.set(false);
+  }
+
+  /** Deletes the text from every scene (the confirmed "Delete this text"). */
+  async deleteText(): Promise<void> {
     const productionId = this.store.productionId();
     if (!productionId || this.busy()) {
       return;

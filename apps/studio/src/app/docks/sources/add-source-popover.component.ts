@@ -16,16 +16,17 @@ import { EditorService } from '../../stage/editor.service';
 import { keepInViewport } from '../shared/keep-in-viewport';
 import { handleMenuKeys } from '../shared/menu-keys';
 import { KIND_ICON, sourceStateView, toneClass } from '../shared/source-view';
-import { addableSourceGroups } from './source-rows';
+import { canAddEntry, sourceMenuGroups } from './source-rows';
 
 /** Id of the "+ Source" popover. */
 export const ADD_SOURCE_POPOVER = 'add-source';
 
 /**
- * The "+ Source" menu (prototype `renderAddSource`): every source that is not yet in the edit scene and not blocked,
- * grouped into Cameras, Screens and Media, plus "Upload image or video…" and "Manage media…" (both open the media
- * popover). Choosing a source adds it with the default geometry and selects it (`EditorService.addSource`). While the
- * scene is live in Studio Mode or the Regie is offline the sources are disabled with a note.
+ * The "+ Source" menu: every source of the production grouped into Cameras, Screens, Media and Texts (the ones already
+ * in the edit scene carry an "In scene" checkmark, blocked devices their state word; both cannot be added), the three
+ * styles of a new text, then "Upload image or video…" and "Media library…" (both open the media popover). Choosing a
+ * source adds it with the default geometry and selects it (`EditorService.addSource`). While the scene is live in
+ * Studio Mode or the Regie is offline the sources are disabled with a note.
  */
 @Component({
   selector: 'sf-add-source-popover',
@@ -55,10 +56,15 @@ export class AddSourcePopoverComponent {
   protected readonly offline = computed(() => !this.store.canCommand());
   protected readonly groups = computed(() => {
     const scene = this.editor.editScene();
-    return scene ? addableSourceGroups(scene, this.store.sources()) : [];
+    return scene ? sourceMenuGroups(scene, this.store.sources()) : [];
   });
-  protected readonly hasSources = computed(() => this.store.sources().size > 0);
-  protected readonly hasMedia = computed(() => this.store.assets().size > 0);
+  /** There are sources, but every one is already in the scene (or blocked). */
+  protected readonly allUsed = computed(
+    () =>
+      this.groups().length > 0 &&
+      this.groups().every((group) => !group.entries.some((entry) => canAddEntry(entry))),
+  );
+  protected readonly canAddEntry = canAddEntry;
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

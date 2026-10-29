@@ -38,9 +38,10 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
 }
 
 /**
- * "Apply template" (prototype `.presets`): the eight layout templates as previews in the shape of the production's
- * canvas in a 4-column grid (2 columns at ≤ 900 px). Auto grid shows as pressed while the scene uses it. Emits the chosen template; the scene
- * inspector applies it through `EditorService.applyTemplate`.
+ * "Layout templates": the eight layout templates as tiles with a preview in the shape of the production's canvas, the
+ * name and what it is for (two columns in a dock of usual width, more where there is room). Auto grid shows as pressed
+ * while the scene uses it. The accessible name of a tile is its name; the purpose is its description (tooltip). Emits
+ * the chosen template; the scene inspector applies it through `EditorService.applyTemplate`.
  */
 @Component({
   selector: 'sf-template-picker',
@@ -56,8 +57,9 @@ function tilesFor(canvas: CanvasSize): readonly TemplateTile[] {
         [disabled]="disabled()"
         (click)="pick.emit(tile.id)"
       >
-        <sf-layout-preview [blocks]="tile.blocks" [canvas]="canvas()" />
+        <sf-layout-preview class="c-preset__preview" [blocks]="tile.blocks" [canvas]="canvas()" />
         <span class="c-preset__name">{{ tile.template.name }}</span>
+        <span class="c-preset__info" aria-hidden="true">{{ tile.template.description }}</span>
       </button>
     }
   `,

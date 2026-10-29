@@ -18,7 +18,7 @@ import { SceneViewComponent } from '../../stage/scene-view.component';
   />`,
   styles: `
     :host {
-      border-radius: var(--radius-screen);
+      border-radius: var(--radius-xs);
       display: block;
       inset: 0;
       // The renderer's layers stay below the keycap.

@@ -123,48 +123,53 @@ export function sourceRows(
   });
 }
 
+/** One entry of the "+ Source" menu. */
+export interface SourceMenuEntry {
+  readonly source: SourceDto;
+  /** Already in the scene: listed with a checkmark, not addable. */
+  readonly inScene: boolean;
+  /** A blocked device: listed with its state word, not addable. */
+  readonly blocked: boolean;
+}
+
 /** A group of the "+ Source" menu. */
 export interface SourceGroup {
   readonly id: 'camera' | 'screen' | 'media' | 'text';
   readonly label: string;
-  readonly sources: readonly SourceDto[];
+  readonly entries: readonly SourceMenuEntry[];
 }
 
 /**
- * Sources that can be added to the scene (prototype `renderAddSource`): every source not yet in the scene and not
- * blocked, grouped into Cameras, Screens, Media and Texts, each sorted by slot code. Empty groups are left out.
+ * The sources of the "+ Source" menu, grouped into Cameras, Screens, Media and Texts, each sorted by slot code. Every
+ * source is listed, so the operator can tell "not paired" from "already added": the ones already in the scene and the
+ * blocked devices are marked and cannot be added. Empty groups are left out.
  */
-export function addableSourceGroups(
+export function sourceMenuGroups(
   scene: SceneDto,
   sources: ReadonlyMap<string, SourceDto>,
 ): SourceGroup[] {
   const used = new Set(scene.items.map((item) => item.source));
-  const free = [...sources.values()]
-    .filter((source) => !used.has(source.id) && source.status !== 'blocked')
-    .sort((a, b) => compareCodes(a.code, b.code));
+  const entries = [...sources.values()]
+    .sort((a, b) => compareCodes(a.code, b.code))
+    .map((source) => ({
+      source,
+      inScene: used.has(source.id),
+      blocked: source.status === 'blocked',
+    }));
+  const of = (kinds: readonly SourceKind[]): SourceMenuEntry[] =>
+    entries.filter((entry) => kinds.includes(entry.source.kind));
   const groups: SourceGroup[] = [
-    {
-      id: 'camera',
-      label: t('regie.sources.group.camera'),
-      sources: free.filter((source) => source.kind === 'camera'),
-    },
-    {
-      id: 'screen',
-      label: t('regie.sources.group.screen'),
-      sources: free.filter((source) => source.kind === 'screen'),
-    },
-    {
-      id: 'media',
-      label: t('regie.sources.group.media'),
-      sources: free.filter((source) => source.kind === 'image' || source.kind === 'video'),
-    },
-    {
-      id: 'text',
-      label: t('regie.sources.group.text'),
-      sources: free.filter((source) => source.kind === 'text'),
-    },
+    { id: 'camera', label: t('regie.sources.group.camera'), entries: of(['camera']) },
+    { id: 'screen', label: t('regie.sources.group.screen'), entries: of(['screen']) },
+    { id: 'media', label: t('regie.sources.group.media'), entries: of(['image', 'video']) },
+    { id: 'text', label: t('regie.sources.group.text'), entries: of(['text']) },
   ];
-  return groups.filter((group) => group.sources.length > 0);
+  return groups.filter((group) => group.entries.length > 0);
+}
+
+/** True when an entry of the menu can be added (not in the scene, not blocked). */
+export function canAddEntry(entry: SourceMenuEntry): boolean {
+  return !entry.inScene && !entry.blocked;
 }
 
 /**

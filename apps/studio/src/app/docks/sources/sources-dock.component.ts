@@ -17,7 +17,10 @@ import { ToastService } from '../../core/ui/toast.service';
 import { DockFrameComponent } from '../../shell/workspace/dock-frame.component';
 import { EditorService } from '../../stage/editor.service';
 import { SwitcherService } from '../../stage/switcher.service';
+import { EditStatusComponent } from '../shared/edit-status.component';
 import { ElapsedComponent } from '../shared/elapsed.component';
+import { messageParts } from '../shared/message-parts';
+import { SceneTagComponent } from '../shared/scene-tag.component';
 import { SortableItemDirective, SortableListComponent } from '../shared/sortable-list.component';
 import { toneClass, type StateTone } from '../shared/source-view';
 import { ADD_SOURCE_POPOVER, AddSourcePopoverComponent } from './add-source-popover.component';
@@ -28,11 +31,13 @@ import { flipOrder, sourceRows, type SourceRowView } from './source-rows';
 import { dragHasFiles } from './upload-validation';
 
 /**
- * The Sources dock (prototype "selection and source list"): the items of the edit scene front to back, each with the
- * eye toggle, kind icon, slot code, name, state with timer, lamp and lock toggle. Selecting a row selects the item
- * for the monitor and Properties (`EditorService.select`); selecting the selected row again clears the selection
- * (toggle, `aria-pressed`). The header holds undo and "+ Source" (add a source, upload, manage media). Files dropped
- * on the dock are uploaded. The rows are reordered by drag and drop or from the keyboard
+ * The Sources dock, a layer list of the edit scene: the body starts with the scene it lists ("in Interview" with its
+ * "Live" / "Preview" capsule) and the status line (live edits, read-only, offline), then the items front to back, each
+ * with kind icon, slot code, name, state with timer and lamp, and the eye and lock toggles at the end (shown on hover,
+ * on focus and while they are switched on). Selecting a row selects the item for the monitor and Properties
+ * (`EditorService.select`); selecting the selected row again clears the selection (toggle, `aria-pressed`). The header
+ * holds undo, redo and "+ Source" (add a source, new text, upload, media library); an empty scene offers the same as
+ * buttons. Files dropped on the dock are uploaded. The rows are reordered by drag and drop or from the keyboard
  * ({@link SortableListComponent}); the top row is the front layer, and `EditorService.reorderItems` sends the new
  * order. In a copied production the section "Missing sources" below the rows lists the placeholders of the original
  * devices with "Assign…" ({@link PlaceholderListComponent}).
@@ -42,11 +47,13 @@ import { dragHasFiles } from './upload-validation';
   imports: [
     AddSourcePopoverComponent,
     DockFrameComponent,
+    EditStatusComponent,
     ElapsedComponent,
     IconComponent,
     MediaPopoverComponent,
     PlaceholderListComponent,
     PopoverTriggerDirective,
+    SceneTagComponent,
     SortableItemDirective,
     SortableListComponent,
   ],
@@ -94,6 +101,10 @@ export class SourcesDockComponent {
     const row = this.rowsById().get(itemId);
     return row ? `${row.code} ${row.name}` : '';
   };
+  /** "in {scene}": the text around the scene name of the body head. */
+  protected readonly editingParts = computed(() =>
+    messageParts((mark) => t('regie.sources.dock.editing', { scene: mark })),
+  );
   /** Hint below the rows: in an Auto grid scene what the order means, else (prototype) while nothing is selected. */
   protected readonly hint = computed(() => {
     if (this.rows().length === 0) {
@@ -147,6 +158,16 @@ export class SourcesDockComponent {
   protected toggleLocked(row: SourceRowView, event: Event): void {
     event.stopPropagation();
     this.editor.toggleLocked(row.itemId);
+  }
+
+  /** "Add a source" of the empty state: the "+ Source" menu of the header. */
+  protected openAdd(): void {
+    this.popovers.open(ADD_SOURCE_POPOVER);
+  }
+
+  /** "New lower third" of the empty state: a new text, added hidden and selected for writing. */
+  protected addLowerThird(): void {
+    void this.editor.addText('lowerThird');
   }
 
   protected openUpload(): void {

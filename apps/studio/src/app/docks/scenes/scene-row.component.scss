@@ -1,4 +1,4 @@
-// One scene row (prototype .scene, .thumb, .key, .scene-text, .scene-name, .scene-meta) with its action menu.
+// One scene row of the navigator (thumbnail with the number key, name, meta line) and its menu.
 @use 'mixins' as *;
 
 :host {
@@ -12,6 +12,7 @@
   }
 }
 
+// The space at the end of the row is reserved for "⋯", so the name never runs under it and nothing moves on hover.
 .c-scene {
   @include state-transition(background-color);
   align-items: center;
@@ -22,8 +23,9 @@
   cursor: pointer;
   display: grid;
   gap: 10px;
-  grid-template-columns: 64px minmax(0, 1fr);
-  padding: 4px 6px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 52px;
+  padding: 6px 34px 6px 6px;
   text-align: left;
   width: 100%;
 
@@ -31,10 +33,10 @@
     background: var(--raised);
   }
 
-  // Switching is blocked (fade or request in flight): not a click target for the moment.
+  // Switching is blocked (fade or request in flight): not a click target for the moment (the tooltip says why).
   &.is-blocked {
-    cursor: default;
-    opacity: 0.6;
+    cursor: progress;
+    opacity: 0.55;
 
     &:hover {
       background: transparent;
@@ -43,35 +45,38 @@
 
   @include short-laptop {
     gap: 8px;
-    grid-template-columns: 48px minmax(0, 1fr);
-    padding: 3px 6px;
+    min-height: 42px;
+    padding-block: 4px;
   }
 }
 
-// The current scene: the preview in Studio Mode, else the program (prototype .is-pvw / :not(.is-studio) .is-pgm).
+// The current scene: the Preview in Studio Mode, else the Program; one step above the hover fill.
 :host(.is-current) .c-scene,
 .c-scene--editing {
-  background: var(--raised);
+  background: var(--raised-2);
 }
 
 .c-scene--editing {
   cursor: default;
+  padding-right: 6px;
 }
 
-// The thumbnail is 36 px high (27 px on short laptops) and as wide as the shape of the canvas makes it: 64 px for
-// 16:9, narrower for 9:16. The component sets the aspect ratio; 16:9 until the canvas is known.
+// The thumbnail is 40 px high (32 px on short laptops) and as wide as the shape of the canvas makes it: 71 px for
+// 16:9, narrower for 9:16. The component sets the aspect ratio; 16:9 until the canvas is known. The ring is the tally:
+// red on the Program, green on the Preview.
 .c-scene__thumb {
+  @include state-transition(box-shadow);
   aspect-ratio: 16 / 9;
   background: var(--well);
-  border-radius: var(--radius-screen);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 1px var(--seam-strong);
   display: block;
-  height: 36px;
+  height: 40px;
   justify-self: center;
-  outline: 1px solid var(--seam-strong);
   position: relative;
 
   @include short-laptop {
-    height: 27px;
+    height: 32px;
   }
 }
 
@@ -81,68 +86,57 @@
 }
 
 :host(.is-program) .c-scene__thumb {
-  outline: 2px solid var(--red);
+  box-shadow: 0 0 0 2px var(--red);
 }
 
 :host(.is-preview) .c-scene__thumb {
-  outline: 2px solid var(--green);
+  box-shadow: 0 0 0 2px var(--green);
 }
 
 .c-scene__text {
+  display: grid;
+  gap: 3px;
   min-width: 0;
-
-  @include short-laptop {
-    align-items: center;
-    display: flex;
-    gap: 8px;
-  }
 }
 
 .c-scene__name {
   @include ellipsis;
-  display: block;
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 600;
-  line-height: 1.2;
-
-  @include short-laptop {
-    flex: 0 1 auto;
-  }
+  line-height: 1.25;
 }
 
 .c-scene__meta {
   align-items: center;
   color: var(--muted);
   display: flex;
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
   gap: 6px;
-  margin-top: 3px;
+  line-height: 1.2;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
 
-  .u-mono {
-    font-size: 11.5px;
-  }
-
-  .c-tag {
-    font-size: 10px;
-    padding: 2px 5px;
-  }
-
-  @include short-laptop {
-    flex: none;
-    margin-top: 0;
+  .c-lamp {
+    height: 7px;
+    width: 7px;
   }
 }
 
-// «…»: visible on hover, focus and while its menu is open; covers the end of the row text.
+.c-scene__codes {
+  @include mono;
+  @include ellipsis;
+}
+
+// "⋯": shown on hover, on focus and while its menu is open; touch screens have no hover, so it stays there.
 .c-scene__more {
-  background: var(--raised);
+  height: 26px;
   opacity: 0;
   position: absolute;
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
+  width: 26px;
 
   &:focus-visible {
     opacity: 1;
@@ -154,7 +148,6 @@
   opacity: 1;
 }
 
-// Touch screens have no hover: the actions stay visible.
 @media (hover: none) {
   .c-scene__more {
     opacity: 1;
@@ -165,12 +158,39 @@
   min-width: 0;
   position: fixed;
   right: auto;
-  width: 200px;
+  transform-origin: top left;
+  width: 232px;
   z-index: 50;
 }
 
+.c-scene__item-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
 .c-scene__shortcut {
+  @include code;
   color: var(--muted);
-  font: 500 11px var(--font-mono);
+  font-size: var(--fs-caption);
   margin-left: auto;
+}
+
+.c-menu-item:hover .c-scene__shortcut,
+.c-menu-item:focus-visible .c-scene__shortcut {
+  color: var(--on-fill);
+}
+
+// The destructive item keeps the red text until the highlight takes it over.
+.c-scene__delete:not(:disabled) {
+  color: var(--red);
+
+  .c-icon {
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--on-fill);
+  }
 }

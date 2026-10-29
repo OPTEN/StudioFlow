@@ -43,7 +43,12 @@ describe('inspector math', () => {
     expect(holdChoices(3000).map((choice) => choice.value)).toEqual(['3000', '10000', 'hold']);
     expect(holdChoices(null)).toHaveLength(3);
     const custom = holdChoices(5000);
-    expect(custom[0]).toEqual({ value: '5000', label: 'Freeze frame 5 s, then dim' });
+    expect(custom[0]).toEqual({ value: '5000', label: 'Last picture for 5 s' });
+    expect(holdChoices(null).map((choice) => choice.label)).toEqual([
+      'Last picture for 3 s',
+      'Last picture for 10 s',
+      'Last picture until the source is back',
+    ]);
     expect(holdValue(null)).toBe('hold');
     expect(parseHoldValue('hold')).toBeNull();
     expect(parseHoldValue('10000')).toBe(10000);

@@ -1,10 +1,20 @@
-// Scene inspector (prototype #insp without a selection).
+// Scene inspector: name, layout templates, background and the delete action.
 @use 'inspector';
+@use 'mixins' as *;
+
+.c-insp__name {
+  padding: 2px 0 12px;
+}
+
+// Auto grid is a mode, not a one-time action: say that it is on.
+.c-insp__mode {
+  color: var(--text-2);
+}
 
 .c-insp__background {
   align-items: center;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 
   .c-select {
@@ -13,25 +23,10 @@
   }
 }
 
-.c-insp__color {
-  background: var(--ground);
-  border: 1px solid var(--control-edge);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  flex: none;
-  height: 30px;
-  padding: 3px;
-  width: 36px;
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-}
-
-.c-insp__mode {
+.c-insp__hex {
+  @include code;
   color: var(--text-2);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: none;
+  flex: none;
+  font-size: var(--fs-footnote);
+  text-transform: uppercase;
 }

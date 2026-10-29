@@ -1,32 +1,33 @@
-// Text editor in the element inspector (issue #13).
+// Text editor of the element inspector (issue #13): the output switch first, then style, lines, alignment, preview.
 @use 'inspector';
 
 .c-text {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.c-text__preview {
   display: grid;
-  gap: 6px;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.c-text__visibility {
+.c-text__output {
   align-items: center;
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  justify-content: space-between;
   min-width: 0;
+  padding-bottom: 2px;
 }
 
-.c-text__state {
-  color: var(--muted);
-  font-size: 12.5px;
+.c-text__switch {
+  align-items: flex-start;
+}
 
-  &.is-shown {
-    color: var(--green);
-    font-weight: 600;
-  }
+.c-text__switch-text {
+  display: grid;
+  gap: 1px;
+}
+
+.c-text__seg {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .c-text__field {
@@ -37,7 +38,8 @@
 
 .c-text__count {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
   justify-self: end;
 
   &.is-over {
@@ -46,15 +48,6 @@
   }
 }
 
-.c-text__danger {
-  align-items: center;
-  border-top: 1px solid var(--seam);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 12px;
-
-  .c-hint {
-    flex: 1 1 160px;
-  }
+.c-text__preview {
+  border-radius: var(--radius-xs);
 }

@@ -9,7 +9,7 @@ export const regieText: Translation<typeof en> = {
 
   'regie.text.counter': '{count} von {max}',
 
-  'regie.text.delete.button': 'Text löschen',
+  'regie.text.delete.button': 'Text löschen …',
   'regie.text.delete.confirm': 'Diesen Text löschen',
   'regie.text.delete.hint': 'Der Text wird aus allen Szenen entfernt.',
   'regie.text.delete.message': {
@@ -19,8 +19,7 @@ export const regieText: Translation<typeof en> = {
   },
   'regie.text.delete.toast': '{code} gelöscht',
 
-  'regie.text.editor.hintLive':
-    'Änderungen erscheinen sofort im Ausgang. Ein- und Ausblenden geht auch, während die Szene live ist.',
+  'regie.text.editor.hintLive': 'Änderungen erscheinen beim Tippen im Ausgang.',
   'regie.text.editor.label': 'Text',
   'regie.text.editor.line1': 'Zeile 1',
   'regie.text.editor.line1Placeholder': 'Name oder Titel',
@@ -44,11 +43,6 @@ export const regieText: Translation<typeof en> = {
   'regie.text.style.note': 'Notiz',
   'regie.text.style.title': 'Titel',
 
-  'regie.text.visibility.hide': 'Ausblenden',
-  'regie.text.visibility.hideLabel': '{code} im Ausgang ausblenden',
-  'regie.text.visibility.label': 'Im Ausgang',
-  'regie.text.visibility.show': 'Einblenden',
-  'regie.text.visibility.showLabel': '{code} im Ausgang einblenden',
-  'regie.text.visibility.stateHidden': 'Ausgeblendet',
-  'regie.text.visibility.stateShown': 'Eingeblendet',
+  'regie.text.visibility.hint': 'Geht auch, während die Szene live ist.',
+  'regie.text.visibility.label': 'Im Ausgang zeigen',
 };

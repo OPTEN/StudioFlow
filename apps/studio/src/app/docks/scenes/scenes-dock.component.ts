@@ -19,12 +19,14 @@ interface SceneEntry {
 }
 
 /**
- * The Scenes dock (prototype "scene list"): every scene in list order with thumbnail, keycap 1–9, name and meta
- * (PGM/PVW tags, slot codes or the health lamp "K2 disrupted"). A click goes through `SwitcherService.chooseScene`:
- * without Studio Mode the scene goes live, with it the scene goes into the preview; a click on the scene being edited
- * clears the element selection (Properties shows the scene). "+ Scene" creates "New scene N" and opens its name; each
- * row has Rename, Duplicate and Move up/down. The rows are reordered by drag and drop or from the keyboard
- * ({@link SortableListComponent}). Compact one-line rows at heights ≤ 820 px, a horizontal strip at widths ≤ 900 px.
+ * The Scenes dock, a navigator like the slide list of Keynote: every scene in list order with its thumbnail and number
+ * key 1–9, the name and a muted meta line (the "Live" / "Preview" capsule, then the slot codes or the health lamp
+ * "K2 disrupted"). A click goes through `SwitcherService.chooseScene`: without Studio Mode the scene goes live, with it
+ * the scene goes into the Preview (the row's tooltip says which); a click on the scene being edited clears the element
+ * selection (Properties shows the scene). "+ Scene" (and the button of the empty state) creates "New scene N" and opens
+ * its name; each row has a menu with Rename, Duplicate, Send to Preview, Move up/down and Delete. The rows are
+ * reordered by drag and drop or from the keyboard ({@link SortableListComponent}). Tighter rows on short laptops, a
+ * horizontal strip at widths ≤ 900 px.
  */
 @Component({
   selector: 'sf-scenes-dock',
@@ -73,6 +75,10 @@ export class ScenesDockComponent {
   /** Name of a scene for the reorder handle and the announcements. */
   protected readonly sceneName = (sceneId: string): string =>
     this.entryById().get(sceneId)?.view.name ?? '';
+  /** "+ Scene" is possible: connected, fewer than 99 scenes, no create request in flight. */
+  protected readonly canCreate = computed(
+    () => this.commands.canCreate() && !this.commands.blocked('scene:create'),
+  );
   protected readonly createTitle = computed(() =>
     this.store.scenes().length >= LIMITS.scenesPerProduction
       ? t('regie.scenes.dock.addTitleMax', { max: LIMITS.scenesPerProduction })

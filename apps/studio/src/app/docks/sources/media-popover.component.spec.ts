@@ -108,11 +108,25 @@ describe('MediaPopoverComponent', () => {
     );
   });
 
+  it('adds a medium to the edit scene with "Add" and then marks it "In scene"', async () => {
+    const add = assets()[0].querySelector<HTMLButtonElement>(
+      '[aria-label="Add Title slide to “Welcome”"]',
+    ) as HTMLButtonElement;
+    expect(text(add)).toBe('Add');
+    add.click();
+    const request = harness.http.expectOne(`${BASE}/scenes/scn_a/items`);
+    expect(request.request.body.items.at(-1)).toMatchObject({ source: 'ast_aaaaaaaaaaaaaaaa' });
+    await render();
+    expect(text(assets()[0].querySelector('.c-media-pop__in-scene'))).toBe('In scene');
+    request.flush({ ...harness.store.sceneById('scn_a'), version: 2 });
+    await render();
+  });
+
   it('explains where a medium is used instead of deleting it', async () => {
     assets()[1].querySelector<HTMLButtonElement>('[aria-label="Delete: Break slate"]')?.click();
     await render();
     expect(text(assets()[1].querySelector('.c-media-pop__inuse'))).toBe(
-      'in use Used in “Break”. Remove it there first.',
+      'Used in “Break”. Remove it there first.',
     );
     harness.http.expectNone(() => true);
   });
@@ -129,7 +143,9 @@ describe('MediaPopoverComponent', () => {
       .flush({ code: 'asset_in_use' }, { status: 409, statusText: 'Conflict' });
     await render();
     expect(assets()[0].querySelector('.c-confirm')).toBeNull();
-    expect(text(assets()[0].querySelector('.c-media-pop__inuse'))).toContain('in use');
+    expect(text(assets()[0].querySelector('.c-media-pop__inuse'))).toBe(
+      'Still in use. Remove it there first.',
+    );
     expect(TestBed.inject(ToastService).current()).toBeNull();
   });
 

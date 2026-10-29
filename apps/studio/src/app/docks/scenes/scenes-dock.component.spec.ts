@@ -59,20 +59,22 @@ describe('ScenesDockComponent', () => {
 
   afterEach(() => harness.http.verify());
 
-  it('lists the scenes with keycap, name, PGM tag, codes and the prototype labels', async () => {
+  it('lists the scenes with keycap, name, Live capsule, codes, labels and the click hint', async () => {
     await setup();
     const [first, second, third] = rows();
     expect(rows()).toHaveLength(3);
     expect(text(first.querySelector('.c-keycap'))).toBe('1');
     expect(text(first.querySelector('.c-scene__name'))).toBe('Welcome');
-    expect(text(first.querySelector('.c-tag--pgm'))).toBe('PGM');
-    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1');
+    expect(text(first.querySelector('.c-tag--pgm'))).toBe('Live');
+    expect(parts(first.querySelector('.c-scene__meta'))).toBe('Live K1');
     expect(first.getAttribute('aria-pressed')).toBe('true');
     expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program');
     expect(first.getAttribute('aria-keyshortcuts')).toBe('1');
+    expect(first.getAttribute('title')).toBeNull();
     expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 · K1');
     expect(second.getAttribute('aria-pressed')).toBe('false');
-    expect(parts(third.querySelector('.c-scene__meta'))).toBe('empty');
+    expect(second.getAttribute('title')).toBe('Click or press 2 to go live');
+    expect(parts(third.querySelector('.c-scene__meta'))).toBe('No sources');
     expect(text(element.querySelector('.c-dock-frame__count'))).toBe('3');
   });
 
@@ -86,7 +88,7 @@ describe('ScenesDockComponent', () => {
       }),
     );
     const [first, second] = rows();
-    expect(parts(first.querySelector('.c-scene__meta'))).toBe('PGM K1 disrupted');
+    expect(parts(first.querySelector('.c-scene__meta'))).toBe('Live K1 disrupted');
     expect(first.querySelector('.c-lamp')?.className).toContain('is-warn');
     expect(first.getAttribute('aria-label')).toBe('Welcome, live on Program, K1 disrupted');
     expect(parts(second.querySelector('.c-scene__meta'))).toBe('S1 disrupted');
@@ -202,6 +204,79 @@ describe('ScenesDockComponent', () => {
     const request = harness.http.expectOne(`${BASE}/scenes/order`);
     expect(request.request.body).toEqual({ sceneIds: ['scn_b', 'scn_a', 'scn_c'] });
     request.flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+  });
+
+  /** Opens the row menu of a scene and returns its items. */
+  async function openMenu(index: number): Promise<HTMLButtonElement[]> {
+    element.querySelectorAll<HTMLButtonElement>('.c-scene__more')[index]?.click();
+    await render();
+    return Array.from(element.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+  }
+
+  function item(items: HTMLButtonElement[], label: string): HTMLButtonElement {
+    return items.find((entry) => text(entry).startsWith(label)) as HTMLButtonElement;
+  }
+
+  it('offers the scene actions in the row menu; the live scene cannot be deleted and says why', async () => {
+    await setup();
+    const items = await openMenu(0);
+    expect(items.map((entry) => text(entry))).toEqual([
+      'RenameF2',
+      'Duplicate',
+      'Send to Preview Turns on Studio Mode',
+      'Move upAlt+↑',
+      'Move downAlt+↓',
+      'Delete… The live scene cannot be deleted.',
+    ]);
+    expect(item(items, 'Delete').disabled).toBe(true);
+    expect(item(items, 'Move up').disabled).toBe(true);
+  });
+
+  it('deletes another scene from its menu only after the confirmation', async () => {
+    await setup();
+    item(await openMenu(2), 'Delete').click();
+    await render();
+    const dialog = element.querySelector('[role="dialog"]');
+    expect(dialog?.getAttribute('aria-label')).toBe('Delete scene');
+    expect(text(dialog?.querySelector('.c-confirm span'))).toBe(
+      '“Break” will be deleted with everything in it. This cannot be undone.',
+    );
+    expect(document.activeElement?.hasAttribute('data-cancel')).toBe(true);
+    harness.http.expectNone(() => true);
+    dialog?.querySelector<HTMLButtonElement>('.c-btn--danger-fill')?.click();
+    harness.http
+      .expectOne(`${BASE}/scenes/scn_c`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+    expect(element.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('"Send to Preview" turns Studio Mode on and loads the scene into the Preview', async () => {
+    await setup();
+    item(await openMenu(2), 'Send to Preview').click();
+    // Studio Mode on: the switcher puts the scene after the Program into the Preview first.
+    const auto = harness.http.expectOne(`${BASE}/preview`);
+    expect(auto.request.body).toEqual({ sceneId: 'scn_b' });
+    auto.flush({ ...dockSnapshot().production, previewSceneId: 'scn_b' });
+    await harness.settle();
+    await flushMicrotasks();
+    const chosen = harness.http.expectOne(`${BASE}/preview`);
+    expect(chosen.request.body).toEqual({ sceneId: 'scn_c' });
+    chosen.flush({ ...dockSnapshot().production, previewSceneId: 'scn_c' });
+    await render();
+  });
+
+  it('teaches the empty list and creates the first scene from it', async () => {
+    await setup(dockSnapshot({ scenes: [] }));
+    expect(text(element.querySelector('.c-empty strong'))).toBe('No scenes yet.');
+    const add = Array.from(element.querySelectorAll<HTMLButtonElement>('.c-empty button')).find(
+      (button) => text(button) === 'Add scene',
+    );
+    add?.click();
+    harness.http
+      .expectOne(`${BASE}/scenes`)
+      .flush(sceneFixture('scn_d', 'New scene 1', 0), { status: 201, statusText: 'Created' });
     await render();
   });
 

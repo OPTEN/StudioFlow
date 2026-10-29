@@ -9,7 +9,7 @@ export const regieText = {
 
   'regie.text.counter': '{count} of {max}',
 
-  'regie.text.delete.button': 'Delete text',
+  'regie.text.delete.button': 'Delete text…',
   'regie.text.delete.confirm': 'Delete this text',
   'regie.text.delete.hint': 'The text is removed from every scene.',
   'regie.text.delete.message': {
@@ -19,8 +19,7 @@ export const regieText = {
   },
   'regie.text.delete.toast': '{code} deleted',
 
-  'regie.text.editor.hintLive':
-    'Changes appear on the output at once. Show and hide work while the scene is on air.',
+  'regie.text.editor.hintLive': 'Changes reach the output as you type.',
   'regie.text.editor.label': 'Text',
   'regie.text.editor.line1': 'Line 1',
   'regie.text.editor.line1Placeholder': 'Name or title',
@@ -43,11 +42,6 @@ export const regieText = {
   'regie.text.style.note': 'Note',
   'regie.text.style.title': 'Title',
 
-  'regie.text.visibility.hide': 'Hide',
-  'regie.text.visibility.hideLabel': 'Hide {code} on the output',
-  'regie.text.visibility.label': 'On the output',
-  'regie.text.visibility.show': 'Show',
-  'regie.text.visibility.showLabel': 'Show {code} on the output',
-  'regie.text.visibility.stateHidden': 'Hidden',
-  'regie.text.visibility.stateShown': 'Shown',
+  'regie.text.visibility.hint': 'Works while the scene is live, too.',
+  'regie.text.visibility.label': 'Show on the output',
 } as const satisfies Namespace<'regie.text'>;

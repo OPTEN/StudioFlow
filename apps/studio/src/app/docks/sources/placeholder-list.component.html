@@ -1,6 +1,10 @@
 @if (rows().length > 0) {
   <section class="c-ph" aria-labelledby="sf-ph-title" data-testid="placeholders">
-    <div class="c-label c-ph__title" id="sf-ph-title">{{ t('regie.placeholders.dock.title') }}</div>
+    <div class="c-ph__head">
+      <svg class="c-ph__alert" sfIcon="alert" [size]="14"></svg>
+      <h3 class="c-ph__title" id="sf-ph-title">{{ t('regie.placeholders.dock.title') }}</h3>
+      <span class="c-badge">{{ rows().length }}</span>
+    </div>
     <p class="c-hint c-ph__hint">{{ t('regie.placeholders.dock.hint') }}</p>
     <ul class="c-ph__list">
       @for (row of rows(); track row.id) {

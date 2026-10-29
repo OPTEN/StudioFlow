@@ -20,10 +20,15 @@ export interface SceneRowView {
   readonly pressed: boolean;
   /** Worst outage of the scene ("K2 disrupted"), or null. */
   readonly health: SceneHealth | null;
-  /** Slot codes of the visible items in z-order, "S1 · K1"; "empty" without visible items. */
+  /** Slot codes of the visible items in z-order, "S1 · K1"; "No sources" without visible items. */
   readonly codes: string;
   /** Accessible name like the prototype: "Lea presents, live on Program, K2 disrupted". */
   readonly ariaLabel: string;
+  /**
+   * Tooltip that names what a click does ("Click or press 3 to go live", "… to show in Preview"); null on the scene
+   * that is already there (the Program without Studio Mode, the Preview with it).
+   */
+  readonly hint: string | null;
 }
 
 /** Context of {@link sceneRowView}. */
@@ -58,17 +63,30 @@ export function sceneRowView(
   if (health) {
     labelParts.push(t('regie.scenes.row.ariaDisrupted', { code: health.code }));
   }
+  const key = index < 9 ? String(index + 1) : null;
+  const pressed = context.studioMode ? isPreview : isProgram;
   return {
     id: scene.id,
     name: scene.name,
-    key: index < 9 ? String(index + 1) : null,
+    key,
     isProgram,
     isPreview,
-    pressed: context.studioMode ? isPreview : isProgram,
+    pressed,
     health,
     codes: codes.length > 0 ? codes.join(' · ') : t('regie.scenes.row.empty'),
     ariaLabel: labelParts.join(', '),
+    hint: pressed ? null : rowHint(context.studioMode, key),
   };
+}
+
+/** What a click on a row does: into the Preview in Studio Mode, else live; with the number key when it has one. */
+function rowHint(studioMode: boolean, key: string | null): string {
+  if (studioMode) {
+    return key
+      ? t('regie.scenes.row.hintPreviewKey', { key })
+      : t('regie.scenes.row.hintPreview');
+  }
+  return key ? t('regie.scenes.row.hintLiveKey', { key }) : t('regie.scenes.row.hintLive');
 }
 
 function trimToLength(text: string, maxLength: number): string {

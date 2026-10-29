@@ -21,7 +21,7 @@ describe('scene list helpers in German', () => {
     );
     expect(
       sceneRowView(sceneFixture('scn_x', 'Pause', 1), 1, { ...base, health: null }).codes,
-    ).toBe('leer');
+    ).toBe('Keine Quellen');
   });
 
   it('names new scenes and copies with the German words', () => {

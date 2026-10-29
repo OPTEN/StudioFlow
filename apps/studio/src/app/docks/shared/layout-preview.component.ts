@@ -21,8 +21,8 @@ interface PercentBlock {
 }
 
 /**
- * A well with slot blocks in the shape of the canvas (prototype `.pv` / `presetThumb`, 16:9 by default): the template
- * previews in "Apply template". Purely decorative (`aria-hidden`); positions are percentages of the canvas.
+ * A well with slot blocks in the shape of the canvas (16:9 by default): the template previews in "Layout templates".
+ * Purely decorative (`aria-hidden`); positions are percentages of the canvas.
  */
 @Component({
   selector: 'sf-layout-preview',
@@ -41,9 +41,9 @@ interface PercentBlock {
   styles: `
     :host {
       background: var(--well);
-      border-radius: var(--radius-screen);
+      border-radius: var(--radius-xs);
+      box-shadow: 0 0 0 1px var(--seam);
       display: block;
-      outline: 1px solid var(--seam);
       overflow: hidden;
       position: relative;
     }

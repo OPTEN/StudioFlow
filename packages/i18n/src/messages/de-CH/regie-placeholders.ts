@@ -4,13 +4,13 @@ import type { regiePlaceholders as en } from '../en/regie-placeholders';
 export const regiePlaceholders: Translation<typeof en> = {
   'regie.placeholders.assign.button': 'Zuweisen …',
   'regie.placeholders.assign.empty':
-    'Es gibt noch keine Kamera, keinen Bildschirm und kein Medium zum Zuweisen. Koppel zuerst ein Gerät.',
+    'Noch nichts zum Zuweisen. Füge zuerst unter Geräte ein Gerät hinzu.',
   'regie.placeholders.assign.label': '{name} zuweisen',
   'regie.placeholders.assign.remove': 'Aus allen Szenen entfernen …',
   'regie.placeholders.assign.title': '{name} zeigen als',
 
   'regie.placeholders.dock.hint':
-    'Geräte werden nicht kopiert. Koppel ein Gerät und weise es zu: Sein Bild erscheint dann überall, wo die Quelle verwendet wird.',
+    'Diese Kameras und Screens kamen mit der kopierten Produktion. Weise jeder ein Gerät zu: Sein Bild erscheint dann überall, wo die alte Quelle verwendet wurde.',
   'regie.placeholders.dock.title': 'Fehlende Quellen',
   'regie.placeholders.dock.usedIn': {
     '=0': 'in keiner Szene',
@@ -28,8 +28,8 @@ export const regiePlaceholders: Translation<typeof en> = {
   'regie.placeholders.remove.confirmLabel': '{name} entfernen',
   'regie.placeholders.remove.message': {
     '=0': '{name} wird in keiner Szene verwendet und einfach entfernt.',
-    one: 'Das {count} Element, das {name} zeigt, wird aus seiner Szene entfernt.',
-    other: 'Die {count} Elemente, die {name} zeigen, werden aus ihren Szenen entfernt.',
+    one: 'Die eine Stelle in einer Szene, die {name} zeigt, wird entfernt.',
+    other: 'Die {count} Stellen in den Szenen, die {name} zeigen, werden entfernt.',
   },
 
   'regie.placeholders.toast.assigned': 'Die Szenen zeigen jetzt {target} anstelle von {name}.',

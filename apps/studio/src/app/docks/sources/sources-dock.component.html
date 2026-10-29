@@ -1,25 +1,38 @@
 <sf-dock-frame dock="src" [count]="count()">
-  <button
-    sfDockActions
-    class="c-ibtn"
-    type="button"
-    aria-keyshortcuts="Control+Z"
-    [attr.aria-label]="t('regie.sources.dock.undo')"
-    [title]="t('regie.sources.dock.undo')"
-    [disabled]="!editor.canUndo()"
-    (click)="editor.undo()"
-  >
-    <svg sfIcon="undo"></svg>
-  </button>
+  <div sfDockActions class="c-src-dock__history">
+    <button
+      class="c-ibtn"
+      type="button"
+      aria-keyshortcuts="Control+Z"
+      [attr.aria-label]="t('regie.sources.dock.undo')"
+      [title]="t('regie.sources.dock.undo')"
+      [disabled]="!editor.canUndo()"
+      (click)="editor.undo()"
+    >
+      <svg sfIcon="undo"></svg>
+    </button>
+    <button
+      class="c-ibtn c-src-dock__redo"
+      type="button"
+      aria-keyshortcuts="Control+Shift+Z"
+      [attr.aria-label]="t('regie.sources.dock.redo')"
+      [title]="t('regie.sources.dock.redo')"
+      [disabled]="!editor.canRedo()"
+      (click)="editor.redo()"
+    >
+      <svg sfIcon="redo"></svg>
+    </button>
+  </div>
   <div sfDockActions class="c-pop-wrap">
     <button
       #addTrigger
-      class="c-btn c-btn--sm"
+      class="c-btn c-btn--sm c-btn--primary"
       type="button"
       aria-haspopup="menu"
+      [attr.aria-label]="t('regie.sources.dock.addLabel')"
       [sfPopoverTrigger]="addPopover"
     >
-      <svg sfIcon="plus" [size]="14"></svg>{{ t('regie.sources.dock.add') }}
+      <svg sfIcon="plus"></svg>{{ t('regie.sources.dock.add') }}
     </button>
     @if (popovers.isOpen(addPopover)) {
       <sf-add-source-popover (upload)="openUpload()" (manage)="openMedia()" />
@@ -42,17 +55,39 @@
         <strong>{{ t('regie.sources.dock.loadingTitle') }}</strong
         >{{ t('regie.docks.loadingText') }}
       </div>
-    } @else if (!scene()) {
-      <div class="c-empty">
-        <strong>{{ t('regie.sources.dock.noSceneTitle') }}</strong
-        >{{ t('regie.sources.dock.noSceneText') }}
+    } @else if (scene(); as scene) {
+      <div class="c-src-dock__head">
+        <span class="c-src-dock__scene"
+          >{{ editingParts().before }}<strong class="c-src-dock__scene-name">{{ scene.name }}</strong
+          >{{ editingParts().after }}</span
+        >
+        <sf-scene-tag [sceneId]="scene.id" />
       </div>
-    } @else {
+      <sf-edit-status class="c-src-dock__status" />
       @if (rows().length === 0) {
-        <div class="c-src-dock__list">
-          <div class="c-empty">
-            <strong>{{ t('regie.sources.dock.emptyTitle') }}</strong
-            >{{ t('regie.sources.dock.emptyText') }}
+        <div class="c-empty c-src-dock__empty">
+          <strong>{{ t('regie.sources.dock.emptyTitle') }}</strong
+          >{{ t('regie.sources.dock.emptyText') }}
+          <div class="c-src-dock__actions">
+            <button
+              class="c-btn c-btn--sm c-btn--primary"
+              type="button"
+              [disabled]="!editor.canEdit()"
+              (click)="openAdd()"
+            >
+              <svg sfIcon="plus"></svg>{{ t('regie.sources.dock.emptyAdd') }}
+            </button>
+            <button class="c-btn c-btn--sm" type="button" (click)="openUpload()">
+              <svg sfIcon="upload"></svg>{{ t('regie.sources.dock.emptyUpload') }}
+            </button>
+            <button
+              class="c-btn c-btn--sm"
+              type="button"
+              [disabled]="!editor.canEdit()"
+              (click)="addLowerThird()"
+            >
+              <svg sfIcon="text"></svg>{{ t('regie.sources.dock.emptyLowerThird') }}
+            </button>
           </div>
         </div>
       } @else {
@@ -69,22 +104,10 @@
                 class="c-src"
                 [class.is-sel]="row.selected"
                 [class.is-hidden]="row.hidden"
+                [class.is-locked]="row.locked"
                 [class.is-text]="row.isText"
                 (click)="select(row)"
               >
-                <button
-                  class="c-ibtn"
-                  type="button"
-                  [attr.aria-pressed]="!row.hidden"
-                  [attr.aria-label]="
-                    t(row.hidden ? 'regie.sources.row.show' : 'regie.sources.row.hide', {
-                      name: row.name,
-                    })
-                  "
-                  (click)="toggleHidden(row, $event)"
-                >
-                  <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
-                </button>
                 <button
                   class="c-src__select"
                   type="button"
@@ -94,6 +117,7 @@
                   [attr.aria-label]="
                     t('regie.sources.row.select', { code: row.code, name: row.name })
                   "
+                  [attr.title]="row.hidden && !row.isText ? t('regie.sources.row.hiddenHint') : null"
                   (click)="select(row, $event)"
                 >
                   <span class="c-src__kind"><svg [sfIcon]="row.icon"></svg></span>
@@ -111,18 +135,37 @@
                   </span>
                 </button>
                 @if (row.lamp !== null) {
-                  <span class="c-lamp" aria-hidden="true" [class]="row.lamp"></span>
-                } @else {
-                  <span aria-hidden="true"></span>
+                  <span class="c-lamp c-src__lamp" aria-hidden="true" [class]="row.lamp"></span>
                 }
                 <button
-                  class="c-ibtn"
+                  class="c-ibtn c-src__toggle"
                   type="button"
+                  [class.is-on]="row.hidden"
+                  [attr.aria-pressed]="!row.hidden"
+                  [attr.aria-label]="
+                    t(row.hidden ? 'regie.sources.row.show' : 'regie.sources.row.hide', {
+                      name: row.name,
+                    })
+                  "
+                  [title]="
+                    t(row.hidden ? 'regie.sources.row.showTitle' : 'regie.sources.row.hideTitle')
+                  "
+                  (click)="toggleHidden(row, $event)"
+                >
+                  <svg [sfIcon]="row.hidden ? 'eye-off' : 'eye'"></svg>
+                </button>
+                <button
+                  class="c-ibtn c-src__toggle"
+                  type="button"
+                  [class.is-on]="row.locked"
                   [attr.aria-pressed]="row.locked"
                   [attr.aria-label]="
                     t(row.locked ? 'regie.sources.row.unlock' : 'regie.sources.row.lock', {
                       name: row.name,
                     })
+                  "
+                  [title]="
+                    t(row.locked ? 'regie.sources.row.unlockTitle' : 'regie.sources.row.lockTitle')
                   "
                   (click)="toggleLocked(row, $event)"
                 >
@@ -137,9 +180,16 @@
         <p class="c-hint c-src-dock__hint">{{ hint }}</p>
       }
       <sf-placeholder-list />
+    } @else {
+      <div class="c-empty">
+        <strong>{{ t('regie.sources.dock.noSceneTitle') }}</strong
+        >{{ t('regie.sources.dock.noSceneText') }}
+      </div>
     }
     @if (dropActive()) {
-      <div class="c-src-dock__drop" aria-hidden="true">{{ t('regie.sources.dock.drop') }}</div>
+      <div class="c-src-dock__drop" aria-hidden="true">
+        <svg sfIcon="upload"></svg>{{ t('regie.sources.dock.drop') }}
+      </div>
     }
   </div>
 </sf-dock-frame>

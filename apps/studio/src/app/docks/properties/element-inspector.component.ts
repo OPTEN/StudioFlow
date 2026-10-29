@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  viewChild,
+} from '@angular/core';
 import { t } from '@studioflow/i18n';
 import {
   ITEM_BOUNDS,
@@ -9,9 +16,10 @@ import {
   type SceneItemDto,
 } from '@studioflow/scene-model';
 import { ProductionStoreService } from '../../core/state/production-store.service';
-import { IconComponent } from '../../core/ui/icon.component';
+import { ConfirmBoxComponent } from '../../core/ui/confirm-box.component';
 import { EditorService } from '../../stage/editor.service';
 import { NumberFieldDirective } from '../shared/number-field.directive';
+import { InspectorSectionComponent } from './inspector-section.component';
 import { TextEditorComponent } from './text-editor.component';
 import {
   CROP_SIDES,
@@ -32,15 +40,23 @@ import {
 type NumberKey = 'x' | 'y' | 'w' | 'h' | 'radius';
 
 /**
- * Element inspector (prototype `renderInspector` with a selection): position, size, fit, corners and mirror,
- * rotation, crop per side in percent, border, behaviour on loss ("On failure", "Fallback source"), layer order and
- * "Remove from scene". Every change goes through `EditorService.updateItem`, which clamps to the server bounds,
- * shows it immediately and sends it coalesced. A number field is one undo step from focus to blur (prototype
- * `focusin` → `pushUndo`). Everything is disabled while the scene is live in Studio Mode or the Regie is offline.
+ * Element inspector: collapsible sections in the order of how often they are needed. A text or lower third starts
+ * with its editor ("Text"); then "Position & size" (X, Y, W, H with the canvas size as reference), for pictures "Fit &
+ * crop" (fit, crop per side in percent), "Style" (corners, rotation, mirror, border) and "When the source fails"
+ * (first the last picture for a while, then a fallback source or the dimmed picture), and "Layer". The destructive
+ * actions close the inspector: "Remove from scene" and, for a text, "Delete text…" (from every scene, behind a
+ * confirmation). Every change goes through `EditorService.updateItem`, which clamps to the server bounds, shows it
+ * immediately and sends it coalesced. A number field is one undo step from focus to blur. Everything is disabled while
+ * the scene is live in Studio Mode or the Regie is offline (the dock's status line says why).
  */
 @Component({
   selector: 'sf-element-inspector',
-  imports: [IconComponent, NumberFieldDirective, TextEditorComponent],
+  imports: [
+    ConfirmBoxComponent,
+    InspectorSectionComponent,
+    NumberFieldDirective,
+    TextEditorComponent,
+  ],
   templateUrl: './element-inspector.component.html',
   styleUrl: './element-inspector.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,7 +74,17 @@ export class ElementInspectorComponent {
   protected readonly cropSides = CROP_SIDES;
   protected readonly maxCrop = MAX_CROP_PERCENT;
 
+  /** The text editor of a text item; it owns "Delete text…", whose button sits in the footer. */
+  protected readonly textEditor = viewChild(TextEditorComponent);
+
   protected readonly disabled = computed(() => !this.editor.canEdit());
+  /** "Canvas 1920 × 1080": what the pixel values refer to. */
+  protected readonly canvasNote = computed(() => {
+    const { width, height } = this.store.canvas();
+    return t('regie.properties.element.canvas', { width, height });
+  });
+  /** "Keep the last picture until the source is back": no fallback can follow. */
+  protected readonly holdsForever = computed(() => this.item().onLost.holdMs === null);
   /** The content of the item's text; null for every other kind of source. */
   protected readonly text = computed(() => this.store.textOf(this.item().source) ?? null);
   protected readonly rotation = computed(() => snapRotation(this.item().rotation));

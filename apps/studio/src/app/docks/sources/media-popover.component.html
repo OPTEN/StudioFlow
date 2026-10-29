@@ -5,7 +5,7 @@
   [sfPopover]="popoverId"
   [popoverFocus]="!pickOnOpen()"
 >
-  <div class="c-pop-h">{{ t('regie.media.upload.title') }}</div>
+  <div class="c-media-pop__title">{{ t('regie.media.label') }}</div>
   <label
     class="c-media-pop__drop"
     [class.is-over]="dragOver()"
@@ -24,7 +24,7 @@
     />
     <svg sfIcon="upload"></svg>
     @let prompt = dropPrompt();
-    <span
+    <span class="c-media-pop__prompt"
       >{{ prompt.before }}<span class="c-media-pop__pick">{{ t('regie.media.upload.pick') }}</span
       >{{ prompt.after }}</span
     >
@@ -35,14 +35,47 @@
     <p class="c-field-error c-media-pop__note">{{ tm(message) }}</p>
   }
 
-  @if (uploads.uploads().length > 0) {
+  @if (activeUploads().length > 0) {
     <ul class="c-media-pop__list" [attr.aria-label]="t('regie.media.uploads.label')">
-      @for (entry of uploads.uploads(); track entry.id) {
+      @for (entry of activeUploads(); track entry.id) {
         <li class="c-media-pop__upload">
           <div class="c-media-pop__row">
-            <svg [sfIcon]="entry.kind"></svg>
-            <span class="c-media-pop__name" [title]="entry.name">{{ entry.name }}</span>
-            <span class="c-media-pop__meta u-mono">{{ sizeText(entry.size) }}</span>
+            <span class="c-media-pop__thumb is-pending" aria-hidden="true"
+              ><svg [sfIcon]="entry.kind"></svg
+            ></span>
+            <span class="c-media-pop__text">
+              <span class="c-media-pop__name" [title]="entry.name">{{ entry.name }}</span>
+              @switch (entry.state) {
+                @case ('queued') {
+                  <span class="c-media-pop__meta"
+                    >{{ sizeText(entry.size) }} · {{ t('regie.media.uploads.queued') }}</span
+                  >
+                }
+                @case ('uploading') {
+                  <span class="c-media-pop__progress">
+                    <span
+                      class="c-media-pop__bar"
+                      role="progressbar"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      [attr.aria-valuenow]="percent(entry)"
+                      [attr.aria-label]="t('regie.media.uploads.progress', { name: entry.name })"
+                    >
+                      <i class="c-media-pop__fill" [style.width.%]="percent(entry)"></i>
+                    </span>
+                    <span class="u-mono">{{
+                      t('model.format.percent', { value: percent(entry) })
+                    }}</span>
+                  </span>
+                }
+                @case ('failed') {
+                  <span class="c-field-error">{{ tm(entry.error) }}</span>
+                }
+                @case ('aborted') {
+                  <span class="c-media-pop__meta">{{ t('regie.media.uploads.aborted') }}</span>
+                }
+              }
+            </span>
             @if (entry.state === 'queued' || entry.state === 'uploading') {
               <button class="c-btn c-btn--sm" type="button" (click)="uploads.cancel(entry.id)">
                 {{ t('common.cancel') }}
@@ -52,71 +85,37 @@
                 class="c-ibtn"
                 type="button"
                 [attr.aria-label]="t('regie.media.uploads.dismiss', { name: entry.name })"
+                [title]="t('regie.media.uploads.dismiss', { name: entry.name })"
                 (click)="uploads.dismiss(entry.id)"
               >
                 <svg sfIcon="close" [size]="14"></svg>
               </button>
             }
           </div>
-          @switch (entry.state) {
-            @case ('queued') {
-              <span class="c-hint">{{ t('regie.media.uploads.queued') }}</span>
-            }
-            @case ('uploading') {
-              <div class="c-media-pop__progress">
-                <div
-                  class="c-media-pop__bar"
-                  role="progressbar"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  [attr.aria-valuenow]="percent(entry)"
-                  [attr.aria-label]="t('regie.media.uploads.progress', { name: entry.name })"
-                >
-                  <i class="c-media-pop__fill" [style.width.%]="percent(entry)"></i>
-                </div>
-                <span class="u-mono">{{
-                  t('model.format.percent', { value: percent(entry) })
-                }}</span>
-              </div>
-            }
-            @case ('done') {
-              @if (entry.asset; as asset) {
-                <div class="c-media-pop__row">
-                  <span class="c-state--ok">{{ t('regie.media.uploads.done') }}</span>
-                  <span class="c-code">{{ asset.code }}</span>
-                  <span class="u-spacer"></span>
-                  @if (canAddToScene(asset)) {
-                    <button
-                      class="c-btn c-btn--sm c-btn--primary"
-                      type="button"
-                      (click)="addToScene(asset)"
-                    >
-                      <svg sfIcon="plus" [size]="14"></svg
-                      >{{ t('regie.media.uploads.addToScene', { scene: sceneName() }) }}
-                    </button>
-                  }
-                </div>
-              }
-            }
-            @case ('failed') {
-              <span class="c-field-error">{{ tm(entry.error) }}</span>
-            }
-            @case ('aborted') {
-              <span class="c-hint">{{ t('regie.media.uploads.aborted') }}</span>
-            }
-          }
         </li>
       }
     </ul>
   }
 
-  <div class="c-pop-h c-media-pop__head">{{ t('regie.media.library.title') }}</div>
+  <div class="c-media-pop__head">{{ t('regie.media.library.title') }}</div>
   <div class="c-media-pop__list">
     @for (asset of assets(); track asset.id) {
-      <div class="c-media-pop__asset">
+      <div class="c-media-pop__asset" [class.is-new]="justUploaded().has(asset.id)">
         <div class="c-media-pop__row">
-          <svg [sfIcon]="asset.kind"></svg>
-          <span class="c-code">{{ asset.code }}</span>
+          <span class="c-media-pop__thumb" aria-hidden="true">
+            @if (asset.kind === 'image') {
+              <img
+                alt=""
+                loading="lazy"
+                decoding="async"
+                [src]="asset.contentUrl"
+                (error)="hideBrokenThumb($event)"
+              />
+            } @else {
+              <svg sfIcon="film"></svg>
+            }
+            <span class="c-media-pop__code">{{ asset.code }}</span>
+          </span>
           @if (renamingId() === asset.id) {
             <sf-inline-edit
               class="c-media-pop__edit"
@@ -131,10 +130,28 @@
               <span class="c-media-pop__name" [title]="asset.name">{{ asset.name }}</span>
               <span class="c-media-pop__meta">{{ assetMeta(asset) }}</span>
             </span>
+            @if (inScene(asset)) {
+              <span class="c-media-pop__in-scene"
+                ><svg sfIcon="check" [size]="14"></svg>{{ t('regie.media.library.inScene') }}</span
+              >
+            } @else if (canAddToScene(asset)) {
+              <button
+                class="c-btn c-btn--sm c-btn--primary"
+                type="button"
+                [attr.aria-label]="
+                  t('regie.media.library.addLabel', { name: asset.name, scene: sceneName() })
+                "
+                [title]="t('regie.media.library.addLabel', { name: asset.name, scene: sceneName() })"
+                (click)="addToScene(asset)"
+              >
+                {{ t('regie.media.library.add') }}
+              </button>
+            }
             <button
               class="c-ibtn"
               type="button"
               [attr.aria-label]="t('regie.media.library.rename', { name: asset.name })"
+              [title]="t('common.rename')"
               [disabled]="commands.blocked('asset:' + asset.id + ':rename')"
               (click)="startRename(asset)"
             >
@@ -144,6 +161,7 @@
               class="c-ibtn c-media-pop__delete"
               type="button"
               [attr.aria-label]="t('regie.media.library.delete', { name: asset.name })"
+              [title]="t('common.delete')"
               (click)="askDelete(asset)"
             >
               <svg sfIcon="trash" [size]="14"></svg>
@@ -152,8 +170,8 @@
         </div>
         @if (inUseMessage(asset.id); as message) {
           <p class="c-media-pop__inuse">
-            <strong class="c-state--bad">{{ t('regie.media.library.inUse') }}</strong>
-            {{ message }} {{ t('regie.media.library.removeFirst') }}
+            <svg sfIcon="alert" [size]="14"></svg
+            ><span>{{ message }} {{ t('regie.media.library.removeFirst') }}</span>
           </p>
         }
         @if (confirmingId() === asset.id) {
@@ -169,7 +187,7 @@
         }
       </div>
     } @empty {
-      <p class="c-pop-note">{{ t('regie.media.library.empty') }}</p>
+      <p class="c-media-pop__empty">{{ t('regie.media.library.empty') }}</p>
     }
   </div>
 </div>

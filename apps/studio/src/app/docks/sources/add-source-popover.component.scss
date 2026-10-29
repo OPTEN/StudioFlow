@@ -1,9 +1,10 @@
-// «+ Quelle» menu (prototype #addSrcPop) with groups.
+// "+ Source" menu: grouped sources with "In scene" checkmarks, new texts, upload and the media library.
 @use 'mixins' as *;
 
 .c-add-pop {
   max-width: min(360px, calc(100vw - 32px));
   overflow: auto;
+  overscroll-behavior: contain;
   width: 320px;
 }
 
@@ -12,8 +13,8 @@
 }
 
 .c-add-pop__label {
-  @include label-text(11px);
-  padding: 8px 8px 2px;
+  @include label-text;
+  padding: 8px 10px 3px;
 }
 
 .c-add-pop__name {
@@ -22,9 +23,30 @@
 }
 
 .c-add-pop__state {
+  align-items: center;
+  display: inline-flex;
   flex: none;
-  font-size: 12px;
+  font-size: var(--fs-footnote);
   font-weight: 600;
+  gap: 3px;
+}
+
+// Already in the scene: a quiet checkmark instead of a disabled-looking grey row.
+.c-add-pop__item.is-in-scene:disabled {
+  color: var(--text-2);
+}
+
+.c-add-pop__in-scene {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.c-add-pop__hint {
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  line-height: 1.35;
+  margin: 0;
+  padding: 2px 10px 4px 36px;
 }
 
 .c-state--muted {

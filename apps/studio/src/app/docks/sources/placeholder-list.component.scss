@@ -7,17 +7,31 @@
 
 .c-ph {
   border-top: 1px solid var(--seam);
-  margin: 6px 6px 0;
-  padding: 10px 0 4px;
+  margin: 8px 6px 0;
+  padding: 12px 0 6px;
+}
+
+.c-ph__head {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+// Attention, not a failure: the scenes still run, a picture is missing.
+.c-ph__alert {
+  color: var(--amber);
 }
 
 .c-ph__title {
-  padding: 0 6px;
+  @include heading-text;
+  margin: 0;
 }
 
 .c-ph__hint {
-  margin: 2px 0 6px;
-  padding: 0 6px;
+  margin: 4px 0 8px;
+  max-width: 60ch;
+  padding: 0 8px;
 }
 
 .c-ph__list {
@@ -29,12 +43,11 @@
 }
 
 .c-ph__item {
-  border: 1px solid transparent;
+  @include state-transition(background-color);
   border-radius: var(--radius-md);
 
   &.is-open {
     background: var(--raised);
-    border-color: var(--seam-strong);
   }
 }
 
@@ -44,7 +57,7 @@
   gap: 8px;
   grid-template-columns: 16px auto minmax(0, 1fr) auto;
   min-height: 40px;
-  padding: 3px 4px 3px 8px;
+  padding: 3px 6px 3px 8px;
 }
 
 .c-ph__kind {
@@ -59,24 +72,29 @@
 
 .c-ph__name {
   @include ellipsis;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
 .c-ph__used {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
   line-height: 1.3;
 }
 
+// The source list of an open row: a menu set into the row.
 .c-ph__picker {
+  background: var(--float);
+  border-radius: 10px;
+  box-shadow: 0 0 0 0.5px var(--seam-strong);
   display: grid;
-  padding: 2px 6px 8px;
+  margin: 0 6px 6px;
+  padding: 4px;
 }
 
 .c-ph__picker-h {
-  @include label-text(11px);
-  padding: 6px 8px 2px;
+  @include label-text;
+  padding: 6px 10px 2px;
 }
 
 .c-ph__group {
@@ -85,7 +103,7 @@
 
 .c-ph__group-l {
   @include label-text(11px);
-  padding: 8px 8px 2px;
+  padding: 8px 10px 2px;
 }
 
 .c-ph__source-name {
@@ -95,15 +113,21 @@
 
 .c-ph__source-state {
   flex: none;
-  font-size: 12px;
+  font-size: var(--fs-footnote);
   font-weight: 600;
 }
 
-.c-ph__remove {
+// The destructive item keeps the red text until the highlight takes it over.
+.c-ph__remove:not(:disabled) {
   color: var(--red);
 
   .c-icon {
     color: inherit;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: var(--on-fill);
   }
 }
 
