@@ -60,15 +60,15 @@ test.describe('OUT media and reports', () => {
 
       const sceneName = (await api.getSnapshot(production.id)).body.scenes.find((scene) => scene.id === production.sceneIds[0])!.name;
       await expect
-        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, hub, livekit, latency, source)', timeout: 15_000 })
+        .poll(async () => (await output.debugLines()).length, { message: 'overlay lines (scene, revision, canvas, server, media server, latency, source)', timeout: 15_000 })
         .toBeGreaterThanOrEqual(7);
       const lines = await output.debugLines();
       expect(lines[0], 'production and scene').toBe(`${production.name} · Scene “${sceneName}”`);
       expect(lines[1], 'revision and broadcast').toMatch(/^Revision \d+ · Broadcast live$/);
       expect(lines[2], 'canvas of the production').toBe('Canvas 1920 × 1080 · 16:9 · 1080p');
-      expect(lines[3], 'hub and sync state').toBe('Hub connected · Sync up to date');
-      expect(lines[4], 'LiveKit state').toBe('LiveKit connected');
-      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Renderer \d+ fps$/);
+      expect(lines[3], 'server (hub) and data (sync) state').toBe('Server connected · Data up to date');
+      expect(lines[4], 'media server (LiveKit) state').toBe('Media server connected');
+      expect(lines[5], 'latency estimate and renderer fps').toMatch(/^Latency ≈ \d+ ms · Picture \d+ fps$/);
       // A stream that the browser decodes in software says so at the end of its line (issue #12; most computers do it in hardware).
       expect(lines[6], 'per source: code, name, size, fps, bitrate, loss, buffer, software decoding if it is')
         .toMatch(new RegExp(`^${camera.code} Camera One · \\d+×\\d+ · \\d+ fps · [\\d.]+ Mbit/s · Loss [\\d.]+% · Buffer \\d+ ms(?: · software decoding)?$`));
