@@ -113,21 +113,27 @@ p {
   user-select: none;
 }
 
-// Reduced motion: every duration token drops to 0s; the universal rule catches third-party animations.
-@include reduced-motion {
-  :root {
-    --dur-state: 0s;
-    --dur-splitter-delay: 0s;
-    --dur-reveal: 0s;
-    --dur-tally-flash: 0s;
-    --dur-lamp-pulse: 0s;
-    --dur-station-flash: 0s;
-  }
+// Reduced motion: every duration token drops to 0s; the universal rule catches third-party animations and the
+// component rules that set a transition shorthand (hence !important). A mixin, because the override has to come after
+// the :root token block (same specificity, the later rule wins): styles.scss includes it right behind that block.
+@mixin reduced-motion-overrides {
+  @include reduced-motion {
+    :root {
+      --dur-state: 0s;
+      --dur-splitter-delay: 0s;
+      --dur-reveal: 0s;
+      --dur-tally-flash: 0s;
+      --dur-lamp-pulse: 0s;
+      --dur-station-flash: 0s;
+    }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0s;
-    transition-duration: 0s;
+    *,
+    *::before,
+    *::after {
+      animation-delay: 0s !important;
+      animation-duration: 0s !important;
+      transition-delay: 0s !important;
+      transition-duration: 0s !important;
+    }
   }
 }

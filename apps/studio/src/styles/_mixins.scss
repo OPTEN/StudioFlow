@@ -83,6 +83,14 @@ $DESKTOP_BREAKPOINTS: (
   }
 }
 
+/// Windows high-contrast mode (forced colours): backgrounds and box shadows are replaced by the system colours, so a
+/// state that is only painted (a switch, a selected segment) needs a border, outline or weight of its own.
+@mixin forced-colors {
+  @media (forced-colors: active) {
+    @content;
+  }
+}
+
 /// Uppercase group label (DESIGN.md "Label"): dock titles, tally names, TRANSITION, APPLY TEMPLATE.
 /// @param {Length} $size - 11.5px for dock titles and tally names, 11px for control-group labels
 @mixin label-text($size: 11.5px) {

@@ -472,6 +472,12 @@
       background: var(--raised-2);
       box-shadow: var(--shadow-selected);
       color: var(--text);
+
+      // Forced colours remove the background and the box shadow: the selection stays visible as a bar and a weight.
+      @include forced-colors {
+        border-bottom: 3px solid Highlight;
+        font-weight: 800;
+      }
     }
 
     &:disabled {
@@ -521,6 +527,11 @@
     background: var(--blue-wash);
     box-shadow: var(--shadow-selected);
     color: var(--blue);
+
+    @include forced-colors {
+      border-bottom: 3px solid Highlight;
+      font-weight: 800;
+    }
   }
 }
 
@@ -575,6 +586,26 @@
     &:disabled {
       cursor: not-allowed;
       opacity: 0.45;
+    }
+  }
+
+  // Forced colours drop the painted track and thumb: draw them with borders and show the state by the thumb side.
+  @include forced-colors {
+    input {
+      border: 1px solid ButtonText;
+
+      &::after {
+        background: ButtonText;
+      }
+
+      &:checked {
+        background: Highlight;
+        border-color: Highlight;
+      }
+
+      &:checked::after {
+        background: HighlightText;
+      }
     }
   }
 }

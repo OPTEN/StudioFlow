@@ -55,6 +55,12 @@
     background: var(--blue-wash);
     box-shadow: var(--shadow-selected);
     color: var(--blue);
+
+    // Forced colours remove the background and the box shadow: the selection stays visible as a bar and a weight.
+    @include forced-colors {
+      border-bottom: 3px solid Highlight;
+      font-weight: 800;
+    }
   }
 }
 
