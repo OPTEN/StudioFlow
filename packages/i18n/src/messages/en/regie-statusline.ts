@@ -24,15 +24,18 @@ export const regieStatusline = {
 
   'regie.statusline.incident.back': 'back',
   'regie.statusline.incident.dismiss': 'Dismiss',
+  'regie.statusline.incident.dismissLater': 'Dismiss (once it is back)',
   'regie.statusline.incident.goneFor': 'was gone for {seconds} s',
   'regie.statusline.incident.reshare': 'Ask to share again',
   'regie.statusline.incident.reshareOffline':
     '{name} is not connected. Please share again directly on the device.',
   'regie.statusline.incident.reshareSent': 'Request sent to {name}: “Share screen again”',
   'regie.statusline.incident.show': 'Show in the Devices dock',
+  'regie.statusline.incident.showDevice': 'Show device',
   'regie.statusline.incident.timer': 'How long the problem has lasted',
 
-  'regie.statusline.issues.empty': 'All devices are sending. A problem shows up here the moment it happens.',
+  'regie.statusline.issues.empty':
+    'All devices are sending. A problem shows up here the moment it happens.',
   'regie.statusline.issues.emptyTitle': 'No issues',
   'regie.statusline.issues.markAll': 'Mark all as seen',
   'regie.statusline.issues.monitoring': 'Open monitoring',

@@ -39,7 +39,8 @@ export const regieHeader: Translation<typeof en> = {
 
   'regie.header.clock': 'Ortszeit',
 
-  'regie.header.keys.arrows': 'Ein Dock am Griff verschieben oder an einer Trennlinie die Grösse ändern',
+  'regie.header.keys.arrows':
+    'Ein Dock am Griff verschieben oder an einer Trennlinie die Grösse ändern',
   'regie.header.keys.arrowsShift': 'Grösse in grösseren Schritten ändern',
   'regie.header.keys.editing': 'Bearbeiten',
   'regie.header.keys.enter': 'An einer Trennlinie die Grösse zurücksetzen',
@@ -56,6 +57,15 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.keys.title': 'Tastenkürzel',
   'regie.header.keys.typing': 'Während du in ein Feld tippst, sind die Kürzel aus.',
   'regie.header.keys.undo': 'Letzte Änderung an der Szene oder am Mischpult rückgängig machen',
+  'regie.header.keys.duplicate': 'Fokussierte Zeile duplizieren',
+  'regie.header.keys.general': 'Allgemein',
+  'regie.header.keys.lists': 'In Listen',
+  'regie.header.keys.menu': 'Rechtsklick-Menü des fokussierten Objekts öffnen',
+  'regie.header.keys.nudge': 'Gewähltes Element auf der Bildfläche um 1 px verschieben',
+  'regie.header.keys.nudgeLarge': 'Gewähltes Element um 10 px verschieben',
+  'regie.header.keys.remove': 'Fokussierte Zeile entfernen (mit Rückfrage)',
+  'regie.header.keys.rename': 'Fokussierte Zeile umbenennen',
+  'regie.header.keys.settings': 'Einstellungen öffnen',
 
   'regie.header.layout.docks': 'Docks',
   'regie.header.layout.note':
@@ -69,6 +79,11 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.outputChip.dropping': 'Verliert Bilder',
   'regie.header.outputChip.none': 'Nicht verbunden',
   'regie.header.outputChip.stale': 'Kein Bild',
+
+  'regie.header.outputMenu.copy': 'Output-Link kopieren',
+  'regie.header.outputMenu.manage': 'Output-Links verwalten …',
+  'regie.header.outputMenu.noLink': 'Es gibt noch keinen Output-Link.',
+  'regie.header.outputMenu.status': 'Output-Status zeigen',
 
   'regie.header.output.access': 'Zugriff',
   'regie.header.output.accessNoRestriction':
@@ -105,8 +120,7 @@ export const regieHeader: Translation<typeof en> = {
   'regie.header.output.stateNone': 'nicht verbunden',
   'regie.header.output.stateStale': 'verbunden, kein aktuelles Bild',
 
-  'regie.header.presence.hint':
-    'Was eine Person ändert, sehen alle in der Regie sofort.',
+  'regie.header.presence.hint': 'Was eine Person ändert, sehen alle in der Regie sofort.',
   'regie.header.presence.long': {
     one: 'Eine Person in der Regie',
     other: '{count} Personen in der Regie',

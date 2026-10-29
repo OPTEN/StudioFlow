@@ -31,6 +31,13 @@ export const regieWorkspace: Translation<typeof en> = {
     'Das Fenster ist schmal, darum stehen die Docks unter den Monitoren. Breiter ziehen, um Docks zu verschieben und ihre Grösse zu ändern.',
   'regie.workspace.layout.undo': 'Rückgängig',
 
+  'regie.workspace.menu.bottom': 'Nach unten verschieben',
+  'regie.workspace.menu.hidden': '{dock} ist ausgeblendet',
+  'regie.workspace.menu.hide': 'Dock ausblenden',
+  'regie.workspace.menu.left': 'Nach links verschieben',
+  'regie.workspace.menu.resetSize': 'Grösse zurücksetzen',
+  'regie.workspace.menu.right': 'Nach rechts verschieben',
+
   'regie.workspace.splitter.between': 'Grösse von {first} und {second}',
   'regie.workspace.splitter.bottom': 'Höhe der Docks unten',
   'regie.workspace.splitter.left': 'Breite der Docks links',

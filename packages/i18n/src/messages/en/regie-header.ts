@@ -57,6 +57,15 @@ export const regieHeader = {
   'regie.header.keys.title': 'Keyboard shortcuts',
   'regie.header.keys.typing': 'Shortcuts pause while you type in a field.',
   'regie.header.keys.undo': 'Undo the last change of the scene or the mixer',
+  'regie.header.keys.duplicate': 'Duplicate the focused row',
+  'regie.header.keys.general': 'General',
+  'regie.header.keys.lists': 'In lists',
+  'regie.header.keys.menu': 'Open the right-click menu of the focused object',
+  'regie.header.keys.nudge': 'Move the selected item on the canvas by 1 px',
+  'regie.header.keys.nudgeLarge': 'Move the selected item by 10 px',
+  'regie.header.keys.remove': 'Remove the focused row (asks first)',
+  'regie.header.keys.rename': 'Rename the focused row',
+  'regie.header.keys.settings': 'Open the settings',
 
   'regie.header.layout.docks': 'Docks',
   'regie.header.layout.note':
@@ -70,6 +79,11 @@ export const regieHeader = {
   'regie.header.outputChip.dropping': 'Drops frames',
   'regie.header.outputChip.none': 'Not connected',
   'regie.header.outputChip.stale': 'No picture',
+
+  'regie.header.outputMenu.copy': 'Copy output link',
+  'regie.header.outputMenu.manage': 'Manage output links…',
+  'regie.header.outputMenu.noLink': 'There is no output link yet.',
+  'regie.header.outputMenu.status': 'Show output status',
 
   'regie.header.output.access': 'Access',
   'regie.header.output.accessNoRestriction':

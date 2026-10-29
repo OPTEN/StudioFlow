@@ -9,6 +9,8 @@ import {
   sourceFixture,
 } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { Router } from '@angular/router';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
 import { KeyboardService } from '../../core/ui/keyboard.service';
 import { DockLayoutService } from '../workspace/dock-layout.service';
 import { HeaderComponent } from './header.component';
@@ -119,6 +121,19 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('[aria-controls="sf-pop-settings"]')).toBeNull();
   });
 
+  it('opens the settings with Ctrl+, and names the shortcut on the gear', async () => {
+    await setup();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    expect(element.querySelector('a.c-header__settings')?.getAttribute('title')).toBe(
+      'Settings (Ctrl+,)',
+    );
+    TestBed.inject(KeyboardService).handle(
+      new KeyboardEvent('keydown', { key: ',', ctrlKey: true, cancelable: true }),
+    );
+    expect(navigate).toHaveBeenCalledWith('/settings');
+  });
+
   it('asks before the broadcast starts and shows the pre-flight check', async () => {
     await setup();
     button('Start broadcast').click();
@@ -152,7 +167,9 @@ describe('HeaderComponent', () => {
     await setup(
       snapshotFixture({
         outputStatus: output(),
-        sources: [sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'reconnecting' })],
+        sources: [
+          sourceFixture('dev_aaaaaaaaaaaaaaaa', 'camera', 'K1', { status: 'reconnecting' }),
+        ],
         incidents: [incidentFixture('inc_1', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1')],
       }),
     );
@@ -240,6 +257,62 @@ describe('HeaderComponent', () => {
       expect(text()).toContain('1920 × 1080 · 16:9 · 30 fps');
       expect(text()).toContain('studioflow.example.com/o/webinar?k=••••••');
       expect(text()).not.toContain('secret123');
+    });
+
+    it('offers copy, status and "Manage output links…" on a right click of the capsule', async () => {
+      await setup(snapshotFixture({ outputStatus: output() }));
+      const menus = TestBed.inject(ContextMenuService);
+      chip().dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: 10,
+          clientY: 10,
+        }),
+      );
+      const items = (menus.current()?.entries ?? []).filter(
+        (entry): entry is ContextMenuItem => entry !== 'separator',
+      );
+      expect(items.map((item) => item.label)).toEqual([
+        'Copy output link',
+        'Show output status',
+        'Manage output links…',
+      ]);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      menus.run(items[2]);
+      expect(navigate).toHaveBeenCalledWith('/settings/output');
+
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      menus.run(items[0]);
+      harness.http.expectOne(`${BASE}/output`).flush({
+        links: [
+          {
+            id: 'olk_proxy',
+            name: 'Proxy',
+            url: 'https://studioflow.example.com/o/webinar?k=secret123',
+            keyCreatedAt: '2026-10-22T08:00:00Z',
+            lastSeenAt: null,
+            allowedIps: [],
+          },
+        ],
+        maxLinks: 10,
+        frameAncestors: ["'self'"],
+      });
+      await render();
+      expect(writeText).toHaveBeenCalledWith(
+        'https://studioflow.example.com/o/webinar?k=secret123',
+      );
+
+      menus.run(items[1]);
+      await render();
+      harness.http.expectOne(`${BASE}/output`).flush({
+        links: [],
+        maxLinks: 10,
+        frameAncestors: ["'self'"],
+      });
+      await render();
+      expect(dialog('Output')).toBeTruthy();
     });
 
     it('lists every link with its state in the tooltip', async () => {
@@ -401,6 +474,10 @@ describe('HeaderComponent', () => {
       expect(keys).toContainEqual(['M']);
       expect(keys).toContainEqual(['Esc']);
       expect(keys).toContainEqual(['?']);
+      expect(keys).toContainEqual(['Ctrl', ',']);
+      expect(keys).toContainEqual(['F2']);
+      expect(keys).toContainEqual(['Ctrl', 'D']);
+      expect(keys).toContainEqual(['Shift', 'F10', 'Menu']);
       button('', sheet.querySelector('.c-sheet__head')!).click();
       await render();
       expect(sheet.open).toBe(false);

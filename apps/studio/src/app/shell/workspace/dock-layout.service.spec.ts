@@ -221,6 +221,30 @@ describe('DockLayoutService', () => {
     expect(layout.zones().bottom).toEqual(['scenes', 'src', 'insp', 'audio']);
   });
 
+  it('hides a dock from its menu with an undo toast and resets the size of a dock and its zone', () => {
+    const layout = setup({
+      ...defaultLayout(),
+      zones: { left: ['scenes'], bottom: ['src', 'insp', 'st', 'audio'], right: [] },
+      weights: { ...defaultLayout().weights, scenes: 3, src: 4 },
+      leftW: 400,
+      bottomH: 0.5,
+    });
+    const toasts = TestBed.inject(ToastService);
+    layout.hideDock('st');
+    expect(layout.isShown('st')).toBe(false);
+    expect(toasts.current()?.message).toBe('Devices is hidden');
+    toasts.runAction();
+    expect(layout.isShown('st')).toBe(true);
+
+    layout.resetDockSize('scenes');
+    expect(stored().weights.scenes).toBe(defaultLayout().weights.scenes);
+    expect(stored().leftW).toBe(defaultLayout().leftW);
+    expect(stored().bottomH).toBe(0.5);
+    layout.resetDockSize('src');
+    expect(stored().weights.src).toBe(defaultLayout().weights.src);
+    expect(stored().bottomH).toBeNull();
+  });
+
   it('restores a valid stored layout', () => {
     const layout = setup({
       ...defaultLayout(),

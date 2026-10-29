@@ -10,8 +10,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { t } from '@studioflow/i18n';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
-import { DOCK_TITLE_KEYS, type DockId, type DockSlotId } from './dock-layout';
+import { DOCK_TITLE_KEYS, DOCK_ZONES, type DockId, type DockSlotId } from './dock-layout';
 import { DockDragService } from './dock-drag.service';
 import { DockLayoutService } from './dock-layout.service';
 
@@ -39,15 +40,19 @@ const GRIP_KEYS: Readonly<Record<string, -1 | 1 | undefined>> = {
  * ```
  *
  * Dragging the header (or the grip) moves the dock between zones; arrow keys on the grip move it step by step.
- * The pairing dock uses `[draggable]="false"`. On stacked layouts (≤ 1180 px) the grip is hidden.
+ * The pairing dock uses `[draggable]="false"`. On stacked layouts (≤ 1180 px) the grip is hidden. A right click on the
+ * header (or Shift+F10 on the grip) offers "Hide dock", "Move to the left / bottom / right" and "Reset size"; each also
+ * exists visibly ("Layout", the grip and dragging, a double click on the divider).
  */
 @Component({
   selector: 'sf-dock-frame',
-  imports: [IconComponent],
+  imports: [ContextMenuDirective, IconComponent],
   template: `
     <div
       class="c-dock-frame__head"
       [class.is-draggable]="draggable()"
+      [sfContextMenu]="menu"
+      [sfContextMenuLabel]="dockTitle()"
       (pointerdown)="onHeadPointerDown($event)"
     >
       @if (draggable()) {
@@ -108,6 +113,35 @@ export class DockFrameComponent {
   protected readonly dockTitle = computed(() => t(DOCK_TITLE_KEYS[this.dock()]));
   protected readonly heading = computed(() => this.title() ?? this.dockTitle());
 
+  /** The right-click menu of the header; the pairing dock has none (it closes with its own button). */
+  protected readonly menu = (): readonly ContextMenuEntry[] => {
+    const id = this.dock();
+    if (id === 'pair') {
+      return [];
+    }
+    const zone = this.layout.zoneOf(id);
+    return [
+      {
+        label: t('regie.workspace.menu.hide'),
+        icon: 'eye-off',
+        run: () => this.layout.hideDock(id),
+      },
+      'separator',
+      ...DOCK_ZONES.map((target): ContextMenuEntry => ({
+        label: t(`regie.workspace.menu.${target}`),
+        checked: target === zone,
+        disabled: target === zone,
+        run: () => this.moveTo(id, target),
+      })),
+      'separator',
+      {
+        label: t('regie.workspace.menu.resetSize'),
+        icon: 'refresh',
+        run: () => this.layout.resetDockSize(id),
+      },
+    ];
+  };
+
   /**
    * Moves the focus to the header title (focusable with `tabindex="-1"`, not in the tab order); used when the dock's
    * content is replaced under the focus, e.g. Properties going back from the element to the scene.
@@ -125,6 +159,11 @@ export class DockFrameComponent {
       return;
     }
     this.drag?.pointerDown(id as DockId, event);
+  }
+
+  /** Docks at the end of another zone (menu "Move to …"). */
+  private moveTo(id: DockId, zone: (typeof DOCK_ZONES)[number]): void {
+    this.layout.moveDock(id, zone, this.layout.layout().zones[zone].length);
   }
 
   protected onGripKeyDown(event: KeyboardEvent): void {

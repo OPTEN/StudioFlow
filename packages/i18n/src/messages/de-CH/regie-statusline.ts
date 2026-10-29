@@ -20,12 +20,14 @@ export const regieStatusline: Translation<typeof en> = {
 
   'regie.statusline.incident.back': 'wieder da',
   'regie.statusline.incident.dismiss': 'Ausblenden',
+  'regie.statusline.incident.dismissLater': 'Ausblenden (sobald es zurück ist)',
   'regie.statusline.incident.goneFor': 'war {seconds} s weg',
   'regie.statusline.incident.reshare': 'Neu teilen lassen',
   'regie.statusline.incident.reshareOffline':
     '{name} ist nicht verbunden. Bitte direkt am Gerät neu teilen.',
   'regie.statusline.incident.reshareSent': 'Bitte an {name} geschickt: «Bildschirm erneut teilen»',
   'regie.statusline.incident.show': 'Im Dock Geräte zeigen',
+  'regie.statusline.incident.showDevice': 'Gerät zeigen',
   'regie.statusline.incident.timer': 'So lange dauert das Problem schon',
 
   'regie.statusline.issues.empty':

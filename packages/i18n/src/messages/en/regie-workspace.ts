@@ -31,6 +31,13 @@ export const regieWorkspace = {
     'The window is narrow, so the docks stack below the monitors. Widen it to move and resize docks.',
   'regie.workspace.layout.undo': 'Undo',
 
+  'regie.workspace.menu.bottom': 'Move to the bottom',
+  'regie.workspace.menu.hidden': '{dock} is hidden',
+  'regie.workspace.menu.hide': 'Hide dock',
+  'regie.workspace.menu.left': 'Move to the left',
+  'regie.workspace.menu.resetSize': 'Reset size',
+  'regie.workspace.menu.right': 'Move to the right',
+
   'regie.workspace.splitter.between': 'Size of {first} and {second}',
   'regie.workspace.splitter.bottom': 'Height of the docks at the bottom',
   'regie.workspace.splitter.left': 'Width of the docks on the left',

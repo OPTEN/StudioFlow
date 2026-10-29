@@ -14,7 +14,9 @@ export type ShortcutId =
   /** M: mutes (or unmutes) the selected channel of the audio mixer. */
   | 'mute'
   /** ? (Shift+/ on most layouts): shows the keyboard shortcuts. */
-  | 'help';
+  | 'help'
+  /** Ctrl/Cmd+, (the usual "Preferences" key): opens the settings window. */
+  | 'settings';
 
 /**
  * A shortcut handler. Returns true when it acted; only then the browser default (scrolling on Space, the browser's
@@ -58,7 +60,7 @@ export function isTypingTarget(element: Element | null): boolean {
  * {@link EscapeLayer}s; the service applies the prototype rules:
  * - Escape first, through the layers in priority order (also while typing);
  * - nothing else while typing in an input, select, textarea or editable element;
- * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo;
+ * - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z and Ctrl+Y redo, Ctrl/Cmd+, settings;
  * - other combinations with Ctrl, Cmd or Alt are left to the browser;
  * - Space triggers `take` unless the focus is on a button or link (Space activates those);
  * - M triggers `mute` (the selected audio channel);
@@ -116,6 +118,10 @@ export class KeyboardService {
       if (key === 'y' && event.ctrlKey && !event.shiftKey) {
         event.preventDefault();
         this.run('redo', -1);
+        return;
+      }
+      if (event.key === ',' && !event.shiftKey && !event.repeat && this.run('settings', -1)) {
+        event.preventDefault();
       }
       return;
     }

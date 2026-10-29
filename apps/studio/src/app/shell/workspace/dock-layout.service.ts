@@ -110,6 +110,18 @@ export class DockLayoutService {
     this.commit({ ...layout, hidden });
   }
 
+  /** "Hide dock" of a dock's right-click menu: hides it with a toast that offers "Undo" ("Layout" shows it again). */
+  hideDock(id: DockId): void {
+    if (!this.isShown(id)) {
+      return;
+    }
+    this.setShown(id, false);
+    this.toasts.show(t('regie.workspace.menu.hidden', { dock: t(DOCK_TITLE_KEYS[id]) }), {
+      label: t('regie.workspace.layout.undo'),
+      run: () => this.setShown(id, true),
+    });
+  }
+
   /**
    * Docks a dock in `zone` at `index` (drag and drop, keyboard); persisted. Shows "Devices is docked on the right"
    * with "Undo", which puts the docks back where they were before this move (sizes and hidden docks stay as they are
@@ -168,6 +180,23 @@ export class DockLayoutService {
     const defaults = defaultLayout().weights;
     const layout = this.layoutSignal();
     this.commit({ ...layout, weights: { ...layout.weights, [a]: defaults[a], [b]: defaults[b] } });
+  }
+
+  /**
+   * "Reset size" of a dock's right-click menu: its share of the zone and the zone's own size (the width of a side zone,
+   * the height of the bottom zone) go back to their defaults; persisted.
+   */
+  resetDockSize(id: DockId): void {
+    const defaults = defaultLayout();
+    const layout = this.layoutSignal();
+    const zone = zoneOf(layout, id);
+    const weights = { ...layout.weights, [id]: defaults.weights[id] };
+    if (zone === 'bottom') {
+      this.commit({ ...layout, weights, bottomH: null });
+    } else {
+      const key = zone === 'left' ? 'leftW' : 'rightW';
+      this.commit({ ...layout, weights, [key]: defaults[key] });
+    }
   }
 
   /** Height of the bottom zone as a fraction of the centre column (null = default height). */

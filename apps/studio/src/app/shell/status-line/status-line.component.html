@@ -94,7 +94,9 @@
 
 @if (!banner()) {
   @if (lead(); as row) {
-    <ng-container *ngTemplateOutlet="incident; context: { $implicit: row, kind: 'c-status__lead' }" />
+    <ng-container
+      *ngTemplateOutlet="incident; context: { $implicit: row, kind: 'c-status__lead' }"
+    />
     @if (more() > 0) {
       <button
         class="c-btn c-btn--sm c-btn--plain c-status__more"
@@ -133,6 +135,8 @@
     [class.is-ok]="row.recovered"
     [class.is-bad]="!row.recovered && row.bad"
     [class.is-warn]="!row.recovered && !row.bad"
+    [sfContextMenu]="menuFor(row)"
+    [sfContextMenuLabel]="row.code + ' ' + row.name"
   >
     <button
       class="c-status__target"
@@ -141,9 +145,8 @@
       (click)="show(row)"
     >
       <svg [sfIcon]="row.recovered ? 'check' : 'alert'"></svg>
-      <span class="c-code">{{ row.code }}</span>&ngsp;<span class="c-status__name">{{
-        row.name
-      }}</span>
+      <span class="c-code">{{ row.code }}</span
+      >&ngsp;<span class="c-status__name">{{ row.name }}</span>
     </button>
     @if (row.recovered) {
       <strong class="c-state--ok">{{ t('regie.statusline.incident.back') }}</strong>

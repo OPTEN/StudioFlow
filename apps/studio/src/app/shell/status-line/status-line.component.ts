@@ -28,6 +28,7 @@ import { StudioMediaService } from '../../core/media/studio-media.service';
 import { IncidentAckService } from '../../core/state/incident-ack.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClockService } from '../../core/ui/clock.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import {
   PopoverDirective,
@@ -82,12 +83,22 @@ interface Health {
  *   code this client does not know) and the link to the activity log.
  * - A lost server or media connection takes the row first.
  *
+ * A right click on an incident (or Shift+F10 on it) offers "Show device", "Ask to share again" where it applies and
+ * "Dismiss" (only once the device is back); every one of them is also a button on the incident.
+ *
  * The issues list stays in the DOM while the popover is closed (hidden), like a disclosure, so its rows keep their
  * timers and the popover opens without a load.
  */
 @Component({
   selector: 'sf-status-line',
-  imports: [IconComponent, NgTemplateOutlet, PopoverDirective, PopoverTriggerDirective, RouterLink],
+  imports: [
+    ContextMenuDirective,
+    IconComponent,
+    NgTemplateOutlet,
+    PopoverDirective,
+    PopoverTriggerDirective,
+    RouterLink,
+  ],
   templateUrl: './status-line.component.html',
   styleUrl: './status-line.component.scss',
   host: { role: 'region', '[attr.aria-label]': "t('regie.statusline.label')" },
@@ -235,6 +246,45 @@ export class StatusLineComponent {
         ),
       );
     });
+  }
+
+  /** Menus per incident row, built once per row object (the rows are recomputed when anything changes). */
+  private readonly menus = new WeakMap<IncidentRow, () => readonly ContextMenuEntry[]>();
+
+  /** The right-click menu of an incident. */
+  protected menuFor(row: IncidentRow): () => readonly ContextMenuEntry[] {
+    let menu = this.menus.get(row);
+    if (!menu) {
+      menu = () => {
+        const busy = this.pending().has(row.incident.id) || this.pending().has(ALL);
+        const entries: ContextMenuEntry[] = [
+          {
+            label: t('regie.statusline.incident.showDevice'),
+            icon: 'phone',
+            run: () => this.show(row),
+          },
+        ];
+        if (row.reshare && !row.recovered) {
+          entries.push({
+            label: t('regie.statusline.incident.reshare'),
+            icon: 'send',
+            disabled: busy,
+            run: () => void this.reshare(row),
+          });
+        }
+        entries.push('separator', {
+          label: row.recovered
+            ? t('regie.statusline.incident.dismiss')
+            : t('regie.statusline.incident.dismissLater'),
+          icon: 'check',
+          disabled: !row.recovered || busy,
+          run: () => void this.acknowledge(row),
+        });
+        return entries;
+      };
+      this.menus.set(row, menu);
+    }
+    return menu;
   }
 
   /** Running outage timer "mm:ss" (ticks with the shared clock). */

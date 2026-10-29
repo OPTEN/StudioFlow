@@ -11,11 +11,14 @@ import {
   viewChild,
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { t } from '@studioflow/i18n';
 import { audioExpected, formatClock, formatPercent } from '@studioflow/scene-model';
+import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
+import { ClipboardService } from '../../core/ui/clipboard.service';
 import { ClockService } from '../../core/ui/clock.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { KeyboardService } from '../../core/ui/keyboard.service';
 import {
@@ -23,10 +26,13 @@ import {
   PopoverService,
   PopoverTriggerDirective,
 } from '../../core/ui/popover.directive';
+import { keyHint } from '../../core/ui/shortcuts';
+import { ToastService } from '../../core/ui/toast.service';
 import { BroadcastControlComponent } from './broadcast-control.component';
 import { LAYOUT_POPOVER, LayoutPopoverComponent } from './layout-popover.component';
 import { outputLoad } from './output-load';
 import { OUTPUT_POPOVER, OutputPopoverComponent, linkStateText } from './output-popover.component';
+import { maskOutputUrl } from './output-url';
 import { ProductionMenuComponent } from './production-menu.component';
 import { ShortcutsSheetComponent } from './shortcuts-sheet.component';
 
@@ -47,12 +53,14 @@ export interface OutputChipState {
  * production switcher; in the centre the broadcast capsule (state word, runtime, the one action); on the right the
  * output capsule (lamp, "Output", latency or a warning word; opens the output popover), "Layout" (show and hide docks,
  * reset, keyboard shortcuts), the gear that leads to the settings window, the presence button with its count and the
- * clock. Owns the keyboard shortcuts sheet (also on the ? key).
+ * clock. Owns the keyboard shortcuts sheet (also on the ? key) and the global Ctrl/Cmd+, that opens the settings. A right
+ * click on the output capsule offers copying the first output link, the status popover and "Manage output links…".
  */
 @Component({
   selector: 'sf-header',
   imports: [
     BroadcastControlComponent,
+    ContextMenuDirective,
     IconComponent,
     LayoutPopoverComponent,
     OutputPopoverComponent,
@@ -70,6 +78,10 @@ export class HeaderComponent {
   protected readonly store = inject(ProductionStoreService);
   protected readonly popovers = inject(PopoverService);
   private readonly clock = inject(ClockService);
+  private readonly api = inject(StudioApiService);
+  private readonly clipboard = inject(ClipboardService);
+  private readonly toasts = inject(ToastService);
+  private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly layoutTrigger = viewChild<ElementRef<HTMLButtonElement>>('layoutTrigger');
@@ -78,6 +90,10 @@ export class HeaderComponent {
   protected readonly layoutPopover = LAYOUT_POPOVER;
   protected readonly presencePopover = PRESENCE_POPOVER;
   protected readonly t = t;
+  /** "Settings (Ctrl+,)": the tooltip names the shortcut. */
+  protected readonly settingsTitle = `${t('regie.header.settings')} (${keyHint('mod', ',')})`;
+  /** "Keyboard shortcuts (?)" on the Layout button. */
+  protected readonly layoutTitle = `${t('regie.header.layout.title')} (${t('regie.header.layout.shortcuts')}: ?)`;
 
   /** The keyboard shortcuts sheet is open. */
   protected readonly shortcutsOpen = signal(false);
@@ -161,12 +177,63 @@ export class HeaderComponent {
     t('regie.header.presence.long', { count: this.operators() }),
   );
 
+  /** Right click on the output capsule: the frequent output commands; each one also exists in the popover. */
+  protected readonly outputMenu = (): readonly ContextMenuEntry[] => [
+    {
+      label: t('regie.header.outputMenu.copy'),
+      icon: 'copy',
+      disabled: !this.store.productionId(),
+      run: () => void this.copyFirstLink(),
+    },
+    {
+      label: t('regie.header.outputMenu.status'),
+      icon: 'pulse',
+      run: () => this.popovers.open(this.outputPopover),
+    },
+    'separator',
+    {
+      label: t('regie.header.outputMenu.manage'),
+      icon: 'gear',
+      run: () => void this.router.navigateByUrl('/settings/output'),
+    },
+  ];
+
   constructor() {
-    const unregister = inject(KeyboardService).register('help', () => {
+    const keyboard = inject(KeyboardService);
+    const offHelp = keyboard.register('help', () => {
       this.openShortcuts(this.document.activeElement as HTMLElement | null);
       return true;
     });
-    inject(DestroyRef).onDestroy(unregister);
+    const offSettings = keyboard.register('settings', () => {
+      this.popovers.closeAll();
+      void this.router.navigateByUrl('/settings');
+      return true;
+    });
+    inject(DestroyRef).onDestroy(() => {
+      offHelp();
+      offSettings();
+    });
+  }
+
+  /** "Copy output link": the full URL of the first link (the toast shows it masked); says so when there is none. */
+  protected async copyFirstLink(): Promise<void> {
+    const productionId = this.store.productionId();
+    if (!productionId) {
+      return;
+    }
+    try {
+      const link = (await this.api.getOutputSettings(productionId)).links[0];
+      if (!link) {
+        this.toasts.show(t('regie.header.outputMenu.noLink'), {
+          label: t('regie.header.outputMenu.manage'),
+          run: () => void this.router.navigateByUrl('/settings/output'),
+        });
+        return;
+      }
+      await this.clipboard.copy(link.url, { label: maskOutputUrl(link.url) });
+    } catch (error) {
+      this.toasts.error(error);
+    }
   }
 
   /** Opens the keyboard shortcuts sheet; the focus returns to `from` (or to the Layout button) when it closes. */

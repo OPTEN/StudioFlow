@@ -53,6 +53,17 @@ describe('KeyboardService', () => {
     expect(calls).toBe(1);
   });
 
+  it('maps Ctrl+, and Cmd+, to the settings, but not while typing', () => {
+    let calls = 0;
+    cleanup.push(keyboard.register('settings', () => (calls++, true)));
+    expect(press(',', { ctrlKey: true }).defaultPrevented).toBe(true);
+    press(',', { metaKey: true });
+    press(',');
+    focus('<input type="text">');
+    press(',', { ctrlKey: true });
+    expect(calls).toBe(2);
+  });
+
   it('closes an open sheet with Escape before anything else', () => {
     const order: string[] = [];
     cleanup.push(keyboard.registerEscape('popover', () => (order.push('popover'), true)));

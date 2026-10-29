@@ -9,6 +9,7 @@ import {
   sourceFixture,
 } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService, type ContextMenuItem } from '../../core/ui/context-menu';
 import { PopoverService } from '../../core/ui/popover.directive';
 import { StationFocusService } from '../station-focus.service';
 import { ISSUES_POPOVER, StatusLineComponent } from './status-line.component';
@@ -192,6 +193,46 @@ describe('StatusLineComponent', () => {
       { status: 202, statusText: 'Accepted' },
     );
     buttons[1].click();
+    harness.http
+      .expectOne(`/api/productions/${PRODUCTION_ID}/incidents/inc_2/ack`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await render();
+  });
+
+  it('offers "Show device", "Ask to share again" and "Dismiss" on a right click of an incident', async () => {
+    const now = Date.now();
+    await setup(
+      snapshotFixture({
+        incidents: [
+          incidentFixture('inc_3', 'dev_bbbbbbbbbbbbbbbb/screen-1', 'S1', { kind: 'ended' }),
+          incidentFixture('inc_2', 'dev_aaaaaaaaaaaaaaaa/camera', 'K1', {
+            startedAt: new Date(now - 60000).toISOString(),
+            endedAt: new Date(now - 51000).toISOString(),
+          }),
+        ],
+      }),
+    );
+    const menus = TestBed.inject(ContextMenuService);
+    const open = (row: Element): ContextMenuItem[] => {
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      return (menus.current()?.entries ?? []).filter(
+        (entry): entry is ContextMenuItem => entry !== 'separator',
+      );
+    };
+    const [active, recovered] = Array.from(element.querySelectorAll('.c-status__inc'));
+    const activeItems = open(active);
+    expect(activeItems.map((item) => [item.label, item.disabled ?? false])).toEqual([
+      ['Show device', false],
+      ['Ask to share again', false],
+      ['Dismiss (once it is back)', true],
+    ]);
+    const focus = vi.spyOn(TestBed.inject(StationFocusService), 'showSource');
+    menus.run(activeItems[0]);
+    expect(focus).toHaveBeenCalledWith('dev_bbbbbbbbbbbbbbbb/screen-1');
+
+    const recoveredItems = open(recovered);
+    expect(recoveredItems.map((item) => item.label)).toEqual(['Show device', 'Dismiss']);
+    menus.run(recoveredItems[1]);
     harness.http
       .expectOne(`/api/productions/${PRODUCTION_ID}/incidents/inc_2/ack`)
       .flush(null, { status: 204, statusText: 'No Content' });

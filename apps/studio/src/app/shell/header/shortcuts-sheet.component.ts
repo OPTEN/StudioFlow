@@ -3,38 +3,21 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  computed,
   effect,
   inject,
   input,
   output,
   viewChild,
 } from '@angular/core';
-import { t, type PlainMessageKey } from '@studioflow/i18n';
+import { t } from '@studioflow/i18n';
 import { IconComponent } from '../../core/ui/icon.component';
 import { KeyboardService } from '../../core/ui/keyboard.service';
-
-/** One shortcut: alternative key combinations (each a list of keycaps) and what they do. */
-interface Shortcut {
-  readonly combos: readonly (readonly string[])[];
-  readonly textKey: PlainMessageKey;
-}
-
-/** A group of shortcuts under a heading. */
-interface ShortcutGroup {
-  readonly labelKey: PlainMessageKey;
-  readonly shortcuts: readonly Shortcut[];
-}
-
-/** True on Apple platforms, where undo and redo use ⌘ instead of Ctrl. */
-function isApple(): boolean {
-  return typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
-}
+import { SHORTCUT_GROUPS, keycapText } from '../../core/ui/shortcuts';
 
 /**
  * The keyboard shortcuts of the control room as a modal sheet (`<dialog>`), opened from "Layout" › "Keyboard shortcuts"
- * or with the ? key. Lists the global keys of the KeyboardService (1–9, Space, M, undo and redo, Escape, ?) and the arrow
- * keys of the dock grips and dividers. Escape, the close button and a click on the backdrop close it (`closed`).
+ * or with the ? key. Renders {@link SHORTCUT_GROUPS} (core/ui/shortcuts.ts), the one list of every shortcut, in two
+ * columns where the window is wide enough. Escape, the close button and a click on the backdrop close it (`closed`).
  */
 @Component({
   selector: 'sf-shortcuts-sheet',
@@ -60,28 +43,30 @@ function isApple(): boolean {
             <svg sfIcon="close"></svg>
           </button>
         </div>
-        @for (group of groups(); track group.labelKey) {
-          <section class="c-keys" [attr.aria-labelledby]="'sf-keys-' + $index">
-            <h3 class="c-keys__label" [id]="'sf-keys-' + $index">{{ t(group.labelKey) }}</h3>
-            <dl class="c-keys__list">
-              @for (shortcut of group.shortcuts; track shortcut.textKey) {
-                <div class="c-keys__row">
-                  <dt class="c-keys__combo">
-                    @for (combo of shortcut.combos; track $index) {
-                      @if (!$first) {
-                        <span class="c-keys__or">{{ t('regie.header.keys.or') }}</span>
+        <div class="c-sheet__groups">
+          @for (group of groups; track group.labelKey) {
+            <section class="c-keys" [attr.aria-labelledby]="'sf-keys-' + $index">
+              <h3 class="c-keys__label" [id]="'sf-keys-' + $index">{{ t(group.labelKey) }}</h3>
+              <dl class="c-keys__list">
+                @for (shortcut of group.shortcuts; track shortcut.textKey) {
+                  <div class="c-keys__row">
+                    <dt class="c-keys__combo">
+                      @for (combo of shortcut.combos; track $index) {
+                        @if (!$first) {
+                          <span class="c-keys__or">{{ t('regie.header.keys.or') }}</span>
+                        }
+                        @for (key of combo; track $index) {
+                          <kbd class="c-keys__cap">{{ cap(key) }}</kbd>
+                        }
                       }
-                      @for (key of combo; track $index) {
-                        <kbd class="c-keys__cap">{{ key }}</kbd>
-                      }
-                    }
-                  </dt>
-                  <dd class="c-keys__text">{{ t(shortcut.textKey) }}</dd>
-                </div>
-              }
-            </dl>
-          </section>
-        }
+                    </dt>
+                    <dd class="c-keys__text">{{ t(shortcut.textKey) }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+          }
+        </div>
         <p class="c-sheet__note">{{ t('regie.header.keys.typing') }}</p>
       </div>
     </dialog>
@@ -98,43 +83,8 @@ export class ShortcutsSheetComponent {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   protected readonly t = t;
 
-  protected readonly groups = computed<readonly ShortcutGroup[]>(() => {
-    const mod = isApple() ? '⌘' : 'Ctrl';
-    const space = t('regie.header.keys.space');
-    return [
-      {
-        labelKey: 'regie.header.keys.switching',
-        shortcuts: [
-          { combos: [['1–9']], textKey: 'regie.header.keys.scenes' },
-          { combos: [[space]], textKey: 'regie.header.keys.take' },
-          { combos: [['M']], textKey: 'regie.header.keys.mute' },
-        ],
-      },
-      {
-        labelKey: 'regie.header.keys.editing',
-        shortcuts: [
-          { combos: [[mod, 'Z']], textKey: 'regie.header.keys.undo' },
-          {
-            combos: [
-              [mod, 'Shift', 'Z'],
-              [mod, 'Y'],
-            ],
-            textKey: 'regie.header.keys.redo',
-          },
-          { combos: [['Esc']], textKey: 'regie.header.keys.escape' },
-        ],
-      },
-      {
-        labelKey: 'regie.header.keys.layout',
-        shortcuts: [
-          { combos: [['←', '↑', '→', '↓']], textKey: 'regie.header.keys.arrows' },
-          { combos: [['Shift', '←', '→']], textKey: 'regie.header.keys.arrowsShift' },
-          { combos: [['Enter']], textKey: 'regie.header.keys.enter' },
-          { combos: [['?']], textKey: 'regie.header.keys.help' },
-        ],
-      },
-    ];
-  });
+  protected readonly groups = SHORTCUT_GROUPS;
+  protected readonly cap = keycapText;
 
   constructor() {
     effect(() => {

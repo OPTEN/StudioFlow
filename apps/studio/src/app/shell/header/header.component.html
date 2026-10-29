@@ -17,9 +17,12 @@
         aria-haspopup="dialog"
         [attr.title]="outputTitle()"
         [sfPopoverTrigger]="outputPopover"
+        [sfContextMenu]="outputMenu"
+        [sfContextMenuLabel]="t('regie.header.output.label')"
       >
         <span class="c-lamp" aria-hidden="true" [class]="outputLamp()"></span>
-        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span>&ngsp;
+        <span class="c-header__out-label">{{ t('regie.header.output.label') }}</span
+        >&ngsp;
         @switch (outputState().kind) {
           @case ('audio') {
             <span class="c-header__out-state c-state--warn" data-testid="audio-blocked">{{
@@ -53,6 +56,7 @@
         class="c-chipbtn c-header__tool"
         type="button"
         aria-haspopup="dialog"
+        [title]="layoutTitle"
         [sfPopoverTrigger]="layoutPopover"
       >
         <svg sfIcon="layout"></svg>
@@ -67,7 +71,7 @@
       class="c-ibtn c-header__settings"
       routerLink="/settings"
       [attr.aria-label]="t('regie.header.settings')"
-      [title]="t('regie.header.settings')"
+      [title]="settingsTitle"
     >
       <svg sfIcon="gear"></svg>
     </a>
