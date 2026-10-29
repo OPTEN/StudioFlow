@@ -63,8 +63,9 @@ $RAIL_SIDE: 76px;
   top: 0;
   z-index: z(controls) + 1;
 
+  // Beside the side rail, not over its corner: the box lies above the rail and would take its taps.
   @include landscape-low {
-    padding-right: calc(var(--gr) + #{$RAIL_SIDE});
+    right: $RAIL_SIDE;
   }
 }
 
