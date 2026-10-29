@@ -19,7 +19,7 @@ const LEVELS: readonly LossLevel[] = [
 ];
 
 /** A level is left only when the loss is below half of what entered it, this many intervals in a row. */
-const CALM_INTERVALS_TO_LEAVE = 5;
+const CALM_INTERVALS_TO_LEAVE = 3;
 
 /**
  * Chooses the jitter buffer target of one receiver from the loss of every interval: up at once, down only after a calm
@@ -52,6 +52,11 @@ export class LossPlayout {
       }
     }
     return this.target;
+  }
+
+  /** True while the buffer is above the clean level: the link is losing packets. */
+  get lossy(): boolean {
+    return this.#level > 0;
   }
 
   /** The target now. */

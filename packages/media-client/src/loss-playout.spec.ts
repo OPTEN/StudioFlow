@@ -15,13 +15,15 @@ describe('LossPlayout', () => {
     expect(playout.update(0.2)).toBe(400);
   });
 
-  it('shrinks to what the loss asks only after five calm intervals in a row', () => {
+  it('shrinks to what the loss asks only after three calm intervals in a row', () => {
     const playout = new LossPlayout(50);
     playout.update(0.2);
-    for (let interval = 0; interval < 4; interval += 1) {
+    expect(playout.lossy).toBe(true);
+    for (let interval = 0; interval < 2; interval += 1) {
       expect(playout.update(0.001)).toBe(400);
     }
     expect(playout.update(0.001)).toBe(50);
+    expect(playout.lossy).toBe(false);
   });
 
   it('is not calm while the loss hovers around a threshold', () => {

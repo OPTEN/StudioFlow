@@ -648,11 +648,103 @@ describe('LiveKitSourceProvider', () => {
         await provider.decoderSummary();
         expect(track.receiver?.jitterBufferTarget).toBe(400);
 
-        for (let interval = 1; interval <= 5; interval += 1) {
+        for (let interval = 1; interval <= 3; interval += 1) {
           track.stats = lossStats(250, 2750 + interval * 1000);
           await provider.decoderSummary();
         }
         expect(track.receiver?.jitterBufferTarget).toBe(50);
+      });
+
+      describe('a stream that stops decoding', () => {
+        const stuckStats = (decoded: number, lost = 250): Map<string, unknown> =>
+          new Map<string, unknown>([
+            [
+              'IT',
+              {
+                type: 'inbound-rtp',
+                kind: 'video',
+                packetsLost: lost,
+                packetsReceived: 750,
+                bytesReceived: 1000,
+                framesDecoded: decoded,
+              },
+            ],
+          ]);
+
+        async function lossy() {
+          const { provider, track } = await subscribed();
+          track.stats = stuckStats(100);
+          await provider.decoderSummary();
+          return { provider, track };
+        }
+
+        it('is asked for a keyframe once after a second without a decoded frame, then every 3 s at most', async () => {
+          const { room, provider } = setup('output');
+          need(provider, CAMERA);
+          const track = new FakeRemoteTrack();
+          const { publication } = room.subscribe(DEVICE, 'camera', { track });
+          track.stats = stuckStats(100);
+          await provider.decoderSummary(); // 25 % loss: the stream is watched
+
+          await vi.advanceTimersByTimeAsync(500); // first look: 100 frames
+          expect(publication.setEnabled).not.toHaveBeenCalledWith(false);
+          await vi.advanceTimersByTimeAsync(1000); // still 100 frames after more than a second
+          expect(publication.setEnabled.mock.calls.slice(-2)).toEqual([[false], [true]]);
+
+          publication.setEnabled.mockClear();
+          await vi.advanceTimersByTimeAsync(2000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          await vi.advanceTimersByTimeAsync(1500);
+          expect(publication.setEnabled.mock.calls).toEqual([[false], [true]]);
+        });
+
+        it('leaves a stream alone that keeps decoding, a muted one and a clean link', async () => {
+          const { room, provider } = setup('output');
+          need(provider, CAMERA);
+          const track = new FakeRemoteTrack();
+          const { publication } = room.subscribe(DEVICE, 'camera', { track });
+          publication.setEnabled.mockClear();
+          track.stats = stuckStats(100);
+          await provider.decoderSummary();
+          for (let frames = 101; frames < 110; frames += 1) {
+            track.stats = stuckStats(frames);
+            await vi.advanceTimersByTimeAsync(500);
+          }
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+
+          publication.isMuted = true;
+          await vi.advanceTimersByTimeAsync(5000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          publication.isMuted = false;
+
+          // The link is clean again: the watch ends and nothing is asked for.
+          for (let interval = 0; interval < 3; interval += 1) {
+            track.stats = new Map<string, unknown>([
+              [
+                'IT',
+                {
+                  type: 'inbound-rtp',
+                  kind: 'video',
+                  packetsLost: 250,
+                  packetsReceived: 750 + (interval + 1) * 1000,
+                  bytesReceived: 1000,
+                  framesDecoded: 120,
+                },
+              ],
+            ]);
+            await provider.decoderSummary();
+          }
+          publication.setEnabled.mockClear();
+          await vi.advanceTimersByTimeAsync(10_000);
+          expect(publication.setEnabled).not.toHaveBeenCalled();
+          expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it('stops watching when the provider is disposed', async () => {
+          const { provider } = await lossy();
+          provider.dispose();
+          expect(vi.getTimerCount()).toBe(0);
+        });
       });
 
       it('leaves the buffer of the Regie alone', async () => {

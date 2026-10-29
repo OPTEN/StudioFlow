@@ -27,6 +27,8 @@ import { listenTo } from './livekit-port';
 import { consoleLogger, errorContext, type MediaLogger } from './logger';
 import type { RoomSource } from './media-session';
 import {
+  indexStats,
+  inboundVideo,
   ReceiverStatsReader,
   type AudioReceiverSnapshot,
   type ReceiverSnapshot,
@@ -96,6 +98,16 @@ const PLAYOUT: Readonly<
   studio: { delaySeconds: 0, jitterBufferTargetMs: 0 },
   output: { delaySeconds: 0.05, jitterBufferTargetMs: 50 },
 };
+
+/**
+ * A stream on a lossy link that decodes no frame for this long is stuck: the decoder waits up to three seconds for a frame
+ * whose packets never complete before it asks for a keyframe. The output asks the SFU for one itself (the track is disabled
+ * and enabled again, which makes the SFU request a keyframe from the sender), not more often than every
+ * {@link KEYFRAME_REQUEST_EVERY_MS}.
+ */
+const STALL_AFTER_MS = 1_000;
+const KEYFRAME_REQUEST_EVERY_MS = 3_000;
+const STALL_POLL_MS = 500;
 
 const PENDING: SourceAvailability = { state: 'pending' };
 const LIVE: SourceAvailability = { state: 'live' };
@@ -197,6 +209,13 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
   readonly #requested = new WeakMap<MediaRemotePublication, boolean>();
   /** The playout buffer of each video track an output receives, sized by its loss. */
   readonly #lossPlayouts = new WeakMap<MediaRemoteTrack, LossPlayout>();
+  /** The streams on a lossy link that are watched for a stall, and the watch (it only runs while there is one). */
+  readonly #lossyTracks = new Set<MediaRemoteTrack>();
+  readonly #decodeMarks = new WeakMap<
+    MediaRemoteTrack,
+    { decoded: number; since: number; requestedAt: number }
+  >();
+  #stallWatch: TimerHandle | null = null;
   readonly #changes: Listeners<[string]>;
   readonly #audioChanges: Listeners<[string]>;
   readonly #stats = new ReceiverStatsReader();
@@ -425,6 +444,11 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
       return;
     }
     this.#disposed = true;
+    if (this.#stallWatch !== null) {
+      this.#clock.clearTimeout(this.#stallWatch);
+      this.#stallWatch = null;
+    }
+    this.#lossyTracks.clear();
     this.#stopRoomWatch();
     this.#events?.dispose();
     this.#events = null;
@@ -707,6 +731,76 @@ export class LiveKitSourceProvider implements SourceMediaProvider {
     if (after !== before) {
       this.#setJitterBufferTarget(track, after);
     }
+    if (playout.lossy) {
+      this.#lossyTracks.add(track);
+      this.#scheduleStallWatch();
+    } else {
+      this.#lossyTracks.delete(track);
+    }
+  }
+
+  #scheduleStallWatch(): void {
+    if (this.#stallWatch !== null || this.#disposed) {
+      return;
+    }
+    this.#stallWatch = this.#clock.setTimeout(() => {
+      this.#stallWatch = null;
+      void this.#lookForStalls().finally(() => {
+        if (this.#lossyTracks.size > 0) {
+          this.#scheduleStallWatch();
+        }
+      });
+    }, STALL_POLL_MS);
+  }
+
+  /** Asks for a keyframe on every watched stream that has decoded nothing for {@link STALL_AFTER_MS}. */
+  async #lookForStalls(): Promise<void> {
+    const now = this.#clock.now();
+    const watched = [...this.#entries.values()].filter(
+      (entry) =>
+        !entry.paused &&
+        entry.subscription !== null &&
+        this.#lossyTracks.has(entry.subscription.track),
+    );
+    for (const track of [...this.#lossyTracks]) {
+      if (!watched.some((entry) => entry.subscription?.track === track)) {
+        this.#lossyTracks.delete(track);
+      }
+    }
+    await Promise.all(
+      watched.map(async ({ subscription }) => {
+        if (subscription === null || subscription.publication.isMuted) {
+          return;
+        }
+        try {
+          const report = await subscription.track.getRTCStatsReport();
+          const inbound = report === undefined ? undefined : inboundVideo(indexStats(report));
+          const decoded = Number(inbound?.['framesDecoded']);
+          if (!Number.isFinite(decoded)) {
+            return;
+          }
+          const mark = this.#decodeMarks.get(subscription.track);
+          if (mark === undefined || decoded !== mark.decoded) {
+            this.#decodeMarks.set(subscription.track, {
+              decoded,
+              since: now,
+              requestedAt: mark?.requestedAt ?? Number.NEGATIVE_INFINITY,
+            });
+          } else if (
+            now - mark.since >= STALL_AFTER_MS &&
+            now - mark.requestedAt >= KEYFRAME_REQUEST_EVERY_MS
+          ) {
+            mark.requestedAt = now;
+            this.#guard('request keyframe', () => {
+              subscription.publication.setEnabled(false);
+              subscription.publication.setEnabled(true);
+            });
+          }
+        } catch (error) {
+          this.#logger.warn('stall check failed', errorContext(error));
+        }
+      }),
+    );
   }
 
   /**
