@@ -3,7 +3,6 @@ import { THRESHOLD } from '../../support/constants';
 import { dockerCtl, livekitCtl, restoreNetwork, type NetemProfile } from '../../support/docker-ctl';
 import { stackConfig } from '../../support/env';
 import { requireTool } from '../../support/fixtures';
-import { outBug } from '../../support/output/bugs';
 import { expect, test } from '../../support/ui/fixtures';
 import { sleep, waitUntil } from '../../support/shell';
 import { apiReady, ensureHealthy, inspectService, tryFetch } from '../../support/stack';
@@ -508,7 +507,6 @@ test.describe('OUT netem on LiveKit', () => {
       `${scenario.id} [output, netem ${scenario.name}] the output stays up under impairment of LiveKit: no reload, no slate, latency and frame gaps recorded, recovery after clearing`,
       t.disruptive(scenario.priority),
       async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-        if (scenario.id === 'E2E-NET-05') outBug('OUT-06', 'with 20 % loss on the media path the picture freezes for more than 5 s in some windows (T-FREEZE hard limit), is frozen for 14-52 s of every minute and drops to 320 px / 2-15 fps');
         requireTool('netem');
         test.setTimeout(600_000);
         const deps = { api, production, pairContext, openPhone, openLaptop };
@@ -601,7 +599,6 @@ test.describe('OUT freeze budget and sender loss report', () => {
     'E2E-NET-04 [freeze budget] with 5 % loss on the link the output freezes at most 2 s per minute with at least 24 fps (T-FREEZE, median of six windows)',
     t.disruptive('@p1'),
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-06', 'with 5 % loss on the media path the output freezes for 0-52 s per minute (26-52 s on a quiet machine, plan: <= 2 s) at 5-25 fps');
       requireTool('netem');
       test.setTimeout(900_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };

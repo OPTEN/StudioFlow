@@ -3,7 +3,6 @@ import { stackConfig } from '../../support/env';
 import { OutputHub, StudioHub } from '../../support/hubs';
 import { expect, test } from '../../support/ui/fixtures';
 import { sleep } from '../../support/output/analysis';
-import { outBug } from '../../support/output/bugs';
 import { openProbedOutput, recordHubFrames, type HubMessage } from '../../support/output/open';
 import { inboundOf, inboundVideo, trackSids } from '../../support/output/rtc';
 import { fmt, judgeTiming, recordMeasurement, startCpuMonitor, summarize, timingGate } from '../../support/output/stats';
@@ -395,7 +394,6 @@ test.describe('OUT media and reports', () => {
     'E2E-OUT-22 [output, subscriptions] the output receives only the sources that are in a scene; a screen in no scene is not subscribed',
     t.p1,
     async ({ browser, api, production, pairContext, openPhone, openLaptop, onCleanup }) => {
-      outBug('OUT-04', 'the output subscribes to every published track (autoSubscribe), also to sources that are in no scene');
       test.setTimeout(180_000);
       const deps = { api, production, pairContext, openPhone, openLaptop };
       const camera = await addCamera(deps, 'Camera One');
