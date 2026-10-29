@@ -1,0 +1,246 @@
+[
+ {
+  "file": "01-regie-direct.png",
+  "title": "Control room, Studio Mode off: Program only, the Preview area explains Studio Mode"
+ },
+ {
+  "file": "02-regie-studio.png",
+  "title": "Control room, Studio Mode on: Preview, Program, control column, docks, an incident in the activity bar"
+ },
+ {
+  "file": "03-switcher.png",
+  "title": "Toolbar: production switcher"
+ },
+ {
+  "file": "04-output-popover.png",
+  "title": "Toolbar: Output status and links"
+ },
+ {
+  "file": "05-output-menu.png",
+  "title": "Right-click on the Output capsule"
+ },
+ {
+  "file": "06-layout-popover.png",
+  "title": "Toolbar: Layout (docks, reset, shortcuts)"
+ },
+ {
+  "file": "07-shortcuts.png",
+  "title": "Keyboard shortcuts sheet (?)"
+ },
+ {
+  "file": "08-issues.png",
+  "title": "Activity bar: issues popover"
+ },
+ {
+  "file": "10-end-broadcast.png",
+  "title": "Broadcast capsule: End broadcast asks first"
+ },
+ {
+  "file": "11-scene-menu.png",
+  "title": "Right-click on a scene"
+ },
+ {
+  "file": "12-add-source.png",
+  "title": "Sources: Add source menu"
+ },
+ {
+  "file": "13-source-menu.png",
+  "title": "Right-click on a source"
+ },
+ {
+  "file": "14-item-selected.png",
+  "title": "An item selected: Properties with tabs, the selection on the Preview monitor"
+ },
+ {
+  "file": "15-properties-style.png",
+  "title": "Properties: tab Style"
+ },
+ {
+  "file": "15-properties-when-it-fails.png",
+  "title": "Properties: tab When it fails"
+ },
+ {
+  "file": "16-item-menu.png",
+  "title": "Right-click on an item on the Preview monitor"
+ },
+ {
+  "file": "17-monitor-menu.png",
+  "title": "Preview monitor menu"
+ },
+ {
+  "file": "18-media-library.png",
+  "title": "Media library"
+ },
+ {
+  "file": "19-device-open.png",
+  "title": "Devices: an open device with its tabs"
+ },
+ {
+  "file": "21-device-menu.png",
+  "title": "Right-click on a device"
+ },
+ {
+  "file": "22-pairing-phone.png",
+  "title": "Add device: Phone (QR code)"
+ },
+ {
+  "file": "23-pairing-laptop.png",
+  "title": "Add device: Laptop (short address and code)"
+ },
+ {
+  "file": "24-pairing-link.png",
+  "title": "Add device: invite link"
+ },
+ {
+  "file": "60-sender-start-laptop.png",
+  "title": "Sender on a laptop: connect this device"
+ },
+ {
+  "file": "61-sender-waiting.png",
+  "title": "Sender: waiting for approval with the check code"
+ },
+ {
+  "file": "25-knock.png",
+  "title": "Control room: a laptop asks to join"
+ },
+ {
+  "file": "26-regie-light.png",
+  "title": "Control room, light appearance"
+ },
+ {
+  "file": "27-regie-1280x720.png",
+  "title": "Control room at 1280 × 720"
+ },
+ {
+  "file": "27-regie-1024x768.png",
+  "title": "Control room at 1024 × 768"
+ },
+ {
+  "file": "27-regie-390x844.png",
+  "title": "Control room at 390 × 844"
+ },
+ {
+  "file": "30-settings-general.png",
+  "title": "Settings › General (name, format and resolution)"
+ },
+ {
+  "file": "31-settings-slates.png",
+  "title": "Settings › Slates"
+ },
+ {
+  "file": "32-settings-text-style.png",
+  "title": "Settings › Text style"
+ },
+ {
+  "file": "33-settings-output.png",
+  "title": "Settings › Output links"
+ },
+ {
+  "file": "34-settings-productions.png",
+  "title": "Settings › All productions"
+ },
+ {
+  "file": "35-settings-appearance.png",
+  "title": "Settings › Appearance and language"
+ },
+ {
+  "file": "36-settings-media.png",
+  "title": "Settings › Media server"
+ },
+ {
+  "file": "37-settings-network.png",
+  "title": "Settings › Address and certificate"
+ },
+ {
+  "file": "38-settings-embedding.png",
+  "title": "Settings › Embedding"
+ },
+ {
+  "file": "39-settings-backups.png",
+  "title": "Settings › Backups"
+ },
+ {
+  "file": "40-monitoring.png",
+  "title": "Diagnostics › Monitoring"
+ },
+ {
+  "file": "41-activity-log.png",
+  "title": "Diagnostics › Activity log"
+ },
+ {
+  "file": "42-settings-account.png",
+  "title": "Settings › Account"
+ },
+ {
+  "file": "43-settings-about.png",
+  "title": "Settings › About StudioFlow"
+ },
+ {
+  "file": "31b-settings-slates-end.png",
+  "title": "Settings › Slates, the end slate tab"
+ },
+ {
+  "file": "33b-output-link-open.png",
+  "title": "Output links: a link opened (tab Link)"
+ },
+ {
+  "file": "33d-output-menu.png",
+  "title": "Right-click on an output link"
+ },
+ {
+  "file": "34b-productions-menu.png",
+  "title": "Right-click on a production"
+ },
+ {
+  "file": "41b-activity-details.png",
+  "title": "Activity log: an entry opened (details tabs)"
+ },
+ {
+  "file": "41c-activity-menu.png",
+  "title": "Right-click on an activity entry"
+ },
+ {
+  "file": "44-settings-light.png",
+  "title": "Settings window, light appearance"
+ },
+ {
+  "file": "45-settings-phone.png",
+  "title": "Settings window at 390 × 844"
+ },
+ {
+  "file": "50-login.png",
+  "title": "Sign in"
+ },
+ {
+  "file": "51-login-light.png",
+  "title": "Sign in, light appearance"
+ },
+ {
+  "file": "62-sender-phone-live.png",
+  "title": "Sender on a phone: camera live (red frame)"
+ },
+ {
+  "file": "63-sender-phone-preview.png",
+  "title": "Sender on a phone: camera in Preview (green frame)"
+ },
+ {
+  "file": "64-sender-laptop.png",
+  "title": "Sender on a laptop: a shared screen"
+ },
+ {
+  "file": "65-sender-start-phone.png",
+  "title": "Sender on a phone: connect this device"
+ },
+ {
+  "file": "70-output-live.png",
+  "title": "Output page: the program"
+ },
+ {
+  "file": "71-output-no-access.png",
+  "title": "Output page: a wrong link (No access)"
+ },
+ {
+  "file": "72-output-end.png",
+  "title": "Output page: the end slate"
+ }
+]
