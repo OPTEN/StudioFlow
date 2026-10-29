@@ -144,7 +144,7 @@ public sealed class ProductionService(
                 if (production.Update(request, catalog))
                 {
                     EmitProduction(context, production);
-                    AuditUpdate(context, production, name, standbySlate, endSlate);
+                    AuditUpdate(context, production, request, name, standbySlate, endSlate);
                 }
 
                 return Dtos.Production(production);
@@ -356,14 +356,15 @@ public sealed class ProductionService(
     private static AuditEntry ProductionCreatedEntry(Production production, string actor) =>
         AuditEntry.Create(production.Id, production.CreatedAt, actor, AuditActions.ProductionCreated, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Name] = production.Name });
 
-    private static void AuditUpdate(MutationContext context, Production production, string previousName, SlateDto previousStandbySlate, SlateDto previousEndSlate)
+    private static void AuditUpdate(MutationContext context, Production production, UpdateProductionRequest request, string previousName, SlateDto previousStandbySlate, SlateDto previousEndSlate)
     {
         if (!string.Equals(production.Name, previousName, StringComparison.Ordinal))
         {
             context.Audit(AuditActors.Admin, AuditActions.ProductionRenamed, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.From] = previousName, [AuditDetails.Name] = production.Name });
         }
 
-        if (production.StandbySlate != previousStandbySlate)
+        // A subtitle that follows a rename is part of the rename, not an edit of the slate.
+        if (request.StandbySlate is not null && production.StandbySlate != previousStandbySlate)
         {
             context.Audit(AuditActors.Admin, AuditActions.SlateChanged, new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Slate] = AuditSlates.Standby });
         }
