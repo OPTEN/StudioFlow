@@ -34,6 +34,7 @@ import {
   recordRequests,
   renderedItems,
   replaceItems,
+  rowToggle,
   selectViaRow,
   sourceRow,
   sourcesDock,
@@ -1208,7 +1209,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .poll(overall, { message: 'K1 is in the program scene of a live broadcast' })
           .toBe('program');
 
-        const eye = page.getByRole('button', { name: 'Hide: Phone One' });
+        const eye = await rowToggle(page, 'Hide: Phone One');
         await eye.click();
         await expect(page.getByRole('button', { name: 'Show: Phone One' })).toHaveAttribute(
           'aria-pressed',
@@ -1247,7 +1248,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           operatorB.page.getByRole('button', { name: 'Show: Phone One' }),
           'the other operator sees it hidden',
         ).toBeVisible({ timeout: 2000 });
-        await page.getByRole('button', { name: 'Show: Phone One' }).click();
+        await (await rowToggle(page, 'Show: Phone One')).click();
         await expect.poll(overall).toBe('program');
         await expect
           .poll(
@@ -1259,7 +1260,7 @@ test.describe('REGIE editing: undo, layers, hide, lock, remove, look', () => {
           .toBe(true);
 
         // Lock K2: selectable, but no drag, no nudge; the inspector still works.
-        await page.getByRole('button', { name: 'Lock: Phone Two' }).click();
+        await (await rowToggle(page, 'Lock: Phone Two')).click();
         await expect(page.getByRole('button', { name: 'Unlock: Phone Two' })).toHaveAttribute(
           'aria-pressed',
           'true',
