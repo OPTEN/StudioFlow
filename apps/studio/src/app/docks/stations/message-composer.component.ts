@@ -123,6 +123,8 @@ let composerCount = 0;
 export class MessageComposerComponent implements OnInit {
   /** Recipient. */
   readonly device = input.required<DeviceDto>();
+  /** The text field takes the focus when the composer appears (not when the arrow keys move between tabs). */
+  readonly autofocus = input(true);
   /** Escape: the row closes the composer. */
   readonly closed = output<void>();
 
@@ -145,7 +147,11 @@ export class MessageComposerComponent implements OnInit {
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    afterNextRender(() => element.querySelector<HTMLInputElement>('input')?.focus());
+    afterNextRender(() => {
+      if (this.autofocus()) {
+        element.querySelector<HTMLInputElement>('input')?.focus();
+      }
+    });
     const changes = this.control.valueChanges.subscribe((text) =>
       this.commands.keepDraft(this.device().id, text),
     );

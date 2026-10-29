@@ -7,14 +7,13 @@ export const regieStations = {
 
   'regie.stations.action.block': 'Block device',
   'regie.stations.action.manage': 'Manage device',
-  'regie.stations.action.message': 'Send message',
   'regie.stations.action.reshare': 'Ask to share again',
   'regie.stations.action.reshareCode': 'Ask {code} to share again',
   'regie.stations.action.switchCamera': 'Switch camera',
-  'regie.stations.action.technical': 'Technical details',
   'regie.stations.action.unblock': 'Unblock',
 
-  'regie.stations.composer.count': 'Up to {max} characters. The device shows the message as a banner.',
+  'regie.stations.composer.count':
+    'Up to {max} characters. The device shows the message as a banner.',
   'regie.stations.composer.label': 'Message to {name}',
   'regie.stations.composer.placeholder': 'Short message to the device',
   'regie.stations.composer.quick': 'Quick send: {text}',
@@ -45,7 +44,11 @@ export const regieStations = {
     'Add a phone as a camera, a laptop that shares its screen, or the audio station of the mixing desk.',
   'regie.stations.dock.emptyTitle': 'No devices yet',
   'regie.stations.dock.loadingTitle': 'Loading devices…',
-  'regie.stations.dock.offline': 'No connection to the server. The buttons work again once it is back.',
+  'regie.stations.dock.offline':
+    'No connection to the server. The buttons work again once it is back.',
+
+  'regie.stations.hint.remove': 'Remove (Delete)',
+  'regie.stations.hint.rename': 'Rename (F2)',
 
   'regie.stations.kind.audioStation': 'Audio station',
   'regie.stations.kind.laptop': 'Laptop',
@@ -61,6 +64,15 @@ export const regieStations = {
   'regie.stations.line.sending': 'sending',
   'regie.stations.line.wasGone': 'was gone {seconds} s',
 
+  'regie.stations.menu.block': 'Block…',
+  'regie.stations.menu.camera': 'Camera settings…',
+  'regie.stations.menu.deleteKey': 'Del',
+  'regie.stations.menu.details': 'Show details',
+  'regie.stations.menu.label': 'Device {name}',
+  'regie.stations.menu.message': 'Send message…',
+  'regie.stations.menu.remove': 'Remove…',
+  'regie.stations.menu.rename': 'Rename…',
+
   'regie.stations.nameHint': 'Enter saves, Esc cancels.',
   'regie.stations.nameLabel': 'Device name',
 
@@ -75,6 +87,11 @@ export const regieStations = {
   'regie.stations.quick.break': 'Break',
   'regie.stations.quick.live': 'Live in 10 s',
   'regie.stations.quick.smile': 'Please smile',
+
+  'regie.stations.tab.camera': 'Camera',
+  'regie.stations.tab.details': 'Details',
+  'regie.stations.tab.label': 'Details of {name}',
+  'regie.stations.tab.message': 'Message',
 
   'regie.stations.tag.live': 'Live',
   'regie.stations.tag.preview': 'Preview',

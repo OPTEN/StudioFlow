@@ -3,6 +3,7 @@ import { HUB, type PairingRequestDto } from '@studioflow/scene-model';
 import { FakeStudioHub, flushMicrotasks } from '../../../testing/fake-studio-hub';
 import { PRODUCTION_ID, deviceFixture } from '../../../testing/fixtures';
 import { startStore, studioTestProviders, type StoreHarness } from '../../../testing/store-harness';
+import { ContextMenuService } from '../../core/ui/context-menu';
 import { ToastService } from '../../core/ui/toast.service';
 import { StationFocusService } from '../../shell/station-focus.service';
 import { DockLayoutService } from '../../shell/workspace/dock-layout.service';
@@ -138,7 +139,7 @@ describe('StationsDockComponent', () => {
     rows()[1].click();
     await render();
     const row = station(LAPTOP);
-    button(row, 'Send message')?.click();
+    button(row, 'Message')?.click();
     await render();
     expect(row.querySelector('sf-message-composer')).not.toBeNull();
     button(row, 'Break')?.click();
@@ -154,19 +155,23 @@ describe('StationsDockComponent', () => {
     );
   });
 
-  it('offers the camera panel for a phone only, and closes it with the details', async () => {
+  it('offers the Camera tab for a phone only, and closes it with the details', async () => {
     await setup();
     rows()[1].click();
     await render();
-    expect(button(station(LAPTOP), 'Camera settings')).toBeUndefined();
+    expect(button(station(LAPTOP), 'Camera')).toBeUndefined();
+    expect(text(station(LAPTOP).querySelector('[role="tab"][aria-selected="true"]'))).toBe(
+      'Details',
+    );
     rows()[0].click();
     await render();
-    const open = button(station(PHONE), 'Camera settings') as HTMLButtonElement;
-    expect(open.getAttribute('aria-expanded')).toBe('false');
+    const open = button(station(PHONE), 'Camera') as HTMLButtonElement;
+    expect(open.getAttribute('role')).toBe('tab');
+    expect(open.getAttribute('aria-selected')).toBe('false');
 
     open.click();
     await render();
-    expect(open.getAttribute('aria-expanded')).toBe('true');
+    expect(open.getAttribute('aria-selected')).toBe('true');
     expect(station(PHONE).querySelector('sf-camera-panel')).not.toBeNull();
     expect(text(station(PHONE).querySelector('[data-testid="camera-status"]'))).toBe(
       'The phone has not reported its camera yet.',
@@ -176,6 +181,64 @@ describe('StationsDockComponent', () => {
     await render();
     await render();
     expect(station(PHONE).querySelector('sf-camera-panel')).toBeNull();
+  });
+
+  it('moves between the detail tabs with the arrow keys', async () => {
+    await setup();
+    rows()[0].click();
+    await render();
+    const tabs = (): HTMLElement[] =>
+      Array.from(station(PHONE).querySelectorAll<HTMLElement>('[role="tab"]'));
+    expect(tabs().map((tab) => text(tab))).toEqual(['Camera', 'Message', 'Details']);
+    expect(tabs().map((tab) => tab.tabIndex)).toEqual([-1, -1, 0]);
+    tabs()[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await render();
+    expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tabs()[0]);
+    expect(station(PHONE).querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(
+      tabs()[0].id,
+    );
+  });
+
+  it('renames with F2 and asks before removing with Delete on the row', async () => {
+    await setup();
+    const row = rows()[1];
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    await render();
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    expect(station(LAPTOP).querySelector('sf-inline-edit')).not.toBeNull();
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    await render();
+    expect(station(LAPTOP).querySelector('sf-inline-edit')).toBeNull();
+    expect(text(station(LAPTOP).querySelector('.c-confirm span'))).toContain('will be removed');
+  });
+
+  it('offers the device commands in a right-click menu', async () => {
+    await setup();
+    const strip = station(PHONE).querySelector('.c-st__head') as HTMLElement;
+    strip.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
+    const menu = TestBed.inject(ContextMenuService).current();
+    const labels = (menu?.entries ?? []).map((entry) =>
+      entry === 'separator' ? '-' : `${entry.label}${entry.shortcut ? ` (${entry.shortcut})` : ''}`,
+    );
+    expect(labels).toEqual([
+      'Camera settings…',
+      'Switch camera',
+      'Send message…',
+      'Show details',
+      '-',
+      'Rename… (F2)',
+      'Block…',
+      'Remove… (Del)',
+    ]);
+    expect(menu?.label).toBe('Device Phone stage left');
+    const message = menu?.entries[2];
+    if (message && message !== 'separator') {
+      TestBed.inject(ContextMenuService).run(message);
+    }
+    await render();
+    expect(rows()[0].getAttribute('aria-expanded')).toBe('true');
+    expect(station(PHONE).querySelector('sf-message-composer')).not.toBeNull();
   });
 
   it('shows knock cards and approves a request exactly once', async () => {
@@ -197,6 +260,25 @@ describe('StationsDockComponent', () => {
     request.flush(deviceFixture('dev_cccccccccccccccc', 'Laptop Mia', { kind: 'laptop' }));
     await render();
     expect(TestBed.inject(ToastService).current()?.message).toBe('Laptop Mia is paired');
+  });
+
+  it('denies a request from the right-click menu of its knock card', async () => {
+    await setup([knock()]);
+    const card = element.querySelector('.c-knock') as HTMLElement;
+    card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 5, clientY: 5 }));
+    const menus = TestBed.inject(ContextMenuService);
+    const entries = menus.current()?.entries ?? [];
+    expect(entries.map((entry) => (entry === 'separator' ? '-' : entry.label))).toEqual([
+      'Allow',
+      'Deny',
+    ]);
+    const deny = entries[1];
+    if (deny !== 'separator') {
+      menus.run(deny);
+    }
+    const request = harness.http.expectOne(`${BASE}/pairing/requests/prq_aaaaaaaaaaaaaaaa/deny`);
+    request.flush(null);
+    await render();
   });
 
   it('disables commands that need the server while offline', async () => {

@@ -25,10 +25,14 @@ export const regieAudio = {
 
   'regie.audio.mode.always': 'Always',
   'regie.audio.mode.alwaysHint': 'Audible whenever the broadcast is live',
-  'regie.audio.mode.follow': 'With picture',
+  'regie.audio.mode.follow': 'Follows the picture',
   'regie.audio.mode.followHint': 'Audible while its picture is in the Program',
   'regie.audio.mode.off': 'Off',
   'regie.audio.mode.offHint': 'Never audible',
+
+  'regie.audio.menu.listen': 'Listen',
+  'regie.audio.menu.mode': 'Mode: {mode}',
+  'regie.audio.menu.mute': 'Mute',
 
   'regie.audio.monitor.channel': 'Listening to {name}',
   'regie.audio.monitor.choice': 'What you hear',
@@ -70,6 +74,7 @@ export const regieAudio = {
   'regie.audio.row.mode': 'Mode',
   'regie.audio.row.muteHint': 'Mute {name} (key M)',
   'regie.audio.row.muteName': 'Mute {name}',
+  'regie.audio.row.reset': 'Reset level to 0 dB',
   'regie.audio.row.resetHint': 'Double-click for 0 dB',
   'regie.audio.row.sync': 'Sync offset',
   'regie.audio.row.syncHint': 'Delays the sound to match a picture that arrives later (0–500 ms).',

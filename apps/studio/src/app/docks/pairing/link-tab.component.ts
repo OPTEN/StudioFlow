@@ -15,6 +15,7 @@ import { StudioApiService } from '../../core/api/studio-api.service';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { ClipboardService } from '../../core/ui/clipboard.service';
 import { ClockService } from '../../core/ui/clock.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { ToastService } from '../../core/ui/toast.service';
 import { DockCommandService } from '../shared/dock-command.service';
@@ -54,11 +55,12 @@ interface InviteRow {
  * "Link" tab of the pairing dock (prototype `renderPair` link): "Create link" creates a one-time invite for a
  * laptop (30 minutes), shows it large with "Show link" and "Copy", its validity and "Revoke link"; below, every open
  * invite of the production with its expiry, "Copy" and "Revoke". The links are masked until "Show link" is pressed;
- * copying works either way. Revoking is a quiet action: a revoked link is replaced with one click.
+ * copying works either way. Revoking is a quiet action: a revoked link is replaced with one click. A right click on an
+ * open invite offers Copy and Revoke, like its buttons.
  */
 @Component({
   selector: 'sf-link-tab',
-  imports: [IconComponent],
+  imports: [ContextMenuDirective, IconComponent],
   template: `
     <h3 class="c-pair__title">{{ t('regie.pairing.link.title') }}</h3>
     <p class="c-pair__text">{{ t('regie.pairing.link.text') }}</p>
@@ -114,7 +116,11 @@ interface InviteRow {
       <h4 class="c-pair__label">{{ t('regie.pairing.link.open') }}</h4>
       <ul class="c-pair__invites">
         @for (row of others(); track row.invite.id) {
-          <li class="c-pair__invite">
+          <li
+            class="c-pair__invite"
+            [sfContextMenu]="inviteMenu(row)"
+            [sfContextMenuLabel]="shown(row.url)"
+          >
             <span class="c-pair__invite-url">{{ shown(row.url) }}</span>
             <span class="c-hint">{{ row.expiry }}</span>
             <span class="c-pair__invite-actions">
@@ -194,6 +200,19 @@ export class LinkTabComponent {
         untracked(() => this.created.set(null));
       }
     });
+  }
+
+  /** The right-click menu of an open invite: the same commands as its buttons. */
+  protected inviteMenu(row: InviteRow): () => readonly ContextMenuEntry[] {
+    return () => [
+      { label: t('common.copy'), icon: 'copy', run: () => this.copy(row.invite) },
+      {
+        label: t('regie.pairing.link.revokeShort'),
+        danger: true,
+        disabled: this.commands.blocked('invite:' + row.invite.id),
+        run: () => void this.revoke(row.invite),
+      },
+    ];
   }
 
   /** "Create link". */

@@ -200,3 +200,8 @@ $knob: 14px;
 .c-audio__hint {
   max-width: 34ch;
 }
+
+// The visible twin of the double-click on the fader, aligned with the fields' labels.
+.c-audio__reset {
+  margin-top: 21px;
+}

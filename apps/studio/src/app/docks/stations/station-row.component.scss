@@ -229,15 +229,13 @@ $gap: 10px;
 }
 
 // Details: a 240 ms reveal (the grid row animates from 0fr to 1fr, the clip hides the overflow).
-.c-st__detail,
-.c-st__reveal {
+.c-st__detail {
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--dur-reveal) var(--ease);
 }
 
-.c-st.is-open .c-st__detail,
-.c-st__reveal.is-open {
+.c-st.is-open .c-st__detail {
   grid-template-rows: 1fr;
 }
 
@@ -263,7 +261,17 @@ $gap: 10px;
   gap: 6px;
 }
 
-// Camera settings and the message composer open right below the actions, one at a time.
+// Camera | Message | Details: the tabs keep the details short; the shown panel sits right below them.
+.c-st__tabs {
+  justify-self: start;
+  min-width: min(100%, 300px);
+}
+
+.c-st__tabpanel {
+  display: grid;
+  gap: 8px;
+}
+
 .c-st__panel {
   background: var(--panel);
   border-radius: var(--radius-sm);
@@ -271,44 +279,12 @@ $gap: 10px;
   padding: 10px;
 }
 
-// Technical details and "Manage device": sections divided by a hairline.
+// "Manage device": a section divided by a hairline.
 .c-st__section {
   border-top: 1px solid var(--seam);
   display: grid;
   gap: 8px;
   padding-top: 8px;
-}
-
-.c-st__disclosure {
-  @include state-transition(color, background-color);
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--text-2);
-  cursor: pointer;
-  display: flex;
-  font-size: var(--fs-footnote);
-  font-weight: 600;
-  gap: 4px;
-  height: var(--control-h-sm);
-  justify-self: start;
-  margin-left: -4px;
-  padding: 0 6px 0 2px;
-
-  &:hover {
-    background: var(--fill);
-    color: var(--text);
-  }
-
-  &[aria-expanded='true'] .c-st__disclosure-chev {
-    transform: rotate(90deg);
-  }
-}
-
-.c-st__disclosure-chev {
-  color: var(--muted);
-  transition: transform var(--dur-state) var(--ease);
 }
 
 .c-st__kv {

@@ -8,7 +8,10 @@
   [class.is-silent]="silent()"
   [attr.data-source]="r.sourceId"
   [attr.aria-label]="t('regie.audio.row.group', { name: r.code + ' ' + r.name })"
+  [sfContextMenu]="menu"
+  [sfContextMenuLabel]="t('regie.audio.row.group', { name: r.code + ' ' + r.name })"
   (click)="select()"
+  (contextmenu)="select()"
   (focusin)="select()"
 >
   <div class="c-audio__head">
@@ -17,7 +20,8 @@
     <span class="c-audio__main">
       <span class="c-audio__name">{{ r.name }}</span>
       <span class="c-audio__sub">
-        <span class="c-audio__role">{{ r.roleText }}</span>&ngsp;
+        <span class="c-audio__role">{{ r.roleText }}</span
+        >&ngsp;
         <span class="c-audio__dot c-audio__mode" [title]="modeHint(r.channel.mode)">{{
           modeLabel(r.channel.mode)
         }}</span>
@@ -153,6 +157,15 @@
           t('regie.audio.row.syncHint')
         }}</span>
       </div>
+      <button
+        class="c-btn c-btn--sm c-audio__reset"
+        type="button"
+        data-testid="audio-reset"
+        [disabled]="r.channel.gainDb === 0"
+        (click)="resetFader()"
+      >
+        <svg sfIcon="undo" [size]="14"></svg>{{ t('regie.audio.row.reset') }}
+      </button>
     </div>
   }
 </div>

@@ -28,6 +28,7 @@ import {
   StudioMediaService,
   type StudioSourceProvider,
 } from '../../core/media/studio-media.service';
+import { ContextMenuService } from '../../core/ui/context-menu';
 import { KeyboardService } from '../../core/ui/keyboard.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AudioDockComponent } from './audio-dock.component';
@@ -302,6 +303,51 @@ describe('AudioDockComponent', () => {
     control<HTMLInputElement>(row(DESK), 'audio-fader').dispatchEvent(new Event('dblclick'));
     const body = await answered();
     expect(body.channels[0]).toMatchObject({ gainDb: 0 });
+  });
+
+  it('resets the level with the visible button in the details', async () => {
+    await setup();
+    harness.emitEvent({
+      type: 'audioChannelsChanged',
+      channels: [audioChannelFixture(DESK, { mode: 'always', gainDb: -12 })],
+    });
+    await render();
+    control<HTMLButtonElement>(row(DESK), 'audio-more').click();
+    await render();
+    const reset = control<HTMLButtonElement>(row(DESK), 'audio-reset');
+    expect(text(reset)).toBe('Reset level to 0 dB');
+    reset.click();
+    expect((await answered()).channels[0]).toMatchObject({ gainDb: 0 });
+  });
+
+  it('offers Listen, Mute, the modes and the reset in a right-click menu', async () => {
+    await setup();
+    row(DESK).dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, clientX: 5, clientY: 5 }),
+    );
+    const menus = TestBed.inject(ContextMenuService);
+    const entries = menus.current()?.entries ?? [];
+    expect(
+      entries.map((entry) =>
+        entry === 'separator'
+          ? '-'
+          : `${entry.label}${entry.checked ? ' ✓' : ''}${entry.shortcut ? ` (${entry.shortcut})` : ''}`,
+      ),
+    ).toEqual([
+      'Listen',
+      'Mute (M)',
+      '-',
+      'Mode: Always ✓',
+      'Mode: Follows the picture',
+      'Mode: Off',
+      '-',
+      'Reset level to 0 dB',
+    ]);
+    const off = entries[5];
+    if (off !== 'separator') {
+      menus.run(off);
+    }
+    expect((await answered()).channels[0]).toMatchObject({ sourceId: DESK, mode: 'off' });
   });
 
   it('opens the details to set mode and sync offset', async () => {

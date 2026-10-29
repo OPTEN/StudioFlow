@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { t } from '@studioflow/i18n';
 import { formatCheckCode, type PairingRequestDto } from '@studioflow/scene-model';
 import { ClockService } from '../../core/ui/clock.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent, type IconName } from '../../core/ui/icon.component';
 import { ProductionStoreService } from '../../core/state/production-store.service';
 import { expiryText } from './link-tab.component';
@@ -18,14 +19,22 @@ const KIND_ICON: Readonly<Record<PairingRequestDto['kind'], IconName>> = {
  * Knock card of a waiting device (prototype `knockCard`): its kind icon, "Laptop Mia wants to join", the kind,
  * platform and expiry, then the check code "47 12" large in mono next to the question "Same code on the device?" and
  * "Deny" / "Allow". Allow is the last button, as the default action of a dialog, so the eye passes the code first.
- * Both buttons are disabled while an answer is in flight.
+ * Both buttons are disabled while an answer is in flight. A right click offers the same two answers.
  */
 @Component({
   selector: 'sf-knock-card',
-  imports: [IconComponent],
+  imports: [ContextMenuDirective, IconComponent],
   template: `
-    <div class="c-knock" role="group" [attr.aria-label]="t('regie.pairing.knock.label')">
-      <span class="c-knock__icon" aria-hidden="true"><svg [sfIcon]="icon()" [size]="16"></svg></span>
+    <div
+      class="c-knock"
+      role="group"
+      [attr.aria-label]="t('regie.pairing.knock.label')"
+      [sfContextMenu]="menu"
+      [sfContextMenuLabel]="t('regie.pairing.knock.title', { name: request().name })"
+    >
+      <span class="c-knock__icon" aria-hidden="true"
+        ><svg [sfIcon]="icon()" [size]="16"></svg
+      ></span>
       <span class="c-knock__head">
         <span class="c-knock__title">{{
           t('regie.pairing.knock.title', { name: request().name })
@@ -147,8 +156,7 @@ export class KnockCardComponent {
   /** "Laptop · Windows · Chrome · expires in 9 minutes". */
   protected readonly meta = computed(() => {
     const request = this.request();
-    const remaining =
-      Date.parse(request.expiresAt) - this.store.serverNow(this.clock.now());
+    const remaining = Date.parse(request.expiresAt) - this.store.serverNow(this.clock.now());
     return [this.kindText(request.kind), request.platform, expiryText(remaining)]
       .filter((part) => !!part)
       .join(' · ');
@@ -160,6 +168,22 @@ export class KnockCardComponent {
     }),
   );
   protected readonly busy = computed(() => this.requests.busy(this.request().id));
+
+  /** The right-click menu: the same answers as the two buttons. */
+  protected readonly menu = (): readonly ContextMenuEntry[] => [
+    {
+      label: t('regie.pairing.knock.allow'),
+      icon: 'check',
+      disabled: this.busy(),
+      run: () => this.approve(),
+    },
+    {
+      label: t('regie.pairing.knock.deny'),
+      icon: 'close',
+      disabled: this.busy(),
+      run: () => this.deny(),
+    },
+  ];
 
   protected approve(): void {
     void this.requests.approve(this.request());

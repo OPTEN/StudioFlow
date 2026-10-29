@@ -217,7 +217,7 @@ test.describe('SRC device operations', () => {
       test.setTimeout(180_000);
       const k1 = await livePhone({ openPhone }, pairContext, regie, 'Phone One', { profile: 'pixel7' });
       const row = await openStation(regie, k1.device.id);
-      await row.getByRole('button', { name: 'Send message' }).click();
+      await row.getByRole('tab', { name: 'Message' }).click();
       const composer = row.locator('sf-message-composer');
       await expect(composer.getByLabel('Message to Phone One')).toBeFocused();
 
@@ -252,7 +252,7 @@ test.describe('SRC device operations', () => {
       const offline = await pairPhone(pairContext, { name: 'Phone Offline' });
       const offlineRow = await openStation(regie, offline.id);
       await expect(offlineRow.locator('.c-st__l2')).toContainText('not connected');
-      await offlineRow.getByRole('button', { name: 'Send message' }).click();
+      await offlineRow.getByRole('tab', { name: 'Message' }).click();
       const offlineComposer = offlineRow.locator('sf-message-composer');
       await offlineComposer.getByLabel('Message to Phone Offline').fill('Never arrives');
       const posted = regie.page.waitForResponse((response) => /\/devices\/[^/]+\/commands$/.test(response.url()) && response.request().method() === 'POST');
@@ -281,11 +281,14 @@ test.describe('SRC device operations', () => {
       const facingBefore = await k1.phone.facing();
 
       const phoneRow = await openStation(regie, k1.device.id);
+      // “Switch camera” sits in the Camera tab of the details.
+      await phoneRow.getByRole('tab', { name: 'Camera' }).click();
       await expect(phoneRow.getByRole('button', { name: 'Switch camera' })).toBeVisible();
       const laptopRow = await openStation(regie, s1.device.id);
       await expect(laptopRow.getByRole('button', { name: 'Switch camera' }), 'not for screens').toHaveCount(0);
 
       await openStation(regie, k1.device.id); // one station is open at a time
+      await phoneRow.getByRole('tab', { name: 'Camera' }).click();
       await phoneRow.getByRole('button', { name: 'Switch camera' }).click();
       await expect(regie.toast()).toContainText('K1: switching camera');
       const switchedAt = Date.now();

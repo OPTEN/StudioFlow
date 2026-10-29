@@ -22,10 +22,14 @@ export const regieAudio: Translation<typeof en> = {
 
   'regie.audio.mode.always': 'Immer',
   'regie.audio.mode.alwaysHint': 'Hörbar, solange die Sendung live ist',
-  'regie.audio.mode.follow': 'Mit Bild',
+  'regie.audio.mode.follow': 'Folgt dem Bild',
   'regie.audio.mode.followHint': 'Hörbar, solange sein Bild im Program ist',
   'regie.audio.mode.off': 'Aus',
   'regie.audio.mode.offHint': 'Nie hörbar',
+
+  'regie.audio.menu.listen': 'Abhören',
+  'regie.audio.menu.mode': 'Modus: {mode}',
+  'regie.audio.menu.mute': 'Stumm',
 
   'regie.audio.monitor.channel': 'Du hörst {name}',
   'regie.audio.monitor.choice': 'Was du hörst',
@@ -67,6 +71,7 @@ export const regieAudio: Translation<typeof en> = {
   'regie.audio.row.mode': 'Modus',
   'regie.audio.row.muteHint': '{name} stummschalten (Taste M)',
   'regie.audio.row.muteName': '{name} stummschalten',
+  'regie.audio.row.reset': 'Pegel auf 0 dB zurücksetzen',
   'regie.audio.row.resetHint': 'Doppelklick für 0 dB',
   'regie.audio.row.sync': 'Laufzeitversatz',
   'regie.audio.row.syncHint':

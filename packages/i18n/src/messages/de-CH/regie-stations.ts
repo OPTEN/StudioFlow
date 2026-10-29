@@ -7,11 +7,9 @@ export const regieStations: Translation<typeof en> = {
 
   'regie.stations.action.block': 'Gerät sperren',
   'regie.stations.action.manage': 'Gerät verwalten',
-  'regie.stations.action.message': 'Nachricht senden',
   'regie.stations.action.reshare': 'Neu teilen lassen',
   'regie.stations.action.reshareCode': '{code} neu teilen lassen',
   'regie.stations.action.switchCamera': 'Kamera wechseln',
-  'regie.stations.action.technical': 'Technische Details',
   'regie.stations.action.unblock': 'Entsperren',
 
   'regie.stations.composer.count':
@@ -49,6 +47,9 @@ export const regieStations: Translation<typeof en> = {
   'regie.stations.dock.offline':
     'Keine Verbindung zum Server. Die Schaltflächen funktionieren wieder, sobald er zurück ist.',
 
+  'regie.stations.hint.remove': 'Entfernen (Entf)',
+  'regie.stations.hint.rename': 'Umbenennen (F2)',
+
   'regie.stations.kind.audioStation': 'Audiostation',
   'regie.stations.kind.laptop': 'Laptop',
   'regie.stations.kind.phone': 'Handy',
@@ -62,6 +63,15 @@ export const regieStations: Translation<typeof en> = {
   'regie.stations.line.rttTitle': 'Laufzeit zum Server und zurück',
   'regie.stations.line.sending': 'sendet',
   'regie.stations.line.wasGone': 'war {seconds} s weg',
+
+  'regie.stations.menu.block': 'Sperren …',
+  'regie.stations.menu.camera': 'Kameraeinstellungen …',
+  'regie.stations.menu.deleteKey': 'Entf',
+  'regie.stations.menu.details': 'Technik anzeigen',
+  'regie.stations.menu.label': 'Gerät {name}',
+  'regie.stations.menu.message': 'Nachricht senden …',
+  'regie.stations.menu.remove': 'Entfernen …',
+  'regie.stations.menu.rename': 'Umbenennen …',
 
   'regie.stations.nameHint': 'Enter speichert, Esc bricht ab.',
   'regie.stations.nameLabel': 'Name des Geräts',
@@ -77,6 +87,11 @@ export const regieStations: Translation<typeof en> = {
   'regie.stations.quick.break': 'Pause',
   'regie.stations.quick.live': 'In 10 s live',
   'regie.stations.quick.smile': 'Bitte lächeln',
+
+  'regie.stations.tab.camera': 'Kamera',
+  'regie.stations.tab.details': 'Technik',
+  'regie.stations.tab.label': 'Details zu {name}',
+  'regie.stations.tab.message': 'Nachricht',
 
   'regie.stations.tag.live': 'Live',
   'regie.stations.tag.preview': 'Preview',

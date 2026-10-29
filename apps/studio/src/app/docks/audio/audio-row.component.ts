@@ -8,6 +8,7 @@ import {
   type AudioMode,
 } from '@studioflow/scene-model';
 import { StudioAudioService } from '../../core/audio/studio-audio.service';
+import { ContextMenuDirective, type ContextMenuEntry } from '../../core/ui/context-menu';
 import { IconComponent } from '../../core/ui/icon.component';
 import { AudioCommandsService } from './audio-commands.service';
 import { meterFill, modeHint, modeLabel, rowStateWord, type AudioRowView } from './audio-rows';
@@ -21,14 +22,15 @@ const HOT_FILL = 0.95;
  * pre-fader listening in this browser) and Mute (speaker / speaker off), both toggle buttons with `aria-pressed` and a
  * constant name. Below, the level meter (a thin neutral bar) sits above the fader, whose round knob is clearly a
  * control and never a level; a notch marks 0 dB. The details behind the chevron change the mode (segmented control,
- * each mode explained) and the sync offset. A click or focus inside selects the channel (the target of the M key).
+ * each mode explained), reset the level to 0 dB and set the sync offset. A click or focus inside selects the channel
+ * (the target of the M key). A right click offers Listen, Mute (M), the three modes as checked items and the reset.
  *
  * The meter turns red only for a peak close to full scale, the one meaning that colour has for a level. The silence
  * warning is the amber state word, never an incident.
  */
 @Component({
   selector: 'sf-audio-row',
-  imports: [IconComponent],
+  imports: [ContextMenuDirective, IconComponent],
   templateUrl: './audio-row.component.html',
   styleUrl: './audio-row.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,6 +93,39 @@ export class AudioRowComponent {
     this.gesture = false;
     this.commands.endFader(this.row().sourceId, faderValue(position));
   }
+
+  /** The right-click menu of the channel; every command also has a button in the row or its details. */
+  protected readonly menu = (): readonly ContextMenuEntry[] => {
+    const row = this.row();
+    return [
+      {
+        label: t('regie.audio.menu.listen'),
+        icon: 'headphones',
+        checked: this.listening(),
+        run: () => this.togglePfl(),
+      },
+      {
+        label: t('regie.audio.menu.mute'),
+        icon: 'speaker-off',
+        shortcut: 'M',
+        checked: this.muted(),
+        run: () => this.toggleMute(),
+      },
+      'separator',
+      ...row.modes.map((mode): ContextMenuEntry => ({
+        label: t('regie.audio.menu.mode', { mode: modeLabel(mode) }),
+        checked: row.channel.mode === mode,
+        run: () => this.setMode(mode),
+      })),
+      'separator',
+      {
+        label: t('regie.audio.row.reset'),
+        icon: 'undo',
+        disabled: row.channel.gainDb === 0,
+        run: () => this.resetFader(),
+      },
+    ];
+  };
 
   protected resetFader(): void {
     this.commands.resetFader(this.row().sourceId);

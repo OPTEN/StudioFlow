@@ -164,9 +164,9 @@ test.describe('German text audit', () => {
     await open.getByRole('button', { name: 'Block device' }).click();
     await audit.state('station: block confirmation');
     await open.getByRole('button', { name: 'Cancel' }).click();
-    await open.getByRole('button', { name: 'Send message' }).click();
+    await open.getByRole('tab', { name: 'Message' }).click();
     await audit.state('station: message composer');
-    await open.getByRole('button', { name: 'Send message' }).click();
+    await open.getByRole('tab', { name: 'Details' }).click();
     await open.getByRole('button', { name: 'Rename' }).click();
     await audit.state('station: rename');
     await page.keyboard.press('Escape');
